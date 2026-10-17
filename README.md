@@ -12,7 +12,7 @@ Stack: Next.js, Supabase (supabase-js, SQL migrations), pnpm, Biome, Vitest. Hos
 | --- | --- |
 | Routing engine (`src/lib/routing`) | Built, 21 unit tests |
 | Database schema (`supabase/migrations`) | Built; checked on Postgres 16 for club isolation, cross-club references, flight overlap, public pairings |
-| App screens | Not started (placeholder home page only) |
+| Organizer screens (`src/app`) | Built on demo data held in memory: overview, players with photo step, handicap import, draw board, setup, player-facing pairings. Not connected to the database; a page refresh resets everything |
 | NGAP import logic (`src/lib/ngap`) | Built for CSV, 16 tests. Column mapping is chosen in the UI, so a real sample file only sets the defaults. Excel (.xlsx) not supported yet. No UI or database writes yet |
 | Score encoding, results | Phase 2 |
 
@@ -67,3 +67,24 @@ returns a plan the organizer reviews before anything is saved. Rules:
 - A plus handicap such as `+2.3` is stored as `-2.3`. `NH`, `N/A` and blanks mean no handicap.
 - Slash dates follow the format the organizer picks (month/day or day/month). They are never guessed.
 - A golfer listed twice keeps the newest line and shows a warning.
+
+## Brand and screens
+
+Working product name: **Starter** (the starter sends each group off the tee). The name is not cleared
+for trademark use. Colors are blazer navy and brass, type is Newsreader for headings and Atkinson
+Hyperlegible for the interface, which was designed for low vision and suits older players. Fonts are
+bundled through `@fontsource`, so no external font service is called. Light and dark themes follow the
+device setting. Buttons and inputs are at least 44px tall.
+
+| Route | Screen |
+| --- | --- |
+| `/` | Overview: counts and the five steps to a published draw |
+| `/players` | Search, filter, add a player with live "where will they land" preview and optional photo with consent |
+| `/import` | NGAP CSV upload, column check, review of what changes, apply |
+| `/draw` | Make the draw, move players (pick, then choose a group), lock groups, publish |
+| `/setup` | Start format, times, limits, allowance; categories, flights and tees (read-only for now) |
+| `/pairings` | Player view: names, hole and time only, search, print |
+
+Moving a player uses pick-then-place instead of drag and drop, so it works the same with a mouse, a
+finger or a keyboard. Locked groups cannot be changed. Re-running the draw replaces everything, locks
+included; keeping locked groups across a re-run is not built yet.
