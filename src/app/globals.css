@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* `.overline` is our small-caps label below. Tailwind's own `overline` utility (a line over the
+   text) would otherwise be generated from the same class name and draw a line over every label. */
+@source not inline("overline");
 
 /* Iloilo Golf & Country Club design system ("Clubhouse").
    Source of truth: the design system artifact (tokens.json + README). Light "Ivory" is the base;

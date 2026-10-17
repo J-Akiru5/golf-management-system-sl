@@ -1,6 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  Check,
+  CircleCheck,
+  FileSpreadsheet,
+  Info,
+  OctagonAlert,
+  TriangleAlert,
+  Upload,
+} from "lucide-react";
+import Link from "next/link";
+import { type ReactNode, useMemo, useState } from "react";
+import { PageHeader, SectionCard } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
 import { SAMPLE_NGAP_CSV } from "@/lib/demo/data";
 import { fmtIndex } from "@/lib/format";
 import {
@@ -85,54 +97,66 @@ export default function ImportPage() {
   );
 
   return (
-    <div className="stack">
-      <header>
-        <h1>Import handicaps</h1>
-        <p className="muted">
-          Upload the NGAP export (CSV). Check what will change, then apply. Nothing is saved until
-          you apply.
-        </p>
-      </header>
+    <div className="grid gap-6">
+      <PageHeader overline="Handicaps" title="Import handicaps">
+        Upload the NGAP export (CSV). Check what will change, then apply. Nothing is saved until you
+        apply.
+      </PageHeader>
 
-      <section className="card stack" style={{ gap: ".9rem" }}>
-        <div className="row">
-          <label className="field grow">
-            <span>NGAP export file</span>
+      <SectionCard
+        id="file-h"
+        icon={<StepNo n={1} />}
+        title="Choose the file"
+        subtitle="The CSV export from NGAP."
+      >
+        <div className="flex flex-wrap items-stretch gap-3">
+          <label className="relative flex min-h-[96px] min-w-0 flex-[1_1_18rem] cursor-pointer items-center gap-3.5 rounded-[14px] border border-dashed border-line-strong bg-surface-sunken px-4 py-3 transition-colors focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus hover:bg-fairway-soft">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-raised text-fairway shadow-card">
+              <Upload className="size-[18px]" aria-hidden="true" />
+            </span>
+            <span className="grid min-w-0">
+              <span className="font-semibold">NGAP export file</span>
+              <span className="truncate text-[13px] text-ink-muted">
+                {fileName || "Choose a .csv file"}
+              </span>
+            </span>
             <input
               type="file"
               accept=".csv,text/csv"
+              className="absolute inset-0 cursor-pointer opacity-0"
               onChange={async (e) => {
                 const f = e.target.files?.[0];
                 if (f) load(await f.text(), f.name);
               }}
             />
           </label>
-          <button
-            type="button"
-            className="btn ghost"
+          <Button
+            variant="secondary"
+            className="h-auto min-h-10 self-center"
             onClick={() => load(SAMPLE_NGAP_CSV, "sample-ngap.csv")}
           >
+            <FileSpreadsheet aria-hidden="true" />
             Try the sample file
-          </button>
+          </Button>
         </div>
         <p className="hint">
           Excel files (.xlsx) are not supported yet. In Excel, use Save As and choose CSV.
         </p>
         {readError && (
-          <div className="notice bad" role="alert">
+          <Notice tone="bad" alert>
             {readError}
-          </div>
+          </Notice>
         )}
-      </section>
+      </SectionCard>
 
       {file && (
-        <section className="card stack" style={{ gap: ".9rem" }}>
-          <h2>Which column is which?</h2>
-          <p className="muted">
-            {fileName}: {file.rows.length} rows. We guessed from the headers. Change any that look
-            wrong.
-          </p>
-          <div className="form-grid">
+        <SectionCard
+          id="columns-h"
+          icon={<StepNo n={2} />}
+          title="Which column is which?"
+          subtitle={`${fileName}: ${file.rows.length} rows. We guessed from the headers. Change any that look wrong.`}
+        >
+          <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
             {select("name", "Player name", false)}
             {select("index", "Handicap index", false)}
             {select("ngapId", "NGAP ID", true)}
@@ -159,19 +183,23 @@ export default function ImportPage() {
               </label>
             )}
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {result && "error" in result && (
-        <div className="notice bad" role="alert">
+        <Notice tone="bad" alert>
           {result.error}
-        </div>
+        </Notice>
       )}
 
       {plan && (
-        <section className="stack">
-          <h2>What will change</h2>
-          <div className="tiles">
+        <SectionCard
+          id="changes-h"
+          icon={<StepNo n={3} />}
+          title="What will change"
+          subtitle="Check the list, then apply. Only players already on your list are updated."
+        >
+          <div className="tiles grid-cols-2 lg:grid-cols-4">
             <div className="tile">
               <b>{matched.length}</b>
               <span>Players updated</span>
@@ -184,14 +212,14 @@ export default function ImportPage() {
               <b>{plan.summary.noHandicap}</b>
               <span>No handicap (NH)</span>
             </div>
-            <div className="tile">
+            <div className={`tile${plan.errors.length ? " bad" : ""}`}>
               <b>{plan.errors.length}</b>
               <span>Rows with problems</span>
             </div>
           </div>
 
           {plan.errors.length > 0 && (
-            <div className="notice bad" role="alert">
+            <Notice tone="bad" alert>
               <b>These rows will be skipped:</b>
               <ul>
                 {plan.errors.map((e) => (
@@ -200,10 +228,10 @@ export default function ImportPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Notice>
           )}
           {plan.warnings.length > 0 && (
-            <div className="notice warn">
+            <Notice tone="warn">
               <b>Please check:</b>
               <ul>
                 {plan.warnings.map((w) => (
@@ -212,17 +240,17 @@ export default function ImportPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Notice>
           )}
           {newcomers.length > 0 && (
-            <div className="notice">
+            <Notice tone="info">
               {newcomers.length} golfer(s) in the file are not on your list:{" "}
               {newcomers.map((n) => n.name).join(", ")}. They are not added here, because birthdate
-              and gender are needed. Add them on the Players page.
-            </div>
+              and gender are needed. Add them on the <Link href="/players">Players page</Link>.
+            </Notice>
           )}
 
-          <div className="table-wrap">
+          <div className="table-wrap !shadow-none">
             <table>
               <thead>
                 <tr>
@@ -255,10 +283,9 @@ export default function ImportPage() {
             </table>
           </div>
 
-          <div className="row">
-            <button
-              type="button"
-              className="btn"
+          <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+            <Button
+              variant="primary"
               disabled={matched.length === 0}
               onClick={() => {
                 dispatch({ type: "applyImport", records: plan.records });
@@ -267,16 +294,50 @@ export default function ImportPage() {
                 );
               }}
             >
+              <Check aria-hidden="true" />
               Apply to {matched.length} player{matched.length === 1 ? "" : "s"}
-            </button>
+            </Button>
             {applied && (
-              <span role="status" className="pill ok">
+              <span
+                role="status"
+                className="inline-flex items-start gap-1.5 rounded-md bg-success-soft px-2.5 py-1.5 text-[13px] font-semibold text-success"
+              >
+                <CircleCheck className="mt-px size-4 shrink-0" aria-hidden="true" />
                 {applied}
               </span>
             )}
           </div>
-        </section>
+        </SectionCard>
       )}
+    </div>
+  );
+}
+
+function StepNo({ n }: { n: number }) {
+  return <span className="font-display text-sm font-extrabold tnum">{n}</span>;
+}
+
+const NOTICE_ICON = { bad: OctagonAlert, warn: TriangleAlert, info: Info } as const;
+const NOTICE_TEXT = { bad: "text-danger", warn: "text-warning", info: "text-info" } as const;
+
+/** A notice with its tone's icon, so the tone never rests on colour alone. */
+function Notice({
+  tone,
+  alert,
+  children,
+}: {
+  tone: keyof typeof NOTICE_ICON;
+  alert?: boolean;
+  children: ReactNode;
+}) {
+  const Icon = NOTICE_ICON[tone];
+  return (
+    <div
+      className={`notice${tone === "info" ? "" : ` ${tone}`} flex items-start gap-2.5`}
+      role={alert ? "alert" : undefined}
+    >
+      <Icon className={`mt-0.5 size-4 shrink-0 ${NOTICE_TEXT[tone]}`} aria-hidden="true" />
+      <div className="min-w-0 text-[14px]">{children}</div>
     </div>
   );
 }
