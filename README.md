@@ -121,8 +121,9 @@ manual switch.
   copy; the player view reads that copy, so edits on the board never reach players until the
   organizer publishes again. "Saved" is not a state yet because nothing is persisted.
 - **Locks.** Locked groups cannot give or receive players, and the board says so.
-- Re-running the draw replaces everything, locks included, and takes the published list down.
-  Keeping locked groups across a re-run is not built yet.
+- Re-running the draw keeps every locked group exactly as it is (players, number, hole and time)
+  and routes the rest of the field around them. It takes the published list down until it is
+  published again.
 
 ### Posters
 

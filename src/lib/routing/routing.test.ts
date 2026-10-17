@@ -234,3 +234,98 @@ describe("route", () => {
     expect(out.groups.every((g) => g.wave === null)).toBe(true);
   });
 });
+
+describe("locked groups", () => {
+  it("leaves slots held by locked groups free when planning a shotgun", () => {
+    const plan = planShotgun(
+      [{ flightName: "A", groups: 3 }],
+      18,
+      "07:00",
+      300,
+      new Set(["A:1", "A:2"]),
+    );
+    expect(plan.slots.map((s) => s.startHole)).toEqual([3, 4, 5]);
+    expect(plan.slots.every((s) => s.wave === "A")).toBe(true);
+  });
+
+  it("skips slots held by locked groups in a two-tee start", () => {
+    const slots = planTwoTee(3, "07:00", 12, new Set(["1:07:00"]));
+    expect(slots.map((s) => `${s.startHole}@${s.time}`)).toEqual([
+      "10@07:00",
+      "1@07:12",
+      "10@07:12",
+    ]);
+  });
+
+  it("never moves a locked group when the draw is re-run", () => {
+    const players = Array.from({ length: 12 }, (_, i) => player({ index: 2 + i }));
+    const first = route(input(players));
+    const locked = first.groups.slice(0, 2);
+    expect(locked).toHaveLength(2);
+
+    const grown = [...players, player({ index: 6.4 }), player({ index: 7.1 })];
+    const second = route({ ...input(grown), lockedGroups: locked });
+
+    for (const before of locked) {
+      const after = second.groups.find((g) => g.number === before.number);
+      expect(after).toEqual(before);
+    }
+  });
+
+  it("keeps locked players out of the groups it routes again", () => {
+    const players = Array.from({ length: 16 }, (_, i) => player({ index: 2 + i }));
+    const first = route(input(players));
+    const locked = first.groups.slice(0, 2);
+    const lockedIds = new Set(locked.flatMap((g) => g.playerIds));
+
+    const second = route({ ...input(players), lockedGroups: locked });
+    const rerouted = second.groups
+      .filter((g) => !locked.some((l) => l.number === g.number))
+      .flatMap((g) => g.playerIds);
+
+    for (const id of lockedIds) expect(rerouted).not.toContain(id);
+  });
+
+  it("never puts two groups on the same hole in the same wave", () => {
+    const players = Array.from({ length: 40 }, (_, i) => player({ index: 2 + (i % 28) }));
+    const first = route(input(players));
+    const locked = first.groups.slice(0, 5);
+    const second = route({ ...input(players), lockedGroups: locked });
+
+    const seen = new Set<string>();
+    for (const g of second.groups) {
+      const key = `${g.wave}-${g.startHole}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+    }
+    expect(new Set(second.groups.map((g) => g.number)).size).toBe(second.groups.length);
+  });
+
+  it("accounts for every eligible player exactly once when some groups are locked", () => {
+    const players = Array.from({ length: 30 }, (_, i) => player({ index: 2 + (i % 28) }));
+    const first = route(input(players));
+    const locked = first.groups.slice(0, 3);
+    const second = route({ ...input(players), lockedGroups: locked });
+
+    const routed = second.groups.flatMap((g) => g.playerIds);
+    expect(new Set(routed).size).toBe(routed.length);
+    expect(routed.length).toBe(second.registrations.filter((r) => r.status === "ok").length);
+  });
+
+  it("re-runs a two-tee draw without moving a locked group", () => {
+    const players = Array.from({ length: 12 }, (_, i) => player({ index: 2 + i }));
+    const first = route(input(players, { startFormat: "two_tee" }));
+    const locked = first.groups.slice(0, 1);
+    const second = route({
+      ...input([...players, player({ index: 5 }), player({ index: 5.5 })], {
+        startFormat: "two_tee",
+      }),
+      lockedGroups: locked,
+    });
+
+    const after = second.groups.find((g) => g.number === (locked[0] as { number: number }).number);
+    expect(after).toEqual(locked[0]);
+    const slots = second.groups.map((g) => `${g.startHole}@${g.time}`);
+    expect(new Set(slots).size).toBe(slots.length);
+  });
+});

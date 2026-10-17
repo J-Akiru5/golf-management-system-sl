@@ -257,7 +257,8 @@ function stateFromPublicPairings(
   };
 }
 
-function reducer(state: DeskState, action: Action): DeskState {
+/** Exported for tests: the draw rules live here, so the lock contract is pinned by a unit test. */
+export function reducer(state: DeskState, action: Action): DeskState {
   switch (action.type) {
     case "addPlayer":
       return { ...state, players: [...state.players, action.player] };
@@ -305,10 +306,13 @@ function reducer(state: DeskState, action: Action): DeskState {
       return { ...state, players, importedCount: state.importedCount + count };
     }
     case "generate": {
-      const result = route(routingInput(state));
+      const locked = state.draw?.filter((group) => group.locked) ?? [];
+      const result = route({ ...routingInput(state), lockedGroups: locked });
+      const lockedNumbers = new Set(locked.map((group) => group.number));
       return {
         ...state,
-        draw: result.groups.map((group) => ({ ...group, locked: false })),
+        // Locked groups keep their players, number and start slot across a re-run.
+        draw: result.groups.map((group) => ({ ...group, locked: lockedNumbers.has(group.number) })),
         drawWarnings: result.warnings.filter((warning) => !/a group has only/.test(warning)),
         published: null,
       };
