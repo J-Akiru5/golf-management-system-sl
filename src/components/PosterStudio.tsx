@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Download, Moon, RectangleVertical, Share2, Square, Sun } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   drawPoster,
   POSTER_FONTS,
@@ -9,6 +11,7 @@ import {
   type PosterLayout,
   type PosterTheme,
 } from "@/lib/poster/draw";
+import { cn } from "@/lib/ui/cn";
 
 export interface PosterFactOption extends PosterFact {
   id: string;
@@ -145,83 +148,91 @@ export function PosterStudio({
     setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
 
   return (
-    <div className="studio">
-      <div className="studio-preview">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+      <div className="grid gap-2 rounded-[20px] bg-surface-sunken p-3 sm:p-4">
         <canvas
           ref={canvas}
           role="img"
+          className="block h-auto w-full rounded-[14px] border border-line shadow-lift"
           aria-label={`Poster preview for ${playerName}${facts.length ? `: ${facts.map((f) => `${f.label} ${f.value}`).join(", ")}` : ""}`}
         />
-        {!fontsReady && <p className="muted">Getting fonts ready…</p>}
+        {!fontsReady && <p className="muted text-center text-[13px]">Getting fonts ready…</p>}
       </div>
 
-      <div className="stack studio-controls">
-        <fieldset className="stack tight">
-          <legend>Layout</legend>
-          <div className="chips">
-            {LAYOUTS.map((l) => (
-              <button
-                key={l.id}
-                type="button"
-                className="chip"
-                aria-pressed={layout === l.id}
-                title={l.note}
-                onClick={() => setLayout(l.id)}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+      <div className="card grid gap-5 sm:p-5">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <fieldset className="grid gap-2">
+            <legend className="overline mb-2">Layout</legend>
+            <div className="grid gap-2">
+              {LAYOUTS.map((l) => (
+                <Choice
+                  key={l.id}
+                  on={layout === l.id}
+                  onClick={() => setLayout(l.id)}
+                  icon={l.id === "championship" ? <RectangleVertical /> : <Square />}
+                  label={l.label}
+                  note={l.note}
+                />
+              ))}
+            </div>
+          </fieldset>
 
-        <fieldset className="stack tight">
-          <legend>Look</legend>
-          <div className="chips">
-            {(["dark", "light"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                className="chip"
-                aria-pressed={theme === t}
-                onClick={() => setTheme(t)}
-              >
-                {t === "dark" ? "Dark poster" : "Light poster"}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+          <fieldset className="grid gap-2">
+            <legend className="overline mb-2">Look</legend>
+            <div className="grid gap-2">
+              {(["dark", "light"] as const).map((t) => (
+                <Choice
+                  key={t}
+                  on={theme === t}
+                  onClick={() => setTheme(t)}
+                  icon={t === "dark" ? <Moon /> : <Sun />}
+                  label={t === "dark" ? "Dark poster" : "Light poster"}
+                />
+              ))}
+            </div>
+          </fieldset>
+        </div>
 
-        <fieldset className="stack tight">
-          <legend>Show on the poster (up to 3)</legend>
+        <fieldset className="grid gap-2 border-t border-line pt-4">
+          <legend className="overline float-left mb-2 w-full">Show on the poster (up to 3)</legend>
           {options.length === 0 ? (
             <p className="muted">
               No handicap or category on file, so there is nothing to show yet.
             </p>
           ) : (
-            options.map((o) => {
-              const on = chosen.includes(o.id);
-              const full = !on && chosen.length >= 3;
-              return (
-                <label key={o.id} className="check">
-                  <input
-                    type="checkbox"
-                    checked={on}
-                    disabled={full}
-                    onChange={() => toggle(o.id)}
-                  />
-                  <span>
-                    {o.label}: <b>{o.value}</b>
-                  </span>
-                </label>
-              );
-            })
+            <div className="grid gap-2 sm:grid-cols-2">
+              {options.map((o) => {
+                const on = chosen.includes(o.id);
+                const full = !on && chosen.length >= 3;
+                return (
+                  <label
+                    key={o.id}
+                    className={cn(
+                      "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[10px] border px-3 py-2 text-[14px] transition-colors",
+                      on ? "border-fairway bg-fairway-soft" : "border-line hover:bg-surface-sunken",
+                      full && "cursor-not-allowed opacity-55",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={full}
+                      onChange={() => toggle(o.id)}
+                    />
+                    <span className="min-w-0">
+                      {o.label}: <b>{o.value}</b>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
           )}
         </fieldset>
 
-        <fieldset className="stack tight" disabled={!photo}>
-          <legend>Photo position</legend>
+        <fieldset className="grid gap-1 border-t border-line pt-4" disabled={!photo}>
+          <legend className="overline float-left mb-2 w-full">Photo position</legend>
           {!photo && (
-            <p className="hint">
+            <p className="hint mb-1">
               No photo is on file with the player’s agreement, so the poster shows their initials.
               Add one above.
             </p>
@@ -261,25 +272,60 @@ export function PosterStudio({
           </label>
         </fieldset>
 
-        <div className="row">
-          <button
-            type="button"
-            className="btn gold"
-            disabled={!fontsReady || busy}
-            onClick={download}
-          >
-            Download PNG
-          </button>
-          {canShare && (
-            <button type="button" className="btn ghost" disabled={!fontsReady} onClick={share}>
-              Share
-            </button>
-          )}
+        <div className="grid gap-2 border-t border-line pt-4">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="gold" disabled={!fontsReady || busy} onClick={download}>
+              <Download aria-hidden="true" />
+              Download PNG
+            </Button>
+            {canShare && (
+              <Button variant="secondary" disabled={!fontsReady} onClick={share}>
+                <Share2 aria-hidden="true" />
+                Share
+              </Button>
+            )}
+          </div>
+          <p className="hint">
+            A poster shows a player’s name and handicap. Share it only with their agreement.
+          </p>
         </div>
-        <p className="hint">
-          A poster shows a player’s name and handicap. Share it only with their agreement.
-        </p>
       </div>
     </div>
+  );
+}
+
+function Choice({
+  on,
+  onClick,
+  icon,
+  label,
+  note,
+}: {
+  on: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  label: string;
+  note?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={cn(
+        "flex min-h-11 items-center gap-2.5 rounded-[10px] border px-3 py-2 text-left transition-colors [&_svg]:size-4 [&_svg]:shrink-0",
+        on
+          ? "border-fairway bg-fairway-soft text-ink"
+          : "border-line bg-surface-raised text-ink hover:bg-surface-sunken",
+      )}
+    >
+      <span className={on ? "text-fairway" : "text-ink-muted"} aria-hidden="true">
+        {icon}
+      </span>
+      <span className="grid min-w-0">
+        <span className={cn("text-[14px]", on && "font-semibold")}>{label}</span>
+        {note && <span className="text-xs text-ink-muted">{note}</span>}
+      </span>
+    </button>
   );
 }

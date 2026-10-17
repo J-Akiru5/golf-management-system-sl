@@ -21,12 +21,12 @@ Anything not marked is a plan, not a fact.
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**, column mapping chosen in the UI | 16 unit tests; no `.xlsx`; no UI-to-DB writes |
 | Database schema (`supabase/migrations`) | **Written and tested on a throwaway Postgres 16**; **not applied to any real Supabase project** | 14 tables, RLS on all |
-| Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | Overview, Players, Player profile + poster, Import, Draw, Setup, public Pairings |
-| Brand and visual design | Interim (forest / ivory / gold). Final visuals to be done in Claude Design | Logos received only as low-res screenshots |
+| Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | Overview (control room), Players, Player profile + poster, Import, Draw, Course & holes, Clubhouse display, Setup, public Pairings |
+| Brand and visual design | **Clubhouse design system applied** on `feat/clubhouse-ui` (not merged yet): Ivory / Charcoal themes, official IGCC crest, control-room overview from the approved mockup | Tokens in `src/app/globals.css`, contrast guarded by `src/styles/contrast.test.ts` |
 | Printing | **Partial**: browser print of the pairings page only | No start sheet, no scorecards |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 5 test files, 101 tests passing (`pnpm test`).
+Whole suite: 5 test files, 156 tests passing (`pnpm test`); the contrast file now checks every design-system pair in both themes.
 
 **The one thing blocking a real event:** nothing the organizer does is saved. The next build step is
 the database connection (section 8, step 1). Until then the app is a working demo, not a tool.
@@ -167,13 +167,15 @@ Verified in `supabase/migrations/20261017000000_init.sql`:
 
 | Screen | State |
 | --- | --- |
-| Overview | Built (demo data) |
+| Overview | Rebuilt as the control room: illustrated course map with hole pins, readiness, publish, divisions, Handicap Index histogram, session activity (demo data) |
 | Players list | Built; add/edit/remove players, in memory |
 | Player profile | Built; photo with consent flag, poster generator (1080×1350 championship, 1080×1080 card) |
 | Import handicaps | Built; CSV, column mapping, applies to in-memory players |
 | Draw control room | Built; generate, drag or move players, lock, issues panel, publish dialog, draft / published / changed states |
 | Setup | Built **read-only** (tees, categories, flights shown, not editable) |
 | Public pairings | Built; search by name, large text, print button |
+| Course & holes | Built; hole 1 overview and green view with shot line and yardage markers drawn from anchor files. **Pictures are an illustration, not IGCC's real hole** |
+| Clubhouse display (spotlight) | Built; 16:9 player card for the clubhouse TV, single player or rotation. Shows recorded data only |
 | Course and tee entry | **Not built** (needs the DB step) |
 | Tournament setup wizard | **Not built** |
 | Registration desk (directory search, copy from past event) | **Not built** |
@@ -267,7 +269,7 @@ Decisions that belong to the people named, not to an agent.
 | 8 | Results and tie-break rule | Organizer | Phase 2 | None |
 | 9 | Small flight near the end of wave 1 (e.g. 3-group Ladies): split, fill from another flight, or move to wave 2 | Organizer | Shotgun layout | Keep whole, flag |
 | 10 | Product name ("Starter" is not trademark-cleared) | Jeff | Public branding | "Starter" |
-| 11 | Final visual design and original IGCC logo files | Jeff, via Claude Design | Brand polish | Interim theme |
+| 11 | Vector (SVG/PDF) crest from the club; real course pictures and hole positions | Jeff / club | Print, large displays, real course map | 320px PNG crest; illustrated placeholder course |
 | 12 | Create `staging` and `main` branches; clean up old feature branches; consider a Syntaxure organization for the repo | Jeff | Pipeline | Only `develop` |
 
 ---
@@ -338,6 +340,9 @@ Agent ground rules:
 | 17 Oct 2026 | Interim brand forest / ivory / gold; final design to be done in Claude Design. |
 | 17 Oct 2026 | Photos shown only with recorded consent and never on the public page. |
 | 17 Oct 2026 | PRs #1 (organizer UI) and #2 (design system) merged into `develop`. |
+| 17 Oct 2026 | Clubhouse design system adopted (Claude Design artifact). UI moves to Tailwind v4 + shadcn/ui primitives (Radix) + Lucide, themed from the design system tokens. Fonts bundled with `@fontsource` (Geist, Manrope, Cormorant Garamond, Bebas Neue). |
+| 17 Oct 2026 | App chrome shows the club name and crest only; "Starter" is not shown until decision 10 is made. |
+| 17 Oct 2026 | Frontend and backend split into two branches: `feat/clubhouse-ui` (UI) and `feat/supabase-data` (data layer, own worktree). They meet only at the `useDesk()` contract. Handoff prompt: `docs/handoffs/backend-supabase-data.md`. |
 
 ---
 

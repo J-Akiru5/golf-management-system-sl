@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+// Windows checkouts (core.autocrlf) give CRLF line endings; the block search below expects LF.
+const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8").replace(
+  /\r\n/g,
+  "\n",
+);
 
 /** Pulls `--token: value;` pairs out of the first rule that starts with `selector {`. */
 function tokens(selector: string): Record<string, string> {
@@ -27,30 +31,41 @@ function ratio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-// [foreground, background, minimum ratio]. 4.5 for text, 3 for borders and focus rings.
+// [foreground, background, minimum ratio]. 4.5 for text, 3 for borders, icons and focus rings.
+// Each pair is a claim made in the design system's token usage notes.
+const SURFACES = ["surface", "surface-raised", "surface-sunken"];
 const PAIRS: [string, string, number][] = [
-  ["ink", "bg", 4.5],
-  ["ink", "surface", 4.5],
-  ["muted", "bg", 4.5],
-  ["muted", "surface", 4.5],
-  ["muted", "surface-2", 4.5],
-  ["on-primary", "primary", 4.5],
-  ["link", "bg", 4.5],
-  ["link", "surface", 4.5],
-  ["primary", "primary-soft", 4.5],
-  ["on-gold", "gold", 4.5],
+  ...SURFACES.flatMap((bg): [string, string, number][] => [
+    ["ink", bg, 4.5],
+    ["ink-muted", bg, 4.5],
+    ["fairway", bg, 4.5],
+    ["gold-ink", bg, 4.5],
+    ["success", bg, 4.5],
+    ["warning", bg, 4.5],
+    ["danger", bg, 4.5],
+    ["info", bg, 4.5],
+    ["line-strong", bg, 3],
+    ["focus", bg, 3],
+  ]),
+  ["ink", "fairway-soft", 4.5],
+  ["ink", "success-soft", 4.5],
+  ["ink", "warning-soft", 4.5],
+  ["ink", "danger-soft", 4.5],
+  ["ink", "info-soft", 4.5],
+  ["ink", "gold-soft", 4.5],
+  ["fairway", "fairway-soft", 4.5],
   ["gold-ink", "gold-soft", 4.5],
-  ["ok", "ok-soft", 4.5],
-  ["ok", "surface", 4.5],
-  ["warn", "warn-soft", 4.5],
-  ["bad", "bad-soft", 4.5],
-  ["bad", "surface", 4.5],
-  ["on-chrome", "chrome", 4.5],
-  ["gold", "chrome", 3],
-  ["focus", "bg", 3],
-  ["focus", "surface", 3],
-  ["gold-line", "surface", 3],
-  ["line-strong", "surface", 3],
+  ["success", "success-soft", 4.5],
+  ["warning", "warning-soft", 4.5],
+  ["danger", "danger-soft", 4.5],
+  ["info", "info-soft", 4.5],
+  ["on-forest", "forest", 4.5],
+  ["on-forest-muted", "forest", 4.5],
+  ["gold", "forest", 3],
+  ["on-gold", "gold", 4.5],
+  ["on-primary", "primary", 4.5],
+  ["on-primary", "primary-hover", 4.5],
+  ["on-danger", "danger", 4.5],
 ];
 
 const themes = {
@@ -77,5 +92,11 @@ describe("dark theme", () => {
       auto[m[1] as string] = m[2] as string;
     }
     expect(auto).toEqual(manual);
+  });
+});
+
+describe("control room", () => {
+  it("forces exactly the dark theme's values", () => {
+    expect(tokens(':root:not([data-theme="light"]) .scheme-dark')).toEqual(themes.dark);
   });
 });
