@@ -25,13 +25,22 @@ Stack: Next.js, Supabase (supabase-js, SQL migrations), pnpm, Biome, Vitest. Hos
 
 ```bash
 pnpm install
-pnpm test        # routing engine tests
-pnpm typecheck
-pnpm lint
 pnpm dev
+pnpm typecheck && pnpm lint && pnpm test
+pnpm build
 ```
 
-Copy `.env.example` to `.env.local` and fill in the Supabase values to connect a project.
+With no `NEXT_PUBLIC_SUPABASE_URL`, the app runs on deterministic in-memory demo data and refresh
+resets changes. To connect Supabase, copy `.env.example` to `.env.local` and set
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. The app uses email/password sign-in;
+it does not use a service-role key.
+
+The Supabase project must be provisioned separately. After the owner approves and links a project,
+apply the migrations, create the club/course/tees/tournament/category/flight rows, create an Auth user,
+and add that user's `club_members` row with a display name and role. Do not apply migrations to a real
+project from this branch.
+Until a tournament picker exists, the desk loads the nearest upcoming tournament, or the most recent
+past tournament when there is no upcoming event.
 
 ## Routing engine
 
