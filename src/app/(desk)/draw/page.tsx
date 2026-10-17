@@ -6,13 +6,23 @@ import { GroupCard } from "@/components/draw/GroupCard";
 import { IssuesPanel } from "@/components/draw/IssuesPanel";
 import { PublishDialog } from "@/components/draw/PublishDialog";
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
+import { NeedsTournament } from "@/components/NeedsTournament";
 import { dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
 
+const REASONS = [
+  "Organizer request",
+  "Balance the group",
+  "Friends or club-mates together",
+  "Late change on the day",
+  "Other (note in the overrides list)",
+];
+
 export default function DrawPage() {
+  const desk = useDesk();
   const {
-    state,
+    tournament,
     registrations,
     regById,
     unplaced,
@@ -21,34 +31,40 @@ export default function DrawPage() {
     dispatch,
     isPublished,
     changedSincePublish,
-  } = useDesk();
-  const { draw, config } = state;
+    flags,
+    overrides,
+    adapters,
+  } = desk;
+  const draw = desk.draw;
+  const config = tournament?.config ?? null;
 
   const [active, setActive] = useState<{ id: string; via: "pick" | "drag" } | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
   const [tab, setTab] = useState<Tab>("pool");
   const [flash, setFlash] = useState<number | null>(null);
   const [pubOpen, setPubOpen] = useState(false);
-  const [confirm, setConfirm] = useState<"redo" | "unpublish" | null>(null);
+  const [confirm, setConfirm] = useState<"startOver" | "unpublish" | null>(null);
+  const [reason, setReason] = useState(REASONS[0] as string);
   const panelRef = useRef<HTMLDivElement>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const shotgun = config.startFormat === "shotgun";
+  const shotgun = config?.startFormat === "shotgun";
   const ready = registrations.filter((r) => r.status === "ok").length;
   const placed = draw?.reduce((n, g) => n + g.playerIds.length, 0) ?? 0;
 
   const issues = useMemo(
     () =>
-      draw
+      draw && config
         ? validateDraw({
             draw,
             registrations,
             config,
-            engineWarnings: state.drawWarnings,
+            engineWarnings: desk.warnings,
+            flags,
             names,
           })
         : [],
-    [draw, registrations, config, state.drawWarnings, names],
+    [draw, registrations, config, desk.warnings, flags, names],
   );
   const issuesByGroup = useMemo(() => {
     const m = new Map<number, Issue[]>();
@@ -99,10 +115,10 @@ export default function DrawPage() {
   const showPlayer = useCallback(
     (id: string) => {
       selectPlayer(id);
-      const g = state.draw?.find((x) => x.playerIds.includes(id));
+      const g = draw?.find((x) => x.playerIds.includes(id));
       if (g) focusGroup(g.number);
     },
-    [selectPlayer, focusGroup, state.draw],
+    [selectPlayer, focusGroup, draw],
   );
 
   const onShowIssue = (i: Issue) => {
@@ -133,36 +149,39 @@ export default function DrawPage() {
   const allowDrop = useCallback(
     (n: number) => {
       const id = dragId.current;
-      if (!id || !state.draw) return false;
-      return dropCheck(state.draw, state.config, regById, id, n, names).ok;
+      if (!id || !draw || !config) return false;
+      return dropCheck(draw, config, regById, id, n, names).ok;
     },
-    [state.draw, state.config, regById, names],
+    [draw, config, regById, names],
   );
   const dropOn = useCallback(
     (n: number) => {
       const id = dragId.current;
       if (!id || !allowDrop(n)) return;
-      dispatch({ type: "move", playerId: id, toGroup: n });
+      dispatch({ type: "move", playerId: id, toGroup: n, reason });
       setSelection({ kind: "player", id });
       dragId.current = null;
       setActive(null);
     },
-    [allowDrop, dispatch],
+    [allowDrop, dispatch, reason],
   );
-  const onLock = useCallback((n: number) => dispatch({ type: "lock", group: n }), [dispatch]);
+  const onLock = useCallback(
+    (n: number, locked: boolean) => dispatch({ type: "setGroupLocked", group: n, locked, reason }),
+    [dispatch, reason],
+  );
 
   const moveActiveTo = useCallback(
     (n: number) => {
       if (!active) return;
-      dispatch({ type: "move", playerId: active.id, toGroup: n });
+      dispatch({ type: "move", playerId: active.id, toGroup: n, reason });
       setSelection({ kind: "player", id: active.id });
       setActive(null);
     },
-    [active, dispatch],
+    [active, dispatch, reason],
   );
 
-  function generate() {
-    dispatch({ type: "generate" });
+  function makeDraw(preserveLocks: boolean) {
+    adapters.router.propose(preserveLocks);
     setConfirm(null);
     setActive(null);
     setSelection(null);
@@ -176,17 +195,33 @@ export default function DrawPage() {
   }
 
   const activeName = active ? playerById.get(active.id)?.name : null;
-  const openSpots = draw ? draw.length * config.groupSize - placed : 0;
+  const openSpots = draw ? draw.length * (config?.groupSize ?? 4) - placed : 0;
   const lockedCount = draw?.filter((g) => g.locked).length ?? 0;
+  const manualOverrideIds = new Set(
+    overrides.filter((o) => o.kind === "move" && o.playerId).map((o) => o.playerId),
+  );
+
+  if (!tournament || !config) return <NeedsTournament what="The draw" />;
 
   return (
     <div className="stack">
       <header className="row between">
         <div className="stack tight">
+          <nav aria-label="Breadcrumb">
+            <ol className="flex flex-wrap items-center gap-1.5 text-[12px] text-ink-muted">
+              <li>
+                <Link href="/tournaments" className="text-ink-muted no-underline hover:underline">
+                  {tournament.name}
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li aria-current="page">Draw &amp; pairings</li>
+            </ol>
+          </nav>
           <p className="overline">Draw &amp; pairings</p>
           <h1>{shotgun ? "Shotgun draw" : "Two-tee draw"}</h1>
           <p className="muted">
-            {state.name} ·{" "}
+            {tournament.name} ·{" "}
             {new Date(`${config.date}T00:00:00`).toLocaleDateString("en-PH", { dateStyle: "long" })}{" "}
             · {shotgun ? "Shotgun start" : "Two-tee start"}
           </p>
@@ -202,8 +237,8 @@ export default function DrawPage() {
               <>
                 <span className="pill ok">Published</span>
                 <span className="hint">
-                  {state.published &&
-                    new Date(state.published.at).toLocaleTimeString("en-PH", {
+                  {desk.published &&
+                    new Date(desk.published.at).toLocaleTimeString("en-PH", {
                       timeStyle: "short",
                     })}
                 </span>
@@ -215,11 +250,17 @@ export default function DrawPage() {
                 <span className="hint">Players still see the earlier list.</span>
               </>
             )}
+            {lockedCount > 0 && <span className="pill gold">{lockedCount} locked</span>}
           </div>
         </div>
         <div className="row">
           {!draw && (
-            <button type="button" className="btn gold" disabled={ready === 0} onClick={generate}>
+            <button
+              type="button"
+              className="btn gold"
+              disabled={ready === 0}
+              onClick={() => makeDraw(true)}
+            >
               Make the draw
             </button>
           )}
@@ -236,31 +277,49 @@ export default function DrawPage() {
                     : "View published list"
                   : "Review and publish"}
               </button>
-              {isPublished && (
-                <Link className="btn ghost" href="/pairings">
-                  Player view
-                </Link>
-              )}
+              <button type="button" className="btn ghost" onClick={() => setConfirm("startOver")}>
+                Start over
+              </button>
+              <Link className="btn ghost" href="/print">
+                Print center
+              </Link>
               {isPublished && (
                 <button type="button" className="btn ghost" onClick={() => setConfirm("unpublish")}>
                   Unpublish
                 </button>
               )}
-              <button type="button" className="btn ghost" onClick={() => setConfirm("redo")}>
-                Start over
-              </button>
             </>
           )}
         </div>
       </header>
 
-      {confirm === "redo" && (
+      {draw && (
+        <div className="card flex flex-wrap items-center gap-x-4 gap-y-2 !py-3">
+          <label className="field !gap-1">
+            <span className="overline !text-[10px]">Override reason for the next move or lock</span>
+            <select value={reason} onChange={(e) => setReason(e.target.value)} className="!w-auto">
+              {REASONS.map((r) => (
+                <option key={r}>{r}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="btn ghost" onClick={() => makeDraw(true)}>
+            Re-run proposal (keeps locks)
+          </button>
+          <span className="hint">
+            A re-run keeps every locked group exactly where it is and re-proposes the rest. It does
+            not take the published list down.
+          </span>
+        </div>
+      )}
+
+      {confirm === "startOver" && (
         <div className="notice warn" role="alert">
-          <b>Start over?</b> This throws away every manual move and lock, builds a fresh draw
-          {isPublished ? ", and takes the published list down" : ""}.
+          <b>Start over?</b> This throws away every manual move, every override and every lock, and
+          builds a fresh draw{isPublished ? ", and takes the published list down" : ""}.
           <div className="row" style={{ marginTop: ".6rem" }}>
-            <button type="button" className="btn small" onClick={generate}>
-              Yes, make a new draw
+            <button type="button" className="btn small" onClick={() => makeDraw(false)}>
+              Yes, start over
             </button>
             <button type="button" className="btn small ghost" onClick={() => setConfirm(null)}>
               Keep current draw
@@ -293,9 +352,9 @@ export default function DrawPage() {
         <div className="card stack tight">
           <h2>No draw yet</h2>
           <p>
-            The draw puts players in their flight, groups them by handicap, and gives each group a
-            starting hole and time. You can move anyone afterwards. Players marked Needs review or
-            Not eligible are left out.
+            The draw puts each ready player in a flight, groups them by handicap, and gives each
+            group a starting hole and time. You can move anyone afterwards. Players marked Needs
+            review or Not eligible are left out, and anyone over the index limit is blocked.
           </p>
         </div>
       )}
@@ -360,12 +419,13 @@ export default function DrawPage() {
                     <GroupCard
                       key={g.number}
                       g={g}
-                      shotgun={shotgun}
+                      shotgun={Boolean(shotgun)}
                       groupSize={config.groupSize}
                       minGroupSize={config.minGroupSize}
                       flightName={names.flight(g.flightId)}
                       players={playerById}
                       regs={regById}
+                      manualOverrideIds={manualOverrideIds}
                       issues={issuesByGroup.get(g.number) ?? none}
                       active={active}
                       drop={
@@ -381,7 +441,15 @@ export default function DrawPage() {
                       onSelectPlayer={selectPlayer}
                       onSelectGroup={selectGroup}
                       onPick={onPick}
-                      onLock={onLock}
+                      onLock={(n) => {
+                        const group = draw.find((x) => x.number === n);
+                        dispatch({
+                          type: "setGroupLocked",
+                          group: n,
+                          locked: !(group?.locked ?? false),
+                          reason,
+                        });
+                      }}
                       onDragStart={onDragStart}
                       onDragEnd={onDragEnd}
                       onMoveHere={moveActiveTo}
@@ -402,7 +470,7 @@ export default function DrawPage() {
               players={playerById}
               regs={regById}
               names={names}
-              shotgun={shotgun}
+              shotgun={Boolean(shotgun)}
               selection={selection}
               activeId={active?.id ?? null}
               onPick={onPick}
@@ -411,9 +479,46 @@ export default function DrawPage() {
               onShowPlayer={showPlayer}
               onShowGroup={focusGroup}
               onLock={onLock}
+              explain={adapters.router.explain}
             />
           </div>
         </div>
+      )}
+
+      {overrides.length > 0 && (
+        <details className="card">
+          <summary className="flex min-h-8 cursor-pointer flex-wrap items-center gap-2">
+            <b>Manual overrides this session</b>
+            <span className="pill info">{overrides.length}</span>
+            <span className="hint">Every hand change is recorded with its reason.</span>
+          </summary>
+          <ul className="plain mt-3 grid gap-1.5 text-[13px]">
+            {overrides.map((o) => {
+              const name = o.playerId ? playerById.get(o.playerId)?.name : null;
+              return (
+                <li
+                  key={o.id}
+                  className="flex flex-wrap items-center gap-x-3 border-t border-line pt-1.5"
+                >
+                  <span className="mono">
+                    {new Date(o.at).toLocaleTimeString("en-PH", { timeStyle: "short" })}
+                  </span>
+                  <b>
+                    {name ??
+                      (o.kind === "lock" ? `Group ${o.to} locked` : `Group ${o.to} unlocked`)}
+                  </b>
+                  <span className="hint">
+                    {o.kind === "move"
+                      ? `moved from group ${o.from ?? "pool"} to group ${o.to}`
+                      : `${o.kind}ed group ${o.to}`}
+                    {" · "}
+                    {o.reason}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
       )}
 
       <PublishDialog open={pubOpen} issues={issues} onClose={() => setPubOpen(false)} />

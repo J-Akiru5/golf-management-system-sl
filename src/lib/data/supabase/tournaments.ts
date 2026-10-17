@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CategoryRule, FlightRule, Tee, TournamentConfig } from "@/lib/routing";
-import type { Published } from "@/lib/store/desk-store";
+import type { Published } from "@/lib/store/legacy-supabase-store";
 import type { Database, Json } from "@/lib/supabase/types";
 import { mapCategoryRow, mapFlightRow, mapTeeRow, mapTournamentConfig } from "./mappers";
 

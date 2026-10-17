@@ -66,9 +66,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 export const config = {
   matcher: [
     "/",
+    "/tournaments/:path*",
     "/players/:path*",
+    "/register/:path*",
     "/import/:path*",
     "/draw/:path*",
+    "/print/:path*",
     "/setup/:path*",
     "/course/:path*",
     "/spotlight/:path*",

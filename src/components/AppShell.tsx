@@ -3,35 +3,42 @@
 import {
   Bell,
   CircleUserRound,
+  ClipboardList,
   Download,
   Flag,
   LayoutGrid,
   Map as MapIcon,
   Menu,
   MonitorPlay,
+  Printer,
   Search,
   SlidersHorizontal,
   Smartphone,
+  Trophy,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
 import { Crest } from "@/components/Crest";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { TournamentSelect } from "@/components/TournamentSelect";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Tip, TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { signOut } from "@/lib/auth/actions";
 import { validateDraw } from "@/lib/draw/validate";
-import { fmtTime } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { cn } from "@/lib/ui/cn";
-import { ThemeToggle } from "./ThemeToggle";
 
 interface NavItem {
   href: string;
   label: string;
   icon: typeof LayoutGrid;
-  /** Alert dot: only for blocking work waiting on that page. */
+  /** Alert dot: only for work waiting on that page. */
   alert?: boolean;
+  /** Secondary screens, kept after a divider. */
+  group?: "main" | "more";
 }
 
 const isCurrent = (path: string, href: string) =>
@@ -46,36 +53,92 @@ const isCurrent = (path: string, href: string) =>
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const overlay = path === "/";
-  const { state, registrations, names } = useDesk();
+  const desk = useDesk();
+  const { registrations, draw, warnings, tournament, deferred } = desk;
   const [menuOpen, setMenuOpen] = useState(false);
+  // Supabase configured means the sign-in guard is live, but the shell still runs on demo data.
+  const supabaseConfigured = isSupabaseConfigured();
 
   const blocking = useMemo(() => {
-    if (!state.draw) return 0;
+    if (!draw || !tournament) return 0;
     return validateDraw({
-      draw: state.draw,
+      draw,
       registrations,
-      config: state.config,
-      engineWarnings: state.drawWarnings,
-      names,
+      config: tournament.config,
+      engineWarnings: warnings,
+      flags: desk.flags,
+      names: desk.names,
     }).filter((i) => i.severity === "blocking").length;
-  }, [state.draw, registrations, state.config, state.drawWarnings, names]);
-  const review = registrations.filter((r) => r.status === "needs_review").length;
+  }, [draw, registrations, tournament, warnings, desk.flags, desk.names]);
+  const review = registrations.filter((r) => r.status !== "ok").length;
+  const registerAttention = registrations.filter(
+    (r) => r.status !== "ok" || r.frozenOutdated || r.paymentStatus === "pending",
+  ).length;
 
   const nav: NavItem[] = [
-    { href: "/", label: "Overview", icon: LayoutGrid },
-    { href: "/players", label: "Players", icon: Users, alert: review > 0 },
-    { href: "/draw", label: "Draw & pairings", icon: Flag, alert: blocking > 0 },
-    { href: "/course", label: "Course & holes", icon: MapIcon },
-    { href: "/import", label: "Handicap import", icon: Download },
-    { href: "/spotlight", label: "Clubhouse display", icon: MonitorPlay },
-    { href: "/pairings", label: "Player view", icon: Smartphone },
-    { href: "/setup", label: "Setup", icon: SlidersHorizontal },
+    { href: "/", label: "Overview", icon: LayoutGrid, group: "main" },
+    { href: "/tournaments", label: "Tournaments", icon: Trophy, group: "main" },
+    { href: "/players", label: "Players", icon: Users, alert: review > 0, group: "main" },
+    {
+      href: "/register",
+      label: "Registration desk",
+      icon: ClipboardList,
+      alert: registerAttention > 0,
+      group: "main",
+    },
+    {
+      href: "/import",
+      label: "Handicap imports",
+      icon: Download,
+      alert: deferred.length > 0,
+      group: "main",
+    },
+    { href: "/draw", label: "Draw & pairings", icon: Flag, alert: blocking > 0, group: "main" },
+    { href: "/print", label: "Print center", icon: Printer, group: "main" },
+    { href: "/setup", label: "Settings", icon: SlidersHorizontal, group: "main" },
+    { href: "/course", label: "Course & holes", icon: MapIcon, group: "more" },
+    { href: "/spotlight", label: "Clubhouse display", icon: MonitorPlay, group: "more" },
+    { href: "/pairings", label: "Player view", icon: Smartphone, group: "more" },
   ];
 
-  const startLabel =
-    state.config.startFormat === "shotgun"
-      ? `Shotgun · ${fmtTime(state.config.firstTeeTime)}`
-      : `Two-tee · ${fmtTime(state.config.firstTeeTime)}`;
+  const renderNavLink = (n: NavItem, mobile: boolean) => {
+    const on = isCurrent(path, n.href);
+    return (
+      <Link
+        key={n.href}
+        href={n.href}
+        onClick={mobile ? () => setMenuOpen(false) : undefined}
+        aria-current={on ? "page" : undefined}
+        aria-label={mobile ? undefined : n.label}
+        className={cn(
+          mobile &&
+            "flex h-11 items-center gap-3 rounded-md px-3 font-medium text-ink no-underline",
+          mobile && (on ? "bg-gold text-on-gold" : "hover:bg-surface-sunken"),
+          !mobile && "relative grid size-11 place-items-center rounded-full transition-colors",
+          !mobile &&
+            (on
+              ? "bg-gold text-on-gold"
+              : "text-on-forest-muted hover:bg-[rgba(238,240,234,0.1)] hover:text-on-forest"),
+        )}
+      >
+        <n.icon className={cn(mobile ? "size-[18px]" : "size-5")} aria-hidden="true" />
+        {mobile ? (
+          <>
+            <span className="flex-1">{n.label}</span>
+            {n.alert && (
+              <span className="pill warn" title="Needs attention">
+                Check
+              </span>
+            )}
+          </>
+        ) : (
+          n.alert && (
+            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-danger shadow-[0_0_0_2px_#1a2a21]" />
+          )
+        )}
+      </Link>
+    );
+  };
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -105,29 +168,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </SheetTrigger>
             <SheetContent side="left" title="Menu" description="Iloilo Golf & Country Club">
               <nav aria-label="Main" className="grid gap-1">
-                {nav.map((n) => {
-                  const on = isCurrent(path, n.href);
-                  return (
-                    <Link
-                      key={n.href}
-                      href={n.href}
-                      onClick={() => setMenuOpen(false)}
-                      aria-current={on ? "page" : undefined}
-                      className={cn(
-                        "flex h-11 items-center gap-3 rounded-md px-3 font-medium text-ink no-underline",
-                        on ? "bg-gold text-on-gold" : "hover:bg-surface-sunken",
-                      )}
-                    >
-                      <n.icon className="size-[18px]" aria-hidden="true" />
-                      <span className="flex-1">{n.label}</span>
-                      {n.alert && (
-                        <span className="pill bad" title="Needs attention">
-                          Check
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
+                {nav.filter((n) => n.group !== "more").map((n) => renderNavLink(n, true))}
+                <div className="my-2 border-t border-line" role="presentation" />
+                {nav.filter((n) => n.group === "more").map((n) => renderNavLink(n, true))}
               </nav>
               <div className="mt-auto grid gap-3">
                 <ThemeToggle />
@@ -153,27 +196,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <ShellSearch overlay={overlay} />
 
-          <Link
-            href="/draw"
-            className={cn(
-              "hidden h-12 min-w-0 items-center gap-2.5 rounded-full py-0 pr-4 pl-2 text-[13px] text-ink no-underline xl:flex",
-              overlay ? "glass" : "border border-[rgba(238,240,234,0.18)] bg-[rgba(0,0,0,0.12)]",
-            )}
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gold text-on-gold">
-              <Flag className="size-4" aria-hidden="true" />
-            </span>
-            <b className="truncate font-display">{state.name}</b>
-            <span className="shrink-0 text-ink-muted tnum">{startLabel}</span>
-          </Link>
+          <TournamentSelect overlay={overlay} />
 
           <span className="flex-1" />
 
           <span
             className="hidden h-8 shrink-0 items-center rounded-full bg-gold-soft px-3 text-xs font-semibold whitespace-nowrap text-gold-ink md:inline-flex"
-            title="Sample players and placeholder tee ratings. Nothing is saved yet; a refresh resets everything."
+            title="Demo shell with local session data. Players and tee ratings are samples; nothing is saved and there is no server."
           >
-            Demo data · not saved
+            Demo shell · local session data
           </span>
 
           <Link
@@ -196,7 +227,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <span
             className={cn(
-              "hidden h-[52px] shrink-0 items-center gap-2.5 rounded-full py-0 pr-4 pl-1.5 md:flex",
+              "hidden h-[52px] shrink-0 items-center gap-2.5 rounded-full py-0 pr-2 pl-1.5 md:flex",
               overlay ? "glass" : "border border-[rgba(238,240,234,0.18)]",
             )}
           >
@@ -204,42 +235,42 @@ export function AppShell({ children }: { children: ReactNode }) {
               <CircleUserRound className="size-5" aria-hidden="true" />
             </span>
             <span className="leading-tight">
-              <b className="block text-sm whitespace-nowrap text-ink">Demo organizer</b>
+              <b className="block text-sm whitespace-nowrap text-ink">
+                {supabaseConfigured ? "Signed in" : "Demo organizer"}
+              </b>
               <small className="text-[11px] whitespace-nowrap text-ink-muted">
-                Demo · no sign-in yet
+                {supabaseConfigured ? "Club member" : "Demo · no sign-in yet"}
               </small>
             </span>
+            {supabaseConfigured && (
+              <form action={signOut}>
+                <button type="submit" className="btn small ghost no-print">
+                  Sign out
+                </button>
+              </form>
+            )}
           </span>
         </header>
 
         <nav
           aria-label="Main"
           className={cn(
-            "shell-chrome fixed left-6 z-30 hidden w-[60px] flex-col gap-2 rounded-[30px] p-2 lg:flex",
+            "shell-chrome fixed left-6 z-30 hidden max-h-[calc(100dvh-140px)] w-[60px] flex-col gap-2 overflow-y-auto rounded-[30px] p-2 lg:flex [scrollbar-width:none]",
             overlay ? "glass top-[150px]" : "band top-[108px] shadow-lift",
           )}
         >
           {nav.map((n) => {
-            const on = isCurrent(path, n.href);
+            const firstMore = n.group === "more" && n.href === "/course";
             return (
-              <Tip key={n.href} label={n.label}>
-                <Link
-                  href={n.href}
-                  aria-label={n.label}
-                  aria-current={on ? "page" : undefined}
-                  className={cn(
-                    "relative grid size-11 place-items-center rounded-full transition-colors",
-                    on
-                      ? "bg-gold text-on-gold"
-                      : "text-on-forest-muted hover:bg-[rgba(238,240,234,0.1)] hover:text-on-forest",
-                  )}
-                >
-                  <n.icon className="size-5" aria-hidden="true" />
-                  {n.alert && (
-                    <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-danger shadow-[0_0_0_2px_#1a2a21]" />
-                  )}
-                </Link>
-              </Tip>
+              <div key={n.href} className="contents">
+                {firstMore && (
+                  <div
+                    className="mx-1 my-1 border-t border-[rgba(238,240,234,0.14)]"
+                    role="presentation"
+                  />
+                )}
+                {renderNavLink(n, false)}
+              </div>
             );
           })}
           <div className="mt-1 border-t border-[rgba(238,240,234,0.14)] pt-2">
@@ -248,6 +279,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <main id="main" className={cn(!overlay && "px-4 pt-6 pb-16 sm:px-6 lg:pr-8 lg:pl-[112px]")}>
+          {supabaseConfigured && !overlay && (
+            <div
+              className="no-print mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[12px] border border-warning bg-warning-soft px-3.5 py-2 text-[13px]"
+              role="note"
+            >
+              <b>Supabase is configured, but this shell is not connected to it yet.</b>
+              <span className="text-ink-muted">
+                Screens still run on local session demo data. The data layer is parked at
+                src/lib/data/supabase for the wiring task.
+              </span>
+            </div>
+          )}
           {children}
         </main>
       </div>

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PairingsView } from "@/components/PairingsView";
+import { fmtDateLabel } from "@/lib/data/labels";
+import { toPublicPairings } from "@/lib/data/public";
 import type { Issue } from "@/lib/draw/validate";
 import { buildPublished, useDesk } from "@/lib/store/desk-store";
 
@@ -18,7 +20,7 @@ export function PublishDialog({
   issues: Issue[];
   onClose: () => void;
 }) {
-  const { state, dispatch, isPublished, changedSincePublish } = useDesk();
+  const { draw, players, tournament, dispatch, isPublished, changedSincePublish } = useDesk();
   const ref = useRef<HTMLDialogElement>(null);
   const [ack, setAck] = useState(false);
 
@@ -34,10 +36,16 @@ export function PublishDialog({
 
   const blocking = issues.filter((i) => i.severity === "blocking");
   const warnings = issues.filter((i) => i.severity === "warning");
-  const preview = useMemo(
-    () => (open && state.draw ? buildPublished(state.draw, state.players) : null),
-    [open, state.draw, state.players],
-  );
+  const preview = useMemo(() => {
+    if (!open || !draw || !tournament) return null;
+    return toPublicPairings({
+      published: buildPublished(draw, players, tournament, new Date().toISOString()),
+      tournamentName: tournament.name,
+      dateLabel: fmtDateLabel(tournament.dates),
+      startFormat: tournament.config.startFormat,
+      firstTeeTime: tournament.config.firstTeeTime,
+    });
+  }, [open, draw, players, tournament]);
   const canPublish = blocking.length === 0 && (warnings.length === 0 || ack);
   const nothingNew = isPublished && !changedSincePublish;
 
@@ -85,13 +93,7 @@ export function PublishDialog({
         )}
 
         <section aria-label="What players will see" className="preview-box">
-          {preview && (
-            <PairingsView
-              published={preview}
-              shotgun={state.config.startFormat === "shotgun"}
-              searchable={false}
-            />
-          )}
+          {preview && <PairingsView pairings={preview} searchable={false} />}
         </section>
 
         <div className="row between">

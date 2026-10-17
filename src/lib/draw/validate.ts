@@ -27,6 +27,11 @@ export interface ValidateInput {
   config: TournamentConfig;
   /** Plain-language warnings the routing engine produced when the draw was made. */
   engineWarnings: string[];
+  /**
+   * Desk flags worth the organizer's attention (a frozen index that is old, or newer than the
+   * freeze). They are warnings: publishing needs them acknowledged, not blocked.
+   */
+  flags?: { playerId: string; message: string }[];
   names: Names;
 }
 
@@ -44,6 +49,7 @@ export function validateDraw({
   registrations,
   config,
   engineWarnings,
+  flags = [],
   names,
 }: ValidateInput): Issue[] {
   const issues: Issue[] = [];
@@ -148,6 +154,18 @@ export function validateDraw({
   engineWarnings.forEach((w, i) => {
     issues.push({ id: `engine-${i}`, severity: "warning", message: w });
   });
+
+  const flagged = new Set<string>();
+  for (const f of flags) {
+    if (flagged.has(f.playerId)) continue;
+    flagged.add(f.playerId);
+    issues.push({
+      id: `flag-${f.playerId}`,
+      severity: "warning",
+      message: f.message,
+      playerId: f.playerId,
+    });
+  }
 
   const locked = draw.filter((g) => g.locked).length;
   if (locked > 0) {

@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Avatar } from "@/components/bits";
 import { PlayerCard } from "@/components/PlayerCard";
-import type { DeskPlayer } from "@/lib/demo/data";
+import type { RoutingExplanation } from "@/lib/data/explain";
+import type { DeskRegistration, PlayerRecord } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
 import { fmtHcp, fmtTime, photoOf } from "@/lib/format";
-import type { Registration } from "@/lib/routing";
+import { cn } from "@/lib/ui/cn";
 
 export type Selection = { kind: "player"; id: string } | { kind: "group"; n: number } | null;
 export type Tab = "pool" | "details";
@@ -21,9 +22,9 @@ export function SidePanel(props: {
   tab: Tab;
   onTab: (t: Tab) => void;
   draw: DrawGroup[];
-  unplaced: Registration[];
-  players: Map<string, DeskPlayer>;
-  regs: Map<string, Registration>;
+  unplaced: DeskRegistration[];
+  players: Map<string, PlayerRecord>;
+  regs: Map<string, DeskRegistration>;
   names: Names;
   shotgun: boolean;
   selection: Selection;
@@ -33,7 +34,8 @@ export function SidePanel(props: {
   onDragEnd: () => void;
   onShowPlayer: (id: string) => void;
   onShowGroup: (n: number) => void;
-  onLock: (n: number) => void;
+  onLock: (n: number, locked: boolean) => void;
+  explain: (playerId: string) => RoutingExplanation | null;
 }) {
   const { tab, draw, unplaced, players, regs, names, selection } = props;
   const [q, setQ] = useState("");
@@ -79,7 +81,8 @@ export function SidePanel(props: {
           ) : (
             <>
               <p className="hint">
-                Drag a player onto a group, or press Place and then choose one.
+                Drag a player onto a group, or press Place and then choose one. Moving a player is
+                recorded as a manual override.
               </p>
               <ul className="plain">
                 {unplaced.map((r) => {
@@ -177,6 +180,7 @@ export function SidePanel(props: {
               const r = regs.get(selection.id);
               if (!pl || !r) return <p className="muted">That player is no longer here.</p>;
               const g = draw.find((x) => x.playerIds.includes(pl.id));
+              const explanation = props.explain(pl.id);
               return (
                 <>
                   <PlayerCard player={pl} reg={r} names={names} />
@@ -214,6 +218,31 @@ export function SidePanel(props: {
                       )}
                     </div>
                   </div>
+                  {explanation && (
+                    <div className="card flat">
+                      <h3 className="mb-2">Why they landed here</h3>
+                      <ol className="plain grid gap-2">
+                        {explanation.steps.map((s, i) => (
+                          <li key={`${s.label}-${i}`} className="grid gap-0.5">
+                            <span className="flex items-center gap-2 text-[13px] font-semibold">
+                              <i
+                                aria-hidden="true"
+                                className={cn(
+                                  "size-2 rounded-full",
+                                  s.tone === "ok" && "bg-success",
+                                  s.tone === "warn" && "bg-warning",
+                                  s.tone === "bad" && "bg-danger",
+                                  s.tone === "info" && "bg-info",
+                                )}
+                              />
+                              {s.label}
+                            </span>
+                            <span className="hint">{s.detail}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
                 </>
               );
             })()}
@@ -249,10 +278,13 @@ export function SidePanel(props: {
                   <button
                     type="button"
                     className={`btn small ${g.locked ? "" : "ghost"}`}
-                    onClick={() => props.onLock(g.number)}
+                    onClick={() => props.onLock(g.number, !g.locked)}
                   >
                     {g.locked ? "Unlock group" : "Lock group"}
                   </button>
+                  <p className="hint">
+                    Locked groups keep their players and their start when the draw is re-run.
+                  </p>
                 </div>
               );
             })()}

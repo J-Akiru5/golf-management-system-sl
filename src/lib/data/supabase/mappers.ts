@@ -1,7 +1,7 @@
 import type { DeskPlayer } from "@/lib/demo/data";
 import type { DrawGroup } from "@/lib/draw/validate";
 import type { CategoryRule, FlightRule, Tee, TournamentConfig } from "@/lib/routing";
-import type { Published, PublishedGroup } from "@/lib/store/desk-store";
+import type { Published, PublishedGroup } from "@/lib/store/legacy-supabase-store";
 import type {
   CategoryRow,
   CourseRow,

@@ -1,28 +1,27 @@
 "use client";
 
-import { ChevronRight, Search, Trash2, UserPlus } from "lucide-react";
+import { ChevronRight, ClipboardList, Search, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
+import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tip } from "@/components/ui/tooltip";
-import type { DeskPlayer } from "@/lib/demo/data";
 import { fmtHcp, fmtIndex, photoOf } from "@/lib/format";
-import { parseIndex } from "@/lib/ngap";
 import { shrinkPhoto } from "@/lib/photo";
-import type { RegistrationStatus } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
 
-type Filter = "all" | RegistrationStatus;
+type Filter = "all" | "ok" | "needs_review" | "ineligible" | "not_entered";
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "ok", label: "Ready" },
   { id: "needs_review", label: "Needs review" },
   { id: "ineligible", label: "Not eligible" },
+  { id: "not_entered", label: "Not entered" },
 ];
 
 export default function PlayersPage() {
@@ -33,10 +32,27 @@ export default function PlayersPage() {
   );
 }
 
+function statusOf(entry: boolean, status: string | undefined): Filter {
+  if (!entry) return "not_entered";
+  return (status as Filter) ?? "needs_review";
+}
+
 function Players() {
-  const { state, registrations, regById, names, dispatch, classify } = useDesk();
+  const {
+    tournament,
+    players,
+    registrations,
+    regById,
+    entryByPlayer,
+    names,
+    adapters,
+    pendingRefreeze,
+  } = useDesk();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
+  const [gender, setGender] = useState("all");
+  const [home, setHome] = useState("all");
   // The top bar's search lands here as ?q=.
   const q = useSearchParams().get("q");
   useEffect(() => {
@@ -44,55 +60,72 @@ function Players() {
   }, [q]);
   const [open, setOpen] = useState(false);
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [birthdate, setBirthdate] = useState("");
-  const [gender, setGender] = useState<"M" | "F">("M");
+  const [genderValue, setGenderValue] = useState<"M" | "F">("M");
+  const [homeCourse, setHomeCourse] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [email, setEmail] = useState("");
   const [ngapId, setNgapId] = useState("");
-  const [indexText, setIndexText] = useState("");
-  const [shirt, setShirt] = useState("");
   const [photo, setPhoto] = useState<string | undefined>();
   const [consent, setConsent] = useState(false);
   const [photoError, setPhotoError] = useState("");
 
-  const idx = parseIndex(indexText);
-  const draft: DeskPlayer | null =
-    name.trim() && birthdate && idx.ok
-      ? {
-          id: "draft",
-          name: name.trim(),
-          birthdate,
-          gender,
-          index: idx.value,
-          ngapId: ngapId.trim() || null,
-        }
-      : null;
-  const preview = draft ? classify(draft) : null;
-  const canSave = Boolean(draft) && (!photo || consent);
+  const homeCourses = useMemo(
+    () => [...new Set(players.map((p) => p.homeCourse).filter((c): c is string => !!c))].sort(),
+    [players],
+  );
+  const categories = tournament?.categories ?? [];
+  const canSave = firstName.trim() !== "" && lastName.trim() !== "" && (!photo || consent);
 
   const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return state.players.filter((p) => {
-      const r = regById.get(p.id);
-      return (filter === "all" || r?.status === filter) && (!q || p.name.toLowerCase().includes(q));
+    const text = query.trim().toLowerCase();
+    return players.filter((p) => {
+      const reg = regById.get(p.id);
+      const entered = entryByPlayer.has(p.id);
+      const status = statusOf(entered, reg?.status);
+      if (filter !== "all" && status !== filter) return false;
+      if (gender !== "all" && p.gender !== gender) return false;
+      if (home !== "all" && p.homeCourse !== home) return false;
+      if (category !== "all" && reg?.categoryId !== category) return false;
+      if (!text) return true;
+      return (
+        p.name.toLowerCase().includes(text) ||
+        (p.nickname ?? "").toLowerCase().includes(text) ||
+        (p.ngapId ?? "").toLowerCase().includes(text) ||
+        (p.homeCourse ?? "").toLowerCase().includes(text)
+      );
     });
-  }, [state.players, regById, filter, query]);
+  }, [players, regById, entryByPlayer, filter, query, gender, home, category]);
 
   const counts = useMemo(() => {
-    const c: Record<Filter, number> = { all: 0, ok: 0, needs_review: 0, ineligible: 0 };
-    for (const r of registrations) {
+    const c: Record<Filter, number> = {
+      all: 0,
+      ok: 0,
+      needs_review: 0,
+      ineligible: 0,
+      not_entered: 0,
+    };
+    for (const p of players) {
+      const reg = regById.get(p.id);
       c.all++;
-      c[r.status]++;
+      c[statusOf(entryByPlayer.has(p.id), reg?.status)]++;
     }
     return c;
-  }, [registrations]);
+  }, [players, regById, entryByPlayer]);
 
   function reset() {
-    setName("");
+    setFirstName("");
+    setLastName("");
+    setNickname("");
     setBirthdate("");
-    setGender("M");
+    setGenderValue("M");
+    setHomeCourse("");
+    setContactNumber("");
+    setEmail("");
     setNgapId("");
-    setIndexText("");
-    setShirt("");
     setPhoto(undefined);
     setConsent(false);
     setPhotoError("");
@@ -105,27 +138,31 @@ function Players() {
 
   function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!draft || !canSave) return;
-    dispatch({
-      type: "addPlayer",
-      player: {
-        ...draft,
-        id: `p${Date.now()}`,
-        shirt: shirt || undefined,
-        photo,
-        photoConsent: photo ? true : undefined,
-      },
+    if (!canSave) return;
+    adapters.players.add({
+      firstName,
+      lastName,
+      nickname,
+      birthdate: birthdate || null,
+      gender: genderValue,
+      homeCourse,
+      contactNumber,
+      email,
+      ngapId,
+      photo,
+      photoConsent: photo ? consent : undefined,
     });
     onOpenChange(false);
   }
 
-  const remove = (id: string) => dispatch({ type: "removePlayer", id });
+  if (!tournament) return <NeedsTournament what="The player directory" />;
 
   return (
     <div className="grid gap-6">
       <PageHeader
-        overline="Field & entries"
+        overline="Club directory"
         title="Players"
+        crumbs={[{ label: tournament.name, href: "/tournaments" }, { label: "Players" }]}
         actions={
           <Button variant="primary" onClick={() => setOpen(true)}>
             <UserPlus aria-hidden="true" />
@@ -133,42 +170,87 @@ function Players() {
           </Button>
         }
       >
-        {registrations.length} added. Category, tee and flight are worked out automatically.
+        {players.length} players on file · {registrations.length} entered in {tournament.name}.
+        Category, tee and flight come from the frozen NGAP index.
       </PageHeader>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-0 flex-[1_1_16rem]">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            className="!pl-9"
-            placeholder="Search by name"
-            aria-label="Search players by name"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+      {pendingRefreeze.length > 0 && (
+        <div className="notice warn flex items-start gap-2.5" role="status">
+          <p className="text-[14px]">
+            <b>{pendingRefreeze.length} registrations</b> have a newer imported index than the one
+            frozen on them. Re-freeze before the draw:{" "}
+            <Link href="/register">open the registration desk</Link>.
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              aria-pressed={filter === f.id}
-              onClick={() => setFilter(f.id)}
-              className={cn(
-                "inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium transition-colors",
-                filter === f.id
-                  ? "border-fairway bg-fairway-soft font-semibold text-ink"
-                  : "border-line-strong bg-surface-raised text-ink hover:bg-surface-sunken",
-              )}
-            >
-              {f.label}
-              <span className="text-xs text-ink-muted tnum">{counts[f.id]}</span>
-            </button>
-          ))}
+      )}
+
+      <div className="grid gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-0 flex-[1_1_16rem]">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              className="!pl-9"
+              placeholder="Search name, nickname, NGAP ID or home course"
+              aria-label="Search players"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={filter === f.id}
+                onClick={() => setFilter(f.id)}
+                className={cn(
+                  "inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium transition-colors",
+                  filter === f.id
+                    ? "border-fairway bg-fairway-soft font-semibold text-ink"
+                    : "border-line-strong bg-surface-raised text-ink hover:bg-surface-sunken",
+                )}
+              >
+                {f.label}
+                <span className="text-xs text-ink-muted tnum">{counts[f.id]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3 xl:max-w-[52rem]">
+          <label className="field">
+            <span>Gender / category</span>
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="all">Every category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Gender</span>
+            <select value={gender} onChange={(e) => setGender(e.target.value)}>
+              <option value="all">Any</option>
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Home course</span>
+            <select value={home} onChange={(e) => setHome(e.target.value)}>
+              <option value="all">Any</option>
+              {homeCourses.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
 
@@ -178,10 +260,10 @@ function Players() {
           <thead>
             <tr>
               <th>Player</th>
+              <th>Role</th>
               <th>Category</th>
               <th className="num">Age</th>
-              <th className="num">Index</th>
-              <th>Tee</th>
+              <th className="num">Index at cut-off</th>
               <th className="num">Playing HCP</th>
               <th>Flight</th>
               <th>Status</th>
@@ -193,7 +275,8 @@ function Players() {
           <tbody>
             {rows.map((p) => {
               const r = regById.get(p.id);
-              if (!r) return null;
+              const entered = entryByPlayer.has(p.id);
+              const latest = adapters.players.latestRecord(p.id);
               return (
                 <tr key={p.id}>
                   <td>
@@ -202,36 +285,83 @@ function Players() {
                       className="flex min-w-0 items-center gap-2.5 font-semibold text-ink no-underline hover:underline"
                     >
                       <Avatar name={p.name} photo={photoOf(p)} />
-                      <span className="truncate">{p.name}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate">{p.name}</span>
+                        <span className="hint">
+                          {p.ngapId ? `NGAP ${p.ngapId}` : "No NGAP ID"}
+                          {p.homeCourse ? ` · ${p.homeCourse}` : ""}
+                        </span>
+                      </span>
                     </Link>
                   </td>
-                  <td>{names.category(r.categoryId)}</td>
-                  <td className="num mono">{r.age}</td>
-                  <td className="num mono">{fmtIndex(p.index)}</td>
-                  <td>{names.tee(r.teeId)}</td>
-                  <td className="num mono">{fmtHcp(r.playingHandicap)}</td>
-                  <td>{names.flight(r.flightId)}</td>
                   <td>
-                    <StatusPill status={r.status} />
-                    {r.reasons.length > 0 && (
-                      <div className="hint mt-1 max-w-[16rem]">{r.reasons[0]}</div>
+                    {entered ? (
+                      r?.role === "guest" ? (
+                        <span className="pill info">Guest</span>
+                      ) : (
+                        <span className="pill">Member</span>
+                      )
+                    ) : (
+                      <span className="pill">—</span>
+                    )}
+                  </td>
+                  <td>{names.category(r?.categoryId ?? null)}</td>
+                  <td className="num mono">{r?.ageKnown ? r.age : p.birthdate ? "…" : "—"}</td>
+                  <td className="num mono">
+                    {r ? (
+                      <>
+                        {fmtIndex(r.frozenIndex)}
+                        {latest && r.frozenRecordId !== latest.id && (
+                          <span className="hint block">
+                            latest {fmtIndex(latest.index)} ({latest.effectiveDate})
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="num mono">{fmtHcp(r?.playingHandicap ?? null)}</td>
+                  <td>{names.flight(r?.flightId ?? null)}</td>
+                  <td>
+                    {r ? (
+                      <>
+                        <span className="flex flex-wrap gap-1">
+                          <StatusPill status={r.status} />
+                          {r.frozenOutdated && <span className="pill warn">Re-freeze</span>}
+                          {r.staleIndex && <span className="pill warn">Old index</span>}
+                        </span>
+                        {r.reasons.length > 0 && (
+                          <div className="hint mt-1 max-w-[18rem]">{r.reasons[0]}</div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="pill">Not entered</span>
                     )}
                   </td>
                   <td>
                     <span className="flex items-center justify-end gap-1">
+                      {!entered && (
+                        <Button variant="secondary" size="sm" asChild>
+                          <Link href={`/register?player=${p.id}`}>
+                            <ClipboardList aria-hidden="true" />
+                            Register
+                          </Link>
+                        </Button>
+                      )}
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={`/players/${p.id}`}>
                           Profile
                           <ChevronRight aria-hidden="true" />
                         </Link>
                       </Button>
-                      <Tip label="Remove from tournament" side="left">
+                      <Tip label="Remove from the club directory" side="left">
                         <Button
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Remove ${p.name}`}
                           className="text-ink-muted hover:text-danger"
-                          onClick={() => remove(p.id)}
+                          onClick={() => adapters.players.remove(p.id)}
                         >
                           <Trash2 aria-hidden="true" />
                         </Button>
@@ -244,7 +374,8 @@ function Players() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={9} className="muted">
-                  No players match. Clear the search or choose All.
+                  No players match. Clear the search, or choose All. The directory starts with
+                  fictional demo players.
                 </td>
               </tr>
             )}
@@ -256,7 +387,7 @@ function Players() {
       <ul className="grid gap-2.5 md:hidden" aria-label="Players">
         {rows.map((p) => {
           const r = regById.get(p.id);
-          if (!r) return null;
+          const entered = entryByPlayer.has(p.id);
           return (
             <li key={p.id} className="card grid gap-3 !p-3.5">
               <div className="flex items-center gap-3">
@@ -269,41 +400,42 @@ function Players() {
                     {p.name}
                   </Link>
                   <span className="hint">
-                    {names.category(r.categoryId)} · age {r.age}
+                    {names.category(r?.categoryId ?? null)}
+                    {r?.ageKnown ? ` · age ${r.age}` : ""}
+                    {entered && r?.role === "guest" ? " · guest" : ""}
                   </span>
                 </div>
-                <StatusPill status={r.status} />
+                {r ? <StatusPill status={r.status} /> : <span className="pill">Not entered</span>}
               </div>
               <dl className="grid grid-cols-3 gap-2 rounded-[10px] bg-surface-sunken px-3 py-2">
                 <div>
                   <dt className="overline !text-[10px]">Index</dt>
-                  <dd className="m-0 font-display font-bold tnum">{fmtIndex(p.index)}</dd>
+                  <dd className="m-0 font-display font-bold tnum">
+                    {fmtIndex(r?.frozenIndex ?? null)}
+                  </dd>
                 </div>
                 <div>
                   <dt className="overline !text-[10px]">Playing</dt>
-                  <dd className="m-0 font-display font-bold tnum">{fmtHcp(r.playingHandicap)}</dd>
+                  <dd className="m-0 font-display font-bold tnum">
+                    {fmtHcp(r?.playingHandicap ?? null)}
+                  </dd>
                 </div>
                 <div className="min-w-0">
                   <dt className="overline !text-[10px]">Flight</dt>
                   <dd className="m-0 truncate font-display font-bold">
-                    {names.flight(r.flightId)}
+                    {names.flight(r?.flightId ?? null)}
                   </dd>
                 </div>
               </dl>
-              {r.reasons.length > 0 && <p className="hint">{r.reasons[0]}</p>}
+              {r && r.reasons.length > 0 && <p className="hint">{r.reasons[0]}</p>}
               <div className="flex items-center justify-between gap-2">
-                <span className="hint">{names.tee(r.teeId)} tee</span>
+                <span className="hint">{p.homeCourse ?? "Home course not set"}</span>
                 <span className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Remove ${p.name}`}
-                    className="text-ink-muted hover:text-danger"
-                    onClick={() => remove(p.id)}
-                  >
-                    <Trash2 aria-hidden="true" />
-                    Remove
-                  </Button>
+                  {!entered && (
+                    <Button variant="secondary" size="sm" asChild>
+                      <Link href={`/register?player=${p.id}`}>Register</Link>
+                    </Button>
+                  )}
                   <Button variant="secondary" size="sm" asChild>
                     <Link href={`/players/${p.id}`}>
                       Profile
@@ -323,51 +455,53 @@ function Players() {
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           title="Add player"
-          description="Category, tee and flight are worked out from these details."
-          className="w-[min(480px,calc(100vw-24px))] sm:p-5"
+          description="Creates a club directory record. The NGAP index arrives with the import; nothing is guessed."
+          className="w-[min(520px,calc(100vw-24px))] sm:p-5"
         >
           <form className="grid gap-5" onSubmit={save}>
             <div className="grid gap-3.5 sm:grid-cols-2">
-              <label className="field sm:col-span-2">
-                <span>Full name</span>
+              <label className="field">
+                <span>First name (required)</span>
                 <input
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   required
                   autoComplete="off"
                 />
               </label>
               <label className="field">
-                <span>Birthdate</span>
+                <span>Last name (required)</span>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  autoComplete="off"
+                />
+              </label>
+              <label className="field">
+                <span>Nickname (optional)</span>
+                <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Gender (required)</span>
+                <select
+                  value={genderValue}
+                  onChange={(e) => setGenderValue(e.target.value as "M" | "F")}
+                >
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Birthdate (required)</span>
                 <input
                   type="date"
                   value={birthdate}
                   onChange={(e) => setBirthdate(e.target.value)}
                   required
                 />
-              </label>
-              <label className="field">
-                <span>Gender</span>
-                <select value={gender} onChange={(e) => setGender(e.target.value as "M" | "F")}>
-                  <option value="M">Male</option>
-                  <option value="F">Female</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>Handicap index</span>
-                <input
-                  type="text"
-                  value={indexText}
-                  onChange={(e) => setIndexText(e.target.value)}
-                  inputMode="decimal"
-                  placeholder="14.2, +2.3 or NH"
-                />
-                {!idx.ok && indexText && (
-                  <span className="hint !text-danger" role="alert">
-                    {idx.message}
-                  </span>
-                )}
               </label>
               <label className="field">
                 <span>NGAP ID (optional)</span>
@@ -379,17 +513,30 @@ function Players() {
                 />
               </label>
               <label className="field">
-                <span>T-shirt size (optional)</span>
-                <select value={shirt} onChange={(e) => setShirt(e.target.value)}>
-                  <option value="">—</option>
-                  {["S", "M", "L", "XL", "XXL"].map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
+                <span>Home course</span>
+                <input
+                  type="text"
+                  value={homeCourse}
+                  onChange={(e) => setHomeCourse(e.target.value)}
+                  placeholder="Iloilo Golf & Country Club"
+                />
+              </label>
+              <label className="field">
+                <span>Contact number</span>
+                <input
+                  type="tel"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
+                />
+              </label>
+              <label className="field sm:col-span-2">
+                <span>Email</span>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </label>
             </div>
 
             <div className="grid gap-2.5 rounded-[14px] border border-dashed border-line-strong p-3.5">
+              <p className="overline">Player photo</p>
               <label className="field">
                 <span>Photo (optional)</span>
                 <input
@@ -414,40 +561,39 @@ function Players() {
                   {photoError}
                 </p>
               )}
-              {photo && (
-                <label className="check text-[13px]">
-                  <input
-                    type="checkbox"
-                    checked={consent}
-                    onChange={(e) => setConsent(e.target.checked)}
+              {photo ? (
+                <>
+                  <img
+                    src={photo}
+                    alt="Preview of the photo to be saved"
+                    className="size-24 rounded-[10px] border border-line object-cover"
                   />
-                  <span>
-                    The player agrees to have their photo kept on file and used for check-in, their
-                    player profile and tournament posters.
-                  </span>
-                </label>
+                  <label className="check text-[13px]">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={(e) => setConsent(e.target.checked)}
+                    />
+                    <span>
+                      The player agrees to have their photo kept on file and used for check-in,
+                      their player profile and tournament posters.
+                    </span>
+                  </label>
+                </>
+              ) : (
+                <div className="grid h-24 w-24 place-items-center rounded-[10px] border border-dashed border-line-strong bg-surface-sunken text-center text-[11px] text-ink-muted">
+                  No photo
+                </div>
               )}
             </div>
 
             <div className="preview" aria-live="polite">
               <p className="overline mb-1">Where they land</p>
-              {preview ? (
-                preview.status === "ok" ? (
-                  <p>
-                    Will play <b>{names.category(preview.categoryId)}</b> from the{" "}
-                    <b>{names.tee(preview.teeId)}</b> tee, playing handicap{" "}
-                    <b>{fmtHcp(preview.playingHandicap)}</b>,{" "}
-                    <b>{names.flight(preview.flightId)}</b>.
-                  </p>
-                ) : (
-                  <div className="grid justify-items-start gap-1.5">
-                    <StatusPill status={preview.status} />
-                    <b>{preview.reasons.join(" ")}</b>
-                  </div>
-                )
-              ) : (
-                <p>Fill in name, birthdate and index to see where this player lands.</p>
-              )}
+              <p className="text-[14px]">
+                Category, tee and flight need a handicap index. This record has none yet, so it will
+                show as <b>Needs review</b> until the NGAP import brings one on or before{" "}
+                {tournament.cutOffDate}. Nothing is invented.
+              </p>
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-line pt-4">
@@ -455,7 +601,7 @@ function Players() {
                 Cancel
               </Button>
               <Button type="submit" variant="primary" disabled={!canSave}>
-                Add to tournament
+                Add to the directory
               </Button>
             </div>
           </form>

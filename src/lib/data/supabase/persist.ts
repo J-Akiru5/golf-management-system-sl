@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DeskPlayer } from "@/lib/demo/data";
 import { classifyPlayer } from "@/lib/routing";
-import type { Action, DeskState } from "@/lib/store/desk-store";
+import type { Action, DeskState } from "@/lib/store/legacy-supabase-store";
 import type { Database } from "@/lib/supabase/types";
 import { saveGroupLock, saveTournamentDraw } from "./groups";
 import {

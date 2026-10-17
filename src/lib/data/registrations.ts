@@ -1,161 +1,119 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Registration } from "@/lib/routing";
-import type { Database, TableRow } from "@/lib/supabase/types";
+import { classifyPlayer, type Registration, type Tee } from "@/lib/routing";
+import { frozenOutdated, isStale, selectIndexForCutOff } from "./frozen";
+import type {
+  DeskRegistration,
+  HandicapRecord,
+  PlayerRecord,
+  RegistrationEntry,
+  Tournament,
+} from "./types";
 
-type RegistrationRow = TableRow<"registrations">;
-
-export async function loadTournamentRegistrations(
-  client: SupabaseClient<Database>,
-  clubId: string,
-  tournamentId: string,
-): Promise<RegistrationRow[]> {
-  const { data, error } = await client
-    .from("registrations")
-    .select("*")
-    .eq("club_id", clubId)
-    .eq("tournament_id", tournamentId)
-    .order("created_at");
-  if (error) throw new Error(`Could not load registrations: ${error.message}`);
-  return data ?? [];
+export interface RegistrationArgs {
+  tournament: Tournament;
+  tees: Tee[];
+  player: PlayerRecord;
+  entry: RegistrationEntry;
+  records: HandicapRecord[];
 }
 
-export async function insertRegistration(
-  client: SupabaseClient<Database>,
-  clubId: string,
-  tournamentId: string,
-  registration: Registration,
-  shirt?: string,
-): Promise<string> {
-  const answers = shirt ? { shirt } : {};
-  const { data, error } = await client
-    .from("registrations")
-    .insert({
-      club_id: clubId,
-      tournament_id: tournamentId,
-      player_id: registration.playerId,
-      status: registration.status,
-      reasons: registration.reasons,
-      frozen_index: registration.index,
-      category_id: registration.categoryId,
-      tee_id: registration.teeId,
-      playing_handicap: registration.playingHandicap,
-      flight_id: registration.flightId,
-      answers,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(`Could not register player for this tournament: ${error.message}`);
-  return data.id;
-}
+/**
+ * Builds the desk's view of one registration: the routing result for the frozen index, plus the
+ * freeze provenance. Pure and side-effect free, so the draw, the registration desk and the tests
+ * all read the same numbers.
+ */
+export function registrationFor({
+  tournament,
+  tees,
+  player,
+  entry,
+  records,
+}: RegistrationArgs): DeskRegistration {
+  const selection = selectIndexForCutOff(records, tournament.cutOffDate);
+  const stale = isStale(selection, tournament.cutOffDate, tournament.staleIndexDays);
+  const outdated = frozenOutdated(entry.frozen, selection);
 
-export async function deleteRegistration(
-  client: SupabaseClient<Database>,
-  clubId: string,
-  tournamentId: string,
-  playerId: string,
-): Promise<void> {
-  const { data, error } = await client
-    .from("registrations")
-    .delete()
-    .eq("club_id", clubId)
-    .eq("tournament_id", tournamentId)
-    .eq("player_id", playerId)
-    .select("id")
-    .maybeSingle();
-  if (error) throw new Error(`Could not remove tournament registration: ${error.message}`);
-  if (!data) throw new Error("Could not find the tournament registration to remove.");
-}
-
-export async function getRegistrationIdMap(
-  client: SupabaseClient<Database>,
-  clubId: string,
-  tournamentId: string,
-): Promise<Map<string, string>> {
-  const { data, error } = await client
-    .from("registrations")
-    .select("id, player_id")
-    .eq("club_id", clubId)
-    .eq("tournament_id", tournamentId);
-  if (error) throw new Error(`Could not resolve tournament registrations: ${error.message}`);
-  return new Map((data ?? []).map((row) => [row.player_id, row.id]));
-}
-
-export async function saveRegistrationClassifications(
-  client: SupabaseClient<Database>,
-  clubId: string,
-  tournamentId: string,
-  registrations: Registration[],
-): Promise<void> {
-  const updates = registrations.map((registration) =>
-    client
-      .from("registrations")
-      .update({
-        status: registration.status,
-        reasons: registration.reasons,
-        frozen_index: registration.index,
-        category_id: registration.categoryId,
-        tee_id: registration.teeId,
-        playing_handicap: registration.playingHandicap,
-        flight_id: registration.flightId,
-      })
-      .eq("club_id", clubId)
-      .eq("tournament_id", tournamentId)
-      .eq("player_id", registration.playerId)
-      .select("id")
-      .maybeSingle(),
-  );
-  const results = await Promise.all(updates);
-  const failure = results.find((result) => result.error)?.error;
-  if (failure) throw new Error(`Could not save player routing: ${failure.message}`);
-  if (results.some((result) => !result.data)) {
-    throw new Error("A player registration was not found while saving player routing.");
+  const flags: string[] = [];
+  if (outdated) {
+    flags.push(
+      selection.record
+        ? `Records now select the ${selection.index ?? "NH"} index dated ${selection.record.effectiveDate}. Re-freeze before the draw.`
+        : "The frozen record is no longer the latest one for the cut-off. Re-freeze before the draw.",
+    );
   }
+  if (stale && selection.record) {
+    flags.push(
+      `The frozen index dates from ${selection.record.effectiveDate}, more than ${tournament.staleIndexDays} days before the cut-off (${tournament.cutOffDate}). Import a fresh NGAP file.`,
+    );
+  }
+
+  const missing: string[] = [];
+  if (player.birthdate === null) missing.push(`Birthdate is missing for ${player.name}.`);
+  if (player.gender === null) missing.push(`Gender is missing for ${player.name}.`);
+
+  let routing: Registration;
+  const birthdate = player.birthdate;
+  const gender = player.gender;
+  if (missing.length > 0 || birthdate === null || gender === null) {
+    routing = {
+      playerId: player.id,
+      playerName: player.name,
+      status: "needs_review",
+      reasons: missing,
+      index: entry.frozen.index,
+      age: 0,
+      categoryId: null,
+      teeId: null,
+      playingHandicap: null,
+      flightId: null,
+    };
+  } else {
+    routing = classifyPlayer(
+      {
+        id: player.id,
+        name: player.name,
+        birthdate,
+        gender,
+        index: entry.frozen.index,
+      },
+      {
+        players: [],
+        config: tournament.config,
+        tees,
+        categories: tournament.categories,
+        flights: tournament.flights,
+      },
+    );
+    if (entry.frozen.index === null) {
+      // The generic engine wording hides where the number came from; the desk knows better.
+      const reason = selection.reason ?? "No NGAP index was frozen onto this registration.";
+      routing = {
+        ...routing,
+        status: "needs_review",
+        reasons: [reason, ...routing.reasons.filter((r) => !/No handicap index/i.test(r))],
+      };
+    }
+  }
+
+  const reasons = [...routing.reasons, ...flags];
+
+  return {
+    ...routing,
+    index: entry.frozen.index,
+    ageKnown: player.birthdate !== null,
+    reasons,
+    flags,
+    entryId: entry.id,
+    role: entry.role,
+    frozenIndex: entry.frozen.index,
+    frozenRecordId: entry.frozen.recordId,
+    frozenEffectiveDate: entry.frozen.effectiveDate,
+    newerRecord: selection.newer
+      ? { index: selection.newer.index, effectiveDate: selection.newer.effectiveDate }
+      : null,
+    frozenOutdated: outdated,
+    staleIndex: stale,
+    paymentStatus: entry.paymentStatus,
+    sponsor: entry.sponsor,
+    teePreferences: entry.teePreferences,
+  };
 }
-
-export async function updateRegistrationAnswers(
-  client: SupabaseClient<Database>,
-  clubId: string,
-  tournamentId: string,
-  playerId: string,
-  answers: RegistrationRow["answers"],
-): Promise<void> {
-  const { data: updated, error } = await client
-    .from("registrations")
-    .update({ answers })
-    .eq("club_id", clubId)
-    .eq("tournament_id", tournamentId)
-    .eq("player_id", playerId)
-    .select("id")
-    .maybeSingle();
-  if (error) throw new Error(`Could not save tournament answers: ${error.message}`);
-  if (!updated) throw new Error("Could not find the player's tournament registration.");
-}
-
-export async function updateRegistrationShirt(
-  client: SupabaseClient<Database>,
-  clubId: string,
-  tournamentId: string,
-  playerId: string,
-  shirt: string | undefined,
-): Promise<void> {
-  const { data, error: readError } = await client
-    .from("registrations")
-    .select("answers")
-    .eq("club_id", clubId)
-    .eq("tournament_id", tournamentId)
-    .eq("player_id", playerId)
-    .maybeSingle();
-  if (readError) throw new Error(`Could not load tournament answers: ${readError.message}`);
-  if (!data) throw new Error("Could not find the player's tournament registration.");
-
-  const answers =
-    typeof data.answers === "object" && data.answers !== null && !Array.isArray(data.answers)
-      ? { ...data.answers }
-      : {};
-  if (shirt) answers.shirt = shirt;
-  else delete answers.shirt;
-
-  await updateRegistrationAnswers(client, clubId, tournamentId, playerId, answers);
-}
-
-export type { RegistrationRow };

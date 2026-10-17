@@ -4,7 +4,7 @@ import type { DeskPlayer } from "@/lib/demo/data";
 import type { DrawGroup } from "@/lib/draw/validate";
 import type { CategoryRule, FlightRule, Tee, TournamentConfig } from "@/lib/routing";
 import { route } from "@/lib/routing";
-import type { Published } from "@/lib/store/desk-store";
+import type { Published } from "@/lib/store/legacy-supabase-store";
 import type { Database } from "@/lib/supabase/types";
 import { loadTournamentGroups } from "./groups";
 import { countImportedHandicapRecords } from "./handicap-records";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDemoDeskState, createInitialDeskState } from "./desk-store";
+import { createDemoDeskState, createInitialDeskState } from "./legacy-supabase-store";
 
 describe("demo Desk fallback", () => {
   it("keeps the existing demo state shape and seeded sample data", () => {

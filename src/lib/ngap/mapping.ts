@@ -14,6 +14,8 @@ const SYNONYMS: Record<keyof ColumnMapping, string[]> = {
     "id number",
   ],
   effectiveDate: ["date", "effective date", "as of", "revision date", "rev date", "last revision"],
+  dob: ["birthdate", "birth date", "date of birth", "dob"],
+  contact: ["contact", "contact number", "mobile", "mobile number", "phone", "phone number"],
 };
 
 const squash = (s: string) =>
