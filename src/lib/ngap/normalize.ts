@@ -52,7 +52,10 @@ export function parseDate(raw: string, format: DateFormat): DateResult {
     const v = validIso(Number(slash[3]), m, d);
     return v
       ? { ok: true, value: v }
-      : { ok: false, message: `"${raw}" is not a real date as ${format.toUpperCase()}.` };
+      : {
+          ok: false,
+          message: `"${raw}" is not a real date written as ${format === "mdy" ? "month/day/year" : "day/month/year"}.`,
+        };
   }
   return { ok: false, message: `"${raw}" is not a date this import can read.` };
 }
