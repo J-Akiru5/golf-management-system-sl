@@ -13,7 +13,7 @@ Stack: Next.js, Supabase (supabase-js, SQL migrations), pnpm, Biome, Vitest. Hos
 | Routing engine (`src/lib/routing`) | Built, 21 unit tests |
 | Database schema (`supabase/migrations`) | Built; checked on Postgres 16 for club isolation, cross-club references, flight overlap, public pairings |
 | App screens | Not started (placeholder home page only) |
-| NGAP importer | Not started; waiting for a sample export |
+| NGAP import logic (`src/lib/ngap`) | Built for CSV, 16 tests. Column mapping is chosen in the UI, so a real sample file only sets the defaults. Excel (.xlsx) not supported yet. No UI or database writes yet |
 | Score encoding, results | Phase 2 |
 
 ## Run
@@ -56,3 +56,14 @@ Clubs and memberships are created with the service role during onboarding, not f
   placeholder numbers.
 - Confirm the open questions in the build spec (tees per category, flight basis, group ordering).
 - Add a consent line before taking player photos (Data Privacy Act of 2012).
+
+## NGAP import
+
+`parseCsv` reads the file, `suggestMapping` proposes which column is which, and `buildImportPlan`
+returns a plan the organizer reviews before anything is saved. Rules:
+
+- Match by NGAP ID first, then by exact name in any word order. An ambiguous name, or a name match
+  whose NGAP ID disagrees with the one on file, is an error. It is never guessed.
+- A plus handicap such as `+2.3` is stored as `-2.3`. `NH`, `N/A` and blanks mean no handicap.
+- Slash dates follow the format the organizer picks (month/day or day/month). They are never guessed.
+- A golfer listed twice keeps the newest line and shows a warning.
