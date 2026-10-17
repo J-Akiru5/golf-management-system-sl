@@ -6,6 +6,10 @@ two-tee start). The organizer reviews and overrides every proposal before publis
 
 Stack: Next.js, Supabase (supabase-js, SQL migrations), pnpm, Biome, Vitest. Hosted on Vercel.
 
+**Project plan:** [`docs/PLAN.md`](docs/PLAN.md) (status, gaps, roadmap, decisions) ·
+**Build spec:** [`docs/spec/IGCC_Tournament_Desk.md`](docs/spec/IGCC_Tournament_Desk.md) ·
+**Agents:** [`AGENTS.md`](AGENTS.md)
+
 ## Status
 
 | Part | State |
