@@ -11,8 +11,9 @@ Stack: Next.js, Supabase (supabase-js, SQL migrations), pnpm, Biome, Vitest. Hos
 | Part | State |
 | --- | --- |
 | Routing engine (`src/lib/routing`) | Built, 21 unit tests |
+| Draw checks (`src/lib/draw`) | Built: blocking / warning / info checks and move rules, 15 tests |
 | Database schema (`supabase/migrations`) | Built; checked on Postgres 16 for club isolation, cross-club references, flight overlap, public pairings |
-| Organizer screens (`src/app`) | Built on demo data held in memory: overview, players with photo step, handicap import, draw board, setup, player-facing pairings. Not connected to the database; a page refresh resets everything |
+| Organizer screens (`src/app`) | Built on demo data held in memory: overview, players and player profiles with poster generator, handicap import, draw control room, setup, player-facing pairings. Not connected to the database; a page refresh resets everything |
 | NGAP import logic (`src/lib/ngap`) | Built for CSV, 16 tests. Column mapping is chosen in the UI, so a real sample file only sets the defaults. Excel (.xlsx) not supported yet. No UI or database writes yet |
 | Score encoding, results | Phase 2 |
 
@@ -71,20 +72,48 @@ returns a plan the organizer reviews before anything is saved. Rules:
 ## Brand and screens
 
 Working product name: **Starter** (the starter sends each group off the tee). The name is not cleared
-for trademark use. Colors are blazer navy and brass, type is Newsreader for headings and Atkinson
+for trademark use, and there are no official IGCC logo files in the repo yet, so the mark is original
+placeholder artwork. Colours are forest green, warm ivory and restrained gold. Gold is a fill with dark
+ink on top, never text or a thin line on ivory, because it only reaches about 2.2:1 contrast there;
+`--gold-line` is the darker gold used for borders. Type is Newsreader for titles and Atkinson
 Hyperlegible for the interface, which was designed for low vision and suits older players. Fonts are
-bundled through `@fontsource`, so no external font service is called. Light and dark themes follow the
-device setting. Buttons and inputs are at least 44px tall.
+bundled through `@fontsource`, so no external font service is called. Theme is Auto, Light or Dark,
+remembered per browser. Buttons and inputs are at least 44px tall.
+
+`src/styles/contrast.test.ts` reads the tokens in `globals.css` and fails if a text or border pairing
+drops below WCAG AA in either theme, or if the dark tokens drift between the device setting and the
+manual switch.
 
 | Route | Screen |
 | --- | --- |
-| `/` | Overview: counts and the five steps to a published draw |
+| `/` | Overview: counts, draw status and the five steps to a published draw |
 | `/players` | Search, filter, add a player with live "where will they land" preview and optional photo with consent |
+| `/players/[id]` | Profile: Handicap Index and playing handicap shown apart with the working, this tournament, photo with consent, poster generator. Scoring record and past tournaments show empty states, never estimates |
 | `/import` | NGAP CSV upload, column check, review of what changes, apply |
-| `/draw` | Make the draw, move players (pick, then choose a group), lock groups, publish |
+| `/draw` | Readiness tiles, checks, flight board, player pool, details panel. Drag a player or use Move. Publishing goes through a preview dialog |
 | `/setup` | Start format, times, limits, allowance; categories, flights and tees (read-only for now) |
 | `/pairings` | Player view: names, hole and time only, search, print |
 
-Moving a player uses pick-then-place instead of drag and drop, so it works the same with a mouse, a
-finger or a keyboard. Locked groups cannot be changed. Re-running the draw replaces everything, locks
-included; keeping locked groups across a re-run is not built yet.
+### Draw rules
+
+- **Moving.** Drag by the grip handle (mouse), or press Move then Move here (keyboard, touch). Every
+  group shows whether it would accept the player, and why not, before anything changes. The cards
+  keep their size during a move so nothing shifts under the cursor. Drag uses the browser's built-in
+  drag and drop, which has no touch support, so touch devices use Move. Escape cancels.
+- **Checks.** *Must fix* blocks publishing: a player in two groups, a group over the limit, a ready
+  player with no group, an ineligible or unreviewed player in a group. *Check* needs a tick before
+  publishing: groups under the minimum, empty groups, players from another flight, mixed categories.
+  *Note* is information.
+- **States.** Draft, Published, and Published with changes not yet published. Publishing freezes a
+  copy; the player view reads that copy, so edits on the board never reach players until the
+  organizer publishes again. "Saved" is not a state yet because nothing is persisted.
+- **Locks.** Locked groups cannot give or receive players, and the board says so.
+- Re-running the draw replaces everything, locks included, and takes the published list down.
+  Keeping locked groups across a re-run is not built yet.
+
+### Posters
+
+Drawn on a canvas from the player's record, so the preview and the PNG are the same pixels. Two
+layouts (Championship 1080x1350, Player card 1080x1080), dark and light looks, up to three facts,
+photo zoom and position. Only facts that exist are offered. A photo is used only if the player's
+consent was recorded. Public player profiles are not built; posters are shared by the organizer.

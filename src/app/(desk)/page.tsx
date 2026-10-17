@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { StatusPill } from "@/components/bits";
+import { validateDraw } from "@/lib/draw/validate";
 import { useDesk } from "@/lib/store/desk-store";
 
 export default function Overview() {
-  const { state, registrations } = useDesk();
+  const { state, registrations, names, isPublished, changedSincePublish } = useDesk();
   const ready = registrations.filter((r) => r.status === "ok").length;
   const review = registrations.filter((r) => r.status === "needs_review");
   const out = registrations.filter((r) => r.status === "ineligible");
@@ -33,9 +34,25 @@ export default function Overview() {
       href: "/draw",
       cta: "Review",
     },
-    { label: "Publish pairings for players", done: state.published, href: "/draw", cta: "Publish" },
+    {
+      label: "Publish pairings for players",
+      done: state.published !== null,
+      href: "/draw",
+      cta: "Publish",
+    },
   ];
   const next = steps.findIndex((s) => !s.done);
+  const issues = state.draw
+    ? validateDraw({
+        draw: state.draw,
+        registrations,
+        config: state.config,
+        engineWarnings: state.drawWarnings,
+        names,
+      })
+    : [];
+  const mustFix = issues.filter((i) => i.severity === "blocking").length;
+  const toCheck = issues.filter((i) => i.severity === "warning").length;
 
   return (
     <div className="stack">
@@ -71,6 +88,32 @@ export default function Overview() {
         </div>
       </section>
 
+      {state.draw && (
+        <section className="card stack tight" aria-label="Draw status">
+          <div className="row between">
+            <h2>Draw</h2>
+            <Link className="btn small ghost" href="/draw">
+              Open draw
+            </Link>
+          </div>
+          <p>
+            {state.draw.length} groups.{" "}
+            {mustFix > 0 ? (
+              <span className="pill bad">{mustFix} must fix before publishing</span>
+            ) : toCheck > 0 ? (
+              <span className="pill warn">{toCheck} to check</span>
+            ) : (
+              <span className="pill ok">No problems found</span>
+            )}{" "}
+            {!isPublished && <span className="pill info">Draft</span>}
+            {isPublished && !changedSincePublish && <span className="pill ok">Published</span>}
+            {isPublished && changedSincePublish && (
+              <span className="pill warn">Published, with changes not yet published</span>
+            )}
+          </p>
+        </section>
+      )}
+
       <section className="stack" style={{ gap: ".75rem" }}>
         <h2>What to do next</h2>
         <ol className="steps">
@@ -80,7 +123,7 @@ export default function Overview() {
                 {s.done ? "✓" : i + 1}
               </span>
               <span>{s.label}</span>
-              <Link className={`btn small${i === next ? " brass" : " ghost"}`} href={s.href}>
+              <Link className={`btn small${i === next ? " gold" : " ghost"}`} href={s.href}>
                 {s.cta}
               </Link>
             </li>

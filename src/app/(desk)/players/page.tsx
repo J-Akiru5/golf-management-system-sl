@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
 import type { DeskPlayer } from "@/lib/demo/data";
-import { fmtHcp, fmtIndex } from "@/lib/format";
+import { fmtHcp, fmtIndex, photoOf } from "@/lib/format";
 import { parseIndex } from "@/lib/ngap";
+import { shrinkPhoto } from "@/lib/photo";
 import type { RegistrationStatus } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -15,28 +17,6 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "needs_review", label: "Needs review" },
   { id: "ineligible", label: "Not eligible" },
 ];
-
-/** Shrinks a photo to a small square-ish JPEG so the desk never holds multi-megabyte images. */
-async function shrinkPhoto(file: File): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((ok, fail) => {
-      const i = new Image();
-      i.onload = () => ok(i);
-      i.onerror = () => fail(new Error("Could not read that photo."));
-      i.src = url;
-    });
-    const side = 320;
-    const scale = Math.min(1, side / Math.max(img.width, img.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.8);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 export default function PlayersPage() {
   const { state, registrations, regById, names, dispatch, classify } = useDesk();
@@ -94,7 +74,13 @@ export default function PlayersPage() {
     if (!draft || !canSave) return;
     dispatch({
       type: "addPlayer",
-      player: { ...draft, id: `p${Date.now()}`, shirt: shirt || undefined, photo },
+      player: {
+        ...draft,
+        id: `p${Date.now()}`,
+        shirt: shirt || undefined,
+        photo,
+        photoConsent: photo ? true : undefined,
+      },
     });
     dialog.current?.close();
     reset();
@@ -109,7 +95,7 @@ export default function PlayersPage() {
             {registrations.length} added. Category, tee and flight are worked out automatically.
           </p>
         </div>
-        <button type="button" className="btn brass" onClick={() => dialog.current?.showModal()}>
+        <button type="button" className="btn gold" onClick={() => dialog.current?.showModal()}>
           Add player
         </button>
       </header>
@@ -163,7 +149,7 @@ export default function PlayersPage() {
                 <tr key={p.id}>
                   <td>
                     <span className="who">
-                      <Avatar name={p.name} photo={p.photo} />
+                      <Avatar name={p.name} photo={photoOf(p)} />
                       <span>{p.name}</span>
                     </span>
                   </td>
@@ -178,13 +164,18 @@ export default function PlayersPage() {
                     {r.reasons.length > 0 && <div className="hint">{r.reasons[0]}</div>}
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      className="btn small ghost"
-                      onClick={() => dispatch({ type: "removePlayer", id: p.id })}
-                    >
-                      Remove
-                    </button>
+                    <span className="row">
+                      <Link className="btn small ghost" href={`/players/${p.id}`}>
+                        Profile
+                      </Link>
+                      <button
+                        type="button"
+                        className="btn small ghost"
+                        onClick={() => dispatch({ type: "removePlayer", id: p.id })}
+                      >
+                        Remove
+                      </button>
+                    </span>
                   </td>
                 </tr>
               );
@@ -297,7 +288,8 @@ export default function PlayersPage() {
                   onChange={(e) => setConsent(e.target.checked)}
                 />
                 <span>
-                  The player agrees to have their photo kept on file for tournament check-in.
+                  The player agrees to have their photo kept on file and used for check-in, their
+                  player profile and tournament posters.
                 </span>
               </label>
             )}

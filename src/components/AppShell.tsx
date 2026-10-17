@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Logo } from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   { href: "/", label: "Overview" },
@@ -40,7 +41,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
           <Link href="/pairings">Player view</Link>
         </nav>
-        <div className="side-foot">By Syntaxure Labs</div>
+        <div className="side-foot">
+          <ThemeToggle />
+          <span>By Syntaxure Labs</span>
+        </div>
       </aside>
       <main className="main">
         <div className="demo-bar" role="note">
