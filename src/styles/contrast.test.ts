@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+// Windows checkouts (core.autocrlf) give CRLF line endings; the block search below expects LF.
+const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8").replace(
+  /\r\n/g,
+  "\n",
+);
 
 /** Pulls `--token: value;` pairs out of the first rule that starts with `selector {`. */
 function tokens(selector: string): Record<string, string> {
