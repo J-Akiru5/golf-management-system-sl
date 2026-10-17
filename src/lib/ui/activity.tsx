@@ -3,11 +3,21 @@
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import type { DrawGroup } from "@/lib/store/desk-store";
 import { useDesk } from "@/lib/store/desk-store";
+import { boardOf } from "@/lib/store/state";
 
 export interface ActivityEntry {
   id: number;
   at: number;
-  kind: "move" | "lock" | "unlock" | "draw" | "publish" | "unpublish" | "import" | "player";
+  kind:
+    | "move"
+    | "lock"
+    | "unlock"
+    | "draw"
+    | "publish"
+    | "unpublish"
+    | "import"
+    | "player"
+    | "entry";
   title: string;
   detail: string;
 }
@@ -35,19 +45,28 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     const out: Omit<ActivityEntry, "id" | "at">[] = [];
     const name = (id: string) => playerById.get(id)?.name ?? "A player";
 
-    if (!a.draw && b.draw) {
-      out.push({ kind: "draw", title: "Draw made", detail: `${b.draw.length} groups` });
-    } else if (a.draw && b.draw && a.draw !== b.draw) {
-      if (a.draw.length !== b.draw.length || a.draw[0]?.number !== b.draw[0]?.number) {
-        out.push({ kind: "draw", title: "Draw made again", detail: `${b.draw.length} groups` });
+    const boardA = boardOf(a);
+    const boardB = boardOf(b);
+    if (!boardA.draw && boardB.draw) {
+      out.push({ kind: "draw", title: "Draw made", detail: `${boardB.draw.length} groups` });
+    } else if (boardA.draw && boardB.draw && boardA.draw !== boardB.draw) {
+      if (
+        boardA.draw.length !== boardB.draw.length ||
+        boardA.draw[0]?.number !== boardB.draw[0]?.number
+      ) {
+        out.push({
+          kind: "draw",
+          title: "Draw made again",
+          detail: `${boardB.draw.length} groups`,
+        });
       } else {
         const where = (d: DrawGroup[]) => {
           const m = new Map<string, DrawGroup>();
           for (const g of d) for (const id of g.playerIds) m.set(id, g);
           return m;
         };
-        const before = where(a.draw);
-        for (const [id, g] of where(b.draw)) {
+        const before = where(boardA.draw);
+        for (const [id, g] of where(boardB.draw)) {
           const was = before.get(id);
           if (was?.number !== g.number) {
             out.push({
@@ -57,8 +76,8 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
             });
           }
         }
-        b.draw.forEach((g, i) => {
-          const o = a.draw?.[i];
+        boardB.draw.forEach((g, i) => {
+          const o = boardA.draw?.[i];
           if (o && o.locked !== g.locked) {
             out.push({
               kind: g.locked ? "lock" : "unlock",
@@ -69,11 +88,11 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         });
       }
     }
-    if (!a.published && b.published) {
+    if (!boardA.published && boardB.published) {
       out.push({ kind: "publish", title: "Pairings published", detail: "Players can see them" });
-    } else if (a.published && b.published && a.published !== b.published) {
+    } else if (boardA.published && boardB.published && boardA.published !== boardB.published) {
       out.push({ kind: "publish", title: "Changes published", detail: "Player view updated" });
-    } else if (a.published && !b.published && b.draw) {
+    } else if (boardA.published && !boardB.published && boardB.draw) {
       out.push({
         kind: "unpublish",
         title: "Pairings taken down",
@@ -85,7 +104,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       out.push({
         kind: "import",
         title: "Handicap import applied",
-        detail: `${n} player${n === 1 ? "" : "s"} matched`,
+        detail: `${n} record${n === 1 ? "" : "s"} written`,
       });
     }
     if (b.players.length !== a.players.length) {
@@ -93,7 +112,15 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       out.push({
         kind: "player",
         title: diff > 0 ? "Player added" : "Player removed",
-        detail: `${b.players.length} on the list`,
+        detail: `${b.players.length} in the directory`,
+      });
+    }
+    if (b.entries.length !== a.entries.length) {
+      const diff = b.entries.length - a.entries.length;
+      out.push({
+        kind: "entry",
+        title: diff > 0 ? "Registration added" : "Registration removed",
+        detail: `${b.entries.length} in this event`,
       });
     }
     if (out.length === 0) return;

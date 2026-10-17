@@ -1,7 +1,7 @@
 import { matchCategories, matchFlights } from "./classify";
 import { chunk, groupSizes } from "./groups";
 import { ageOn, playingHandicap } from "./handicap";
-import { planShotgun, planTwoTee, type Slot } from "./schedule";
+import { planShotgunFrom, planTwoTeeFrom, type Slot, shotgunKey, twoTeeKey } from "./schedule";
 import type {
   CategoryRule,
   FlightRule,
@@ -23,6 +23,21 @@ export interface RoutingInput {
   tees: Tee[];
   categories: CategoryRule[];
   flights: FlightRule[];
+}
+
+/** A group the organizer has locked. A re-run keeps it exactly as it is. */
+export interface LockedGroup {
+  number: number;
+  flightId: string;
+  playerIds: string[];
+  startHole: number;
+  wave: string | null;
+  time: string;
+}
+
+export interface RouteOptions {
+  /** Groups that must not move when the draw is re-run. */
+  lockedGroups?: LockedGroup[];
 }
 
 /** Steps 2 to 7 of the routing flow: classify one player. Pure, so it can be tested alone. */
@@ -83,11 +98,51 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
 /**
  * Full routing: classify everyone, then form groups and assign starts.
  * It only proposes. The organizer reviews and overrides before publishing.
+ *
+ * Locked groups are kept untouched: their players are left out of the re-grouping and their slots
+ * are held, so re-running the draw never moves a locked group. A lock that no longer makes sense
+ * (a player left the field, changed category or flight, or the group is over size) is released and
+ * named in the warnings rather than being applied blindly.
  */
-export function route(input: RoutingInput): RoutingResult {
+export function route(input: RoutingInput, options: RouteOptions = {}): RoutingResult {
   const { players, config, categories, flights } = input;
   const registrations = players.map((p) => classifyPlayer(p, input));
+  const byId = new Map(registrations.map((r) => [r.playerId, r]));
   const warnings: string[] = [];
+
+  const kept: LockedGroup[] = [];
+  const lockedIds = new Set<string>();
+  for (const g of options.lockedGroups ?? []) {
+    if (g.playerIds.length === 0) continue;
+    const members = g.playerIds.map((id) => byId.get(id));
+    const missing = members.some((m) => !m);
+    const notOk = members.some((m) => m && m.status !== "ok");
+    const flightIds = new Set(members.map((m) => m?.flightId ?? null));
+    const oneFlight = flightIds.size === 1 && !flightIds.has(null);
+    const overSize = g.playerIds.length > config.groupSize;
+    const repeated = g.playerIds.find((id) => lockedIds.has(id));
+    if (repeated !== undefined) {
+      warnings.push(
+        `Locked group ${g.number} was released: this player is already in another locked group.`,
+      );
+      continue;
+    }
+    if (missing || notOk || !oneFlight || overSize) {
+      const why = missing
+        ? "a player in it is no longer in the field"
+        : notOk
+          ? "a player in it is no longer ready to play"
+          : overSize
+            ? `it has more than ${config.groupSize} players`
+            : "its players no longer share one flight";
+      warnings.push(
+        `Locked group ${g.number} was released: ${why}, so it went back into the draw.`,
+      );
+      continue;
+    }
+    kept.push({ ...g, flightId: [...flightIds][0] as string });
+    for (const id of g.playerIds) lockedIds.add(id);
+  }
 
   // Flight play order: category order first, then lowest handicap range first.
   const catOrder = new Map(categories.map((c, i) => [c.id, i]));
@@ -99,7 +154,7 @@ export function route(input: RoutingInput): RoutingResult {
   const placed: { flight: FlightRule; groups: string[][] }[] = [];
   for (const flight of orderedFlights) {
     const members = registrations
-      .filter((r) => r.status === "ok" && r.flightId === flight.id)
+      .filter((r) => r.status === "ok" && r.flightId === flight.id && !lockedIds.has(r.playerId))
       .sort(
         (a, b) =>
           (a.playingHandicap ?? 0) - (b.playingHandicap ?? 0) ||
@@ -116,29 +171,73 @@ export function route(input: RoutingInput): RoutingResult {
     placed.push({ flight, groups: cut.map((g) => g.map((r) => r.playerId)) });
   }
 
-  const totalGroups = placed.reduce((n, p) => n + p.groups.length, 0);
+  const newGroupCount = placed.reduce((n, p) => n + p.groups.length, 0);
+  const occupied = new Set(
+    kept.map((g) =>
+      config.startFormat === "shotgun"
+        ? shotgunKey(g.wave ?? "A", g.startHole)
+        : twoTeeKey(g.startHole, g.time),
+    ),
+  );
+
   let slots: Slot[];
   if (config.startFormat === "shotgun") {
-    const plan = planShotgun(
+    const plan = planShotgunFrom(
       placed.map((p) => ({ flightName: p.flight.name, groups: p.groups.length })),
       config.holes,
       config.firstTeeTime,
       config.waveGapMinutes,
+      occupied,
     );
     warnings.push(...plan.warnings);
     slots = plan.slots;
   } else {
-    slots = planTwoTee(totalGroups, config.firstTeeTime, config.intervalMinutes);
+    slots = planTwoTeeFrom(newGroupCount, config.firstTeeTime, config.intervalMinutes, occupied);
   }
 
-  const groups: Group[] = [];
+  // A locked slot inside the first wave can force a flight that would fit into two waves.
+  if (config.startFormat === "shotgun" && kept.length > 0) {
+    let cursor = 0;
+    for (const flight of placed) {
+      const waves = new Set<string>();
+      for (let i = 0; i < flight.groups.length; i++) {
+        const slot = slots[cursor + i];
+        if (slot?.wave) waves.add(slot.wave);
+      }
+      cursor += flight.groups.length;
+      if (waves.size > 1 && flight.groups.length <= config.holes) {
+        warnings.push(
+          `Flight ${flight.flight.name} is split across waves because locked groups hold slots in the first wave.`,
+        );
+      }
+    }
+  }
+
+  const groups: Group[] = kept.map((g) => ({
+    number: g.number,
+    flightId: g.flightId,
+    playerIds: [...g.playerIds],
+    startHole: g.startHole,
+    wave: g.wave,
+    time: g.time,
+  }));
+
+  // New groups take the lowest numbers a locked group has not claimed.
+  const takenNumbers = new Set(kept.map((g) => g.number));
+  const nextNumber = () => {
+    let n = 1;
+    while (takenNumbers.has(n)) n += 1;
+    takenNumbers.add(n);
+    return n;
+  };
+
   let n = 0;
   for (const { flight, groups: cutGroups } of placed) {
     for (const playerIds of cutGroups) {
       const slot = slots[n];
       if (!slot) throw new Error("Routing bug: fewer slots than groups.");
       groups.push({
-        number: n + 1,
+        number: nextNumber(),
         flightId: flight.id,
         playerIds,
         startHole: slot.startHole,
@@ -149,5 +248,8 @@ export function route(input: RoutingInput): RoutingResult {
     }
   }
 
+  groups.sort(
+    (a, b) => a.time.localeCompare(b.time) || a.startHole - b.startHole || a.number - b.number,
+  );
   return { registrations, groups, warnings };
 }

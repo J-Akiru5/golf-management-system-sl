@@ -5,14 +5,18 @@ import {
   ArrowUpRight,
   Check,
   CircleAlert,
+  ClipboardList,
   Download,
   Flag,
   Lock,
   OctagonAlert,
+  Printer,
   Send,
   TriangleAlert,
+  Trophy,
   Unlock,
   UserPlus,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
@@ -128,9 +132,9 @@ function Bar({ pct }: { pct: number }) {
 }
 
 export function ReadinessPanel({ b, variant }: { b: Board; variant?: PanelVariant }) {
-  const { state } = b;
   const total = b.registrations.length;
-  if (!state.draw) {
+  const maxIndex = b.tournament?.config.maxIndex ?? 0;
+  if (!b.draw) {
     return (
       <Panel
         title="Draw readiness"
@@ -158,8 +162,8 @@ export function ReadinessPanel({ b, variant }: { b: Board; variant?: PanelVarian
             total={`/ ${total}`}
             foot={
               <span className="text-ink-muted">
-                {state.importedCount
-                  ? `${state.importedCount} matched by import`
+                {b.state.importedCount
+                  ? `${b.state.importedCount} records written by import`
                   : "Not imported yet"}
               </span>
             }
@@ -167,13 +171,13 @@ export function ReadinessPanel({ b, variant }: { b: Board; variant?: PanelVarian
           <Tile
             label="Not eligible"
             value={b.ineligible.length}
-            foot={<span className="text-ink-muted">Index above {state.config.maxIndex}</span>}
+            foot={<span className="text-ink-muted">Index above {maxIndex}</span>}
           />
         </div>
       </Panel>
     );
   }
-  const groups = state.draw.length;
+  const groups = b.draw.length;
   const left = b.ready.length - b.placed;
   return (
     <Panel
@@ -214,8 +218,8 @@ export function ReadinessPanel({ b, variant }: { b: Board; variant?: PanelVarian
           total={`/ ${b.registrations.length}`}
           foot={
             <span className="text-ink-muted">
-              {state.importedCount
-                ? `${state.importedCount} matched by import`
+              {b.state.importedCount
+                ? `${b.state.importedCount} records written by import`
                 : "Not imported yet"}
             </span>
           }
@@ -280,15 +284,15 @@ function IssueList({ issues }: { issues: Issue[] }) {
 
 /** PublishState pill: unsaved, draft, published, or published with newer changes. */
 export function PublishState({ b }: { b: Board }) {
-  const { state, isPublished, changedSincePublish } = b;
-  const tone = !state.draw
+  const { isPublished, changedSincePublish } = b;
+  const tone = !b.draw
     ? "bg-surface-sunken text-ink-muted"
     : !isPublished
       ? "bg-info-soft text-info"
       : changedSincePublish
         ? "bg-warning-soft text-warning"
         : "bg-success-soft text-success";
-  const label = !state.draw
+  const label = !b.draw
     ? "No draw yet"
     : !isPublished
       ? "Draft · players can’t see it"
@@ -308,7 +312,7 @@ export function PublishState({ b }: { b: Board }) {
 }
 
 export function PublishPanel({ b, variant }: { b: Board; variant?: PanelVariant }) {
-  const { state, dispatch, isPublished, changedSincePublish } = b;
+  const { dispatch, isPublished, changedSincePublish } = b;
   const [open, setOpen] = useState(false);
   const ordered = [...b.blocking, ...b.warnings];
   return (
@@ -317,12 +321,12 @@ export function PublishPanel({ b, variant }: { b: Board; variant?: PanelVariant 
         <PublishState b={b} />
         <span className="flex-1" />
         <span className="text-xs text-ink-muted">
-          {state.published
-            ? `Published ${new Date(state.published.at).toLocaleTimeString("en-PH", { timeStyle: "short" })}`
+          {b.published
+            ? `Published ${new Date(b.published.at).toLocaleTimeString("en-PH", { timeStyle: "short" })}`
             : "Not saved · demo"}
         </span>
       </div>
-      {!state.draw ? (
+      {!b.draw ? (
         <div className="mt-3 grid gap-2">
           <p className="text-[13px] text-ink-muted">
             The draw puts each ready player in a flight and a group, and gives the group a hole and
@@ -331,7 +335,7 @@ export function PublishPanel({ b, variant }: { b: Board; variant?: PanelVariant 
           <Button
             variant="gold"
             disabled={b.ready.length === 0}
-            onClick={() => dispatch({ type: "generate" })}
+            onClick={() => dispatch({ type: "generate", preserveLocks: true })}
           >
             <Flag aria-hidden="true" /> Make the draw
           </Button>
@@ -438,7 +442,7 @@ export function DivisionsPanel({ b, variant }: { b: Board; variant?: PanelVarian
 
 /** Field by Handicap Index, in 3-stroke bins up to the event's maximum. Real counts only. */
 export function HandicapHistogram({ b, variant }: { b: Board; variant?: PanelVariant }) {
-  const max = b.state.config.maxIndex;
+  const max = b.tournament?.config.maxIndex ?? 30;
   const edges: { label: string; test: (x: number) => boolean }[] = [
     { label: "+", test: (x) => x < 0 },
   ];
@@ -526,6 +530,7 @@ const ACT_ICON: Record<ActivityEntry["kind"], ReactNode> = {
   unpublish: <TriangleAlert className="size-4 text-warning" aria-hidden="true" />,
   import: <Download className="size-4 text-success" aria-hidden="true" />,
   player: <UserPlus className="size-4 text-fairway" aria-hidden="true" />,
+  entry: <ClipboardList className="size-4 text-fairway" aria-hidden="true" />,
 };
 
 export function ActivityPanel({
@@ -575,6 +580,257 @@ export function ActivityPanel({
           ))}
         </ul>
       )}
+    </Panel>
+  );
+}
+
+/** The open questions and demo assumptions, kept short and linked to where they are set. */
+const OPEN_QUESTIONS: { id: string; question: string; state: string; href: string }[] = [
+  {
+    id: "name",
+    question: "Event name",
+    state: "“Bamboo Tee” is a sample title until the club confirms it.",
+    href: "/setup",
+  },
+  {
+    id: "day4",
+    question: "Day 4 tee time",
+    state: "“11:30PM Tee Off” was supplied as-is and needs organizer confirmation.",
+    href: "/register",
+  },
+  {
+    id: "flights",
+    question: "Flights on index or course handicap",
+    state: "Built on the handicap index for now; the spec leaves this open.",
+    href: "/setup",
+  },
+  {
+    id: "tees",
+    question: "Tees for Regular, Senior, Ladies",
+    state: "Only Super Senior = Silver is confirmed. The others are demo mappings.",
+    href: "/setup",
+  },
+  {
+    id: "partial",
+    question: "Groups that do not divide by four",
+    state: "Even split, and a group never drops below three players.",
+    href: "/setup",
+  },
+  {
+    id: "order",
+    question: "Order inside a flight",
+    state: "By handicap, lowest first.",
+    href: "/setup",
+  },
+  {
+    id: "ratings",
+    question: "Real IGCC course data",
+    state: "Course Rating, Slope, Par and stroke index are pending; sample numbers are in use.",
+    href: "/setup",
+  },
+  {
+    id: "photos",
+    question: "Where player photos may appear",
+    state: "Organizer screens only, with recorded consent. Never on public pairings.",
+    href: "/players",
+  },
+  {
+    id: "results",
+    question: "Results and tie-breaks",
+    state: "Phase 2. Scoring stays on paper cards.",
+    href: "/print",
+  },
+  {
+    id: "schedule",
+    question: "Event dates and cut-off",
+    state: "Sample dates and cut-off date until the organizer confirms them.",
+    href: "/setup",
+  },
+];
+
+/**
+ * The overview's attention panel: the active event, what needs the organizer's eye, quick
+ * actions, and the still-open questions. Every count is derived from the demo data on screen.
+ */
+export function AttentionPanel({
+  b,
+  variant,
+  className,
+}: {
+  b: Board;
+  variant?: PanelVariant;
+  className?: string;
+}) {
+  const maxIndex = b.tournament?.config.maxIndex ?? 0;
+  const review = b.registrations.filter((r) => r.status === "needs_review");
+  const ineligible = b.registrations.filter((r) => r.status === "ineligible");
+  const guests = b.registrations.filter((r) => r.role === "guest").length;
+  const pendingPayment = b.registrations.filter((r) => r.paymentStatus === "pending").length;
+
+  const items: {
+    id: string;
+    tone: "bad" | "warn" | "info";
+    icon: ReactNode;
+    title: string;
+    detail: string;
+    href: string;
+    cta: string;
+  }[] = [];
+  if (b.blocking.length > 0) {
+    items.push({
+      id: "blocking",
+      tone: "bad",
+      icon: <OctagonAlert className="size-4 text-danger" aria-hidden="true" />,
+      title: `${b.blocking.length} must fix before publishing`,
+      detail: "The draw has blocking problems.",
+      href: "/draw",
+      cta: "Open the draw",
+    });
+  }
+  if (ineligible.length > 0) {
+    items.push({
+      id: "ineligible",
+      tone: "bad",
+      icon: <OctagonAlert className="size-4 text-danger" aria-hidden="true" />,
+      title: `${ineligible.length} over the index limit of ${maxIndex}`,
+      detail: "Above the limit cannot register in this event.",
+      href: "/players",
+      cta: "Check players",
+    });
+  }
+  if (review.length > 0) {
+    items.push({
+      id: "review",
+      tone: "warn",
+      icon: <TriangleAlert className="size-4 text-warning" aria-hidden="true" />,
+      title: `${review.length} need a review`,
+      detail: "Missing index, no flight, or identity details missing.",
+      href: "/players",
+      cta: "Check players",
+    });
+  }
+  if (b.pendingRefreeze.length > 0) {
+    items.push({
+      id: "refreeze",
+      tone: "warn",
+      icon: <TriangleAlert className="size-4 text-warning" aria-hidden="true" />,
+      title: `${b.pendingRefreeze.length} registrations need a re-freeze`,
+      detail: "Their frozen index no longer matches the imported records.",
+      href: "/register",
+      cta: "Open the desk",
+    });
+  }
+  if (b.deferred.length > 0) {
+    items.push({
+      id: "deferred",
+      tone: "warn",
+      icon: <TriangleAlert className="size-4 text-warning" aria-hidden="true" />,
+      title: `${b.deferred.length} import rows were deferred`,
+      detail: "Decide link, create new, or keep separate.",
+      href: "/import",
+      cta: "Resolve imports",
+    });
+  }
+  if (!b.draw && b.ready.length > 0) {
+    items.push({
+      id: "nodraw",
+      tone: "info",
+      icon: <CircleAlert className="size-4 text-info" aria-hidden="true" />,
+      title: "No draw yet",
+      detail: `${b.ready.length} ready players are waiting for a proposal.`,
+      href: "/draw",
+      cta: "Make the draw",
+    });
+  }
+  if (pendingPayment > 0) {
+    items.push({
+      id: "payment",
+      tone: "info",
+      icon: <CircleAlert className="size-4 text-info" aria-hidden="true" />,
+      title: `${pendingPayment} payments pending`,
+      detail: "Payment status is recorded by hand; nothing is taken online.",
+      href: "/register",
+      cta: "Open the desk",
+    });
+  }
+
+  return (
+    <Panel
+      title="Tournament"
+      subtitle={b.tournament ? b.tournament.name : "No event selected"}
+      variant={variant}
+      labelledBy="attention-h"
+      className={className}
+      action={<GoLink href="/tournaments" label="Open tournaments" />}
+    >
+      <div className="rounded-[12px] border border-glass-line bg-[color-mix(in_srgb,var(--surface-raised)_50%,transparent)] p-3">
+        <p className="flex items-baseline gap-2">
+          <b className="font-display text-[26px] leading-8 tnum">{b.registrations.length}</b>
+          <span className="text-xs text-ink-muted">
+            registrations · {b.ready.length} ready · {guests} guest{guests === 1 ? "" : "s"}
+          </span>
+        </p>
+        <p className="mt-0.5 text-xs text-ink-muted">
+          Demo data only. Nothing here is saved to a server.
+        </p>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="mt-3 flex items-center gap-2 text-[13px] text-success">
+          <Check className="size-4" aria-hidden="true" /> Nothing is waiting for you.
+        </p>
+      ) : (
+        <ul className="mt-3 grid gap-2">
+          {items.map((i) => (
+            <li key={i.id} className="flex items-start gap-2.5 text-[13px] leading-[18px]">
+              <span className="mt-px">{i.icon}</span>
+              <span className="min-w-0 flex-1">
+                <b className="block font-semibold">{i.title}</b>
+                <span className="block text-xs text-ink-muted">{i.detail}</span>
+              </span>
+              <Link href={i.href} className="text-xs font-semibold whitespace-nowrap">
+                {i.cta}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 grid grid-cols-2 gap-2 border-t border-glass-line pt-3">
+        <Link href="/register" className="btn small gold">
+          <ClipboardList aria-hidden="true" /> Register
+        </Link>
+        <Link href="/import" className="btn small ghost">
+          <Download aria-hidden="true" /> Import
+        </Link>
+        <Link href="/players" className="btn small ghost">
+          <Users aria-hidden="true" /> Players
+        </Link>
+        <Link href="/print" className="btn small ghost">
+          <Printer aria-hidden="true" /> Print
+        </Link>
+      </div>
+
+      <details className="mt-3 border-t border-glass-line pt-3">
+        <summary className="flex min-h-8 cursor-pointer flex-wrap items-center gap-2 text-[13px] font-semibold">
+          <Trophy className="size-4 text-gold-ink" aria-hidden="true" />
+          Open questions / before publish
+          <span className="pill">{OPEN_QUESTIONS.length}</span>
+        </summary>
+        <ul className="mt-2 grid gap-2">
+          {OPEN_QUESTIONS.map((q) => (
+            <li key={q.id} className="text-[12.5px] leading-[17px]">
+              <b className="font-semibold">{q.question}</b>
+              <span className="block text-ink-muted">
+                {q.state}{" "}
+                <Link href={q.href} className="whitespace-nowrap">
+                  Open
+                </Link>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </details>
     </Panel>
   );
 }

@@ -5,6 +5,9 @@ export interface ColumnMapping {
   ngapId?: string;
   /** Date the index was effective. If absent, the whole file uses `defaultEffectiveDate`. */
   effectiveDate?: string;
+  /** Optional identity signals. A real NGAP export may not carry them. */
+  dob?: string;
+  contact?: string;
 }
 
 export type DateFormat = "iso" | "mdy" | "dmy";
@@ -21,6 +24,9 @@ export interface KnownPlayer {
   id: string;
   fullName: string;
   ngapId: string | null;
+  /** Optional identity signals used by the merge queue when the file supplies them. */
+  birthdate?: string | null;
+  contactNumber?: string | null;
 }
 
 export interface ParsedFile {

@@ -2,14 +2,31 @@
 
 import Link from "next/link";
 import { Crest } from "@/components/Crest";
+import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
+import { fmtDateLabel } from "@/lib/data/labels";
+import { toPublicPairings } from "@/lib/data/public";
 import { fmtTime } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
 
-/** What players see. It reads the frozen published copy, never the organizer's working board. */
+/**
+ * What players see. It reads the frozen published copy (through the public allow-list projection),
+ * never the organizer's working board, and never a player or registration record.
+ */
 export default function PublicPairings() {
-  const { state } = useDesk();
-  const { published, config } = state;
+  const { published, tournament } = useDesk();
+
+  if (!tournament) return <NeedsTournament what="The player view" />;
+
+  const pairings = published
+    ? toPublicPairings({
+        published,
+        tournamentName: tournament.name,
+        dateLabel: fmtDateLabel(tournament.dates),
+        startFormat: tournament.config.startFormat,
+        firstTeeTime: tournament.config.firstTeeTime,
+      })
+    : null;
 
   return (
     <div className="public">
@@ -24,26 +41,26 @@ export default function PublicPairings() {
           </span>
         </div>
         <p className="overline mt-3 !text-gold">
-          {config.startFormat === "shotgun" ? "Shotgun start" : "Two-tee start"} ·{" "}
-          {fmtTime(config.firstTeeTime)}
+          {tournament.config.startFormat === "shotgun" ? "Shotgun start" : "Two-tee start"} ·{" "}
+          {fmtTime(tournament.config.firstTeeTime)}
         </p>
         <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-          {state.name}
+          {tournament.name}
         </h1>
-        <p className="text-on-forest-muted">
-          {new Date(`${config.date}T00:00:00`).toLocaleDateString("en-PH", { dateStyle: "full" })}
-        </p>
+        <p className="text-on-forest-muted">{fmtDateLabel(tournament.dates)}</p>
       </header>
 
-      {!published ? (
+      {!pairings ? (
         <div className="notice" role="status">
           <b>Pairings are not out yet.</b> Please check again later.
         </div>
       ) : (
-        <PairingsView published={published} shotgun={config.startFormat === "shotgun"} />
+        <PairingsView pairings={pairings} headingLevel="section" />
       )}
+
       <p className="hint no-print">
-        <Link href="/">Back to the tournament office</Link> (demo only)
+        This is a local demo preview, not a published page. It shows names, flight, hole and time
+        only. <Link href="/">Back to the tournament office</Link>
       </p>
     </div>
   );
