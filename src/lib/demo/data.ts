@@ -43,6 +43,8 @@ export const DEMO_CONFIG: TournamentConfig = {
 export interface DeskPlayer extends Player {
   ngapId: string | null;
   photo?: string;
+  /** Set only when the player agreed to the photo being kept and used. Photos are only shown or used where this is set. */
+  photoConsent?: boolean;
   shirt?: string;
 }
 

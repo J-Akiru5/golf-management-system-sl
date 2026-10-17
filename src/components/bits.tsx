@@ -16,9 +16,9 @@ export function StatusPill({ status }: { status: RegistrationStatus }) {
   return <span className={`pill ${TONE[status]}`}>{LABEL[status]}</span>;
 }
 
-export function Avatar({ name, photo }: { name: string; photo?: string }) {
+export function Avatar({ name, photo, large }: { name: string; photo?: string; large?: boolean }) {
   return (
-    <span className="avatar" aria-hidden="true">
+    <span className={`avatar${large ? " large" : ""}`} aria-hidden="true">
       {photo ? <img src={photo} alt="" /> : initials(name)}
     </span>
   );

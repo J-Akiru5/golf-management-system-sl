@@ -26,3 +26,8 @@ export function initials(name: string): string {
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+/** A player's photo, only if they agreed to it being kept and used. */
+export function photoOf(p: { photo?: string; photoConsent?: boolean }): string | undefined {
+  return p.photo && p.photoConsent ? p.photo : undefined;
+}
