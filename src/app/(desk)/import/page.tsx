@@ -258,7 +258,7 @@ export default function ImportPage() {
           <div className="row">
             <button
               type="button"
-              className="btn gold"
+              className="btn"
               disabled={matched.length === 0}
               onClick={() => {
                 dispatch({ type: "applyImport", records: plan.records });

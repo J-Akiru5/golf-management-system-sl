@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
 import type { DeskPlayer } from "@/lib/demo/data";
 import { fmtHcp, fmtIndex, photoOf } from "@/lib/format";
@@ -19,9 +20,22 @@ const FILTERS: { id: Filter; label: string }[] = [
 ];
 
 export default function PlayersPage() {
+  return (
+    <Suspense>
+      <Players />
+    </Suspense>
+  );
+}
+
+function Players() {
   const { state, registrations, regById, names, dispatch, classify } = useDesk();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  // The top bar's search lands here as ?q=.
+  const q = useSearchParams().get("q");
+  useEffect(() => {
+    if (q !== null) setQuery(q);
+  }, [q]);
   const dialog = useRef<HTMLDialogElement>(null);
 
   const [name, setName] = useState("");
@@ -95,7 +109,7 @@ export default function PlayersPage() {
             {registrations.length} added. Category, tee and flight are worked out automatically.
           </p>
         </div>
-        <button type="button" className="btn gold" onClick={() => dialog.current?.showModal()}>
+        <button type="button" className="btn" onClick={() => dialog.current?.showModal()}>
           Add player
         </button>
       </header>

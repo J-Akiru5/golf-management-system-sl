@@ -38,9 +38,9 @@ export const POSTER_SIZE: Record<PosterLayout, { w: number; h: number }> = {
 };
 
 export const POSTER_FONTS = {
-  display: '"Newsreader Variable", Georgia, serif',
-  body: '"Atkinson Hyperlegible", system-ui, sans-serif',
-  mono: '"JetBrains Mono Variable", ui-monospace, monospace',
+  display: '"Manrope Variable", system-ui, sans-serif',
+  body: '"Geist Variable", system-ui, sans-serif',
+  mono: '"Manrope Variable", system-ui, sans-serif',
 };
 
 const PALETTE = {

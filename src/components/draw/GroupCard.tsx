@@ -86,6 +86,7 @@ function GroupCardImpl(p: GroupCardProps) {
         >
           <span className="hole" aria-hidden="true">
             {g.startHole}
+            {g.wave ?? ""}
           </span>
           <span>
             <b>{p.shotgun ? `Hole ${g.startHole}` : `Tee ${g.startHole}`}</b>
@@ -115,7 +116,7 @@ function GroupCardImpl(p: GroupCardProps) {
           {blocking && <span className="pill bad">Must fix</span>}
           {warning && !blocking && <span className="pill warn">Check</span>}
           {g.locked && <span className="pill gold">Locked</span>}
-          {n >= p.groupSize && <span className="pill info">Full</span>}
+          {n >= p.groupSize && <span className="pill ok">Full</span>}
         </div>
       )}
 

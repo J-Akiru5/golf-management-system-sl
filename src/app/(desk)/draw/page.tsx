@@ -183,7 +183,8 @@ export default function DrawPage() {
     <div className="stack">
       <header className="row between">
         <div className="stack tight">
-          <h1>Draw</h1>
+          <p className="overline">Draw &amp; pairings</p>
+          <h1>{shotgun ? "Shotgun draw" : "Two-tee draw"}</h1>
           <p className="muted">
             {state.name} ·{" "}
             {new Date(`${config.date}T00:00:00`).toLocaleDateString("en-PH", { dateStyle: "long" })}{" "}

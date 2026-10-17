@@ -1,0 +1,351 @@
+{
+  "view": "A",
+  "width": 2560,
+  "height": 1920,
+  "coordinateSpace": "normalized 0-1 from top-left",
+  "par": 4,
+  "totalYards": 433,
+  "tee": {
+    "x": 0.5793,
+    "y": 0.1748,
+    "onScreen": true,
+    "hiddenByTrees": false
+  },
+  "forwardTee": {
+    "x": 0.5831,
+    "y": 0.1785,
+    "onScreen": true,
+    "hiddenByTrees": false
+  },
+  "pin": {
+    "x": 0.5277,
+    "y": 0.5904,
+    "onScreen": true,
+    "hiddenByTrees": false
+  },
+  "greenCenter": {
+    "x": 0.5043,
+    "y": 0.5784,
+    "onScreen": true,
+    "hiddenByTrees": false
+  },
+  "markers": {
+    "100": {
+      "x": 0.5412,
+      "y": 0.3294,
+      "onScreen": true,
+      "yardsFromTee": 331,
+      "yardsToPin": 102
+    },
+    "150": {
+      "x": 0.5672,
+      "y": 0.2816,
+      "onScreen": true,
+      "yardsFromTee": 283,
+      "yardsToPin": 150
+    },
+    "200": {
+      "x": 0.5882,
+      "y": 0.2481,
+      "onScreen": true,
+      "yardsFromTee": 235,
+      "yardsToPin": 198
+    }
+  },
+  "landingZone": {
+    "x": 0.582,
+    "y": 0.2584,
+    "onScreen": true,
+    "yardsFromTee": 251,
+    "yardsToPin": 182
+  },
+  "centerline": [
+    {
+      "x": 0.5793,
+      "y": 0.1748,
+      "onScreen": true,
+      "yardsFromTee": 0,
+      "yardsToPin": 433
+    },
+    {
+      "x": 0.5806,
+      "y": 0.1775,
+      "onScreen": true,
+      "yardsFromTee": 11,
+      "yardsToPin": 422
+    },
+    {
+      "x": 0.582,
+      "y": 0.1781,
+      "onScreen": true,
+      "yardsFromTee": 21,
+      "yardsToPin": 412
+    },
+    {
+      "x": 0.5835,
+      "y": 0.181,
+      "onScreen": true,
+      "yardsFromTee": 32,
+      "yardsToPin": 401
+    },
+    {
+      "x": 0.585,
+      "y": 0.1833,
+      "onScreen": true,
+      "yardsFromTee": 43,
+      "yardsToPin": 390
+    },
+    {
+      "x": 0.5866,
+      "y": 0.1856,
+      "onScreen": true,
+      "yardsFromTee": 53,
+      "yardsToPin": 380
+    },
+    {
+      "x": 0.5883,
+      "y": 0.1881,
+      "onScreen": true,
+      "yardsFromTee": 64,
+      "yardsToPin": 369
+    },
+    {
+      "x": 0.5903,
+      "y": 0.1908,
+      "onScreen": true,
+      "yardsFromTee": 75,
+      "yardsToPin": 358
+    },
+    {
+      "x": 0.5926,
+      "y": 0.1937,
+      "onScreen": true,
+      "yardsFromTee": 86,
+      "yardsToPin": 347
+    },
+    {
+      "x": 0.595,
+      "y": 0.1967,
+      "onScreen": true,
+      "yardsFromTee": 96,
+      "yardsToPin": 337
+    },
+    {
+      "x": 0.5973,
+      "y": 0.1997,
+      "onScreen": true,
+      "yardsFromTee": 107,
+      "yardsToPin": 326
+    },
+    {
+      "x": 0.5994,
+      "y": 0.2027,
+      "onScreen": true,
+      "yardsFromTee": 118,
+      "yardsToPin": 315
+    },
+    {
+      "x": 0.6012,
+      "y": 0.2056,
+      "onScreen": true,
+      "yardsFromTee": 128,
+      "yardsToPin": 305
+    },
+    {
+      "x": 0.6022,
+      "y": 0.2084,
+      "onScreen": true,
+      "yardsFromTee": 139,
+      "yardsToPin": 294
+    },
+    {
+      "x": 0.6026,
+      "y": 0.2113,
+      "onScreen": true,
+      "yardsFromTee": 150,
+      "yardsToPin": 283
+    },
+    {
+      "x": 0.6023,
+      "y": 0.2144,
+      "onScreen": true,
+      "yardsFromTee": 160,
+      "yardsToPin": 273
+    },
+    {
+      "x": 0.6015,
+      "y": 0.2177,
+      "onScreen": true,
+      "yardsFromTee": 171,
+      "yardsToPin": 262
+    },
+    {
+      "x": 0.6002,
+      "y": 0.2214,
+      "onScreen": true,
+      "yardsFromTee": 182,
+      "yardsToPin": 251
+    },
+    {
+      "x": 0.5985,
+      "y": 0.2257,
+      "onScreen": true,
+      "yardsFromTee": 192,
+      "yardsToPin": 241
+    },
+    {
+      "x": 0.5965,
+      "y": 0.2305,
+      "onScreen": true,
+      "yardsFromTee": 203,
+      "yardsToPin": 230
+    },
+    {
+      "x": 0.5943,
+      "y": 0.2359,
+      "onScreen": true,
+      "yardsFromTee": 214,
+      "yardsToPin": 219
+    },
+    {
+      "x": 0.5916,
+      "y": 0.2418,
+      "onScreen": true,
+      "yardsFromTee": 224,
+      "yardsToPin": 209
+    },
+    {
+      "x": 0.5882,
+      "y": 0.2481,
+      "onScreen": true,
+      "yardsFromTee": 235,
+      "yardsToPin": 198
+    },
+    {
+      "x": 0.5842,
+      "y": 0.2549,
+      "onScreen": true,
+      "yardsFromTee": 246,
+      "yardsToPin": 187
+    },
+    {
+      "x": 0.5797,
+      "y": 0.262,
+      "onScreen": true,
+      "yardsFromTee": 257,
+      "yardsToPin": 176
+    },
+    {
+      "x": 0.5748,
+      "y": 0.2695,
+      "onScreen": true,
+      "yardsFromTee": 267,
+      "yardsToPin": 166
+    },
+    {
+      "x": 0.5697,
+      "y": 0.2774,
+      "onScreen": true,
+      "yardsFromTee": 278,
+      "yardsToPin": 155
+    },
+    {
+      "x": 0.5646,
+      "y": 0.2858,
+      "onScreen": true,
+      "yardsFromTee": 289,
+      "yardsToPin": 144
+    },
+    {
+      "x": 0.5595,
+      "y": 0.295,
+      "onScreen": true,
+      "yardsFromTee": 299,
+      "yardsToPin": 134
+    },
+    {
+      "x": 0.5538,
+      "y": 0.3051,
+      "onScreen": true,
+      "yardsFromTee": 310,
+      "yardsToPin": 123
+    },
+    {
+      "x": 0.5476,
+      "y": 0.3164,
+      "onScreen": true,
+      "yardsFromTee": 321,
+      "yardsToPin": 112
+    },
+    {
+      "x": 0.5412,
+      "y": 0.3294,
+      "onScreen": true,
+      "yardsFromTee": 331,
+      "yardsToPin": 102
+    },
+    {
+      "x": 0.5349,
+      "y": 0.3442,
+      "onScreen": true,
+      "yardsFromTee": 342,
+      "yardsToPin": 91
+    },
+    {
+      "x": 0.529,
+      "y": 0.3614,
+      "onScreen": true,
+      "yardsFromTee": 353,
+      "yardsToPin": 80
+    },
+    {
+      "x": 0.5239,
+      "y": 0.3812,
+      "onScreen": true,
+      "yardsFromTee": 363,
+      "yardsToPin": 70
+    },
+    {
+      "x": 0.52,
+      "y": 0.4041,
+      "onScreen": true,
+      "yardsFromTee": 374,
+      "yardsToPin": 59
+    },
+    {
+      "x": 0.517,
+      "y": 0.4303,
+      "onScreen": true,
+      "yardsFromTee": 385,
+      "yardsToPin": 48
+    },
+    {
+      "x": 0.5144,
+      "y": 0.4657,
+      "onScreen": true,
+      "yardsFromTee": 395,
+      "yardsToPin": 38
+    },
+    {
+      "x": 0.512,
+      "y": 0.4948,
+      "onScreen": true,
+      "yardsFromTee": 406,
+      "yardsToPin": 27
+    },
+    {
+      "x": 0.5089,
+      "y": 0.5305,
+      "onScreen": true,
+      "yardsFromTee": 417,
+      "yardsToPin": 16
+    },
+    {
+      "x": 0.5043,
+      "y": 0.5784,
+      "onScreen": true,
+      "yardsFromTee": 428,
+      "yardsToPin": 5
+    }
+  ]
+}
