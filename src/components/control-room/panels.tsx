@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Download,
   Flag,
+  History,
   Lock,
   OctagonAlert,
   Printer,
@@ -22,6 +23,7 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import { PublishDialog } from "@/components/draw/PublishDialog";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { Issue } from "@/lib/draw/validate";
 import { type ActivityEntry, ago, useActivity } from "@/lib/ui/activity";
 import type { useBoard } from "@/lib/ui/board";
@@ -533,6 +535,49 @@ const ACT_ICON: Record<ActivityEntry["kind"], ReactNode> = {
   entry: <ClipboardList className="size-4 text-fairway" aria-hidden="true" />,
 };
 
+/**
+ * The session log itself, shared by the drawer and the small-screen card, so the two never drift.
+ */
+export function ActivityList({ className }: { className?: string }) {
+  const log = useActivity();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (log.length === 0) {
+    return (
+      <p className="hint">
+        Nothing yet. Moves, locks, draws and publishing show here as they happen. A saved history
+        arrives with the database.
+      </p>
+    );
+  }
+
+  return (
+    <ul className={cn("grid gap-3 pr-1", className ?? "max-h-[150px] overflow-y-auto")}>
+      {log.map((e) => (
+        <li key={e.id} className="flex items-start gap-2.5">
+          <span className="grid size-[34px] shrink-0 place-items-center rounded-full bg-[rgba(238,240,234,0.08)]">
+            {ACT_ICON[e.kind]}
+          </span>
+          <div className="min-w-0 flex-1">
+            <b className="block truncate text-[13.5px] font-semibold">{e.title}</b>
+            <span className="text-xs text-ink-muted">{e.detail}</span>
+          </div>
+          <time
+            className="text-[11.5px] whitespace-nowrap text-ink-muted"
+            dateTime={new Date(e.at).toISOString()}
+          >
+            {ago(e.at, now)}
+          </time>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function ActivityPanel({
   variant,
   className,
@@ -540,12 +585,6 @@ export function ActivityPanel({
   variant?: PanelVariant;
   className?: string;
 }) {
-  const log = useActivity();
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(t);
-  }, []);
   return (
     <Panel
       title="Recent activity"
@@ -554,33 +593,34 @@ export function ActivityPanel({
       labelledBy="act-h"
       className={className}
     >
-      {log.length === 0 ? (
-        <p className="hint">
-          Nothing yet. Moves, locks, draws and publishing show here as they happen. A saved history
-          arrives with the database.
-        </p>
-      ) : (
-        <ul className="grid max-h-[150px] gap-3 overflow-y-auto pr-1">
-          {log.map((e) => (
-            <li key={e.id} className="flex items-start gap-2.5">
-              <span className="grid size-[34px] shrink-0 place-items-center rounded-full bg-[rgba(238,240,234,0.08)]">
-                {ACT_ICON[e.kind]}
-              </span>
-              <div className="min-w-0 flex-1">
-                <b className="block truncate text-[13.5px] font-semibold">{e.title}</b>
-                <span className="text-xs text-ink-muted">{e.detail}</span>
-              </div>
-              <time
-                className="text-[11.5px] whitespace-nowrap text-ink-muted"
-                dateTime={new Date(e.at).toISOString()}
-              >
-                {ago(e.at, now)}
-              </time>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ActivityList />
     </Panel>
+  );
+}
+
+/**
+ * The control room's session log trigger. It sits in the right rail instead of floating over the
+ * map: the rail and the old bottom-right panel shared one column, so the glass activity card used
+ * to sit on top of the readiness tiles.
+ */
+export function SessionLogDrawer({ className }: { className?: string }) {
+  const log = useActivity();
+  return (
+    <Sheet>
+      <SheetTrigger
+        className={cn(
+          "glass inline-flex h-9 shrink-0 items-center gap-2 self-end rounded-full px-3.5 text-[12.5px] font-semibold text-ink",
+          className,
+        )}
+      >
+        <History className="size-[15px]" aria-hidden="true" />
+        Session log
+        <span className="tnum text-ink-muted">{log.length}</span>
+      </SheetTrigger>
+      <SheetContent title="Recent activity" description="This session" className="scheme-dark">
+        <ActivityList className="max-h-[70vh] overflow-y-auto" />
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -11,6 +11,7 @@ import {
   HandicapHistogram,
   PublishPanel,
   ReadinessPanel,
+  SessionLogDrawer,
 } from "@/components/control-room/panels";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -160,8 +161,10 @@ function ControlRoomInner({
           </p>
         )}
 
-        {/* ≥1280px: the mockup's floating columns. */}
+        {/* ≥1280px: the mockup's floating columns. The session log opens from this rail, so nothing
+            sits on top of it. */}
         <aside className="absolute top-[100px] right-6 hidden max-h-[calc(100dvh-130px)] w-[380px] flex-col gap-3.5 overflow-y-auto pb-6 [scrollbar-width:none] xl:flex">
+          <SessionLogDrawer />
           <AttentionPanel b={b} />
           <ReadinessPanel b={b} />
           <PublishPanel b={b} />
@@ -170,7 +173,6 @@ function ControlRoomInner({
           <DivisionsPanel b={b} />
           <HandicapHistogram b={b} />
         </div>
-        <ActivityPanel className="absolute right-6 bottom-6 hidden h-[230px] w-[380px] xl:block" />
 
         {/* <1280px: readiness and publish in a drawer. */}
         <Sheet>
