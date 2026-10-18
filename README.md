@@ -7,6 +7,7 @@ Stack: Next.js, Supabase (supabase-js, SQL migrations), pnpm, Biome, Vitest. Hos
 
 **Project plan:** [`docs/PLAN.md`](docs/PLAN.md) (status, gaps, roadmap, decisions) ·
 **Runbook:** [`docs/RUNBOOK.md`](docs/RUNBOOK.md) (deploy, roll back, run the day offline) ·
+**Acceptance test:** [`docs/UAT_RUN_SHEET.md`](docs/UAT_RUN_SHEET.md) (the organizer's walkthrough) ·
 **Build spec:** [`docs/spec/IGCC_Tournament_Desk.md`](docs/spec/IGCC_Tournament_Desk.md) ·
 **Agents:** [`AGENTS.md`](AGENTS.md)
 

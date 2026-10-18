@@ -511,18 +511,23 @@ only their own entry. Every finding is written down with a severity the same day
 | W5 | The UAT itself | The run sheet, the session, the findings, the fallback (printed sheets, unpublish, redeploy the previous build) | Jeff and the organizer |
 | W6 | Production hygiene | ~~revoke `anon` execute on the staff functions~~ **Done 19 Oct 2026** (`20261030000000`, and `20261031000000` makes it the default for anything new); CI on pull requests (there is none); a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups; set `NEXT_PUBLIC_SITE_URL` in Vercel to the production domain; show `v{version} · {short commit} · {environment}` in the shell | Jeff |
 
-**The run sheet (one page, to be handed over).**
+**The run sheet** is [`docs/UAT_RUN_SHEET.md`](UAT_RUN_SHEET.md): printable, with a version field to
+fill in first, the eight steps with what the organizer should see at each, a severity scale, and a
+findings table. The summary is:
 
 1. Open the site with no account: the landing page, then the published pairings (no sign-in needed).
 2. Sign in as the organizer: lands on the control room, with name and role shown.
-3. Setup: enter the real ratings, categories and flight ranges. Try saving twice to see the guard
-   refuse a stale save rather than overwrite.
+3. Settings: enter the real ratings, categories and flight ranges. **Use two browser tabs to test the
+   stale-save guard** (save in the first, then save in the second and watch it refuse and ask for a
+   reload). Saving twice in one tab is not a test of it: the second save is not stale. Then tick the
+   course confirmation and withdraw it by changing a rating.
 4. Players: add two or three with birthdates, gender and indexes; check the eligibility review.
 5. Draw: make it, move one player by hand with a reason, lock a group, re-run and confirm the lock holds.
 6. Print: start sheet, pairings and scorecards on the club's paper; the layout should survive A4 and a
    photocopier.
 7. Publish, then open the pairings on a phone and search a name.
 8. Player side: sign in as a player, claim the member record, and confirm the entry and start look right.
+   Needs a player account: without one, skip it and say so rather than marking it failed.
 
 **Sequence and critical path.** W1 first (it unblocks W3), W4 in parallel, W5 when W1 and W3 are done,
 W2 and W6 alongside. The longest lead item is the club's data, which is not in our hands.
@@ -658,7 +663,7 @@ Agent ground rules:
 - [x] Photo consent line shown before every photo; private bucket verified. Checked on 19 Oct 2026: the form will not save a photo without the box ticked (`page.tsx` gates **Save** on `!photo || consent`), `photoOf()` returns nothing unless `photo` **and** `photoConsent` are both set, so an unconsented photo cannot render anywhere. The `player-photos` bucket is `public = false` and anon cannot list it, read an object path or use the public route. **Not** checked, because it does not exist yet: the app has no upload path at all. Photos are shrunk to a 900px JPEG in the browser and live in the session, and `photo_path` is written by nothing. The bucket now caps uploads at 5 MiB and three image types (`20261032000000`), so the gap is bounded before something starts writing to it.
 - [ ] Public pairings page checked on an older phone
 - [ ] Deployed build on `main` opened once with a staff login; the version shown matches the latest `vX.Y.Z` tag (production env vars confirmed first, including `NEXT_PUBLIC_SITE_URL`)
-- [ ] Player portal exercised with a real account and one claimed player row (the migration is applied; a throwaway account and row were made and exercised on 19 Oct 2026, then removed: see the decision log. A real player still needs a real account)
+- [x] Player portal exercised with a real account and one claimed player row. Done on 19 Oct 2026 against the live project with two throwaway accounts and one throwaway player row, all removed afterwards (nothing left: checked by tag). Two accounts were made so the interesting half could be tested. The first claimed the record and its portal resolved to it. The second was refused with `taken` and its portal resolved to nothing, so one player cannot take another's record or read their entry. Claiming twice is idempotent (`already_linked`) rather than an error. Anon cannot claim at all (401). A real player still needs a real account before the event; this proves the flow, not the identity.
 - [ ] Vercel spend limit set; Supabase spend cap on; backups understood
 - [ ] Dress rehearsal with the organizer
 - [x] Rollback plan: `docs/RUNBOOK.md` covers deploying, rolling back, and running the day from a printed sheet if the site is down
@@ -724,7 +729,8 @@ Agent ground rules:
 | 18 Oct 2026 | **The register pager check was flaky, and is fixed rather than tolerated.** `pnpm verify:ui` clicked Next on the register page and the click was swallowed because the page had not hydrated yet (`networkidle` is not the same as interactive). It now clicks, waits, and clicks again if the page number has not moved; page 2 disables Next, so a retry cannot overshoot. The flake was seen twice, once on this branch and once on `feat/help-centre`. |
 | 18 Oct 2026 | **The public entry form now speaks the reader's language (decision 18), on `feat/entry-form-i18n`.** This was the last piece of player-facing copy still in English: 30 keys under `enter.form.*` cover the labels, the hints, the "optional" and "to be confirmed" suffixes, the send button and the review note. The rule from the rest of the work holds: what the club typed is theirs and passes through unchanged, so an instruction, an extra question or the payment note still reads as the organizer wrote it. The form is otherwise only reachable against a connected project, so the dev-only preview page now renders the real form behind a language picker, and `pnpm verify:ui` checks the labels change in Hiligaynon and Tagalog and back. |
 | 18 Oct 2026 | **A "Report a bug" action is marked as a nice-to-have (decision 21).** Jeff wants an in-app way to report a bug, but it is not needed for the UAT. The default is a help-centre action that opens a prefilled GitHub issue with the current screen, the signed-in role, the version/build and an optional note; no schema, no backend and no player data. It is listed under section 8's nice-to-haves, not in the UAT workstreams. |
-| 18 Oct 2026 | **Versioning is the single production source of truth (decision 22).** `docs/VERSIONING.md`, `package.json`, `CHANGELOG.md` and the annotated `vX.Y.Z` tags define what production runs; the tag is authoritative even when a docs-only commit sits on `main` after it. Code reaches `main` only as a tagged release. Current: v0.8.0 tagged at `06a2748`, and `develop` and `main` carry it and are kept level. Open task: show `v{version} · {short commit} · {environment}` in the shell (W6). |
+| 18 Oct 2026 | **Versioning is the single production source of truth (decision 22).** `docs/VERSIONING.md`, `package.json`, `CHANGELOG.md` and the annotated `vX.Y.Z` tags define what production runs; the tag is authoritative even when a docs-only commit sits on `main` after it. Code reaches `main` |only as a tagged release. Current: v0.8.0 tagged at `06a2748`, and `develop` and `main` carry it and are kept level. Open task: show `v{version} · {short commit} · {environment}` in the shell (W6). |
+| 19 Oct 2026 | **The launch checklist was worked, and two of its items were wrong.** CI now runs the four checks plus the browser pass on every pull request (`.github/workflows/ci.yml`), which is the gap that let two bugs reach main: an alerts panel with ivory text on an ivory background, and a paging rule that sent the desk back to page 2. Both passed typecheck, lint, 486 tests and build. The photo item asked for "the private bucket verified", which implied photos go there; they do not, and never have, because the app has no upload path at all and `photo_path` is written by nothing. Photos are shrunk in the browser and kept in the session. The consent half was already sound: the form gates Save on the box being ticked, and `photoOf()` returns nothing unless photo and consent are both set. The bucket was private already, and anon could not list it, read a path or use the public route; it now caps uploads at 5 MiB and three image types. The player portal was exercised end to end with two throwaway accounts and one throwaway row, all removed afterwards: the first claimed the record and its portal resolved to it, the second was refused with `taken` and resolved to nothing, which is the part worth knowing. The run sheet became `docs/UAT_RUN_SHEET.md` and corrected its own step 3, since two saves in one tab cannot be stale and the guard needs two tabs. `docs/RUNBOOK.md` covers deploy, rollback and running the day from paper, and states the one thing a code rollback cannot undo: the database. Every migration so far is additive for that reason. |
 
 ---
 

@@ -12,6 +12,12 @@ Supabase project, because the code and the database are released separately.
 Nothing yet.
 
 ### Added
+- `docs/UAT_RUN_SHEET.md`: the walkthrough the organizer works through, printable, with the version
+  field to fill in first, what they should see at each of the eight steps, a severity scale and a
+  findings table. It corrects the plan's step 3, which said to "save twice" to see the stale-save
+  guard refuse: two saves in one tab cannot be stale, so the second succeeds. The test needs two
+  browser tabs, and the sheet says so. It also says to skip step 8 rather than mark it failed when
+  there is no player account yet.
 - `docs/RUNBOOK.md`: deploying, rolling back, and running the event day from a printed sheet if the
   site is down, plus the known failure modes and what they look like. It states the one thing that
   code rollback cannot undo, which is the database, and why every migration so far being additive is
