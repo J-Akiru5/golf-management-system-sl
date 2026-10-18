@@ -1,4 +1,5 @@
 import type { Dispatch } from "react";
+import { courseNumbersChanged } from "@/lib/data/course-data";
 import { explainRegistration, type RoutingExplanation } from "@/lib/data/explain";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import type { SetupSection } from "@/lib/data/setup-payload";
@@ -10,7 +11,7 @@ import type {
   RegistrationEntry,
   Tournament,
 } from "@/lib/data/types";
-import { DEMO_TEES, SAMPLE_NGAP_CSV } from "@/lib/demo/data";
+import { SAMPLE_NGAP_CSV } from "@/lib/demo/data";
 import {
   buildMergeQueue,
   type ColumnMapping,
@@ -107,6 +108,12 @@ export interface SetupRepository {
     holes: Hole[];
     sections?: SetupSection[] | "all";
   }): void;
+  /**
+   * An owner or organizer vouches that the saved tees and holes match the club scorecard. Printed
+   * sheets lose their placeholder watermark only after this, and any later edit to the numbers
+   * withdraws it.
+   */
+  confirmCourse(tournamentId: string, confirmed: boolean): void;
 }
 
 export interface RegistrationRepository {
@@ -279,13 +286,13 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       const board = boardOf(state);
       const group = board.draw?.find((g) => g.playerIds.includes(playerId));
       const override = [...board.overrides].reverse().find((o) => o.playerId === playerId) ?? null;
-      const tee = DEMO_TEES.find((t) => t.id === reg.teeId);
+      const tee = state.tees.find((t) => t.id === reg.teeId);
       return explainRegistration({
         tournament,
         player,
         entry,
         reg,
-        tees: DEMO_TEES,
+        tees: state.tees,
         group: group
           ? {
               number: group.number,
@@ -303,10 +310,33 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     },
   };
 
-  // Demo mode keeps the event row only: tees and holes are the session constants here, so there is
-  // nowhere to store an edit to them. The connected adapter writes all five tables at once.
+  // Demo mode keeps the setup in the session only. The connected adapter writes all five tables in
+  // one transaction.
   const setup: SetupRepository = {
-    save: ({ tournament }) => dispatch({ type: "saveTournament", tournament }),
+    save: ({ tournament, tees, holes }) => {
+      // Changing a rating or a hole after the card was confirmed withdraws the confirmation: what is
+      // on screen is then no longer what was checked.
+      const changed = courseNumbersChanged(
+        { tees: state.tees, holes: state.holes },
+        { tees, holes },
+      );
+      // saveSetup, not saveTournament: in demo mode the tees and holes belong to the session, and
+      // dropping them here would lose the edit on the next render.
+      dispatch({
+        type: "saveSetup",
+        tournament:
+          changed && tournament.courseDataConfirmed
+            ? { ...tournament, courseDataConfirmed: false }
+            : tournament,
+        tees,
+        holes,
+      });
+    },
+    confirmCourse: (tournamentId, confirmed) => {
+      const t = state.tournaments.find((x) => x.id === tournamentId);
+      if (t)
+        dispatch({ type: "saveTournament", tournament: { ...t, courseDataConfirmed: confirmed } });
+    },
   };
 
   return { players, tournaments, registrations, imports, router, setup };

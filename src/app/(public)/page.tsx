@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { APP_VERSION_LABEL } from "@/lib/version";
 
 export const metadata: Metadata = {
   title: "Every round, beautifully organized",
@@ -197,7 +198,9 @@ export default function HomePage() {
         <Link href="/">
           <TeeLineLogo variant="reverse" width={190} />
         </Link>
-        <p>Developed by Syntaxure Labs</p>
+        <p>
+          Developed by Syntaxure Labs · <span className="select-all">{APP_VERSION_LABEL}</span>
+        </p>
         <Link href="/login">Sign in</Link>
       </footer>
 

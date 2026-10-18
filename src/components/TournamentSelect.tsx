@@ -9,11 +9,13 @@ import { cn } from "@/lib/ui/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 /**
- * The current-tournament selector in the top bar. It is the switch between demo events, and it can
- * clear the selection so the no-tournament empty state is reachable.
+ * The current-tournament selector in the top bar. It switches between the club's events (demo
+ * events in the demo build), and in the demo it can clear the selection so the no-tournament empty
+ * state is reachable.
  */
 export function TournamentSelect({ overlay }: { overlay: boolean }) {
-  const { tournaments, tournament, entries, adapters } = useDesk();
+  const { tournaments, tournament, entries, adapters, status } = useDesk();
+  const demo = status === "demo";
   const startLabel = tournament
     ? tournament.config.startFormat === "shotgun"
       ? `Shotgun · ${fmtTime(tournament.config.firstTeeTime)}`
@@ -44,8 +46,10 @@ export function TournamentSelect({ overlay }: { overlay: boolean }) {
         <div className="border-b border-line px-4 py-3">
           <p className="overline">Current tournament</p>
           <p className="hint mt-0.5">
-            Switching events switches the board. Nothing is saved; this demo lives in the browser
-            session only.
+            Switching events switches the board.{" "}
+            {demo
+              ? "Nothing is saved; this demo lives in the browser session only."
+              : "Each event keeps its own registrations and draw."}
           </p>
         </div>
         <ul className="grid max-h-[50vh] overflow-y-auto p-2">
@@ -77,9 +81,7 @@ export function TournamentSelect({ overlay }: { overlay: boolean }) {
                         : ""}
                     </span>
                     {t.nameNeedsConfirmation && (
-                      <span className="hint block !text-warning">
-                        Sample name, needs organizer confirmation
-                      </span>
+                      <span className="hint block !text-warning">Name not confirmed yet</span>
                     )}
                   </span>
                   {on && <Check className="mt-1 size-4 shrink-0 text-fairway" aria-hidden="true" />}
@@ -89,14 +91,18 @@ export function TournamentSelect({ overlay }: { overlay: boolean }) {
           })}
         </ul>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-3 py-2">
-          <button
-            type="button"
-            className="btn small ghost"
-            onClick={() => adapters.tournaments.select(null)}
-            disabled={tournament === null}
-          >
-            Clear selection
-          </button>
+          {demo ? (
+            <button
+              type="button"
+              className="btn small ghost"
+              onClick={() => adapters.tournaments.select(null)}
+              disabled={tournament === null}
+            >
+              Clear selection
+            </button>
+          ) : (
+            <span />
+          )}
           <Link href="/tournaments" className="btn small ghost">
             Manage tournaments
           </Link>

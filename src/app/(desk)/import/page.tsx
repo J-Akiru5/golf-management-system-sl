@@ -41,7 +41,10 @@ const DECISION_LABEL: Record<MergeDecision["action"], string> = {
 type ReviewTab = "decide" | "decided" | "deferred";
 
 export default function ImportPage() {
-  const { tournament, deferred, state, adapters, dispatch } = useDesk();
+  const { tournament, deferred, state, adapters, dispatch, status } = useDesk();
+  // The sample file holds invented golfers. In the demo that is harmless; on the club's database
+  // applying it would write them as real players, so it is only offered in the demo.
+  const demo = status === "demo";
   const [file, setFile] = useState<ParsedFile | null>(null);
   const [fileName, setFileName] = useState("");
   const [readError, setReadError] = useState("");
@@ -183,8 +186,8 @@ export default function ImportPage() {
           </Button>
         }
       >
-        The club exports the file; this desk reviews it and decides every match. No NGAP connection,
-        no sample export from IGCC yet: the demo parses a CSV and shows exactly what it would write.
+        The club exports the file; this desk reviews it and decides every match. There is no NGAP
+        connection: it reads a CSV and shows exactly what it would write before you apply it.
       </PageHeader>
 
       <div className="notice" role="note">
@@ -221,19 +224,21 @@ export default function ImportPage() {
               }}
             />
           </label>
-          <Button
-            variant="secondary"
-            className="h-auto min-h-10 self-center"
-            onClick={() => load(adapters.imports.sample(), adapters.imports.sampleFileName)}
-          >
-            <FileSpreadsheet aria-hidden="true" />
-            Try the sample file
-          </Button>
+          {demo && (
+            <Button
+              variant="secondary"
+              className="h-auto min-h-10 self-center"
+              onClick={() => load(adapters.imports.sample(), adapters.imports.sampleFileName)}
+            >
+              <FileSpreadsheet aria-hidden="true" />
+              Try the sample file
+            </Button>
+          )}
         </div>
         <p className="hint">
-          The sample file is invented to exercise the review queue: exact matches, a new golfer, an
-          NH row, a name that matches two players, an NGAP ID that disagrees with the record, a
-          duplicate line, and an unreadable date. Excel files (.xlsx) are not supported yet.
+          {demo &&
+            "The sample file is invented to exercise the review queue: exact matches, a new golfer, an NH row, a name that matches two players, an NGAP ID that disagrees with the record, a duplicate line, and an unreadable date. "}
+          Excel files (.xlsx) are not supported yet.
         </p>
         {readError && (
           <Notice tone="bad" alert>
@@ -475,7 +480,7 @@ export default function ImportPage() {
           <p className="hint">
             New player records are created as stubs (name and NGAP ID only). They show as{" "}
             <b>Needs review</b> until birthdate and gender are filled in, because category and tee
-            depend on them. This is session-only demo data.
+            depend on them.{demo && " This is session-only demo data."}
           </p>
         </SectionCard>
       )}

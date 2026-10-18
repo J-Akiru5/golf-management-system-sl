@@ -1,10 +1,12 @@
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { registrationFor } from "@/lib/data/registrations";
 import type {
+  Club,
   DeferredMatch,
   DeskRegistration,
   HandicapImportBatch,
   HandicapRecord,
+  Hole,
   ManualOverride,
   PlayerRecord,
   RegistrationEntry,
@@ -13,13 +15,14 @@ import type {
 import {
   DEMO_CLUB,
   DEMO_CONFIG,
+  DEMO_HOLES,
   DEMO_TEES,
   makeDemoSeed,
   makeDemoTournaments,
 } from "@/lib/demo/data";
 import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
 import type { MergeRow, ResolvedImportRow } from "@/lib/ngap";
-import { type RoutingInput, route } from "@/lib/routing";
+import { type RoutingInput, route, type Tee } from "@/lib/routing";
 
 /** What players see. A frozen copy, so organizer edits never leak out before they publish again. */
 export interface PublishedGroup {
@@ -59,6 +62,14 @@ export const EMPTY_BOARD: BoardState = {
 export interface DeskState {
   /** The tenant boundary. Every record carries the club id (see src/lib/data/types.ts). */
   clubId: string;
+  /** The club as the database names it; the demo club only in demo mode. */
+  club: Club;
+  /**
+   * The tees and holes the draw is routed against. They live in the state, not in module
+   * constants, so a rating the organizer enters changes the next draw rather than only the screen.
+   */
+  tees: Tee[];
+  holes: Hole[];
   tournaments: Tournament[];
   activeTournamentId: string | null;
   players: PlayerRecord[];
@@ -87,6 +98,8 @@ export type Action =
   | { type: "hydrate"; state: DeskState }
   | { type: "selectTournament"; id: string | null }
   | { type: "saveTournament"; tournament: Tournament }
+  /** One setup edit: the event row together with the tees and holes it is routed against. */
+  | { type: "saveSetup"; tournament: Tournament; tees: Tee[]; holes: Hole[] }
   | { type: "addPlayer"; player: PlayerRecord }
   | { type: "updatePlayer"; id: string; patch: Partial<PlayerRecord> }
   | { type: "removePlayer"; id: string }
@@ -104,10 +117,35 @@ export type Action =
   /** The database confirmed a publish and assigned its version number and time. */
   | { type: "publishAck"; tournamentId: string; version: number; at: string };
 
+/**
+ * Nothing at all: the state a connected desk starts from, so a screen never shows invented players
+ * or the sample event while the real ones load, or when loading fails.
+ */
+export const emptyState = (): DeskState => ({
+  clubId: "",
+  club: { id: "", name: "", shortName: "", location: "" },
+  tees: [],
+  holes: [],
+  tournaments: [],
+  activeTournamentId: null,
+  players: [],
+  records: [],
+  entries: [],
+  batches: [],
+  deferred: [],
+  boards: {},
+  importedCount: 0,
+  seq: 0,
+});
+
+/** The in-memory demo, used only when no Supabase URL is configured. */
 export const initialState = (): DeskState => {
   const seed = makeDemoSeed();
   return {
     clubId: DEMO_CLUB.id,
+    club: DEMO_CLUB,
+    tees: DEMO_TEES,
+    holes: DEMO_HOLES,
     tournaments: makeDemoTournaments(),
     activeTournamentId: "bamboo-tee-2026",
     players: seed.players,
@@ -144,7 +182,7 @@ export function buildRegistrations(s: DeskState): DeskRegistration[] {
     out.push(
       registrationFor({
         tournament: t,
-        tees: DEMO_TEES,
+        tees: s.tees,
         player,
         entry,
         records: recordsFor(s, player.id),
@@ -173,7 +211,7 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
   return {
     players,
     config: t.config,
-    tees: DEMO_TEES,
+    tees: s.tees,
     categories: t.categories,
     flights: t.flights,
   };
@@ -269,6 +307,18 @@ export function reducer(state: DeskState, a: Action): DeskState {
       const exists = state.tournaments.some((t) => t.id === a.tournament.id);
       return {
         ...state,
+        tournaments: exists
+          ? state.tournaments.map((t) => (t.id === a.tournament.id ? a.tournament : t))
+          : [...state.tournaments, a.tournament],
+      };
+    }
+
+    case "saveSetup": {
+      const exists = state.tournaments.some((t) => t.id === a.tournament.id);
+      return {
+        ...state,
+        tees: a.tees,
+        holes: a.holes,
         tournaments: exists
           ? state.tournaments.map((t) => (t.id === a.tournament.id ? a.tournament : t))
           : [...state.tournaments, a.tournament],
@@ -574,6 +624,7 @@ export function tournamentTemplate(s: DeskState, name: string, date: string): To
     dates: [date],
     cutOffDate: date,
     scheduleNeedsConfirmation: true,
+    courseDataConfirmed: false,
     config: { ...(base?.config ?? DEMO_CONFIG), date },
     categories: base?.categories ?? [],
     flights: base?.flights ?? [],

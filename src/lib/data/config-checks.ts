@@ -1,5 +1,6 @@
 import type { Tee } from "@/lib/routing";
 import { matchCategories, matchFlights } from "@/lib/routing/classify";
+import { holesComplete, strokeIndexProblem } from "./course-data";
 import type { Hole, Tournament } from "./types";
 
 /**
@@ -59,25 +60,45 @@ export function checkTournament(tournament: Tournament, tees: Tee[], holes: Hole
           },
   );
 
+  const siProblem = strokeIndexProblem(holes);
   const pendingHoles = holes.filter((h) => h.par === null || h.strokeIndex === null).length;
+  const missingHoles = holes.length === 0 ? 18 : pendingHoles;
   checks.push(
-    pendingHoles > 0
-      ? {
-          id: "holes",
-          level: "warn",
-          label: `Course data pending (${pendingHoles} holes)`,
-          detail:
-            "Par and stroke index per hole are not entered. Scorecards print placeholders until the club scorecard is supplied.",
-        }
-      : { id: "holes", level: "ok", label: "Hole data entered", detail: `${holes.length} holes` },
+    siProblem
+      ? { id: "holes", level: "bad", label: "Stroke index is not valid", detail: siProblem }
+      : missingHoles > 0 || !holesComplete(holes)
+        ? {
+            id: "holes",
+            level: "warn",
+            label: `Hole data not entered (${missingHoles} holes)`,
+            detail:
+              "Par and stroke index per hole are not entered. Scorecards leave them blank and say so until the club scorecard is supplied.",
+          }
+        : { id: "holes", level: "ok", label: "Hole data entered", detail: `${holes.length} holes` },
   );
-  checks.push({
-    id: "tees",
-    level: "warn",
-    label: "Tee ratings are samples",
-    detail:
-      "Course Rating, Slope and Par in this demo are sample data, not IGCC's scorecard. Replace them before a real event.",
-  });
+  checks.push(
+    tees.length === 0
+      ? {
+          id: "tees",
+          level: "bad",
+          label: "No tees are set up",
+          detail: "Without a Course Rating, Slope and Par no playing handicap can be worked out.",
+        }
+      : tournament.courseDataConfirmed
+        ? {
+            id: "tees",
+            level: "ok",
+            label: "Course data confirmed",
+            detail: "An owner or organizer checked the tees and holes against the club scorecard.",
+          }
+        : {
+            id: "tees",
+            level: "warn",
+            label: "Course data not confirmed",
+            detail:
+              "The tees and holes have not been confirmed against the club scorecard. Printed sheets carry a placeholder mark until they are.",
+          },
+  );
 
   for (const category of categories) {
     const tee = tees.find((t) => t.id === category.teeId);
@@ -197,7 +218,7 @@ export function checkTournament(tournament: Tournament, tees: Tee[], holes: Hole
           id: "email",
           level: "ok",
           label: "Response email on file",
-          detail: `${tournament.registration.responseEmail} (shown as the response address only; no mail is sent by this demo).`,
+          detail: `${tournament.registration.responseEmail} (shown as the response address only; TeeLine sends no mail).`,
         }
       : {
           id: "email",
@@ -213,7 +234,7 @@ export function checkTournament(tournament: Tournament, tees: Tee[], holes: Hole
       level: "warn",
       label: "Payment is manual",
       detail:
-        "Bank transfer details are shown to the desk. Nothing is charged, checked or confirmed by this demo.",
+        "Bank transfer details are shown to the desk. Nothing is charged, checked or confirmed by TeeLine.",
     });
   }
 

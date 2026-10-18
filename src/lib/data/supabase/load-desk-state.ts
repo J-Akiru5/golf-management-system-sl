@@ -92,6 +92,10 @@ export interface LoadedDesk {
 export async function loadDeskState(
   client: SupabaseClient<Database>,
   clubId: string,
+  options: {
+    /** Keep this event selected across a reload (for example right after creating it). */
+    preferTournamentId?: string | null;
+  } = {},
 ): Promise<LoadedDesk> {
   const { data: club, error: clubError } = await client
     .from("clubs")
@@ -213,7 +217,11 @@ export async function loadDeskState(
   }
 
   const entries = asArray(entryRows.data).map(toRegistrationEntry);
-  const active = tournaments.find((t) => t.state === "open")?.id ?? tournaments[0]?.id ?? null;
+  const preferred = options.preferTournamentId
+    ? tournaments.find((t) => t.id === options.preferTournamentId)?.id
+    : undefined;
+  const active =
+    preferred ?? tournaments.find((t) => t.state === "open")?.id ?? tournaments[0]?.id ?? null;
 
   // The tees and holes the setup edits. Without these the desk would show the sample ratings even
   // after they had been saved, which reads as "it did not save".
@@ -256,6 +264,9 @@ export async function loadDeskState(
     holes,
     state: {
       clubId,
+      club: { id: club.id, name: club.name, shortName: club.name, location: "" },
+      tees,
+      holes,
       tournaments,
       activeTournamentId: active,
       players,

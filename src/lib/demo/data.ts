@@ -104,6 +104,7 @@ export function makeDemoTournaments(): Tournament[] {
     dates: ["2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"],
     cutOffDate: "2026-11-01",
     scheduleNeedsConfirmation: true,
+    courseDataConfirmed: false,
     // Age and the cut-off read the first day of the event; the legacy DEMO_CONFIG date is not used.
     config: { ...DEMO_CONFIG, date: "2026-11-12" },
     categories: DEMO_CATEGORIES,
@@ -178,6 +179,7 @@ export function makeDemoTournaments(): Tournament[] {
     dates: ["2026-10-24"],
     cutOffDate: "2026-10-17",
     scheduleNeedsConfirmation: false,
+    courseDataConfirmed: false,
     config: {
       ...DEMO_CONFIG,
       date: "2026-10-24",

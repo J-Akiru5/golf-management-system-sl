@@ -9,8 +9,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { PairingsSheet } from "@/components/print/PairingsSheet";
 import { Scorecards } from "@/components/print/Scorecards";
 import { StartSheet } from "@/components/print/StartSheet";
-import type { CourseDataStatus, PrintGroup } from "@/components/print/types";
+import type { PrintGroup } from "@/components/print/types";
 import { Button } from "@/components/ui/button";
+import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
 import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { useDesk } from "@/lib/store/desk-store";
@@ -26,7 +27,7 @@ const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
 ];
 
 export default function PrintCenter() {
-  const { tournament, draw, players, regById, names, holes, published, changedSincePublish } =
+  const { tournament, draw, players, regById, names, tees, holes, published, changedSincePublish } =
     useDesk();
   const [tab, setTab] = useState<Tab>("start");
 
@@ -68,9 +69,13 @@ export default function PrintCenter() {
     }),
   }));
 
-  // The current desk provider is explicitly wired to DEMO_TEES/DEMO_HOLES. Keep the watermark
-  // enabled until the future data adapter supplies authoritative course-data provenance.
-  const courseDataStatus: CourseDataStatus = "placeholder";
+  // Derived from what is saved and whether an owner or organizer confirmed it against the club
+  // scorecard, never typed in: real, confirmed data prints clean; anything else keeps its mark.
+  const courseDataStatus = deriveCourseDataStatus({
+    confirmed: tournament.courseDataConfirmed,
+    tees,
+    holes,
+  });
   const subtitle = `${tournament.name} · ${fmtDateLabel(tournament.dates)} · ${
     shotgun ? "Shotgun start" : "Two-tee start"
   } · first tee ${tournament.config.firstTeeTime}${
@@ -100,6 +105,19 @@ export default function PrintCenter() {
         or Letter, with the navigation left off. Printing on the club's own printer has not been
         tested.
       </PageHeader>
+
+      {courseDataStatus !== "official" && (
+        <p className="notice warn no-print text-[13px]" role="note">
+          <b>
+            {courseDataStatus === "missing"
+              ? "No tees are saved, so no playing handicap can be worked out."
+              : "The course data is not confirmed, so these sheets carry a placeholder mark."}
+          </b>{" "}
+          Enter the club scorecard and confirm it in{" "}
+          <Link href="/setup#course">Settings, Course &amp; tees</Link> before printing for an
+          event.
+        </p>
+      )}
 
       <div className="no-print flex flex-wrap items-center gap-3" data-help="print-tabs">
         <div className="tabs !w-auto grid-cols-4">
