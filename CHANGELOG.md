@@ -11,6 +11,47 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.8.0] - 2026-10-18
+
+Help inside the app, a tidier shell, and a fix for a save that was refused when nothing was wrong.
+
+### Added
+- **Help centre (#31):** a "?" in every shell with a step list for the screen you are on, a "Show me"
+  ring drawn over the control a step names, a first-run welcome, and a printable cheat sheet as the
+  Print center's fourth tab. Desk guides are English literals anchored to the real controls; player
+  guides are dictionary keys, so they are translated. Seen-state is per user in `help_seen`, with
+  localStorage always written, so the welcome shows once per person and once per browser.
+- The rail names each icon on hover and focus, and the tooltip says what the alert dot means rather
+  than only the label (#32).
+- The rail expands into labelled rows and remembers the choice per browser (#32). One variable,
+  `--rail-width` / `--rail-pad`, replaces the hard-coded 60px and 112px, so the shell, the status
+  strip and the control room's absolutely positioned panels all move with it instead of sitting
+  under it. A pre-paint script applies the saved choice, so an expanded rail never flashes compact.
+- The public entry form's own copy is translated (#33), so the language choice covers the form and
+  not only the page around it.
+
+### Changed
+- The theme control is one dropdown — System, Light (Ivory), Dark (Charcoal) — in place of the
+  segmented group and the cycling button (#32). The storage contract is unchanged: `starter-theme`,
+  with `auto` meaning the key is absent, so saved choices and the pre-paint script keep working.
+
+### Fixed
+- **A save was wrongly refused as stale.** `save_event_setup` and `save_draw` both read and bump
+  `tournaments.draw_revision`, and both refuse a write naming a stale one, so they have to agree on a
+  single number. The client kept a counter for each instead of one between them, so saving the event
+  setup invalidated the draw's number: the next draw save was refused with `draw_revision_conflict`
+  even though nobody else had touched anything, and saving the draw broke the next setup save the
+  same way. There is now one store, one number per tournament, shared by both writers (#34).
+- Two shell bugs found in the browser pass while building the rail: the theme dropdown never opened
+  because the tooltip nested inside its trigger swallowed the click, and inside the mobile menu it
+  opened off the right edge of the screen (#32).
+
+### Database
+- `20261028000000_help_seen.sql`: **applied live** on 18 Oct 2026, hand-applied in the SQL editor and
+  verified over the API. Written to be re-runnable.
+- No other migration ships with 0.8.0. `20261024000000`, `20261025000000`, `20261026000000` and
+  `20261027000000` remain applied live.
+
 ## [0.7.1] - 2026-10-18
 
 A fix for a failed call the live browser pass found in 0.7.0.
@@ -178,7 +219,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.7.1...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.8.0...develop
+[0.8.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.0...v0.6.1
