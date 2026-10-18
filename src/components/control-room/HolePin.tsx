@@ -66,21 +66,22 @@ export const HolePin = forwardRef<
 
 /** The selected hole's flight: who is on it, its problems, and a drop slot from the pool. */
 export function HoleCard({ b, slot }: { b: Board; slot: HoleSlot }) {
-  const { state, dispatch, regById, playerById, unplaced, names } = b;
+  const { dispatch, regById, playerById, unplaced, names, draw, tournament } = b;
   const { group } = slot;
   const code = `${slot.hole}${slot.wave ?? ""}`;
-  const size = state.config.groupSize;
+  const config = tournament?.config;
+  const size = config?.groupSize ?? 4;
   const [pick, setPick] = useState("");
 
   const candidates = useMemo(() => {
-    if (!group || !state.draw || group.locked) return [];
+    if (!group || !draw || group.locked || !config) return [];
     return unplaced
       .map((r) => ({
         r,
-        check: dropCheck(state.draw ?? [], state.config, regById, r.playerId, group.number, names),
+        check: dropCheck(draw, config, regById, r.playerId, group.number, names),
       }))
       .filter((c) => c.check.ok);
-  }, [group, state.draw, state.config, regById, unplaced, names]);
+  }, [group, draw, config, regById, unplaced, names]);
 
   const badge =
     slot.status === "blocking" ? (
@@ -104,7 +105,7 @@ export function HoleCard({ b, slot }: { b: Board; slot: HoleSlot }) {
           <h4 className="font-display text-base font-bold">Hole {code}</h4>
           <p className="text-xs text-ink-muted tnum">
             {group
-              ? `${state.config.startFormat === "shotgun" ? "Shotgun" : "Tee"} · ${fmtTime(group.time)} · ${names.flight(group.flightId)}`
+              ? `${config?.startFormat === "shotgun" ? "Shotgun" : "Tee"} · ${fmtTime(group.time)} · ${names.flight(group.flightId)}`
               : "No group starts here"}
           </p>
         </div>
@@ -145,7 +146,9 @@ export function HoleCard({ b, slot }: { b: Board; slot: HoleSlot }) {
                 </span>
                 <span className="min-w-0 flex-1 truncate">{p.name}</span>
                 <span className="text-[10px] font-bold tracking-[.06em] text-ink-muted">HI</span>
-                <span className="w-9 text-right font-bold tnum">{fmtIndex(p.index)}</span>
+                <span className="w-9 text-right font-bold tnum">
+                  {fmtIndex(r?.frozenIndex ?? null)}
+                </span>
                 <span className="text-[10px] font-bold tracking-[.06em] text-ink-muted">PH</span>
                 <span className="w-6 text-right font-bold tnum">
                   {fmtHcp(r?.playingHandicap ?? null)}
@@ -171,7 +174,7 @@ export function HoleCard({ b, slot }: { b: Board; slot: HoleSlot }) {
                   <option value="">Drop to add · choose a player</option>
                   {candidates.map(({ r }) => (
                     <option key={r.playerId} value={r.playerId}>
-                      {r.playerName} (HI {fmtIndex(r.index)})
+                      {r.playerName} (HI {fmtIndex(r.frozenIndex)})
                     </option>
                   ))}
                 </select>
@@ -180,7 +183,12 @@ export function HoleCard({ b, slot }: { b: Board; slot: HoleSlot }) {
                   variant="primary"
                   disabled={!pick}
                   onClick={() => {
-                    dispatch({ type: "move", playerId: pick, toGroup: group.number });
+                    dispatch({
+                      type: "move",
+                      playerId: pick,
+                      toGroup: group.number,
+                      reason: "Added from the hole card",
+                    });
                     setPick("");
                   }}
                 >
@@ -205,7 +213,14 @@ export function HoleCard({ b, slot }: { b: Board; slot: HoleSlot }) {
             size="sm"
             variant="glass"
             aria-pressed={group.locked}
-            onClick={() => dispatch({ type: "lock", group: group.number })}
+            onClick={() =>
+              dispatch({
+                type: "setGroupLocked",
+                group: group.number,
+                locked: !group.locked,
+                reason: "Locked from the hole card",
+              })
+            }
           >
             {group.locked ? <Unlock aria-hidden="true" /> : <Lock aria-hidden="true" />}
             {group.locked ? "Unlock" : "Lock"}

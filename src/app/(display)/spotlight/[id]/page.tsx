@@ -32,11 +32,11 @@ function Display() {
   const router = useRouter();
   const slot = params.get("slot") !== "none";
   const width = useViewportWidth();
-  const { state, registrations } = useDesk();
+  const { draw, registrations } = useDesk();
 
   // Rotation: players in draw order (or the ready list), held 12s each, 400ms crossfade.
-  const order = state.draw
-    ? state.draw.flatMap((g) => g.playerIds)
+  const order = draw
+    ? draw.flatMap((g) => g.playerIds)
     : registrations.filter((r) => r.status === "ok").map((r) => r.playerId);
   const [i, setI] = useState(0);
   const [shown, setShown] = useState(true);

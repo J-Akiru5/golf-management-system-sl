@@ -2,9 +2,8 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import type { DeskPlayer } from "@/lib/demo/data";
+import type { DeskRegistration, PlayerRecord } from "@/lib/data/types";
 import { fmtHcp, fmtIndex, photoOf } from "@/lib/format";
-import type { Registration } from "@/lib/routing";
 import { cn } from "@/lib/ui/cn";
 import { Avatar, StatusPill } from "./bits";
 
@@ -28,8 +27,8 @@ export function PlayerCard({
   variant = "compact",
   children,
 }: {
-  player: DeskPlayer;
-  reg: Registration;
+  player: PlayerRecord;
+  reg: DeskRegistration;
   names: Names;
   profileLink?: boolean;
   variant?: "compact" | "hero";
@@ -58,14 +57,21 @@ export function PlayerCard({
             {player.name}
           </Name>
           <span className="text-[13px] text-ink-muted">
-            {names.category(reg.categoryId)} · age {reg.age}
+            {names.category(reg.categoryId)}
+            {reg.ageKnown ? ` · age ${reg.age}` : ""}
             {reg.teeId ? ` · ${names.tee(reg.teeId)} tee` : ""}
+            {reg.role === "guest" ? " · guest" : ""}
           </span>
-          <StatusPill status={reg.status} />
+          <span className="flex flex-wrap items-center gap-1.5">
+            <StatusPill status={reg.status} />
+            {reg.role === "guest" && <span className="pill info">Guest</span>}
+            {reg.staleIndex && <span className="pill warn">Old index</span>}
+            {reg.frozenOutdated && <span className="pill warn">Re-freeze</span>}
+          </span>
         </div>
       </div>
       <dl className="m-0 grid grid-cols-3 gap-px overflow-hidden rounded-[12px] border border-line bg-line">
-        <Fact label="Handicap Index" value={fmtIndex(player.index)} num />
+        <Fact label="Handicap Index" value={fmtIndex(reg.frozenIndex)} num />
         <Fact label="Playing HCP" value={fmtHcp(reg.playingHandicap)} num strong />
         <Fact label="Flight" value={names.flight(reg.flightId)} />
       </dl>

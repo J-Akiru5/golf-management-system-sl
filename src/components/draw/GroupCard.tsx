@@ -2,10 +2,9 @@
 
 import { memo, useState } from "react";
 import { Avatar } from "@/components/bits";
-import type { DeskPlayer } from "@/lib/demo/data";
+import type { DeskRegistration, PlayerRecord } from "@/lib/data/types";
 import type { DrawGroup, DropCheck, Issue } from "@/lib/draw/validate";
 import { fmtHcp, fmtTime, photoOf } from "@/lib/format";
-import type { Registration } from "@/lib/routing";
 
 export interface GroupCardProps {
   g: DrawGroup;
@@ -13,8 +12,10 @@ export interface GroupCardProps {
   groupSize: number;
   minGroupSize: number;
   flightName: string;
-  players: Map<string, DeskPlayer>;
-  regs: Map<string, Registration>;
+  players: Map<string, PlayerRecord>;
+  regs: Map<string, DeskRegistration>;
+  /** Players the organizer moved by hand; shown with a Manual pill. */
+  manualOverrideIds: ReadonlySet<string>;
   /** Issues that belong to this group. */
   issues: Issue[];
   /** Player picked with the Move button, or being dragged. At most one is active. */
@@ -150,9 +151,10 @@ function GroupCardImpl(p: GroupCardProps) {
             )}
             <button type="button" className="who headbtn" onClick={() => p.onSelectPlayer(id)}>
               <Avatar name={pl.name} photo={photoOf(pl)} />
-              <span>
+              <span className="flex flex-wrap items-center gap-1.5">
                 {pl.name}
-                {r.flightId !== g.flightId && <span className="pill warn gap">Other flight</span>}
+                {p.manualOverrideIds.has(id) && <span className="pill gold">Manual</span>}
+                {r.flightId !== g.flightId && <span className="pill warn">Other flight</span>}
               </span>
             </button>
             <span className="right">

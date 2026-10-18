@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/ui/cn";
 
@@ -5,12 +6,15 @@ import { cn } from "@/lib/ui/cn";
 export function PageHeader({
   overline,
   title,
+  crumbs,
   children,
   actions,
   className,
 }: {
   overline: ReactNode;
   title: ReactNode;
+  /** Contextual trail, e.g. Tournaments / Registration desk. The last item is the current page. */
+  crumbs?: { label: string; href?: string }[];
   children?: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -18,6 +22,24 @@ export function PageHeader({
   return (
     <header className={cn("flex flex-wrap items-end justify-between gap-x-6 gap-y-4", className)}>
       <div className="grid min-w-0 gap-1.5">
+        {crumbs && crumbs.length > 0 && (
+          <nav aria-label="Breadcrumb">
+            <ol className="flex flex-wrap items-center gap-1.5 text-[12px] text-ink-muted">
+              {crumbs.map((c, i) => (
+                <li key={`${c.label}-${i}`} className="flex items-center gap-1.5">
+                  {i > 0 && <span aria-hidden="true">/</span>}
+                  {c.href ? (
+                    <Link href={c.href} className="text-ink-muted no-underline hover:underline">
+                      {c.label}
+                    </Link>
+                  ) : (
+                    <span aria-current="page">{c.label}</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )}
         <p className="overline">{overline}</p>
         <h1>{title}</h1>
         {children && <div className="text-ink-muted">{children}</div>}

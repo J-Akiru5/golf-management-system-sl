@@ -12,7 +12,7 @@ import { useSpotlightData } from "@/lib/ui/spotlight";
 
 /** Pick a player for the clubhouse display and preview the 16:9 card before it goes on screen. */
 export default function SpotlightPicker() {
-  const { state, registrations } = useDesk();
+  const { draw, registrations } = useDesk();
   const ready = registrations.filter((r) => r.status === "ok");
   const [id, setId] = useState(ready[0]?.playerId ?? "");
   const [q, setQ] = useState("");
@@ -103,9 +103,7 @@ export default function SpotlightPicker() {
               <input type="checkbox" checked={slot} onChange={(e) => setSlot(e.target.checked)} />
               Show the photo slot when there is no consented photo (previews only)
             </label>
-            {!state.draw && (
-              <span className="hint">Make the draw to show tee time and pairing.</span>
-            )}
+            {!draw && <span className="hint">Make the draw to show tee time and pairing.</span>}
           </div>
           <div ref={box} className="min-w-0">
             {d ? (

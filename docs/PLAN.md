@@ -17,16 +17,18 @@ Anything not marked is a plan, not a fact.
 
 | Area | State | Evidence |
 | --- | --- | --- |
-| Routing engine (`src/lib/routing`) | **Built**, pure functions, no DB | 21 unit tests |
+| Routing engine (`src/lib/routing`) | **Built**, pure functions, no DB; **lock-aware re-run** | 26 unit tests |
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
-| NGAP CSV import logic (`src/lib/ngap`) | **Built**, column mapping chosen in the UI | 16 unit tests; no `.xlsx`; no UI-to-DB writes |
-| Database schema (`supabase/migrations`) | **Written and tested on a throwaway Postgres 16**; **not applied to any real Supabase project** | 14 tables, RLS on all |
-| Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | Overview (control room), Players, Player profile + poster, Import, Draw, Course & holes, Clubhouse display, Setup, public Pairings |
-| Brand and visual design | **TeeLine Golf rebrand in progress** on `feature/teeline-golf-rebrand`: public landing page, vector identity, Ivory / Charcoal themes; existing IGCC workflows retained under `/admin` | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
-| Printing | **Partial**: browser print of the pairings page only | No start sheet, no scorecards |
+| NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
+| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), both migrations, club row seeded, `player-photos` created private, RLS checked against the anon key | 14 tables, RLS on all |
+| Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`, `src/lib/store/legacy-supabase-store.tsx`) | **Merged (PR #5) and parked**: auth guard, club-scoped repositories, frozen published snapshot, optimistic writes. Written against the earlier store contract; **not yet wired to the shell store** | 24 tests among the 214 |
+| Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | Public TeeLine landing at `/`, control room at `/admin`, plus Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view and profiles |
+| Data boundary (`src/lib/data`) | **Built as mock adapters** over the session store | `PlayerRepository`, `TournamentRepository`, `RegistrationRepository`, `HandicapImportAdapter`, `PairingsRouter`, public allow-list |
+| Brand and visual design | **TeeLine Golf** identity: public landing page, fairway-and-flag vector mark, Ivory / Charcoal themes; the IGCC crest stays a separate club asset | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
+| Printing | **Demo built**: start sheet, pairings, scorecard shell with print CSS | Not tested on the club's paper or printer |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 5 test files, 156 tests passing (`pnpm test`); the contrast file now checks every design-system pair in both themes.
+Whole suite: 17 test files, 214 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
 **The one thing blocking a real event:** nothing the organizer does is saved. The next build step is
 the database connection (section 8, step 1). Until then the app is a working demo, not a tool.
@@ -115,16 +117,19 @@ Biome (lint and format) · Vitest · `supabase-js` and plain SQL migrations (no 
 ### Layout
 
 ```text
-src/lib/routing/   pure routing engine (no DB, no network)
+src/lib/routing/   pure routing engine (no DB, no network), lock-aware re-runs
 src/lib/draw/      draw validation: issues + drop rules
-src/lib/ngap/      CSV import, column mapping
+src/lib/ngap/      CSV import, column mapping, match and merge review queue
 src/lib/poster/    canvas poster generator (preview == export)
-src/lib/store/     in-memory desk store (DEMO ONLY, to be replaced by Supabase)
-src/lib/demo/      demo tees, categories, flights, players
-src/components/    UI; src/components/draw/ is the draw control room
+src/lib/data/      domain types (club_id), cut-off freeze rule, public allow-list,
+                   mock adapters (PlayerRepository, TournamentRepository,
+                   RegistrationRepository, HandicapImportAdapter, PairingsRouter)
+src/lib/store/     session store (DEMO ONLY, to be replaced by Supabase behind the adapters)
+src/lib/demo/      demo club, tees, categories, flights, players, events and the sample NGAP file
+src/components/    UI; src/components/draw/ is the draw control room; src/components/print/ the print center
 src/app/(desk)/    organizer screens;  src/app/(public)/  player-facing pages
 supabase/migrations/   schema;  supabase/seed.sql   development seed
-docs/              this plan and the spec
+docs/              this plan, the spec and the handoffs
 ```
 
 ### Rules that keep it correct
@@ -167,39 +172,45 @@ Verified in `supabase/migrations/20261017000000_init.sql`:
 
 | Screen | State |
 | --- | --- |
-| Overview | Rebuilt as the control room: illustrated course map with hole pins, readiness, publish, divisions, Handicap Index histogram, session activity (demo data) |
-| Players list | Built; add/edit/remove players, in memory |
-| Player profile | Built; photo with consent flag, poster generator (1080×1350 championship, 1080×1080 card) |
-| Import handicaps | Built; CSV, column mapping, applies to in-memory players |
-| Draw control room | Built; generate, drag or move players, lock, issues panel, publish dialog, draft / published / changed states |
-| Setup | Built **read-only** (tees, categories, flights shown, not editable) |
-| Public pairings | Built; search by name, large text, print button |
-| Course & holes | Built; hole 1 overview and green view with shot line and yardage markers drawn from anchor files. **Pictures are an illustration, not IGCC's real hole** |
-| Clubhouse display (spotlight) | Built; 16:9 player card for the clubhouse TV, single player or rotation. Shows recorded data only |
-| Course and tee entry | **Not built** (needs the DB step) |
-| Tournament setup wizard | **Not built** |
-| Registration desk (directory search, copy from past event) | **Not built** |
-| Cut-off freeze UI | **Not built** (`cutoff_date` exists in the schema only) |
-| Start sheet and scorecards with handicap dots | **Not built** |
+| Overview | Control room: illustrated course map with hole pins, event card, attention list (blocks, review, re-freeze, deferred imports, payments), quick actions, readiness, publish, divisions, Handicap Index histogram, session activity, open questions. Demo data |
+| Tournaments | Demo events with dates, cut-off, entries and draw state; switch the working event, create a demo event, clear the selection to see the no-tournament state |
+| Players list | Directory with search (name, nickname, NGAP ID, home course) and filters (status, category, gender, home course); add a player with photo consent. In memory |
+| Player profile | Photo with consent flag, handicap history with the frozen marker, registration facts, private-details panel, poster generator (1080×1350 championship, 1080×1080 card) |
+| Registration desk | Find a player or start a new one, member/guest, sponsor question, per-day tee-time preferences (Day 4 flagged), shirt sizes, extra fields, payment recorded by hand, eligibility review after saving |
+| Import handicaps | CSV, column mapping, match and merge queue with decisions, apply, deferred rows, import history; applies to the session's handicap records |
+| Draw control room | Generate, move (drag or Move, with a reason), lock, re-run keeping locks, override list, issues panel, publish dialog, routing explanation per player, draft / published / changed states |
+| Print center | Start sheet, pairings, scorecard shell with placeholder dots, print CSS for A4/Letter. Published vs draft is labelled |
+| Settings | Setup wizard: basics, course and tees (pending blocks, read-only sample values), cut-off and handicap rules, categories, flights, start and groups, registration fields, live readiness checks |
+| Public pairings | Search by name, large text, print; built through the public allow-list projection (name, flight, hole, time only) |
+| Course & holes | Hole 1 overview and green view with shot line and yardage markers drawn from anchor files. **Pictures are an illustration, not IGCC's real hole** |
+| Clubhouse display (spotlight) | 16:9 player card for the clubhouse TV, single player or rotation. Shows recorded data only |
+| Real course and tee entry | **Pending**: the tee values are deliberately read-only sample data until the club supplies the scorecard |
 | Score encoding and results | Phase 2 |
 
 ---
 
 ## 7. Verified gaps between spec and code
 
-These are places where the spec promises something the code does not do yet. Checked on 17 Oct 2026.
+These are places where the spec promises something the code does not do yet. Checked on 18 Oct 2026.
 
-1. **Re-run moves locked groups.** Spec step 10: "Re-running the router never moves a locked group."
-   Today the `generate` action rebuilds the whole draw and resets every group to `locked: false`
-   (`src/lib/store/desk-store.tsx`), and `route()` has no notion of locked groups. Locking only
-   protects against manual moves. *Fix:* give `route()` locked groups as fixed input and route only the remaining players.
+1. **Re-run and locked groups.** *Fixed in the demo shell*: `route()` takes locked groups, keeps
+   their players and slots, releases a lock that no longer makes sense with the reason, and warns
+   when a locked slot pushes a flight across waves. Covered by `src/lib/routing/locks.test.ts`.
 2. **Nothing persists.** All screens use `DeskProvider` in-memory state.
-3. **Cut-off date is not applied.** The engine takes one index per player; there is no step that picks "latest index on or before the cut-off".
-4. **Printing is incomplete.** Only the browser's print of the pairings page exists.
-5. **Setup is read-only.** Real IGCC ratings cannot be entered through the app yet.
-6. **Tee data is placeholder.** Demo and test numbers (e.g. White 71.5 / 128 / 72) are invented. Wrong numbers give wrong playing handicaps.
-7. **Wave rule vs. small flights.** Keeping flights whole can push a small flight (the demo's Ladies, 3 groups) to wave 2 when one hole is left in wave 1. Needs an organizer decision (see section 10).
-8. **Import is CSV-only.** The real NGAP export format has not been seen; if it is `.xlsx`, support must be added.
+3. **Cut-off date is applied in the desk** (frozen onto each registration; re-freeze offered), but
+   the database write is still missing.
+4. **Printing** has a demo print center (start sheet, pairings, scorecard shell). It has not been
+   printed on the club's paper or printer, and the scorecard dots stay placeholders until the club
+   supplies the stroke index.
+5. **Settings are editable in the demo**, but the real tee data is deliberately read-only until the
+   club supplies the scorecard, so it cannot pass as official.
+6. **Tee data is placeholder.** Demo and test numbers (e.g. White 71.5 / 128 / 72) are invented.
+7. **Wave rule vs. small flights.** Keeping flights whole can push a small flight to wave 2; an
+   organizer decision is still needed (section 10).
+8. **Import is CSV-only** and the NGAP format has still not been seen; the queue's column mapping is
+   the guard against guessing it.
+9. **Multi-day events are a demo assumption.** Age and the cut-off read the first day, because the
+   club has not said which day of a multi-day event counts.
 
 ---
 
@@ -210,15 +221,36 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
 ### Phase 1: first IGCC event
 
 1. **Database connection** *(needs Jeff at a computer with Supabase access)*
-   - Create the Supabase project (Pro). Apply the migration (`supabase db push`). Run `seed.sql` for the club row.
-   - Auth: organizer login, `club_members` row, RLS tested with a real user.
+   - ~~Create the Supabase project (Pro)~~ **Done**: `golf-management-system` (`egfwfyznbndunqfqzxjx`).
+   - ~~Link the CLI and apply both migrations; seed the club row~~ **Done**: `supabase link` and
+     `supabase db push --include-seed`, verified with `supabase migration list --linked`; RLS
+     checked with the anon key; `player-photos` exists as a private bucket.
+   - Regenerate the database types (`supabase gen types typescript --linked`) to replace the
+     hand-written `src/lib/supabase/types.ts`.
+   - Auth: create the Auth user and its `club_members` row (display name and role), then test RLS
+     with a real login. No users exist yet.
+   - Add the course, tee and hole rows. The real IGCC Course Rating, Slope, Par and stroke index are
+     still pending from the club, so this waits on the scorecard.
    - Verify the `player-photos` storage policy with a real upload.
-   - Replace the in-memory store with Supabase reads and writes: players, handicap records, tournaments, registrations, groups.
-2. **Real course data:** setup screens editable; enter IGCC's real Course Rating, Slope, Par and stroke index per tee, checked against the club scorecard.
-3. **NGAP import end to end:** get a real sample export, set the default mapping, write handicap records, apply the cut-off rule (gap 3).
-4. **Lock-aware re-run** (gap 1), with tests.
-5. **Registration desk:** directory search, tap to add, copy list from a past event, cut-off freeze.
-6. **Print:** start sheet, pairings, scorecards with handicap dots (uses `holes.stroke_index`).
+   - **Wire the merged data layer to the shell.** The Supabase repositories, mappers and store were
+     merged in PR #5 and parked at `src/lib/data/supabase` and
+     `src/lib/store/legacy-supabase-store.tsx`; they were written against the earlier `Desk`
+     contract. Port them to the shell's domain types (`src/lib/data/types.ts`) and implement the
+     adapters behind `src/lib/data/adapters.ts`: players, handicap records, tournaments,
+     registrations, groups, the import queue's write path and the frozen public snapshot. Until
+     this is done, the desk runs on local demo data even when Supabase is configured.
+2. **Real course data:** the setup wizard is editable, but the tee and hole values are deliberately
+   locked as sample data. Enter IGCC's real Course Rating, Slope, Par and stroke index per tee and
+   hole, checked against the club scorecard.
+3. **NGAP import end to end:** get a real sample export, set the default mapping, review the merge
+   queue with real names, and confirm the cut-off behaviour with the organizer.
+4. **Lock-aware re-run:** built in the demo (`route()` takes locked groups; tests cover lock
+   stability, release reasons and two-tee alternation). The database version follows step 1.
+5. **Registration desk:** demo built (directory search, new player, member/guest, tee-time
+   preferences, payment recorded by hand, cut-off freeze and re-freeze). Copying a list from a past
+   event and writing to the database are not built.
+6. **Print:** demo print center built (start sheet, pairings, scorecard shell). Print it on real
+   paper at the club, and fill the stroke index so the handicap dots are real.
 7. **Deploy:** Vercel project, env vars, `staging` and `main` branches, CI (typecheck, lint, tests, build).
 8. **Dress rehearsal:** run a full fake tournament with the organizer using real IGCC data before the real event.
 
@@ -343,6 +375,16 @@ Agent ground rules:
 | 17 Oct 2026 | Clubhouse design system adopted (Claude Design artifact). UI moves to Tailwind v4 + shadcn/ui primitives (Radix) + Lucide, themed from the design system tokens. Fonts bundled with `@fontsource` (Geist, Manrope, Cormorant Garamond, Bebas Neue). |
 | 18 Oct 2026 | TeeLine Golf approved as the product brand direction. Trademark clearance remains unverified. The public landing page is `/`; the existing organizer control room is `/admin`. |
 | 17 Oct 2026 | Frontend and backend split into two branches: `feat/clubhouse-ui` (UI) and `feat/supabase-data` (data layer, own worktree). They meet only at the `useDesk()` contract. Handoff prompt: `docs/handoffs/backend-supabase-data.md`. |
+| 18 Oct 2026 | Phase 1 shell work continued on `feat/igcc-tournament-desk-shell` (own worktree, base `develop` @ 6d49b6c). Screens added: Tournaments, Registration desk, Print center; Settings became an editable wizard; Import gained a match/merge review queue; the draw gained lock-aware re-runs, override reasons and per-player routing explanations. |
+| 18 Oct 2026 | The event's demo name is "Bamboo Tee (demo sample title)": the repo materials never name the November event, so the title is editable and flagged for confirmation. |
+| 18 Oct 2026 | Two demo events: Bamboo Tee (12 to 15 Nov 2026, shotgun, cut-off 1 Nov) and an empty Monthly Medal sample for empty states. All demo dates and the cut-off are labelled as needing confirmation. |
+| 18 Oct 2026 | Day 4 "11:30PM Tee Off" is stored exactly as supplied and shown with a "needs organizer confirmation" flag; it is never silently changed. |
+| 18 Oct 2026 | Freeze semantics: the latest NGAP record on or before the cut-off is copied onto the registration; a later import never moves it, and the desk offers a manual re-freeze. |
+| 18 Oct 2026 | The interface carries a "Demo shell · local session data" badge; public pairings are built through an allow-list projection; payments stay manual and unverified. |
+| 18 Oct 2026 | Supabase data layer merged (PR #5, `feat/supabase-data`): email/password auth, membership guard, club-scoped repositories, `tournaments.published_snapshot` and the reworked `public_pairings` RPC. It was written against the earlier `Desk` contract. |
+| 18 Oct 2026 | `feat/igcc-tournament-desk-shell` merged into `develop` directly (owner's instruction). The shell keeps the app: it runs on the session store and the mock adapters. The Supabase layer was preserved rather than dropped: it moved to `src/lib/data/supabase` with `src/lib/store/legacy-supabase-store.tsx`, still compiling and tested. |
+| 18 Oct 2026 | The Supabase project `golf-management-system` (`egfwfyznbndunqfqzxjx`) was linked with the CLI and both migrations are applied, with the club row seeded and `player-photos` created as a private bucket. RLS checked with the anon and service keys. The database is empty of players, registrations and events. `supabase/config.toml` is committed so the CLI runs from the repo. |
+| 18 Oct 2026 | Known state after the merge: with Supabase configured, the sign-in guard and login page work, but desk screens still read and write local demo data. The data layer must be wired behind the shell's `src/lib/data/adapters.ts` interfaces. The interface says so in a banner. |
 
 ---
 

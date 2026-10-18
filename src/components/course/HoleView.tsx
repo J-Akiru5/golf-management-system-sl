@@ -118,13 +118,13 @@ function Overlay({ v }: { v: View }) {
 
 export function HoleView({ hole: initial }: { hole: number }) {
   const b = useBoard();
-  const { state, playerById, regById, names } = b;
-  const shotgun = state.config.startFormat === "shotgun";
+  const { tournament, playerById, regById, names, draw } = b;
+  const shotgun = tournament?.config.startFormat === "shotgun";
   const [hole, setHole] = useState(Math.min(18, Math.max(1, initial || 1)));
   const art = HOLE_ART[hole];
   const [viewId, setViewId] = useState<View["id"]>("overview");
   const view = art?.find((v) => v.id === viewId) ?? art?.[0];
-  const groups = (state.draw ?? []).filter((g) => g.startHole === hole);
+  const groups = (draw ?? []).filter((g) => g.startHole === hole);
 
   return (
     <div className="stack">
@@ -140,7 +140,7 @@ export function HoleView({ hole: initial }: { hole: number }) {
         </div>
         <nav aria-label="Holes" className="flex flex-wrap gap-1.5">
           {Array.from({ length: 18 }, (_, i) => i + 1).map((n) => {
-            const has = (state.draw ?? []).some((g) => g.startHole === n);
+            const has = (draw ?? []).some((g) => g.startHole === n);
             return (
               <button
                 key={n}
@@ -226,11 +226,11 @@ export function HoleView({ hole: initial }: { hole: number }) {
               Starting on hole {hole}
             </h2>
             <p className="hint mb-3">
-              {state.draw
+              {draw
                 ? `${groups.length} group${groups.length === 1 ? "" : "s"} · ${shotgun ? "shotgun" : "two-tee"} start`
                 : "No draw yet"}
             </p>
-            {!state.draw ? (
+            {!draw ? (
               <Button variant="primary" asChild>
                 <Link href="/draw">Go to the draw</Link>
               </Button>
@@ -273,7 +273,9 @@ export function HoleView({ hole: initial }: { hole: number }) {
                             <span className="text-[10px] font-bold tracking-[.06em] text-ink-muted">
                               HI
                             </span>
-                            <b className="w-9 text-right tnum">{fmtIndex(p.index)}</b>
+                            <b className="w-9 text-right tnum">
+                              {fmtIndex(r?.frozenIndex ?? null)}
+                            </b>
                             <span className="text-[10px] font-bold tracking-[.06em] text-ink-muted">
                               PH
                             </span>

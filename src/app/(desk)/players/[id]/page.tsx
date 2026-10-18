@@ -4,23 +4,34 @@ import {
   ArrowLeft,
   Calculator,
   Camera,
+  ClipboardList,
   History,
   ImageIcon,
+  Lock,
   ScrollText,
   Trophy,
   UserX,
 } from "lucide-react";
 import Link from "next/link";
 import { use, useState } from "react";
+import { Avatar } from "@/components/bits";
+import { NeedsTournament } from "@/components/NeedsTournament";
 import { SectionCard } from "@/components/PageHeader";
 import { PlayerCard } from "@/components/PlayerCard";
 import { type PosterFactOption, PosterStudio } from "@/components/PosterStudio";
 import { Button } from "@/components/ui/button";
-import { DEMO_TEES } from "@/lib/demo/data";
+import { fmtIso } from "@/lib/data/labels";
+import { PAYMENT_LABEL } from "@/lib/data/types";
 import { fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
 import { shrinkPhoto } from "@/lib/photo";
 import { rawCourseHandicap } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
+
+const SOURCE_LABEL = {
+  ngap_import: "NGAP import",
+  manual_fix: "Manually corrected",
+  demo_seed: "Demo seed",
+} as const;
 
 function BackLink() {
   return (
@@ -35,14 +46,17 @@ function BackLink() {
 
 export default function PlayerProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { state, playerById, regById, names, dispatch } = useDesk();
+  const { tournament, playerById, regById, entryByPlayer, draw, names, adapters, tees } = useDesk();
   const player = playerById.get(id);
   const reg = regById.get(id);
+  const entry = entryByPlayer.get(id);
   const [consent, setConsent] = useState(false);
   const [pending, setPending] = useState<string | undefined>();
   const [photoError, setPhotoError] = useState("");
 
-  if (!player || !reg) {
+  if (!tournament) return <NeedsTournament what="The player profile" />;
+
+  if (!player) {
     return (
       <div className="grid gap-6">
         <BackLink />
@@ -50,7 +64,7 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
           <div className="grid justify-items-center gap-2">
             <UserX className="size-6 text-ink-muted" aria-hidden="true" />
             <h1 className="text-[22px] leading-7">Player not found</h1>
-            <p className="muted">This player is not in the tournament any more.</p>
+            <p className="muted">This player is not in the club directory.</p>
             <Button variant="secondary" asChild className="mt-2">
               <Link href="/players">Back to players</Link>
             </Button>
@@ -60,50 +74,63 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
     );
   }
 
-  const tee = DEMO_TEES.find((t) => t.id === reg.teeId);
-  const group = state.draw?.find((g) => g.playerIds.includes(player.id));
-  const shotgun = state.config.startFormat === "shotgun";
+  const records = adapters.players
+    .recordsFor(player.id)
+    .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
+  const latest = records[0] ?? null;
+  const teeDef = reg?.teeId ? tees.find((t) => t.id === reg.teeId) : undefined;
+  const raw =
+    teeDef && reg && reg.frozenIndex !== null ? rawCourseHandicap(reg.frozenIndex, teeDef) : null;
+
+  const shotgun = tournament.config.startFormat === "shotgun";
+  const group = draw?.find((g) => g.playerIds.includes(player.id)) ?? null;
   const photo = photoOf(player);
-  const dateLabel = new Date(`${state.config.date}T00:00:00`).toLocaleDateString("en-PH", {
+  const dateLabel = new Date(`${tournament.config.date}T00:00:00`).toLocaleDateString("en-PH", {
     dateStyle: "long",
   });
 
   const options: PosterFactOption[] = [
-    ...(player.index !== null
-      ? [{ id: "index", label: "Handicap Index", value: fmtIndex(player.index) }]
+    ...(reg && reg.frozenIndex !== null
+      ? [{ id: "index", label: "Handicap Index", value: fmtIndex(reg.frozenIndex) }]
       : []),
-    ...(reg.playingHandicap !== null
+    ...(reg && reg.playingHandicap !== null
       ? [{ id: "playing", label: "Playing handicap", value: fmtHcp(reg.playingHandicap) }]
       : []),
-    ...(reg.categoryId
+    ...(reg?.categoryId
       ? [{ id: "category", label: "Category", value: names.category(reg.categoryId) }]
       : []),
-    ...(reg.flightId ? [{ id: "flight", label: "Flight", value: names.flight(reg.flightId) }] : []),
+    ...(reg?.flightId
+      ? [{ id: "flight", label: "Flight", value: names.flight(reg.flightId) }]
+      : []),
+    ...(player.homeCourse ? [{ id: "home", label: "Home course", value: player.homeCourse }] : []),
   ];
 
-  const raw = tee && player.index !== null ? rawCourseHandicap(player.index, tee) : null;
-
-  const facts: { label: string; value: string; mono?: boolean }[] = [
-    {
-      label: "Entry",
-      value:
-        reg.status === "ok"
-          ? "Ready"
-          : reg.status === "ineligible"
-            ? "Not eligible"
-            : "Needs review",
-    },
-    {
-      label: "Group",
-      value: group
-        ? `${shotgun ? "Hole" : "Tee"} ${group.startHole} · ${fmtTime(group.time)}`
-        : state.draw
-          ? "Not in a group"
-          : "Draw not made yet",
-    },
-    { label: "NGAP ID", value: player.ngapId ?? "—", mono: true },
-    { label: "T-shirt", value: player.shirt ?? "—" },
-  ];
+  const facts: { label: string; value: string; mono?: boolean }[] = reg
+    ? [
+        {
+          label: "Entry",
+          value:
+            reg.status === "ok"
+              ? "Ready"
+              : reg.status === "ineligible"
+                ? "Not eligible"
+                : "Needs review",
+        },
+        { label: "Role", value: reg.role === "guest" ? "Guest" : "Member" },
+        {
+          label: "Group",
+          value: group
+            ? `${shotgun ? "Hole" : "Tee"} ${group.startHole} · ${fmtTime(group.time)}`
+            : draw
+              ? "Not in a group"
+              : "Draw not made yet",
+        },
+        { label: "NGAP ID", value: player.ngapId ?? "—", mono: true },
+      ]
+    : [
+        { label: "Entry", value: "Not entered in this event" },
+        { label: "NGAP ID", value: player.ngapId ?? "—", mono: true },
+      ];
 
   return (
     <div className="grid gap-6">
@@ -111,42 +138,105 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="grid min-w-0 gap-6">
-          <PlayerCard player={player} reg={reg} names={names} profileLink={false} variant="hero" />
+          {reg ? (
+            <PlayerCard
+              player={player}
+              reg={reg}
+              names={names}
+              profileLink={false}
+              variant="hero"
+            />
+          ) : (
+            <section className="card grid gap-4">
+              <div className="flex items-center gap-3.5">
+                <Avatar name={player.name} photo={photo} large />
+                <div className="grid gap-1">
+                  <p className="overline">Player profile</p>
+                  <h1 className="text-[26px] leading-8">{player.name}</h1>
+                  <span className="text-[13px] text-ink-muted">
+                    Not entered in {tournament.name}
+                    {player.homeCourse ? ` · ${player.homeCourse}` : ""}
+                  </span>
+                </div>
+              </div>
+              <Button variant="primary" asChild className="justify-self-start">
+                <Link href={`/register?player=${player.id}`}>
+                  <ClipboardList aria-hidden="true" />
+                  Register in {tournament.name}
+                </Link>
+              </Button>
+            </section>
+          )}
 
           <SectionCard
             id="handicap-h"
             icon={<Calculator />}
             title="Handicap"
-            subtitle="Index from NGAP, playing handicap for the tee they play."
+            subtitle="The index comes from the NGAP import. The playing handicap is worked out for the tee."
           >
-            <p>
-              The <b>Handicap Index</b> comes from NGAP and travels with the player. The{" "}
-              <b>playing handicap</b> is worked out for the tee they play, and is what counts on the
-              day.
-            </p>
-            {raw !== null && tee && player.index !== null ? (
+            {reg && raw !== null && reg.frozenIndex !== null && teeDef ? (
               <p className="calc mono">
-                {fmtIndex(player.index)} × ({tee.slope} ÷ 113) + ({tee.courseRating} − {tee.par}) ={" "}
-                {raw.toFixed(1)}
-                {state.config.allowance !== 1 && ` × ${Math.round(state.config.allowance * 100)}%`}{" "}
+                {fmtIndex(reg.frozenIndex)} × ({teeDef.slope} ÷ 113) + ({teeDef.courseRating} −{" "}
+                {teeDef.par}) = {raw.toFixed(1)}
+                {tournament.config.allowance !== 1 &&
+                  ` × ${Math.round(tournament.config.allowance * 100)}%`}{" "}
                 → <b>{fmtHcp(reg.playingHandicap)}</b>
               </p>
             ) : (
               <p className="muted">
-                {player.index === null
-                  ? "No Handicap Index on file, so there is no playing handicap."
-                  : "No tee yet, so there is no playing handicap."}
+                {reg?.frozenIndex === null
+                  ? "No frozen index for this event, so there is no playing handicap."
+                  : "The registration is not in this event, so there is no playing handicap here."}
               </p>
             )}
-            {tee && (
-              <p className="hint">
-                Uses the {tee.name} tee ratings entered in this demo. They are placeholders until
-                the club’s real Course Rating, Slope and Par are entered.
+            <p className="hint">
+              Tee ratings on this screen are sample values, not IGCC's scorecard. The app never
+              computes an official WHS index; it only reads what the import supplies.
+            </p>
+          </SectionCard>
+
+          <SectionCard
+            id="history-h"
+            icon={<History />}
+            title="Handicap history"
+            subtitle={`Imported records for this player. The event freezes the latest one on or before ${tournament.cutOffDate}.`}
+          >
+            {records.length === 0 ? (
+              <p className="muted text-[14px]">
+                No handicap record on file. Nothing is estimated; the next NGAP import can supply
+                one.
               </p>
+            ) : (
+              <ol className="plain grid gap-2">
+                {records.map((r) => {
+                  const frozenHere = reg?.frozenRecordId === r.id;
+                  return (
+                    <li
+                      key={r.id}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] border border-line px-3 py-2"
+                    >
+                      <span className="mono w-[4.5rem] font-semibold">
+                        {fmtIso(r.effectiveDate)}
+                      </span>
+                      <span className="mono w-14 font-bold">{fmtIndex(r.index)}</span>
+                      <span className="hint flex-1">{SOURCE_LABEL[r.source]}</span>
+                      {frozenHere && <span className="pill gold">Frozen for this event</span>}
+                      {r.id === latest?.id && !frozenHere && <span className="pill">Latest</span>}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+            {reg?.frozenOutdated && (
+              <div className="notice warn" role="status">
+                <b>Re-freeze needed.</b> The records now select {fmtIndex(latest?.index ?? null)}
+                {latest ? ` (${latest.effectiveDate})` : ""}, but this registration still uses{" "}
+                {fmtIndex(reg.frozenIndex)}. Re-freeze from the registration desk.
+              </div>
             )}
           </SectionCard>
 
-          <SectionCard id="event-h" icon={<Trophy />} title="This tournament">
+          <SectionCard id="event-h" icon={<Trophy />} title="Registration">
             <dl className="m-0 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-line bg-line sm:grid-cols-4">
               {facts.map((f) => (
                 <div
@@ -162,6 +252,38 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
                 </div>
               ))}
             </dl>
+            {entry && (
+              <div className="grid gap-2 text-[14px]">
+                <p>
+                  <b>{tournament.registration.sponsorQuestion}</b>{" "}
+                  {entry.sponsor === null ? "Not asked yet." : entry.sponsor ? "Yes." : "No."}
+                </p>
+                <p>
+                  <b>Tee-time preferences.</b>{" "}
+                  {tournament.registration.teeTimes
+                    .map(
+                      (d) =>
+                        `${d.label}: ${entry.teePreferences[d.date] ?? "not given"}${
+                          d.needsConfirmation ? " (needs organizer confirmation)" : ""
+                        }`,
+                    )
+                    .join(" · ")}
+                </p>
+                <p>
+                  <b>Shirt size.</b> {entry.shirt ?? "Not given"} · <b>Payment.</b>{" "}
+                  {PAYMENT_LABEL[entry.paymentStatus]} (recorded by hand, no online payment)
+                </p>
+                {entry.declaredWshId && (
+                  <p className="hint">
+                    WHS ID given on the form: {entry.declaredWshId}
+                    {entry.declaredWshHandicap
+                      ? ` · WHS handicap as of 1 Oct 2026: ${entry.declaredWshHandicap}`
+                      : ""}
+                    . Informational only; eligibility uses the imported index.
+                  </p>
+                )}
+              </div>
+            )}
           </SectionCard>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -180,117 +302,149 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        <SectionCard
-          id="photo-h"
-          icon={<Camera />}
-          title="Photo"
-          subtitle="Kept only with the player’s agreement. Never shown on public pages."
-        >
-          {photo ? (
-            <img
-              className="aspect-square w-full max-w-[240px] rounded-[14px] border border-line object-cover"
-              src={photo}
-              alt={`${player.name}`}
-            />
-          ) : (
-            <div className="grid h-36 w-full place-items-center rounded-[14px] border border-dashed border-line-strong bg-surface-sunken text-center">
-              <div className="grid justify-items-center gap-1.5 px-4">
-                <ImageIcon className="size-6 text-ink-muted" aria-hidden="true" />
-                <p className="muted text-[14px]">No photo on file with the player’s agreement.</p>
+        <div className="grid gap-6">
+          <SectionCard
+            id="photo-h"
+            icon={<Camera />}
+            title="Photo"
+            subtitle="Kept only with the player's agreement. Never shown on public pages."
+          >
+            {photo ? (
+              <img
+                className="aspect-square w-full max-w-[240px] rounded-[14px] border border-line object-cover"
+                src={photo}
+                alt={`${player.name}`}
+              />
+            ) : (
+              <div className="grid h-36 w-full place-items-center rounded-[14px] border border-dashed border-line-strong bg-surface-sunken text-center">
+                <div className="grid justify-items-center gap-1.5 px-4">
+                  <ImageIcon className="size-6 text-ink-muted" aria-hidden="true" />
+                  <p className="muted text-[14px]">No photo on file with the player's agreement.</p>
+                </div>
               </div>
-            </div>
-          )}
-          <label className="field">
-            <span>{photo ? "Replace photo" : "Add photo"}</span>
-            <input
-              type="file"
-              accept="image/*"
-              capture="user"
-              className="text-[13px] text-ink-muted"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                setPhotoError("");
-                setConsent(false);
-                if (!f) return setPending(undefined);
-                try {
-                  setPending(await shrinkPhoto(f));
-                } catch (err) {
-                  setPhotoError((err as Error).message);
+            )}
+            <label className="field">
+              <span>{photo ? "Replace photo" : "Add photo"}</span>
+              <input
+                type="file"
+                accept="image/*"
+                capture="user"
+                className="text-[13px] text-ink-muted"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  setPhotoError("");
+                  setConsent(false);
+                  if (!f) return setPending(undefined);
+                  try {
+                    setPending(await shrinkPhoto(f));
+                  } catch (err) {
+                    setPhotoError((err as Error).message);
+                  }
+                }}
+              />
+            </label>
+            {photoError && (
+              <p className="hint !text-danger" role="alert">
+                {photoError}
+              </p>
+            )}
+            {pending && (
+              <div className="grid gap-3 rounded-[12px] bg-surface-sunken p-3">
+                <label className="check text-[13px]">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => setConsent(e.target.checked)}
+                  />
+                  <span>
+                    The player agrees to have their photo kept on file and used for check-in, their
+                    player profile and tournament posters.
+                  </span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={!consent}
+                    onClick={() => {
+                      adapters.players.update(player.id, { photo: pending, photoConsent: true });
+                      setPending(undefined);
+                      setConsent(false);
+                    }}
+                  >
+                    Save photo
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setPending(undefined)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+            {photo && !pending && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="justify-self-start"
+                onClick={() =>
+                  adapters.players.update(player.id, { photo: undefined, photoConsent: undefined })
                 }
-              }}
-            />
-          </label>
-          {photoError && (
-            <p className="hint !text-danger" role="alert">
-              {photoError}
-            </p>
-          )}
-          {pending && (
-            <div className="grid gap-3 rounded-[12px] bg-surface-sunken p-3">
-              <label className="check text-[13px]">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(e) => setConsent(e.target.checked)}
-                />
-                <span>
-                  The player agrees to have their photo kept on file and used for check-in, their
-                  player profile and tournament posters.
-                </span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={!consent}
-                  onClick={() => {
-                    dispatch({
-                      type: "updatePlayer",
-                      id: player.id,
-                      patch: { photo: pending, photoConsent: true },
-                    });
-                    setPending(undefined);
-                    setConsent(false);
-                  }}
-                >
-                  Save photo
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setPending(undefined)}>
-                  Cancel
-                </Button>
+              >
+                Remove photo
+              </Button>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            id="private-h"
+            icon={<Lock />}
+            title="Private details"
+            subtitle="Organizer screens only. Never on public pairings or posters."
+          >
+            <dl className="grid gap-1.5 text-[14px]">
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-muted">Birthdate</dt>
+                <dd className="m-0 font-semibold tnum">
+                  {player.birthdate ? fmtIso(player.birthdate) : "Not on file"}
+                </dd>
               </div>
-            </div>
-          )}
-          {photo && !pending && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="justify-self-start"
-              onClick={() =>
-                dispatch({
-                  type: "updatePlayer",
-                  id: player.id,
-                  patch: { photo: undefined, photoConsent: undefined },
-                })
-              }
-            >
-              Remove photo
-            </Button>
-          )}
-        </SectionCard>
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-muted">Contact</dt>
+                <dd className="m-0 font-semibold">{player.contactNumber ?? "Not on file"}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-muted">Email</dt>
+                <dd className="m-0 min-w-0 truncate font-semibold">
+                  {player.email ?? "Not on file"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-muted">Photo consent</dt>
+                <dd className="m-0 font-semibold">
+                  {player.photoConsent ? "Recorded" : "Not recorded"}
+                </dd>
+              </div>
+            </dl>
+            <p className="hint">
+              Birthdates, contact details and photos are personal data. This demo makes no
+              legal-compliance claim; the desk keeps them for organizer use only.
+            </p>
+          </SectionCard>
+        </div>
       </div>
 
       <section aria-labelledby="poster-h" className="grid gap-4">
         <div className="wave-head">
           <h2 id="poster-h">Poster</h2>
-          <span className="muted">Built from this player’s record. Nothing is made up.</span>
+          <span className="muted">
+            League-style player card, built from this player's record. Nothing is made up.
+          </span>
         </div>
         <PosterStudio
           key={player.id}
           playerName={player.name}
           photo={photo}
           club="TeeLine Golf · IGCC"
-          event={state.name.replace(/\s*\(demo\)\s*$/i, "")}
+          event={tournament.name.replace(/\s*\(demo sample title\)\s*$/i, "")}
           dateLabel={dateLabel}
           options={options}
         />

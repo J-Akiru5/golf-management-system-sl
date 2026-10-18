@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Implementation report for the IGCC Tournament Desk Supabase data layer."
+    />
+    <title>Supabase data layer · IGCC Tournament Desk</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #171c19;
+        --surface: #202722;
+        --surface-raised: #28332c;
+        --line: #3a473e;
+        --ivory: #eef0ea;
+        --muted: #b5beb5;
+        --gold: #e0bc65;
+        --forest: #183f30;
+        --good: #a5d5b4;
+        --warn: #f1cf7d;
+        --bad: #ffb1a5;
+        --measure: 760px;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: var(--bg);
+        color: var(--ivory);
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; min-width: 320px; line-height: 1.65; }
+      a { color: var(--gold); text-underline-offset: 3px; }
+      a:hover { color: #f1d88e; }
+      code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+      code { color: #f1d88e; overflow-wrap: anywhere; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { font-size: clamp(2.1rem, 5vw, 4rem); line-height: 1.04; letter-spacing: -0.04em; }
+      h2 { font-size: clamp(1.45rem, 3vw, 2rem); line-height: 1.2; margin-bottom: .8rem; }
+      h3 { font-size: 1.08rem; line-height: 1.35; margin-bottom: .5rem; }
+      p { max-width: var(--measure); color: var(--muted); }
+      ul, ol { padding-left: 1.25rem; }
+      li + li { margin-top: .35rem; }
+
+      .hero {
+        width: 100%;
+        padding: clamp(2rem, 6vw, 5rem) clamp(1.25rem, 6vw, 5.5rem) 2rem;
+        background: linear-gradient(125deg, #183f30 0%, #202a23 62%, #171c19 100%);
+        border-bottom: 1px solid var(--line);
+      }
+      .hero-inner, .nav-inner, .content { width: min(1200px, 100%); margin: 0 auto; }
+      .eyebrow { color: var(--gold); font-size: .76rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+      .hero p { font-size: 1.08rem; }
+      .hero .subline { color: #d4ddd4; font-size: .92rem; }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+        gap: .75rem;
+        margin-top: 1.8rem;
+        max-width: 950px;
+      }
+      .stat {
+        padding: .85rem 1rem;
+        border: 1px solid rgba(238, 240, 234, .17);
+        border-radius: 12px;
+        background: rgba(13, 24, 18, .36);
+      }
+      .stat strong { display: block; color: var(--ivory); font-size: 1.25rem; }
+      .stat span { display: block; color: #c2cec3; font-size: .8rem; }
+
+      .nav {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        border-bottom: 1px solid var(--line);
+        background: rgba(23, 28, 25, .96);
+        backdrop-filter: blur(12px);
+      }
+      .nav-inner { display: flex; gap: .4rem; overflow-x: auto; padding: .55rem clamp(1rem, 4vw, 2rem); }
+      .nav a {
+        flex: 0 0 auto;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        padding: .35rem .7rem;
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: .78rem;
+        text-decoration: none;
+      }
+      .nav a:hover { background: var(--surface-raised); color: var(--ivory); }
+
+      .content { padding: 1.25rem clamp(1.25rem, 5vw, 4rem) 4rem; }
+      section { padding: clamp(1.5rem, 4vw, 2.6rem) 0; border-bottom: 1px solid var(--line); scroll-margin-top: 4.5rem; }
+      section:last-child { border-bottom: 0; }
+      .section-head { display: flex; align-items: baseline; gap: .8rem; margin-bottom: 1rem; }
+      .num { color: var(--gold); font: 700 .8rem ui-monospace, monospace; }
+      .callout {
+        margin: 1rem 0;
+        padding: 1rem 1.1rem;
+        border-left: 3px solid var(--gold);
+        border-radius: 0 10px 10px 0;
+        background: var(--surface);
+        color: var(--muted);
+      }
+      .callout strong { color: var(--ivory); }
+      .success { border-left-color: var(--good); }
+      .warning { border-left-color: var(--warn); }
+      .risk { border-left-color: var(--bad); }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: .7rem;
+        margin: 1.4rem 0;
+      }
+      .flow-step {
+        position: relative;
+        min-height: 120px;
+        padding: .85rem;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface);
+      }
+      .flow-step:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        top: 50%;
+        right: -.7rem;
+        z-index: 1;
+        width: 1.35rem;
+        height: 1.35rem;
+        display: grid;
+        place-items: center;
+        transform: translate(50%, -50%);
+        border-radius: 50%;
+        background: var(--gold);
+        color: #20221d;
+        font-weight: 900;
+      }
+      .flow-step strong { display: block; margin-bottom: .35rem; color: var(--ivory); }
+      .flow-step span { color: var(--muted); font-size: .82rem; }
+
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+      .card {
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+      .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        margin: .15rem .2rem .15rem 0;
+        padding: .15rem .55rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: #d5ddd5;
+        font-size: .75rem;
+        white-space: nowrap;
+      }
+      .tag.gold { border-color: #8b7338; color: var(--gold); }
+      .tag.good { border-color: #477557; color: var(--good); }
+      .tag.warn { border-color: #8b7338; color: var(--warn); }
+
+      .table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+      table { width: 100%; min-width: 680px; border-collapse: collapse; background: var(--surface); }
+      th, td { padding: .7rem .8rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th { color: var(--gold); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
+      td { color: var(--muted); font-size: .88rem; }
+      tr:last-child td { border-bottom: 0; }
+      td:first-child { color: var(--ivory); font-weight: 650; }
+
+      pre {
+        max-width: 100%;
+        overflow-x: auto;
+        padding: 1rem;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #111613;
+        color: #e4e9df;
+        font-size: .84rem;
+        line-height: 1.6;
+      }
+      .timeline { display: grid; gap: .75rem; counter-reset: next; }
+      .timeline li { list-style: none; position: relative; padding: .1rem 0 .2rem 2.5rem; color: var(--muted); }
+      .timeline li::before {
+        counter-increment: next;
+        content: counter(next);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1.7rem;
+        height: 1.7rem;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--forest);
+        color: var(--gold);
+        font: 700 .8rem ui-monospace, monospace;
+      }
+      .timeline strong { color: var(--ivory); }
+      .footer { padding: 2rem clamp(1.25rem, 5vw, 4rem); border-top: 1px solid var(--line); color: #8e9a90; font-size: .8rem; }
+      .footer-inner { width: min(1200px, 100%); margin: auto; }
+
+      @media (max-width: 760px) {
+        .flow { grid-template-columns: 1fr; }
+        .flow-step { min-height: 0; }
+        .flow-step:not(:last-child)::after { content: "↓"; top: auto; right: 50%; bottom: -.72rem; transform: translate(50%, 50%); }
+        .grid-2 { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 420px) {
+        .hero { padding-top: 2rem; }
+        .nav-inner { padding-left: .7rem; padding-right: .7rem; }
+        .content { padding-left: 1rem; padding-right: 1rem; }
+        .stat { padding: .7rem .8rem; }
+      }
+      @media print {
+        :root { color-scheme: light; --bg: #fff; --surface: #f5f6f2; --surface-raised: #edf0eb; --ivory: #17211b; --muted: #39463d; --line: #cbd2cb; --gold: #72560b; }
+        body { background: white; color: #17211b; }
+        .nav { position: static; }
+        .hero { background: #183f30; print-color-adjust: exact; }
+        .card, .flow-step, table, pre { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <p class="eyebrow">Syntaxure Labs · IGCC Tournament Desk · 18 Oct 2026</p>
+        <h1>Supabase data layer</h1>
+        <p class="subline">Dedicated backend worktree · PR to <code>develop</code> · not merged</p>
+        <p class="subline">The migration is written and reviewed in code; no real project was changed.</p>
+        <div class="stats" aria-label="Implementation summary">
+          <div class="stat"><strong>101 → 180</strong><span>tests: original baseline to final rebased branch</span></div>
+          <div class="stat"><strong>0</strong><span>real Supabase projects changed</span></div>
+          <div class="stat"><strong>1</strong><span>additive migration, owner-approved</span></div>
+          <div class="stat"><strong>green</strong><span>typecheck and production build</span></div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="nav" aria-label="Report sections">
+      <div class="nav-inner">
+        <a href="#summary">Summary</a>
+        <a href="#worktree">Worktree</a>
+        <a href="#contract">Desk contract</a>
+        <a href="#files">Files</a>
+        <a href="#decisions">Questions</a>
+        <a href="#schema">Schema</a>
+        <a href="#limits">Limits</a>
+        <a href="#run">Run locally</a>
+        <a href="#next">Next</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <section id="summary">
+        <div class="section-head"><span class="num">01</span><h2>Summary</h2></div>
+        <p>
+          Supabase mode now refreshes sessions through Next.js 16 <code>proxy.ts</code>, requires a
+          signed-in user with one <code>club_members</code> row, loads the nearest upcoming tournament
+          (or the most recent past one), and persists organizer actions through RLS-scoped repositories.
+          Writes update the UI immediately, serialize in the background, and refresh from the database
+          after a failure. Consented photos use private storage and desk-only signed URLs. The public
+          pairings page calls <code>public.public_pairings()</code>, which reads a frozen snapshot rather
+          than the live draft. This work was rebased onto the merged Clubhouse UI; its screens still have
+          a few demo-only data references called out below.
+        </p>
+
+        <div class="flow" aria-label="Data flow">
+          <div class="flow-step"><strong>Sign in</strong><span>Email and password; SSR cookies refreshed in Proxy.</span></div>
+          <div class="flow-step"><strong>Verify member</strong><span>One club membership is required; the app key is anon only.</span></div>
+          <div class="flow-step"><strong>Load desk</strong><span>Tournament, registered players, setup rules, draw and snapshot.</span></div>
+          <div class="flow-step"><strong>Write</strong><span>Optimistic action → club-scoped repository → RLS.</span></div>
+          <div class="flow-step"><strong>Publish</strong><span>Frozen JSON snapshot → public pairing RPC → names and starts only.</span></div>
+        </div>
+        <div class="callout success"><strong>Verification:</strong> typecheck passed; all 180 tests passed; production build passed. Exact committed LF content passes full Biome. The raw Windows checkout reports line-ending formatting diagnostics because <code>core.autocrlf=true</code>.</div>
+      </section>
+
+      <section id="worktree">
+        <div class="section-head"><span class="num">02</span><h2>Worktree and branch</h2></div>
+        <p>
+          <strong class="mono">S:\Dev\Next.js\golf-management-system-sl-data</strong> · branch
+          <code>feat/supabase-data</code>. This dedicated worktree was chosen because the main checkout
+          was being used by the parallel Clubhouse UI work. During this task, that UI branch merged as
+          PR #4; the data branch was rebased onto <code>origin/develop</code> at
+          <code>6d49b6c</code> before final integration checks. No files in the main checkout were changed.
+        </p>
+        <div class="callout warning">
+          The rebase had conflicts only in shared <code>package.json</code> and
+          <code>pnpm-lock.yaml</code>. I restored <code>develop</code>'s versions and re-added only
+          <code>@supabase/ssr</code> with pnpm, as the handoff required.
+        </div>
+      </section>
+
+      <section id="contract">
+        <div class="section-head"><span class="num">03</span><h2><code>Desk</code> contract delivered</h2></div>
+        <p>
+          No existing <code>Desk</code> field, state field, action name, or exported domain type was
+          removed or renamed. Existing screens still receive the same state and call the same actions.
+          The provider adds readiness and persistence information alongside the existing value.
+        </p>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Preserved</h3>
+            <p><code>state.{name, config, players, draw, drawWarnings, published, importedCount}</code></p>
+            <p><code>registrations</code>, <code>regById</code>, <code>unplaced</code>,
+              <code>isPublished</code>, <code>changedSincePublish</code>, <code>playerById</code>,
+              <code>names.{category, flight, tee}</code>, and <code>classify</code>.</p>
+            <p>Actions: <code>addPlayer</code>, <code>removePlayer</code>, <code>updatePlayer</code>,
+              <code>setConfig</code>, <code>applyImport</code>, <code>generate</code>, <code>move</code>,
+              <code>lock</code>, <code>publish</code>, <code>unpublish</code>.</p>
+            <p><code>Published</code> keeps <code>at</code>, <code>signature</code>, and <code>groups</code>; optional frozen event metadata was added for name, date, start format, and first tee time.</p>
+          </article>
+          <article class="card">
+            <h3>Added to <code>Desk</code></h3>
+            <p><code>status</code> (<code>loading | ready | error</code>), <code>error</code>,
+              <code>member</code> (<code>displayName</code> and <code>owner | organizer | desk</code>),
+              <code>lastSavedAt</code> (ISO timestamp), and <code>saving</code>. These fields are optional
+              in the TypeScript interface and populated by the provider.</p>
+            <p>Internal state also carries club/tournament IDs, cut-off date, loaded tees/categories/flights/holes,
+              and private photo paths. No service-role credential is used in either client.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="files">
+        <div class="section-head"><span class="num">04</span><h2>Files touched</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Folder / file</th><th>Changes</th></tr></thead>
+            <tbody>
+              <tr><td><code>src/lib/supabase/</code></td><td>Typed browser and server clients, public environment validation, handwritten database types from the migrations.</td></tr>
+              <tr><td><code>src/lib/auth/</code></td><td>Password sign-in/sign-out server actions, single-club membership lookup, safe post-login redirect, tests.</td></tr>
+              <tr><td><code>src/lib/data/</code></td><td>Club-scoped tournament/player/handicap/registration/group repositories, row mappers, published RPC mapping and tests.</td></tr>
+              <tr><td><code>src/lib/store/</code></td><td>Persistent <code>DeskProvider</code> branch, serialized optimistic writes, failure refresh, public-pairings mode, demo fallback test.</td></tr>
+              <tr><td><code>src/proxy.ts</code></td><td>Supabase session refresh and membership guard for desk, course and spotlight routes; <code>/pairings</code> remains public.</td></tr>
+              <tr><td><code>src/app/(auth)/login/page.tsx</code></td><td>Plain semantic email/password form. <strong>Unstyled on purpose</strong> for the frontend branch to restyle.</td></tr>
+              <tr><td><code>supabase/migrations/20261018000000_supabase_data_layer.sql</code></td><td>Approved membership profile/role fields and frozen public-pairings snapshot/RPC.</td></tr>
+              <tr><td><code>.env.example</code>, <code>README.md</code></td><td>Only the Run instructions changed; service-role variable removed. Demo and Supabase setup are documented.</td></tr>
+              <tr><td><code>package.json</code>, <code>pnpm-lock.yaml</code></td><td>Only new dependency relative to rebased <code>develop</code>: <code>@supabase/ssr</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="decisions">
+        <div class="section-head"><span class="num">05</span><h2>Questions and decisions</h2></div>
+        <div class="grid-2">
+          <article class="card"><h3>Sign-in method</h3><p><strong>Decision:</strong> email and password. Magic links were not built. No account creation or password-reset UI is included.</p></article>
+          <article class="card"><h3>Membership profile schema</h3><p><strong>Decision:</strong> add <code>display_name</code> and allow roles <code>owner</code>, <code>organizer</code>, and <code>desk</code> so the required <code>member</code> contract can be populated.</p></article>
+          <article class="card"><h3>Extra frontend requests</h3><p><strong>Decision:</strong> none beyond the required Desk contract. No activity table, hole-layout coordinates, or player-history feature was added.</p></article>
+          <article class="card"><h3>Frozen public copy / active event</h3><p><strong>Decision:</strong> add <code>published_snapshot</code> and update <code>public_pairings</code>. Until a picker or active flag exists, the desk uses the nearest upcoming tournament, falling back to the most recent past event.</p></article>
+        </div>
+      </section>
+
+      <section id="schema">
+        <div class="section-head"><span class="num">06</span><h2>Schema changes</h2></div>
+        <p>One additive migration; the initial migration was not edited. No schema was applied to a real or linked Supabase project.</p>
+        <div class="callout"><strong>Migration:</strong> <code>supabase/migrations/20261018000000_supabase_data_layer.sql</code></div>
+        <ul>
+          <li><code>club_members.display_name</code> is added as nullable; the role check is widened to <code>owner</code>, <code>organizer</code>, and <code>desk</code>.</li>
+          <li><code>tournaments.published_snapshot jsonb</code> stores the frozen public copy and has a shape check for its timestamp, signature, and groups array.</li>
+          <li><code>public.public_pairings(p_tournament)</code> now expands only the frozen JSON snapshot, including the event name, date, start format, and first tee time. With no tournament ID it reports the nearest event’s public metadata; an unpublished event has null pairing columns. It never reads live <code>groups</code> or <code>group_members</code>.</li>
+        </ul>
+        <div class="callout warning">The Supabase CLI is installed locally, but this repository has no <code>supabase/config.toml</code> and no linked project. Types were written by hand from the migration and should be regenerated after the owner links the project.</div>
+      </section>
+
+      <section id="limits">
+        <div class="section-head"><span class="num">07</span><h2>What remains demo-only or unverified</h2></div>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Not verified against a real project</h3>
+            <ul>
+              <li>No Supabase project was linked; the new migration has not been applied.</li>
+              <li>Club, course, tees, tournament, categories, flights, Auth user, and membership must be provisioned outside the app. The app has no service-role key or onboarding flow.</li>
+              <li>The current app supports one club per signed-in user; multiple memberships are rejected until a club switcher exists.</li>
+              <li><code>member.displayName</code> is empty until provisioning fills the nullable <code>display_name</code> column. Roles are exposed but do not yet have different RLS permissions.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Frontend follow-ups before real use</h3>
+            <ul>
+              <li>The merged Setup screen still imports demo categories, tees and flights; the player profile also imports demo tee ratings instead of using the loaded Desk data.</li>
+              <li>The NGAP sample-file button remains visible in Supabase mode. Hide it or label it demo-only before connecting real records.</li>
+              <li>Activity remains session-only; hole artwork is static placeholder data; player scoring/history is still empty.</li>
+              <li>The login form is deliberately unstyled, and the shell has no sign-out control yet (the server action exists).</li>
+            </ul>
+          </article>
+        </div>
+        <div class="callout risk"><strong>Handicap-history gap:</strong> the existing schema makes <code>handicap_records.handicap_index</code> NOT NULL. An imported NH row updates the current event’s frozen index to null but cannot be retained as a dated history record. A follow-up schema decision is needed if later tournaments must inherit that NH history.</div>
+        <div class="callout warning"><strong>Save timestamps:</strong> <code>lastSavedAt</code> is null after a fresh load because the current schema has no updated-at audit column; it is populated after this session’s successful writes. Multi-request actions are serialized and failures reload persisted state; draw replacement uses compensating restoration, but this is not a database transaction.</div>
+        <p>Public pairings and the clubhouse display use distinct paths: pairings read only the frozen public RPC; the spotlight remains behind the membership proxy and only signs photos with stored photo consent.</p>
+      </section>
+
+      <section id="run">
+        <div class="section-head"><span class="num">08</span><h2>Run locally</h2></div>
+        <pre><code>pnpm install
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm dev</code></pre>
+        <p>No environment file or variables means deterministic demo mode; refresh resets demo changes. For a connected project, copy <code>.env.example</code> to <code>.env.local</code> and set only:</p>
+        <pre><code>NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...</code></pre>
+        <p>Do not add a service-role key. After Jeff approves and links the project, an authorized operator applies the migrations and provisions the club data and membership. Login is email/password.</p>
+        <div class="callout warning"><strong>Windows lint note:</strong> this checkout has <code>core.autocrlf=true</code> while tracked files are LF. Raw <code>pnpm lint</code> reports formatting diagnostics in the CRLF worktree; lint rules are clean, and full Biome passes on the exact LF index content. Linux/CI checkouts do not have this local line-ending mismatch.</div>
+      </section>
+
+      <section id="next">
+        <div class="section-head"><span class="num">09</span><h2>What is next</h2></div>
+        <ol class="timeline">
+          <li><strong>Jeff provisions Supabase.</strong> Link the project, review and apply the migration, seed the club, and create the first event configuration and Auth membership. Verify RLS with a real account. Nothing from this task applies that migration automatically.</li>
+          <li><strong>Finish frontend integration.</strong> Read the optional Desk status/saving/member fields; source Setup and profile tee values from the loaded store; disable the NGAP sample in connected mode; add a sign-out control.</li>
+          <li><strong>Exercise real workflows.</strong> Sign in, add a player, import a real NGAP file, move/lock groups, publish, edit after publish, and confirm the public route still shows the earlier frozen copy until republished. Verify signed photo URLs and consent removal.</li>
+          <li><strong>Decide the next data questions.</strong> NH history representation, per-role permissions, and an explicit active-tournament picker need owner decisions before schema or policy changes.</li>
+          <li><strong>Review and merge the PR.</strong> This branch is intended for a PR into <code>develop</code>; it is not auto-merged.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="footer"><div class="footer-inner">IGCC Tournament Desk · Backend implementation report · No secrets or project credentials included.</div></footer>
+  </body>
+</html>

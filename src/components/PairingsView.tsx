@@ -1,28 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import type { PublicPairings } from "@/lib/data/types";
 import { fmtTime } from "@/lib/format";
-import type { Published } from "@/lib/store/desk-store";
 
 /**
- * Player-facing pairings: names, flight, hole and time only. No handicaps, ages or photos.
- * Used by the public page and by the organizer's publish preview, so what they check is what
- * players get.
+ * Player-facing pairings: names, flight, hole and time only. Built from an allow-listed
+ * `PublicPairings` object, never from player or registration records. Used by the public page and
+ * by the organizer's publish preview, so what they check is what players get.
  */
 export function PairingsView({
-  published,
-  shotgun,
+  pairings,
   searchable = true,
+  headingLevel = "group",
 }: {
-  published: Published;
-  shotgun: boolean;
+  pairings: PublicPairings;
   searchable?: boolean;
+  /** "group" inside a dialog, "section" when it is the page's main content. */
+  headingLevel?: "group" | "section";
 }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
-  const groups = published.groups.filter(
+  const groups = pairings.groups.filter(
     (g) => !q || g.players.some((name) => name.toLowerCase().includes(q)),
   );
+  const shotgun = pairings.startFormat === "shotgun";
 
   return (
     <>
@@ -55,12 +57,14 @@ export function PairingsView({
             {g.players.map((name) => {
               const hit = q && name.toLowerCase().includes(q);
               return (
-                <div key={name} className={`slot${hit ? " hit" : ""}`}>
+                <div key={`${g.number}-${name}`} className={`slot${hit ? " hit" : ""}`}>
                   {name}
                 </div>
               );
             })}
-            <div className="slot muted">{g.flight}</div>
+            <div className="slot muted">
+              {headingLevel === "section" ? <span className="small-h">{g.flight}</span> : g.flight}
+            </div>
           </article>
         ))}
       </div>

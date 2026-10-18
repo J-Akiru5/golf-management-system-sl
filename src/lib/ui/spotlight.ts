@@ -19,13 +19,13 @@ export function useSpotlightData(
   id: string,
   placeholder: SpotlightData["placeholder"] = "silhouette",
 ): SpotlightData | null {
-  const { state, playerById, regById, names } = useDesk();
+  const { tournament, playerById, regById, names, draw } = useDesk();
   const p = playerById.get(id);
   const r = regById.get(id);
   if (!p) return null;
   const { first, last } = splitName(p.name);
-  const group = state.draw?.find((g) => g.playerIds.includes(id)) ?? null;
-  const shotgun = state.config.startFormat === "shotgun";
+  const group = draw?.find((g) => g.playerIds.includes(id)) ?? null;
+  const shotgun = tournament?.config.startFormat === "shotgun";
   const stats: SpotlightData["stats"] = [];
   if (r?.playingHandicap !== null && r?.playingHandicap !== undefined) {
     stats.push({ label: "Playing hcp", value: fmtHcp(r.playingHandicap) });
@@ -40,18 +40,21 @@ export function useSpotlightData(
       value: fmtTime(group.time).replace(" AM", "").replace(" PM", ""),
     });
   }
-  const date = new Date(`${state.config.date}T00:00:00`).toLocaleDateString("en-PH", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  const date = new Date(`${tournament?.config.date ?? "2026-11-12"}T00:00:00`).toLocaleDateString(
+    "en-PH",
+    {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    },
+  );
   return {
     firstName: first,
     surname: last,
     kicker: `Player profile · ${names.category(r?.categoryId ?? null)}`,
     eventLabel: r?.flightId ? names.flight(r.flightId) : "Tournament",
-    eventName: state.name,
-    index: p.index === null ? null : fmtIndex(p.index),
+    eventName: tournament?.name ?? "",
+    index: r?.frozenIndex === null || r?.frozenIndex === undefined ? null : fmtIndex(r.frozenIndex),
     stats,
     record: [],
     pairingTitle: group ? `Today · ${names.flight(group.flightId)}` : "Today",
@@ -60,7 +63,10 @@ export function useSpotlightData(
           .filter((x) => x !== id)
           .map((x) => playerById.get(x))
           .filter((x) => !!x)
-          .map((x) => `${x.name} · ${fmtIndex(x.index)}`)
+          .map((x) => {
+            const reg = regById.get(x.id);
+            return `${x.name} · ${fmtIndex(reg?.frozenIndex ?? null)}`;
+          })
       : [],
     tee: group
       ? {

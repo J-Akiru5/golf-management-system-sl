@@ -6,14 +6,17 @@ import { CourseCanvas, useCover } from "@/components/control-room/CourseCanvas";
 import { HoleCard, HolePin } from "@/components/control-room/HolePin";
 import {
   ActivityPanel,
+  AttentionPanel,
   DivisionsPanel,
   HandicapHistogram,
   PublishPanel,
   ReadinessPanel,
 } from "@/components/control-room/panels";
+import { NeedsTournament } from "@/components/NeedsTournament";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { COURSE_IS_PLACEHOLDER, MAP_HOLES } from "@/lib/course/layout";
+import type { Tournament } from "@/lib/data/types";
 import { fmtTime } from "@/lib/format";
 import { useBoard } from "@/lib/ui/board";
 import { cn } from "@/lib/ui/cn";
@@ -25,8 +28,19 @@ import { cn } from "@/lib/ui/cn";
  */
 export default function ControlRoom() {
   const b = useBoard();
-  const { state } = b;
-  const { config, draw } = state;
+  if (!b.tournament) return <NeedsTournament what="The control room" />;
+  return <ControlRoomInner b={b} tournament={b.tournament} />;
+}
+
+function ControlRoomInner({
+  b,
+  tournament,
+}: {
+  b: ReturnType<typeof useBoard>;
+  tournament: Tournament;
+}) {
+  const config = tournament.config;
+  const draw = b.draw;
   const mapRef = useRef<HTMLElement>(null);
   const cover = useCover(mapRef);
   const shotgun = config.startFormat === "shotgun";
@@ -71,17 +85,22 @@ export default function ControlRoom() {
         <CourseCanvas cover={cover} />
 
         <div className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[112px]">
-          <p className="text-[11px] font-bold tracking-[.14em] text-gold uppercase">
+          <p className="text-[11px] font-bold tracking-[.14em] text-[#e0bc65] uppercase">
             {shotgun ? "Shotgun start" : "Two-tee start"} · {fmtTime(waveStart)} · {date}
           </p>
           <h1 className="mt-1.5 font-serif text-[34px] leading-[38px] font-semibold !text-on-forest sm:text-[44px] sm:leading-[46px]">
-            {draw ? (shotgun ? "Shotgun draw" : "Two-tee draw") : state.name}
+            {draw ? (shotgun ? "Shotgun draw" : "Two-tee draw") : tournament.name}
           </h1>
           <p className="mt-1.5 text-sm opacity-85">
             {draw
-              ? `${state.name} · ${waveGroups.length} groups across ${shotgun ? `18 holes · Wave ${wave}` : "holes 1 and 10"}`
+              ? `${tournament.name} · ${waveGroups.length} groups across ${shotgun ? `18 holes · Wave ${wave}` : "holes 1 and 10"}`
               : `${b.ready.length} players ready · no draw yet`}
           </p>
+          {tournament.nameNeedsConfirmation && !draw && (
+            <p className="mt-1 text-xs opacity-80">
+              Sample event title; confirm it with the organizer. Demo data only.
+            </p>
+          )}
           {shotgun && b.waves.length > 1 && (
             <div
               className="seg mt-3 !border-[rgba(238,240,234,.3)] bg-[rgba(14,22,18,.5)]"
@@ -142,7 +161,8 @@ export default function ControlRoom() {
         )}
 
         {/* ≥1280px: the mockup's floating columns. */}
-        <aside className="absolute top-[100px] right-6 hidden w-[380px] flex-col gap-3.5 xl:flex">
+        <aside className="absolute top-[100px] right-6 hidden max-h-[calc(100dvh-130px)] w-[380px] flex-col gap-3.5 overflow-y-auto pb-6 [scrollbar-width:none] xl:flex">
+          <AttentionPanel b={b} />
           <ReadinessPanel b={b} />
           <PublishPanel b={b} />
         </aside>
@@ -154,12 +174,13 @@ export default function ControlRoom() {
 
         {/* <1280px: readiness and publish in a drawer. */}
         <Sheet>
-          <SheetTrigger className="glass absolute right-4 bottom-12 flex h-11 sm:top-[100px] sm:bottom-auto items-center gap-2 rounded-full px-4 text-sm font-semibold sm:right-6 xl:hidden">
+          <SheetTrigger className="glass absolute right-4 bottom-12 flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold sm:top-[100px] sm:right-6 sm:bottom-auto xl:hidden">
             <PanelRight className="size-4" aria-hidden="true" />
             Draw status
             {b.blocking.length > 0 && <span className="pill bad">{b.blocking.length}</span>}
           </SheetTrigger>
-          <SheetContent title="Draw status" description={state.name} className="scheme-dark">
+          <SheetContent title="Draw status" description={tournament.name} className="scheme-dark">
+            <AttentionPanel b={b} variant="card" />
             <ReadinessPanel b={b} variant="card" />
             <PublishPanel b={b} variant="card" />
           </SheetContent>
@@ -193,6 +214,7 @@ export default function ControlRoom() {
       </section>
 
       <div className={cn("grid gap-4 p-4 sm:p-6 md:grid-cols-2 lg:pl-[112px] xl:hidden")}>
+        <AttentionPanel b={b} variant="card" className="md:col-span-2" />
         <DivisionsPanel b={b} variant="card" />
         <HandicapHistogram b={b} variant="card" />
         <ActivityPanel variant="card" className="md:col-span-2" />
