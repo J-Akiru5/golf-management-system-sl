@@ -24,6 +24,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { PublishDialog } from "@/components/draw/PublishDialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { checkTournament } from "@/lib/data/config-checks";
 import type { Issue } from "@/lib/draw/validate";
 import { type ActivityEntry, ago, useActivity } from "@/lib/ui/activity";
 import type { useBoard } from "@/lib/ui/board";
@@ -640,69 +641,23 @@ export function SessionLogDrawer({ className }: { className?: string }) {
 /** Attention items shown before "Show N more": the rail is short and must not need a long scroll. */
 const VISIBLE_ITEMS = 4;
 
-/** The open questions and demo assumptions, kept short and linked to where they are set. */
-const OPEN_QUESTIONS: { id: string; question: string; state: string; href: string }[] = [
-  {
-    id: "name",
-    question: "Event name",
-    state: "“Bamboo Tee” is a sample title until the club confirms it.",
-    href: "/setup",
-  },
-  {
-    id: "day4",
-    question: "Day 4 tee time",
-    state: "“11:30PM Tee Off” was supplied as-is and needs organizer confirmation.",
-    href: "/register",
-  },
-  {
-    id: "flights",
-    question: "Flights on index or course handicap",
-    state: "Built on the handicap index for now; the spec leaves this open.",
-    href: "/setup",
-  },
-  {
-    id: "tees",
-    question: "Tees for Regular, Senior, Ladies",
-    state: "Only Super Senior = Silver is confirmed. The others are demo mappings.",
-    href: "/setup",
-  },
-  {
-    id: "partial",
-    question: "Groups that do not divide by four",
-    state: "Even split, and a group never drops below three players.",
-    href: "/setup",
-  },
-  {
-    id: "order",
-    question: "Order inside a flight",
-    state: "By handicap, lowest first.",
-    href: "/setup",
-  },
-  {
-    id: "ratings",
-    question: "Real IGCC course data",
-    state: "Course Rating, Slope, Par and stroke index are pending; sample numbers are in use.",
-    href: "/setup",
-  },
-  {
-    id: "photos",
-    question: "Where player photos may appear",
-    state: "Organizer screens only, with recorded consent. Never on public pairings.",
-    href: "/players",
-  },
-  {
-    id: "results",
-    question: "Results and tie-breaks",
-    state: "Phase 2. Scoring stays on paper cards.",
-    href: "/print",
-  },
-  {
-    id: "schedule",
-    question: "Event dates and cut-off",
-    state: "Sample dates and cut-off date until the organizer confirms them.",
-    href: "/setup",
-  },
-];
+/** Where in Settings each readiness check is fixed. */
+const CHECK_SECTION: Record<string, string> = {
+  name: "basics",
+  dates: "basics",
+  holes: "course",
+  tees: "course",
+  categories: "categories",
+  "flights-overlap": "flights",
+  flights: "flights",
+  "flights-gap": "flights",
+  groups: "start",
+  day4: "fields",
+  email: "fields",
+  payment: "fields",
+};
+const sectionOf = (id: string) =>
+  CHECK_SECTION[id] ?? (id.startsWith("tee-") ? "course" : "review");
 
 /**
  * The overview's attention panel: the active event, what needs the organizer's eye, quick
@@ -718,6 +673,10 @@ export function AttentionPanel({
   className?: string;
 }) {
   const [showAll, setShowAll] = useState(false);
+  // Worked out from the saved setup each time, so the list is what is true now, not a fixed note.
+  const todo = (b.tournament ? checkTournament(b.tournament, b.tees, b.holes) : [])
+    .filter((c) => c.level !== "ok")
+    .sort((x, y) => (x.level === y.level ? 0 : x.level === "bad" ? -1 : 1));
   const maxIndex = b.tournament?.config.maxIndex ?? 0;
   const review = b.registrations.filter((r) => r.status === "needs_review");
   const ineligible = b.registrations.filter((r) => r.status === "ineligible");
@@ -886,26 +845,34 @@ export function AttentionPanel({
         </Link>
       </div>
 
-      <details className="mt-3 border-t border-glass-line pt-3">
-        <summary className="flex min-h-8 cursor-pointer flex-wrap items-center gap-2 text-[13px] font-semibold">
-          <Trophy className="size-4 text-gold-ink" aria-hidden="true" />
-          Open questions / before publish
-          <span className="pill">{OPEN_QUESTIONS.length}</span>
-        </summary>
-        <ul className="mt-2 grid gap-2">
-          {OPEN_QUESTIONS.map((q) => (
-            <li key={q.id} className="text-[12.5px] leading-[17px]">
-              <b className="font-semibold">{q.question}</b>
-              <span className="block text-ink-muted">
-                {q.state}{" "}
-                <Link href={q.href} className="whitespace-nowrap">
-                  Open
-                </Link>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </details>
+      {todo.length === 0 ? (
+        <p className="mt-3 flex items-center gap-2 border-t border-glass-line pt-3 text-[13px] text-success">
+          <Check className="size-4" aria-hidden="true" /> Settings are ready for a draw.
+        </p>
+      ) : (
+        <details className="mt-3 border-t border-glass-line pt-3">
+          <summary className="flex min-h-8 cursor-pointer flex-wrap items-center gap-2 text-[13px] font-semibold">
+            <Trophy className="size-4 text-gold-ink" aria-hidden="true" />
+            Settings to check before publish
+            <span className={cn("pill", todo.some((c) => c.level === "bad") ? "bad" : "warn")}>
+              {todo.length}
+            </span>
+          </summary>
+          <ul className="mt-2 grid gap-2">
+            {todo.map((c) => (
+              <li key={c.id} className="text-[12.5px] leading-[17px]">
+                <b className="font-semibold">{c.label}</b>
+                <span className="block text-ink-muted">
+                  {c.detail}{" "}
+                  <Link href={`/setup#${sectionOf(c.id)}`} className="whitespace-nowrap">
+                    Open
+                  </Link>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </Panel>
   );
 }

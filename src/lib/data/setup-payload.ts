@@ -9,6 +9,7 @@
  */
 
 import type { StartFormat, Tee } from "@/lib/routing";
+import { holesComplete, strokeIndexProblem } from "./course-data";
 import type { Hole, Tournament, TournamentRegistration } from "./types";
 
 export type SetupSection =
@@ -79,6 +80,20 @@ export interface SetupPayload {
   p_registration: TournamentRegistration | null;
 }
 
+/** Narrows a hole to one carrying the two numbers the database column requires. */
+const hasCard = (hole: Hole): hole is Hole & { par: number; strokeIndex: number } =>
+  hole.par !== null && hole.strokeIndex !== null;
+
+/** An id the database issued. */
+const DATABASE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Ids the database did not issue are left off, so the function inserts a fresh row and assigns its
+ * own. The starter setup hands out ids like `cat-regular` (they come from the demo constants), and a
+ * save that sent one would fail the function's `::uuid` cast instead of inserting.
+ */
+const databaseId = (id: string) => (DATABASE_ID.test(id) ? id : "");
+
 /**
  * `sections` is either one section, several, or `"all"`. Saving the Start section also sends the
  * course's hole count, because that is where `config.holes` is stored today.
@@ -97,15 +112,18 @@ export function setupPayload(
 
   return {
     p_course: want("course") || want("start") ? { holes: tournament.config.holes } : null,
-    p_holes: want("course")
-      ? holes.map((hole) => ({
-          number: hole.number,
-          // The column requires a par and a stroke index; a missing one is written as the hole's own
-          // number (or par 4) and the readiness check keeps saying the card is not entered yet.
-          par: hole.par ?? 4,
-          strokeIndex: hole.strokeIndex ?? hole.number,
-        }))
-      : null,
+    // A hole card goes only as a whole, valid card: all 18 holes with a par and a stroke index, and
+    // no stroke index used twice. The column requires both numbers, so an unfinished card used to be
+    // written with par 4 and the hole's own number as its stroke index — numbers nobody had entered,
+    // which made a blank card look entered. Null means "leave the stored card alone".
+    p_holes:
+      want("course") && holesComplete(holes) && strokeIndexProblem(holes) === null
+        ? holes.filter(hasCard).map((hole) => ({
+            number: hole.number,
+            par: hole.par,
+            strokeIndex: hole.strokeIndex,
+          }))
+        : null,
     p_tees: want("course")
       ? tees.map((tee) => ({
           name: tee.name,
@@ -116,7 +134,7 @@ export function setupPayload(
       : null,
     p_categories: want("categories")
       ? tournament.categories.map((category) => ({
-          id: category.id,
+          id: databaseId(category.id),
           name: category.name,
           gender: category.gender,
           minAge: category.minAge,
@@ -126,7 +144,7 @@ export function setupPayload(
       : null,
     p_flights: want("flights")
       ? tournament.flights.map((flight) => ({
-          id: flight.id,
+          id: databaseId(flight.id),
           categoryName: categoryNameById.get(flight.categoryId) ?? "",
           name: flight.name,
           min: flight.min,

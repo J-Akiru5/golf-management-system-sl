@@ -89,6 +89,8 @@ export type TournamentRow = {
   state: "draft" | "open" | "closed";
   name_needs_confirmation: boolean;
   schedule_needs_confirmation: boolean;
+  /** Added by 20261027000000; absent on a database that has not applied it yet. */
+  course_data_confirmed?: boolean;
   stale_index_days: number;
   registration: Json | null;
   board_overrides: Json | null;
@@ -345,6 +347,7 @@ export interface Database {
           state?: TournamentRow["state"];
           name_needs_confirmation?: boolean;
           schedule_needs_confirmation?: boolean;
+          course_data_confirmed?: boolean;
           stale_index_days?: number;
           registration?: Json | null;
           board_overrides?: Json | null;

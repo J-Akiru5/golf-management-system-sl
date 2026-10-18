@@ -23,6 +23,7 @@ import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
 import { Button } from "@/components/ui/button";
 import { checkTournament } from "@/lib/data/config-checks";
+import { courseDataStatus, holesComplete, strokeIndexProblem } from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
 import { SETUP_SECTIONS, type SetupSection } from "@/lib/data/setup-payload";
 import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
@@ -51,6 +52,19 @@ const SECTION_TITLE: Record<SetupSection, string> = {
   flights: "Flights",
 };
 
+/**
+ * 18 empty rows, so a card can be typed in from nothing. A blank is saved as nothing: the payload
+ * leaves the stored card alone rather than writing a par and a stroke index nobody entered.
+ */
+const blankHoles = (courseId: string): Hole[] =>
+  Array.from({ length: 18 }, (_, i) => ({
+    id: `${courseId}-${i + 1}`,
+    courseId,
+    number: i + 1,
+    par: null,
+    strokeIndex: null,
+  }));
+
 export default function SetupPage() {
   const { tournament, tees, holes, adapters, status, member, saving, error } = useDesk();
   if (!tournament) return <NeedsTournament what="Settings" />;
@@ -66,6 +80,7 @@ export default function SetupPage() {
       saving={saving}
       error={error}
       save={(input) => adapters.setup.save(input)}
+      confirmCourse={(confirmed) => adapters.setup.confirmCourse(tournament.id, confirmed)}
     />
   );
 }
@@ -79,6 +94,7 @@ function SetupWizard({
   saving,
   error,
   save,
+  confirmCourse,
 }: {
   tournament: Tournament;
   tees: ReturnType<typeof useDesk>["tees"];
@@ -93,19 +109,27 @@ function SetupWizard({
     holes: ReturnType<typeof useDesk>["holes"];
     sections: SetupSection[] | "all";
   }) => void;
+  confirmCourse: (confirmed: boolean) => void;
 }) {
   // Everything on this screen is a draft until a save button is pressed. The old screen wrote on
   // every keystroke; the bulk write could not be retried as a whole, and a single failure left a
   // half-known state. A section save is the fallback when the whole-setup write fails.
   const [draft, setDraft] = useState(tournament);
   const [draftTees, setDraftTees] = useState(tees);
-  const [draftHoles, setDraftHoles] = useState(holes);
+  // An event with no card on file still has to be typeable, so the editor opens on 18 blank rows.
+  const [draftHoles, setDraftHoles] = useState(() =>
+    holes.length > 0 ? holes : blankHoles(tournament.courseId),
+  );
   const [dirty, setDirty] = useState<SetupSection[]>([]);
   // Re-seed when the desk loads or a save lands. A save dispatches what was just sent, so this
   // mirrors the draft back rather than replacing unsaved work.
   useEffect(() => setDraft(tournament), [tournament]);
   useEffect(() => setDraftTees(tees), [tees]);
-  useEffect(() => setDraftHoles(holes), [holes]);
+  useEffect(() => {
+    // Only when the store actually has a card. Re-seeding blanks whenever the effect runs would wipe
+    // a half-typed one.
+    if (holes.length > 0) setDraftHoles(holes);
+  }, [holes]);
 
   const mark = (...sections: SetupSection[]) =>
     setDirty((current) => [...new Set([...current, ...sections])]);
@@ -175,6 +199,16 @@ function SetupWizard({
   const bad = checks.filter((c) => c.level === "bad").length;
   const warn = checks.filter((c) => c.level === "warn").length;
 
+  // Where the course numbers on a sheet come from, derived rather than typed in. A blank hole or a
+  // repeated stroke index means the card cannot be called official even if it was confirmed once.
+  const cardProblem = strokeIndexProblem(draftHoles);
+  const cardComplete = holesComplete(draftHoles) && cardProblem === null;
+  const courseStatus = courseDataStatus({
+    confirmed: draft.courseDataConfirmed,
+    tees: draftTees,
+    holes: draftHoles,
+  });
+
   const num = (v: string) => (v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : null);
   const setCategory = (id: string, patch: Partial<CategoryRule>) => {
     setDraft((current) => ({
@@ -218,7 +252,7 @@ function SetupWizard({
   const discard = () => {
     setDraft(tournament);
     setDraftTees(tees);
-    setDraftHoles(holes);
+    setDraftHoles(holes.length > 0 ? holes : blankHoles(tournament.courseId));
     setDirty([]);
   };
 
@@ -389,16 +423,46 @@ function SetupWizard({
               id="course"
               icon={<Flag />}
               title="Course & tees"
-              subtitle="Pending blocks. Nothing here is IGCC's real scorecard data yet."
+              subtitle={
+                courseStatus === "official"
+                  ? "Confirmed against the club scorecard."
+                  : "Not confirmed yet. Sheets carry a placeholder mark until it is."
+              }
               action={sectionAction("course")}
             >
-              <div className="notice warn flex items-start gap-2.5" role="note">
-                <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+              <div
+                className={cn(
+                  "notice flex items-start gap-2.5",
+                  courseStatus === "official" ? "ok" : "warn",
+                )}
+                role="note"
+              >
+                {courseStatus === "official" ? (
+                  <CheckCircle2
+                    className="mt-0.5 size-4 shrink-0 text-success"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <TriangleAlert
+                    className="mt-0.5 size-4 shrink-0 text-warning"
+                    aria-hidden="true"
+                  />
+                )}
                 <p className="text-[13px]">
-                  <b>Enter IGCC&rsquo;s real numbers from the club scorecard.</b> Course Rating,
-                  Slope, Par and stroke index come from the card, not from this app. What is on
-                  screen now is sample data until the desk replaces it, and every edit here is
-                  written with the event setup in one go.
+                  {courseStatus === "official" ? (
+                    <>
+                      <b>These numbers were confirmed.</b> Changing any rating, par or stroke index
+                      withdraws the confirmation, because what is on screen is then no longer what
+                      was checked against the card.
+                    </>
+                  ) : (
+                    <>
+                      <b>Enter the club&rsquo;s real numbers from its scorecard.</b> Course Rating,
+                      Slope, Par and stroke index come from the card, not from this app. Until an
+                      owner or organizer confirms them below, treat what is on screen as sample
+                      data.
+                    </>
+                  )}
                 </p>
               </div>
               <div className="table-wrap !shadow-none">
@@ -516,6 +580,40 @@ function SetupWizard({
                   </table>
                 </div>
               )}
+
+              {cardProblem && (
+                <p className="notice bad text-[13px]" role="alert">
+                  {cardProblem}
+                </p>
+              )}
+
+              {/* The one thing that cannot be derived: a person saying the numbers were checked. */}
+              <div className="well grid gap-2 p-3.5">
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={draft.courseDataConfirmed}
+                    // Available only for a whole, valid card, and only to the roles the database
+                    // lets write the column. The fieldset above already disables it for the desk.
+                    disabled={!cardComplete || draftTees.length === 0}
+                    onChange={(e) => {
+                      setDraft((current) => ({
+                        ...current,
+                        courseDataConfirmed: e.target.checked,
+                      }));
+                      confirmCourse(e.target.checked);
+                    }}
+                  />
+                  <span>
+                    <b>These tees and holes match the club scorecard.</b>
+                    <span className="hint block">
+                      {cardComplete
+                        ? "Tick this once every rating, par and stroke index has been checked against the printed card. Sheets then print without the placeholder mark, and any later edit to a number withdraws it again."
+                        : "Available once all 18 holes have a par and a stroke index, and no stroke index is used twice."}
+                    </span>
+                  </span>
+                </label>
+              </div>
             </SectionCard>
 
             <SectionCard

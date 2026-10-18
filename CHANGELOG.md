@@ -9,14 +9,45 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+Work from `feat/uat-readiness` (PR #24), reworked onto the current code.
+
+### Changed
+- **A connected desk never shows demo data.** It starts empty and fills from the database, so the
+  sample players and the "Bamboo Tee" event no longer appear while loading or after a failed load.
+  The demo build is unchanged.
+- **The draw is routed against the saved tees and holes**, not the demo constants. Before this, a
+  rating entered in Settings changed the screen but not the next draw.
+- **A hole card is written only as a whole, valid card**: all 18 holes with a par and a stroke index,
+  and no stroke index used twice. The payload used to fill a blank with par 4 and the hole's own
+  number as its stroke index, recording numbers nobody had entered and making an unfinished card look
+  finished. An incomplete card now sends nothing and the stored card is left alone.
+- **Settings saves the event itself.** The name, dates, cut-off, start format, group sizes and
+  registration form travel in the same guarded `save_event_setup` transaction as the course, so a
+  refused save cannot leave half of it behind.
+- **Creating an event works on a club that has none**: it creates the course, the event and its
+  setup from the starter categories and tees, then reloads. Later events copy the current event's
+  categories and flights as new rows. Ids the database did not issue are left off, so it assigns its
+  own rather than failing its `::uuid` cast on the starter's demo ids.
+- The control room's "open questions" list is worked out from the saved setup instead of a fixed
+  note. Demo wording shows only in the demo, and the sample import file is offered only in the demo,
+  because applying it would write invented golfers to a real database.
+- The header account chip shows the signed-in member and role, or "Not signed in" with a Sign in link.
+
+### Added
+- **Course data confirmation.** An owner or organizer ticks "These tees and holes match the club
+  scorecard" in Settings, on the course section. Printed sheets carry the placeholder mark until
+  then, and any later change to a rating, par or stroke index withdraws it. The print status is
+  derived (`missing`, `placeholder`, `official`) instead of hard-coded to `placeholder`.
+- A version label (version, commit when known, build date) on the desk, the sign-in page and the
+  landing page, so a tester can copy it onto the acceptance form.
+
 ### Database
 - `20261029000000_course_data_confirmed.sql`: **applied live**. Adds one column,
   `tournaments.course_data_confirmed boolean not null default false`, so an owner or organizer can
   record that the saved tees and holes were checked against the club scorecard. Additive and
   re-runnable. Renumbered from `20261027000000`, which is taken by the applied setup-fields
   migration: two files at one version means the second is recorded as already applied and its
-  statements never run. No code reads the column yet; the desk's confirmation control and the derived
-  print watermark follow.
+  statements never run.
 
 ### Documentation
 - `docs/PLAN.md` states that `docs/VERSIONING.md` and the annotated `vX.Y.Z` tags are the single

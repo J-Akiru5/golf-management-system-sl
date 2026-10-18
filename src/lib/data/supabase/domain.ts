@@ -225,6 +225,7 @@ export function toTournament(
     dates: row.dates?.length ? row.dates : [row.play_date],
     cutOffDate: row.cutoff_date,
     scheduleNeedsConfirmation: row.schedule_needs_confirmation,
+    courseDataConfirmed: row.course_data_confirmed === true,
     config,
     categories,
     flights,

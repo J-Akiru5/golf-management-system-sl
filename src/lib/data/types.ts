@@ -165,6 +165,11 @@ export interface Tournament {
   cutOffDate: string;
   /** Cut-off and dates are sample values until the organizer confirms them. */
   scheduleNeedsConfirmation: boolean;
+  /**
+   * An owner or organizer checked the tees and holes against the club scorecard. Until then every
+   * printed sheet carries the placeholder watermark, whatever numbers are saved.
+   */
+  courseDataConfirmed: boolean;
   config: TournamentConfig;
   categories: CategoryRule[];
   flights: FlightRule[];

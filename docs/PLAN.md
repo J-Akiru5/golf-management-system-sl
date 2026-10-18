@@ -526,8 +526,11 @@ only their own entry. Every finding is written down with a severity the same day
 W2 and W6 alongside. The longest lead item is the club's data, which is not in our hands.
 
 **Risks.** The club's two files (scorecard, NGAP export) may not arrive in time: run the UAT on
-clearly labelled sample numbers if so, which is what the print watermark exists for. PR #24 (UAT
-readiness) is open: merge it as soon as the checks pass and keep new work on a fresh branch.
+clearly labelled sample numbers if so, which is what the print watermark exists for. UAT readiness
+(PR #24) is reworked onto develop on `feat/uat-rework`: its settings-save work had already shipped as
+PR #27, so what landed here is the part that was still missing — the course confirmation, the honest
+hole card, the empty connected desk, the draw from saved numbers, event creation and the version
+label. Keep new work on a fresh branch.
 
 ### Nice to have (not blocking the UAT)
 

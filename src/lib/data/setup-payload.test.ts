@@ -19,6 +19,8 @@ const tournament: Tournament = {
   name: "24th Bamboo Tee",
   nameNeedsConfirmation: false,
   courseId: "course",
+  // Nobody has checked these numbers against the club scorecard yet, which is the normal state.
+  courseDataConfirmed: false,
   dates: ["2026-11-12", "2026-11-13"],
   cutOffDate: "2026-11-01",
   scheduleNeedsConfirmation: true,
@@ -93,10 +95,39 @@ describe("setupPayload", () => {
     expect(payload.p_tees).toBeNull();
   });
 
-  it("writes a missing hole par or stroke index as the hole's own number, like the old adapter", () => {
+  it("leaves the stored hole card alone when the card on screen is incomplete", () => {
+    // The fixture has two holes, one of them blank. It used to be written with par 4 and the hole's
+    // own number as its stroke index: numbers nobody had entered, recorded as if they had. A card
+    // now goes only as a whole, valid card, so an unfinished one sends null and the stored card is
+    // left as it was.
     const payload = setupPayload(tournament, tees, holes, ["course"]);
-    expect(payload.p_holes?.[1]).toEqual({ number: 2, par: 4, strokeIndex: 2 });
-    expect(payload.p_holes?.[0]).toEqual({ number: 1, par: 4, strokeIndex: 7 });
+    expect(payload.p_holes).toBeNull();
+    expect(payload.p_tees).toHaveLength(2);
+  });
+
+  it("writes a hole card once all 18 holes carry a par and a stroke index", () => {
+    const card: Hole[] = Array.from({ length: 18 }, (_, i) => ({
+      id: `h${i + 1}`,
+      courseId: "course",
+      number: i + 1,
+      par: 4,
+      strokeIndex: 18 - i,
+    }));
+    const payload = setupPayload(tournament, tees, card, ["course"]);
+    expect(payload.p_holes).toHaveLength(18);
+    expect(payload.p_holes?.[0]).toEqual({ number: 1, par: 4, strokeIndex: 18 });
+    expect(payload.p_holes?.[17]).toEqual({ number: 18, par: 4, strokeIndex: 1 });
+  });
+
+  it("refuses a card whose stroke index repeats, even when every hole is filled in", () => {
+    const card: Hole[] = Array.from({ length: 18 }, (_, i) => ({
+      id: `h${i + 1}`,
+      courseId: "course",
+      number: i + 1,
+      par: 4,
+      strokeIndex: 7,
+    }));
+    expect(setupPayload(tournament, tees, card, ["course"]).p_holes).toBeNull();
   });
 
   it("does not mutate the domain objects it reads", () => {

@@ -17,10 +17,24 @@ import {
   type NewEntryInput,
   type NewPlayerInput,
 } from "@/lib/data/adapters";
+import { courseNumbersChanged, holesComplete, strokeIndexProblem } from "@/lib/data/course-data";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { setupPayload } from "@/lib/data/setup-payload";
-import type { HandicapRecord, PlayerRecord, RegistrationEntry, Tournament } from "@/lib/data/types";
-import type { Action, DeskState } from "@/lib/store/state";
+import { starterSetup } from "@/lib/data/starter";
+import type {
+  HandicapRecord,
+  Hole,
+  PlayerRecord,
+  RegistrationEntry,
+  Tournament,
+} from "@/lib/data/types";
+import type { Tee } from "@/lib/routing";
+import {
+  type Action,
+  activeTournament,
+  type DeskState,
+  tournamentTemplate,
+} from "@/lib/store/state";
 import type { Database, Json } from "@/lib/supabase/types";
 import {
   toDeferredMatchInsert,
@@ -60,6 +74,11 @@ export interface SupabaseAdapterOptions {
    * optional: a second counter is the bug this exists to prevent, so there is nowhere to put one.
    */
   revisions: RevisionStore;
+  /**
+   * Called once a new event is fully written (course, event row and setup), so the desk can reload
+   * and pick up the database's own ids for its categories and flights.
+   */
+  onEventCreated?: (tournamentId: string) => void;
 }
 
 const uuid = () => crypto.randomUUID();
@@ -191,8 +210,8 @@ export function createSupabaseAdapters(
 
    * Tournaments -------------------------------------------------------------------------------- */
 
-  const saveTournamentRow = (tournament: Tournament) => {
-    enqueue(async () => {
+  const writeTournament = async (tournament: Tournament) => {
+    {
       const { error } = await client.from("tournaments").upsert(
         {
           id: tournament.id,
@@ -221,8 +240,9 @@ export function createSupabaseAdapters(
         { onConflict: "id" },
       );
       fail("Could not save the event", error);
-    });
+    }
   };
+  const saveTournamentRow = (tournament: Tournament) => enqueue(() => writeTournament(tournament));
 
   const tournaments: Adapters["tournaments"] = {
     list: () => state.tournaments,
@@ -237,19 +257,48 @@ export function createSupabaseAdapters(
       saveTournamentRow(tournament);
     },
     createFromTemplate: (name, date) => {
-      // The template itself is built by the store's reducer path; mirror it here with a real id.
+      // A club with no event yet has no tees or categories to copy, so it starts from the starter
+      // setup. Either way the new event gets its own categories and flights (they belong to one
+      // event), so ids are left off and the database assigns them; the desk reloads to read them.
+      const base = activeTournament(state) ?? state.tournaments[0] ?? null;
+      const useStarter = !base || state.tees.length === 0;
+      const starter = starterSetup();
+      const tees = useStarter ? starter.tees : state.tees;
+      const courseId = base?.courseId ?? uuid();
       const created: Tournament = {
-        ...(state.tournaments[0] as Tournament),
+        ...tournamentTemplate(state, name, date),
         id: uuid(),
-        name,
-        nameNeedsConfirmation: true,
-        dates: [date],
-        createdAt: new Date().toISOString(),
+        courseId,
+        categories: useStarter ? starter.categories : (base?.categories ?? []),
+        flights: useStarter ? starter.flights : (base?.flights ?? []),
       };
-      created.config = { ...created.config, date };
-      dispatch({ type: "saveTournament", tournament: created });
+      dispatch({ type: "saveSetup", tournament: created, tees, holes: state.holes });
       dispatch({ type: "selectTournament", id: created.id });
-      saveTournamentRow(created);
+      enqueue(async () => {
+        if (!base) {
+          const { error } = await client.from("courses").insert({
+            id: courseId,
+            club_id: clubId,
+            name: `${state.club.name || "Club"} course`,
+            holes: 18,
+          });
+          fail("Could not set up the course", error);
+        }
+        await writeTournament(created);
+        // The tees, categories and flights go in through the same guarded function the Settings
+        // screen uses. No hole list is sent, which leaves the stored card alone: a new event has none.
+        const payload = setupPayload(created, tees, [], "all");
+        const { data: setupData, error: setupError } = await client.rpc("save_event_setup", {
+          p_tournament: created.id,
+          p_expected_revision: null,
+          ...payload,
+          p_registration: payload.p_registration as Json | null,
+        });
+        fail("Could not set up the event", setupError);
+        const revision = (setupData as unknown as { revision?: number } | null)?.revision;
+        if (typeof revision === "number") options.revisions.set(created.id, revision);
+        options.onEventCreated?.(created.id);
+      });
       return created;
     },
   };
@@ -434,18 +483,50 @@ export function createSupabaseAdapters(
 
    * Event setup -------------------------------------------------------------------------------- */
 
+  /**
+   * Records the confirmation on its own, in a separate statement from the event row, so a database
+   * that has not applied 20261029000000 refuses it with a message that names the missing migration
+   * instead of failing every save.
+   */
+  const setCourseConfirmed = async (tournamentId: string, confirmed: boolean) => {
+    const { error } = await client
+      .from("tournaments")
+      .update({ course_data_confirmed: confirmed })
+      .eq("club_id", clubId)
+      .eq("id", tournamentId);
+    if (error) {
+      const missing = /course_data_confirmed/.test(error.message);
+      throw new Error(
+        missing
+          ? "The database does not have the course-confirmation column yet (migration 20261029000000)."
+          : `Could not record the course confirmation: ${error.message}`,
+      );
+    }
+  };
+
   const setup: Adapters["setup"] = {
     save: ({ tournament, tees, holes, sections = "all" }) => {
+      // Changing a rating or a hole after the card was confirmed withdraws the confirmation: what is
+      // on screen is then no longer what was checked.
+      const changed = courseNumbersChanged(
+        { tees: state.tees, holes: state.holes },
+        { tees, holes },
+      );
+      const withdraws = changed && tournament.courseDataConfirmed;
+      const next = withdraws ? { ...tournament, courseDataConfirmed: false } : tournament;
       // The draft lands in the session state either way, so a failed write still leaves the edit on
-      // screen; the session bar is what says whether it reached the database.
-      dispatch({ type: "saveTournament", tournament });
-      const payload = setupPayload(tournament, tees, holes, sections);
+      // screen; the session bar is what says whether it reached the database. saveSetup rather than
+      // saveTournament, because the same call carries the tees and holes with it.
+      dispatch({ type: "saveSetup", tournament: next, tees, holes });
+      // The card is judged inside setupPayload, which sends null rather than inventing a par or a
+      // stroke index for a hole nobody has filled in.
+      const payload = setupPayload(next, tees, holes, sections);
       enqueue(async () => {
         const { data, error } = await client.rpc("save_event_setup", {
-          p_tournament: tournament.id,
+          p_tournament: next.id,
           // Read when the write runs, not when it was queued, so it is the latest known. Null on a
           // first save in a session that never loaded a revision: unguarded, but still atomic.
-          p_expected_revision: options.revisions.get(tournament.id),
+          p_expected_revision: options.revisions.get(next.id),
           ...payload,
           // The registration document is JSON in the database; the domain type has the same shape.
           p_registration: payload.p_registration as Json | null,
@@ -455,9 +536,17 @@ export function createSupabaseAdapters(
         // The same number the draw writes name. Recording it here is what stops a draw save being
         // refused straight after a setup save.
         if (typeof result?.revision === "number") {
-          options.revisions.set(tournament.id, result.revision);
+          options.revisions.set(next.id, result.revision);
         }
+        // After the guarded write has passed, so a refused save leaves nothing half-done.
+        if (withdraws) await setCourseConfirmed(next.id, false);
       });
+    },
+    confirmCourse: (tournamentId, confirmed) => {
+      const t = state.tournaments.find((x) => x.id === tournamentId);
+      if (!t) return;
+      dispatch({ type: "saveTournament", tournament: { ...t, courseDataConfirmed: confirmed } });
+      enqueue(() => setCourseConfirmed(tournamentId, confirmed));
     },
   };
 
