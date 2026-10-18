@@ -29,7 +29,7 @@ Anything not marked is a plan, not a fact.
 | Printing | **Print components and pure helpers built**: sorted start sheet, allow-listed pairings sheet, per-group 18-hole scorecards, handicap dots, and A4 print CSS | `src/lib/print` tests; dev-only preview at `/print-preview`; real course data and club-printer test still pending |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 19 test files, 226 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
+Whole suite: 21 test files, 246 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
 **The one thing blocking a real event:** nothing the organizer does is saved. The next build step is
 the database connection (section 8, step 1). Until then the app is a working demo, not a tool.
