@@ -23,6 +23,13 @@ const makeTournament = (id: string, playDate: string, createdAt: string): Tourna
   published: false,
   published_snapshot: null,
   created_at: createdAt,
+  dates: [playDate],
+  state: "draft",
+  name_needs_confirmation: false,
+  schedule_needs_confirmation: false,
+  stale_index_days: 120,
+  registration: null,
+  board_overrides: null,
 });
 
 describe("chooseActiveTournament", () => {
