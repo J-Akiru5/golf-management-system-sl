@@ -148,6 +148,42 @@ as $$
       from public.players
      where user_id = (select auth.uid())
      limit 1
+  ),
+  entries as (
+    select
+      t.id as tournament_id,
+      t.name as event_name,
+      t.play_date as event_date,
+      coalesce(t.dates, array[t.play_date]) as dates,
+      t.start_format,
+      to_char(t.first_tee_time, 'HH24:MI') as first_tee_time,
+      t.state,
+      r.status,
+      r.reasons,
+      r.frozen_index,
+      r.playing_handicap,
+      c.name as category_name,
+      tee.name as tee_name,
+      f.name as flight_name,
+      r.payment_status,
+      (t.published_snapshot is not null) as published,
+      (
+        select jsonb_build_object(
+          'hole', g ->> 'startHole',
+          'wave', g -> 'wave',
+          'time', g ->> 'time'
+        )
+        from jsonb_array_elements(coalesce(t.published_snapshot -> 'groups', '[]'::jsonb)) g
+        where (g -> 'players') @> to_jsonb(m.full_name)
+        limit 1
+      ) as start
+    from public.registrations r
+    join public.tournaments t on t.id = r.tournament_id and t.club_id = r.club_id
+    left join public.categories c on c.id = r.category_id and c.club_id = r.club_id
+    left join public.tees tee on tee.id = r.tee_id and tee.club_id = r.club_id
+    left join public.flights f on f.id = r.flight_id and f.club_id = r.club_id
+    cross join me m
+    where r.player_id = m.id
   )
   select jsonb_build_object(
     'linked', (select count(*) from me) = 1,
@@ -156,43 +192,29 @@ as $$
         from me
     ),
     'entries', coalesce((
-      select jsonb_agg(entry order by entry ->> 'eventDate' desc, entry ->> 'eventName')
-      from (
-        select jsonb_build_object(
-          'tournamentId', t.id,
-          'eventName', t.name,
-          'eventDate', t.play_date,
-          'dates', to_jsonb(coalesce(t.dates, array[t.play_date])),
-          'startFormat', t.start_format,
-          'firstTeeTime', to_char(t.first_tee_time, 'HH24:MI'),
-          'state', t.state,
-          'status', r.status,
-          'reasons', to_jsonb(r.reasons),
-          'frozenIndex', r.frozen_index,
-          'playingHandicap', r.playing_handicap,
-          'category', c.name,
-          'tee', tee.name,
-          'flight', f.name,
-          'paymentStatus', r.payment_status,
-          'published', t.published_snapshot is not null,
-          'start', (
-            select jsonb_build_object(
-              'hole', g ->> 'startHole',
-              'wave', g -> 'wave',
-              'time', g ->> 'time'
-            )
-            from jsonb_array_elements(coalesce(t.published_snapshot -> 'groups', '[]'::jsonb)) g
-            where (g -> 'players') @> to_jsonb(me.full_name)
-            limit 1
-          )
-        ) as entry
-        from public.registrations r
-        join public.tournaments t on t.id = r.tournament_id and t.club_id = r.club_id
-        left join public.categories c on c.id = r.category_id and c.club_id = r.club_id
-        left join public.tees tee on tee.id = r.tee_id and tee.club_id = r.club_id
-        left join public.flights f on f.id = r.flight_id and f.club_id = r.club_id
-        where r.player_id = (select id from me)
-      ) rows
+      select jsonb_agg(
+        jsonb_build_object(
+          'tournamentId', tournament_id,
+          'eventName', event_name,
+          'eventDate', event_date,
+          'dates', to_jsonb(dates),
+          'startFormat', start_format,
+          'firstTeeTime', first_tee_time,
+          'state', state,
+          'status', status,
+          'reasons', to_jsonb(reasons),
+          'frozenIndex', frozen_index,
+          'playingHandicap', playing_handicap,
+          'category', category_name,
+          'tee', tee_name,
+          'flight', flight_name,
+          'paymentStatus', payment_status,
+          'published', published,
+          'start', start
+        )
+        order by event_date desc, event_name
+      )
+      from entries
     ), '[]'::jsonb)
   );
 $$;

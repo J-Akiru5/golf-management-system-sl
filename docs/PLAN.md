@@ -20,10 +20,10 @@ Anything not marked is a plan, not a fact.
 | Routing engine (`src/lib/routing`) | **Built**, pure functions, no DB; **lock-aware re-run** | 26 unit tests |
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
-| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), club row seeded, `player-photos` created private, RLS checked against the anon key. **The player portal migration (`20261022000000`) is written and NOT applied** | 14 tables, RLS on all |
+| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), club row seeded, `player-photos` created private, RLS checked against the anon key. **The player portal (`20261023000000`, `…0001`) is applied too**: `players.user_id`, `current_player_id`, `claim_player_record`, `player_portal_entries` | 14 tables, RLS on all; `supabase migration list --linked` shows local and remote in step |
 | Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`) | **Wired (merged 18 Oct, `b8d9c7a`)**: the store uses `createSupabaseAdapters` and `loadDeskState` when a Supabase URL is configured, and the mock adapters when it is not. Not yet exercised end to end with real course and tournament rows | `src/lib/data/supabase/adapters.ts`, `load-desk-state.ts`, `domain.ts`; 24 tests |
 | Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Applied 18 Oct 2026 and verified**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger. Two staff accounts exist (`admin` = owner, `member1` = desk) | Verified by signing in as each role: owner sees both member rows, desk sees only its own |
-| Player auth and the player area (`src/lib/auth/routes.ts`, `src/app/(player)`, `src/lib/player`) | **Built and tested; the database half is not applied.** One sign-in page for players and staff, `/my` with a claim step and a read-only view of the player's own entry and published start. Route areas are pure functions with tests | `routes.test.ts` (15), `portal.test.ts` (7), `claim.test.ts` (4); guard matrix checked over HTTP with a Supabase URL configured |
+| Player auth and the player area (`src/lib/auth/routes.ts`, `src/app/(player)`, `src/lib/player`) | **Built, tested and applied.** One sign-in page for players and staff, `/my` with a claim step and a read-only view of the player's own entry and published start. The database half is live; what is missing is a test account linked to a test player | `routes.test.ts` (15), `portal.test.ts` (7), `claim.test.ts` (4); guard matrix checked over HTTP with a Supabase URL configured; the three functions answered correctly against the live project (see section 7) |
 | Organizer screens (`src/app`) | **Built**: on the session store in demo mode; with Supabase configured the same screens read and write the project through the adapters. An end-to-end pass with real event data is still pending | Public TeeLine landing at `/`, control room at `/admin`, plus Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view and profiles |
 | Data boundary (`src/lib/data`) | **Built as mock adapters** over the session store | `PlayerRepository`, `TournamentRepository`, `RegistrationRepository`, `HandicapImportAdapter`, `PairingsRouter`, public allow-list |
 | Brand and visual design | **TeeLine Golf** identity: public landing page, fairway-and-flag vector mark, Ivory / Charcoal themes; the IGCC crest stays a separate club asset | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
@@ -237,12 +237,18 @@ These are places where the spec promises something the code does not do yet. Che
    no course, tee, hole or tournament rows; the demo screens still run on the session store.
 3. **Cut-off date is applied in the desk** (frozen onto each registration; re-freeze offered), but
    the database write is still missing.
-3a. **The player portal is written but not applied.** `/my`, the claim step and the two portal
-   functions are built and tested in code, but `20261022000000_player_portal.sql` has not been
-   applied to the `golf-management-system` project: the Supabase CLI login on this machine can see
-   the project ref but not the project (403 from the Management API), and the stored pooler URL has
-   no password. The page says so plainly until it is applied ("the player area is not switched on
-   for this project yet"). Nothing has been linked to a real account yet either.
+3a. **The player portal is applied; the end-to-end pass is not.** `/my`, the claim step and the two
+   portal functions are built, tested, and **applied to the `golf-management-system` project**
+   (`20261023000000_player_portal.sql` and `20261023000001_player_portal_grants.sql`). Against the
+   live project: `player_portal_entries()` answers `{linked:false, player:null, entries:[]}` for a
+   caller with no session, `claim_player_record()` answers `signed_out`, and after the grants file
+   anon is refused with 42501. Still to do: a test account, and a player row for it to claim
+   (the project has no players or events yet), then the claim and the entry list can be seen in the
+   browser. Note for the owner: the `20261022000000_versioned_publish` objects were already in the
+   database but the migration had never been recorded, so it was marked applied
+   (`supabase migration repair`) before the portal files were pushed; and anon can still execute
+   `save_draw`/`publish_pairings`/`unpublish_pairings` (they refuse any caller without a staff role,
+   but the `revoke … from public` in that file did not take effect for the `anon` role).
 4. **Printing** has props-driven start, pairings and scorecard components, plus tested sorting and
    handicap-dot helpers. The current desk still supplies placeholder/missing hole data, so its cards
    show the missing-data state and watermark. It has not been printed on the club's paper or printer.
@@ -302,11 +308,12 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
      `member1` = desk); signing in as each proves the split — the owner sees both member rows, the
      desk sees only its own. Accounts are test-only and their passwords must be rotated.
      Still to do: add the golf pro as `organizer`.
-   - **Player portal (needs Jeff at the project too).** Apply `20261022000000_player_portal.sql`,
-     turn on "Allow new users to sign up" for the project (or create player accounts by hand),
-     decide whether email confirmation is required, and link one test player to one test account so
-     the claim flow and `/my` can be exercised end to end. This work is blocked on project access,
-     not on code: the CLI login here sees the project ref but not the project.
+   - **Player portal.** ~~Apply `20261023000000_player_portal.sql`~~ **Applied 18 Oct 2026**, with a
+     small hardening file (`…0001`) that takes the default `anon` execute grant back. Still to do,
+     and it needs Jeff: turn on "Allow new users to sign up" for the project (or create player
+     accounts by hand), decide whether email confirmation is required, and add one player row with a
+     test account to claim it, so the claim flow and `/my` can be exercised with real data. The
+     project currently has no players and no events.
    - Add the course, tee and hole rows. The real IGCC Course Rating, Slope, Par and stroke index are
      still pending from the club, so this waits on the scorecard.
    - Verify the `player-photos` storage policy with a real upload.
@@ -494,7 +501,7 @@ Agent ground rules:
 - [ ] The organizer has said what alerts they expect beyond the overview attention list (decision 14)
 - [ ] Photo consent line shown before every photo; private bucket verified
 - [ ] Public pairings page checked on an older phone
-- [ ] Player portal migration applied, sign-ups switched on (or accounts created by hand), and one player account linked and tested end to end
+- [ ] Player portal exercised with a real account and one claimed player row (the migration is applied; sign-ups or a hand-made account are still needed)
 - [ ] Vercel spend limit set; Supabase spend cap on; backups understood
 - [ ] Dress rehearsal with the organizer
 - [ ] Rollback plan: how the organizer runs the day from a printed sheet if the site is down
@@ -536,7 +543,8 @@ Agent ground rules:
 | 18 Oct 2026 | **Scheduling and public pairings plan agreed with the owner.** Publishing is explicit and versioned. The public page is `/pairings`: full list plus name search, no login. No realtime for now; refresh or ISR (about 60 seconds) is enough. Steps are in section 8. Schema changes (draw revision, `pairings_versions`) need owner approval before they are applied. |
 | 18 Oct 2026 | **Players may hold accounts (owner's instruction).** This amends the staff-only decision of the same day: golfers now use the product themselves. The link lives on `public.players.user_id`, one account per record, and is never a `club_members` role, because `is_club_member()` gates every club table. A player can read their own entry and their published start, and the claim step is the only write they can make. |
 | 18 Oct 2026 | **Route areas.** Public: `/`, `/pairings`, `/enter/[id]`, `/login`. Player: `/my`. Staff: the desk. One sign-in page serves both; where an account lands follows what it is, not where it signed in. The proxy matches only the guarded areas, so public pages never do a session lookup. Demo builds (no Supabase URL) stay open, with the banner. |
-| 18 Oct 2026 | **The player portal migration is not applied yet.** The CLI login on this machine can reach the project ref but not the project (403 from the Management API) and the stored pooler URL has no password, so `20261023000000_player_portal.sql` waits for Jeff. Until then `/my` says the area is not switched on, and no account is linked to a member record. |
+| 18 Oct 2026 | **The player portal migration is applied.** `20261023000000_player_portal.sql` and `20261023000001_player_portal_grants.sql` are live on `golf-management-system`; `supabase migration list --linked` shows local and remote in step. The file was renumbered from `20261022000000`, which `feat/versioned-publish` had already taken, and its projection function was rewritten after the first push attempt failed on a CTE reference inside a nested subquery (it now joins the CTE); the failed attempt applied nothing. The three functions were then checked against the live project. |
+| 18 Oct 2026 | **A hand-applied migration was recorded, not re-run.** The `20261022000000_versioned_publish` objects (`pairings_versions`, `tournaments.draw_revision`, the new `public_pairings`) were already in the database but absent from the migration history, so `db push` refused to move past them. Their existence was verified over the API first, then `supabase migration repair --status applied 20261022000000` recorded them. Follow-up for Jeff: anon can still execute `save_draw`, `publish_pairings` and `unpublish_pairings` (each refuses a caller without a staff role), so the `revoke … from public` lines in that file are worth re-checking. |
 
 ---
 
