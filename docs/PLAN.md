@@ -386,6 +386,20 @@ These are places where the spec promises something the code does not do yet. Che
     but no native speaker has read it yet, and the desk chrome stays English for now. Golf terms
     stay in English on purpose (flight, tee, handicap, hole, shotgun) because that is how the club
     speaks them. Decision 18; the review checklist is `docs/i18n-review.md`.
+16. **The desk does not load on the first client render after signing in.** *Found 19 Oct 2026 on the
+    live project, reproducible.* Sign in as staff: the redirect lands on `/admin` correctly, but the
+    desk says "The tournament desk did not load" and the account chip reads "Not signed in · Session
+    unavailable", with a Retry button. **Reloading fixes it every time**, and every later navigation
+    works, so it only ever affects the first load after signing in. What was measured rather than
+    guessed: the auth cookie is set and readable at the moment of failure (`document.cookie` lists
+    `sb-…-auth-token`, not HttpOnly), and **no `/auth/v1/user` request is made at all**, which means
+    `supabase.auth.getUser()` reported a missing session locally rather than being refused by the
+    server. That points at the browser client built by `@supabase/ssr` seeing no session when the desk
+    store constructs it, most likely because a client created earlier in the same page journey had
+    already cached an empty one. **Not fixed**, because the root cause is not established and a
+    speculative change to the auth path is worse than a reload. It is step 2 of the acceptance test,
+    so the organizer will meet it first: `docs/RUNBOOK.md` has the workaround, and the run sheet
+    should be read knowing this is expected once.
 
 ---
 
