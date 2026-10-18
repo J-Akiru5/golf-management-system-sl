@@ -16,7 +16,11 @@ import {
 import { getDeskMember } from "@/lib/auth/member";
 import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
 import { registrationFor } from "@/lib/data/registrations";
-import { createQueue, createSupabaseAdapters } from "@/lib/data/supabase/adapters";
+import {
+  createQueue,
+  createSupabaseAdapters,
+  type RevisionStore,
+} from "@/lib/data/supabase/adapters";
 import {
   publishPairings,
   refreshPublicPage,
@@ -132,8 +136,19 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   // compare against each other and not against a stale snapshot.
   const latest = useRef(state);
   latest.current = state;
-  // Each tournament's draw revision as the database last confirmed it.
+  // Each tournament's draw revision as the database last confirmed it. One counter for the whole
+  // desk: `save_event_setup` and `save_draw` both bump it, so both read and write through here
+  // rather than keeping a number each.
   const revisions = useRef<Record<string, number>>({});
+  const revisionStore: RevisionStore = useMemo(
+    () => ({
+      get: (tournamentId) => revisions.current[tournamentId] ?? null,
+      set: (tournamentId, revision) => {
+        revisions.current[tournamentId] = revision;
+      },
+    }),
+    [],
+  );
   const connected = isSupabaseConfigured();
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null);
   const [status, setStatus] = useState<Desk["status"]>(connected ? "loading" : "demo");
@@ -197,31 +212,32 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  const runDrawJob = useCallback(async (job: DrawJob, supabase: SupabaseClient<Database>) => {
-    const revision = revisions.current[job.tournamentId] ?? 0;
-    if (job.kind === "save") {
-      revisions.current[job.tournamentId] = await saveDraw(
-        supabase,
-        job.tournamentId,
-        revision,
-        job.draw,
-        job.overrides,
-      );
-      return;
-    }
-    if (job.kind === "publish") {
-      const result = await publishPairings(supabase, job.tournamentId, revision, job.published);
-      rawDispatch({
-        type: "publishAck",
-        tournamentId: job.tournamentId,
-        version: result.version,
-        at: result.at,
-      });
-    } else {
-      await unpublishPairings(supabase, job.tournamentId);
-    }
-    await refreshPublicPage(supabase);
-  }, []);
+  const runDrawJob = useCallback(
+    async (job: DrawJob, supabase: SupabaseClient<Database>) => {
+      // The same store the setup write uses. Reading it here is what makes the two agree.
+      const revision = revisionStore.get(job.tournamentId) ?? 0;
+      if (job.kind === "save") {
+        revisionStore.set(
+          job.tournamentId,
+          await saveDraw(supabase, job.tournamentId, revision, job.draw, job.overrides),
+        );
+        return;
+      }
+      if (job.kind === "publish") {
+        const result = await publishPairings(supabase, job.tournamentId, revision, job.published);
+        rawDispatch({
+          type: "publishAck",
+          tournamentId: job.tournamentId,
+          version: result.version,
+          at: result.at,
+        });
+      } else {
+        await unpublishPairings(supabase, job.tournamentId);
+      }
+      await refreshPublicPage(supabase);
+    },
+    [revisionStore],
+  );
 
   // Every screen dispatches through this. In demo mode it is the plain reducer; with Supabase the
   // draw actions are also queued for the database.
@@ -247,6 +263,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     return createSupabaseAdapters(state, dispatch, {
       client,
       clubId: state.clubId,
+      revisions: revisionStore,
       onError: setError,
       onSaved: () => {
         setError(null);
