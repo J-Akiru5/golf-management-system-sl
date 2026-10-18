@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import { getDeskMember } from "@/lib/auth/member";
+import { decide, type Identity } from "@/lib/auth/routes";
+import { currentPlayerId } from "@/lib/player/portal";
 import type { Database } from "@/lib/supabase/types";
 
 function carryCookies(source: NextResponse, destination: NextResponse): NextResponse {
@@ -8,6 +9,14 @@ function carryCookies(source: NextResponse, destination: NextResponse): NextResp
   return destination;
 }
 
+/**
+ * The sign-in guard. It runs only for the paths in PROXY_MATCHER, so the public pages (marketing,
+ * pairings, the entry form) never pay for a session lookup.
+ *
+ * It resolves who is asking once, then hands the decision to `decide()` in `src/lib/auth/routes.ts`,
+ * which is where the route rules live and are tested. No Supabase URL means demo mode: everything
+ * is open and the shell says so.
+ */
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   if (!url) return NextResponse.next();
@@ -35,46 +44,63 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   });
 
   const pathname = request.nextUrl.pathname;
-  const isLogin = pathname === "/login";
-  const isAuthHandler = pathname.startsWith("/auth/");
+
+  // The auth handler finishes the email link itself; it must not be guarded or redirected.
+  if (pathname.startsWith("/auth/")) return response;
+
   const { data, error } = await client.auth.getUser();
+  const user = error ? null : data.user;
 
-  if (isAuthHandler) return response;
-  if (isLogin && (!data.user || error)) return response;
+  let identity: Identity = "signed-out";
+  if (user) {
+    identity = "unlinked";
 
-  if (!data.user || error) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-    loginUrl.searchParams.set("error", "sign_in_required");
-    return carryCookies(response, NextResponse.redirect(loginUrl));
+    // Any membership row means staff. The desk's own loader reports the finer problems (several
+    // clubs, an unknown role) with a real message, which is better than guessing here.
+    const { data: membership, error: memberError } = await client
+      .from("club_members")
+      .select("role")
+      .eq("user_id", user.id)
+      .limit(2);
+
+    if (!memberError && (membership?.length ?? 0) > 0) {
+      identity = "staff";
+    } else {
+      try {
+        if (await currentPlayerId(client)) identity = "player";
+      } catch {
+        // Before the player portal migration is applied this simply is not a player account.
+      }
+    }
   }
 
-  try {
-    await getDeskMember(client, data.user.id);
-  } catch {
-    if (isLogin) return response;
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("error", "membership_required");
-    return carryCookies(response, NextResponse.redirect(loginUrl));
-  }
+  const decision = decide({
+    pathname,
+    search: request.nextUrl.search,
+    next: request.nextUrl.searchParams.get("next"),
+    identity,
+  });
 
-  if (isLogin) return carryCookies(response, NextResponse.redirect(new URL("/", request.url)));
-  return response;
+  if (decision.type === "allow") return response;
+  return carryCookies(response, NextResponse.redirect(new URL(decision.to, request.url)));
 }
 
 export const config = {
+  // Next.js parses this statically, so it cannot be imported. It must stay identical to
+  // PROXY_MATCHER in src/lib/auth/routes.ts, which routes.test.ts checks.
   matcher: [
-    "/",
+    "/login",
+    "/auth/:path*",
+    "/my/:path*",
+    "/admin/:path*",
     "/tournaments/:path*",
-    "/players/:path*",
     "/register/:path*",
+    "/players/:path*",
     "/import/:path*",
     "/draw/:path*",
     "/print/:path*",
     "/setup/:path*",
     "/course/:path*",
     "/spotlight/:path*",
-    "/login",
-    "/auth/:path*",
   ],
 };

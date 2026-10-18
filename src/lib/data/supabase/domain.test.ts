@@ -33,6 +33,7 @@ const playerRow = (over: Partial<PlayerRow> = {}): PlayerRow => ({
   nickname: null,
   home_course: null,
   email: null,
+  user_id: null,
   ...over,
 });
 

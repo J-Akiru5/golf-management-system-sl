@@ -33,6 +33,7 @@ const player: PlayerRow = {
   nickname: null,
   home_course: null,
   email: null,
+  user_id: null,
   created_at: "2026-10-17T10:00:00Z",
 };
 

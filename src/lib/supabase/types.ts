@@ -53,6 +53,8 @@ export type PlayerRow = {
   nickname: string | null;
   home_course: string | null;
   email: string | null;
+  /** The account that claimed this record. Null until claimed; one account per entry. */
+  user_id: string | null;
 };
 export type HandicapRecordRow = {
   id: string;
@@ -416,6 +418,12 @@ export interface Database {
         Args: { p_tournament?: string | null };
         Returns: PublicPairingRow[];
       };
+      current_player_id: { Args: Record<string, never>; Returns: string | null };
+      claim_player_record: {
+        Args: { p_name: string | null; p_ngap_id: string | null };
+        Returns: Json;
+      };
+      player_portal_entries: { Args: Record<string, never>; Returns: Json };
       save_draw: {
         Args: {
           p_tournament: string;
