@@ -1,6 +1,8 @@
 -- Help centre seen-state: one row per person per panel they have dismissed.
 --
--- APPLY THIS IN THE SUPABASE SQL EDITOR. It is safe to run twice: the table is `if not exists` and
+-- APPLIED 18 Oct 2026 in the Supabase SQL editor (the owner), and verified from outside the app over
+-- the API: an anonymous select returns no rows, a select of all three columns succeeds, and an
+-- anonymous insert is refused with 42501 (RLS). Safe to re-run: the table is `if not exists` and
 -- the policy is dropped and recreated before it is created again.
 --
 -- What it is for: the first-run welcome, so a person is greeted once and only once.

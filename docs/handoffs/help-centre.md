@@ -45,10 +45,12 @@ What it is, where the pieces live, and how to change them without breaking the c
 ## Seen-state
 
 `supabase/migrations/20261028000000_help_seen.sql` creates `help_seen` (one row per person per panel
-they dismissed; `user_id` defaults to `auth.uid()`, RLS restricts a row to its owner). **It is not
-applied.** Until it is, the record lives in this browser under `teeline-help-seen`, which the app
-always writes anyway, so behaviour is the same either way. Clearing that key (or deleting the row)
-brings the welcome back. The preview page (`/components-preview`) has a forced-open copy of it.
+they dismissed; `user_id` defaults to `auth.uid()`, RLS restricts a row to its owner). **It is
+applied** (18 Oct 2026, in the SQL editor) and verified from outside the app: an anonymous select
+returns no rows, a select of all three columns succeeds, and an anonymous insert is refused with
+`42501`. The app still writes this browser's `localStorage` as well, which is what makes the demo
+build behave the same; clearing that key (or deleting the row) brings the welcome back. The preview
+page (`/components-preview`) has a forced-open copy of it.
 
 ## The panels are not modal, on purpose
 
