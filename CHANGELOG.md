@@ -11,6 +11,26 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+### Security
+- **A new function is private unless the migration that creates it says otherwise.** Two defaults
+  stood in the way and they needed different tools. Supabase's *stored* default grants `EXECUTE` on
+  new functions in `public` to `anon`, and `alter default privileges … revoke` removes that one.
+  Postgres's `EXECUTE` to `PUBLIC` is **hard-coded** and no default-privileges setting can touch it —
+  measured, not assumed: after the anon revoke, a probe function's ACL still read
+  `{=X/postgres, …}`, and every role inherits through PUBLIC, so anon was still in. An event trigger
+  on `CREATE FUNCTION` now revokes the new function from PUBLIC and anon the moment it exists. A
+  function that is meant to be public still says so with its own `grant … to anon`, which runs after
+  the trigger and survives it — so the exception is written down where a reader looks, instead of
+  being the default for everything.
+
+### Database
+- `20261031000000_private_functions_by_default.sql`: **applied live**. Self-verifying: it creates a
+  function inside its own transaction, reads the ACL the trigger produced, and raises unless the
+  posture is right, so a silent no-op cannot be recorded as applied. It did exactly that on the first
+  attempt — the PUBLIC half had not worked — which is why the event trigger exists.
+- `20261030000000_revoke_anon_execute.sql`: **applied live**. Reaches anon grants that
+  `revoke … from public` misses.
+
 ## [0.10.0] - 2026-10-18
 
 One hardening fix, with the migration it needs.
