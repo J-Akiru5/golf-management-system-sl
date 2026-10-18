@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMergeQueue, type MergeDecision, resolveImport } from "./merge";
+import { buildMergeQueue, type MergeDecision, resolveImport, reviewBuckets } from "./merge";
 import { parseCsv } from "./parse";
 import type { ImportOptions, KnownPlayer } from "./types";
 
@@ -134,5 +134,64 @@ describe("resolveImport", () => {
     const res = resolveImport(queue(), [{ row: 3, action: "link" }]);
     // Row 3 has two candidates, so the resolver cannot choose one by itself.
     expect(res.unresolved.map((r) => r.row)).toEqual([3]);
+  });
+});
+
+describe("reviewBuckets", () => {
+  const queue = () =>
+    buildMergeQueue(
+      csv(
+        'Antonio Alcantara,1001,12.4,11/01/2026\nJuan Newgolfer,3001,22.0,11/01/2026\n"DELA CRUZ, Juan",7009,18.2,11/01/2026',
+      ),
+      known,
+      opts(),
+    );
+
+  it("puts every usable row in exactly one bucket", () => {
+    const q = queue();
+    const buckets = reviewBuckets(q, resolveImport(q, []));
+    const all = [
+      ...buckets.decided.map((r) => r.row),
+      ...buckets.deferred.map((r) => r.row),
+      ...buckets.needsDecision.map((r) => r.row),
+    ];
+
+    expect([...all].sort((a, b) => a - b)).toEqual(q.rows.filter((r) => !r.skip).map((r) => r.row));
+    // No row is listed twice, which would double-count the tab badges.
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("agrees with the Apply button about what still needs an answer", () => {
+    const q = queue();
+    const res = resolveImport(q, []);
+    const buckets = reviewBuckets(q, res);
+    // Apply is disabled while `unresolved` is non-empty. The tab must say the same thing.
+    expect(buckets.needsDecision.length === 0).toBe(res.unresolved.length === 0);
+    expect(buckets.decided.map((r) => r.row)).toEqual(res.rows.map((r) => r.row));
+  });
+
+  it("counts a deferral as settled, because the organizer did decide", () => {
+    const q = queue();
+    const buckets = reviewBuckets(q, resolveImport(q, [{ row: 2, action: "defer" }]));
+
+    expect(buckets.deferred.map((r) => r.row)).toEqual([2]);
+    expect(buckets.decided.map((r) => r.row)).toEqual([1]);
+    expect(buckets.needsDecision.map((r) => r.row)).toEqual([3]);
+    expect(buckets.progress).toEqual({ settled: 2, total: 3 });
+  });
+
+  it("reaches settled === total only when nothing is waiting", () => {
+    const q = queue();
+    const buckets = reviewBuckets(q, resolveImport(q, [{ row: 3, action: "create" }]));
+    expect(buckets.needsDecision).toEqual([]);
+    expect(buckets.progress.settled).toBe(buckets.progress.total);
+    expect(buckets.progress.total).toBe(3);
+  });
+
+  it("returns the queue's own row objects, so a tab can render them", () => {
+    const q = queue();
+    const buckets = reviewBuckets(q, resolveImport(q, []));
+    const row1 = q.rows.find((r) => r.row === 1);
+    expect(buckets.decided[0]).toBe(row1);
   });
 });

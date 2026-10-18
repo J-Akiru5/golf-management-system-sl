@@ -317,3 +317,45 @@ export function resolveImport(queue: MergeQueue, decisions: MergeDecision[]): Re
 
   return { rows, deferred, unresolved };
 }
+
+export interface ReviewBuckets {
+  /** Rows with nothing outstanding. These are what Apply writes. */
+  decided: MergeRow[];
+  /** Rows the organizer chose to decide later. */
+  deferred: MergeRow[];
+  /** Rows that still need an answer. Apply stays disabled while this is non-empty. */
+  needsDecision: MergeRow[];
+  /**
+   * How far through the review the desk is. Deferring counts as decided: the organizer made a call,
+   * just not the final one. Rows the file itself marks as unusable are not counted at all, because
+   * they were never the organizer's to answer.
+   */
+  progress: { settled: number; total: number };
+}
+
+/**
+ * Splits the queue into the three buckets the review tabs show.
+ *
+ * It reads the buckets back out of the `Resolution` rather than re-deriving them from the decisions,
+ * so the tab counts and the Apply button cannot drift apart: there is one rule about what still
+ * needs a decision, and it lives in `resolveImport`.
+ */
+export function reviewBuckets(queue: MergeQueue, resolution: Resolution): ReviewBuckets {
+  const byRow = new Map(queue.rows.map((r) => [r.row, r]));
+  const fromQueue = (row: number) => byRow.get(row);
+  const decided = resolution.rows
+    .map((r) => fromQueue(r.row))
+    .filter((r): r is MergeRow => r !== undefined);
+  const deferred = resolution.deferred.map((r) => fromQueue(r.row) ?? r);
+  const needsDecision = resolution.unresolved.map((r) => fromQueue(r.row) ?? r);
+
+  return {
+    decided,
+    deferred,
+    needsDecision,
+    progress: {
+      settled: decided.length + deferred.length,
+      total: decided.length + deferred.length + needsDecision.length,
+    },
+  };
+}
