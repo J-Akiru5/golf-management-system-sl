@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { paginate } from "@/lib/data/paging";
-import { sortStable } from "./usePagedList";
+import { resolvePage, sortStable } from "./usePagedList";
 
 interface Row {
   id: string;
@@ -8,6 +8,26 @@ interface Row {
 }
 
 const row = (id: string, name: string): Row => ({ id, name });
+
+describe("resolvePage", () => {
+  it("keeps the reader on the page they chose while the filter is unchanged", () => {
+    expect(resolvePage({ page: 3, key: "all" }, "all")).toBe(3);
+  });
+
+  it("returns to page 1 as soon as the filter changes, without an extra render", () => {
+    expect(resolvePage({ page: 3, key: "all" }, "needs_review")).toBe(1);
+    expect(resolvePage({ page: 3, key: "query=a" }, "query=ab")).toBe(1);
+  });
+
+  it("never reads past the end after a filter shrinks the list", () => {
+    // The state still says page 4, but the new key makes the safe answer page 1, and paginate()
+    // clamps that to the last real page if the filtered list is shorter still.
+    const filtered = [row("a", "Ana"), row("b", "Ben")];
+    const page = paginate(filtered, resolvePage({ page: 4, key: "all" }, "ready"), 50);
+    expect(page.page).toBe(1);
+    expect(page.items.map((r) => r.id)).toEqual(["a", "b"]);
+  });
+});
 
 describe("sortStable", () => {
   it("breaks ties on the id, so equal rows keep a fixed order", () => {

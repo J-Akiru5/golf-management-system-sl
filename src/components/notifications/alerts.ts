@@ -163,3 +163,18 @@ export function bellLabel(count: number): string {
   if (count === 0) return "Alerts, all clear";
   return `Alerts, ${count} need${count === 1 ? "s" : ""} attention`;
 }
+
+/** Where the stored check stands. `idle` only happens in demo mode, where there is nothing to check. */
+export type AlertCheckState = "idle" | "checking" | "ready" | "error";
+
+/**
+ * Whether the panel may say "All clear".
+ *
+ * A failed or still-running check is not the same thing as a clean one. Saying all clear while
+ * the stored alerts could not be read would tell the desk there is nothing to do when nobody
+ * knows; the panel shows the error instead, and keeps the last good list underneath it.
+ */
+export function showsAllClear(check: AlertCheckState, count: number): boolean {
+  if (count !== 0) return false;
+  return check === "ready" || check === "idle";
+}

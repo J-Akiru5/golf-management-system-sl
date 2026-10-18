@@ -4,12 +4,14 @@ import { Bell, Check, RefreshCw, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  type AlertCheckState,
   badgeCount,
   bellLabel,
   buildAlerts,
   dismissableCount,
   groupAlerts,
   type StoredNotification,
+  showsAllClear,
 } from "@/components/notifications/alerts";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,8 +23,6 @@ import { validateDraw } from "@/lib/draw/validate";
 import { useDesk } from "@/lib/store/desk-store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-
-type SyncState = "idle" | "checking" | "ready" | "error";
 
 /**
  * The alerts bell.
@@ -38,7 +38,9 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
 
   const [open, setOpen] = useState(false);
   const [stored, setStored] = useState<StoredNotification[]>([]);
-  const [sync, setSync] = useState<SyncState>("idle");
+  // Connected mode starts in "checking": until the first check returns, the panel must not claim
+  // there is nothing to do.
+  const [sync, setSync] = useState<AlertCheckState>(connected ? "checking" : "idle");
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -215,7 +217,7 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
             </div>
           )}
 
-          {alerts.length === 0 && sync !== "checking" && sync !== "error" && (
+          {showsAllClear(sync, alerts.length) && (
             <p className="py-4 text-[14px] text-ink-muted" role="status">
               All clear. Nothing is stopping you from publishing.
             </p>

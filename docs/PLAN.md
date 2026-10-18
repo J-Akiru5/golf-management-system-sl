@@ -35,7 +35,7 @@ Anything not marked is a plan, not a fact.
 | Alerts | **Bell built.** Decision 14 is stored, desk-facing notifications (option B): `notifications` + `notification_reads` with per-user read state, `sync_notifications(tournament)` and `mark_notifications_read(tournament)`, all applied to the live project. The bell merges the live draw issues with the stored rows, de-duplicates them, and counts unresolved blocking and warning whatever their read state; read state only quiets info. Both roles were checked calling `sync_notifications` and `mark_notifications_read` over the API | Gap 11 closed; PR #23 |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 31 test files, 372 tests passing (`pnpm test`) on `feat/desk-lists-and-bell` today (29 files, 343 tests on `develop`, which is PR #17 alone). PR #23 adds 29 cases: the alert rules (16), stable list ordering (4), the import review buckets (5) and a start sheet carrying a whole 126-strong field (4). The contrast file generates 100 of those cases, checking every design-system pair in both themes.
+Whole suite: 31 test files, 382 tests passing (`pnpm test`) on `feat/desk-lists-and-bell` today (29 files, 343 tests on `develop`, which is PR #17 alone). PR #23 adds 39 cases: the alert rules and the all-clear guard (23), stable ordering and the filter reset (7), the import review buckets (5) and a start sheet carrying a whole 126-strong field (4). The contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
 **The one thing blocking a real event:** the wiring exists but the project has no course, tee, hole or
 tournament rows, so the desk has nothing real to show. Provisioning and an end-to-end pass with real
@@ -193,10 +193,9 @@ Verified in `supabase/migrations`, and **applied to the `golf-management-system`
   `/enter/[id]`, `/login`), player (`/my`), staff (the desk). Only the guarded areas are in the
   proxy matcher, so public pages never pay for a session lookup.
 
-**In step, with one migration ahead of `develop`.** Every migration on `develop` is applied to the
-project, and the project is one ahead: `20261026000000_notifications.sql` (gap 11) is already applied
-and rides on PR #17. Until that merges, a `db push` from `develop` will not see it, and a new branch
-must not reuse the `20261026000000` version number.
+**In step.** Every migration in `develop` is applied to the live project, including
+`20261026000000_notifications.sql` (gap 11), which merged in PR #17. A new migration must use a
+version after `20261026000000`; that number is spent.
 
 **Schema vs spec:** the migration has 14 tables: the spec's tables except `scores` (Phase 2), plus `club_members`
 (needed for RLS).
@@ -298,8 +297,10 @@ These are places where the spec promises something the code does not do yet. Che
     `validateDraw` issues with the stored rows rather than copying the draw rules into SQL, so it
     cannot disagree with the Draw screen's issues panel; it de-duplicates across the two sources, and
     the badge counts unresolved blocking and warning **whatever their read state**, so dismissing a
-    notice can never hide something that stops publishing. Both roles were checked calling both
-    functions over the API. **Not yet seen in a browser**: the mobile sheet, the focus trap and the
+    notice can never hide something that stops publishing. The full sync cycle was checked over the
+    API on 18 Oct 2026: a `needs_review` warning appeared, cleared when the cause was fixed, a
+    `cutoff_soon` info notice was dismissed, and that read state survived a fresh session. Both roles
+    can call both functions. **Not yet seen in a browser**: the mobile sheet, the focus trap and the
     light and dark appearance are unverified. On PR #23.
 12. **The draw was computed in the browser and never saved.** *Fixed in code and applied; not yet
     exercised.* `route()` is a real pure engine and it runs live: changing players, settings or a move
@@ -439,7 +440,7 @@ only their own entry. Every finding is written down with a severity the same day
 | # | Workstream | What it covers | Owner |
 | --- | --- | --- | --- |
 | W1 | ~~Land PR #17~~ **Merged 18 Oct 2026** | Event setup, the tee and hole editors, the tee/hole loading fix, the paging primitive and the notifications migration. Merged into `develop` as `863c253`. `main` still needs re-levelling and production redeploying | Done |
-| W2 | Long lists and alerts | **Built and on PR #23**: the bell in the shell, and paging on the players, registration and import review lists plus the import review tabs. Still to finish: **see it in a browser** (no screenshot of the bell exists, so the mobile sheet, the focus trap and light and dark are unverified) and add the dev-only preview of every bell and pager state. The draw groups, print and the desk's player search are deliberately not paged | Owner reviews PR #23 |
+| W2 | Long lists and alerts | **Built and on PR #23**: the bell in the shell, and paging on the players, registration and import review lists plus the import review tabs. The full notification sync cycle was verified over the live API. Still to finish: **see it in a browser** (no screenshot of the bell exists, so the mobile sheet, the focus trap and light and dark are unverified) and a dev-only preview of every bell and pager state. The draw groups, print and the desk's player search are deliberately not paged | Owner reviews PR #23 |
 | W3 | Real club data, then prove the path | Course Rating, Slope, Par and stroke index from the scorecard (decision 1); decisions 3 to 7 and 9; a fresh NGAP export and a re-freeze; **and the print page's `courseDataStatus` hard-coded to `"placeholder"` must be derived from the loaded rows**, so real data prints without the watermark | Organizer, with the club |
 | W4 | Accounts, access, privacy | Rotate the two test accounts; create the golf pro as `organizer`; decide player sign-ups; one player account and one player row to claim; verify the photo consent line and a real upload | Jeff and Claude |
 | W5 | The UAT itself | The run sheet, the session, the findings, the fallback (printed sheets, unpublish, redeploy the previous build) | Jeff and the organizer |
@@ -515,7 +516,7 @@ Decisions that belong to the people named, not to an agent.
 | 11 | Vector (SVG/PDF) crest from the club; real course pictures and hole positions | Jeff / club | Print, large displays, real course map | 320px PNG crest; illustrated placeholder course |
 | 12 | ~~Create `staging` and `main` branches~~ Partly settled 18 Oct 2026: `main` exists and is kept level with `develop`; `staging` is deliberately skipped because Jeff is a solo dev. Cleaning up the merged feature branches is still open | Jeff | Pipeline | `main` = `develop`; no `staging` |
 | 13 | ~~Pagination for the long lists~~ **Settled 18 Oct 2026:** 50 rows a page, paged in the browser; the repositories still fetch whole tables because the print path needs the full list | Jeff | — | Applied on PR #23 to the player directory, the registration desk and the import review tabs. Print, the draw groups and the desk's player search are deliberately not paged |
-| 14 | ~~Alerts in Phase 1~~ **Settled 18 Oct 2026:** stored, desk-facing notifications (option B), not derived-only alerts | Organizer | — | Two tables plus `sync_notifications(tournament)`, designed but not built (gap 11) |
+| 14 | ~~Alerts in Phase 1~~ **Settled 18 Oct 2026:** stored, desk-facing notifications (option B), not derived-only alerts | Organizer | — | Two tables plus `sync_notifications(tournament)`, applied and built on PR #23 (gap 11) |
 | 15 | Public pairings page: names, flight, hole and time only, or also handicap or category | Organizer | Public page content | Names, flight, hole, time |
 | 16 | After a publish, do late changes always mean a new version, and should the page mark what moved | Organizer | Publish flow | New version each time; version and time shown, no change marks |
 

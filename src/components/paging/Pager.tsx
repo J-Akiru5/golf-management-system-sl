@@ -24,7 +24,9 @@ export function Pager<T>({
   return (
     <nav
       aria-label="Paging"
-      className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-2 ${className ?? ""}`}
+      // A pager belongs to the screen, never to a printed sheet. The print path shows the full
+      // list anyway, but keeping the control out of print output makes that impossible to break.
+      className={`no-print flex flex-wrap items-center justify-between gap-x-3 gap-y-2 ${className ?? ""}`}
     >
       <span className="text-[13px] text-ink-muted" role="status" aria-live="polite">
         {pageLabel(page)}

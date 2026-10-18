@@ -20,6 +20,21 @@ export interface PagedList<T> {
   setPage: (page: number) => void;
 }
 
+interface PagedListState {
+  page: number;
+  key: string;
+}
+
+/**
+ * The page to show, given the last state and the current filter.
+ *
+ * A changed filter reads as page 1 immediately, in the same render as the new rows, rather than
+ * through an effect that would briefly show page 3 of a two-page list.
+ */
+export function resolvePage(state: PagedListState, filterKey: string): number {
+  return state.key === filterKey ? state.page : 1;
+}
+
 /** Sorts by the comparator, breaking ties on the record id so the order never wobbles. */
 export function sortStable<T extends { id: string }>(
   items: T[],
@@ -34,9 +49,9 @@ export function usePagedList<T>(
   filterKey: string,
   pageSize = DEFAULT_PAGE_SIZE,
 ): PagedList<T> {
-  const [state, setState] = useState({ page: 1, key: filterKey });
+  const [state, setState] = useState<PagedListState>({ page: 1, key: filterKey });
   // Derived rather than stored: a changed filter reads as page 1 immediately, with no extra render.
-  const page = state.key === filterKey ? state.page : 1;
+  const page = resolvePage(state, filterKey);
 
   return {
     page: paginate(items, page, pageSize),
