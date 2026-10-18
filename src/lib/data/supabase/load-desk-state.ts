@@ -30,7 +30,11 @@ function asArray<T>(rows: T[] | null): T[] {
 function toPublished(value: Json | null, tournamentId: string): Published | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
-  if (typeof raw.at !== "string" || typeof raw.signature !== "string" || !Array.isArray(raw.groups)) {
+  if (
+    typeof raw.at !== "string" ||
+    typeof raw.signature !== "string" ||
+    !Array.isArray(raw.groups)
+  ) {
     return null;
   }
   return {
@@ -85,26 +89,50 @@ export async function loadDeskState(
     .select("id, name")
     .eq("id", clubId)
     .single();
-  if (clubError || !club) throw new Error(`Could not load the club: ${clubError?.message ?? "not found"}`);
+  if (clubError || !club)
+    throw new Error(`Could not load the club: ${clubError?.message ?? "not found"}`);
 
-  const [tournamentRows, playerRows, recordRows, entryRows, batchRows, deferredRows, categoryRows, flightRows] =
-    await Promise.all([
-      client.from("tournaments").select("*").eq("club_id", clubId).order("play_date", { ascending: true }),
-      client.from("players").select("*").eq("club_id", clubId).order("full_name"),
-      client.from("handicap_records").select("*").eq("club_id", clubId).order("effective_date"),
-      client.from("registrations").select("*").eq("club_id", clubId),
-      client.from("handicap_import_batches").select("*").eq("club_id", clubId).order("imported_at"),
-      client.from("deferred_matches").select("*").eq("club_id", clubId).order("created_at"),
-      client.from("categories").select("*").eq("club_id", clubId).order("sort_order"),
-      client.from("flights").select("*").eq("club_id", clubId).order("min_value"),
-    ]);
-  for (const result of [tournamentRows, playerRows, recordRows, entryRows, batchRows, deferredRows, categoryRows, flightRows]) {
+  const [
+    tournamentRows,
+    playerRows,
+    recordRows,
+    entryRows,
+    batchRows,
+    deferredRows,
+    categoryRows,
+    flightRows,
+  ] = await Promise.all([
+    client
+      .from("tournaments")
+      .select("*")
+      .eq("club_id", clubId)
+      .order("play_date", { ascending: true }),
+    client.from("players").select("*").eq("club_id", clubId).order("full_name"),
+    client.from("handicap_records").select("*").eq("club_id", clubId).order("effective_date"),
+    client.from("registrations").select("*").eq("club_id", clubId),
+    client.from("handicap_import_batches").select("*").eq("club_id", clubId).order("imported_at"),
+    client.from("deferred_matches").select("*").eq("club_id", clubId).order("created_at"),
+    client.from("categories").select("*").eq("club_id", clubId).order("sort_order"),
+    client.from("flights").select("*").eq("club_id", clubId).order("min_value"),
+  ]);
+  for (const result of [
+    tournamentRows,
+    playerRows,
+    recordRows,
+    entryRows,
+    batchRows,
+    deferredRows,
+    categoryRows,
+    flightRows,
+  ]) {
     if (result.error) throw new Error(`Could not load the desk: ${result.error.message}`);
   }
 
   const categories = asArray(categoryRows.data).map(toCategoryRule);
   const flights = asArray(flightRows.data).map(toFlightRule);
-  const tournaments = asArray(tournamentRows.data).map((row) => toTournament(row, categories, flights));
+  const tournaments = asArray(tournamentRows.data).map((row) =>
+    toTournament(row, categories, flights),
+  );
 
   // Signed URLs only where consent exists, and only for this club's objects.
   const players = await Promise.all(
@@ -174,8 +202,7 @@ export async function loadDeskState(
   }
 
   const entries = asArray(entryRows.data).map(toRegistrationEntry);
-  const active =
-    tournaments.find((t) => t.state === "open")?.id ?? tournaments[0]?.id ?? null;
+  const active = tournaments.find((t) => t.state === "open")?.id ?? tournaments[0]?.id ?? null;
 
   return {
     clubName: club.name,

@@ -1,5 +1,6 @@
 "use client";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createContext,
   type Dispatch,
@@ -10,15 +11,11 @@ import {
   useReducer,
   useState,
 } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
 import { getDeskMember } from "@/lib/auth/member";
-import { loadDeskState } from "@/lib/data/supabase/load-desk-state";
-import { createSupabaseAdapters } from "@/lib/data/supabase/adapters";
+import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
 import { registrationFor } from "@/lib/data/registrations";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
-import type { Database } from "@/lib/supabase/types";
+import { createSupabaseAdapters } from "@/lib/data/supabase/adapters";
+import { loadDeskState } from "@/lib/data/supabase/load-desk-state";
 import type {
   Club,
   DeferredMatch,
@@ -39,6 +36,9 @@ import {
   flagsOf,
   type Published,
 } from "@/lib/store/state";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import type { Database } from "@/lib/supabase/types";
 import { activeTournament, boardOf, entriesFor, initialState, reducer } from "./state";
 
 export type { Action, ApplyImportPayload, BoardState, DeskState, Published } from "./state";

@@ -11,9 +11,14 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Dispatch } from "react";
-import { type Adapters, createMockAdapters, type NewEntryInput, type NewPlayerInput } from "@/lib/data/adapters";
-import type { HandicapRecord, PlayerRecord, RegistrationEntry, Tournament } from "@/lib/data/types";
+import {
+  type Adapters,
+  createMockAdapters,
+  type NewEntryInput,
+  type NewPlayerInput,
+} from "@/lib/data/adapters";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
+import type { HandicapRecord, PlayerRecord, RegistrationEntry, Tournament } from "@/lib/data/types";
 import type { Action, DeskState } from "@/lib/store/state";
 import type { Database, Json } from "@/lib/supabase/types";
 import {
@@ -370,24 +375,22 @@ export function createSupabaseAdapters(
           .insert(toImportBatchInsert(batch));
         fail("Could not record the import", batchError);
         if (payload.deferred.length) {
-          const { error: deferredError } = await client
-            .from("deferred_matches")
-            .insert(
-              payload.deferred.map((row) =>
-                toDeferredMatchInsert({
-                  id: uuid(),
-                  clubId,
-                  name: row.name,
-                  ngapId: row.ngapId,
-                  index: row.index,
-                  effectiveDate: row.effectiveDate,
-                  reason: row.conflicts.concat(row.warnings).join(" ") || "Needs a decision",
-                  candidatePlayerIds: row.candidates.map((c) => c.playerId),
-                  fileName: payload.fileName,
-                  at: new Date().toISOString(),
-                }),
-              ),
-            );
+          const { error: deferredError } = await client.from("deferred_matches").insert(
+            payload.deferred.map((row) =>
+              toDeferredMatchInsert({
+                id: uuid(),
+                clubId,
+                name: row.name,
+                ngapId: row.ngapId,
+                index: row.index,
+                effectiveDate: row.effectiveDate,
+                reason: row.conflicts.concat(row.warnings).join(" ") || "Needs a decision",
+                candidatePlayerIds: row.candidates.map((c) => c.playerId),
+                fileName: payload.fileName,
+                at: new Date().toISOString(),
+              }),
+            ),
+          );
           fail("Could not save the deferred rows", deferredError);
         }
       });
