@@ -235,7 +235,7 @@
       <div class="hero-inner">
         <p class="eyebrow">Syntaxure Labs · TeeLine Golf · IGCC Tournament Desk · 18 Oct 2026</p>
         <h1>Desk lists and the alerts bell</h1>
-        <p class="subline">Branch <code>feat/desk-lists-and-bell</code> · PR #23 into <code>develop</code> · not merged</p>
+        <p class="subline">Branch <code>feat/desk-lists-and-bell</code> · merged into <code>develop</code> as <code>1fd2b76</code> · 18 Oct 2026</p>
         <p class="subline">Paging for the long lists, the shell's alerts bell, and the live sync check behind it.</p>
         <div class="stats" aria-label="Implementation summary">
           <div class="stat"><strong>382 → 382</strong><span>tests on the branch, 31 files, all passing</span></div>
@@ -275,7 +275,7 @@
           failed check shows an error instead of an all-clear. Nothing in the database changed: the
           notifications schema was already live and applied, and this work only consumes it.
         </p>
-        <div class="callout success"><strong>State:</strong> the work is on PR #23, committed and pushed, but not merged and not deployed. The live sync path was exercised over the API; the bell has not been seen in a browser yet.</div>
+        <div class="callout success"><strong>State:</strong> merged into <code>develop</code> as <code>1fd2b76</code> on 18 Oct 2026, after <code>typecheck</code>, <code>lint</code>, 382 tests and a production build all passed on the exact tree. Not deployed; production still tracks <code>main</code>. The live sync path was exercised over the API; the bell has not been seen in a browser yet.</div>
       </section>
 
       <section id="shipped">
@@ -381,6 +381,11 @@
           pager's print guard with the all-clear tests, the plan updates, and finally the import queue
           reset, the plan rows and the 0.6.0 notes.
         </p>
+        <p>
+          PR #23 merged into <code>develop</code> as <code>1fd2b76</code> on 18 Oct 2026. The only
+          check on the PR was a Vercel preview failure from a build rate limit, not from the code; the
+          merge commit's tree is byte-identical to the verified branch tree.
+        </p>
       </section>
 
       <section id="verify">
@@ -440,7 +445,7 @@
       <section id="next">
         <div class="section-head"><span class="num">09</span><h2>What is next</h2></div>
         <ol class="timeline">
-          <li><strong>Owner review of PR #23.</strong> One purpose, into <code>develop</code>; Jeff merges. Not auto-merged.</li>
+          <li><strong>PR #23 is merged.</strong> One purpose, into <code>develop</code>, as <code>1fd2b76</code>. No new migration ships with it.</li>
           <li><strong>Open it in a browser.</strong> Sign in as the desk, create a warning, then clear it; check the panel at phone and desktop widths, the focus trap, Escape, and both themes.</li>
           <li><strong>Tag 0.6.0 when the owner wants it live.</strong> <code>package.json</code> is at 0.6.0 and the changelog notes are written; no migration ships with it. Deploy production only from a release the owner chooses.</li>
           <li><strong>Real data, then the UAT.</strong> W3 (real course and NGAP data) comes before the organizer UAT, and the print page's hard-coded placeholder course status must be derived from loaded rows before real printing is trusted.</li>
