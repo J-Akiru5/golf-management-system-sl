@@ -1,4 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type {
+  HandicapRecordRow,
+  PlayerRow,
+  RegistrationRow,
+  TournamentRow,
+} from "@/lib/supabase/types";
 import {
   joinName,
   splitName,
@@ -10,7 +16,6 @@ import {
   toTournament,
   toTournamentRegistration,
 } from "./domain";
-import type { HandicapRecordRow, PlayerRow, RegistrationRow, TournamentRow } from "@/lib/supabase/types";
 
 const playerRow = (over: Partial<PlayerRow> = {}): PlayerRow => ({
   id: "player-1",
@@ -234,11 +239,7 @@ describe("toTournament", () => {
   });
 
   it("keeps the full multi-day schedule and the confirmation flags", () => {
-    const tournament = toTournament(
-      tournamentRow({ dates: ["2026-11-12", "2026-11-13"] }),
-      [],
-      [],
-    );
+    const tournament = toTournament(tournamentRow({ dates: ["2026-11-12", "2026-11-13"] }), [], []);
     expect(tournament.dates).toEqual(["2026-11-12", "2026-11-13"]);
     expect(tournament.nameNeedsConfirmation).toBe(true);
     expect(tournament.scheduleNeedsConfirmation).toBe(true);

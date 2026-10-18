@@ -82,6 +82,7 @@ export interface ApplyImportPayload {
 }
 
 export type Action =
+  | { type: "hydrate"; state: DeskState }
   | { type: "selectTournament"; id: string | null }
   | { type: "saveTournament"; tournament: Tournament }
   | { type: "addPlayer"; player: PlayerRecord }
@@ -252,6 +253,11 @@ function withBoard(s: DeskState, tournamentId: string | null, board: BoardState)
 
 export function reducer(state: DeskState, a: Action): DeskState {
   switch (a.type) {
+    // The Supabase adapter replaces the whole desk once it has read the club's data. Nothing is
+    // merged: a half-merged state would mix demo rows with real ones.
+    case "hydrate":
+      return a.state;
+
     case "selectTournament":
       return { ...state, activeTournamentId: a.id };
 

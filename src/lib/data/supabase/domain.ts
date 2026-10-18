@@ -168,7 +168,9 @@ export function toTournamentRegistration(value: unknown): TournamentRegistration
         day: typeof d.day === "number" ? d.day : 0,
         label: str(d.label, "") ?? "",
         date: str(d.date, "") ?? "",
-        options: Array.isArray(d.options) ? d.options.filter((o): o is string => typeof o === "string") : [],
+        options: Array.isArray(d.options)
+          ? d.options.filter((o): o is string => typeof o === "string")
+          : [],
         needsConfirmation: d.needsConfirmation === true,
       };
     }),
