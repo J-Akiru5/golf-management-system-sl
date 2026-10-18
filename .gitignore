@@ -12,3 +12,6 @@ next-env.d.ts
 
 # UI check screenshots
 .tmp/ui-shots/
+
+# Vercel CLI link state, per worktree
+.vercel
