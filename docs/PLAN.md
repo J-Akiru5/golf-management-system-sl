@@ -21,15 +21,15 @@ Anything not marked is a plan, not a fact.
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
 | Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), both migrations, club row seeded, `player-photos` created private, RLS checked against the anon key | 14 tables, RLS on all |
-| Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`, `src/lib/store/legacy-supabase-store.tsx`) | **Merged (PR #5) and parked**: auth guard, club-scoped repositories, frozen published snapshot, optimistic writes. Written against the earlier store contract; **not yet wired to the shell store** | 24 tests among the 218 |
+| Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`, `src/lib/store/legacy-supabase-store.tsx`) | **Merged (PR #5) and parked**: auth guard, club-scoped repositories, frozen published snapshot, optimistic writes. Written against the earlier store contract; **not yet wired to the shell store** | 24 tests among the 246 |
 | Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Applied 18 Oct 2026 and verified**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger; public sign-ups off. Two staff accounts exist (`admin` = owner, `member1` = desk) | Verified by signing in as each role: owner sees both member rows, desk sees only its own |
 | Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | Public TeeLine landing at `/`, control room at `/admin`, plus Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view and profiles |
 | Data boundary (`src/lib/data`) | **Built as mock adapters** over the session store | `PlayerRepository`, `TournamentRepository`, `RegistrationRepository`, `HandicapImportAdapter`, `PairingsRouter`, public allow-list |
 | Brand and visual design | **TeeLine Golf** identity: public landing page, fairway-and-flag vector mark, Ivory / Charcoal themes; the IGCC crest stays a separate club asset | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
-| Printing | **Demo built**: start sheet, pairings, scorecard shell with print CSS | Not tested on the club's paper or printer |
+| Printing | **Print components and pure helpers built**: sorted start sheet, allow-listed pairings sheet, per-group 18-hole scorecards, handicap dots, and A4 print CSS | `src/lib/print` tests; dev-only preview at `/print-preview`; real course data and club-printer test still pending |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 18 test files, 218 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
+Whole suite: 21 test files, 246 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
 **The one thing blocking a real event:** nothing the organizer does is saved. The next build step is
 the database connection (section 8, step 1). Until then the app is a working demo, not a tool.
@@ -192,7 +192,7 @@ Verified in `supabase/migrations`, and **applied to the `golf-management-system`
 | Registration desk | Find a player or start a new one, member/guest, sponsor question, per-day tee-time preferences (Day 4 flagged), shirt sizes, extra fields, payment recorded by hand, eligibility review after saving |
 | Import handicaps | CSV, column mapping, match and merge queue with decisions, apply, deferred rows, import history; applies to the session's handicap records |
 | Draw control room | Generate, move (drag or Move, with a reason), lock, re-run keeping locks, override list, issues panel, publish dialog, routing explanation per player, draft / published / changed states |
-| Print center | Start sheet, pairings, scorecard shell with placeholder dots, print CSS for A4/Letter. Published vs draft is labelled |
+| Print center | Start sheet, pairings, per-group scorecards, handicap dots, and A4 print CSS. Published vs draft is labelled |
 | Settings | Setup wizard: basics, course and tees (pending blocks, read-only sample values), cut-off and handicap rules, categories, flights, start and groups, registration fields, live readiness checks |
 | Public pairings | Search by name, large text, print; built through the public allow-list projection (name, flight, hole, time only) |
 | Course & holes | Hole 1 overview and green view with shot line and yardage markers drawn from anchor files. **Pictures are an illustration, not IGCC's real hole** |
@@ -215,9 +215,9 @@ These are places where the spec promises something the code does not do yet. Che
    open step, and it is why the auth model can be finished before the data flows through it.
 3. **Cut-off date is applied in the desk** (frozen onto each registration; re-freeze offered), but
    the database write is still missing.
-4. **Printing** has a demo print center (start sheet, pairings, scorecard shell). It has not been
-   printed on the club's paper or printer, and the scorecard dots stay placeholders until the club
-   supplies the stroke index.
+4. **Printing** has props-driven start, pairings and scorecard components, plus tested sorting and
+   handicap-dot helpers. The current desk still supplies placeholder/missing hole data, so its cards
+   show the missing-data state and watermark. It has not been printed on the club's paper or printer.
 5. **Settings are editable in the demo**, but the real tee data is deliberately read-only until the
    club supplies the scorecard, so it cannot pass as official.
 6. **Tee data is placeholder.** Demo and test numbers (e.g. White 71.5 / 128 / 72) are invented.
@@ -269,8 +269,8 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
 5. **Registration desk:** demo built (directory search, new player, member/guest, tee-time
    preferences, payment recorded by hand, cut-off freeze and re-freeze). Copying a list from a past
    event and writing to the database are not built.
-6. **Print:** demo print center built (start sheet, pairings, scorecard shell). Print it on real
-   paper at the club, and fill the stroke index so the handicap dots are real.
+6. **Print:** build the data adapter and pass authoritative hole/tee provenance into the existing
+   print assembler. Print on real paper at the club and verify the A4 layout before the event.
 7. **Deploy:** Vercel project, env vars, `staging` and `main` branches, CI (typecheck, lint, tests, build).
 8. **Dress rehearsal:** run a full fake tournament with the organizer using real IGCC data before the real event.
 

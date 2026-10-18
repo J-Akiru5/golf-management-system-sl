@@ -1,0 +1,422 @@
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+.sheet {
+  display: grid;
+  gap: 4mm;
+  width: 100%;
+  color: #000;
+  background: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+}
+
+.previewPage {
+  display: grid;
+  gap: 10mm;
+  width: 100%;
+  color: #000;
+  background: #fff;
+}
+
+:global(nextjs-portal) {
+  display: none !important;
+}
+
+.previewToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5mm;
+  max-width: 210mm;
+  margin-inline: auto;
+  padding: 4mm;
+  border: 1px solid #000;
+  color: #000;
+  background: #fff;
+}
+
+.previewToolbar h1,
+.previewToolbar p {
+  margin: 0;
+}
+
+.previewToolbar h1 {
+  color: #000;
+}
+
+.previewToolbar p {
+  margin-top: 1mm;
+  font-size: 9pt;
+}
+
+.previewToolbar button {
+  min-height: 11mm;
+  padding: 0 5mm;
+  border: 1px solid #000;
+  border-radius: 2px;
+  color: #000;
+  background: #fff;
+  font: inherit;
+}
+
+.sheetHeader {
+  display: grid;
+  gap: 1.5mm;
+  padding-bottom: 3mm;
+  border-bottom: 1.5px solid #000;
+}
+
+.sheetHeader h2,
+.scorecardHeader h2 {
+  margin: 0;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 18pt;
+  line-height: 1.1;
+}
+
+.sheetHeader p,
+.scorecardHeader p {
+  margin: 0;
+  color: #000;
+  font-size: 9pt;
+}
+
+.courseNotice {
+  margin: 0;
+  padding: 2mm 3mm;
+  border: 1.5px solid #000;
+  color: #000;
+  background: #fff;
+  font-size: 9pt;
+  line-height: 1.35;
+}
+
+.courseNotice b {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.startSection {
+  display: grid;
+  gap: 2mm;
+}
+
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+  margin: 1mm 0 0;
+  padding-bottom: 1mm;
+  border-bottom: 1px solid #000;
+  color: #000;
+  font-size: 12pt;
+}
+
+.sectionHeading span {
+  font-weight: 400;
+}
+
+.startGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3mm;
+}
+
+.startGroup {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  min-width: 0;
+  padding: 2.5mm;
+  border: 1px solid #000;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2mm;
+  padding-bottom: 1.5mm;
+  border-bottom: 1px solid #000;
+  font-size: 10pt;
+}
+
+.groupHeader span,
+.groupHeader time {
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.flight {
+  margin: 1.5mm 0 0;
+  font-size: 8.5pt;
+}
+
+.playerList {
+  display: grid;
+  gap: 0;
+  margin: 1.5mm 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.playerList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 2mm;
+  padding: 1.5mm 0;
+  border-bottom: 0.5px solid #888;
+}
+
+.playerList li:last-child {
+  border-bottom: 0;
+}
+
+.playerName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.playerFacts {
+  display: flex;
+  flex: none;
+  gap: 2mm;
+  white-space: nowrap;
+  font-size: 8pt;
+}
+
+.pairingsTable,
+.scoreTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #000;
+  background: #fff;
+}
+
+.pairingsTable th,
+.pairingsTable td {
+  padding: 2mm;
+  border: 1px solid #000;
+  color: #000;
+  background: #fff;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  font-size: 9pt;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.pairingsTable thead th {
+  font-weight: 700;
+  background: #eee;
+}
+
+.pairingRow {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.scorecards {
+  display: grid;
+  gap: 0;
+}
+
+.scorecard {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  padding: 4mm;
+  border: 1px solid #000;
+  color: #000;
+  background: #fff;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.scorecard + .scorecard {
+  margin-top: 6mm;
+}
+
+.scorecardContent {
+  position: relative;
+  z-index: 1;
+}
+
+.scorecardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+  padding-bottom: 3mm;
+  border-bottom: 1.5px solid #000;
+}
+
+.groupSummary {
+  display: grid;
+  flex: none;
+  align-content: start;
+  gap: 1mm;
+  text-align: right;
+  font-size: 8.5pt;
+}
+
+.groupSummary b {
+  font-size: 11pt;
+}
+
+.watermark {
+  position: absolute;
+  z-index: 2;
+  top: 46%;
+  left: 50%;
+  padding: 2mm 4mm;
+  border: 2px solid #555;
+  color: #555;
+  background: rgb(255 255 255 / 82%);
+  font-size: 19pt;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  opacity: 0.2;
+  white-space: nowrap;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  pointer-events: none;
+}
+
+.scoreTable {
+  margin-top: 4mm;
+  font-size: 7pt;
+}
+
+.scoreTable th,
+.scoreTable td {
+  height: 6mm;
+  padding: 0.5mm;
+  border: 1px solid #000;
+  color: #000;
+  background: #fff;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 7pt;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.scoreTable thead th:first-child,
+.scoreTable tbody th {
+  width: 34mm;
+  padding: 1mm;
+  text-align: left;
+}
+
+.scoreTable thead th {
+  height: 6mm;
+  font-weight: 700;
+  background: #eee;
+}
+
+.playerScoreRow th {
+  line-height: 1.2;
+}
+
+.playerName,
+.playerMeta {
+  display: block;
+}
+
+.playerMeta {
+  margin-top: 0.5mm;
+  font-size: 7pt;
+  font-weight: 400;
+}
+
+.strokeMarker {
+  display: block;
+  min-height: 3mm;
+  font-size: 8pt;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.scoreLine {
+  display: block;
+  width: 80%;
+  height: 2mm;
+  margin: 0.5mm auto 0;
+  border-bottom: 0.5px solid #777;
+}
+
+.signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10mm;
+  margin-top: 2mm;
+  font-size: 8pt;
+}
+
+.signatures div {
+  display: grid;
+  gap: 2mm;
+}
+
+.signatures i {
+  display: block;
+  height: 4mm;
+  border-bottom: 1px solid #000;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@media print {
+  .previewPage {
+    display: block;
+  }
+
+  .previewPage > .sheet + .sheet {
+    margin-top: 8mm;
+  }
+
+  .previewToolbar {
+    display: none !important;
+  }
+
+  .sheet,
+  .scorecard {
+    color: #000 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .startGroup,
+  .pairingRow {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .scorecard + .scorecard {
+    margin-top: 0;
+    break-before: page;
+    page-break-before: always;
+  }
+}
+
+@media screen {
+  .sheet {
+    max-width: 210mm;
+    margin-inline: auto;
+  }
+}
