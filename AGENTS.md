@@ -50,8 +50,9 @@ by reading the code.
 ## Git
 
 Base branch `develop`. Work on a feature branch and open a PR into `develop`; the owner merges.
-Do not push to `develop` directly. `main` exists but is behind `develop`; there is no `staging` yet.
-Check the remote (`git ls-remote`) before stating what is merged.
+Do not push to `develop` directly. `main` is production and is kept level with `develop` after each
+merge; there is no `staging` yet. Check the remote (`git ls-remote`) before stating what is merged or
+what a branch contains.
 
 ## Writing style
 
