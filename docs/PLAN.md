@@ -1,11 +1,11 @@
-# Project plan: Starter (IGCC Tournament Desk)
+# Project plan: TeeLine Golf (IGCC Tournament Desk)
 
 Golf tournament management for **Iloilo Golf & Country Club (IGCC)**, built by **Syntaxure Labs**.
 The organizer adds players; the system routes each one to a category, tee, flight, group and start
 slot; the organizer reviews, overrides and publishes; players read their pairings on a phone.
 
-> **Status date:** 17 Oct 2026 · **Branch state:** `develop` is the only long-lived branch ·
-> **Working name:** "Starter" (not trademark-cleared, see [Open decisions](#10-open-decisions))
+> **Status date:** 18 Oct 2026 · **Branch state:** `develop` is the only long-lived branch ·
+> **Product name:** TeeLine Golf (approved direction; trademark clearance has not been established)
 
 This is the single plan for humans and AI agents. Section 1 is the 60-second version. Everything
 marked **Verified** was checked against the code, the migration or the tests on the date above.
@@ -22,7 +22,7 @@ Anything not marked is a plan, not a fact.
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**, column mapping chosen in the UI | 16 unit tests; no `.xlsx`; no UI-to-DB writes |
 | Database schema (`supabase/migrations`) | **Written and tested on a throwaway Postgres 16**; **not applied to any real Supabase project** | 14 tables, RLS on all |
 | Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | Overview (control room), Players, Player profile + poster, Import, Draw, Course & holes, Clubhouse display, Setup, public Pairings |
-| Brand and visual design | **Clubhouse design system applied** on `feat/clubhouse-ui` (not merged yet): Ivory / Charcoal themes, official IGCC crest, control-room overview from the approved mockup | Tokens in `src/app/globals.css`, contrast guarded by `src/styles/contrast.test.ts` |
+| Brand and visual design | **TeeLine Golf rebrand in progress** on `feature/teeline-golf-rebrand`: public landing page, vector identity, Ivory / Charcoal themes; existing IGCC workflows retained under `/admin` | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
 | Printing | **Partial**: browser print of the pairings page only | No start sheet, no scorecards |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
@@ -268,7 +268,7 @@ Decisions that belong to the people named, not to an agent.
 | 7 | Photo visibility | Organizer | Privacy copy | Desk and organizer only |
 | 8 | Results and tie-break rule | Organizer | Phase 2 | None |
 | 9 | Small flight near the end of wave 1 (e.g. 3-group Ladies): split, fill from another flight, or move to wave 2 | Organizer | Shotgun layout | Keep whole, flag |
-| 10 | Product name ("Starter" is not trademark-cleared) | Jeff | Public branding | "Starter" |
+| 10 | Product name and legal clearance | Jeff | Public branding | TeeLine Golf approved as the product direction; not represented as legally cleared |
 | 11 | Vector (SVG/PDF) crest from the club; real course pictures and hole positions | Jeff / club | Print, large displays, real course map | 320px PNG crest; illustrated placeholder course |
 | 12 | Create `staging` and `main` branches; clean up old feature branches; consider a Syntaxure organization for the repo | Jeff | Pipeline | Only `develop` |
 
@@ -341,7 +341,7 @@ Agent ground rules:
 | 17 Oct 2026 | Photos shown only with recorded consent and never on the public page. |
 | 17 Oct 2026 | PRs #1 (organizer UI) and #2 (design system) merged into `develop`. |
 | 17 Oct 2026 | Clubhouse design system adopted (Claude Design artifact). UI moves to Tailwind v4 + shadcn/ui primitives (Radix) + Lucide, themed from the design system tokens. Fonts bundled with `@fontsource` (Geist, Manrope, Cormorant Garamond, Bebas Neue). |
-| 17 Oct 2026 | App chrome shows the club name and crest only; "Starter" is not shown until decision 10 is made. |
+| 18 Oct 2026 | TeeLine Golf approved as the product brand direction. Trademark clearance remains unverified. The public landing page is `/`; the existing organizer control room is `/admin`. |
 | 17 Oct 2026 | Frontend and backend split into two branches: `feat/clubhouse-ui` (UI) and `feat/supabase-data` (data layer, own worktree). They meet only at the `useDesk()` contract. Handoff prompt: `docs/handoffs/backend-supabase-data.md`. |
 
 ---

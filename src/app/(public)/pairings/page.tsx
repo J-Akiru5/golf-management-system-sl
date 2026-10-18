@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Crest } from "@/components/Crest";
 import { PairingsView } from "@/components/PairingsView";
+import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtTime } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -14,13 +14,11 @@ export default function PublicPairings() {
   return (
     <div className="public">
       <header className="public-head">
-        <div className="flex items-center gap-3">
-          <Crest size={48} />
+        <div className="flex flex-wrap items-center gap-3">
+          <TeeLineLogo variant="reverse" width={172} />
           <span className="leading-tight">
-            <b className="block font-display text-[15px] font-extrabold">
-              Iloilo Golf &amp; Country Club
-            </b>
-            <span className="text-xs text-on-forest-muted">Est. 1907 · Sta. Barbara, Iloilo</span>
+            <b className="block font-display text-[13px] font-semibold">Club tournament pairings</b>
+            <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
           </span>
         </div>
         <p className="overline mt-3 !text-gold">
@@ -43,7 +41,7 @@ export default function PublicPairings() {
         <PairingsView published={published} shotgun={config.startFormat === "shotgun"} />
       )}
       <p className="hint no-print">
-        <Link href="/">Back to the tournament office</Link> (demo only)
+        <Link href="/">TeeLine Golf home</Link>
       </p>
     </div>
   );

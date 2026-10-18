@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 112" role="img" aria-labelledby="title">
+  <title id="title">TeeLine Golf course and flag symbol</title>
+  <path d="M7 78c39-4 66-21 96-39 31-18 56-26 83-13 13 6 26 16 36 29-23-13-42-19-63-13-34 8-66 36-110 39-16 1-30 0-42-3Z" fill="#F7F5EE"/>
+  <path d="M49 82c32-7 58-27 85-41 26-13 50-15 72-4 10 5 19 12 27 20-21-10-38-14-57-8-31 8-65 35-105 34-8 0-16 0-22-1Z" fill="#D4B46F"/>
+  <path d="M136 91c34-18 61-31 91-28 20 1 36 10 54 10-18 7-37 2-56-4-26-8-50 2-89 22Z" transform="translate(-68 -1)" fill="#8DB39B"/>
+  <path d="M153 11v48" stroke="#D4B46F" stroke-width="5" stroke-linecap="round"/>
+  <path d="m157 14 38 16-38 16Z" fill="#D4B46F"/>
+</svg>

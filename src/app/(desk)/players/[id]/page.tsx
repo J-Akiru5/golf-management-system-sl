@@ -289,7 +289,7 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
           key={player.id}
           playerName={player.name}
           photo={photo}
-          club="Iloilo Golf & Country Club"
+          club="TeeLine Golf · IGCC"
           event={state.name.replace(/\s*\(demo\)\s*$/i, "")}
           dateLabel={dateLabel}
           options={options}

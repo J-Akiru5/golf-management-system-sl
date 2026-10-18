@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 128" role="img" aria-labelledby="title">
+  <title id="title">TeeLine Golf</title>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 73c29-3 49-16 71-29 23-13 42-19 62-10 10 4 20 12 28 21-17-10-31-14-47-10-25 6-49 27-81 29-12 1-23 0-33-1Z" fill="#F7F5EE" stroke="none"/>
+    <path d="M37 76c24-5 43-20 63-30 19-10 37-12 54-3 8 4 14 9 20 15-15-8-28-10-42-6-23 6-48 26-78 25-6 0-12 0-17-1Z" fill="#D4B46F" stroke="none"/>
+    <path d="M101 81c25-13 45-23 67-21 15 1 27 8 40 8-13 5-27 1-41-3-20-6-37 1-66 16Z" fill="#8DB39B" stroke="none"/>
+    <path d="M151 10v37" stroke="#D4B46F" stroke-width="4"/>
+    <path d="m154 12 28 12-28 12Z" fill="#D4B46F" stroke="none"/>
+  </g>
+  <text x="226" y="76" fill="#F7F5EE" font-family="Manrope Variable, Geist Variable, Arial, sans-serif" font-size="59" font-weight="500" letter-spacing="-3.6">TeeLine</text>
+  <path d="M229 99h42m119 0h42" stroke="#D4B46F" stroke-width="1.5"/>
+  <text x="334" y="105" text-anchor="middle" fill="#D4B46F" font-family="Manrope Variable, Geist Variable, Arial, sans-serif" font-size="14" font-weight="600" letter-spacing="8">GOLF</text>
+</svg>

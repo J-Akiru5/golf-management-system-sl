@@ -22,7 +22,7 @@ function useViewportWidth() {
 
 function Card({ id, slot, width }: { id: string; slot: boolean; width: number }) {
   const d = useSpotlightData(id, slot ? "silhouette" : "none");
-  if (!d) return <p className="p-8 text-[#a9bfb2]">This player is not on the desk.</p>;
+  if (!d) return <p className="p-8 text-[#c5d3ca]">This player is not on the desk.</p>;
   return <PlayerSpotlight d={d} width={width} />;
 }
 

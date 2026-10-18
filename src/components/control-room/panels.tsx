@@ -360,7 +360,7 @@ export function PublishPanel({ b, variant }: { b: Board; variant?: PanelVariant 
   );
 }
 
-const ARC_COLORS = ["var(--gold)", "var(--fairway)", "#f7f4eb", "#5d7a69", "#8dbff0", "#c9a34a"];
+const ARC_COLORS = ["var(--gold)", "var(--fairway)", "#f7f5ee", "#5d7a69", "#8dbff0", "#b89550"];
 
 export function DivisionsPanel({ b, variant }: { b: Board; variant?: PanelVariant }) {
   const counts = new Map<string, number>();

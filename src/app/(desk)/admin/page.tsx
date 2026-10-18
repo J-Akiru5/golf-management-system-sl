@@ -71,10 +71,10 @@ export default function ControlRoom() {
         <CourseCanvas cover={cover} />
 
         <div className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[112px]">
-          <p className="text-[11px] font-bold tracking-[.14em] text-[#e0bc65] uppercase">
+          <p className="text-[11px] font-bold tracking-[.14em] text-gold uppercase">
             {shotgun ? "Shotgun start" : "Two-tee start"} · {fmtTime(waveStart)} · {date}
           </p>
-          <h1 className="mt-1.5 font-serif text-[34px] leading-[38px] font-semibold !text-[#f7f4eb] sm:text-[44px] sm:leading-[46px]">
+          <h1 className="mt-1.5 font-serif text-[34px] leading-[38px] font-semibold !text-on-forest sm:text-[44px] sm:leading-[46px]">
             {draw ? (shotgun ? "Shotgun draw" : "Two-tee draw") : state.name}
           </h1>
           <p className="mt-1.5 text-sm opacity-85">

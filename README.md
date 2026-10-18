@@ -1,8 +1,7 @@
-# golf-management-system-sl
+# TeeLine Golf
 
-Tournament management for **Iloilo Golf & Country Club**, built by Syntaxure Labs. Registration,
-NGAP handicap, categories, flights, and auto-routed groups and start times (shotgun in waves, or
-two-tee start). The organizer reviews and overrides every proposal before publishing.
+Premium golf-club and tournament management by Syntaxure Labs. TeeLine brings player records,
+handicap-aware tournament workflows, draw review, and published pairings into one clear experience.
 
 Stack: Next.js, Supabase (supabase-js, SQL migrations), pnpm, Biome, Vitest. Hosted on Vercel.
 
@@ -31,7 +30,9 @@ pnpm lint
 pnpm dev
 ```
 
-Copy `.env.example` to `.env.local` and fill in the Supabase values to connect a project.
+The current screens use in-memory demo data and reset on refresh. Supabase schema files exist, but
+the app is not connected to Supabase and has no sign-in flow. Do not use the demo data for a real
+event. Backend access, role checks, and persistence remain follow-up work.
 
 ## Routing engine
 
@@ -75,27 +76,31 @@ returns a plan the organizer reviews before anything is saved. Rules:
 
 ## Brand and screens
 
-Working product name: **Starter** (the starter sends each group off the tee). The name is not cleared
-for trademark use, and there are no official IGCC logo files in the repo yet, so the mark is original
-placeholder artwork. Colours are forest green, warm ivory and restrained gold. Gold is a fill with dark
-ink on top, never text or a thin line on ivory, because it only reaches about 2.2:1 contrast there;
-`--gold-line` is the darker gold used for borders. Type is Newsreader for titles and Atkinson
-Hyperlegible for the interface, which was designed for low vision and suits older players. Fonts are
-bundled through `@fontsource`, so no external font service is called. Theme is Auto, Light or Dark,
-remembered per browser. Buttons and inputs are at least 44px tall.
+**TeeLine Golf** is the approved product direction. Trademark clearance has not been established.
+The fairway-and-flag vector mark is a faithful redraw of the supplied identity reference; it is not
+an extracted original vector. Light, reverse, monochrome, symbol, and app-icon SVGs are in
+`public/brand`. The IGCC crest remains a separate club asset.
 
-`src/styles/contrast.test.ts` reads the tokens in `globals.css` and fails if a text or border pairing
-drops below WCAG AA in either theme, or if the dark tokens drift between the device setting and the
-manual switch.
+The reusable design tokens in `src/app/globals.css` define forest, ivory, charcoal, gold, semantic
+status colors, spacing, radii, motion, and surfaces. Geist and Manrope are used for the interface,
+with Cormorant Garamond for editorial headings and Bebas Neue for selected numerical display. Fonts
+are bundled through `@fontsource`; there are no external font or script calls. Theme is Auto, Ivory,
+or Charcoal and is remembered per browser.
+
+`src/styles/contrast.test.ts` checks text, status, border, and focus token contrast in both themes.
 
 | Route | Screen |
 | --- | --- |
-| `/` | Overview: counts, draw status and the five steps to a published draw |
+| `/` | Public TeeLine Golf landing page |
+| `/admin` | Existing tournament control room (demo preview; no sign-in yet) |
 | `/players` | Search, filter, add a player with live "where will they land" preview and optional photo with consent |
 | `/players/[id]` | Profile: Handicap Index and playing handicap shown apart with the working, this tournament, photo with consent, poster generator. Scoring record and past tournaments show empty states, never estimates |
 | `/import` | NGAP CSV upload, column check, review of what changes, apply |
 | `/draw` | Readiness tiles, checks, flight board, player pool, details panel. Drag a player or use Move. Publishing goes through a preview dialog |
 | `/setup` | Start format, times, limits, allowance; categories, flights and tees (read-only for now) |
+| `/course` | Illustrated course and hole views; artwork and tee ratings are placeholders |
+| `/spotlight` | Organizer preview for the clubhouse player display |
+| `/spotlight/[id]` | Full-screen player display |
 | `/pairings` | Player view: names, hole and time only, search, print |
 
 ### Draw rules

@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
-import { Crest } from "@/components/Crest";
+import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tip, TooltipProvider } from "@/components/ui/tooltip";
 import { validateDraw } from "@/lib/draw/validate";
@@ -38,14 +38,14 @@ const isCurrent = (path: string, href: string) =>
   href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`);
 
 /**
- * Application shell from the approved mockup: a top bar (crest and club name, search, current
+ * Application shell from the approved mockup: a top bar (TeeLine mark, search, current
  * event, alerts, account) and a left rail. On the overview it floats as glass over the course map;
  * on working pages it sits on the club's forest band. Below 1024px the rail becomes a labelled
  * menu sheet.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const overlay = path === "/";
+  const overlay = path === "/admin";
   const { state, registrations, names } = useDesk();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const review = registrations.filter((r) => r.status === "needs_review").length;
 
   const nav: NavItem[] = [
-    { href: "/", label: "Overview", icon: LayoutGrid },
+    { href: "/admin", label: "Control room", icon: LayoutGrid },
     { href: "/players", label: "Players", icon: Users, alert: review > 0 },
     { href: "/draw", label: "Draw & pairings", icon: Flag, alert: blocking > 0 },
     { href: "/course", label: "Course & holes", icon: MapIcon },
@@ -103,7 +103,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Menu className="size-5" />
             </SheetTrigger>
-            <SheetContent side="left" title="Menu" description="Iloilo Golf & Country Club">
+            <SheetContent side="left" title="Menu" description="TeeLine Golf tournament office">
               <nav aria-label="Main" className="grid gap-1">
                 {nav.map((n) => {
                   const on = isCurrent(path, n.href);
@@ -131,24 +131,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               </nav>
               <div className="mt-auto grid gap-3">
                 <ThemeToggle />
-                <p className="hint">By Syntaxure Labs</p>
+                <p className="hint">Developed by Syntaxure Labs</p>
               </div>
             </SheetContent>
           </Sheet>
 
           <Link
-            href="/"
+            href="/admin"
             className="on-photo flex min-w-0 items-center gap-3 no-underline lg:w-[318px]"
           >
-            <Crest size={52} className="shrink-0" />
-            <span className="hidden min-w-0 sm:block">
-              <span className="block truncate font-display text-[15px] font-extrabold leading-[18px] text-ink">
-                Iloilo Golf &amp; Country Club
-              </span>
-              <span className="block truncate text-xs text-ink-muted">
-                Tournament office · Sta. Barbara
-              </span>
-            </span>
+            <TeeLineLogo variant="reverse" width={206} className="shrink-0" />
           </Link>
 
           <ShellSearch overlay={overlay} />
