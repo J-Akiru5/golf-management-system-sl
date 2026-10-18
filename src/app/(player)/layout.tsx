@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { FirstRunWelcome, HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { signOut } from "@/lib/auth/actions";
@@ -33,6 +34,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
             <Link href="/pairings" className="text-on-forest no-underline hover:underline">
               {t("player.nav.allPairings")}
             </Link>
+            <HelpButton audience="player" screen="my" />
             <LanguageSwitcher tone="on-forest" />
             {isSupabaseConfigured() && (
               <form action={signOut}>
@@ -44,6 +46,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
           </nav>
         </header>
         <main className="public">{children}</main>
+        <FirstRunWelcome audience="player" />
       </div>
     </I18nProvider>
   );

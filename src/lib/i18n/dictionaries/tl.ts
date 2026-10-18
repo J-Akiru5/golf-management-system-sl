@@ -124,4 +124,42 @@ export const tl: Dictionary = {
     closedDeadline: " Ang deadline ay {date}.",
     closedBody: "Makipag-ugnayan sa organizer.",
   },
+  help: {
+    button: "Tulong",
+    title: "Tulong",
+    thisScreen: "Ang screen na ito",
+    more: "Iba pang tulong",
+    showMe: "Ipakita",
+    welcome: {
+      player: {
+        title: "Maligayang pagdating sa My golf",
+        body: "Dalawang bagay ang magagawa mo dito.",
+        entries: "Tingnan ang entry mo: simula, flight, tee at bayad.",
+        pairings:
+          "Hanapin ang grupo mo sa pairings page. Hindi kailangan ng sign-in para ibahagi ang link.",
+        help: "Kailangan ng tulong? Nasa itaas na bar ang ? button, may mga hakbang para sa bawat screen.",
+        button: "Sige, naintindihan",
+      },
+    },
+    player: {
+      my: {
+        title: "My golf: ang entry mo",
+        summary: "Ano ang makikita sa pahinang ito, at ano ang gawin kung walang laman.",
+        entry: "Nakalista dito ang mga entry mo: ang event, simula, flight, tee at bayad.",
+        notListed:
+          "Kung wala pa ang grupo mo sa nailathalang listahan, nakasaad iyon sa card. Ang club ang nagtatakda kung kailan ilalabas ang pairings.",
+        claim:
+          "Walang laman? I-link ang record mo sa club gamit ang buong pangalan o ang NGAP number mo.",
+        link: "Isang tap lang ang buong listahan ng players sa pairings page.",
+      },
+      pairings: {
+        title: "Hanapin ang grupo mo",
+        summary: "Paano basahin ang pairings page, at paano i-print ito.",
+        find: "I-type ang bahagi ng pangalan mo para mahanap ang grupo mo.",
+        flight: "Pinapaliit ng flight filter ang mahabang listahan.",
+        read: "Nakasaad sa card mo ang hole o tee, ang wave at ang oras.",
+        print: "I-print ang listahan, at itugma ang version line sa anumang nakaprintang kopya.",
+      },
+    },
+  },
 };

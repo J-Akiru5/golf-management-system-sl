@@ -1,8 +1,9 @@
 "use client";
 
-import { FileText, Flag, Printer, Smartphone, TableProperties } from "lucide-react";
+import { CircleHelp, FileText, Flag, Printer, Smartphone, TableProperties } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { CheatSheet } from "@/components/help";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
 import { PairingsSheet } from "@/components/print/PairingsSheet";
@@ -15,12 +16,13 @@ import { toPublicPairings } from "@/lib/data/public";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
 
-type Tab = "start" | "pairings" | "scorecards";
+type Tab = "start" | "pairings" | "scorecards" | "howto";
 
 const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
   { id: "start", label: "Start sheet", icon: TableProperties },
   { id: "pairings", label: "Pairings", icon: Flag },
   { id: "scorecards", label: "Scorecards", icon: FileText },
+  { id: "howto", label: "How to", icon: CircleHelp },
 ];
 
 export default function PrintCenter() {
@@ -99,8 +101,8 @@ export default function PrintCenter() {
         tested.
       </PageHeader>
 
-      <div className="no-print flex flex-wrap items-center gap-3">
-        <div className="tabs !w-auto grid-cols-3">
+      <div className="no-print flex flex-wrap items-center gap-3" data-help="print-tabs">
+        <div className="tabs !w-auto grid-cols-4">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -125,7 +127,12 @@ export default function PrintCenter() {
       </div>
 
       <div className="print-sheet-scope">
-        {!draw ? (
+        {tab === "howto" ? (
+          <section className="grid gap-3">
+            <h2 className="text-[20px]">How to use the desk</h2>
+            <CheatSheet />
+          </section>
+        ) : !draw ? (
           <div className="card grid min-h-[220px] place-items-center text-center">
             <div className="grid justify-items-center gap-2">
               <FileText className="size-6 text-ink-muted" aria-hidden="true" />

@@ -124,4 +124,43 @@ export const hil: Dictionary = {
     closedDeadline: " Ang deadline amo ang {date}.",
     closedBody: "Palihug kontaka ang organizer.",
   },
+  help: {
+    button: "Bulig",
+    title: "Bulig",
+    thisScreen: "Ini nga screen",
+    more: "Iban pa nga bulig",
+    showMe: "Ipakita",
+    welcome: {
+      player: {
+        title: "Maayo nga pag-abot sa My golf",
+        body: "Duha ka butang ang mahimo mo diri.",
+        entries: "Tan-awa ang imo entry: pagsugod, flight, tee kag bayad.",
+        pairings:
+          "Pangitaa ang imo grupo sa pairings page. Indi kinahanglan mag-sign in agod ma-share ang link.",
+        help: "Kinahanglan mo sing bulig? Ang ? button ara sa ibabaw nga bar, may mga tikang para sa kada screen.",
+        button: "Sige, naintindihan ko",
+      },
+    },
+    player: {
+      my: {
+        title: "My golf: ang imo entry",
+        summary: "Ano ang makita sa sini nga pahina, kag ano ang himuon kon wala sing sulod.",
+        entry: "Naka-listahan diri ang imo mga entry: ang event, pagsugod, flight, tee kag bayad.",
+        notListed:
+          "Kon wala pa ang imo grupo sa ginpahayag nga listahan, ginapahayag ini sa card. Ang club ang nagapili kon san-o ilab-ot ang pairing.",
+        claim:
+          "Wala sing sulod? I-link ang imo record sa club paagi sa bug-os nga ngalan ukon ang NGAP number mo.",
+        link: "Isa lang ka tap ang bug-os nga listahan sang mga player sa pairings page.",
+      },
+      pairings: {
+        title: "Pangitaa ang imo grupo",
+        summary: "Paano basahon ang pairings page, kag paano i-print ini.",
+        find: "I-type ang parte sang imo ngalan agod makita ang imo grupo.",
+        flight: "Ginapagamay sang flight filter ang malaba nga listahan.",
+        read: "Makita sa imo card ang hole ukon tee, ang wave kag ang oras.",
+        print:
+          "I-print ang listahan, kag ipareho ang version line sa bisan ano nga nakaprinta nga kopya.",
+      },
+    },
+  },
 };

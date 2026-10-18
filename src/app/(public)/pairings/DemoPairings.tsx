@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { HelpButton } from "@/components/help";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -34,12 +35,15 @@ export function DemoPairings() {
   return (
     <div className="public">
       <header className="public-head">
-        <div className="flex flex-wrap items-center gap-3">
-          <TeeLineLogo variant="reverse" width={172} />
-          <span className="leading-tight">
-            <b className="block font-display text-[13px] font-semibold">{t("pairings.title")}</b>
-            <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-          </span>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <TeeLineLogo variant="reverse" width={172} />
+            <span className="leading-tight">
+              <b className="block font-display text-[13px] font-semibold">{t("pairings.title")}</b>
+              <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
+            </span>
+          </div>
+          <HelpButton audience="player" screen="pairings" />
         </div>
         <p className="overline mt-3 !text-gold">
           {tournament.config.startFormat === "shotgun"

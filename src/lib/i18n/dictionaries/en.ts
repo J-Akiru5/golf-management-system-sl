@@ -127,6 +127,43 @@ export const en = {
     closedDeadline: " The deadline was {date}.",
     closedBody: "Please contact the organizer.",
   },
+  help: {
+    button: "Help",
+    title: "Help",
+    thisScreen: "This screen",
+    more: "More help",
+    showMe: "Show me",
+    welcome: {
+      player: {
+        title: "Welcome to My golf",
+        body: "Two things you can do here.",
+        entries: "See your entry: start, flight, tee and payment.",
+        pairings:
+          "Find your group on the pairings page. The link needs no sign-in, so you can share it.",
+        help: "Need a hand? The ? button is in the top bar, with steps for each screen.",
+        button: "Got it",
+      },
+    },
+    player: {
+      my: {
+        title: "My golf: your entry",
+        summary: "What this page shows, and what to do when it is empty.",
+        entry: "Your entries are listed here: the event, your start, flight, tee and payment.",
+        notListed:
+          "If your group is not out yet, the card says so. The club decides when pairings go out.",
+        claim: "Nothing here yet? Link your club record with your full name or your NGAP number.",
+        link: "The full player list is one tap away on the pairings page.",
+      },
+      pairings: {
+        title: "Find your group",
+        summary: "How to read the pairings page, and how to print it.",
+        find: "Type part of your name to jump to your group.",
+        flight: "The flight filter narrows a long list.",
+        read: "Your card shows your hole or tee, the wave and the time.",
+        print: "Print the list, and check the version line against any printed copy.",
+      },
+    },
+  },
 };
 
 export type Dictionary = typeof en;
