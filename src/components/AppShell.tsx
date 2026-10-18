@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
+import { roleLabel } from "@/components/desk";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TournamentSelect } from "@/components/TournamentSelect";
@@ -54,10 +55,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const overlay = path === "/admin";
   const desk = useDesk();
-  const { registrations, draw, warnings, tournament, deferred } = desk;
+  const { registrations, draw, warnings, tournament, deferred, member, status } = desk;
   const [menuOpen, setMenuOpen] = useState(false);
   // Supabase configured means the sign-in guard is live, but the shell still runs on demo data.
   const supabaseConfigured = isSupabaseConfigured();
+  // The account chip says what the desk store knows, not just that a server exists.
+  const account = !supabaseConfigured
+    ? { name: "Demo organizer", detail: "Demo · no sign-in yet" }
+    : member
+      ? { name: member.displayName, detail: roleLabel(member.role) ?? "Club member" }
+      : status === "loading"
+        ? { name: "Signing in…", detail: "Loading the desk" }
+        : { name: "Not signed in", detail: "Session unavailable" };
 
   const blocking = useMemo(() => {
     if (!draw || !tournament) return 0;
@@ -192,12 +201,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <span className="flex-1" />
 
-          <span
-            className="hidden h-8 shrink-0 items-center rounded-full bg-gold-soft px-3 text-xs font-semibold whitespace-nowrap text-gold-ink md:inline-flex"
-            title="Demo shell with local session data. Players and tee ratings are samples; nothing is saved and there is no server."
-          >
-            Demo shell · local session data
-          </span>
+          {status === "demo" && (
+            <span
+              className="hidden h-8 shrink-0 items-center rounded-full bg-gold-soft px-3 text-xs font-semibold whitespace-nowrap text-gold-ink xl:inline-flex"
+              title="Demo shell with local session data. Players and tee ratings are samples; nothing is saved and there is no server."
+            >
+              Demo shell · local session data
+            </span>
+          )}
 
           <Link
             href="/draw"
@@ -226,21 +237,24 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="grid size-10 place-items-center rounded-full border border-gold bg-forest text-gold">
               <CircleUserRound className="size-5" aria-hidden="true" />
             </span>
-            <span className="leading-tight">
-              <b className="block text-sm whitespace-nowrap text-ink">
-                {supabaseConfigured ? "Signed in" : "Demo organizer"}
-              </b>
-              <small className="text-[11px] whitespace-nowrap text-ink-muted">
-                {supabaseConfigured ? "Club member" : "Demo · no sign-in yet"}
-              </small>
+            <span className="max-w-[170px] leading-tight">
+              <b className="block truncate text-sm text-ink">{account.name}</b>
+              <small className="block truncate text-[11px] text-ink-muted">{account.detail}</small>
             </span>
-            {supabaseConfigured && (
-              <form action={signOut}>
-                <button type="submit" className="btn small ghost no-print">
-                  Sign out
-                </button>
-              </form>
-            )}
+            {supabaseConfigured &&
+              (member ? (
+                <form action={signOut}>
+                  <button type="submit" className="chrome-btn no-print">
+                    Sign out
+                  </button>
+                </form>
+              ) : (
+                status === "error" && (
+                  <Link href="/login" className="chrome-btn no-print no-underline">
+                    Sign in
+                  </Link>
+                )
+              ))}
           </span>
         </header>
 
@@ -248,7 +262,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           aria-label="Main"
           className={cn(
             "shell-chrome fixed left-6 z-30 hidden max-h-[calc(100dvh-140px)] w-[60px] flex-col gap-2 overflow-y-auto rounded-[30px] p-2 lg:flex [scrollbar-width:none]",
-            overlay ? "glass top-[150px]" : "band top-[108px] shadow-lift",
+            overlay ? "glass-forest top-[150px]" : "band top-[108px] shadow-lift",
           )}
         >
           {nav.map((n) => {
