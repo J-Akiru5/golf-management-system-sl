@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
+import { EntryLinkCard } from "@/components/public/EntryLinkCard";
 import { Button } from "@/components/ui/button";
 import { checkTournament } from "@/lib/data/config-checks";
 import type { RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
@@ -615,6 +616,7 @@ function SetupWizard({
             title="Registration fields"
             subtitle="Core fields are fixed; these are the extra questions for this event."
           >
+            <EntryLinkCard />
             <div className="grid gap-3">
               {tournament.registration.fields.map((f) => (
                 <div key={f.id} className="grid gap-2.5 rounded-[12px] border border-line p-3">
