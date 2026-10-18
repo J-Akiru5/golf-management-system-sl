@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
-import { SaveTruth } from "@/components/desk";
+import { type PlayerPickItem, PlayerQuickPick, SaveTruth } from "@/components/desk";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -87,7 +87,7 @@ const emptyDraft = (): Draft => ({
 });
 
 function RegisterDesk() {
-  const { tournament, players, entries, regById, adapters, dispatch, status } = useDesk();
+  const { tournament, players, entries, regById, adapters, dispatch, status, names } = useDesk();
   const params = useSearchParams();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [query, setQuery] = useState("");
@@ -106,19 +106,22 @@ function RegisterDesk() {
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return players
-      .filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.ngapId ?? "").toLowerCase().includes(q) ||
-          (p.nickname ?? "").toLowerCase().includes(q),
-      )
-      .slice(0, 6);
-  }, [players, query]);
-
+  // What the quick pick needs per player: the frozen index for this event, the routing facts when
+  // the player can be classified, and whether they are already in the field.
+  const pickItems = useMemo<PlayerPickItem[]>(
+    () =>
+      players.map((p) => {
+        const reg = regById.get(p.id);
+        return {
+          player: p,
+          index: reg?.frozenIndex ?? null,
+          categoryName: reg && reg.categoryId ? names.category(reg.categoryId) : null,
+          playingHandicap: reg?.playingHandicap ?? null,
+          alreadyRegistered: entries.some((e) => e.playerId === p.id),
+        };
+      }),
+    [players, regById, entries, names],
+  );
   const savedReg = savedId ? regById.get(savedId) : null;
   const savedEntry = savedId ? entries.find((e) => e.playerId === savedId) : null;
   const savedPlayer = savedId ? players.find((p) => p.id === savedId) : null;
@@ -192,6 +195,12 @@ function RegisterDesk() {
       });
     }
 
+    // The database is unique on (event, player), so this would be rejected there. Say it plainly
+    // here instead of letting the desk read a constraint error.
+    if (entries.some((e) => e.playerId === player.id)) {
+      setErrors([`${player.name} is already entered in this event.`]);
+      return;
+    }
     adapters.registrations.add(tournament?.id as string, {
       playerId: player.id,
       role: draft.role,
@@ -398,55 +407,23 @@ function RegisterDesk() {
           <form className="grid gap-5" onSubmit={save} noValidate>
             {!draft.player && !draft.isNew && (
               <div className="grid gap-2">
-                <label className="field">
-                  <span>1. Find the player</span>
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search name, nickname or NGAP ID"
-                    aria-label="Search the player directory"
-                  />
-                </label>
-                {results.length > 0 && (
-                  <ul className="plain grid gap-1.5" aria-label="Search results">
-                    {results.map((p) => {
-                      const entered = entries.some((e) => e.playerId === p.id);
-                      return (
-                        <li key={p.id} className="flex items-center gap-2.5">
-                          <button
-                            type="button"
-                            disabled={entered}
-                            onClick={() => {
-                              set({ player: p, isNew: false, declaredWshId: p.ngapId ?? "" });
-                              setQuery("");
-                            }}
-                            className={cn(
-                              "flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-[10px] border px-3 text-left",
-                              entered
-                                ? "cursor-not-allowed border-line text-ink-muted opacity-70"
-                                : "border-line hover:bg-surface-sunken",
-                            )}
-                          >
-                            <Avatar name={p.name} photo={photoOf(p)} />
-                            <span className="min-w-0 flex-1">
-                              <b className="block truncate">{p.name}</b>
-                              <span className="hint">
-                                {p.ngapId ? `NGAP ${p.ngapId}` : "No NGAP ID"}
-                                {entered ? " · already entered" : ""}
-                              </span>
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-                {query.trim() && results.length === 0 && (
-                  <p className="hint">
-                    No match in the directory. Use "New player" below; nothing is guessed.
-                  </p>
-                )}
+                <PlayerQuickPick
+                  items={pickItems}
+                  status={query.trim() ? "ready" : "idle"}
+                  query={query}
+                  onQueryChange={setQuery}
+                  onSelect={(item) => {
+                    set({
+                      player: item.player,
+                      isNew: false,
+                      declaredWshId: item.player.ngapId ?? "",
+                    });
+                    setQuery("");
+                  }}
+                  label="1. Find the player"
+                  hint="Type a name, nickname or NGAP ID. A player already in this event is flagged."
+                  autoFocus
+                />
                 <Button
                   type="button"
                   variant="secondary"
@@ -458,7 +435,6 @@ function RegisterDesk() {
                 </Button>
               </div>
             )}
-
             {(draft.player || draft.isNew) && (
               <div className="flex items-center gap-3 rounded-[12px] bg-surface-sunken p-3">
                 {draft.player ? (
