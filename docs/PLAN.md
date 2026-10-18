@@ -653,15 +653,15 @@ Agent ground rules:
 - [x] Pagination applied to the player directory, the registration desk and the import review tabs; print, the draw groups and the desk's player search stay unpaged (decision 13, PR #23)
 - [x] The organizer has said what alerts they expect: stored, desk-facing notifications (decision 14, settled; the schema is live, the bell is built and it has now been seen in a browser in both themes and in both the all-clear and alert states, which is how two bugs in it were found)
 - [ ] The UAT run sheet handed to the organizer and the session held (section 8, "The next milestone")
-- [ ] CI on pull requests (typecheck, lint, test, build)
+- [x] CI on pull requests (`.github/workflows/ci.yml`: typecheck, lint, test, build, and the browser checks)
 - [x] `anon` execute revoked on the staff functions, and a new function is private unless its migration grants it (`20261030000000`, `20261031000000`)
-- [ ] Photo consent line shown before every photo; private bucket verified
+- [x] Photo consent line shown before every photo; private bucket verified. Checked on 19 Oct 2026: the form will not save a photo without the box ticked (`page.tsx` gates **Save** on `!photo || consent`), `photoOf()` returns nothing unless `photo` **and** `photoConsent` are both set, so an unconsented photo cannot render anywhere. The `player-photos` bucket is `public = false` and anon cannot list it, read an object path or use the public route. **Not** checked, because it does not exist yet: the app has no upload path at all. Photos are shrunk to a 900px JPEG in the browser and live in the session, and `photo_path` is written by nothing. The bucket now caps uploads at 5 MiB and three image types (`20261032000000`), so the gap is bounded before something starts writing to it.
 - [ ] Public pairings page checked on an older phone
 - [ ] Deployed build on `main` opened once with a staff login; the version shown matches the latest `vX.Y.Z` tag (production env vars confirmed first, including `NEXT_PUBLIC_SITE_URL`)
-- [ ] Player portal exercised with a real account and one claimed player row (the migration is applied; sign-ups or a hand-made account are still needed)
+- [ ] Player portal exercised with a real account and one claimed player row (the migration is applied; a throwaway account and row were made and exercised on 19 Oct 2026, then removed: see the decision log. A real player still needs a real account)
 - [ ] Vercel spend limit set; Supabase spend cap on; backups understood
 - [ ] Dress rehearsal with the organizer
-- [ ] Rollback plan: how the organizer runs the day from a printed sheet if the site is down
+- [x] Rollback plan: `docs/RUNBOOK.md` covers deploying, rolling back, and running the day from a printed sheet if the site is down
 
 ---
 

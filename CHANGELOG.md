@@ -11,6 +11,20 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+### Added
+- `docs/RUNBOOK.md`: deploying, rolling back, and running the event day from a printed sheet if the
+  site is down, plus the known failure modes and what they look like. It states the one thing that
+  code rollback cannot undo, which is the database, and why every migration so far being additive is
+  what makes a code rollback safe on its own.
+
+### Security
+- The `player-photos` bucket now caps uploads at 5 MiB and three image types. It was private and
+  member-only already; what it lacked was any limit on what could be put in it. The app shrinks a
+  photo to a 900px JPEG on the client, but nothing enforced that at the layer that has to hold.
+
+### Database
+- `20261032000000_photo_bucket_limits.sql`: **applied live**, self-verifying.
+
 ## [0.11.0] - 2026-10-19
 
 A new function is private unless the migration that creates it grants it.
