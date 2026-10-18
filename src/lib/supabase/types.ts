@@ -376,6 +376,9 @@ export interface Database {
           answers?: Json;
           overridden?: boolean;
           created_at?: string;
+          frozen_record_id?: string | null;
+          frozen_effective_date?: string | null;
+          frozen_at?: string | null;
         }
       >;
       groups: Table<
