@@ -8,13 +8,32 @@
  * Needs `pnpm dev --port 3019` with NEXT_PUBLIC_AVP_DEMO=1 and the audio already generated.
  * Output: demo-video/capture/raw/<id>.webm, demo-video/out/stills/<id>.png, capture/timing.json.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium } from "@playwright/test";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
 const VIDEO = resolve(ROOT, "demo-video");
 const BASE = process.env.AVP_BASE ?? "http://localhost:3019";
+const local = process.env.LOCALAPPDATA ?? "";
+const shim = resolve(local, "Microsoft/WinGet/Links");
+const ffprobe =
+  process.env.FFPROBE ??
+  (existsSync(resolve(shim, "ffprobe.exe")) ? resolve(shim, "ffprobe.exe") : "ffprobe");
+
+const durationOf = (file) =>
+  Number(
+    execFileSync(ffprobe, [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=nw=1:nk=1",
+      file,
+    ], { encoding: "utf8" }).trim(),
+  );
 const only = (process.env.AVP_SCENES ?? "")
   .split(",")
   .map((s) => s.trim())
@@ -56,14 +75,14 @@ const overlaySource = ({ step, total, title, caption }) => {
       #avp-caption { position: fixed; left: 50%; bottom: 48px; transform: translateX(-50%);
         max-width: 2000px; padding: 18px 30px; border-radius: 18px; background: rgba(12, 26, 19, .94);
         color: #eef0ea; font-size: 34px; line-height: 1.3; text-align: center;
-        box-shadow: 0 12px 40px rgba(0,0,0,.4); transition: opacity .18s ease, top .3s ease, bottom .3s ease; }
+        box-shadow: 0 12px 40px rgba(0,0,0,.4); transition: opacity .16s ease, top .22s ease, bottom .22s ease; }
       #avp-caption.top { top: 150px; bottom: auto; }
       #avp-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(6, 16, 11, .43);
-        outline: 3px solid rgba(224, 188, 101, .95); outline-offset: 3px;
-        transition: all .35s ease; opacity: 0; }
+        outline: 4px solid #e6ba4c; outline-offset: 3px;
+        transition: all .16s ease; opacity: 0; }
       #avp-spot.on { opacity: 1; }
       #avp-cursor { position: fixed; left: 0; top: 0; width: 68px; height: 68px; opacity: 0;
-        transition: transform .7s cubic-bezier(.22,.61,.36,1), opacity .25s ease; }
+        transition: transform .52s cubic-bezier(.22,.61,.36,1), opacity .2s ease; }
       #avp-cursor.on { opacity: 1; }
       #avp-cursor .ring { position: absolute; inset: 12px; border-radius: 50%;
         border: 4px solid #e0bc65; box-shadow: 0 0 0 7px rgba(224, 188, 101, .22), 0 2px 12px rgba(0,0,0,.35);
@@ -146,7 +165,7 @@ const overlaySource = ({ step, total, title, caption }) => {
         const el = contentEl();
         if (!el) return;
         if (!scale || scale === 1 || !rect) {
-          el.style.transition = "transform .7s cubic-bezier(.22,.61,.36,1)";
+          el.style.transition = "transform .62s cubic-bezier(.22,.61,.36,1)";
           el.style.transform = "scale(1)";
           return;
         }
@@ -154,7 +173,7 @@ const overlaySource = ({ step, total, title, caption }) => {
         const originX = rect.x + rect.width / 2 - box.left;
         const originY = rect.y + rect.height / 2 - box.top;
         el.style.transformOrigin = `${originX}px ${originY}px`;
-        el.style.transition = "transform .7s cubic-bezier(.22,.61,.36,1)";
+        el.style.transition = "transform .62s cubic-bezier(.22,.61,.36,1)";
         el.style.transform = `scale(${scale})`;
       },
       ready: true,
@@ -182,10 +201,21 @@ function rectOf(element) {
 const browser = await chromium.launch();
 const timing = {};
 
+// Warm the route once without recording, so the page has compiled and the recorded load is short.
+async function warm(route) {
+  const context = await browser.newContext({ viewport: { width: 2560, height: 1440 } });
+  const page = await context.newPage();
+  await page.goto(`${BASE}${route}`, { waitUntil: "networkidle" }).catch(() => {});
+  await page.waitForTimeout(600);
+  await context.close();
+}
+
 for (const [index, scene] of steps.scenes.entries()) {
   if (only.length > 0 && !only.includes(scene.id)) continue;
   const sceneTimeline = timeline.scenes[scene.id];
   if (!sceneTimeline) throw new Error(`no timeline for ${scene.id}; run the audio step first`);
+
+  if (scene.route) await warm(scene.route).catch(() => {});
 
   const context = await browser.newContext({
     viewport: { width: 2560, height: 1440 },
@@ -221,8 +251,12 @@ for (const [index, scene] of steps.scenes.entries()) {
     .sort((a, b) => a.at - b.at);
 
   const started = Date.now();
+  // Every screen change gets a full-page beat before any focus move, and the voice has a pause in the
+  // audio for page loads; the clock offset keeps the visuals aligned even when a load runs long.
+  let clockOffsetMs = 1500;
   for (const item of schedule) {
-    const wait = item.at * 1000 - (Date.now() - started);
+    const due = item.type === "caption" ? item.at * 1000 : item.at * 1000 + clockOffsetMs;
+    const wait = due - (Date.now() - started);
     if (wait > 0) await sleep(wait);
     try {
       if (item.type === "caption") {
@@ -230,9 +264,21 @@ for (const [index, scene] of steps.scenes.entries()) {
         continue;
       }
       if (item.route) {
+        const line = sceneTimeline.lines[item.line];
+        const pauseMs = Math.max(400, (line?.pauseAfter ?? 0.22) * 1000);
+        const before = Date.now();
         await page.goto(`${BASE}${item.route}`, { waitUntil: "networkidle" });
         await dismissWelcome(page);
         await page.waitForFunction(() => window.__avp?.ready === true);
+        await page.evaluate(() => {
+          window.__avp?.spotlight(null);
+          window.__avp?.zoom(1, null);
+          window.__avp?.cursorOff();
+          window.__avp?.captionTop(false);
+        });
+        await sleep(500);
+        const over = Date.now() - before - pauseMs;
+        if (over > 0) clockOffsetMs += over;
         continue;
       }
       let locator = null;
@@ -242,14 +288,29 @@ for (const [index, scene] of steps.scenes.entries()) {
           if (!item.optional) console.warn(`  ! ${scene.id}: target not found "${item.target}"`);
           continue;
         }
-        if (item.scroll) await locator.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
+        if (item.scroll) {
+          await locator.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
+          // Belt and braces: some controls sit in a transformed subtree where the Playwright scroll
+          // silently does nothing, so scroll again through the DOM and confirm it landed.
+          await locator
+            .evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }))
+            .catch(() => {});
+          await sleep(320);
+          const box = await locator.evaluate(rectOf).catch(() => null);
+          if (box && (box.height === 0 || box.y + box.height < 0 || box.y > 1440)) {
+            console.warn(`  ! ${scene.id}: "${item.target}" still off-screen after scroll`);
+          }
+        }
         await sleep(250);
       }
       const rect = locator ? await locator.evaluate(rectOf) : null;
-      // Keep the caption away from the control it would otherwise cover.
+      // Keep the caption off the control it would otherwise cover: try the bottom, fall back to the
+      // top only when the target does not reach the top strip.
       if (rect) {
-        const nearBottom = rect.y + rect.height > 1440 * 0.7;
-        await page.evaluate((on) => window.__avp?.captionTop(on), nearBottom);
+        const captionTopY = 1440 - 48 - 130;
+        const overlapsBottom = rect.y + rect.height > captionTopY && rect.y < 1440 - 48;
+        const overlapsTop = rect.y < 280 && rect.y + rect.height > 150;
+        await page.evaluate((on) => window.__avp?.captionTop(on), overlapsBottom && !overlapsTop);
       }
       const actions = [];
       if (rect && item.cursor !== false) {
@@ -259,17 +320,20 @@ for (const [index, scene] of steps.scenes.entries()) {
         actions.push(page.evaluate(({ scale, r }) => window.__avp?.zoom(scale, r), { scale: item.zoom, r: rect }));
       }
       await Promise.all(actions);
-      if (rect && item.zoom) await sleep(760);
-      if (rect && item.click) {
-        await sleep(280);
-        await page.evaluate((r) => window.__avp?.ripple(r.x + r.width / 2, r.y + r.height / 2), rect);
+      // Let the move and the zoom settle, then measure again so the highlight lands exactly on the
+      // control as it now sits on screen.
+      await sleep(rect && item.zoom ? 660 : 140);
+      const settled = locator ? await locator.evaluate(rectOf).catch(() => rect) : rect;
+      if (settled && item.spotlight !== false && (item.spotlight || item.click || item.zoom)) {
+        await page.evaluate((r) => window.__avp?.spotlight(r), settled);
+        await sleep(160);
+      }
+      if (settled && item.click) {
+        await sleep(120);
+        await page.evaluate((r) => window.__avp?.ripple(r.x + r.width / 2, r.y + r.height / 2), settled);
         await locator.click({ timeout: 4000 }).catch((error) => {
           if (!item.optional) console.warn(`  ! ${scene.id}: click failed on "${item.target}": ${error.message}`);
         });
-      }
-      if (rect && item.spotlight !== false && (item.spotlight || item.click || item.zoom)) {
-        const settled = await locator.evaluate(rectOf).catch(() => rect);
-        await page.evaluate((r) => window.__avp?.spotlight(r), settled);
       }
       if (item.spotlight === false) {
         await page.evaluate(() => window.__avp?.spotlight(null));
@@ -279,9 +343,8 @@ for (const [index, scene] of steps.scenes.entries()) {
     }
   }
 
-  const sceneSeconds = sceneTimeline.duration + 0.8;
-  const remaining = sceneSeconds * 1000 - (Date.now() - started);
-  if (remaining > 0) await sleep(remaining);
+  const contentSeconds = (Date.now() - started) / 1000;
+  const sceneSeconds = Math.max(sceneTimeline.duration + 0.6, contentSeconds + 0.2);
   await page.evaluate(() => {
     window.__avp?.spotlight(null);
     window.__avp?.zoom(1, null);
@@ -289,6 +352,9 @@ for (const [index, scene] of steps.scenes.entries()) {
     window.__avp?.captionTop(false);
   });
   await page.screenshot({ path: resolve(stillDir, `${scene.id}.png`) });
+  // Wall time from the first settled frame to the last, used to find the content start inside the
+  // recorded video, which drops idle frames and cannot be located from wall-clock timestamps alone.
+  const contentWall = (Date.now() - started) / 1000;
 
   const video = page.video();
   await page.close();
@@ -296,10 +362,11 @@ for (const [index, scene] of steps.scenes.entries()) {
   if (video) {
     const out = resolve(rawDir, `${scene.id}.webm`);
     await video.saveAs(out);
+    const rawDuration = durationOf(out);
     timing[scene.id] = {
       raw: out,
       audio: resolve(VIDEO, sceneTimeline.audio),
-      trimStart: Math.max(0, (Date.now() - contextStart - sceneSeconds * 1000) / 1000),
+      trimStart: Math.max(0, rawDuration - contentWall - 0.25),
       seconds: sceneSeconds,
     };
   }

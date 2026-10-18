@@ -42,7 +42,7 @@ for (const [index, scene] of availableScenes.entries()) {
   if (!t) throw new Error(`no recording for ${scene.id}; run the capture step first`);
   if (!sceneTimeline) throw new Error(`no timeline for ${scene.id}`);
 
-  const length = sceneTimeline.duration + 0.5;
+  const length = t.seconds ?? sceneTimeline.duration + 0.5;
   const segment = resolve(WORK, `${String(index + 1).padStart(2, "0")}-${scene.id}.mp4`);
   run([
     "-y",
@@ -55,13 +55,13 @@ for (const [index, scene] of availableScenes.entries()) {
     "-i",
     t.audio,
     "-filter_complex",
-    "[0:v]fps=30,tpad=stop_mode=clone:stop_duration=2,scale=1920:1080:flags=lanczos[v]",
+    "[0:v]fps=30,tpad=stop_mode=clone:stop_duration=2,scale=1920:1080:flags=lanczos,setpts=PTS-STARTPTS[v]",
     "-map",
     "[v]",
     "-map",
     "1:a",
     "-af",
-    "apad",
+    "apad,asetpts=PTS-STARTPTS",
     "-t",
     String(length),
     "-c:v",
@@ -78,6 +78,14 @@ for (const [index, scene] of availableScenes.entries()) {
     "192k",
     "-ar",
     "48000",
+    "-fps_mode",
+    "cfr",
+    "-video_track_timescale",
+    "30000",
+    "-fflags",
+    "+genpts",
+    "-avoid_negative_ts",
+    "make_zero",
     segment,
   ]);
   segments.push(segment);
@@ -92,7 +100,34 @@ for (const [index, scene] of availableScenes.entries()) {
 const list = resolve(WORK, "concat.txt");
 writeFileSync(list, segments.map((s) => `file '${s.replaceAll("\\", "/")}'`).join("\n") + "\n");
 const joined = resolve(WORK, "joined.mp4");
-run(["-y", "-f", "concat", "-safe", "0", "-i", list, "-c", "copy", joined]);
+run([
+  "-y",
+  "-f",
+  "concat",
+  "-safe",
+  "0",
+  "-i",
+  list,
+  "-c:v",
+  "libx264",
+  "-preset",
+  "medium",
+  "-crf",
+  "20",
+  "-pix_fmt",
+  "yuv420p",
+  "-c:a",
+  "aac",
+  "-b:a",
+  "192k",
+  "-ar",
+  "48000",
+  "-video_track_timescale",
+  "30000",
+  "-avoid_negative_ts",
+  "make_zero",
+  joined,
+]);
 
 const final = resolve(OUT, proof ? "avp-style-proof.mp4" : "avp-5min.mp4");
 run([
@@ -134,7 +169,7 @@ for (const [index, scene] of availableScenes.entries()) {
   const mm = String(Math.floor(chapterStart / 60)).padStart(2, "0");
   const ss = String(Math.floor(chapterStart % 60)).padStart(2, "0");
   chapter += `CHAPTER${String(index + 1).padStart(2, "0")}=${mm}:${ss}:00\nCHAPTER${String(index + 1).padStart(2, "0")}NAME=${scene.title}\n`;
-  chapterStart += (sceneTimeline?.duration ?? 0) + 0.5;
+  chapterStart += (timing[scene.id]?.seconds ?? 0) || (sceneTimeline?.duration ?? 0) + 0.5;
 }
 writeFileSync(resolve(OUT, "chapters.txt"), chapter);
 
@@ -151,7 +186,34 @@ if (!proof && shortSegments.length === shortIds.length) {
 const shortList = resolve(WORK, "short.txt");
 writeFileSync(shortList, shortSegments.map((s) => `file '${s.replaceAll("\\", "/")}'`).join("\n") + "\n");
 const shortJoined = resolve(WORK, "short-joined.mp4");
-run(["-y", "-f", "concat", "-safe", "0", "-i", shortList, "-c", "copy", shortJoined]);
+run([
+  "-y",
+  "-f",
+  "concat",
+  "-safe",
+  "0",
+  "-i",
+  shortList,
+  "-c:v",
+  "libx264",
+  "-preset",
+  "medium",
+  "-crf",
+  "20",
+  "-pix_fmt",
+  "yuv420p",
+  "-c:a",
+  "aac",
+  "-b:a",
+  "192k",
+  "-ar",
+  "48000",
+  "-video_track_timescale",
+  "30000",
+  "-avoid_negative_ts",
+  "make_zero",
+  shortJoined,
+]);
 const shortFinal = resolve(OUT, "avp-90s.mp4");
 run([
   "-y",

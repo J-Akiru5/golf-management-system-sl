@@ -30,7 +30,7 @@
         "This is the control room.",
         "It shows the event you are working on, how many players are registered, and how many are ready.",
         "The same screen shows the draw state and the readiness checks.",
-        "The left rail opens every desk screen. On a phone, the menu button does the same.",
+        "The left rail opens every desk screen.",
         "Start here. Every other screen is one click away."
       ],
       "events": [
@@ -54,11 +54,11 @@
       "events": [
         { "line": 0, "target": "h1:has-text('Tournament setup')", "spotlight": true, "cursor": true },
         { "line": 1, "target": "section:has(h2:has-text('Basics'))", "spotlight": true, "zoom": 1.12, "cursor": true },
+        { "line": 1, "offset": 2.1, "target": "button:has-text('Add a day')", "spotlight": true, "zoom": 1.06, "cursor": true, "scroll": true, "click": true },
         { "line": 2, "target": "section:has(h2:has-text('Course & tees'))", "spotlight": true, "zoom": 1.12, "cursor": true, "scroll": true },
         { "line": 3, "target": "table:has-text('Stroke index')", "spotlight": true, "zoom": 1.1, "cursor": true, "scroll": true },
         { "line": 4, "target": "text=real numbers from its scorecard", "spotlight": true, "cursor": true },
-        { "line": 5, "target": "button:has-text('Add a day')", "spotlight": true, "zoom": 1.05, "cursor": true, "scroll": true, "click": true },
-        { "line": 5, "offset": 1.3, "target": "button:has-text('Save all changes')", "spotlight": true, "zoom": 1.05, "cursor": true, "click": true },
+        { "line": 5, "target": "button:has-text('Save all changes')", "spotlight": true, "zoom": 1, "cursor": true, "click": true },
         { "line": 5, "when": "end", "target": "text=No unsaved changes", "spotlight": true }
       ]
     },
@@ -90,15 +90,30 @@
       "lines": [
         "The registration desk is where an entry is taken.",
         "Find a player, choose member or guest, record the sponsor answer, shirt size, tee-time preferences and payment status.",
-        "The public entry link opens the same event for players. They can enter from a phone without an account.",
+        { "text": "The public entry link opens the same event for players. They can enter without an account.", "pauseAfter": 2.2 },
         "Every entry arrives as Needs review, so the desk confirms it before it counts."
       ],
       "events": [
         { "line": 0, "target": "h1:has-text('Add a registration')", "spotlight": true, "cursor": true },
         { "line": 1, "target": "text=1. Find the player", "spotlight": true, "zoom": 1.2, "cursor": true },
-        { "line": 2, "route": "/enter/bamboo-tee-2026", "spotlight": false, "zoom": 1 },
-        { "line": 2, "target": "h1:has-text('Bamboo Tee')", "spotlight": true, "cursor": true },
-        { "line": 3, "target": "text=Sample event for the demo", "spotlight": true, "cursor": true }
+        { "line": 2, "when": "end", "route": "/enter/bamboo-tee-2026", "spotlight": false, "zoom": 1 },
+        { "line": 3, "target": "h1:has-text('Bamboo Tee')", "spotlight": true, "cursor": true },
+        { "line": 3, "when": "end", "target": "text=Sample event for the demo", "spotlight": true, "cursor": true }
+      ]
+    },
+    {
+      "id": "05b-phone",
+      "card": "phone.html",
+      "title": "The phone view",
+      "lines": [
+        "Players do not need an account.",
+        "They open the link on a phone and see the published list.",
+        "Names, flights, holes and times, with a search box.",
+        "This is the view the club shares on the day."
+      ],
+      "events": [
+        { "line": 1, "target": "#phone", "spotlight": true, "zoom": 1.18, "cursor": true },
+        { "line": 3, "when": "end", "spotlight": false, "zoom": 1 }
       ]
     },
     {
@@ -132,7 +147,7 @@
         "When the draw is ready, review and publish.",
         "The dialog shows exactly what players will see and lists anything still wrong.",
         "Publishing freezes this version.",
-        "The phone view shows the published list: names, flights, holes and times.",
+        "The player view shows the published list: names, flights, holes and times.",
         "Players never see the working board."
       ],
       "events": [
@@ -178,14 +193,14 @@
       "title": "Help, when stuck",
       "lines": [
         "If you are not sure where something is, the question mark opens the guide for the screen you are on.",
-        "Show me closes the guide and points at the control.",
+        { "text": "Show me closes the guide and points at the control.", "pauseAfter": 2.2 },
         "The How to tab in the print center holds a printable cheat sheet for the desk and one for players.",
         "The guide is the training aid you keep using after this video."
       ],
       "events": [
         { "line": 0, "target": "button[aria-label='Help']", "spotlight": true, "zoom": 1.2, "cursor": true, "click": true },
         { "line": 1, "target": "button:has-text('Show me')", "spotlight": true, "zoom": 1.2, "cursor": true, "click": true, "optional": true },
-        { "line": 2, "route": "/print", "spotlight": false, "zoom": 1 },
+        { "line": 1, "when": "end", "route": "/print", "spotlight": false, "zoom": 1 },
         { "line": 2, "target": "button:has-text('How to')", "spotlight": true, "zoom": 1.2, "cursor": true, "click": true },
         { "line": 2, "when": "end", "target": "h2:has-text('How to use the desk')", "spotlight": true, "zoom": 1.2, "scroll": true },
         { "line": 3, "spotlight": false, "zoom": 1 }
@@ -207,7 +222,7 @@
         { "line": 1, "target": "a[aria-label='Settings']", "spotlight": true, "zoom": 1.2, "cursor": true },
         { "line": 2, "target": "a[aria-label='Registration desk']", "spotlight": true, "zoom": 1.2, "cursor": true },
         { "line": 3, "target": "text=registrations ·", "spotlight": true, "zoom": 1.2, "cursor": true },
-        { "line": 4, "target": "text=Draft", "spotlight": true, "zoom": 1.2, "cursor": true },
+        { "line": 4, "target": "text=Draft · players", "spotlight": true, "zoom": 1.2, "cursor": true },
         { "line": 4, "when": "end", "spotlight": false, "zoom": 1 }
       ]
     },

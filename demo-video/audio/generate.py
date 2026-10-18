@@ -22,6 +22,13 @@ VOICES = Path(r"C:\Users\Lenovo\.avp\models\voices-v1.0.bin")
 LEAD = 0.25
 GAP = 0.22
 TAIL = 0.4
+DEFAULT_PAUSE = GAP
+
+
+def line_parts(line) -> tuple[str, float]:
+    if isinstance(line, str):
+        return line, DEFAULT_PAUSE
+    return line.get("text", ""), float(line.get("pauseAfter", DEFAULT_PAUSE))
 
 PRONOUNCE = {
     "TeeLine": "Tee line",
@@ -52,7 +59,10 @@ def main() -> None:
         cursor = LEAD
         lines = []
 
-        for line in scene["lines"]:
+        for raw_line in scene["lines"]:
+            line, pause = line_parts(raw_line)
+            if not line:
+                continue
             samples, rate = kokoro.create(
                 spoken(line),
                 voice=steps["meta"]["voice"],
@@ -61,12 +71,19 @@ def main() -> None:
             )
             samples = samples.astype(np.float32)
             duration = len(samples) / rate
-            lines.append({"start": round(cursor, 3), "end": round(cursor + duration, 3), "text": line})
+            lines.append(
+                {
+                    "start": round(cursor, 3),
+                    "end": round(cursor + duration, 3),
+                    "pauseAfter": round(pause, 3),
+                    "text": line,
+                }
+            )
             chunks.append(samples)
             cursor += duration
-            gap = np.zeros(int(rate * GAP), dtype=np.float32)
+            gap = np.zeros(int(rate * pause), dtype=np.float32)
             chunks.append(gap)
-            cursor += GAP
+            cursor += pause
 
         tail = np.zeros(int(rate * TAIL), dtype=np.float32)
         chunks.append(tail)
@@ -81,7 +98,7 @@ def main() -> None:
             "lines": lines,
         }
         total += len(audio) / rate
-        words = sum(len(line.split()) for line in scene["lines"])
+        words = sum(len(line_parts(line)[0].split()) for line in scene["lines"])
         print(f"{index:02d} {scene['id']:<14} {len(audio) / rate:>6.2f}s  {words:>3} words")
 
     (VIDEO / "audio" / "timeline.json").write_text(
