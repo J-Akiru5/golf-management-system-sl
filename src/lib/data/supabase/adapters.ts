@@ -30,6 +30,22 @@ import {
   toRegistrationInsert,
 } from "./domain";
 
+/**
+ * The draw revision this browser last saw, per tournament.
+ *
+ * `save_event_setup` and `save_draw` both read and bump the same column,
+ * `tournaments.draw_revision`, and both refuse a write that names a stale one. So they have to
+ * agree on a single number. They used to keep a counter each — one closed over inside the setup
+ * adapter, one in the desk store — and neither told the other. Saving the event setup therefore
+ * moved the revision the draw was comparing against, and the next draw save was refused as stale
+ * even though nobody else had touched anything.
+ */
+export interface RevisionStore {
+  /** The last revision the database confirmed for this tournament, or null if none is known yet. */
+  get: (tournamentId: string) => number | null;
+  set: (tournamentId: string, revision: number) => void;
+}
+
 export interface SupabaseAdapterOptions {
   client: SupabaseClient<Database>;
   /** Called with a human message when a write fails; the state is not rolled back here. */
@@ -39,6 +55,11 @@ export interface SupabaseAdapterOptions {
   /** Called when the queue starts and when it drains. */
   onBusy: (busy: boolean) => void;
   clubId: string;
+  /**
+   * One revision per tournament, shared by the setup and the draw writes. Required rather than
+   * optional: a second counter is the bug this exists to prevent, so there is nowhere to put one.
+   */
+  revisions: RevisionStore;
 }
 
 const uuid = () => crypto.randomUUID();
@@ -413,10 +434,6 @@ export function createSupabaseAdapters(
 
    * Event setup -------------------------------------------------------------------------------- */
 
-  // The revision this browser last saw. The guard only bites from the second save onward, because
-  // the desk state does not carry the revision yet; a save without one is unguarded but still atomic.
-  let setupRevision: number | null = null;
-
   const setup: Adapters["setup"] = {
     save: ({ tournament, tees, holes, sections = "all" }) => {
       // The draft lands in the session state either way, so a failed write still leaves the edit on
@@ -426,17 +443,22 @@ export function createSupabaseAdapters(
       enqueue(async () => {
         const { data, error } = await client.rpc("save_event_setup", {
           p_tournament: tournament.id,
-          p_expected_revision: setupRevision,
+          // Read when the write runs, not when it was queued, so it is the latest known. Null on a
+          // first save in a session that never loaded a revision: unguarded, but still atomic.
+          p_expected_revision: options.revisions.get(tournament.id),
           ...payload,
           // The registration document is JSON in the database; the domain type has the same shape.
           p_registration: payload.p_registration as Json | null,
         });
         if (error) throw new Error(`Could not save the event setup: ${error.message}`);
         const result = data as unknown as { revision?: number } | null;
-        setupRevision = typeof result?.revision === "number" ? result.revision : setupRevision;
+        // The same number the draw writes name. Recording it here is what stops a draw save being
+        // refused straight after a setup save.
+        if (typeof result?.revision === "number") {
+          options.revisions.set(tournament.id, result.revision);
+        }
       });
     },
-    revision: () => setupRevision,
   };
 
   return { players, tournaments, registrations, imports, router, setup };

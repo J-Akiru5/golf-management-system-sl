@@ -107,8 +107,6 @@ export interface SetupRepository {
     holes: Hole[];
     sections?: SetupSection[] | "all";
   }): void;
-  /** The last revision seen, or null when this build has no revision to guard against. */
-  revision(): number | null;
 }
 
 export interface RegistrationRepository {
@@ -309,7 +307,6 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
   // nowhere to store an edit to them. The connected adapter writes all five tables at once.
   const setup: SetupRepository = {
     save: ({ tournament }) => dispatch({ type: "saveTournament", tournament }),
-    revision: () => null,
   };
 
   return { players, tournaments, registrations, imports, router, setup };
