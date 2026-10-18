@@ -1,0 +1,91 @@
+name: CI
+
+# The four checks AGENTS.md asks for before every commit, plus the browser pass that found the bugs
+# the other four could not see: an alerts panel whose text was ivory on ivory, and a list that sent
+# the desk back to page 2 when a search was cleared. Both passed typecheck, lint, test and build.
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+# A new push to the same branch makes the previous run's answer irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No version is pinned in package.json, so these steps pin it instead. Keep them in step with
+      # the versions in the README's setup section.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint and format
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  browser:
+    name: browser checks
+    runs-on: ubuntu-latest
+    needs: checks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Only what Chromium needs; the full playwright install would pull browsers this never uses.
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # With no Supabase URL in the environment the app runs on the demo seed, which is what
+      # scripts/verify-ui.mjs expects. It drives a real dev server, so it is not part of `pnpm test`.
+      - name: Start the dev server
+        run: |
+          pnpm dev --port 3100 > /tmp/dev-server.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -sf -o /dev/null http://localhost:3100/players; then
+              echo "dev server ready after $((i * 2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "the dev server never came up; last 50 lines:"
+          tail -50 /tmp/dev-server.log
+          exit 1
+
+      - name: Browser checks
+        run: pnpm verify:ui
+
+      - name: Console log when it fails
+        if: failure()
+        run: tail -100 /tmp/dev-server.log || true
