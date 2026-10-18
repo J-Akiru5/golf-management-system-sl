@@ -3,7 +3,7 @@ import type { DeskPlayer } from "@/lib/demo/data";
 import { classifyPlayer } from "@/lib/routing";
 import type { Action, DeskState } from "@/lib/store/legacy-supabase-store";
 import type { Database } from "@/lib/supabase/types";
-import { saveGroupLock, saveTournamentDraw } from "./groups";
+import { publishPairings, saveDraw, unpublishPairings } from "./draw-sync";
 import {
   effectiveIndexesFromImport,
   loadLatestHandicapRecordsAtCutoff,
@@ -25,13 +25,28 @@ import {
   saveRegistrationClassifications,
   updateRegistrationShirt,
 } from "./registrations";
-import { saveTournamentConfig, saveTournamentPublication } from "./tournaments";
+import { saveTournamentConfig } from "./tournaments";
 
 export interface PersistResult {
   photoPathUpdates?: Record<string, string | null>;
   photoUrlUpdates?: Record<string, string | undefined>;
   consentUpdates?: Record<string, boolean>;
   indexUpdates?: Record<string, number | null>;
+}
+
+/** The parked store does not track revisions, so it reads the current one just before each write. */
+async function currentRevision(
+  client: SupabaseClient<Database>,
+  tournamentId: string,
+): Promise<number> {
+  const { data, error } = await client
+    .from("tournaments")
+    .select("draw_revision")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  if (error) throw new Error(`Could not read the draw revision: ${error.message}`);
+  if (!data) throw new Error("The tournament was not found while saving the draw.");
+  return data.draw_revision;
 }
 
 function ids(state: DeskState): { clubId: string; tournamentId: string } {
@@ -208,23 +223,36 @@ export async function persistDeskAction(
     }
     case "generate":
       await saveRegistrationClassifications(client, clubId, tournamentId, classifyAll(after));
-      await saveTournamentDraw(client, clubId, tournamentId, after.draw ?? []);
-      await saveTournamentPublication(client, clubId, tournamentId, null);
+      await saveDraw(
+        client,
+        tournamentId,
+        await currentRevision(client, tournamentId),
+        after.draw ?? [],
+        null,
+      );
+      await unpublishPairings(client, tournamentId);
       return {};
     case "move":
-      await saveTournamentDraw(client, clubId, tournamentId, after.draw ?? []);
+    case "lock":
+      await saveDraw(
+        client,
+        tournamentId,
+        await currentRevision(client, tournamentId),
+        after.draw ?? [],
+        null,
+      );
       return {};
-    case "lock": {
-      const group = after.draw?.find((item) => item.number === action.group);
-      if (!group) throw new Error(`Could not find group ${action.group} after the lock change.`);
-      await saveGroupLock(client, clubId, tournamentId, group.number, group.locked);
-      return {};
-    }
     case "publish":
-      await saveTournamentPublication(client, clubId, tournamentId, after.published);
+      if (!after.published) return {};
+      await publishPairings(
+        client,
+        tournamentId,
+        await currentRevision(client, tournamentId),
+        after.published,
+      );
       return {};
     case "unpublish":
-      await saveTournamentPublication(client, clubId, tournamentId, null);
+      await unpublishPairings(client, tournamentId);
       return {};
   }
 }

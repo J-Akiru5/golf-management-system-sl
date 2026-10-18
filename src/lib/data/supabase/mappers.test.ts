@@ -80,6 +80,7 @@ describe("database row mappers", () => {
       stale_index_days: 120,
       registration: null,
       board_overrides: null,
+      draw_revision: 0,
     };
     const course: CourseRow = { id: "course-1", club_id: "club-1", name: "IGCC", holes: 18 };
     expect(mapTournamentConfig(tournament, course)).toEqual({
@@ -228,6 +229,7 @@ describe("database row mappers", () => {
         start_format: "shotgun",
         first_tee_time: "07:00:00",
         published_at: "2026-10-17T10:00:00Z",
+        version: 3,
         group_number: 1,
         wave: "A",
         start_hole: 1,
@@ -242,6 +244,7 @@ describe("database row mappers", () => {
         start_format: "shotgun",
         first_tee_time: "07:00:00",
         published_at: "2026-10-17T10:00:00Z",
+        version: 3,
         group_number: 1,
         wave: "A",
         start_hole: 1,
@@ -255,7 +258,7 @@ describe("database row mappers", () => {
       date: "2026-10-31",
       startFormat: "shotgun",
       firstTeeTime: "07:00",
-      published: { groups: [{ players: ["Carmela Reyes", "Elena Tan"] }] },
+      published: { version: 3, groups: [{ players: ["Carmela Reyes", "Elena Tan"] }] },
     });
   });
 
@@ -267,6 +270,7 @@ describe("database row mappers", () => {
       start_format: "shotgun",
       first_tee_time: "07:00:00",
       published_at: null,
+      version: null,
       group_number: null,
       wave: null,
       start_hole: null,

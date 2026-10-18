@@ -30,6 +30,7 @@ const makeTournament = (id: string, playDate: string, createdAt: string): Tourna
   stale_index_days: 120,
   registration: null,
   board_overrides: null,
+  draw_revision: 0,
 });
 
 describe("chooseActiveTournament", () => {

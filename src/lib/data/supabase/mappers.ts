@@ -256,6 +256,7 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
       ? {
           at: first.published_at,
           signature: `public:${first.tournament_id}`,
+          version: first.version ?? undefined,
           eventName: first.tournament_name,
           date: first.play_date,
           startFormat: first.start_format,
