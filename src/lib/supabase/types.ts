@@ -465,6 +465,10 @@ export interface Database {
           p_tees?: Json | null;
           p_categories?: Json | null;
           p_flights?: Json | null;
+          p_basics?: Json | null;
+          p_rules?: Json | null;
+          p_start?: Json | null;
+          p_registration?: Json | null;
         };
         Returns: Json;
       };

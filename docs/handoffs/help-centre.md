@@ -44,7 +44,7 @@ What it is, where the pieces live, and how to change them without breaking the c
 
 ## Seen-state
 
-`supabase/migrations/20261027000000_help_seen.sql` creates `help_seen` (one row per person per panel
+`supabase/migrations/20261028000000_help_seen.sql` creates `help_seen` (one row per person per panel
 they dismissed; `user_id` defaults to `auth.uid()`, RLS restricts a row to its owner). **It is not
 applied.** Until it is, the record lives in this browser under `teeline-help-seen`, which the app
 always writes anyway, so behaviour is the same either way. Clearing that key (or deleting the row)

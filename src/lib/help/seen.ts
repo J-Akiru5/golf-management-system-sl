@@ -5,7 +5,7 @@ import type { HelpAudience } from "./types";
 /**
  * Which guides a person has already dismissed.
  *
- * Two stores, one answer: `help_seen` in the database (migration 20261027000000, applied by the
+ * Two stores, one answer: `help_seen` in the database (migration 20261028000000, applied by the
  * owner) and `localStorage` in this browser. The local copy is always written, so the welcome never
  * comes back on this device even when the migration is not applied yet or the write is refused. The
  * database copy is what makes "once per member" true across devices.

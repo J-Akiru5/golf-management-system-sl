@@ -53,8 +53,9 @@ new patch instead.
 
 ## Tags for the versions already built
 
-The history below was reconstructed from the merge log on 18 Oct 2026. Tag the commits once, then
-follow the process above from the next release.
+The history below was reconstructed from the merge log on 18 Oct 2026. The tags are published; follow
+the process above from the next release. Versions 0.6.0 onward point at the merge commit that carries
+their `package.json` bump.
 
 | Version | Commit | What it is |
 | --- | --- | --- |
@@ -64,6 +65,9 @@ follow the process above from the next release.
 | v0.4.0 | `11812f1ce60cb05b0e366bb676d969d664890dd8` | Desk components, print sheets, wiring, register confirm |
 | v0.5.0 | `5302371b1d6cf31b47b744a0a23f50ff4488b93b` | Versioned publish, player area |
 | v0.5.1 | merge commit of the PR that added this file | Event setup call, fixes, versioning docs |
+| v0.6.0 | `1fd2b76960f8528c39fa70072121df31e2e15e0b` | Alerts bell, paged lists, import review tabs |
+| v0.6.1 | `54683ff2521936dd45802d88563512485008814b` | Browser check and the two bugs it found |
+| v0.7.0 | `45dce3c10115e702c97501a4d6c29cbda341ecad` | Settings that save, deployed entry link, Add a day |
 
 ```bash
 git tag -a v0.1.0 2fdebe6040b2e6d4b60115eda0641dc2a37608fd -m "TeeLine Golf 0.1.0"

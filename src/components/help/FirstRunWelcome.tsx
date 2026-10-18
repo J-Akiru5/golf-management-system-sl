@@ -14,7 +14,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 /**
  * The first-run welcome, once per person.
  *
- * "Once" means: the `help_seen` row when the database has it (migration 20261027000000), and this
+ * "Once" means: the `help_seen` row when the database has it (migration 20261028000000), and this
  * browser's localStorage always. With no Supabase project at all, localStorage is the whole record,
  * which is what the demo build needs. Nothing here blocks the screen behind it: it is dismissible,
  * Escape closes it, and the button says what it does.
