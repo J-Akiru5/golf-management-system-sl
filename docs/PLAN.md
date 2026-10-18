@@ -22,7 +22,7 @@ Anything not marked is a plan, not a fact.
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
 | Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), club row seeded, `player-photos` created private, RLS checked against the anon key. **All twelve migrations are in step**, including the player portal (`20261023000000`, `.0001`), the event-setup pair (`20261024000000`, `20261025000000`), the notifications schema (`20261026000000`) and the help seen-state (`20261028000000`) | 14 tables, RLS on all; `supabase migration list --linked` shows local and remote in step |
 | Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`) | **Wired (merged 18 Oct, `b8d9c7a`)**: the store uses `createSupabaseAdapters` and `loadDeskState` when a Supabase URL is configured, and the mock adapters when it is not. Not yet exercised end to end with real course and tournament rows | `src/lib/data/supabase/adapters.ts`, `load-desk-state.ts`, `domain.ts`; 24 tests |
-| Deployment | Vercel project **`golf-management-system-sl`** (team `j-akiru5s-projects`), production tracks `main` at **https://golf.syntaxure.dev**; `main` and `develop` are level at 0.8.0, and feature branches build previews. **Set `NEXT_PUBLIC_SITE_URL` to that domain in Vercel** so player share links do not depend on the host the desk happens to use | `vercel ls`, `vercel inspect`; production env vars are not in the repo |
+| Deployment | Vercel project **`golf-management-system-sl`** (team `j-akiru5s-projects`), production tracks `main` at **https://golf.syntaxure.dev**; `main` and `develop` are level at `975c805` (v0.8.0 code plus docs), and feature branches build previews. Every production deploy is a tagged release (section 5). **Set `NEXT_PUBLIC_SITE_URL` to that domain in Vercel** so player share links do not depend on the host the desk happens to use | `vercel ls`, `vercel inspect`; production env vars are not in the repo |
 | Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Applied 18 Oct 2026 and verified**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger. Two staff accounts exist (`admin` = owner, `member1` = desk) | Verified by signing in as each role: owner sees both member rows, desk sees only its own |
 | Player auth and the player area (`src/lib/auth/routes.ts`, `src/app/(player)`, `src/lib/player`) | **Built, tested and applied.** One sign-in page for players and staff, `/my` with a claim step and a read-only view of the player's own entry and published start. The database half is live; what is missing is a test account linked to a test player | `routes.test.ts` (15), `portal.test.ts` (7), `claim.test.ts` (4); guard matrix checked over HTTP with a Supabase URL configured; the three functions answered correctly against the live project (see section 7) |
 | Organizer screens (`src/app`) | **Built**: on the session store in demo mode; with Supabase configured the same screens read and write the project through the adapters. An end-to-end pass with real event data is still pending | Public TeeLine landing at `/`, control room at `/admin`, plus Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view and profiles |
@@ -32,7 +32,7 @@ Anything not marked is a plan, not a fact.
 | Merged (PR #17) | **Event setup and the notification schema**, merged into `develop` as `863c253` on 18 Oct 2026: the desk saves course, tees, holes, categories and flights in one guarded, manager-only transaction, enters the real tee and hole numbers, loads the saved tees and holes instead of the samples, adds the paging primitive, and writes the notifications migration. Its migrations `20261024000000`, `20261025000000` and `20261026000000` are all applied to the live project (verified over the API) | Section 8, step W1 done |
 | Merged (PR #23) | **The alerts bell and the paged lists** (`feat/desk-lists-and-bell`): the bell in the shell, the notification loader, paging applied to the players, registration and import review lists, and the import review tabs. Merged into `develop` as `1fd2b76` on 18 Oct 2026. It shipped with two bugs that browser checking found and the follow-up below fixes | Follow-up PR `fix/desk-browser-found` |
 | Merged (PR #27) | **Settings that save** (`feat/settings-saves`, merged as `45dce3c` on 18 Oct 2026, tagged `v0.7.0`): draft-then-save with a Save on every section plus Save all changes, the tournament-level fields carried by the guarded `save_event_setup`, the entry link on the deployed domain, and Add a day incrementing with every day editable. Migration `20261027000000_setup_tournament_fields.sql` is **applied live** and verified over the API | Merged; release line is now 0.8.0 |
-| Releases | **v0.7.0** settings that save; **v0.7.1** the bell waiting for the connected desk; **v0.8.0** the help centre, shell polish, player languages and one shared draw revision. `develop` and `main` are level at `06a2748` (v0.8.0), and `main` is production | tags `v0.7.0`, `v0.7.1`, `v0.8.0`; `git ls-remote` |
+| Releases | **v0.7.0** settings that save; **v0.7.1** the bell waiting for the connected desk; **v0.8.0** the help centre, shell polish, player languages and one shared draw revision, tagged at `06a2748`. `develop` and `main` are level at `975c805` (the v0.8.0 code plus docs-only commits); production's code is the v0.8.0 tag. See section 5, "Versioning and production" | tags `v0.7.0`, `v0.7.1`, `v0.8.0`; `git ls-remote --tags` |
 | Long lists | **Paged on the desk's lists.** `src/lib/data/paging.ts`: 50 rows a page, paged in the browser, queries unchanged. Applied to the player directory, the registration desk and the import review tabs. Switching tab, search or filter returns to page 1, and ties break on the record id so editing a row cannot move it to another page. **Deliberately not paged**: print, the draw groups and the desk's player search | Decision 13 settled; gap 10 closed for the desk screens |
 | Alerts | **Bell built.** Decision 14 is stored, desk-facing notifications (option B): `notifications` + `notification_reads` with per-user read state, `sync_notifications(tournament)` and `mark_notifications_read(tournament)`, all applied to the live project. The bell merges the live draw issues with the stored rows, de-duplicates them, and counts unresolved blocking and warning whatever their read state; read state only quiets info. The full sync cycle was checked over the API: a warning appeared and cleared when the cause was fixed, and a dismissed info notice stayed read in a fresh session | Gap 11 closed; merged (#23, `1fd2b76`) |
 | Merged (PR #28) | **Player languages**: English, Tagalog and Hiligaynon on the player surfaces (`src/lib/i18n`). A cookie-backed choice with the browser's preference as the fallback, typed dictionaries with coverage tests, a language picker in the player header, and the portal, pairings, demo pairings and entry pages reading their copy from the dictionary. Tagalog and Hiligaynon are drafts; **Jeff reads both languages and reviews them himself** (checklist in `docs/i18n-review.md`). Desk chrome is still English | `docs/i18n-review.md`; `verify:ui` section "player languages" |
@@ -55,7 +55,8 @@ end to end with that data; the two test staff accounts must be rotated before th
 1. **The code and tests in this repo.** If this plan and the code disagree, the code is what runs.
 2. [`docs/spec/IGCC_Tournament_Desk.md`](spec/IGCC_Tournament_Desk.md): the build spec v1 sent to the organizer, with the rules the organizer confirmed on 17 Oct 2026.
 3. This plan: status, gaps, roadmap, decisions made since the spec.
-4. [`README.md`](../README.md): how to run the project.
+4. [`docs/VERSIONING.md`](VERSIONING.md) with [`CHANGELOG.md`](../CHANGELOG.md) and the `vX.Y.Z` tags: **the single source of truth for which version production runs**. `package.json` carries the number, the changelog records what is in each release, the tag marks the released commit, and this plan quotes it rather than redefining it.
+5. [`README.md`](../README.md): how to run the project.
 
 Rules in the spec are **tournament settings, not constants**. Never hard-code a rule from section 3 into
 the engine; it must come from `TournamentConfig`, categories, tees or flights.
@@ -210,9 +211,28 @@ is applied live too, verified over the API. A new migration must use a version a
 ### Git workflow
 
 - Base branch `develop`. Multi-file work goes on a dedicated branch and a pull request into `develop`.
-- `main` exists and is kept level with `develop` (advanced for the production build); **`staging` is skipped on purpose** because Jeff is a solo dev (decision 12).
+- `main` carries production and is kept level with `develop`; only tagged releases go on it, plus docs-only commits that do not change the build. See "Versioning and production" below; **`staging` is skipped on purpose** because Jeff is a solo dev (decision 12).
 - Commit messages and PR descriptions carry the attribution lines required by the tooling in use.
-- A repo-state claim ("it is merged", "it is deployed") must be checked against the remote, not memory.
+- A repo-state claim ("it is merged", "it is deployed", "it is in production") must be checked against the remote or the tag, not memory.
+
+### Versioning and production
+
+[`docs/VERSIONING.md`](VERSIONING.md) is the single source of truth for what production runs. This
+plan quotes it; it does not redefine it.
+
+- **The number.** `package.json` `version` is the only version number. MINOR for something testers
+  notice (a screen, a workflow, a rule setting, or a migration), PATCH for fixes and docs with no
+  migration; MAJOR stays `0` until the club signs off the acceptance test.
+- **The release commit.** An annotated tag `vX.Y.Z` points at the merge commit on `develop` that
+  carries the bump. `CHANGELOG.md` lists what is in it and every migration with whether it is applied
+  live. **The tag, not the tip of `main`, is the authoritative release.**
+- **Production.** `main` tracks `https://golf.syntaxure.dev`. Its code must be the latest tagged
+  release. A docs-only commit may sit on `main` after the tag, because it does not change the build;
+  any code change reaches `main` only as a tagged release, never as an untagged push.
+- **Database.** Migrations release separately and are applied by the owner. A migration version is
+  spent once; every changelog entry states which migrations it expects and whether they are live.
+- **Open task.** The app does not yet show `v{version} · {short commit} · {environment}`. Add it to
+  the shell so a tester can quote exactly what they ran (W6).
 
 ---
 
@@ -412,9 +432,11 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
    print assembler. Print on real paper at the club and verify the A4 layout before the event.
 7. **Long lists and alerting:** *Done 18 Oct 2026.* Paging and the stored alerts are merged (#23),
    browser-checked (#25), and the bell waits for the connected desk before checking (0.7.1).
-8. **Deploy:** done except CI. The Vercel project and env vars are live, production tracks `main` at
-   `golf.syntaxure.dev`, and `main` is level with `develop` at 0.8.0; `staging` is skipped on purpose
-   (solo dev). Still to do: CI (typecheck, lint, tests, build) on pull requests.
+8. **Deploy:** done except CI and the version display. The Vercel project and env vars are live,
+   production tracks `main` at `golf.syntaxure.dev`, and `main` is level with `develop` at `975c805`
+   (v0.8.0 code). Every production deploy is a tagged release (section 5), so `main` never carries
+   untagged code. Still to do: CI (typecheck, lint, tests, build) on pull requests, and showing
+   `v{version} · {short commit} · {environment}` in the shell.
 9. **Dress rehearsal:** run a full fake tournament with the organizer using real IGCC data before the real event.
 
 ### Scheduling and the public pairings page (built in `feat/versioned-publish`, 18 Oct 2026)
@@ -485,7 +507,7 @@ only their own entry. Every finding is written down with a severity the same day
 | W3 | Real club data, then prove the path | Course Rating, Slope, Par and stroke index from the scorecard (decision 1); decisions 3 to 7 and 9; a fresh NGAP export and a re-freeze; **and the print page's `courseDataStatus` hard-coded to `"placeholder"` must be derived from the loaded rows**, so real data prints without the watermark | Organizer, with the club |
 | W4 | Accounts, access, privacy | Rotate the two test accounts; create the golf pro as `organizer`; decide player sign-ups; one player account and one player row to claim; verify the photo consent line and a real upload | Jeff and Claude |
 | W5 | The UAT itself | The run sheet, the session, the findings, the fallback (printed sheets, unpublish, redeploy the previous build) | Jeff and the organizer |
-| W6 | Production hygiene | CI on pull requests (there is none); revoke `anon` execute on `save_draw`, `publish_pairings` and `unpublish_pairings`; a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups; set `NEXT_PUBLIC_SITE_URL` in Vercel to the production domain | Jeff |
+| W6 | Production hygiene | CI on pull requests (there is none); revoke `anon` execute on `save_draw`, `publish_pairings` and `unpublish_pairings`; a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups; set `NEXT_PUBLIC_SITE_URL` in Vercel to the production domain; show `v{version} · {short commit} · {environment}` in the shell | Jeff |
 
 **The run sheet (one page, to be handed over).**
 
@@ -573,6 +595,7 @@ Decisions that belong to the people named, not to an agent.
 | 19 | Help and onboarding: which screens get a guide, how the welcome is recorded, and what the cheat sheet is | Jeff | Documentation inside the app | One "?" per shell (desk top bar, player header, pairings head) with a step list for the current screen and a "Show me" ring; welcome once per person (per user in `help_seen`, applied, and per browser always); the cheat sheet is Print center's fourth tab and prints the player page in any of the three languages |
 | 20 | The theme control and the rail: one dropdown or three, and what happens when the sidebar is expanded | Jeff | The shell's chrome | One dropdown with System / Light / Dark (Ivory and Charcoal named in the options), kept in `starter-theme`; the rail is compact by default, expands to labelled rows on request, and remembers the choice per browser; icons explain themselves on hover and focus |
 | 21 | **Where a "Report a bug" report goes** (help-centre action): a prefilled GitHub issue, a mail draft to the owner, or a stored table; and what context it may carry | Jeff | Nice to have only; not the UAT | Prefilled GitHub issue with the current screen, role and version/build; no schema and no player data |
+| 22 | ~~Which run is "the version"~~ **Settled 18 Oct 2026:** versioning is the single source of truth for production. `package.json` carries the number, `CHANGELOG.md` records the contents, and the annotated `vX.Y.Z` tag on the `develop` merge commit is the authoritative release; `main` carries only released code plus docs-only commits | Jeff | Every deploy | Current: **v0.8.0** tagged at `06a2748`; `develop` = `main` = `975c805`; the app version display is still to add (W6) |
 
 ---
 
@@ -629,7 +652,7 @@ Agent ground rules:
 - [ ] `anon` execute revoked on `save_draw`, `publish_pairings` and `unpublish_pairings`
 - [ ] Photo consent line shown before every photo; private bucket verified
 - [ ] Public pairings page checked on an older phone
-- [ ] Deployed build on `main` opened once with a staff login (production env vars confirmed first)
+- [ ] Deployed build on `main` opened once with a staff login; the version shown matches the latest `vX.Y.Z` tag (production env vars confirmed first, including `NEXT_PUBLIC_SITE_URL`)
 - [ ] Player portal exercised with a real account and one claimed player row (the migration is applied; sign-ups or a hand-made account are still needed)
 - [ ] Vercel spend limit set; Supabase spend cap on; backups understood
 - [ ] Dress rehearsal with the organizer
@@ -696,6 +719,7 @@ Agent ground rules:
 | 18 Oct 2026 | **The register pager check was flaky, and is fixed rather than tolerated.** `pnpm verify:ui` clicked Next on the register page and the click was swallowed because the page had not hydrated yet (`networkidle` is not the same as interactive). It now clicks, waits, and clicks again if the page number has not moved; page 2 disables Next, so a retry cannot overshoot. The flake was seen twice, once on this branch and once on `feat/help-centre`. |
 | 18 Oct 2026 | **The public entry form now speaks the reader's language (decision 18), on `feat/entry-form-i18n`.** This was the last piece of player-facing copy still in English: 30 keys under `enter.form.*` cover the labels, the hints, the "optional" and "to be confirmed" suffixes, the send button and the review note. The rule from the rest of the work holds: what the club typed is theirs and passes through unchanged, so an instruction, an extra question or the payment note still reads as the organizer wrote it. The form is otherwise only reachable against a connected project, so the dev-only preview page now renders the real form behind a language picker, and `pnpm verify:ui` checks the labels change in Hiligaynon and Tagalog and back. |
 | 18 Oct 2026 | **A "Report a bug" action is marked as a nice-to-have (decision 21).** Jeff wants an in-app way to report a bug, but it is not needed for the UAT. The default is a help-centre action that opens a prefilled GitHub issue with the current screen, the signed-in role, the version/build and an optional note; no schema, no backend and no player data. It is listed under section 8's nice-to-haves, not in the UAT workstreams. |
+| 18 Oct 2026 | **Versioning is the single production source of truth (decision 22).** `docs/VERSIONING.md`, `package.json`, `CHANGELOG.md` and the annotated `vX.Y.Z` tags define what production runs; the tag is authoritative even when a docs-only commit sits on `main` after it. Code reaches `main` only as a tagged release. Current: v0.8.0 tagged at `06a2748`, `develop` = `main` = `975c805` (0.8.0 plus docs). Open task: show `v{version} · {short commit} · {environment}` in the shell (W6). |
 
 ---
 
