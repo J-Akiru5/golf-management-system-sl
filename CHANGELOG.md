@@ -11,6 +11,18 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.7.1] - 2026-10-18
+
+A fix for a failed call the live browser pass found in 0.7.0.
+
+### Fixed
+- The alerts bell waits for a connected desk to finish loading before its first stored check. It used
+  to send the demo event id (`bamboo-tee-2026`) to `sync_notifications` on every page load, which
+  failed with `22P02`; the bell recovered on the next check, but logged a failed request each time.
+
+### Database
+- No migration ships with this version.
+
 ## [0.7.0] - 2026-10-18
 
 Settings that save, and two desk fixes.
@@ -166,7 +178,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.7.0...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.7.1...develop
+[0.7.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.5.1...v0.6.0

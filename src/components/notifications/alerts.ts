@@ -167,6 +167,21 @@ export function bellLabel(count: number): string {
 /** Where the stored check stands. `idle` only happens in demo mode, where there is nothing to check. */
 export type AlertCheckState = "idle" | "checking" | "ready" | "error";
 
+/** The desk states the bell may run a stored check in. Matches the store's status field. */
+type DeskStatus = "demo" | "loading" | "ready" | "error";
+
+/**
+ * Whether a stored check may run yet.
+ *
+ * In demo mode there is nothing to check. With Supabase configured the check must wait for the desk
+ * to finish loading: before that the working event is still the demo one, and sending its fake id to
+ * `sync_notifications` is a failed call on every page load (found by the live browser pass on
+ * 18 Oct 2026, "invalid input syntax for type uuid: bamboo-tee-2026").
+ */
+export function shouldCheckAlerts(connected: boolean, deskStatus: DeskStatus): boolean {
+  return !connected || deskStatus === "ready";
+}
+
 /**
  * Whether the panel may say "All clear".
  *
