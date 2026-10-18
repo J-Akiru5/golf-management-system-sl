@@ -4,8 +4,8 @@ Audience for this file: coding agents that will build the TeeLine Golf AVP (audi
 Humans: this is the machine-readable twin of the plan the owner approved. Read `AGENTS.md` first; its
 rules apply here.
 
-Status: **draft, waiting on owner answers in section 3.** Do not start section 6 steps marked
-`BLOCKED` until the owner has answered.
+Status: **draft. D3 and D5 answered on 18 Oct 2026; D1, D2, D4 and D6 still open (section 3).** Steps
+marked `BLOCKED` in section 6 may use the stated default.
 
 ## 1. Goal
 
@@ -45,9 +45,10 @@ Verified by reading the code or the remote:
 Found while preparing this brief, **needs the owner**:
 
 - `src/lib/demo/data.ts` holds a payment block with the club's name, bank "PNB" and an account number,
-  and a response email that looks personal. It is not known whether these are real. **Never show the
-  Registration payment section, the response email, or any account number on screen** until the owner
-  says they are fake or approved.
+  and a response email that looks personal. The owner states these are fake placeholders (D5). Even so,
+  the storyboard does not need them: keep the Registration payment section, the response email and the
+  account number out of frame, because a club name next to an account number can be mistaken for a
+  real payment instruction.
 
 Not verified:
 
@@ -62,9 +63,9 @@ Not verified:
 | --- | --- | --- | --- |
 | D1 | Organizer facts for scene 1: how entries, handicaps and groupings are handled today, real hours spent, real numbers | Scene 1 script | Scene 1 stays generic and says nothing numeric |
 | D2 | The ask to the board (pilot at one event? budget? sponsor? date?) | Scene 9 script | No ask; the video ends on "next step is a pilot, to be agreed" |
-| D3 | Voice choice from the samples (Piper lessac vs Kokoro af_heart / am_michael / bf_emma) | Step 4 | Kokoro `af_heart` |
+| D3 | Voice. **Answered: Kokoro `af_heart`.** Owner to confirm by ear on the real script | Step 4 | n/a |
 | D4 | Crest and name use outside the club (the crest is the club's; "TeeLine" has no trademark clearance) | Public release only | Internal showing only, not uploaded publicly |
-| D5 | Are the demo payment and email values fake (see section 2)? | Scene 3 and 5 framing | Hide those fields |
+| D5 | Are the demo payment and email values fake? **Answered: yes, placeholders** | Scene 3 and 5 framing | Keep them out of frame anyway |
 | D6 | Is `develop` frozen for recording? Open PRs change screens | Step 2 | Record from the latest tag, `v0.8.0` |
 
 An agent that cannot get an answer must use the default, say so at the top of its PR, and carry on.
@@ -82,7 +83,7 @@ The owner asked whether a skill, extension or library exists for this. Findings 
 | **Piper** (`piper-tts`) | Local TTS, lighter, lower quality class | Fallback. The old `rhasspy/piper` repo is archived and moved to `OHF-Voice/piper1-gpl`; check that licence before shipping a voice from it |
 | **demofly** (npm, MIT) | CLI doing Playwright record + Kokoro TTS + assemble | **Optional shortcut, not adopted.** Maturity unclear (no version history on its page). Try it only as a spike; the repo-owned scripts below are the source of truth |
 | **demodsl** (PyPI, "Beta", own community licence) | YAML-driven demo generator, 13 TTS providers | Not adopted: non-OSI licence, beta, deprecated renderer |
-| **Remotion** (+ official skills via `npx skills add remotion-dev/skills`) | React-based video composition | **Not needed.** Free only for individuals, non-profits and for-profits with up to 3 employees; otherwise a paid company licence. Syntaxure Labs headcount is the owner's call. HTML title cards captured by Playwright do the same job |
+| **Remotion** (+ official skills via `npx skills add remotion-dev/skills`) | React-based video composition | **Not needed.** Free only for individuals, non-profits and for-profits with up to 3 employees; otherwise a paid company licence. The owner reports 3 or fewer people, so it would be free, but it adds a React build for no gain here. HTML title cards captured by Playwright do the same job |
 | Claude Code marketplace plugins found (videodb, watch-video, Video Cleanup, video-shotcraft) | Analyse, clean up or compose video | **Not adopted.** None records an app or narrates it. `watch-video` is useful later for QA (keyframes + transcript of the finished file); `Video Cleanup` is for talking-head audio, not TTS |
 
 Conclusion: there is no single skill that produces this video. The reliable stack is Playwright +
@@ -182,7 +183,7 @@ email fields (section 2). Do not say a rule is "IGCC's rule" unless it is marked
 - [ ] `ffprobe`: 1920x1080, 30 fps, H.264 + AAC, duration 4:45 to 5:15.
 - [ ] Transcribe the final audio with `faster-whisper`; compare to `steps.json`; flag mismatches.
 - [ ] Extract one frame per scene; confirm the route and the "Demo data" tag are visible.
-- [ ] No frame shows a payment block, account number, personal email, or a real player photo.
+- [ ] No frame shows a payment block, account number, response email, or a real player photo.
 - [ ] Every number on screen appears in the app on the same run (no invented figures).
 - [ ] No claim from the "Not shown today" list is made in narration or captions.
 - [ ] No empty frame while the voice speaks; no dev console or `localhost` banner visible.
