@@ -281,9 +281,11 @@ These are places where the spec promises something the code does not do yet. Che
    (the project has no players or events yet), then the claim and the entry list can be seen in the
    browser. Note for the owner: the `20261022000000_versioned_publish` objects were already in the
    database but the migration had never been recorded, so it was marked applied
-   (`supabase migration repair`) before the portal files were pushed; and anon can still execute
-   `save_draw`/`publish_pairings`/`unpublish_pairings` (they refuse any caller without a staff role,
-   but the `revoke … from public` in that file did not take effect for the `anon` role).
+   (`supabase migration repair`) before the portal files were pushed. Anon could also execute
+   `save_draw`/`publish_pairings`/`unpublish_pairings`, `save_event_setup` and `sync_notifications`,
+   because the `revoke … from public` in that file does not remove the grant Supabase makes to the `anon` role by name.
+   *Fixed on 19 Oct 2026* in `20261030000000`, and made structural in `20261031000000`: a new function
+   is private unless the migration that creates it grants otherwise.
 4. **Printing** has props-driven start, pairings and scorecard components, plus tested sorting and
    handicap-dot helpers. The current desk still supplies placeholder/missing hole data, so its cards
    show the missing-data state and watermark. It has not been printed on the club's paper or printer.
@@ -507,7 +509,7 @@ only their own entry. Every finding is written down with a severity the same day
 | W3 | Real club data, then prove the path | Course Rating, Slope, Par and stroke index from the scorecard (decision 1); decisions 3 to 7 and 9; a fresh NGAP export and a re-freeze; **and the print page's `courseDataStatus` hard-coded to `"placeholder"` must be derived from the loaded rows**, so real data prints without the watermark | Organizer, with the club |
 | W4 | Accounts, access, privacy | Rotate the two test accounts; create the golf pro as `organizer`; decide player sign-ups; one player account and one player row to claim; verify the photo consent line and a real upload | Jeff and Claude |
 | W5 | The UAT itself | The run sheet, the session, the findings, the fallback (printed sheets, unpublish, redeploy the previous build) | Jeff and the organizer |
-| W6 | Production hygiene | CI on pull requests (there is none); revoke `anon` execute on `save_draw`, `publish_pairings` and `unpublish_pairings`; a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups; set `NEXT_PUBLIC_SITE_URL` in Vercel to the production domain; show `v{version} · {short commit} · {environment}` in the shell | Jeff |
+| W6 | Production hygiene | ~~revoke `anon` execute on the staff functions~~ **Done 19 Oct 2026** (`20261030000000`, and `20261031000000` makes it the default for anything new); CI on pull requests (there is none); a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups; set `NEXT_PUBLIC_SITE_URL` in Vercel to the production domain; show `v{version} · {short commit} · {environment}` in the shell | Jeff |
 
 **The run sheet (one page, to be handed over).**
 
@@ -652,7 +654,7 @@ Agent ground rules:
 - [x] The organizer has said what alerts they expect: stored, desk-facing notifications (decision 14, settled; the schema is live, the bell is built and it has now been seen in a browser in both themes and in both the all-clear and alert states, which is how two bugs in it were found)
 - [ ] The UAT run sheet handed to the organizer and the session held (section 8, "The next milestone")
 - [ ] CI on pull requests (typecheck, lint, test, build)
-- [ ] `anon` execute revoked on `save_draw`, `publish_pairings` and `unpublish_pairings`
+- [x] `anon` execute revoked on the staff functions, and a new function is private unless its migration grants it (`20261030000000`, `20261031000000`)
 - [ ] Photo consent line shown before every photo; private bucket verified
 - [ ] Public pairings page checked on an older phone
 - [ ] Deployed build on `main` opened once with a staff login; the version shown matches the latest `vX.Y.Z` tag (production env vars confirmed first, including `NEXT_PUBLIC_SITE_URL`)
