@@ -3,6 +3,7 @@ import { explainRegistration, type RoutingExplanation } from "@/lib/data/explain
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import type {
   HandicapRecord,
+  Hole,
   PaymentStatus,
   PlayerRecord,
   RegistrationEntry,
@@ -18,7 +19,7 @@ import {
   parseCsv,
   suggestMapping,
 } from "@/lib/ngap";
-import { rawCourseHandicap } from "@/lib/routing";
+import { rawCourseHandicap, type Tee } from "@/lib/routing";
 import {
   type Action,
   type ApplyImportPayload,
@@ -86,6 +87,20 @@ export interface TournamentRepository {
   createFromTemplate(name: string, date: string): Tournament;
 }
 
+/**
+ * The event setup: course, holes, tees, categories and flights. Kept apart from
+ * `TournamentRepository.save` because it must land as one write — a half-saved setup (new Slope,
+ * old flights) would route players against numbers that never existed together.
+ *
+ * In demo mode only the event row is kept, because tees and holes are the session constants; the
+ * connected adapter writes all five tables in one transaction and is revision-guarded.
+ */
+export interface SetupRepository {
+  save(input: { tournament: Tournament; tees: Tee[]; holes: Hole[] }): void;
+  /** The last revision seen, or null when this build has no revision to guard against. */
+  revision(): number | null;
+}
+
 export interface RegistrationRepository {
   list(tournamentId: string): RegistrationEntry[];
   add(tournamentId: string, input: NewEntryInput): RegistrationEntry;
@@ -119,6 +134,7 @@ export interface Adapters {
   registrations: RegistrationRepository;
   imports: HandicapImportAdapter;
   router: PairingsRouter;
+  setup: SetupRepository;
 }
 
 let counter = 0;
@@ -279,7 +295,14 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     },
   };
 
-  return { players, tournaments, registrations, imports, router };
+  // Demo mode keeps the event row only: tees and holes are the session constants here, so there is
+  // nowhere to store an edit to them. The connected adapter writes all five tables at once.
+  const setup: SetupRepository = {
+    save: ({ tournament }) => dispatch({ type: "saveTournament", tournament }),
+    revision: () => null,
+  };
+
+  return { players, tournaments, registrations, imports, router, setup };
 }
 
 const cutOffOf = (s: DeskState, tournamentId: string) =>

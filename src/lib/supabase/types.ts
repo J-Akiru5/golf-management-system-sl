@@ -409,6 +409,18 @@ export interface Database {
     Functions: {
       is_club_member: { Args: { p_club: string }; Returns: boolean };
       has_club_role: { Args: { p_club: string; p_roles: string[] }; Returns: boolean };
+      save_event_setup: {
+        Args: {
+          p_tournament: string;
+          p_expected_revision: number | null;
+          p_course?: Json | null;
+          p_holes?: Json | null;
+          p_tees?: Json | null;
+          p_categories?: Json | null;
+          p_flights?: Json | null;
+        };
+        Returns: Json;
+      };
       public_registration_form: { Args: { p_tournament: string }; Returns: Json };
       submit_registration: {
         Args: { p_tournament: string; p_player: Json; p_answers: Json };

@@ -408,5 +408,60 @@ export function createSupabaseAdapters(
     explain: (playerId) => mock.router.explain(playerId),
   };
 
-  return { players, tournaments, registrations, imports, router };
+  /**
+
+   * Event setup -------------------------------------------------------------------------------- */
+
+  // The revision this browser last saw. The guard only bites from the second save onward, because
+  // the desk state does not carry the revision yet; a save without one is unguarded but still atomic.
+  let setupRevision: number | null = null;
+
+  const setup: Adapters["setup"] = {
+    save: ({ tournament, tees, holes }) => {
+      dispatch({ type: "saveTournament", tournament });
+      const teeNameById = new Map(tees.map((tee) => [tee.id, tee.name]));
+      const categoryNameById = new Map(
+        tournament.categories.map((category) => [category.id, category.name]),
+      );
+      enqueue(async () => {
+        const { data, error } = await client.rpc("save_event_setup", {
+          p_tournament: tournament.id,
+          p_expected_revision: setupRevision,
+          p_course: { holes: tournament.config.holes },
+          p_holes: holes.map((hole) => ({
+            number: hole.number,
+            par: hole.par ?? 4,
+            strokeIndex: hole.strokeIndex ?? hole.number,
+          })),
+          p_tees: tees.map((tee) => ({
+            name: tee.name,
+            courseRating: tee.courseRating,
+            slope: tee.slope,
+            par: tee.par,
+          })),
+          p_categories: tournament.categories.map((category) => ({
+            id: category.id,
+            name: category.name,
+            gender: category.gender,
+            minAge: category.minAge,
+            maxAge: category.maxAge,
+            teeName: teeNameById.get(category.teeId) ?? "",
+          })),
+          p_flights: tournament.flights.map((flight) => ({
+            id: flight.id,
+            categoryName: categoryNameById.get(flight.categoryId) ?? "",
+            name: flight.name,
+            min: flight.min,
+            max: flight.max,
+          })),
+        });
+        if (error) throw new Error(`Could not save the event setup: ${error.message}`);
+        const result = data as unknown as { revision?: number } | null;
+        setupRevision = typeof result?.revision === "number" ? result.revision : setupRevision;
+      });
+    },
+    revision: () => setupRevision,
+  };
+
+  return { players, tournaments, registrations, imports, router, setup };
 }

@@ -45,7 +45,8 @@ export default function SetupPage() {
       tournament={tournament}
       tees={tees}
       holes={holes}
-      save={adapters.tournaments.save}
+      // The whole setup goes through one write, so a half-saved setup cannot land.
+      save={(next) => adapters.setup.save({ tournament: next, tees, holes })}
     />
   );
 }
