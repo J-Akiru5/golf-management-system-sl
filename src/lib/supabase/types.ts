@@ -48,12 +48,18 @@ export type PlayerRow = {
   photo_path: string | null;
   photo_consent_at: string | null;
   created_at: string;
+  first_name: string | null;
+  last_name: string | null;
+  nickname: string | null;
+  home_course: string | null;
+  email: string | null;
 };
 export type HandicapRecordRow = {
   id: string;
   club_id: string;
   player_id: string;
-  handicap_index: number;
+  /** Null = NH (no handicap) on that revision. */
+  handicap_index: number | null;
   effective_date: string;
   source: "ngap_import" | "manual";
   created_at: string;
@@ -77,6 +83,13 @@ export type TournamentRow = {
   published: boolean;
   published_snapshot: Json | null;
   created_at: string;
+  dates: string[] | null;
+  state: "draft" | "open" | "closed";
+  name_needs_confirmation: boolean;
+  schedule_needs_confirmation: boolean;
+  stale_index_days: number;
+  registration: Json | null;
+  board_overrides: Json | null;
 };
 export type CategoryRow = {
   id: string;
@@ -121,6 +134,36 @@ export type RegistrationRow = {
   payment_status: "unpaid" | "paid" | "waived";
   answers: Json;
   overridden: boolean;
+  created_at: string;
+  /** Set by trigger from the session; never sent by the client. */
+  registered_by: string | null;
+  updated_at: string;
+  updated_by: string | null;
+  frozen_record_id: string | null;
+  frozen_effective_date: string | null;
+  frozen_at: string | null;
+};
+export type HandicapImportBatchRow = {
+  id: string;
+  club_id: string;
+  file_name: string;
+  imported_at: string;
+  row_count: number;
+  applied_count: number;
+  skipped_count: number;
+  note: string | null;
+  created_by: string | null;
+};
+export type DeferredMatchRow = {
+  id: string;
+  club_id: string;
+  name: string;
+  ngap_id: string | null;
+  handicap_index: number | null;
+  effective_date: string;
+  reason: string;
+  candidate_player_ids: string[];
+  file_name: string;
   created_at: string;
 };
 export type GroupRow = {
@@ -200,6 +243,40 @@ export interface Database {
           photo_path?: string | null;
           photo_consent_at?: string | null;
           created_at?: string;
+          first_name?: string | null;
+          last_name?: string | null;
+          nickname?: string | null;
+          home_course?: string | null;
+          email?: string | null;
+        }
+      >;
+      handicap_import_batches: Table<
+        HandicapImportBatchRow,
+        {
+          id?: string;
+          club_id: string;
+          file_name: string;
+          imported_at?: string;
+          row_count?: number;
+          applied_count?: number;
+          skipped_count?: number;
+          note?: string | null;
+          created_by?: string | null;
+        }
+      >;
+      deferred_matches: Table<
+        DeferredMatchRow,
+        {
+          id?: string;
+          club_id: string;
+          name: string;
+          ngap_id?: string | null;
+          handicap_index?: number | null;
+          effective_date: string;
+          reason: string;
+          candidate_player_ids?: string[];
+          file_name: string;
+          created_at?: string;
         }
       >;
       handicap_records: Table<
@@ -208,7 +285,7 @@ export interface Database {
           id?: string;
           club_id: string;
           player_id: string;
-          handicap_index: number;
+          handicap_index: number | null;
           effective_date: string;
           source: HandicapRecordRow["source"];
           created_at?: string;
@@ -235,6 +312,13 @@ export interface Database {
           published?: boolean;
           published_snapshot?: Json | null;
           created_at?: string;
+          dates?: string[] | null;
+          state?: TournamentRow["state"];
+          name_needs_confirmation?: boolean;
+          schedule_needs_confirmation?: boolean;
+          stale_index_days?: number;
+          registration?: Json | null;
+          board_overrides?: Json | null;
         }
       >;
       categories: Table<
@@ -316,6 +400,7 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       is_club_member: { Args: { p_club: string }; Returns: boolean };
+      has_club_role: { Args: { p_club: string; p_roles: string[] }; Returns: boolean };
       public_pairings: {
         Args: { p_tournament?: string | null };
         Returns: PublicPairingRow[];

@@ -21,7 +21,8 @@ Anything not marked is a plan, not a fact.
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
 | Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), both migrations, club row seeded, `player-photos` created private, RLS checked against the anon key | 14 tables, RLS on all |
-| Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`, `src/lib/store/legacy-supabase-store.tsx`) | **Merged (PR #5) and parked**: auth guard, club-scoped repositories, frozen published snapshot, optimistic writes. Written against the earlier store contract; **not yet wired to the shell store** | 24 tests among the 214 |
+| Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`, `src/lib/store/legacy-supabase-store.tsx`) | **Merged (PR #5) and parked**: auth guard, club-scoped repositories, frozen published snapshot, optimistic writes. Written against the earlier store contract; **not yet wired to the shell store** | 24 tests among the 218 |
+| Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Applied 18 Oct 2026 and verified**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger; public sign-ups off. Two staff accounts exist (`admin` = owner, `member1` = desk) | Verified by signing in as each role: owner sees both member rows, desk sees only its own |
 | Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | Public TeeLine landing at `/`, control room at `/admin`, plus Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view and profiles |
 | Data boundary (`src/lib/data`) | **Built as mock adapters** over the session store | `PlayerRepository`, `TournamentRepository`, `RegistrationRepository`, `HandicapImportAdapter`, `PairingsRouter`, public allow-list |
 | Brand and visual design | **TeeLine Golf** identity: public landing page, fairway-and-flag vector mark, Ivory / Charcoal themes; the IGCC crest stays a separate club asset | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
@@ -146,7 +147,7 @@ docs/              this plan, the spec and the handoffs
 
 ### Database design
 
-Verified in `supabase/migrations/20261017000000_init.sql`:
+Verified in `supabase/migrations`, and **applied to the `golf-management-system` project on 18 Oct 2026**:
 
 - `club_id` on every table; row-level security through `public.is_club_member(club_id)`.
 - Composite foreign keys `(id, club_id)` so a row in one club cannot reference another club's data.
@@ -156,13 +157,25 @@ Verified in `supabase/migrations/20261017000000_init.sql`:
 - Registrations store `frozen_index` so a later NGAP upload cannot change a published draw.
 - Clubs and memberships are created with the service role during onboarding, not from the app.
 
+**Staff-only auth (`20261019000000_staff_auth_audit.sql`):**
+
+- Roles are `owner`, `organizer` and `desk`, held in `club_members.role`. Golfers never get accounts,
+  and `public.players` deliberately has **no `user_id`**, so a player record is never a login identity.
+- `public.has_club_role(club_id, roles[])` is the role test; it is security-definer so it cannot
+  recurse through `club_members` RLS.
+- RLS is the enforcement, not the UI: `tournaments` is read-only to members and writable only by
+  owner/organizer (publishing and every tournament setting live there), and `club_members` is
+  manageable only by owner/organizer. Every other table stays open to all club staff.
+- `registrations.registered_by`, `updated_by` and `updated_at` are stamped by trigger from the
+  session (`auth.uid()`), so a client cannot set or spoof them. There is no separate activity table.
+
 **Schema vs spec:** the migration has 14 tables: the spec's tables except `scores` (Phase 2), plus `club_members`
-(needed for RLS). Tested on a throwaway Postgres 16; **never applied to a real Supabase project.**
+(needed for RLS).
 
 ### Git workflow
 
 - Base branch `develop`. Multi-file work goes on a dedicated branch and a pull request into `develop`.
-- Planned pipeline `develop → staging → main`. **`staging` and `main` do not exist yet** (see decisions).
+- `main` exists but trails `develop`; **`staging` does not exist yet** (see decisions).
 - Commit messages and PR descriptions carry the attribution lines required by the tooling in use.
 - A repo-state claim ("it is merged", "it is deployed") must be checked against the remote, not memory.
 
@@ -196,7 +209,10 @@ These are places where the spec promises something the code does not do yet. Che
 1. **Re-run and locked groups.** *Fixed in the demo shell*: `route()` takes locked groups, keeps
    their players and slots, releases a lock that no longer makes sense with the reason, and warns
    when a locked slot pushes a flight across waves. Covered by `src/lib/routing/locks.test.ts`.
-2. **Nothing persists.** All screens use `DeskProvider` in-memory state.
+2. **Nothing persists.** All screens use `DeskProvider` in-memory state. The Supabase repositories
+   are merged and parked (`src/lib/data/supabase/*`, `src/lib/store/legacy-supabase-store.tsx`); the
+   shell store still reads and writes demo data. Wiring them behind `src/lib/data/adapters.ts` is the
+   open step, and it is why the auth model can be finished before the data flows through it.
 3. **Cut-off date is applied in the desk** (frozen onto each registration; re-freeze offered), but
    the database write is still missing.
 4. **Printing** has props-driven start, pairings and scorecard components, plus tested sorting and
@@ -227,8 +243,12 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
      checked with the anon key; `player-photos` exists as a private bucket.
    - Regenerate the database types (`supabase gen types typescript --linked`) to replace the
      hand-written `src/lib/supabase/types.ts`.
-   - Auth: create the Auth user and its `club_members` row (display name and role), then test RLS
-     with a real login. No users exist yet.
+   - Auth: **applied and verified 18 Oct 2026** — roles `owner`/`organizer`/`desk` in `club_members`,
+     enforced by RLS (`has_club_role`) with registration audit columns stamped server-side. Public
+     sign-ups are turned off in `supabase/config.toml`. Two staff accounts exist (`admin` = owner,
+     `member1` = desk); signing in as each proves the split — the owner sees both member rows, the
+     desk sees only its own. Accounts are test-only and their passwords must be rotated.
+     Still to do: add the golf pro as `organizer`.
    - Add the course, tee and hole rows. The real IGCC Course Rating, Slope, Par and stroke index are
      still pending from the club, so this waits on the scorecard.
    - Verify the `player-photos` storage policy with a real upload.
@@ -385,6 +405,9 @@ Agent ground rules:
 | 18 Oct 2026 | `feat/igcc-tournament-desk-shell` merged into `develop` directly (owner's instruction). The shell keeps the app: it runs on the session store and the mock adapters. The Supabase layer was preserved rather than dropped: it moved to `src/lib/data/supabase` with `src/lib/store/legacy-supabase-store.tsx`, still compiling and tested. |
 | 18 Oct 2026 | The Supabase project `golf-management-system` (`egfwfyznbndunqfqzxjx`) was linked with the CLI and both migrations are applied, with the club row seeded and `player-photos` created as a private bucket. RLS checked with the anon and service keys. The database is empty of players, registrations and events. `supabase/config.toml` is committed so the CLI runs from the repo. |
 | 18 Oct 2026 | Known state after the merge: with Supabase configured, the sign-in guard and login page work, but desk screens still read and write local demo data. The data layer must be wired behind the shell's `src/lib/data/adapters.ts` interfaces. The interface says so in a banner. |
+| 18 Oct 2026 | **Staff-only auth model.** Three roles in `club_members.role`: `owner`, `organizer`, `desk`. Desk may register players and edit registrations; only owner/organizer may publish, unpublish, change tournament settings or manage members. Enforced in RLS (`has_club_role`), not by hiding buttons. Public sign-ups are off. Golfers do not need accounts, and `public.players` keeps no `user_id` so a player record is never a login identity. |
+| 18 Oct 2026 | **Registration audit is columns, not a table.** `registrations` gains `registered_by`, `updated_by` and `updated_at`, stamped by trigger from `auth.uid()` so a client cannot spoof them. No separate activity-log table. |
+| 18 Oct 2026 | Jeff supplies the first staff accounts (`admin` as owner, `member1` as desk); the golf pro's real account is added later as `organizer`. These are **test-only** accounts with a shared placeholder password, created at Jeff's explicit instruction after the risk was raised; they must be rotated before the first real event. |
 
 ---
 
