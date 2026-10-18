@@ -5,6 +5,7 @@ import {
   createContext,
   type Dispatch,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -95,6 +96,15 @@ interface Desk {
   error: string | null;
   /** True while a write is in flight, for a "saving…" label. */
   saving: boolean;
+  /**
+   * Who is signed in, for the session bar. `undefined` means this build has no auth at all (demo);
+   * `null` means signed in without a club membership row.
+   */
+  member?: { displayName: string; role: "owner" | "organizer" | "desk" } | null;
+  /** ISO timestamp of the last successful write. */
+  lastSavedAt?: string | null;
+  /** Re-runs the load after a failure, for the retry control. */
+  reload: () => void;
 }
 
 const Ctx = createContext<Desk | null>(null);
@@ -106,11 +116,15 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Desk["status"]>(connected ? "loading" : "demo");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [member, setMember] = useState<Desk["member"]>(connected ? undefined : undefined);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   // One read on load. Without a Supabase URL the desk stays on the in-memory demo, unchanged.
   useEffect(() => {
     if (!connected) {
       setStatus("demo");
+      setMember(undefined);
       return;
     }
     let active = true;
@@ -121,10 +135,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         const supabase = createSupabaseBrowserClient();
         const { data, error: authError } = await supabase.auth.getUser();
         if (authError || !data.user) throw new Error("Sign in to load the tournament desk.");
-        const member = await getDeskMember(supabase, data.user.id);
-        const loaded = await loadDeskState(supabase, member.clubId);
+        const signedIn = await getDeskMember(supabase, data.user.id);
+        const loaded = await loadDeskState(supabase, signedIn.clubId);
         if (!active) return;
         setClient(supabase);
+        setMember({ displayName: signedIn.displayName, role: signedIn.role });
         dispatch({ type: "hydrate", state: loaded.state });
         setStatus("ready");
       } catch (loadError) {
@@ -136,7 +151,9 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [connected]);
+  }, [connected, reloadToken]);
+
+  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
 
   const adapters = useMemo<Adapters>(() => {
     if (!connected || !client) return createMockAdapters(state, dispatch);
@@ -144,7 +161,10 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       client,
       clubId: state.clubId,
       onError: setError,
-      onSaved: () => setError(null),
+      onSaved: () => {
+        setError(null);
+        setLastSavedAt(new Date().toISOString());
+      },
       onBusy: setSaving,
     });
   }, [state, connected, client]);
@@ -241,8 +261,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       status,
       error,
       saving,
+      member: connected ? member : undefined,
+      lastSavedAt,
+      reload,
     };
-  }, [state, adapters, status, error, saving]);
+  }, [state, adapters, status, error, saving, member, connected, lastSavedAt, reload]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

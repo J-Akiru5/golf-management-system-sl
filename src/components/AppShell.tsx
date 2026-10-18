@@ -271,18 +271,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <main id="main" className={cn(!overlay && "px-4 pt-6 pb-16 sm:px-6 lg:pr-8 lg:pl-[112px]")}>
-          {supabaseConfigured && !overlay && (
-            <div
-              className="no-print mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[12px] border border-warning bg-warning-soft px-3.5 py-2 text-[13px]"
-              role="note"
-            >
-              <b>Supabase is configured, but this shell is not connected to it yet.</b>
-              <span className="text-ink-muted">
-                Screens still run on local session demo data. The data layer is parked at
-                src/lib/data/supabase for the wiring task.
-              </span>
-            </div>
-          )}
           {children}
         </main>
       </div>

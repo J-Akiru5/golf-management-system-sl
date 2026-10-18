@@ -17,6 +17,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
+import {
+  type PlayerPickItem,
+  PlayerQuickPick,
+  RegistrationRow,
+  SaveTruth,
+} from "@/components/desk";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -86,7 +92,7 @@ const emptyDraft = (): Draft => ({
 });
 
 function RegisterDesk() {
-  const { tournament, players, entries, regById, adapters, dispatch } = useDesk();
+  const { tournament, players, entries, regById, adapters, dispatch, status, names } = useDesk();
   const params = useSearchParams();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [query, setQuery] = useState("");
@@ -105,19 +111,22 @@ function RegisterDesk() {
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return players
-      .filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.ngapId ?? "").toLowerCase().includes(q) ||
-          (p.nickname ?? "").toLowerCase().includes(q),
-      )
-      .slice(0, 6);
-  }, [players, query]);
-
+  // What the quick pick needs per player: the frozen index for this event, the routing facts when
+  // the player can be classified, and whether they are already in the field.
+  const pickItems = useMemo<PlayerPickItem[]>(
+    () =>
+      players.map((p) => {
+        const reg = regById.get(p.id);
+        return {
+          player: p,
+          index: reg?.frozenIndex ?? null,
+          categoryName: reg && reg.categoryId ? names.category(reg.categoryId) : null,
+          playingHandicap: reg?.playingHandicap ?? null,
+          alreadyRegistered: entries.some((e) => e.playerId === p.id),
+        };
+      }),
+    [players, regById, entries, names],
+  );
   const savedReg = savedId ? regById.get(savedId) : null;
   const savedEntry = savedId ? entries.find((e) => e.playerId === savedId) : null;
   const savedPlayer = savedId ? players.find((p) => p.id === savedId) : null;
@@ -191,6 +200,12 @@ function RegisterDesk() {
       });
     }
 
+    // The database is unique on (event, player), so this would be rejected there. Say it plainly
+    // here instead of letting the desk read a constraint error.
+    if (entries.some((e) => e.playerId === player.id)) {
+      setErrors([`${player.name} is already entered in this event.`]);
+      return;
+    }
     adapters.registrations.add(tournament?.id as string, {
       playerId: player.id,
       role: draft.role,
@@ -238,9 +253,19 @@ function RegisterDesk() {
         }
       >
         {tournament.name} · {tournament.dates[0]} to {tournament.dates[tournament.dates.length - 1]}{" "}
-        · cut-off {fmtIso(tournament.cutOffDate)}. Everything typed here stays in this browser
-        session; nothing is sent to a server.
+        · cut-off {fmtIso(tournament.cutOffDate)}.
       </PageHeader>
+
+      {/* Where a saved entry actually goes. Demo keeps it in the session; connected writes to the
+          club database. The copy changes with the truth instead of claiming one thing always. */}
+      <SaveTruth
+        target={status === "demo" ? "session" : "database"}
+        detail={
+          status === "demo"
+            ? "This build has no Supabase connection, so an entry lives in the browser session only."
+            : undefined
+        }
+      />
 
       <SectionCard
         id="instructions-h"
@@ -278,8 +303,8 @@ function RegisterDesk() {
                 <span className="mono">{tournament.registration.payment.accountNumber}</span>
               </p>
               <p className="hint mt-1">
-                <b>Payment status is recorded by hand and starts pending.</b> This demo does not
-                take, check, verify or confirm any payment.
+                <b>Payment status is recorded by hand and starts pending.</b> Nothing is taken,
+                checked, verified or confirmed here.
               </p>
             </div>
           )}
@@ -307,16 +332,17 @@ function RegisterDesk() {
         <SectionCard
           id="saved-h"
           icon={<CircleCheck />}
-          title="Saved (this session only)"
-          subtitle="Confirmation summary. Nothing was sent anywhere."
+          title="Saved"
+          subtitle="Confirmation summary."
         >
           <div className="notice ok" role="status">
             <b>
               {savedPlayer.name} is entered as a{savedEntry.role === "guest" ? " guest" : " member"}
               .
             </b>{" "}
-            This is a local session draft: a page refresh clears it, and there is no server
-            persistence, no payment, and no mail.
+            {status === "demo"
+              ? "This is a local session draft: a page refresh clears it, and there is no server persistence, no payment, and no mail."
+              : "Recorded on the club database. Payment stays manual and nothing is mailed."}
           </div>
           <dl className="m-0 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-line bg-line sm:grid-cols-4">
             {[
@@ -386,55 +412,23 @@ function RegisterDesk() {
           <form className="grid gap-5" onSubmit={save} noValidate>
             {!draft.player && !draft.isNew && (
               <div className="grid gap-2">
-                <label className="field">
-                  <span>1. Find the player</span>
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search name, nickname or NGAP ID"
-                    aria-label="Search the player directory"
-                  />
-                </label>
-                {results.length > 0 && (
-                  <ul className="plain grid gap-1.5" aria-label="Search results">
-                    {results.map((p) => {
-                      const entered = entries.some((e) => e.playerId === p.id);
-                      return (
-                        <li key={p.id} className="flex items-center gap-2.5">
-                          <button
-                            type="button"
-                            disabled={entered}
-                            onClick={() => {
-                              set({ player: p, isNew: false, declaredWshId: p.ngapId ?? "" });
-                              setQuery("");
-                            }}
-                            className={cn(
-                              "flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-[10px] border px-3 text-left",
-                              entered
-                                ? "cursor-not-allowed border-line text-ink-muted opacity-70"
-                                : "border-line hover:bg-surface-sunken",
-                            )}
-                          >
-                            <Avatar name={p.name} photo={photoOf(p)} />
-                            <span className="min-w-0 flex-1">
-                              <b className="block truncate">{p.name}</b>
-                              <span className="hint">
-                                {p.ngapId ? `NGAP ${p.ngapId}` : "No NGAP ID"}
-                                {entered ? " · already entered" : ""}
-                              </span>
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-                {query.trim() && results.length === 0 && (
-                  <p className="hint">
-                    No match in the directory. Use "New player" below; nothing is guessed.
-                  </p>
-                )}
+                <PlayerQuickPick
+                  items={pickItems}
+                  status={query.trim() ? "ready" : "idle"}
+                  query={query}
+                  onQueryChange={setQuery}
+                  onSelect={(item) => {
+                    set({
+                      player: item.player,
+                      isNew: false,
+                      declaredWshId: item.player.ngapId ?? "",
+                    });
+                    setQuery("");
+                  }}
+                  label="1. Find the player"
+                  hint="Type a name, nickname or NGAP ID. A player already in this event is flagged."
+                  autoFocus
+                />
                 <Button
                   type="button"
                   variant="secondary"
@@ -446,7 +440,6 @@ function RegisterDesk() {
                 </Button>
               </div>
             )}
-
             {(draft.player || draft.isNew) && (
               <div className="flex items-center gap-3 rounded-[12px] bg-surface-sunken p-3">
                 {draft.player ? (
@@ -858,65 +851,56 @@ function RegisterDesk() {
               placeholder="Filter by name, NGAP ID or role"
             />
           </label>
-          <ul className="plain grid gap-2">
+          <div className="grid gap-2">
             {listRows.map(({ e, r, p }) => {
               if (!p) return null;
+              const preferred = Object.values(e.teePreferences).filter(Boolean);
               return (
-                <li
+                <RegistrationRow
                   key={e.id}
-                  className="grid gap-2 rounded-[12px] border border-line p-3 sm:flex sm:items-center sm:gap-3"
-                >
-                  <Avatar name={p.name} photo={photoOf(p)} />
-                  <span className="min-w-0 flex-1">
-                    <Link
-                      href={`/players/${p.id}`}
-                      className="block truncate font-semibold text-ink no-underline hover:underline"
-                    >
-                      {p.name}
-                    </Link>
-                    <span className="hint block">
-                      {e.role === "guest" ? "Guest" : "Member"}
-                      {e.sponsor ? " · sponsor" : ""} · shirt {e.shirt ?? "—"} · frozen{" "}
-                      {fmtIndex(r?.frozenIndex ?? null)}
-                      {r?.frozenEffectiveDate ? ` (${r.frozenEffectiveDate})` : ""}
-                    </span>
-                    <span className="hint block">
-                      Payment: {PAYMENT_LABEL[e.paymentStatus]}
-                      {Object.values(e.teePreferences).some(Boolean)
-                        ? ` · prefers ${Object.values(e.teePreferences).filter(Boolean).join(", ")}`
-                        : " · no tee preference given"}
-                    </span>
-                  </span>
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    {r && <StatusPill status={r.status} />}
-                    {r?.frozenOutdated && <span className="pill warn">Re-freeze</span>}
-                    {r?.staleIndex && <span className="pill warn">Old index</span>}
-                    {r?.frozenOutdated && (
+                  name={p.name}
+                  photo={photoOf(p)}
+                  photoConsent={p.photoConsent}
+                  role={e.role}
+                  status={r?.status ?? null}
+                  index={r?.frozenIndex ?? null}
+                  playingHandicap={r?.playingHandicap ?? null}
+                  flightName={r && r.flightId ? names.flight(r.flightId) : null}
+                  paymentStatus={e.paymentStatus}
+                  shirt={e.shirt}
+                  teePreferenceNote={
+                    preferred.length ? `prefers ${preferred.join(", ")}` : "no tee preference given"
+                  }
+                  profileHref={`/players/${p.id}`}
+                  actions={
+                    <>
+                      {r?.frozenOutdated && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() =>
+                            dispatch({
+                              type: "refreeze",
+                              tournamentId: tournament.id,
+                              entryIds: [e.id],
+                            })
+                          }
+                        >
+                          <RefreshCw aria-hidden="true" /> Re-freeze
+                        </Button>
+                      )}
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
-                        onClick={() =>
-                          dispatch({
-                            type: "refreeze",
-                            tournamentId: tournament.id,
-                            entryIds: [e.id],
-                          })
-                        }
+                        aria-label={`Remove ${p.name} from this event`}
+                        className="text-ink-muted hover:text-danger"
+                        onClick={() => dispatch({ type: "removeEntry", id: e.id })}
                       >
-                        <RefreshCw aria-hidden="true" /> Re-freeze
+                        <X aria-hidden="true" />
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Remove ${p.name} from this event`}
-                      className="text-ink-muted hover:text-danger"
-                      onClick={() => dispatch({ type: "removeEntry", id: e.id })}
-                    >
-                      <X aria-hidden="true" />
-                    </Button>
-                  </span>
-                </li>
+                    </>
+                  }
+                />
               );
             })}
             {listRows.length === 0 && (
@@ -926,7 +910,7 @@ function RegisterDesk() {
                   : "No registration matches that filter."}
               </li>
             )}
-          </ul>
+          </div>
         </SectionCard>
       </div>
     </div>

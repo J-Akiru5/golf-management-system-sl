@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RoleGate } from "@/components/desk";
 import { GroupCard } from "@/components/draw/GroupCard";
 import { IssuesPanel } from "@/components/draw/IssuesPanel";
 import { PublishDialog } from "@/components/draw/PublishDialog";
+
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
@@ -34,6 +36,7 @@ export default function DrawPage() {
     flags,
     overrides,
     adapters,
+    member,
   } = desk;
   const draw = desk.draw;
   const config = tournament?.config ?? null;
@@ -266,17 +269,25 @@ export default function DrawPage() {
           )}
           {draw && (
             <>
-              <button
-                type="button"
-                className={`btn${isPublished && !changedSincePublish ? " ghost" : " gold"}`}
-                onClick={() => setPubOpen(true)}
+              {/* Cosmetic only: the real gate is RLS on tournaments and the server actions. */}
+              <RoleGate
+                role={member?.role}
+                allow={["owner", "organizer"]}
+                mode="disable"
+                disabledReason="Only the owner or an organizer can publish pairings."
               >
-                {isPublished
-                  ? changedSincePublish
-                    ? "Review and publish changes"
-                    : "View published list"
-                  : "Review and publish"}
-              </button>
+                <button
+                  type="button"
+                  className={`btn${isPublished && !changedSincePublish ? " ghost" : " gold"}`}
+                  onClick={() => setPubOpen(true)}
+                >
+                  {isPublished
+                    ? changedSincePublish
+                      ? "Review and publish changes"
+                      : "View published list"
+                    : "Review and publish"}
+                </button>
+              </RoleGate>
               <button type="button" className="btn ghost" onClick={() => setConfirm("startOver")}>
                 Start over
               </button>
