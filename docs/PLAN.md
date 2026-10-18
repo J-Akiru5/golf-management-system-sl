@@ -29,10 +29,12 @@ Anything not marked is a plan, not a fact.
 | Data boundary (`src/lib/data`) | **Built as mock adapters** over the session store | `PlayerRepository`, `TournamentRepository`, `RegistrationRepository`, `HandicapImportAdapter`, `PairingsRouter`, public allow-list |
 | Brand and visual design | **TeeLine Golf** identity: public landing page, fairway-and-flag vector mark, Ivory / Charcoal themes; the IGCC crest stays a separate club asset | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
 | Printing | **Print components and pure helpers built**: sorted start sheet, allow-listed pairings sheet, per-group 18-hole scorecards, handicap dots, and A4 print CSS | `src/lib/print` tests; dev-only preview at `/print-preview`; real course data and club-printer test still pending |
-| In flight (PR #17) | **Event setup** (`feat/event-setup-editing`): the desk saves course, tees, holes, categories and flights in one guarded, manager-only transaction, and can enter the real tee and hole numbers. Its migrations `20261024000000` and `20261025000000` are on `develop` and **applied** (verified: `save_event_setup` answers "Tournament not found" for an unknown id). The app side is open and mergeable | PR #17 |
+| In flight (PR #17) | **Event setup and paging** (`feat/event-setup-editing` at `ebbea76`, 5 commits ahead of `develop`): the desk saves course, tees, holes, categories and flights in one guarded, manager-only transaction, enters the real tee and hole numbers, loads the saved tees and holes instead of the samples, and adds the paging primitive. Its migrations `20261024000000` and `20261025000000` are on `develop` and applied (verified against the live project: `save_event_setup` answers "Tournament not found" for an unknown id) | PR #17, open and mergeable; see the state of `develop` below |
+| Long lists | **Paging primitive built, not applied.** `src/lib/data/paging.ts`: 50 rows a page, paged in the browser, queries unchanged. 7 tests, on PR #17. The players, registrations, import and print lists still render every row | Decision 13 settled; gap 10 |
+| Alerts | **Design settled, not built.** Decision 14 is stored, desk-facing notifications (option B): `notifications` + `notification_reads`, with a `sync_notifications(tournament)` that upserts the current alerts and resolves the ones that no longer apply | Gap 11 |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 28 test files, 336 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
+Whole suite: 28 test files, 336 tests passing (`pnpm test`) on `develop` today; PR #17 adds `src/lib/data/paging.test.ts` (7 cases), which takes it to 29 files and 343 tests when it merges. The contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
 **The one thing blocking a real event:** the wiring exists but the project has no course, tee, hole or
 tournament rows, so the desk has nothing real to show. Provisioning and an end-to-end pass with real
@@ -196,7 +198,7 @@ Verified in `supabase/migrations`, and **applied to the `golf-management-system`
 ### Git workflow
 
 - Base branch `develop`. Multi-file work goes on a dedicated branch and a pull request into `develop`.
-- `main` exists but trails `develop`; **`staging` does not exist yet** (see decisions).
+- `main` exists and is kept level with `develop` (advanced for the production build); **`staging` is skipped on purpose** because Jeff is a solo dev (decision 12).
 - Commit messages and PR descriptions carry the attribution lines required by the tooling in use.
 - A repo-state claim ("it is merged", "it is deployed") must be checked against the remote, not memory.
 
@@ -262,17 +264,27 @@ These are places where the spec promises something the code does not do yet. Che
    the guard against guessing it.
 9. **Multi-day events are a demo assumption.** Age and the cut-off read the first day, because the
    club has not said which day of a multi-day event counts.
-10. **No pagination.** Every list renders in full: the player directory, the registration desk list,
-    the import review queue, the draw board, the print sheets and the public pairings. The
-    repositories fetch whole tables (no `.range()`), and the only caps are search suggestions (6 to 8
-    rows) and the issue and activity slices. That is fine at the club's field size today, but page
-    size and delivery (a SQL range or the browser) need a decision before the field grows; see
-    decision 13.
-11. **No notifications.** The only mention of notices in the spec and in this plan is Phase 3 player
-    messaging (SMS or Messenger). The app has no notification feed, no read state and no per-event
-    alert: the overview attention list and the shell bell (a shortcut to the draw's blocking count)
-    are all that exists, and the session activity log forgets itself on refresh. Whether Phase 1
-    needs an alert centre is decision 14.
+10. **Pagination is settled but not applied.** Decision 13 was answered on 18 Oct 2026: 50 rows a
+    page, paged **in the browser**, queries unchanged (a round trip per page is slower at the club's
+    field size, and the print path needs the full list anyway). The maths is built and tested on
+    PR #17 (`src/lib/data/paging.ts`, 7 cases, including the one that bites: a filter that shrinks
+    the list must not strand you past the end, and a one-page list stays silent). Applying it to the
+    player directory, the registration desk list, the import review queue and the print sheets is
+    the remaining UI step; every list still renders in full.
+11. **Notifications are decided, not built.** Decision 14 was answered on 18 Oct 2026: stored,
+    desk-facing notifications (option B), over derived-only alerts, because "mark as read" has to
+    survive a refresh and more than one person may need to see an alert. The agreed design:
+    `notifications` (id, club_id, tournament_id, kind, subject, severity, title, detail, created_at,
+    resolved_at, unique on `(tournament_id, kind, subject)` so one problem cannot pile up as
+    duplicates) and `notification_reads` (notification_id, user_id, read_at), plus
+    `sync_notifications(tournament)`, which computes the current alerts from state that already
+    exists (blocking draw issues, players needing review, unplaced players, stale indexes,
+    unpublished changes, cut-off approaching), upserts the new ones and stamps `resolved_at` on the
+    ones that no longer apply. That keeps writers out of every feature and stops alerts going stale.
+    RLS follows the established shape: members read their club's rows, and a user manages only their
+    own read rows. Player messaging (SMS or Messenger) stays Phase 3 and is a different feature.
+    Nothing is built yet; the next pass starts with the migration applied and tested against the
+    live project, which is how the `save_event_setup` guard bug was caught.
 12. **The draw was computed in the browser and never saved.** *Fixed in code, migration not applied.*
     `route()` is a real pure engine and it runs live: changing players, settings or a move re-runs it,
     locked groups are kept, and the draw checks re-validate. But the current store only dispatched
@@ -337,11 +349,13 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
    event and writing to the database are not built.
 6. **Print:** build the data adapter and pass authoritative hole/tee provenance into the existing
    print assembler. Print on real paper at the club and verify the A4 layout before the event.
-7. **Long lists and alerting:** decide page size and where paging happens for the players,
-   registrations, import rows and print sheets (decision 13), and whether Phase 1 needs anything
-   beyond the overview attention list and the shell bell (decision 14). Do this before the field and
-   the print runs grow.
-8. **Deploy:** Vercel project, env vars, `staging` and `main` branches, CI (typecheck, lint, tests, build).
+7. **Long lists and alerting:** both decisions are settled. Apply the paging primitive (decision 13)
+   to the players, registrations, import rows and print sheets. Build the notification centre
+   (decision 14): the two tables, `sync_notifications(tournament)`, the adapter wiring and the bell
+   panel, starting with the migration applied and tested against the live project so a
+   hanging-guard class of bug is caught immediately. Do this before the field and the print runs
+   grow.
+8. **Deploy:** done except CI. The Vercel project and env vars are live and production tracks `main` at `golf.syntaxure.dev`; `staging` is skipped on purpose (solo dev). Still to do: CI (typecheck, lint, tests, build) on pull requests.
 9. **Dress rehearsal:** run a full fake tournament with the organizer using real IGCC data before the real event.
 
 ### Scheduling and the public pairings page (built in `feat/versioned-publish`, 18 Oct 2026)
@@ -444,9 +458,9 @@ Decisions that belong to the people named, not to an agent.
 | 9 | Small flight near the end of wave 1 (e.g. 3-group Ladies): split, fill from another flight, or move to wave 2 | Organizer | Shotgun layout | Keep whole, flag |
 | 10 | Product name and legal clearance | Jeff | Public branding | TeeLine Golf approved as the product direction; not represented as legally cleared |
 | 11 | Vector (SVG/PDF) crest from the club; real course pictures and hole positions | Jeff / club | Print, large displays, real course map | 320px PNG crest; illustrated placeholder course |
-| 12 | Create `staging` and `main` branches; clean up old feature branches; consider a Syntaxure organization for the repo | Jeff | Pipeline | Only `develop` |
-| 13 | Pagination for the long lists (players, registrations, import rows, print sheets): page size, and paging in SQL or in the browser | Jeff | Field size, print runs | Render every row; search suggestions capped at 8 |
-| 14 | Alerts in Phase 1: is the overview attention list plus the shell bell enough, or is an in-app notification centre wanted? | Organizer | Desk workflow | Attention list only; player messaging stays Phase 3 |
+| 12 | ~~Create `staging` and `main` branches~~ Partly settled 18 Oct 2026: `main` exists and is kept level with `develop`; `staging` is deliberately skipped because Jeff is a solo dev. Cleaning up the merged feature branches is still open | Jeff | Pipeline | `main` = `develop`; no `staging` |
+| 13 | ~~Pagination for the long lists~~ **Settled 18 Oct 2026:** 50 rows a page, paged in the browser; the repositories still fetch whole tables because the print path needs the full list | Jeff | — | `src/lib/data/paging.ts` (+7 tests) sits on PR #17; the four lists still render every row until it is applied |
+| 14 | ~~Alerts in Phase 1~~ **Settled 18 Oct 2026:** stored, desk-facing notifications (option B), not derived-only alerts | Organizer | — | Two tables plus `sync_notifications(tournament)`, designed but not built (gap 11) |
 | 15 | Public pairings page: names, flight, hole and time only, or also handicap or category | Organizer | Public page content | Names, flight, hole, time |
 | 16 | After a publish, do late changes always mean a new version, and should the page mark what moved | Organizer | Publish flow | New version each time; version and time shown, no change marks |
 
@@ -498,8 +512,8 @@ Agent ground rules:
 - [ ] Open decisions 3-7 and 9 confirmed by the organizer
 - [x] Lock-aware re-run built (gap 1)
 - [ ] Start sheet and scorecards printed on real paper at the club
-- [ ] Long lists (players, registrations, import rows, print) hold up at the real field size; pagination decided (decision 13)
-- [ ] The organizer has said what alerts they expect beyond the overview attention list (decision 14)
+- [ ] Pagination applied to the players, registrations, import rows and print sheets (decision 13 settled; the primitive is built on PR #17)
+- [x] The organizer has said what alerts they expect: stored, desk-facing notifications (decision 14, settled; the panel itself is not built)
 - [ ] Photo consent line shown before every photo; private bucket verified
 - [ ] Public pairings page checked on an older phone
 - [ ] Deployed build on `main` opened once with a staff login (production env vars confirmed first)
@@ -547,7 +561,9 @@ Agent ground rules:
 | 18 Oct 2026 | **Route areas.** Public: `/`, `/pairings`, `/enter/[id]`, `/login`. Player: `/my`. Staff: the desk. One sign-in page serves both; where an account lands follows what it is, not where it signed in. The proxy matches only the guarded areas, so public pages never do a session lookup. Demo builds (no Supabase URL) stay open, with the banner. |
 | 18 Oct 2026 | **The player portal migration is applied.** `20261023000000_player_portal.sql` and `20261023000001_player_portal_grants.sql` are live on `golf-management-system`; `supabase migration list --linked` shows local and remote in step. The file was renumbered from `20261022000000`, which `feat/versioned-publish` had already taken, and its projection function was rewritten after the first push attempt failed on a CTE reference inside a nested subquery (it now joins the CTE); the failed attempt applied nothing. The three functions were then checked against the live project. |
 | 18 Oct 2026 | **A hand-applied migration was recorded, not re-run.** The `20261022000000_versioned_publish` objects (`pairings_versions`, `tournaments.draw_revision`, the new `public_pairings`) were already in the database but absent from the migration history, so `db push` refused to move past them. Their existence was verified over the API first, then `supabase migration repair --status applied 20261022000000` recorded them. Follow-up for Jeff: anon can still execute `save_draw`, `publish_pairings` and `unpublish_pairings` (each refuses a caller without a staff role), so the `revoke … from public` lines in that file are worth re-checking. |
-| 18 Oct 2026 | **`main` advanced to `develop` (fast-forward) for the organizer's UAT.** Production on Vercel tracks `main`, so this is what puts the TeeLine build, the sign-in areas and the player area on the stable URL instead of a hash-named preview. `staging` still does not exist (decision 12). The plan was reconciled in the same pass: the portal block, the My golf row and the obsolete "Ready to merge" row all now match the code and the database, and the event-setup pair is recorded as applied. |
+| 18 Oct 2026 | **`main` advanced to `develop` (fast-forward) for the organizer's UAT.** Production on Vercel tracks `main`, so this is what puts the TeeLine build, the sign-in areas and the player area on the stable URL instead of a hash-named preview. `staging` is skipped on purpose (solo dev, decision 12), and `main` is kept level with `develop` after every docs merge. The plan was reconciled in the same pass: the portal block, the My golf row and the obsolete "Ready to merge" row all now match the code and the database, and the event-setup pair is recorded as applied. |
+| 18 Oct 2026 | **Pagination settled (decision 13).** 50 rows a page, paged in the browser: the repositories keep fetching whole tables, because a round trip a page is slower at the club's field size and the print path needs the full list anyway. The pure maths lives in `src/lib/data/paging.ts` with 7 tests, including the case that bites (a filter that shrinks the list must not strand you past the end). Applying it to the four long lists is the remaining UI step, on the other agent's screens. |
+| 18 Oct 2026 | **Notifications settled (decision 14): stored, desk-facing alerts.** Two tables (`notifications`, `notification_reads`) plus `sync_notifications(tournament)`, which computes the alerts from state that already exists, upserts the new ones and resolves the stale ones, so no writer is scattered through the app and an alert cannot go stale after the problem is fixed. Chosen over derived-only alerts because read state has to survive a refresh and more than one person may need the alert. `unique (tournament_id, kind, subject)` makes an alert idempotent. Player messaging stays Phase 3 and is a different feature. Not built yet; the next pass starts with the migration applied and tested against the live project. |
 
 ---
 
