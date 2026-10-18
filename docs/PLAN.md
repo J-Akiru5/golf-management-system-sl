@@ -511,18 +511,23 @@ only their own entry. Every finding is written down with a severity the same day
 | W5 | The UAT itself | The run sheet, the session, the findings, the fallback (printed sheets, unpublish, redeploy the previous build) | Jeff and the organizer |
 | W6 | Production hygiene | ~~revoke `anon` execute on the staff functions~~ **Done 19 Oct 2026** (`20261030000000`, and `20261031000000` makes it the default for anything new); CI on pull requests (there is none); a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups; set `NEXT_PUBLIC_SITE_URL` in Vercel to the production domain; show `v{version} · {short commit} · {environment}` in the shell | Jeff |
 
-**The run sheet (one page, to be handed over).**
+**The run sheet** is [`docs/UAT_RUN_SHEET.md`](UAT_RUN_SHEET.md): printable, with a version field to
+fill in first, the eight steps with what the organizer should see at each, a severity scale, and a
+findings table. The summary is:
 
 1. Open the site with no account: the landing page, then the published pairings (no sign-in needed).
 2. Sign in as the organizer: lands on the control room, with name and role shown.
-3. Setup: enter the real ratings, categories and flight ranges. Try saving twice to see the guard
-   refuse a stale save rather than overwrite.
+3. Settings: enter the real ratings, categories and flight ranges. **Use two browser tabs to test the
+   stale-save guard** (save in the first, then save in the second and watch it refuse and ask for a
+   reload). Saving twice in one tab is not a test of it: the second save is not stale. Then tick the
+   course confirmation and withdraw it by changing a rating.
 4. Players: add two or three with birthdates, gender and indexes; check the eligibility review.
 5. Draw: make it, move one player by hand with a reason, lock a group, re-run and confirm the lock holds.
 6. Print: start sheet, pairings and scorecards on the club's paper; the layout should survive A4 and a
    photocopier.
 7. Publish, then open the pairings on a phone and search a name.
 8. Player side: sign in as a player, claim the member record, and confirm the entry and start look right.
+   Needs a player account: without one, skip it and say so rather than marking it failed.
 
 **Sequence and critical path.** W1 first (it unblocks W3), W4 in parallel, W5 when W1 and W3 are done,
 W2 and W6 alongside. The longest lead item is the club's data, which is not in our hands.
