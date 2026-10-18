@@ -2,7 +2,7 @@
   "name": "golf-management-system-sl",
   "version": "0.1.0",
   "private": true,
-  "description": "Golf tournament management for Iloilo Golf & Country Club. Syntaxure Labs.",
+  "description": "TeeLine Golf tournament management by Syntaxure Labs.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

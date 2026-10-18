@@ -11,16 +11,26 @@ import { DeskProvider } from "@/lib/store/desk-store";
 
 export const metadata: Metadata = {
   title: {
-    default: "Tournament office · Iloilo Golf & Country Club",
-    template: "%s · Iloilo Golf & Country Club",
+    default: "TeeLine Golf | Every round, beautifully organized",
+    template: "%s | TeeLine Golf",
   },
-  description: "Tournament desk for Iloilo Golf & Country Club, by Syntaxure Labs.",
+  description:
+    "A clearer way to manage golf tournaments, player registrations, and the moments that bring the club together.",
+  applicationName: "TeeLine Golf",
+  openGraph: {
+    type: "website",
+    siteName: "TeeLine Golf",
+    title: "TeeLine Golf | Every round, beautifully organized",
+    description:
+      "A clearer way to manage golf tournaments, player registrations, and the moments that bring the club together.",
+  },
+  icons: { icon: "/brand/teeline-app-icon.svg" },
 };
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#183f30" },
+    { media: "(prefers-color-scheme: light)", color: "#073d2e" },
     { media: "(prefers-color-scheme: dark)", color: "#171c19" },
   ],
 };

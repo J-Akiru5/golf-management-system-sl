@@ -1,8 +1,7 @@
-# golf-management-system-sl
+# TeeLine Golf
 
-Tournament management for **Iloilo Golf & Country Club**, built by Syntaxure Labs. Registration,
-NGAP handicap, categories, flights, and auto-routed groups and start times (shotgun in waves, or
-two-tee start). The organizer reviews and overrides every proposal before publishing.
+Premium golf-club and tournament management by Syntaxure Labs. TeeLine brings player records,
+handicap-aware tournament workflows, draw review, and published pairings into one clear experience.
 
 Stack: Next.js, Supabase (supabase-js, SQL migrations), pnpm, Biome, Vitest. Hosted on Vercel.
 
@@ -128,22 +127,25 @@ returns the review queue the organizer decides, and `buildImportPlan` remains th
 
 ## Brand and screens
 
-The club name and crest are the app chrome; the working product name is undecided (not
-trademark-cleared), and the mark in the repo is original placeholder artwork, not an official IGCC
-logo. Colours are forest green, warm ivory and restrained gold, from the Clubhouse design system in
-`src/app/globals.css`. Gold is a fill with dark ink on top or the darker `--gold-ink` for text, never
-a low-contrast line on ivory. Type is Geist and Manrope for the interface, Cormorant Garamond for
-event titles and Bebas Neue for display numbers; fonts are bundled through `@fontsource`, so no
-external font service is called. Theme is Auto, Ivory or Charcoal, remembered per browser. Buttons
-and inputs are at least 44px tall.
+**TeeLine Golf** is the approved product direction. Trademark clearance has not been established.
+The fairway-and-flag vector mark is a faithful redraw of the supplied identity reference; it is not
+an extracted original vector. Light, reverse, monochrome, symbol, and app-icon SVGs are in
+`public/brand`. The IGCC crest remains a separate club asset. Colours are forest green, warm ivory
+and restrained gold. Gold is a fill with dark ink on top or the darker `--gold-ink` for text, never a
+low-contrast line on ivory. Buttons and inputs are at least 44px tall.
 
-`src/styles/contrast.test.ts` reads the tokens in `globals.css` and fails if a text or border pairing
-drops below WCAG AA in either theme, or if the dark tokens drift between the device setting and the
-manual switch.
+The reusable design tokens in `src/app/globals.css` define forest, ivory, charcoal, gold, semantic
+status colors, spacing, radii, motion, and surfaces. Geist and Manrope are used for the interface,
+with Cormorant Garamond for editorial headings and Bebas Neue for selected numerical display. Fonts
+are bundled through `@fontsource`; there are no external font or script calls. Theme is Auto, Ivory,
+or Charcoal and is remembered per browser.
+
+`src/styles/contrast.test.ts` checks text, status, border, and focus token contrast in both themes.
 
 | Route | Screen |
 | --- | --- |
-| `/` | Overview: illustrated course map with hole pins, event card, attention list, quick actions, readiness, divisions, Handicap Index histogram, session activity, open questions |
+| `/` | Public TeeLine Golf landing page |
+| `/admin` | Tournament control room: illustrated course map with hole pins, event card, attention list, quick actions, readiness, divisions, Handicap Index histogram, session activity, open questions |
 | `/tournaments` | The demo events: dates, cut-off, entries, draw state; set the working event, start a new demo event, clear the selection to see the empty state |
 | `/players` | Directory: search by name, nickname, NGAP ID or home course; filters for status, category, gender and home course; add a player with photo consent |
 | `/players/[id]` | Profile: Handicap Index and playing handicap shown apart with the working, handicap history with the frozen marker, registration facts, private details, photo with consent, poster generator |

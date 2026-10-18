@@ -50,9 +50,19 @@ by reading the code.
 ## Git
 
 Base branch `develop`. Work on a feature branch and open a PR into `develop`; the owner merges.
-Do not push to `develop` directly. The `staging` and `main` branches do not exist yet.
+Do not push to `develop` directly. `main` exists but is behind `develop`; there is no `staging` yet.
 Check the remote (`git ls-remote`) before stating what is merged.
 
 ## Writing style
 
 Plain language. No em-dash pile-ups, no marketing words. Do not call the owner an "engineer" in documents.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

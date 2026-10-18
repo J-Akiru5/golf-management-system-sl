@@ -28,6 +28,11 @@ const player: PlayerRow = {
   phone: null,
   photo_path: "club-1/player-1/photo.jpg",
   photo_consent_at: "2026-10-17T10:00:00Z",
+  first_name: null,
+  last_name: null,
+  nickname: null,
+  home_course: null,
+  email: null,
   created_at: "2026-10-17T10:00:00Z",
 };
 
@@ -68,6 +73,13 @@ describe("database row mappers", () => {
       published: false,
       published_snapshot: null,
       created_at: "2026-10-01T00:00:00Z",
+      dates: ["2026-10-31", "2026-11-01"],
+      state: "open",
+      name_needs_confirmation: false,
+      schedule_needs_confirmation: true,
+      stale_index_days: 120,
+      registration: null,
+      board_overrides: null,
     };
     const course: CourseRow = { id: "course-1", club_id: "club-1", name: "IGCC", holes: 18 };
     expect(mapTournamentConfig(tournament, course)).toEqual({
@@ -142,6 +154,12 @@ describe("database row mappers", () => {
         answers: {},
         overridden: false,
         created_at: "2026-10-17T00:00:00Z",
+        registered_by: null,
+        updated_at: "2026-10-17T00:00:00Z",
+        updated_by: null,
+        frozen_record_id: null,
+        frozen_effective_date: null,
+        frozen_at: "2026-10-17T00:00:00Z",
       },
       {
         id: "reg-2",
@@ -159,6 +177,12 @@ describe("database row mappers", () => {
         answers: {},
         overridden: false,
         created_at: "2026-10-17T00:00:00Z",
+        registered_by: null,
+        updated_at: "2026-10-17T00:00:00Z",
+        updated_by: null,
+        frozen_record_id: null,
+        frozen_effective_date: null,
+        frozen_at: "2026-10-17T00:00:00Z",
       },
     ];
     const mapped = mapDrawGroups(groups, members, registrations);
