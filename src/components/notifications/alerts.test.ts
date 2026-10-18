@@ -11,6 +11,7 @@ import {
   fixHref,
   groupAlerts,
   type StoredNotification,
+  shouldCheckAlerts,
   showsAllClear,
 } from "./alerts";
 
@@ -192,5 +193,25 @@ describe("all clear is only shown when it is known to be true", () => {
   it("does not show all clear when there is anything outstanding", () => {
     expect(showsAllClear("ready", 1)).toBe(false);
     expect(showsAllClear("error", 2)).toBe(false);
+  });
+});
+
+describe("when the stored check may run", () => {
+  it("runs in demo mode, where there is nothing stored to check", () => {
+    expect(shouldCheckAlerts(false, "demo")).toBe(true);
+    expect(shouldCheckAlerts(false, "loading")).toBe(true);
+  });
+
+  it("waits while a connected desk is loading, so the demo event id is never sent", () => {
+    expect(shouldCheckAlerts(true, "loading")).toBe(false);
+    expect(shouldCheckAlerts(true, "demo")).toBe(false);
+  });
+
+  it("runs once the connected desk is ready", () => {
+    expect(shouldCheckAlerts(true, "ready")).toBe(true);
+  });
+
+  it("never runs when the desk failed to load", () => {
+    expect(shouldCheckAlerts(true, "error")).toBe(false);
   });
 });

@@ -11,6 +11,7 @@ import {
   dismissableCount,
   groupAlerts,
   type StoredNotification,
+  shouldCheckAlerts,
   showsAllClear,
 } from "@/components/notifications/alerts";
 import { Button } from "@/components/ui/button";
@@ -32,9 +33,11 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
  * notifications and de-duplicates the overlap, so the badge and the Issues panel cannot disagree.
  */
 export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
-  const { state, registrations, names, tournament, draw, published } = useDesk();
+  const { state, registrations, names, tournament, draw, published, status } = useDesk();
   const connected = isSupabaseConfigured();
   const tournamentId = tournament?.id ?? null;
+  // No stored check until the desk has loaded: before that the working event is the demo one.
+  const ready = shouldCheckAlerts(connected, status);
 
   const [open, setOpen] = useState(false);
   const [stored, setStored] = useState<StoredNotification[]>([]);
@@ -84,6 +87,7 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
       setSync("idle");
       return;
     }
+    if (!ready) return;
     setSync("checking");
     try {
       const client = createSupabaseBrowserClient();
@@ -94,12 +98,18 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
       // Keep the last good list rather than showing a false "all clear".
       setSync("error");
     }
-  }, [connected, tournamentId]);
+  }, [connected, tournamentId, ready]);
 
   useEffect(() => {
+    if (!ready) return;
     const timer = setTimeout(() => void check(), 400);
     return () => clearTimeout(timer);
-  }, [check, signature]);
+  }, [check, signature, ready]);
+
+  // A desk that failed to load cannot have its alerts checked; say so rather than "Checking…".
+  useEffect(() => {
+    if (connected && status === "error") setSync("error");
+  }, [connected, status]);
 
   // Escape closes, and focus goes back to the bell rather than being lost.
   useEffect(() => {
