@@ -46,3 +46,74 @@ describe("start-sheet sorting", () => {
     expect(input).toEqual(groups);
   });
 });
+
+/**
+ * A start sheet is a piece of paper. Paging is for the desk's screens, so the count of players the
+ * sheet is built from must equal the count that reaches the organizer's hands, however large the
+ * field. These tests fix that invariant at a size well over one screen page.
+ */
+describe("start sheet completeness", () => {
+  interface PrintGroup extends SortableStartGroup {
+    players: { id: string }[];
+  }
+
+  /** A field of `playerCount` players in groups of four, split across two waves. */
+  function fieldOf(playerCount: number, size = 4): PrintGroup[] {
+    const groups: PrintGroup[] = [];
+    for (let i = 0; i < playerCount; i += size) {
+      const number = groups.length + 1;
+      groups.push({
+        number,
+        startHole: ((number - 1) % 18) + 1,
+        wave: number % 2 === 0 ? "PM" : "AM",
+        time: number % 2 === 0 ? "12:00" : "07:00",
+        players: Array.from({ length: Math.min(size, playerCount - i) }, (_, k) => ({
+          id: `p${i + k + 1}`,
+        })),
+      });
+    }
+    return groups;
+  }
+
+  const printed = (groups: PrintGroup[], format: "shotgun" | "two_tee") =>
+    groupStartGroups(groups, format).flatMap((section) =>
+      section.groups.flatMap((group) => group.players.map((p) => p.id)),
+    );
+
+  it("prints every player of a 126-strong field, not just the first page of 50", () => {
+    const field = fieldOf(126); // 32 groups
+    expect(field).toHaveLength(32);
+
+    for (const format of ["shotgun", "two_tee"] as const) {
+      const rows = printed(field, format);
+      expect(rows).toHaveLength(126);
+      expect(new Set(rows).size).toBe(126);
+      // The first page must not be the whole sheet.
+      expect(rows.length).toBeGreaterThan(50);
+    }
+  });
+
+  it("keeps the field intact when the last group is short", () => {
+    const field = fieldOf(126); // 31 full groups of four, then one of two
+    expect(field.at(-1)?.players).toHaveLength(2);
+    expect(printed(field, "shotgun")).toHaveLength(126);
+  });
+
+  it("covers the whole field once: nobody is dropped between sections", () => {
+    const field = fieldOf(126);
+    const inOrder = printed(field, "shotgun");
+    // Every player appears exactly once, so no group was lost or listed twice.
+    expect(new Set(inOrder).size).toBe(inOrder.length);
+    expect([...inOrder].sort()).toEqual(Array.from({ length: 126 }, (_, i) => `p${i + 1}`).sort());
+  });
+
+  it("prints in play order, which paging could never preserve", () => {
+    const field = fieldOf(12); // three groups: 1 and 3 in the AM wave, 2 in the PM
+    const sections = groupStartGroups(field, "shotgun");
+    const numbers = sections.flatMap((s) => s.groups.map((g) => g.number));
+    // The AM wave plays first in hole order, then the PM wave. Paging the desk's list would have
+    // reordered these by row, not by when the field actually tees off.
+    expect(numbers).toEqual([1, 3, 2]);
+    expect(sections.map((s) => s.wave)).toEqual(["AM", "PM"]);
+  });
+});

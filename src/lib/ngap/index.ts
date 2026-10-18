@@ -10,7 +10,7 @@ export type {
   Resolution,
   ResolvedImportRow,
 } from "./merge";
-export { buildMergeQueue, resolveImport } from "./merge";
+export { buildMergeQueue, resolveImport, reviewBuckets } from "./merge";
 export { nameKey, parseDate, parseIndex } from "./normalize";
 export { parseCsv } from "./parse";
 export { buildImportPlan } from "./plan";

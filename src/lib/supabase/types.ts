@@ -186,6 +186,24 @@ export type GroupMemberRow = {
   registration_id: string;
   position: number;
 };
+export type NotificationRow = {
+  id: string;
+  club_id: string;
+  tournament_id: string;
+  kind: string;
+  subject: string;
+  severity: "blocking" | "warning" | "info";
+  title: string;
+  detail: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+export type NotificationReadRow = {
+  club_id: string;
+  notification_id: string;
+  user_id: string;
+  read_at: string;
+};
 
 type PublicPairingRow = {
   tournament_id: string;
@@ -404,10 +422,31 @@ export interface Database {
         GroupMemberRow,
         { club_id: string; group_id: string; registration_id: string; position: number }
       >;
+      notifications: Table<
+        NotificationRow,
+        {
+          id?: string;
+          club_id: string;
+          tournament_id: string;
+          kind: string;
+          subject?: string;
+          severity: NotificationRow["severity"];
+          title: string;
+          detail?: string | null;
+          created_at?: string;
+          resolved_at?: string | null;
+        }
+      >;
+      notification_reads: Table<
+        NotificationReadRow,
+        { club_id: string; notification_id: string; user_id: string; read_at?: string }
+      >;
     };
     Views: Record<string, never>;
     Functions: {
       is_club_member: { Args: { p_club: string }; Returns: boolean };
+      sync_notifications: { Args: { p_tournament: string }; Returns: number };
+      mark_notifications_read: { Args: { p_tournament: string }; Returns: number };
       has_club_role: { Args: { p_club: string; p_roles: string[] }; Returns: boolean };
       save_event_setup: {
         Args: {
