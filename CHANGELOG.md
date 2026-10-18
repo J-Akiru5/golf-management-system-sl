@@ -11,6 +11,26 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+### Security
+- **The staff-only functions are no longer reachable by an anonymous caller.** The `revoke … from
+  public` line in the earlier migrations does not do what it reads as: `public` is Postgres's PUBLIC
+  pseudo-role, while Supabase grants `EXECUTE` to the `anon` role **by name**, so revoking from PUBLIC
+  leaves that grant in place. `save_draw`, `unpublish_pairings`, `save_event_setup` and
+  `sync_notifications` could all be called with the anon key and no session. Nothing was exploitable —
+  each function resolves the event and then requires an owner or organizer through `has_club_role`,
+  and `auth.uid()` is null for anon, so every one refused — but an unauthenticated request should not
+  be able to make the database do that work at all, and one mistake in one role test would be a live
+  hole. `20261030000000_revoke_anon_execute.sql` revokes the anon grant and restates the authenticated
+  one. The genuinely public functions (`public_pairings`, `public_registration_form`,
+  `submit_registration`) keep their anon access, because the pairings page and the entry form work
+  signed out.
+
+### Database
+- `20261030000000_revoke_anon_execute.sql`: **applied live**. Reaches anon grants that
+  `revoke … from public` misses. Safe to re-run. Note that Supabase's default privileges grant
+  `EXECUTE` on new functions in `public` to anon, so a future `create or replace function` re-opens
+  this unless the revoke is repeated there or the default privileges are changed.
+
 ## [0.9.0] - 2026-10-18
 
 The desk runs on the database and nothing else, and the course numbers can be vouched for.
