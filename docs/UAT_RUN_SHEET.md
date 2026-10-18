@@ -45,6 +45,11 @@ published yet the pairings page says so, which is correct.
 **2. Sign in.** Sign in as the organizer.
 *You should see:* the control room, with your name and role in the top bar.
 
+**Expected once, and not a finding:** on the first load right after signing in, the desk may say "The
+tournament desk did not load" with a Retry button. **Reload the page** and it works. This is a known
+issue (gap 16 in the plan), it only happens on that first load, and it is fixed by the reload. Do not
+write it up. If it happens on any *other* load, do write it up.
+
 **3. Settings.** Open Settings and enter the club's real Course Rating, Slope, Par and stroke index,
 the categories and the flight ranges.
 *You should see:* every section saving, and the session bar saying the write landed. Type a stroke

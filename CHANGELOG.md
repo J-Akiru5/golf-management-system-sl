@@ -11,6 +11,18 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+### Known issues
+- **The desk does not load on the first client render after signing in.** Found on the live project
+  on 19 Oct 2026 and reproducible: the redirect lands on `/admin` correctly, but the desk says "The
+  tournament desk did not load" and the account chip reads "Not signed in · Session unavailable".
+  Reloading fixes it every time and every later navigation works. Measured rather than guessed: the
+  auth cookie is set and readable at the moment of failure, and **no `/auth/v1/user` request is made
+  at all**, so `getUser()` reported a missing session locally rather than being refused. That points
+  at the browser client from `@supabase/ssr` seeing no session when the desk store builds it. Not
+  fixed: the root cause is not established, and a speculative change to the auth path is worse than a
+  reload. It is step 2 of the acceptance test, so `docs/UAT_RUN_SHEET.md` says to expect it once and
+  `docs/RUNBOOK.md` carries the workaround. Tracked as gap 16 in `docs/PLAN.md`.
+
 ## [0.12.0] - 2026-10-19
 
 The checks run by themselves now, and the operational documents exist.

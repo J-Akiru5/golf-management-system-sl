@@ -78,6 +78,7 @@ handled by the group playing short and the organizer noting it.
 | --- | --- | --- |
 | "The setup changed since this screen loaded" but nobody else touched it | A stale revision: two saves from the same browser disagreed about the draw revision | Reload the page and try again. If it repeats, note the screen and the time: this was a real bug, fixed in 0.8.0, and a repeat means a new one |
 | The desk shows no players or no event | Signed in, but the club has no data yet, or the load failed | Check the session bar. The connected desk starts empty on purpose; it never falls back to sample data |
+| **Just signed in and the desk says "The tournament desk did not load" / "Session unavailable"** | **Known issue.** The first client load after signing in does not see the session even though the cookie is set. Reload the page and it works, every time | Reload. If it happens on any load other than the first after signing in, note the screen and the time: that would be new. See gap 16 in `docs/PLAN.md` |
 | A save reports a missing column | The code is newer than the database | Apply the migrations: `supabase db push --linked`. The message names the migration |
 | The bell says "Could not check alerts" | The notification check failed | It keeps the last good list rather than claiming all clear. Retry from the bell; a repeat is worth reporting |
 | The version label does not match the tag you deployed | A stale build is being served | Re-deploy from the dashboard and confirm the label again |
