@@ -142,6 +142,9 @@ describe("database row mappers", () => {
         answers: {},
         overridden: false,
         created_at: "2026-10-17T00:00:00Z",
+        registered_by: null,
+        updated_at: "2026-10-17T00:00:00Z",
+        updated_by: null,
       },
       {
         id: "reg-2",
@@ -159,6 +162,9 @@ describe("database row mappers", () => {
         answers: {},
         overridden: false,
         created_at: "2026-10-17T00:00:00Z",
+        registered_by: null,
+        updated_at: "2026-10-17T00:00:00Z",
+        updated_by: null,
       },
     ];
     const mapped = mapDrawGroups(groups, members, registrations);

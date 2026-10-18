@@ -122,6 +122,10 @@ export type RegistrationRow = {
   answers: Json;
   overridden: boolean;
   created_at: string;
+  /** Set by trigger from the session; never sent by the client. */
+  registered_by: string | null;
+  updated_at: string;
+  updated_by: string | null;
 };
 export type GroupRow = {
   id: string;
@@ -316,6 +320,7 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       is_club_member: { Args: { p_club: string }; Returns: boolean };
+      has_club_role: { Args: { p_club: string; p_roles: string[] }; Returns: boolean };
       public_pairings: {
         Args: { p_tournament?: string | null };
         Returns: PublicPairingRow[];
