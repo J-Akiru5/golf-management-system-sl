@@ -11,6 +11,10 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.12.1] - 2026-10-19
+
+What a signed-in pass against the live project found, written down. Documentation only, no migration.
+
 ### Known issues
 - **The desk does not load on the first client render after signing in.** Found on the live project
   on 19 Oct 2026 and reproducible: the redirect lands on `/admin` correctly, but the desk says "The
@@ -22,6 +26,11 @@ Nothing yet.
   fixed: the root cause is not established, and a speculative change to the auth path is worse than a
   reload. It is step 2 of the acceptance test, so `docs/UAT_RUN_SHEET.md` says to expect it once and
   `docs/RUNBOOK.md` carries the workaround. Tracked as gap 16 in `docs/PLAN.md`.
+
+### Documentation
+- `docs/PLAN.md` gap 16 records it with the evidence; `docs/RUNBOOK.md` adds it to the failure-mode
+  table; `docs/UAT_RUN_SHEET.md` step 2 says to expect it once so the organizer does not write up a
+  known issue as a finding.
 
 ## [0.12.0] - 2026-10-19
 
@@ -358,7 +367,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.12.0...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.12.1...develop
+[0.12.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.9.0...v0.10.0
