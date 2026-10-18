@@ -8,6 +8,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
 import { DeskProvider } from "@/lib/store/desk-store";
+import { RAIL_INIT_SCRIPT } from "@/lib/ui/rail";
 
 export const metadata: Metadata = {
   title: {
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: RAIL_INIT_SCRIPT }} />
       </head>
       <body>
         <DeskProvider>{children}</DeskProvider>

@@ -41,7 +41,9 @@ export function DeskStatusStrip() {
     if (!shown) return null;
     // Forest, not the page surface: the header's logo is ivory and would vanish on a light page.
     return (
-      <div className="bg-forest px-4 pt-[100px] pb-3 sm:px-6 lg:pr-6 lg:pl-[112px]">{shown}</div>
+      <div className="bg-forest px-4 pt-[100px] pb-3 sm:px-6 lg:pr-6 lg:pl-[var(--rail-pad)]">
+        {shown}
+      </div>
     );
   }
 
