@@ -9,6 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Database
+- `20261029000000_course_data_confirmed.sql`: **applied live**. Adds one column,
+  `tournaments.course_data_confirmed boolean not null default false`, so an owner or organizer can
+  record that the saved tees and holes were checked against the club scorecard. Additive and
+  re-runnable. Renumbered from `20261027000000`, which is taken by the applied setup-fields
+  migration: two files at one version means the second is recorded as already applied and its
+  statements never run. No code reads the column yet; the desk's confirmation control and the derived
+  print watermark follow.
+
 ### Documentation
 - `docs/PLAN.md` states that `docs/VERSIONING.md` and the annotated `vX.Y.Z` tags are the single
   source of truth for what production runs; `docs/VERSIONING.md` gains "What production is running".
