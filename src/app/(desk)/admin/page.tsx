@@ -15,6 +15,7 @@ import {
 } from "@/components/control-room/panels";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { COURSE_IS_PLACEHOLDER, MAP_HOLES } from "@/lib/course/layout";
 import type { Tournament } from "@/lib/data/types";
@@ -163,11 +164,17 @@ function ControlRoomInner({
 
         {/* ≥1280px: the mockup's floating columns. The session log opens from this rail, so nothing
             sits on top of it. */}
-        <aside className="absolute top-[100px] right-6 hidden max-h-[calc(100dvh-130px)] w-[380px] flex-col gap-3.5 overflow-y-auto pb-6 [scrollbar-width:none] xl:flex">
-          <SessionLogDrawer />
-          <AttentionPanel b={b} />
-          <ReadinessPanel b={b} />
-          <PublishPanel b={b} />
+        <aside className="absolute top-[100px] right-3 bottom-6 hidden w-[396px] xl:block">
+          {/* The rail scrolls inside the map, so its edges fade instead of cutting a card off. */}
+          <ScrollFade
+            aria-label="Tournament status"
+            className="flex h-full flex-col gap-3.5 py-1 pr-3 pl-1"
+          >
+            <SessionLogDrawer />
+            <AttentionPanel b={b} />
+            <PublishPanel b={b} />
+            <ReadinessPanel b={b} />
+          </ScrollFade>
         </aside>
         <div className="absolute right-[428px] bottom-6 left-[112px] hidden h-[230px] grid-cols-[300px_minmax(0,1fr)] gap-3.5 xl:grid">
           <DivisionsPanel b={b} />

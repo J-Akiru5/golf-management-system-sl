@@ -74,7 +74,7 @@ function GoLink({ href, label }: { href: string; label: string }) {
     <Link
       href={href}
       aria-label={label}
-      className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-glass-line text-ink hover:bg-[rgba(238,240,234,0.08)]"
+      className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[color-mix(in_srgb,var(--ink)_30%,transparent)] text-ink no-underline hover:bg-[color-mix(in_srgb,var(--ink)_10%,transparent)]"
     >
       <ArrowUpRight className="size-4" aria-hidden="true" />
     </Link>
@@ -120,7 +120,7 @@ function Tile({
 
 function Bar({ pct }: { pct: number }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-[rgba(238,240,234,0.1)]">
+    <div className="h-2 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--ink)_14%,transparent)]">
       <i
         className="block h-full rounded-full"
         style={{
@@ -325,7 +325,9 @@ export function PublishPanel({ b, variant }: { b: Board; variant?: PanelVariant 
         <span className="text-xs text-ink-muted">
           {b.published
             ? `Published ${new Date(b.published.at).toLocaleTimeString("en-PH", { timeStyle: "short" })}`
-            : "Not saved · demo"}
+            : b.status === "demo"
+              ? "Not saved · demo"
+              : "Not published yet"}
         </span>
       </div>
       {!b.draw ? (
@@ -366,7 +368,15 @@ export function PublishPanel({ b, variant }: { b: Board; variant?: PanelVariant 
   );
 }
 
-const ARC_COLORS = ["var(--gold)", "var(--fairway)", "#f7f5ee", "#5d7a69", "#8dbff0", "#b89550"];
+// Theme tokens, not fixed colours: a fixed ivory swatch vanished on the light glass.
+const ARC_COLORS = [
+  "var(--gold)",
+  "var(--fairway)",
+  "var(--info)",
+  "var(--warning)",
+  "var(--ink-muted)",
+  "var(--danger)",
+];
 
 export function DivisionsPanel({ b, variant }: { b: Board; variant?: PanelVariant }) {
   const counts = new Map<string, number>();
@@ -624,6 +634,9 @@ export function SessionLogDrawer({ className }: { className?: string }) {
   );
 }
 
+/** Attention items shown before "Show N more": the rail is short and must not need a long scroll. */
+const VISIBLE_ITEMS = 4;
+
 /** The open questions and demo assumptions, kept short and linked to where they are set. */
 const OPEN_QUESTIONS: { id: string; question: string; state: string; href: string }[] = [
   {
@@ -701,6 +714,7 @@ export function AttentionPanel({
   variant?: PanelVariant;
   className?: string;
 }) {
+  const [showAll, setShowAll] = useState(false);
   const maxIndex = b.tournament?.config.maxIndex ?? 0;
   const review = b.registrations.filter((r) => r.status === "needs_review");
   const ineligible = b.registrations.filter((r) => r.status === "ineligible");
@@ -810,9 +824,11 @@ export function AttentionPanel({
             registrations · {b.ready.length} ready · {guests} guest{guests === 1 ? "" : "s"}
           </span>
         </p>
-        <p className="mt-0.5 text-xs text-ink-muted">
-          Demo data only. Nothing here is saved to a server.
-        </p>
+        {b.status === "demo" && (
+          <p className="mt-0.5 text-xs text-ink-muted">
+            Demo data only. Nothing here is saved to a server.
+          </p>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -820,33 +836,49 @@ export function AttentionPanel({
           <Check className="size-4" aria-hidden="true" /> Nothing is waiting for you.
         </p>
       ) : (
-        <ul className="mt-3 grid gap-2">
-          {items.map((i) => (
-            <li key={i.id} className="flex items-start gap-2.5 text-[13px] leading-[18px]">
-              <span className="mt-px">{i.icon}</span>
-              <span className="min-w-0 flex-1">
-                <b className="block font-semibold">{i.title}</b>
-                <span className="block text-xs text-ink-muted">{i.detail}</span>
-              </span>
-              <Link href={i.href} className="text-xs font-semibold whitespace-nowrap">
-                {i.cta}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="mt-3 grid gap-2.5">
+            {(showAll ? items : items.slice(0, VISIBLE_ITEMS)).map((i) => (
+              <li key={i.id} className="flex items-start gap-2.5 text-[13px] leading-[18px]">
+                <span className="mt-px">{i.icon}</span>
+                <span className="min-w-0 flex-1">
+                  <b className="block font-semibold">{i.title}</b>
+                  <span className="block text-xs text-ink-muted">{i.detail}</span>
+                </span>
+                <Link
+                  href={i.href}
+                  className="-my-1 inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-semibold whitespace-nowrap no-underline hover:bg-[color-mix(in_srgb,var(--ink)_10%,transparent)]"
+                >
+                  {i.cta}
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {items.length > VISIBLE_ITEMS && (
+            <button
+              type="button"
+              aria-expanded={showAll}
+              onClick={() => setShowAll((v) => !v)}
+              className="mt-2 inline-flex min-h-8 items-center rounded-md px-2 text-xs font-semibold text-fairway hover:bg-[color-mix(in_srgb,var(--ink)_10%,transparent)]"
+            >
+              {showAll ? "Show fewer" : `Show ${items.length - VISIBLE_ITEMS} more`}
+            </button>
+          )}
+        </>
       )}
 
       <div className="mt-3 grid grid-cols-2 gap-2 border-t border-glass-line pt-3">
-        <Link href="/register" className="btn small gold">
+        <Link href="/register" className="quick primary">
           <ClipboardList aria-hidden="true" /> Register
         </Link>
-        <Link href="/import" className="btn small ghost">
+        <Link href="/import" className="quick">
           <Download aria-hidden="true" /> Import
         </Link>
-        <Link href="/players" className="btn small ghost">
+        <Link href="/players" className="quick">
           <Users aria-hidden="true" /> Players
         </Link>
-        <Link href="/print" className="btn small ghost">
+        <Link href="/print" className="quick">
           <Printer aria-hidden="true" /> Print
         </Link>
       </div>
