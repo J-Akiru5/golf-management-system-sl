@@ -9,3 +9,6 @@ next-env.d.ts
 
 # Local scratch scripts
 .tmp/
+
+# UI check screenshots
+.tmp/ui-shots/

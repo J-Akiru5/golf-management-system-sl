@@ -168,7 +168,7 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
           ref={panelRef}
           role="dialog"
           aria-label="Alerts"
-          className="fixed inset-x-0 top-[84px] bottom-0 z-50 overflow-y-auto bg-surface p-4 shadow-card lg:absolute lg:inset-auto lg:top-14 lg:right-0 lg:max-h-[70vh] lg:w-[26rem] lg:rounded-[14px] lg:border lg:border-line lg:p-3"
+          className="on-surface fixed inset-x-0 top-[84px] bottom-0 z-50 overflow-y-auto bg-surface p-4 shadow-card lg:absolute lg:inset-auto lg:top-14 lg:right-0 lg:max-h-[70vh] lg:w-[26rem] lg:rounded-[14px] lg:border lg:border-line lg:p-3"
         >
           <div className="flex items-center justify-between gap-2 pb-2">
             <b className="text-[15px]">Alerts</b>

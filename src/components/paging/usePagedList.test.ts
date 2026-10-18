@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { paginate } from "@/lib/data/paging";
-import { resolvePage, sortStable } from "./usePagedList";
+import { pageStateFor, sortStable } from "./usePagedList";
 
 interface Row {
   id: string;
@@ -9,21 +9,42 @@ interface Row {
 
 const row = (id: string, name: string): Row => ({ id, name });
 
-describe("resolvePage", () => {
+describe("pageStateFor", () => {
   it("keeps the reader on the page they chose while the filter is unchanged", () => {
-    expect(resolvePage({ page: 3, key: "all" }, "all")).toBe(3);
+    expect(pageStateFor({ page: 3, key: "all" }, "all").page).toBe(3);
   });
 
   it("returns to page 1 as soon as the filter changes, without an extra render", () => {
-    expect(resolvePage({ page: 3, key: "all" }, "needs_review")).toBe(1);
-    expect(resolvePage({ page: 3, key: "query=a" }, "query=ab")).toBe(1);
+    expect(pageStateFor({ page: 3, key: "all" }, "needs_review").page).toBe(1);
+    expect(pageStateFor({ page: 3, key: "query=a" }, "query=ab").page).toBe(1);
+    // The reset is recorded against the new filter, not just applied to the answer.
+    expect(pageStateFor({ page: 3, key: "all" }, "needs_review").key).toBe("needs_review");
+  });
+
+  it("returns the same object when nothing changed, so the hook cannot re-render forever", () => {
+    const state = { page: 3, key: "all" };
+    expect(pageStateFor(state, "all")).toBe(state);
+  });
+
+  it("returns to page 1 when you come back to a filter you have already used", () => {
+    // The bug the browser check on /players found. Storing the page and only *masking* it when the
+    // filter changed left the old page number in state, so clearing a search dropped the desk back
+    // on page 2 of the unfiltered list instead of page 1.
+    const onPageTwo = { page: 2, key: "all" };
+    const searched = pageStateFor(onPageTwo, "query=a");
+    expect(searched.page).toBe(1);
+
+    const cleared = pageStateFor(searched, "all");
+    expect(cleared.page).toBe(1);
+    expect(cleared.key).toBe("all");
   });
 
   it("never reads past the end after a filter shrinks the list", () => {
     // The state still says page 4, but the new key makes the safe answer page 1, and paginate()
     // clamps that to the last real page if the filtered list is shorter still.
     const filtered = [row("a", "Ana"), row("b", "Ben")];
-    const page = paginate(filtered, resolvePage({ page: 4, key: "all" }, "ready"), 50);
+    const state = pageStateFor({ page: 4, key: "all" }, "ready");
+    const page = paginate(filtered, state.page, 50);
     expect(page.page).toBe(1);
     expect(page.items.map((r) => r.id)).toEqual(["a", "b"]);
   });
