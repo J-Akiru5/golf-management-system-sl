@@ -18,6 +18,7 @@ import {
   type NewPlayerInput,
 } from "@/lib/data/adapters";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
+import { setupPayload } from "@/lib/data/setup-payload";
 import type { HandicapRecord, PlayerRecord, RegistrationEntry, Tournament } from "@/lib/data/types";
 import type { Action, DeskState } from "@/lib/store/state";
 import type { Database, Json } from "@/lib/supabase/types";
@@ -417,43 +418,18 @@ export function createSupabaseAdapters(
   let setupRevision: number | null = null;
 
   const setup: Adapters["setup"] = {
-    save: ({ tournament, tees, holes }) => {
+    save: ({ tournament, tees, holes, sections = "all" }) => {
+      // The draft lands in the session state either way, so a failed write still leaves the edit on
+      // screen; the session bar is what says whether it reached the database.
       dispatch({ type: "saveTournament", tournament });
-      const teeNameById = new Map(tees.map((tee) => [tee.id, tee.name]));
-      const categoryNameById = new Map(
-        tournament.categories.map((category) => [category.id, category.name]),
-      );
+      const payload = setupPayload(tournament, tees, holes, sections);
       enqueue(async () => {
         const { data, error } = await client.rpc("save_event_setup", {
           p_tournament: tournament.id,
           p_expected_revision: setupRevision,
-          p_course: { holes: tournament.config.holes },
-          p_holes: holes.map((hole) => ({
-            number: hole.number,
-            par: hole.par ?? 4,
-            strokeIndex: hole.strokeIndex ?? hole.number,
-          })),
-          p_tees: tees.map((tee) => ({
-            name: tee.name,
-            courseRating: tee.courseRating,
-            slope: tee.slope,
-            par: tee.par,
-          })),
-          p_categories: tournament.categories.map((category) => ({
-            id: category.id,
-            name: category.name,
-            gender: category.gender,
-            minAge: category.minAge,
-            maxAge: category.maxAge,
-            teeName: teeNameById.get(category.teeId) ?? "",
-          })),
-          p_flights: tournament.flights.map((flight) => ({
-            id: flight.id,
-            categoryName: categoryNameById.get(flight.categoryId) ?? "",
-            name: flight.name,
-            min: flight.min,
-            max: flight.max,
-          })),
+          ...payload,
+          // The registration document is JSON in the database; the domain type has the same shape.
+          p_registration: payload.p_registration as Json | null,
         });
         if (error) throw new Error(`Could not save the event setup: ${error.message}`);
         const result = data as unknown as { revision?: number } | null;

@@ -35,8 +35,9 @@ pnpm build
 
 With no `NEXT_PUBLIC_SUPABASE_URL`, the app runs on deterministic in-memory demo data and refresh
 resets changes. To connect Supabase, copy `.env.example` to `.env.local` and set
-`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. The app uses email/password sign-in;
-it does not use a service-role key.
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Set `NEXT_PUBLIC_SITE_URL` to the
+deployed domain so player-facing share links (the public entry link) point there rather than at
+localhost. The app uses email/password sign-in; it does not use a service-role key.
 
 **The shell is not wired to Supabase yet.** With Supabase configured, the sign-in guard and the
 login page are active, but the desk screens still read and write local demo data. The Supabase data
