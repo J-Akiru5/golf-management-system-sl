@@ -110,13 +110,13 @@ export function makeDemoTournaments(): Tournament[] {
     categories: DEMO_CATEGORIES,
     flights: DEMO_FLIGHTS,
     registration: {
-      responseEmail: "jeffmartinez474@gmail.com",
+      responseEmail: "entries@example.com",
       sponsorQuestion: "Are you a sponsor?",
       payment: {
         method: "Bank transfer",
-        bank: "PNB",
-        accountName: "ILOILO GOLF & COUNTRY CLUB, INC.",
-        accountNumber: "312070001293",
+        bank: "Sample Bank",
+        accountName: "Demo Golf Club",
+        accountNumber: "0000 0000 0000",
         note: "Payment is recorded by hand at the desk. This demo does not take, check or confirm payments.",
       },
       teeTimes: [

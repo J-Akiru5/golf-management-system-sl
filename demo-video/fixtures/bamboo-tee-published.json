@@ -1,0 +1,319 @@
+{
+  "tournamentId": "bamboo-tee-2026",
+  "at": "2026-11-01T09:00:00+08:00",
+  "signature": "1:p28,p31,p11,p25|2:p22,p17,p15,p12|3:p88,p4,p81,p37|4:p8,p10,p30|5:p14,p40,p9|6:p27,p23,p36|7:p39,p32,p24|8:p16,p87,p1|9:p13,p3,p18,p20|10:p38,p29,p6,p33|11:p19,p7,p26,p34|12:p21,p2,p35,p5|13:p41,p43,p44,p52|14:p51,p56,p54,p55|15:p42,p59,p82,p60|16:p48,p46,p90,p57|17:p47,p53,p50|18:p49,p45,p58|19:p61,p68,p65|20:p64,p67,p62|21:p63,p84,p66|22:p70,p83,p79|23:p78,p74|24:p69,p80,p73,p71|25:p72,p77,p76,p75",
+  "groups": [
+    {
+      "number": 1,
+      "startHole": 1,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular A",
+      "players": [
+        "Ignacio Tan",
+        "Antonio Bautista",
+        "Victor Castillo",
+        "Ramon Alcantara"
+      ]
+    },
+    {
+      "number": 2,
+      "startHole": 2,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular A",
+      "players": [
+        "Sergio Navarro",
+        "Henry Ledesma",
+        "Jaime Ledesma",
+        "Victor Hernandez"
+      ]
+    },
+    {
+      "number": 3,
+      "startHole": 3,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular A",
+      "players": [
+        "Juan Dela Cruz",
+        "Victor Quijano",
+        "Felipe Marquez",
+        "Henry Dizon"
+      ]
+    },
+    {
+      "number": 4,
+      "startHole": 4,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular A",
+      "players": [
+        "Antonio Espinosa",
+        "Henry Bautista",
+        "Oscar Garcia"
+      ]
+    },
+    {
+      "number": 5,
+      "startHole": 5,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular A",
+      "players": [
+        "Eduardo Uy",
+        "Noel Alcantara",
+        "Sergio Dizon"
+      ]
+    },
+    {
+      "number": 6,
+      "startHole": 6,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular B",
+      "players": [
+        "Kenneth Ledesma",
+        "Rodrigo Ocampo",
+        "Benjamin Villanueva"
+      ]
+    },
+    {
+      "number": 7,
+      "startHole": 7,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular B",
+      "players": [
+        "Ignacio Padilla",
+        "Oscar Ramos",
+        "Felix Hernandez"
+      ]
+    },
+    {
+      "number": 8,
+      "startHole": 8,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular B",
+      "players": [
+        "Antonio Quijano",
+        "Juan Dela Cruz",
+        "Antonio Alcantara"
+      ]
+    },
+    {
+      "number": 9,
+      "startHole": 9,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular C",
+      "players": [
+        "Ignacio Castillo",
+        "Carlos Castillo",
+        "Kenneth Castillo",
+        "Noel Castillo"
+      ]
+    },
+    {
+      "number": 10,
+      "startHole": 10,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular C",
+      "players": [
+        "Benjamin Ledesma",
+        "Ramon Ramos",
+        "Domingo Bautista",
+        "Ignacio Salazar"
+      ]
+    },
+    {
+      "number": 11,
+      "startHole": 11,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular C",
+      "players": [
+        "Antonio Yulo",
+        "Eduardo Ocampo",
+        "Oscar Uy",
+        "Rodrigo Hernandez"
+      ]
+    },
+    {
+      "number": 12,
+      "startHole": 12,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Regular C",
+      "players": [
+        "Antonio Navarro",
+        "Benjamin Bautista",
+        "Henry Ramos",
+        "Manuel Uy"
+      ]
+    },
+    {
+      "number": 13,
+      "startHole": 13,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Senior A",
+      "players": [
+        "Noel Ledesma",
+        "Kenneth Villanueva",
+        "Noel Garcia",
+        "Domingo Ocampo"
+      ]
+    },
+    {
+      "number": 14,
+      "startHole": 14,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Senior A",
+      "players": [
+        "Carlos Hernandez",
+        "Manuel Navarro",
+        "Victor Espinosa",
+        "Tomas Tan"
+      ]
+    },
+    {
+      "number": 15,
+      "startHole": 15,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Senior A",
+      "players": [
+        "Noel Tan",
+        "Eduardo Ledesma",
+        "Rogelio Sarmiento",
+        "Kenneth Alcantara"
+      ]
+    },
+    {
+      "number": 16,
+      "startHole": 16,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Senior B",
+      "players": [
+        "Noel Hernandez",
+        "Oscar Fernandez",
+        "Gregorio Padilla",
+        "Victor Ledesma"
+      ]
+    },
+    {
+      "number": 17,
+      "startHole": 17,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Senior B",
+      "players": [
+        "Carlos Villanueva",
+        "Eduardo Ramos",
+        "Rodrigo Villanueva"
+      ]
+    },
+    {
+      "number": 18,
+      "startHole": 18,
+      "wave": "A",
+      "time": "06:30",
+      "flight": "Senior B",
+      "players": [
+        "Gregorio Tan",
+        "Oscar Alcantara",
+        "Noel Ramos"
+      ]
+    },
+    {
+      "number": 19,
+      "startHole": 1,
+      "wave": "B",
+      "time": "11:30",
+      "flight": "Super Senior",
+      "players": [
+        "Kenneth Uy",
+        "Ignacio Ramos",
+        "Domingo Espinosa"
+      ]
+    },
+    {
+      "number": 20,
+      "startHole": 2,
+      "wave": "B",
+      "time": "11:30",
+      "flight": "Super Senior",
+      "players": [
+        "Jaime Dizon",
+        "Carlos Garcia",
+        "Gregorio Uy"
+      ]
+    },
+    {
+      "number": 21,
+      "startHole": 3,
+      "wave": "B",
+      "time": "11:30",
+      "flight": "Super Senior",
+      "players": [
+        "Felix Yulo",
+        "Alfredo Zamora",
+        "Rodrigo Navarro"
+      ]
+    },
+    {
+      "number": 22,
+      "startHole": 4,
+      "wave": "B",
+      "time": "11:30",
+      "flight": "Ladies A",
+      "players": [
+        "Elena Yulo",
+        "Marissa Cordero",
+        "Adela Bautista"
+      ]
+    },
+    {
+      "number": 23,
+      "startHole": 5,
+      "wave": "B",
+      "time": "11:30",
+      "flight": "Ladies A",
+      "players": [
+        "Dolores Tan",
+        "Helen Ocampo"
+      ]
+    },
+    {
+      "number": 24,
+      "startHole": 6,
+      "wave": "B",
+      "time": "11:30",
+      "flight": "Ladies B",
+      "players": [
+        "Dolores Fernandez",
+        "Dolores Ocampo",
+        "Fe Navarro",
+        "Fe Dizon"
+      ]
+    },
+    {
+      "number": 25,
+      "startHole": 7,
+      "wave": "B",
+      "time": "11:30",
+      "flight": "Ladies B",
+      "players": [
+        "Dolores Villanueva",
+        "Helen Espinosa",
+        "Bernadette Salazar",
+        "Katrina Uy"
+      ]
+    }
+  ]
+}

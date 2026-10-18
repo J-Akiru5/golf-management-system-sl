@@ -12,3 +12,9 @@ next-env.d.ts
 
 # UI check screenshots
 .tmp/ui-shots/
+demo-video/audio/*.wav
+demo-video/audio/durations.json
+demo-video/capture/raw/
+demo-video/capture/timing.json
+demo-video/build/work/
+demo-video/out/

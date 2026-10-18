@@ -8,9 +8,13 @@ import {
   type RegistrationFormConfig,
   submitRegistration,
 } from "@/lib/data/supabase/public-registration";
+import { DEMO_PUBLIC_FORM } from "@/lib/demo/avp-public-form";
 import { useI18n } from "@/lib/i18n/context";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+// AVP THROWAWAY BRANCH ONLY: the demo form appears only when the recording flag is set.
+const AVP_DEMO = process.env.NEXT_PUBLIC_AVP_DEMO === "1";
 
 /**
  * Public entry form. No login: the reads and the write go through SECURITY DEFINER functions, and
@@ -25,6 +29,8 @@ export default function EnterTournament() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
+      // AVP THROWAWAY BRANCH ONLY: render the real form with sample content when recording.
+      if (AVP_DEMO) setConfig(DEMO_PUBLIC_FORM);
       setState("demo");
       return;
     }
@@ -70,7 +76,14 @@ export default function EnterTournament() {
 
       {state === "loading" && <p role="status">{t("enter.loading")}</p>}
 
-      {state === "demo" && (
+      {state === "demo" && AVP_DEMO && config && (
+        <RegistrationForm
+          config={config}
+          onSubmit={async () => "This is a demo. No entry was sent or saved."}
+        />
+      )}
+
+      {state === "demo" && !AVP_DEMO && (
         <div className="notice" role="status">
           <b>{t("enter.demoTitle")}</b> {t("enter.demoBody")}
         </div>
