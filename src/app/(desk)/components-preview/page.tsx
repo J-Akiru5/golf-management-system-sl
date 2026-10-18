@@ -32,6 +32,10 @@ import type {
   RegistrationAudit,
 } from "@/components/desk/types";
 import { CheatSheet, FirstRunWelcome, HelpButton, HelpSheet } from "@/components/help";
+import { RegistrationForm } from "@/components/public/RegistrationForm";
+import type { RegistrationFormConfig } from "@/lib/data/supabase/public-registration";
+import { I18nProvider } from "@/lib/i18n/context";
+import { LOCALE_LABEL, LOCALES, type Locale } from "@/lib/i18n/locales";
 
 const NOW = new Date(2026, 9, 18, 16, 0); // 18 Oct 2026, 4:00 PM
 const at = {
@@ -518,6 +522,97 @@ export default function ComponentsPreviewPage() {
           <CheatSheet />
         </State>
       </Panel>
+
+      <Panel title="Public entry form">
+        <State label="The player's form, in each language">
+          <p className="hint">
+            The real form, which is otherwise only reachable against a connected project. The
+            language picker is the preview's; in the app the form follows the page's language. What
+            the club typed (instructions, extra questions, tee labels, payment) is theirs and does
+            not translate.
+          </p>
+          <EntryFormDemo />
+        </State>
+      </Panel>
+    </div>
+  );
+}
+
+/** Stands in for a tournament's registration settings, so the public form can be seen. */
+const FAKE_FORM: RegistrationFormConfig = {
+  tournamentId: "preview",
+  name: "Bamboo Tee",
+  dates: ["2026-11-12", "2026-11-13"],
+  cutOffDate: "2026-11-08",
+  isOpen: true,
+  shirtSizes: ["S", "M", "L", "XL"],
+  teeTimes: [
+    {
+      day: 1,
+      label: "",
+      date: "2026-11-12",
+      options: ["6:00 AM", "7:00 AM", "12:00 PM"],
+      needsConfirmation: true,
+    },
+  ],
+  fields: [
+    {
+      id: "caddie",
+      label: "Caddie name",
+      type: "text",
+      options: [],
+      required: false,
+      appliesTo: "both",
+      help: null,
+    },
+    {
+      id: "arrival",
+      label: "Arriving the night before?",
+      type: "select",
+      options: ["Yes", "No"],
+      required: true,
+      appliesTo: "guest",
+      help: "Guests only.",
+    },
+  ],
+  sponsorQuestion: "Joining the sponsor's game?",
+  instructions: "Entries close a week before the first day.",
+  payment: {
+    method: "GCash",
+    bank: "BDO",
+    accountName: "IGCC Tournament Committee",
+    accountNumber: "1234 5678 9012",
+    note: "Send the screenshot to the club.",
+  },
+};
+
+/** The public entry form, in whichever language the picker says. */
+function EntryFormDemo() {
+  const [locale, setLocale] = useState<Locale>("en");
+  return (
+    <div className="grid gap-3">
+      <label className="field !w-auto">
+        <span>Form language</span>
+        <select
+          value={locale}
+          onChange={(event) => setLocale(event.target.value as Locale)}
+          aria-label="Form language"
+        >
+          {LOCALES.map((code) => (
+            <option key={code} value={code}>
+              {LOCALE_LABEL[code]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="card">
+        <I18nProvider locale={locale}>
+          <RegistrationForm
+            config={FAKE_FORM}
+            onSubmit={async () => "Entry received. The organizer checks it before it counts."}
+          />
+        </I18nProvider>
+      </div>
     </div>
   );
 }
