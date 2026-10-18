@@ -21,6 +21,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
 import { roleLabel } from "@/components/desk";
+import { AlertsBell } from "@/components/notifications/AlertsBell";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TournamentSelect } from "@/components/TournamentSelect";
@@ -210,23 +211,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           )}
 
-          <Link
-            href="/draw"
-            aria-label={
-              blocking > 0
-                ? `${blocking} blocking issue${blocking === 1 ? "" : "s"} in the draw`
-                : "No blocking issues"
-            }
-            className={cn(
-              "relative grid size-12 shrink-0 place-items-center rounded-full text-ink",
-              overlay ? "glass" : "border border-[rgba(238,240,234,0.18)]",
-            )}
-          >
-            <Bell className="size-5" aria-hidden="true" />
-            {blocking > 0 && (
-              <i className="absolute top-[11px] right-3 size-2 rounded-full bg-warning shadow-[0_0_0_2px_#1a2a21]" />
-            )}
-          </Link>
+          <AlertsBell overlay={overlay} />
 
           <span
             className={cn(

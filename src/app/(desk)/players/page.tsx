@@ -7,6 +7,8 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
+import { Pager } from "@/components/paging/Pager";
+import { sortStable, usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tip } from "@/components/ui/tooltip";
@@ -99,6 +101,14 @@ function Players() {
       );
     });
   }, [players, regById, entryByPlayer, filter, query, gender, home, category]);
+
+  // Filter first, then page. The order is stable so editing a row cannot move it to another page,
+  // and any change to the search or filter sends the desk back to page 1.
+  const ordered = useMemo(() => sortStable(rows, (a, b) => a.name.localeCompare(b.name)), [rows]);
+  const { page, setPage } = usePagedList(
+    ordered,
+    [query, filter, gender, home, category].join("|"),
+  );
 
   const counts = useMemo(() => {
     const c: Record<Filter, number> = {
@@ -273,7 +283,7 @@ function Players() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => {
+            {page.items.map((p) => {
               const r = regById.get(p.id);
               const entered = entryByPlayer.has(p.id);
               const latest = adapters.players.latestRecord(p.id);
@@ -371,7 +381,7 @@ function Players() {
                 </tr>
               );
             })}
-            {rows.length === 0 && (
+            {page.total === 0 && (
               <tr>
                 <td colSpan={9} className="muted">
                   No players match. Clear the search, or choose All.
@@ -384,7 +394,7 @@ function Players() {
 
       {/* Phones: one card per player. */}
       <ul className="grid gap-2.5 md:hidden" aria-label="Players">
-        {rows.map((p) => {
+        {page.items.map((p) => {
           const r = regById.get(p.id);
           const entered = entryByPlayer.has(p.id);
           return (
@@ -446,10 +456,12 @@ function Players() {
             </li>
           );
         })}
-        {rows.length === 0 && (
+        {page.total === 0 && (
           <li className="card muted">No players match. Clear the search or choose All.</li>
         )}
       </ul>
+
+      <Pager page={page} onPage={setPage} />
 
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent

@@ -13,6 +13,8 @@ import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
+import { Pager } from "@/components/paging/Pager";
+import { usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
 import { fmtIndex } from "@/lib/format";
@@ -23,6 +25,7 @@ import {
   type MergeRow,
   type ParsedFile,
   resolveImport,
+  reviewBuckets,
 } from "@/lib/ngap";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -33,6 +36,9 @@ const DECISION_LABEL: Record<MergeDecision["action"], string> = {
   separate: "Keep separate",
   defer: "Decide later",
 };
+
+/** The three buckets a file's rows fall into, in the order the desk works through them. */
+type ReviewTab = "decide" | "decided" | "deferred";
 
 export default function ImportPage() {
   const { tournament, deferred, state, adapters, dispatch, status } = useDesk();
@@ -86,6 +92,37 @@ export default function ImportPage() {
         : null,
     [value, decisions],
   );
+
+  // The buckets are read back out of the resolution, so the tab counts and the Apply button are
+  // answering from the same rule about what still needs a decision.
+  const buckets = useMemo(
+    () => (value && resolution ? reviewBuckets(value, resolution) : null),
+    [value, resolution],
+  );
+  const [tab, setTab] = useState<ReviewTab>("decide");
+  const tabRows: MergeRow[] = !buckets
+    ? []
+    : tab === "decide"
+      ? buckets.needsDecision
+      : tab === "decided"
+        ? buckets.decided
+        : buckets.deferred;
+  // Filter (the tab) first, then page. Switching tab returns the desk to page 1, and so does a new
+  // file or a changed mapping, because those rebuild the queue the pages are counting.
+  const queueKey = [
+    tab,
+    fileName,
+    mapping.name ?? "",
+    mapping.index ?? "",
+    mapping.ngapId ?? "",
+    mapping.effectiveDate ?? "",
+    mapping.dob ?? "",
+    mapping.contact ?? "",
+    dateFormat,
+    defaultDate,
+    value?.rows.length ?? 0,
+  ].join("|");
+  const { page, setPage } = usePagedList(tabRows, queueKey);
 
   const select = (field: keyof ColumnMapping, label: string, optional: boolean) => (
     <label className="field">
@@ -320,6 +357,56 @@ export default function ImportPage() {
             </Notice>
           )}
 
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="seg" role="group" aria-label="Review tabs">
+              {(
+                [
+                  {
+                    id: "decide",
+                    label: "Needs decision",
+                    count: buckets?.needsDecision.length ?? 0,
+                  },
+                  { id: "decided", label: "Decided", count: buckets?.decided.length ?? 0 },
+                  { id: "deferred", label: "Deferred", count: buckets?.deferred.length ?? 0 },
+                ] as const
+              ).map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={tab === t.id}
+                  onClick={() => setTab(t.id)}
+                >
+                  {t.label} ({t.count})
+                </button>
+              ))}
+            </div>
+            {buckets && (
+              <span className="hint" role="status">
+                {buckets.progress.settled} of {buckets.progress.total} decided
+              </span>
+            )}
+          </div>
+
+          {buckets && buckets.progress.total > 0 && (
+            <div
+              className="h-1.5 w-full overflow-hidden rounded-full"
+              style={{ background: "var(--line)" }}
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={buckets.progress.total}
+              aria-valuenow={buckets.progress.settled}
+              aria-label="Rows decided"
+            >
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.round((buckets.progress.settled / buckets.progress.total) * 100)}%`,
+                  background: "var(--gold)",
+                }}
+              />
+            </div>
+          )}
+
           <div className="table-wrap !shadow-none">
             <table>
               <thead>
@@ -333,7 +420,7 @@ export default function ImportPage() {
                 </tr>
               </thead>
               <tbody>
-                {value.rows.map((row) => (
+                {page.items.map((row) => (
                   <RowDecision
                     key={row.row}
                     row={row}
@@ -344,7 +431,25 @@ export default function ImportPage() {
                 ))}
               </tbody>
             </table>
+            {page.total === 0 && (
+              <p className="muted p-4 text-[14px]">
+                {tab === "decide"
+                  ? "Nothing needs a decision. Every row in this file is settled."
+                  : tab === "decided"
+                    ? "No rows are settled yet. Work through Needs decision."
+                    : "No rows deferred from this file."}
+              </p>
+            )}
           </div>
+
+          <Pager page={page} onPage={setPage} />
+
+          {tab === "decided" && buckets && buckets.decided.length > 1 && (
+            <p className="hint">
+              These rows already have an answer, so they import as they stand. Change one here and
+              it moves to its new tab straight away.
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
             <Button

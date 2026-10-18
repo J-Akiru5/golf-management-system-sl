@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Implementation report for the desk's long lists and the alerts bell."
+    />
+    <title>Desk lists and the alerts bell - TeeLine Golf</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #171c19;
+        --surface: #202722;
+        --surface-raised: #28332c;
+        --line: #3a473e;
+        --ivory: #eef0ea;
+        --muted: #b5beb5;
+        --gold: #e0bc65;
+        --forest: #183f30;
+        --good: #a5d5b4;
+        --warn: #f1cf7d;
+        --bad: #ffb1a5;
+        --measure: 760px;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: var(--bg);
+        color: var(--ivory);
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; min-width: 320px; line-height: 1.65; }
+      a { color: var(--gold); text-underline-offset: 3px; }
+      a:hover { color: #f1d88e; }
+      code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+      code { color: #f1d88e; overflow-wrap: anywhere; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { font-size: clamp(2.1rem, 5vw, 4rem); line-height: 1.04; letter-spacing: -0.04em; }
+      h2 { font-size: clamp(1.45rem, 3vw, 2rem); line-height: 1.2; margin-bottom: .8rem; }
+      h3 { font-size: 1.08rem; line-height: 1.35; margin-bottom: .5rem; }
+      p { max-width: var(--measure); color: var(--muted); }
+      ul, ol { padding-left: 1.25rem; }
+      li + li { margin-top: .35rem; }
+
+      .hero {
+        width: 100%;
+        padding: clamp(2rem, 6vw, 5rem) clamp(1.25rem, 6vw, 5.5rem) 2rem;
+        background: linear-gradient(125deg, #183f30 0%, #202a23 62%, #171c19 100%);
+        border-bottom: 1px solid var(--line);
+      }
+      .hero-inner, .nav-inner, .content { width: min(1200px, 100%); margin: 0 auto; }
+      .eyebrow { color: var(--gold); font-size: .76rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+      .hero p { font-size: 1.08rem; }
+      .hero .subline { color: #d4ddd4; font-size: .92rem; }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+        gap: .75rem;
+        margin-top: 1.8rem;
+        max-width: 950px;
+      }
+      .stat {
+        padding: .85rem 1rem;
+        border: 1px solid rgba(238, 240, 234, .17);
+        border-radius: 12px;
+        background: rgba(13, 24, 18, .36);
+      }
+      .stat strong { display: block; color: var(--ivory); font-size: 1.25rem; }
+      .stat span { display: block; color: #c2cec3; font-size: .8rem; }
+
+      .nav {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        border-bottom: 1px solid var(--line);
+        background: rgba(23, 28, 25, .96);
+        backdrop-filter: blur(12px);
+      }
+      .nav-inner { display: flex; gap: .4rem; overflow-x: auto; padding: .55rem clamp(1rem, 4vw, 2rem); }
+      .nav a {
+        flex: 0 0 auto;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        padding: .35rem .7rem;
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: .78rem;
+        text-decoration: none;
+      }
+      .nav a:hover { background: var(--surface-raised); color: var(--ivory); }
+
+      .content { padding: 1.25rem clamp(1.25rem, 5vw, 4rem) 4rem; }
+      section { padding: clamp(1.5rem, 4vw, 2.6rem) 0; border-bottom: 1px solid var(--line); scroll-margin-top: 4.5rem; }
+      section:last-child { border-bottom: 0; }
+      .section-head { display: flex; align-items: baseline; gap: .8rem; margin-bottom: 1rem; }
+      .num { color: var(--gold); font: 700 .8rem ui-monospace, monospace; }
+      .callout {
+        margin: 1rem 0;
+        padding: 1rem 1.1rem;
+        border-left: 3px solid var(--gold);
+        border-radius: 0 10px 10px 0;
+        background: var(--surface);
+        color: var(--muted);
+      }
+      .callout strong { color: var(--ivory); }
+      .success { border-left-color: var(--good); }
+      .warning { border-left-color: var(--warn); }
+      .risk { border-left-color: var(--bad); }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: .7rem;
+        margin: 1.4rem 0;
+      }
+      .flow-step {
+        position: relative;
+        min-height: 120px;
+        padding: .85rem;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface);
+      }
+      .flow-step:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        top: 50%;
+        right: -.7rem;
+        z-index: 1;
+        width: 1.35rem;
+        height: 1.35rem;
+        display: grid;
+        place-items: center;
+        transform: translate(50%, -50%);
+        border-radius: 50%;
+        background: var(--gold);
+        color: #20221d;
+        font-weight: 900;
+      }
+      .flow-step strong { display: block; margin-bottom: .35rem; color: var(--ivory); }
+      .flow-step span { color: var(--muted); font-size: .82rem; }
+
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+      .card {
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+      .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        margin: .15rem .2rem .15rem 0;
+        padding: .15rem .55rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: #d5ddd5;
+        font-size: .75rem;
+        white-space: nowrap;
+      }
+      .tag.gold { border-color: #8b7338; color: var(--gold); }
+      .tag.good { border-color: #477557; color: var(--good); }
+      .tag.warn { border-color: #8b7338; color: var(--warn); }
+
+      .table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+      table { width: 100%; min-width: 680px; border-collapse: collapse; background: var(--surface); }
+      th, td { padding: .7rem .8rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th { color: var(--gold); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
+      td { color: var(--muted); font-size: .88rem; }
+      tr:last-child td { border-bottom: 0; }
+      td:first-child { color: var(--ivory); font-weight: 650; }
+
+      pre {
+        max-width: 100%;
+        overflow-x: auto;
+        padding: 1rem;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #111613;
+        color: #e4e9df;
+        font-size: .84rem;
+        line-height: 1.6;
+      }
+      .timeline { display: grid; gap: .75rem; counter-reset: next; }
+      .timeline li { list-style: none; position: relative; padding: .1rem 0 .2rem 2.5rem; color: var(--muted); }
+      .timeline li::before {
+        counter-increment: next;
+        content: counter(next);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1.7rem;
+        height: 1.7rem;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--forest);
+        color: var(--gold);
+        font: 700 .8rem ui-monospace, monospace;
+      }
+      .timeline strong { color: var(--ivory); }
+      .footer { padding: 2rem clamp(1.25rem, 5vw, 4rem); border-top: 1px solid var(--line); color: #8e9a90; font-size: .8rem; }
+      .footer-inner { width: min(1200px, 100%); margin: auto; }
+
+      @media (max-width: 760px) {
+        .flow { grid-template-columns: 1fr; }
+        .flow-step { min-height: 0; }
+        .flow-step:not(:last-child)::after { content: "↓"; top: auto; right: 50%; bottom: -.72rem; transform: translate(50%, 50%); }
+        .grid-2 { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 420px) {
+        .hero { padding-top: 2rem; }
+        .nav-inner { padding-left: .7rem; padding-right: .7rem; }
+        .content { padding-left: 1rem; padding-right: 1rem; }
+        .stat { padding: .7rem .8rem; }
+      }
+      @media print {
+        :root { color-scheme: light; --bg: #fff; --surface: #f5f6f2; --surface-raised: #edf0eb; --ivory: #17211b; --muted: #39463d; --line: #cbd2cb; --gold: #72560b; }
+        body { background: white; color: #17211b; }
+        .nav { position: static; }
+        .hero { background: #183f30; print-color-adjust: exact; }
+        .card, .flow-step, table, pre { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <p class="eyebrow">Syntaxure Labs · TeeLine Golf · IGCC Tournament Desk · 18 Oct 2026</p>
+        <h1>Desk lists and the alerts bell</h1>
+        <p class="subline">Branch <code>feat/desk-lists-and-bell</code> · PR #23 into <code>develop</code> · not merged</p>
+        <p class="subline">Paging for the long lists, the shell's alerts bell, and the live sync check behind it.</p>
+        <div class="stats" aria-label="Implementation summary">
+          <div class="stat"><strong>382 → 382</strong><span>tests on the branch, 31 files, all passing</span></div>
+          <div class="stat"><strong>0</strong><span>schema changes and 0 new migrations</span></div>
+          <div class="stat"><strong>1</strong><span>live Supabase check, full alert cycle</span></div>
+          <div class="stat"><strong>green</strong><span>typecheck, lint, tests and production build</span></div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="nav" aria-label="Report sections">
+      <div class="nav-inner">
+        <a href="#summary">Summary</a>
+        <a href="#shipped">What shipped</a>
+        <a href="#bell">The bell</a>
+        <a href="#paging">Paging</a>
+        <a href="#files">Files</a>
+        <a href="#branch">Branch</a>
+        <a href="#verify">Verification</a>
+        <a href="#limits">Not tested</a>
+        <a href="#next">Next</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <section id="summary">
+        <div class="section-head"><span class="num">01</span><h2>Summary</h2></div>
+        <p>
+          The organizer's long lists now page in the browser and the shell has an alerts bell. The
+          player directory, the registration desk and each of the import review tabs show 50 rows at a
+          time; changing the search, filter or tab returns to page one in the same render; a list that
+          fits one page shows no pager; and print, the draw groups and the desk's player search are
+          deliberately left unpaged. The bell is a pointer, not a second source of truth: the draw
+          rules stay in <code>validateDraw</code>, stored notifications are merged and de-duplicated
+          against the live issues, the badge counts unresolved blocking and warning items whatever
+          their read state, checks run off a debounced data signature rather than polling, and a
+          failed check shows an error instead of an all-clear. Nothing in the database changed: the
+          notifications schema was already live and applied, and this work only consumes it.
+        </p>
+        <div class="callout success"><strong>State:</strong> the work is on PR #23, committed and pushed, but not merged and not deployed. The live sync path was exercised over the API; the bell has not been seen in a browser yet.</div>
+      </section>
+
+      <section id="shipped">
+        <div class="section-head"><span class="num">02</span><h2>What shipped</h2></div>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Paged desk lists</h3>
+            <p>The pure maths is <code>paginate()</code> in <code>src/lib/data/paging.ts</code>; the React glue is <code>usePagedList()</code> and <code>Pager.tsx</code>. Pages are 50 rows, sliced in the browser with the queries unchanged, because the repositories already fetch whole tables and the print path needs the full list.</p>
+          </article>
+          <article class="card">
+            <h3>Import review tabs</h3>
+            <p>The review queue now opens on <strong>Needs decision</strong>, with <strong>Decided</strong> and <strong>Deferred</strong> beside it and a settled count above the table. The buckets are read back out of <code>resolveImport()</code>'s resolution rather than re-derived, so the tab counts and the Apply button cannot drift apart.</p>
+          </article>
+          <article class="card">
+            <h3>Alerts bell</h3>
+            <p>In the shell next to the account chip. It merges the live <code>validateDraw</code> issues with the stored notifications, groups them as Blocking / Warning / Info, links each one to where it is fixed, and offers "Dismiss notices" for info items only.</p>
+          </article>
+          <article class="card">
+            <h3>Print stays whole</h3>
+            <p>The pager carries <code>no-print</code>, and the print path was never paged. <code>src/lib/print/start-sheet.test.ts</code> now asserts a 126-player field reaches the start sheet in play order, which paging could never preserve.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="bell">
+        <div class="section-head"><span class="num">03</span><h2>The bell, and why it does not lie</h2></div>
+        <p>
+          The bell exists because the draw validator cannot see everything the desk needs to know:
+          entries still needing review, a cut-off approaching, and the draw's own group problems.
+          The design keeps one rule about each kind of problem:
+        </p>
+        <ul>
+          <li><strong>Draw rules stay in the app.</strong> <code>validateDraw</code> is still the only place those rules live, so the bell and the Draw screen's Issues panel cannot disagree. Nothing about the draw was copied into SQL.</li>
+          <li><strong>Two sources, merged and de-duplicated.</strong> Live issues win over a stored row for the same problem, because the live issue clears itself. One problem shows once, so the badge cannot double-count.</li>
+          <li><strong>Read state only quiets info.</strong> The badge counts unresolved blocking and warning items whatever their read state; marking a notice read can never hide something that stops publishing. "Dismiss notices" says how many info notices it will quiet, and says plainly that blocking and warning items stay.</li>
+          <li><strong>No polling.</strong> A debounced signature of the data that can create or clear an alert triggers one check after a burst of changes. There is no timer.</li>
+          <li><strong>No false all-clear.</strong> The panel only says "All clear" after a check that succeeded and found nothing. While a check runs, or after one fails, it says so and keeps the last good list underneath the error.</li>
+        </ul>
+        <div class="callout"><strong>Demo mode:</strong> with no Supabase environment the bell still works from the live issues alone, which is what the desk sees before the project is connected.</div>
+      </section>
+
+      <section id="paging">
+        <div class="section-head"><span class="num">04</span><h2>Paging rules</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rule</th><th>How it holds</th></tr></thead>
+            <tbody>
+              <tr><td>Filter first, then page</td><td>Screens pass the already-filtered list; the paging helper only slices it.</td></tr>
+              <tr><td>Reset on a filter change</td><td>The page number and the filter key live in the same state, so a changed search, filter, tab, file or mapping reads as page one during the same render. No effect, no flash of the wrong rows.</td></tr>
+              <tr><td>Never stranded past the end</td><td><code>paginate()</code> clamps the page into range, so a filter that shrinks the list cannot leave the reader on a page that no longer exists.</td></tr>
+              <tr><td>A stable order</td><td>Ties break on the record id, so editing a row cannot move it to another page.</td></tr>
+              <tr><td>Nothing to show, nothing shown</td><td>The pager renders nothing for a one-page list, and the empty state is a sentence, not a pager.</td></tr>
+              <tr><td>Keyboard</td><td>Paging controls are buttons, tabs are buttons, and every row keeps its own links and actions; the range label is announced politely.</td></tr>
+              <tr><td>Print</td><td>Print shows the full list. The pager is hidden in print output by the existing <code>no-print</code> rule.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="files">
+        <div class="section-head"><span class="num">05</span><h2>Files touched</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Folder / file</th><th>Changes</th></tr></thead>
+            <tbody>
+              <tr><td><code>src/lib/data/paging.ts</code>, <code>paging.test.ts</code></td><td>The pure page maths and its 7 cases, merged earlier from PR #17.</td></tr>
+              <tr><td><code>src/components/paging/</code></td><td><code>Pager.tsx</code> (previous / next, range label, print-safe), <code>usePagedList.ts</code> (page state plus the filter reset) and its tests.</td></tr>
+              <tr><td><code>src/components/notifications/</code></td><td><code>alerts.ts</code> (merge, de-duplication, badge rules, grouping, the all-clear guard), <code>AlertsBell.tsx</code> (panel, focus handling, dismiss) and their tests.</td></tr>
+              <tr><td><code>src/lib/data/notifications.ts</code></td><td>Loads open notifications and the caller's read rows; calls <code>sync_notifications</code> and <code>mark_notifications_read</code>.</td></tr>
+              <tr><td><code>src/lib/supabase/types.ts</code></td><td>Types for the two notification tables and both RPCs, matching the applied migration.</td></tr>
+              <tr><td><code>src/components/AppShell.tsx</code></td><td>Renders the bell in the top bar.</td></tr>
+              <tr><td><code>src/app/(desk)/players/page.tsx</code>, <code>register/page.tsx</code>, <code>import/page.tsx</code></td><td>Paged lists; the import screen also gained the review tabs and the queue reset key.</td></tr>
+              <tr><td><code>src/lib/ngap/merge.ts</code>, <code>merge.test.ts</code>, <code>index.ts</code></td><td><code>reviewBuckets()</code>, the one rule the tabs and the Apply button share, with 5 cases.</td></tr>
+              <tr><td><code>src/lib/print/start-sheet.test.ts</code></td><td>The 126-player completeness assertion for the start sheet.</td></tr>
+              <tr><td><code>docs/PLAN.md</code>, <code>CHANGELOG.md</code>, <code>package.json</code></td><td>Gap 10, gap 11 and the W2 row brought up to date, the pagination checklist line ticked for the desk screens, and version 0.6.0 with notes.</td></tr>
+              <tr><td><code>docs/desk-lists-and-bell-2026-10-18.html</code></td><td>This report.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="branch">
+        <div class="section-head"><span class="num">06</span><h2>Branch strategy</h2></div>
+        <p>
+          The work continued on the existing branch <code>feat/desk-lists-and-bell</code>, based on
+          <code>develop</code> at <code>5db2afd</code>. The branch was already level with its remote and
+          had <code>origin/develop</code> merged in, so no further merge was needed. No new branch, no
+          push to <code>develop</code>, no migration, and nothing in the main checkout or the other
+          worktrees was touched.
+        </p>
+        <div class="callout warning">
+          <strong>Two sessions, one worktree.</strong> A second session was committing to the same
+          branch and worktree while this one was inspecting it, so files changed under the inspection
+          and commits landed between reads. That was raised with Jeff instead of guessing. He said to
+          move to another workspace, so the remaining work was finished in a fresh worktree
+          (<code>bell-finish</code>) from the shared head, then pushed to the same remote branch so PR
+          #23 stays the single PR for this purpose. The move avoided file-level collisions; no force
+          push was used and no other branch was started.
+        </div>
+        <p>
+          The commits on the branch, oldest first: paging for players and registrations, the bell and
+          the paging component, the import review tabs with paging, the print completeness test, the
+          pager's print guard with the all-clear tests, the plan updates, and finally the import queue
+          reset, the plan rows and the 0.6.0 notes.
+        </p>
+      </section>
+
+      <section id="verify">
+        <div class="section-head"><span class="num">07</span><h2>Verification</h2></div>
+        <p>Everything below was run on <code>b68a7d5</code> plus the three follow-up commits, in the fresh worktree.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Check</th><th>Command</th><th>Result</th></tr></thead>
+            <tbody>
+              <tr><td>Types</td><td><code>pnpm typecheck</code></td><td>Pass.</td></tr>
+              <tr><td>Lint and format</td><td><code>pnpm lint</code></td><td>Pass, 184 files, no fixes applied.</td></tr>
+              <tr><td>Tests</td><td><code>pnpm test</code></td><td>Pass, 31 files, 382 tests, including the 10 new cases for the all-clear guard, de-duplication and the filter reset.</td></tr>
+              <tr><td>Production build</td><td><code>pnpm build</code></td><td>Pass. All 20 routes compile and prerender.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 style="margin-top:1.4rem">The live sync check</h3>
+        <p>
+          Against the live project, signed in as the real <strong>desk</strong> account and the
+          <strong>owner</strong> account through the app's own anon key and RLS. A disposable player and
+          a registration were created for the check and removed afterwards.
+        </p>
+        <ol class="timeline">
+          <li><strong>An alert appears.</strong> A registration with status <code>needs_review</code> was created; <code>sync_notifications</code> returned 1 and the loader showed a warning, unread.</li>
+          <li><strong>Fixing the cause clears it.</strong> The status was corrected; the next sync returned 0, the open list was empty, and the stored row carried <code>resolved_at</code>.</li>
+          <li><strong>An info notice can be dismissed.</strong> The event cut-off was moved inside the seven-day window temporarily; the sync created a <code>cutoff_soon</code> info notice, and <code>mark_notifications_read</code> returned 1.</li>
+          <li><strong>Read state survives a reload.</strong> A fresh session for the same account still showed the notice as read. A second dismiss returned 0, so the call is idempotent. The owner's own read state stayed false, because read state is per user.</li>
+          <li><strong>RLS holds.</strong> The anonymous key read 0 notifications.</li>
+          <li><strong>Cleanup.</strong> The cut-off was restored and every test row was deleted; the project is back to 0 players, 0 registrations and 0 notifications from this check.</li>
+        </ol>
+        <div class="callout success"><strong>No RLS or grant change was needed.</strong> Both roles could call both functions and see the rows through the existing policies.</div>
+      </section>
+
+      <section id="limits">
+        <div class="section-head"><span class="num">08</span><h2>What was not tested</h2></div>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Browser and appearance</h3>
+            <ul>
+              <li>The bell has not been seen in a browser. The mobile sheet, the focus trap, and the light and dark themes are unverified.</li>
+              <li>There is no dev-only preview of the bell and pager states, so a reviewer cannot see every state without creating one.</li>
+              <li>Paging was not exercised against a list genuinely longer than 50 rows in the UI; the boundary is covered by the pure tests and the print test.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Real work and hardware</h3>
+            <ul>
+              <li>The live project has one event and no real field, so the check used disposable rows rather than the organizer's data.</li>
+              <li>No start sheet or scorecard was printed on the club's printer.</li>
+              <li>Production (<code>golf.syntaxure.dev</code>) still tracks <code>main</code>; nothing was deployed, and <code>develop</code> was not moved.</li>
+              <li>The organizer has not seen any of this yet; the UAT is the next milestone.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="next">
+        <div class="section-head"><span class="num">09</span><h2>What is next</h2></div>
+        <ol class="timeline">
+          <li><strong>Owner review of PR #23.</strong> One purpose, into <code>develop</code>; Jeff merges. Not auto-merged.</li>
+          <li><strong>Open it in a browser.</strong> Sign in as the desk, create a warning, then clear it; check the panel at phone and desktop widths, the focus trap, Escape, and both themes.</li>
+          <li><strong>Tag 0.6.0 when the owner wants it live.</strong> <code>package.json</code> is at 0.6.0 and the changelog notes are written; no migration ships with it. Deploy production only from a release the owner chooses.</li>
+          <li><strong>Real data, then the UAT.</strong> W3 (real course and NGAP data) comes before the organizer UAT, and the print page's hard-coded placeholder course status must be derived from loaded rows before real printing is trusted.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="footer"><div class="footer-inner">TeeLine Golf · Desk lists and alerts report · No secrets or project credentials included.</div></footer>
+  </body>
+</html>

@@ -10,7 +10,7 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 Work for the organizer's acceptance test (`feat/uat-readiness`). Not yet released; the next release is
-a minor bump (0.6.0) because testers will notice it.
+a minor bump (0.7.0) because testers will notice it.
 
 ### Changed
 - **A connected desk never shows demo data.** It starts empty and fills from the database, so the sample players and the "Bamboo Tee" event no longer appear while loading or after a failed load. The demo build is unchanged.
@@ -28,6 +28,37 @@ a minor bump (0.6.0) because testers will notice it.
 
 ### Database
 - `20261027000000_course_data_confirmed.sql`: adds `tournaments.course_data_confirmed` (additive, default false). **Not applied.** The desk tolerates a database without it: everything else saves, and ticking the confirmation reports the missing column. Apply it before the acceptance test or the placeholder mark cannot be cleared.
+
+## [0.6.0] - 2026-10-18
+
+Long lists and the alerts bell. This release also carries the event-setup and notification work from
+PR #17, which merged before the version was cut.
+
+> The earlier `[Unreleased]` entry for PR #17 was stale: #17 had already merged when this version was
+> written. Its notes moved here with the UI that depends on them.
+
+### Added
+- Alerts bell in the shell (#23). It merges the live `validateDraw` issues with the stored
+  notifications, de-duplicates the overlap, and keeps the drawer in step with the Draw screen's
+  Issues panel. The badge counts unresolved blocking and warning items whatever their read state;
+  read state only quiets info notices. Checks are triggered by a data signature, debounced, with no
+  polling, and a failed check shows an error instead of an all-clear.
+- Paged long lists (#23): the player directory, the registration desk and the import review tabs
+  page 50 rows at a time in the browser. A changed search, filter or tab returns to page 1 in the
+  same render, ties break on the record id, and a one-page list shows no pager. Print, the draw
+  groups and the desk's player search stay unpaged.
+- Import review tabs (#23): Needs decision, Decided and Deferred, with a decided count read from the
+  same resolution the Apply button uses.
+- Event setup, the tee and hole editors, real course-data loading and the paging primitive (#17).
+
+### Fixed
+- The pager is kept out of print output, and the start sheet is asserted to carry a whole
+  126-player field rather than one page of rows.
+
+### Database
+- `20261024000000_event_setup.sql`, `20261025000000_event_setup_errcode_fix.sql`,
+  `20261026000000_notifications.sql`: **applied live**. No new migration ships with 0.6.0.
+
 
 ## [0.5.1] - 2026-10-18
 
@@ -104,7 +135,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.5.1...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.0...develop
+[0.6.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.3.0...v0.4.0

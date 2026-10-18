@@ -28,6 +28,8 @@ import {
 } from "@/components/desk";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
+import { Pager } from "@/components/paging/Pager";
+import { usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
 import { PAYMENT_LABEL, type PaymentStatus, type PlayerRecord } from "@/lib/data/types";
@@ -149,6 +151,17 @@ function RegisterDesk() {
         );
       });
   }, [entries, regById, players, listQuery]);
+
+  // Filter first, then page. The order is stable so editing an entry cannot move it to another
+  // page, and changing the filter sends the desk back to page 1.
+  const orderedRows = useMemo(
+    () =>
+      [...listRows].sort(
+        (a, b) => (a.p?.name ?? "").localeCompare(b.p?.name ?? "") || a.e.id.localeCompare(b.e.id),
+      ),
+    [listRows],
+  );
+  const { page, setPage } = usePagedList(orderedRows, listQuery);
 
   if (!tournament) return <NeedsTournament what="The registration desk" />;
 
@@ -982,7 +995,7 @@ function RegisterDesk() {
             />
           </label>
           <div className="grid gap-2">
-            {listRows.map(({ e, r, p }) => {
+            {page.items.map(({ e, r, p }) => {
               if (!p) return null;
               const preferred = Object.values(e.teePreferences).filter(Boolean);
               return (
@@ -1033,7 +1046,7 @@ function RegisterDesk() {
                 />
               );
             })}
-            {listRows.length === 0 && (
+            {page.total === 0 && (
               <li className="card muted">
                 {entries.length === 0
                   ? "No registrations in this event yet."
@@ -1041,6 +1054,7 @@ function RegisterDesk() {
               </li>
             )}
           </div>
+          <Pager page={page} onPage={setPage} />
         </SectionCard>
       </div>
     </div>
