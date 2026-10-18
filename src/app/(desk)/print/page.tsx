@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
-import { PairingsView } from "@/components/PairingsView";
+import { PairingsSheet } from "@/components/print/PairingsSheet";
 import { Scorecards } from "@/components/print/Scorecards";
 import { StartSheet } from "@/components/print/StartSheet";
+import type { CourseDataStatus, PrintGroup } from "@/components/print/types";
 import { Button } from "@/components/ui/button";
 import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
@@ -44,9 +45,30 @@ export default function PrintCenter() {
 
   const playerById = new Map(players.map((p) => [p.id, p]));
   const shotgun = tournament.config.startFormat === "shotgun";
-  const groups = [...(draw ?? [])].sort(
-    (a, b) => a.time.localeCompare(b.time) || a.startHole - b.startHole,
-  );
+  const groups = draw ?? [];
+  // This existing route remains the assembler: adapt the desk's domain objects into plain print props here.
+  const printGroups: PrintGroup[] = groups.map((group) => ({
+    number: group.number,
+    startHole: group.startHole,
+    wave: group.wave,
+    time: group.time,
+    flight: names.flight(group.flightId),
+    players: group.playerIds.map((id) => {
+      const player = playerById.get(id);
+      const registration = regById.get(id);
+      return {
+        id,
+        name: player?.name ?? "Unknown player",
+        handicapIndex: registration?.frozenIndex ?? null,
+        playingHandicap: registration?.playingHandicap ?? null,
+        teeName: registration?.teeId ? names.tee(registration.teeId) : null,
+      };
+    }),
+  }));
+
+  // The current desk provider is explicitly wired to DEMO_TEES/DEMO_HOLES. Keep the watermark
+  // enabled until the future data adapter supplies authoritative course-data provenance.
+  const courseDataStatus: CourseDataStatus = "placeholder";
   const subtitle = `${tournament.name} · ${fmtDateLabel(tournament.dates)} · ${
     shotgun ? "Shotgun start" : "Two-tee start"
   } · first tee ${tournament.config.firstTeeTime}${
@@ -120,17 +142,15 @@ export default function PrintCenter() {
           <StartSheet
             title="Start sheet"
             subtitle={subtitle}
-            groups={groups}
-            players={playerById}
-            regs={regById}
-            shotgun={shotgun}
-            flightName={names.flight}
+            groups={printGroups}
+            startFormat={tournament.config.startFormat}
+            courseDataStatus={courseDataStatus}
           />
         ) : tab === "pairings" ? (
           <section className="grid gap-3">
             <h2 className="text-[20px]">Pairings</h2>
             {pairings ? (
-              <PairingsView pairings={pairings} searchable={false} headingLevel="section" />
+              <PairingsSheet pairings={pairings} />
             ) : (
               <p className="muted">
                 The player view reads the published list. Publish the draw to print the same list
@@ -140,14 +160,12 @@ export default function PrintCenter() {
           </section>
         ) : (
           <Scorecards
-            title="Scorecards (placeholder holes)"
+            title={tournament.name}
             subtitle={subtitle}
-            groups={groups}
-            players={playerById}
-            regs={regById}
+            groups={printGroups}
             holes={holes}
-            shotgun={shotgun}
-            flightName={names.flight}
+            startFormat={tournament.config.startFormat}
+            courseDataStatus={courseDataStatus}
           />
         )}
       </div>
