@@ -37,7 +37,7 @@ speaker before the first real event. Nothing in the app claims they are checked.
 3. Mark anything wrong on this page with the key name (for example `player.claim.ambiguous`) and the
    suggested wording. Jeff or the next agent applies it to the dictionary file.
 4. When a language has been read end to end, note it here with the date and the reviewer's name, and
-   the plan's decision 17 can be closed.
+   the plan's decision 18 can be closed.
 
 ## What has been reviewed
 
