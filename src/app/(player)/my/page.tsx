@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { fmtHcp, fmtIndex, fmtTime } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
+import type { Translate } from "@/lib/i18n/t";
 import { claimPlayerRecord } from "@/lib/player/actions";
 import { claimMessage } from "@/lib/player/claim";
 import {
@@ -15,36 +17,29 @@ import {
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export const metadata = { title: "My golf" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t("player.title") };
+}
 
-const claimNotice = (code: string): { tone: "ok" | "bad"; text: string } | null => {
-  if (code === "linked")
-    return { tone: "ok", text: "Your member record is now linked to this account." };
+/** The claim codes the page can be sent back with, in the reader's language. */
+const claimNotice = (t: Translate, code: string): { tone: "ok" | "bad"; text: string } | null => {
+  if (code === "linked") return { tone: "ok", text: t("player.claim.linked") };
   if (code === "start") return null;
-  if (code === "not_ready") {
-    return {
-      tone: "bad",
-      text: "The player area is not switched on for this project yet. The club has to apply the player portal migration first.",
-    };
-  }
-  if (code === "failed") {
-    return {
-      tone: "bad",
-      text: "Your record could not be linked just now. Try again in a moment.",
-    };
-  }
-  const message = claimMessage(code);
+  if (code === "not_ready") return { tone: "bad", text: t("player.claim.notReady") };
+  if (code === "failed") return { tone: "bad", text: t("player.claim.failed") };
+  const message = claimMessage(t, code);
   return message ? { tone: "bad", text: message } : null;
 };
 
-function EntryCard({ entry }: { entry: PortalEntry }) {
+function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
   const facts: { label: string; value: string }[] = [
-    { label: "Start", value: startLabel(entry, fmtTime) },
-    { label: "Flight", value: entry.flight ?? "Not placed yet" },
-    { label: "Tee", value: entry.tee ?? "Not set yet" },
-    { label: "Playing handicap", value: fmtHcp(entry.playingHandicap) },
-    { label: "Entry handicap", value: fmtIndex(entry.frozenIndex) },
-    { label: "Payment", value: paymentLabel(entry.paymentStatus) },
+    { label: t("player.fact.start"), value: startLabel(entry, t, fmtTime) },
+    { label: t("player.fact.flight"), value: entry.flight ?? t("player.value.notPlacedYet") },
+    { label: t("player.fact.tee"), value: entry.tee ?? t("player.value.notSetYet") },
+    { label: t("player.fact.playingHandicap"), value: fmtHcp(entry.playingHandicap) },
+    { label: t("player.fact.entryHandicap"), value: fmtIndex(entry.frozenIndex) },
+    { label: t("player.fact.payment"), value: paymentLabel(t, entry.paymentStatus) },
   ];
   const unconfirmed = entry.status !== "ok";
 
@@ -55,15 +50,15 @@ function EntryCard({ entry }: { entry: PortalEntry }) {
         <p className="hint">
           {entry.dates.length > 1
             ? entry.dates.join(" · ")
-            : (entry.eventDate ?? "Date to be confirmed")}
+            : (entry.eventDate ?? t("player.value.dateTbc"))}
           {" · "}
-          {entry.startFormat === "shotgun" ? "Shotgun start" : "Two-tee start"}
+          {entry.startFormat === "shotgun" ? t("player.value.shotgun") : t("player.value.twoTee")}
         </p>
       </header>
 
       {unconfirmed && (
         <p className={entry.status === "ineligible" ? "notice bad" : "notice warn"} role="status">
-          <b>{statusLabel(entry.status)}.</b>
+          <b>{statusLabel(t, entry.status)}.</b>
           {entry.reasons.length > 0 && <span> {entry.reasons.join(" ")}</span>}
         </p>
       )}
@@ -81,27 +76,21 @@ function EntryCard({ entry }: { entry: PortalEntry }) {
       </dl>
 
       <p className="hint">
-        {entry.published
-          ? "These are the published pairings. "
-          : "The club has not published the pairings yet. "}
-        <Link href="/pairings">See the full list</Link>.
+        {entry.published ? t("player.published.yes") : t("player.published.no")}{" "}
+        <Link href="/pairings">{t("player.seeFullList")}</Link>.
       </p>
     </article>
   );
 }
 
-function ClaimCard({ notice }: { notice: string | null }) {
+function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
   return (
     <section className="card grid gap-4" aria-labelledby="claim-h">
       <div className="grid gap-1">
         <h2 id="claim-h" className="text-[18px]">
-          Link your club record
+          {t("player.claim.heading")}
         </h2>
-        <p className="hint">
-          This account is not linked to a member record yet, so there is nothing to show. Link it
-          once: the club matches what you enter against the member list, exactly as the entry form
-          does.
-        </p>
+        <p className="hint">{t("player.claim.body")}</p>
       </div>
 
       {notice && (
@@ -112,19 +101,16 @@ function ClaimCard({ notice }: { notice: string | null }) {
 
       <form action={claimPlayerRecord} className="grid gap-3.5 sm:max-w-[26rem]">
         <label className="field">
-          <span>Full name, as the club has it</span>
+          <span>{t("player.claim.name")}</span>
           <input name="name" type="text" autoComplete="name" />
         </label>
         <label className="field">
-          <span>NGAP number (if you know it)</span>
+          <span>{t("player.claim.ngapId")}</span>
           <input name="ngapId" type="text" inputMode="numeric" />
         </label>
-        <p className="hint">
-          A name that matches more than one member is refused rather than guessed, so the NGAP
-          number settles it.
-        </p>
+        <p className="hint">{t("player.claim.help")}</p>
         <button type="submit" className="btn justify-self-start">
-          Link my record
+          {t("player.claim.submit")}
         </button>
       </form>
     </section>
@@ -132,16 +118,18 @@ function ClaimCard({ notice }: { notice: string | null }) {
 }
 
 function PortalBody({
+  t,
   state,
   notice,
   linkedMessage,
 }: {
+  t: Translate;
   state: PortalState;
   notice: string | null;
   linkedMessage: string | null;
 }) {
   if (!state.linked || !state.player) {
-    return <ClaimCard notice={notice} />;
+    return <ClaimCard t={t} notice={notice} />;
   }
 
   return (
@@ -152,20 +140,19 @@ function PortalBody({
         </p>
       )}
       <div className="grid gap-1">
-        <p className="overline">My golf</p>
+        <p className="overline">{t("player.title")}</p>
         <h1 className="font-serif text-[32px] leading-9 font-semibold">{state.player.name}</h1>
         {state.player.ngapId && <p className="hint">NGAP {state.player.ngapId}</p>}
       </div>
 
       {state.entries.length === 0 ? (
         <p className="notice" role="status">
-          No entries on file for you yet. Enter through the event link the club sent you, or ask the
-          club to add you to the event.
+          {t("player.noEntries")}
         </p>
       ) : (
         <div className="grid gap-4">
           {state.entries.map((entry) => (
-            <EntryCard key={entry.tournamentId} entry={entry} />
+            <EntryCard key={entry.tournamentId} entry={entry} t={t} />
           ))}
         </div>
       )}
@@ -178,19 +165,19 @@ export default async function MyGolfPage({
 }: {
   searchParams: Promise<{ claim?: string }>;
 }) {
+  const { t } = await getI18n();
   const params = await searchParams;
   const code = params.claim ?? "";
-  const parsedNotice = code ? claimNotice(code) : null;
+  const parsedNotice = code ? claimNotice(t, code) : null;
   const notice = parsedNotice?.tone === "bad" ? parsedNotice.text : null;
   const linkedMessage = parsedNotice?.tone === "ok" ? parsedNotice.text : null;
 
   if (!isSupabaseConfigured()) {
     return (
       <div className="grid gap-4">
-        <h1 className="font-serif text-[30px] leading-9 font-semibold">My golf</h1>
+        <h1 className="font-serif text-[30px] leading-9 font-semibold">{t("player.title")}</h1>
         <p className="notice" role="status">
-          This build runs on demo data with no accounts, so there is no player area here.{" "}
-          <Link href="/pairings">The published pairings are this way</Link>.
+          {t("player.demo.body")} <Link href="/pairings">{t("player.demo.link")}</Link>.
         </p>
       </div>
     );
@@ -208,13 +195,13 @@ export default async function MyGolfPage({
   } catch (error) {
     return (
       <div className="grid gap-4">
-        <h1 className="font-serif text-[30px] leading-9 font-semibold">My golf</h1>
+        <h1 className="font-serif text-[30px] leading-9 font-semibold">{t("player.title")}</h1>
         <p className="notice bad" role="alert">
-          {portalErrorMessage(error)}
+          {portalErrorMessage(error, t)}
         </p>
       </div>
     );
   }
 
-  return <PortalBody state={state} notice={notice} linkedMessage={linkedMessage} />;
+  return <PortalBody t={t} state={state} notice={notice} linkedMessage={linkedMessage} />;
 }

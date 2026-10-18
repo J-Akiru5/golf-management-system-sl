@@ -5,17 +5,20 @@ import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
 import { fmtTime } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { DemoPairings } from "./DemoPairings";
 
 /**
  * The page players open. Built on the server from the published version in the database, with no
- * login, and cached: it refreshes within a minute on its own and immediately when the organizer
- * publishes (the desk calls /api/revalidate-pairings).
+ * login.
+ *
+ * It reads the saved language from a cookie, so it renders per request instead of being cached for
+ * a minute. That is deliberate: showing a Hiligaynon reader an English page (or the other way
+ * round) is worse than a database round trip at this club's size. The organizer's publish action
+ * still refreshes whatever is cached around the pairings.
  */
-export const revalidate = 60;
-
 const manila = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -23,6 +26,7 @@ const manila = new Intl.DateTimeFormat("en-PH", {
 });
 
 export default async function PublicPairingsPage() {
+  const { t } = await getI18n();
   if (!isSupabaseConfigured()) return <DemoPairings />;
 
   let data: Awaited<ReturnType<typeof loadPublicPairings>> = null;
@@ -51,14 +55,14 @@ export default async function PublicPairingsPage() {
         <div className="flex flex-wrap items-center gap-3">
           <TeeLineLogo variant="reverse" width={172} />
           <span className="leading-tight">
-            <b className="block font-display text-[13px] font-semibold">Club tournament pairings</b>
+            <b className="block font-display text-[13px] font-semibold">{t("pairings.title")}</b>
             <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
           </span>
         </div>
         {data && (
           <>
             <p className="overline mt-3 !text-gold">
-              {data.startFormat === "shotgun" ? "Shotgun start" : "Two-tee start"} ·{" "}
+              {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
               {fmtTime(data.firstTeeTime)}
             </p>
             <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
@@ -71,25 +75,28 @@ export default async function PublicPairingsPage() {
 
       {failed ? (
         <div className="notice" role="status">
-          <b>Pairings can't be loaded right now.</b> Please try again in a few minutes.
+          <b>{t("pairings.failedTitle")}</b> {t("pairings.failedBody")}
         </div>
       ) : !pairings || !published ? (
         <div className="notice" role="status">
-          <b>Pairings are not out yet.</b> Please check again later.
+          <b>{t("pairings.notOutTitle")}</b> {t("pairings.notOutBody")}
         </div>
       ) : (
         <>
           <p className="hint no-print" data-testid="pairings-version">
-            {published.version ? `Pairings version ${published.version} · ` : ""}
-            updated {manila.format(new Date(published.at))} (Philippine time). If you have a printed
-            copy, check that the version matches.
+            {published.version
+              ? t("pairings.version", {
+                  version: published.version,
+                  when: manila.format(new Date(published.at)),
+                })
+              : t("pairings.versionNoNumber", { when: manila.format(new Date(published.at)) })}
           </p>
           <PairingsView pairings={pairings} headingLevel="section" flightFilter />
         </>
       )}
 
       <p className="hint no-print">
-        Names, flight, hole and time only. <Link href="/">TeeLine Golf home</Link>
+        {t("pairings.footer")} <Link href="/">{t("pairings.home")}</Link>
       </p>
     </div>
   );
