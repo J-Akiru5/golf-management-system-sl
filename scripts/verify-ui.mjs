@@ -471,6 +471,38 @@ await freshPage.reload({ waitUntil: "networkidle", timeout: 120000 });
 check("and never greeted again after that", (await welcome.count()) === 0);
 await freshContext.close();
 
+// -------------------------------------------------------------- entry form languages
+section("entry form in three languages");
+await go("/components-preview");
+// The preview forces the first-run welcome open so it can be looked at; dismiss it first.
+const previewWelcome = page.getByRole("dialog", { name: "Welcome to the tournament desk" });
+if ((await previewWelcome.count()) > 0) {
+  await page.getByRole("button", { name: "Got it" }).click();
+  await expect(previewWelcome).toBeHidden({ timeout: 8000 });
+}
+const formLanguage = page.getByLabel("Form language");
+await expect(formLanguage).toBeVisible({ timeout: 20000 });
+check(
+  "the real entry form renders, English first",
+  (await page.getByText("Full name", { exact: true }).count()) > 0 &&
+    (await page.getByText("Send my entry", { exact: true }).count()) > 0,
+);
+await formLanguage.selectOption("hil");
+check(
+  "Hiligaynon labels reach the form",
+  (await page.getByText("Bug-os nga ngalan", { exact: true }).count()) > 0 &&
+    (await page.getByText("Ipadala ang akon entry", { exact: true }).count()) > 0,
+);
+await formLanguage.selectOption("tl");
+check(
+  "and Tagalog",
+  (await page.getByText("Buong pangalan", { exact: true }).count()) > 0 &&
+    (await page.getByText("Ipadala ang entry ko", { exact: true }).count()) > 0,
+);
+await formLanguage.selectOption("en");
+check("and back to English", (await page.getByText("Send my entry", { exact: true }).count()) > 0);
+await page.screenshot({ path: `${SHOTS}/entry-form.png` });
+
 // -------------------------------------------------------------- mobile sheet
 section("mobile sheet");
 const mob = await context.newPage();

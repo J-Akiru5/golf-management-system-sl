@@ -58,8 +58,9 @@ guides are English on purpose (decision 18) and are not part of this review.
 
 ## Not covered yet
 
-- The desk (organizer) screens are English only for now; decision 17 covers whether that changes.
-- The public entry form's own field labels (`src/components/public/RegistrationForm.tsx`) are not
-  translated yet: the page shell around it is. That is the next piece of player-facing copy.
+- The desk (organizer) screens are English only for now; decision 18 covers whether that changes.
 - Nothing is translated in the database: event names, custom questions and player names are whatever
-  the club typed.
+  the club typed. The entry form's own words are translated, but anything the club filled in on
+  Settings (instructions, extra questions, tee labels, the payment note) stays as they wrote it.
+- Covered so far, for the reviewer: the pairings page, My golf (including the claim flow), the help
+  panel and its two player guides, and the entry form.

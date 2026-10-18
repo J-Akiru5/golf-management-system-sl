@@ -6,11 +6,16 @@ import type {
   SubmissionAnswers,
   SubmissionPlayer,
 } from "@/lib/data/supabase/public-registration";
+import { useI18n } from "@/lib/i18n/context";
 
 /**
  * The public entry form. A player fills this in and the desk confirms the entry afterwards, so
  * there is no account, no payment online and no photo. Required fields are the ones a category
  * needs: name, date of birth and category.
+ *
+ * The form's own words come from the dictionary, so a player reads the labels in their language.
+ * Anything the club typed (instructions, extra questions, tee labels, the payment note) is their
+ * text and is passed through unchanged.
  */
 export function RegistrationForm({
   config,
@@ -19,6 +24,7 @@ export function RegistrationForm({
   config: RegistrationFormConfig;
   onSubmit: (player: SubmissionPlayer, answers: SubmissionAnswers) => Promise<string>;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [gender, setGender] = useState<"M" | "F" | "">("");
@@ -70,7 +76,7 @@ export function RegistrationForm({
     } catch (error) {
       setMessage({
         tone: "bad",
-        text: error instanceof Error ? error.message : "The entry could not be sent.",
+        text: error instanceof Error ? error.message : t("enter.form.error"),
       });
     } finally {
       setBusy(false);
@@ -83,7 +89,7 @@ export function RegistrationForm({
 
       <div className="form-grid">
         <label className="field">
-          <span>Full name</span>
+          <span>{t("enter.form.fullName")}</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -92,43 +98,43 @@ export function RegistrationForm({
           />
         </label>
         <label className="field">
-          <span>Date of birth</span>
+          <span>{t("enter.form.birthdate")}</span>
           <input
             type="date"
             value={birthdate}
             onChange={(e) => setBirthdate(e.target.value)}
             required
           />
-          <span className="hint">Used for the age category on the day of play.</span>
+          <span className="hint">{t("enter.form.birthdateHelp")}</span>
         </label>
         <label className="field">
-          <span>Category</span>
+          <span>{t("enter.form.category")}</span>
           <select
             value={gender}
             onChange={(e) => setGender(e.target.value as "M" | "F" | "")}
             required
           >
-            <option value="">Choose one</option>
-            <option value="M">Male</option>
-            <option value="F">Female</option>
+            <option value="">{t("enter.form.chooseOne")}</option>
+            <option value="M">{t("enter.form.male")}</option>
+            <option value="F">{t("enter.form.female")}</option>
           </select>
         </label>
         <label className="field">
-          <span>NGAP number (optional)</span>
+          <span>{t("enter.form.ngap")}</span>
           <input value={ngapId} onChange={(e) => setNgapId(e.target.value)} inputMode="numeric" />
-          <span className="hint">Speeds up matching to your club record.</span>
+          <span className="hint">{t("enter.form.ngapHelp")}</span>
         </label>
         <label className="field">
-          <span>Mobile number (optional)</span>
+          <span>{t("enter.form.mobile")}</span>
           <input value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} />
         </label>
         <label className="field">
-          <span>Home course (optional)</span>
+          <span>{t("enter.form.homeCourse")}</span>
           <input value={homeCourse} onChange={(e) => setHomeCourse(e.target.value)} />
         </label>
         {config.shirtSizes.length > 0 && (
           <label className="field">
-            <span>Shirt size (optional)</span>
+            <span>{t("enter.form.shirtSize")}</span>
             <select value={shirt} onChange={(e) => setShirt(e.target.value)}>
               <option value="">—</option>
               {config.shirtSizes.map((size) => (
@@ -140,10 +146,10 @@ export function RegistrationForm({
           </label>
         )}
         <label className="field">
-          <span>Playing as</span>
+          <span>{t("enter.form.playingAs")}</span>
           <select value={role} onChange={(e) => setRole(e.target.value as "member" | "guest")}>
-            <option value="member">Member</option>
-            <option value="guest">Guest</option>
+            <option value="member">{t("enter.form.member")}</option>
+            <option value="guest">{t("enter.form.guest")}</option>
           </select>
         </label>
       </div>
@@ -158,7 +164,7 @@ export function RegistrationForm({
               checked={sponsor === true}
               onChange={() => setSponsor(true)}
             />
-            <span>Yes</span>
+            <span>{t("enter.form.yes")}</span>
           </label>
           <label className="check">
             <input
@@ -167,19 +173,19 @@ export function RegistrationForm({
               checked={sponsor === false}
               onChange={() => setSponsor(false)}
             />
-            <span>No</span>
+            <span>{t("enter.form.no")}</span>
           </label>
         </fieldset>
       )}
 
       {config.teeTimes.length > 0 && (
         <section className="stack" style={{ gap: ".5rem" }}>
-          <h2>Preferred tee times</h2>
+          <h2>{t("enter.form.teeTimes")}</h2>
           {config.teeTimes.map((day) => (
             <label key={day.date || day.day} className="field">
               <span>
-                {day.label || `Day ${day.day}`}
-                {day.needsConfirmation ? " (to be confirmed)" : ""}
+                {day.label || t("enter.form.day", { number: day.day })}
+                {day.needsConfirmation ? t("enter.form.toBeConfirmed") : ""}
               </span>
               <select
                 value={teePreferences[day.date] ?? ""}
@@ -187,7 +193,7 @@ export function RegistrationForm({
                   setTeePreferences((prev) => ({ ...prev, [day.date]: e.target.value }))
                 }
               >
-                <option value="">No preference</option>
+                <option value="">{t("enter.form.noPreference")}</option>
                 {day.options.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -196,41 +202,39 @@ export function RegistrationForm({
               </select>
             </label>
           ))}
-          <p className="hint">A preference, not a confirmed start time.</p>
+          <p className="hint">{t("enter.form.teeTimesHelp")}</p>
         </section>
       )}
 
       <div className="form-grid">
         <label className="field">
-          <span>Declared handicap index (optional)</span>
+          <span>{t("enter.form.declaredIndex")}</span>
           <input
             value={declaredWshHandicap}
             onChange={(e) => setDeclaredWshHandicap(e.target.value)}
-            placeholder="14.2, +2.3 or NH"
+            placeholder={t("enter.form.declaredIndexPlaceholder")}
           />
-          <span className="hint">
-            For information only. The official index comes from the club&rsquo;s NGAP export.
-          </span>
+          <span className="hint">{t("enter.form.declaredIndexHelp")}</span>
         </label>
         <label className="field">
-          <span>WSH ID (optional)</span>
+          <span>{t("enter.form.wshId")}</span>
           <input value={declaredWshId} onChange={(e) => setDeclaredWshId(e.target.value)} />
         </label>
         <label className="field">
-          <span>Email (optional)</span>
+          <span>{t("enter.form.email")}</span>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
       </div>
 
       {applicable.length > 0 && (
         <section className="stack" style={{ gap: ".5rem" }}>
-          <h2>Extra questions</h2>
+          <h2>{t("enter.form.extraQuestions")}</h2>
           <div className="form-grid">
             {applicable.map((field) => (
               <label key={field.id} className="field">
                 <span>
                   {field.label}
-                  {field.required ? "" : " (optional)"}
+                  {field.required ? "" : t("enter.form.optional")}
                 </span>
                 {field.type === "select" ? (
                   <select
@@ -268,7 +272,7 @@ export function RegistrationForm({
 
       {config.payment && (
         <div className="notice">
-          <b>Entry fee</b>
+          <b>{t("enter.form.entryFee")}</b>
           <p>
             {config.payment.method}
             {config.payment.bank ? ` · ${config.payment.bank}` : ""}
@@ -276,7 +280,7 @@ export function RegistrationForm({
             {config.payment.accountNumber ? ` · ${config.payment.accountNumber}` : ""}
           </p>
           <p>{config.payment.note}</p>
-          <p className="hint">Payment is recorded by the organizer. Nothing is charged here.</p>
+          <p className="hint">{t("enter.form.paymentNote")}</p>
         </div>
       )}
 
@@ -288,12 +292,10 @@ export function RegistrationForm({
 
       <div className="row">
         <button type="submit" className="btn gold" disabled={busy}>
-          {busy ? "Sending…" : "Send my entry"}
+          {busy ? t("enter.form.sending") : t("enter.form.send")}
         </button>
       </div>
-      <p className="hint">
-        Your entry is reviewed by the organizer before it counts. You do not need an account.
-      </p>
+      <p className="hint">{t("enter.form.reviewNote")}</p>
     </form>
   );
 }
