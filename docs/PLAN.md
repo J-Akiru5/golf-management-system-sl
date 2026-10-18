@@ -31,12 +31,13 @@ Anything not marked is a plan, not a fact.
 | Printing | **Print components and pure helpers built**: sorted start sheet, allow-listed pairings sheet, per-group 18-hole scorecards, handicap dots, and A4 print CSS | `src/lib/print` tests; dev-only preview at `/print-preview`; real course data and club-printer test still pending |
 | Merged (PR #17) | **Event setup and the notification schema**, merged into `develop` as `863c253` on 18 Oct 2026: the desk saves course, tees, holes, categories and flights in one guarded, manager-only transaction, enters the real tee and hole numbers, loads the saved tees and holes instead of the samples, adds the paging primitive, and writes the notifications migration. Its migrations `20261024000000`, `20261025000000` and `20261026000000` are all applied to the live project (verified over the API) | Section 8, step W1 done |
 | Merged (PR #23) | **The alerts bell and the paged lists** (`feat/desk-lists-and-bell`): the bell in the shell, the notification loader, paging applied to the players, registration and import review lists, and the import review tabs. Merged into `develop` as `1fd2b76` on 18 Oct 2026. It shipped with two bugs that browser checking found and the follow-up below fixes | Follow-up PR `fix/desk-browser-found` |
+| Merged (PR #27) | **Settings that save** (`feat/settings-saves`, merged as `45dce3c` on 18 Oct 2026, tagged `v0.7.0`): draft-then-save with a Save on every section plus Save all changes, the tournament-level fields carried by the guarded `save_event_setup`, the entry link on the deployed domain, and Add a day incrementing with every day editable. Migration `20261027000000_setup_tournament_fields.sql` is **applied live** and verified over the API | Merged; `main` is still on v0.6.1 |
 | Long lists | **Paged on the desk's lists.** `src/lib/data/paging.ts`: 50 rows a page, paged in the browser, queries unchanged. Applied to the player directory, the registration desk and the import review tabs. Switching tab, search or filter returns to page 1, and ties break on the record id so editing a row cannot move it to another page. **Deliberately not paged**: print, the draw groups and the desk's player search | Decision 13 settled; gap 10 closed for the desk screens |
 | Alerts | **Bell built.** Decision 14 is stored, desk-facing notifications (option B): `notifications` + `notification_reads` with per-user read state, `sync_notifications(tournament)` and `mark_notifications_read(tournament)`, all applied to the live project. The bell merges the live draw issues with the stored rows, de-duplicates them, and counts unresolved blocking and warning whatever their read state; read state only quiets info. The full sync cycle was checked over the API: a warning appeared and cleared when the cause was fixed, and a dismissed info notice stayed read in a fresh session | Gap 11 closed; merged (#23, `1fd2b76`) |
 | Player languages (in review) | **English, Tagalog and Hiligaynon on the player surfaces** (`src/lib/i18n`): a cookie-backed choice with the browser's preference as the fallback, typed dictionaries with coverage tests, a language picker in the player header, and the portal, pairings, demo pairings and entry pages reading their copy from the dictionary. Tagalog and Hiligaynon are first drafts pending review by a native speaker; desk chrome is still English | PR `feat/i18n-foundation`; `docs/i18n-review.md` |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 31 test files, 384 tests passing (`pnpm test`) on `fix/desk-browser-found` today (29 files, 343 tests on `develop` before PR #23). PR #23 added 39 cases; the follow-up adds 2 more, for the paging reset. Separately, `pnpm verify:ui` runs 36 checks in a real browser against a running dev server. It is not part of `pnpm test`, because it needs the server up, but it is what found the two bugs below.
+Whole suite: 34 test files, 402 tests passing (`pnpm test`) on `feat/settings-saves` today; `develop` has 31 files and 384 tests. The settings work adds 18 cases: the per-section payload mapping (5), the calendar maths behind Add a day (7), and the entry-link URL rules (6). Separately, `pnpm verify:ui` runs 36 checks in a real browser against a running dev server. It is not part of `pnpm test`, because it needs the server up, but it is what found the two bugs in PR #23.
 
 **The one thing blocking a real event:** the wiring exists but the project has no course, tee, hole or
 tournament rows, so the desk has nothing real to show. Provisioning and an end-to-end pass with real
@@ -195,8 +196,9 @@ Verified in `supabase/migrations`, and **applied to the `golf-management-system`
   proxy matcher, so public pages never pay for a session lookup.
 
 **In step.** Every migration in `develop` is applied to the live project, including
-`20261026000000_notifications.sql` (gap 11), which merged in PR #17. A new migration must use a
-version after `20261026000000`; that number is spent.
+`20261026000000_notifications.sql` (gap 11). `20261027000000_setup_tournament_fields.sql` (PR #27)
+is applied live too, verified over the API. A new migration must use a version after
+`20261027000000`; those numbers are spent.
 
 **Schema vs spec:** the migration has 14 tables: the spec's tables except `scores` (Phase 2), plus `club_members`
 (needed for RLS).
@@ -222,7 +224,7 @@ version after `20261026000000`; that number is spent.
 | Import handicaps | CSV, column mapping, match and merge queue with decisions, apply, deferred rows, import history; applies to the session's handicap records |
 | Draw control room | Generate, move (drag or Move, with a reason), lock, re-run keeping locks, override list, issues panel, publish dialog, routing explanation per player, draft / published / changed states |
 | Print center | Start sheet, pairings, per-group scorecards, handicap dots, and A4 print CSS. Published vs draft is labelled |
-| Settings | Setup wizard: basics, course and tees, cut-off and handicap rules, categories, flights, start and groups, registration fields, live readiness checks. **No Save button by design**: every edit writes on change, and saving / saved / errors appear in the session bar. In connected mode only the course-side fields persist; the tournament-level fields do not yet (gap 14). Tee name and hole number are fixed identities, and flight ordering is read-only pending decision 6 |
+| Settings | Setup wizard: basics, course and tees, cut-off and handicap rules, categories, flights, start and groups, registration fields, live readiness checks. **Draft-then-save**: a Save on every section plus a page-level Save all changes, with the section save as the fallback when the bulk write fails and unsaved sections marked. In connected mode everything on this screen is carried by the guarded `save_event_setup` transaction (gap 14, decision 17). Owner/organizer only; the desk sees it read-only. Tee name and hole number are fixed identities, and flight ordering is read-only pending decision 6 |
 | Sign in | One page for players and staff, with account creation for players; an account's area follows what it is (a club_members row or a linked player record). Demo builds skip it entirely |
 | My golf (player area) | `/my`: link your member record by name and NGAP number, then read your own entries and published start. Applied; needs a test account and one player row to claim |
 | Public pairings | Search by name, large text, print; built through the public allow-list projection (name, flight, hole, time only) |
@@ -329,32 +331,31 @@ These are places where the spec promises something the code does not do yet. Che
     instead of from the 60-second cache. At this club's size that is a fair trade for not handing a
     Hiligaynon reader an English page, and the publish action still refreshes what is cached around
     it. Decision 18.
-14. **The Settings screen looks like it saves, and part of it does not.** *Checked in the code on
-    18 Oct 2026.* There is **no Save button on purpose**: every edit calls `adapters.setup.save()`,
-    which updates the screen and, with Supabase configured, queues `save_event_setup`. That write is
-    manager-only, revision-guarded, and covers the course, holes, tees, categories and flights. The
-    gaps around it:
-    - **Tournament-level settings are never written.** `src/lib/data/supabase/adapters.ts` already has
-      `saveTournamentRow()`, which upserts the `tournaments` row (name, dates, state, cut-off, config,
-      registration JSON), but `setup.save` never calls it. In connected mode the event name, days,
-      registered state, cut-off, max index, allowance, stale days, flight basis, start format, first
-      tee time, interval, wave gap, holes count, sponsor question, response email, desk instructions
-      and registration fields change on screen and are lost on reload.
-    - **The copy says demo when it is not.** The page header and the "Where changes live" card always
-      say the settings "live in this browser session only" and "No Supabase project is connected, so
-      nothing is written anywhere". Both are false with Supabase configured, and they contradict the
-      session bar directly above.
-    - **There is no role gate.** Settings is in the nav for every role. RLS allows tournament writes
-      only to owner/organizer and `save_event_setup` refuses anyone else with 42501, so a desk user's
-      edit applies locally, the write fails, and the screen keeps the change.
+14. **The Settings screen looked like it saved, and part of it did not.** *Checked in the code on
+    18 Oct 2026; fixed in code the same day.* There is **no Save button by design** in the old sense:
+    the screen is draft-then-save. A **Save all changes** carries every section in one guarded write,
+    and a **Save** on every section is the fallback when that bulk write fails; both stay. The gaps
+    that were found, and their state:
+    - **Tournament-level settings were never written.** *Fixed.* `src/lib/data/supabase/adapters.ts`
+      had `saveTournamentRow()`, which upserts the `tournaments` row (name, dates, state, cut-off,
+      config, registration JSON), but `setup.save` never called it. The event name, days, registered
+      state, cut-off, max index, allowance, stale days, flight basis, start format, first tee time,
+      interval, wave gap, holes count, sponsor question, response email, desk instructions and
+      registration fields changed on screen and were lost on reload. `save_event_setup` now takes
+      them as optional parameters, so they land in the same manager-only, revision-guarded
+      transaction.
+    - **The copy said demo when it was not.** *Fixed.* The page header and the "Where changes live"
+      card follow the real mode now.
+    - **There was no role gate.** *Fixed.* Settings is owner/organizer only in the UI, the same rule
+      RLS and `save_event_setup` already enforced; the desk sees the screen read-only.
     - **Deliberately read-only, not bugs:** tee name and hole number (a category points at a tee name;
       a hole number is its identity), "Order inside a flight" (fixed at "By handicap, lowest first"
       until decision 6 is answered), shirt sizes and the payment instruction (display only), and
       there is no remove control for a category, where flights and registration fields have one.
-    - **Proposed fix, needs the owner's call:** carry the tournament-level fields in the same guarded
-      `save_event_setup` transaction (needs a migration after `20261026000000`) rather than add a
-      second, unguarded row write; gate or disable the screen for desk users; and make the copy say
-      what the session bar already knows. See decision 17.
+    - **Database half:** `20261027000000_setup_tournament_fields.sql` re-creates the function with the
+      new parameters. **Applied live on 18 Oct 2026**; an owner call writes the tournament-level
+      values and returns `{ok, revision}`, with nothing but `draw_revision` changed, and a desk
+      account is still refused with 42501.
 15. **Two of the three languages are drafts.** The player surfaces carry Tagalog and Hiligaynon copy,
     but no native speaker has read it yet, and the desk chrome stays English for now. Golf terms
     stay in English on purpose (flight, tee, handicap, hole, shotgun) because that is how the club
@@ -561,7 +562,7 @@ Decisions that belong to the people named, not to an agent.
 | 14 | ~~Alerts in Phase 1~~ **Settled 18 Oct 2026:** stored, desk-facing notifications (option B), not derived-only alerts | Organizer | — | Two tables plus `sync_notifications(tournament)`; built and merged (#23, `1fd2b76`, gap 11) |
 | 15 | Public pairings page: names, flight, hole and time only, or also handicap or category | Organizer | Public page content | Names, flight, hole, time |
 | 16 | After a publish, do late changes always mean a new version, and should the page mark what moved | Organizer | Publish flow | New version each time; version and time shown, no change marks |
-| 17 | **How the Settings screen persists tournament-level fields in connected mode** (event name, dates, state, cut-off, handicap rules, start rules, registration wording): carry them in the guarded `save_event_setup` transaction (a migration after `20261026000000`), or keep a separate `tournaments` row write | Jeff | Settings that stay saved once the project is connected | The screen shows changes that revert on reload (gap 14); course-side fields already persist |
+| 17 | ~~How the Settings screen persists tournament-level fields in connected mode~~ **Settled 18 Oct 2026:** carry them in the guarded `save_event_setup` transaction, not a second row write | Jeff | - | Built: migration `20261027000000_setup_tournament_fields.sql` (applied live) plus draft-then-save with Save all changes and a Save on every section |
 | 18 | Languages: which locales, whether translated pages get their own URLs, and who reviews the drafts | Jeff / club | Player-facing copy | English (source) + Tagalog + Hiligaynon, chosen by cookie, no `/tl` URLs yet; golf terms stay English; a native speaker must read the drafts before the event |
 
 ---
@@ -673,6 +674,7 @@ Agent ground rules:
 | 18 Oct 2026 | **The public pairings page now renders per request,** because it reads the language cookie: the 60-second ISR cache is gone for that page. Deliberate trade: a slow page is invisible, an English page is not. At this club's traffic a round trip per visit costs nothing, and publishing still refreshes what is cached around it. |
 | 18 Oct 2026 | **Golf terms stay English in every language.** Flight, tee, handicap, hole, shotgun and pairing are how the club speaks; translating them would invent vocabulary nobody uses. The sentence around them is translated, and `docs/i18n-review.md` is the place to argue about a single term. |
 | 18 Oct 2026 | **Settings investigated (amendment, gap 14).** Jeff reported fields that look uneditable and no Save button. The missing button is by design: every edit writes on change (the session store in demo, `save_event_setup` when connected) and the session bar is where saving, saved and errors appear. The investigation found a real gap: in connected mode the tournament-level fields are never written, because `setup.save` calls only `save_event_setup` and not the existing `saveTournamentRow`; the page copy still claims nothing is written anywhere; and Settings is not role-gated, so a desk user's edit applies locally and the write is refused. Tee name, hole number, flight ordering, shirt sizes and the payment instruction are intentionally read-only. Recorded as gap 14 and decision 17; the proposed fix is to carry the tournament-level fields in the guarded `save_event_setup` transaction rather than add a second, unguarded write path. |
+| 18 Oct 2026 | **Two save levels settled and built (decision 17, gap 14 fixed).** Jeff's instruction: a page-level **Save all changes** plus a **Save** on every section, with the section save as the fallback when the bulk write fails; both must stay. The tournament-level fields now ride the guarded `save_event_setup` transaction (migration `20261027000000_setup_tournament_fields.sql`, written, not yet applied) rather than a second row write. The screen is draft-then-save, unsaved sections are marked and can be discarded, the copy follows the real mode, and Settings is owner/organizer only. Two desk bugs fixed in the same work: the public entry link is built from `NEXT_PUBLIC_SITE_URL` (the deployed domain) instead of the browser origin, and Add a day adds the next calendar day with every day editable instead of cloning the last date. |
 
 ---
 

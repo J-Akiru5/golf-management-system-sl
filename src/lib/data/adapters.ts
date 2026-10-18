@@ -1,6 +1,7 @@
 import type { Dispatch } from "react";
 import { explainRegistration, type RoutingExplanation } from "@/lib/data/explain";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
+import type { SetupSection } from "@/lib/data/setup-payload";
 import type {
   HandicapRecord,
   Hole,
@@ -88,15 +89,24 @@ export interface TournamentRepository {
 }
 
 /**
- * The event setup: course, holes, tees, categories and flights. Kept apart from
- * `TournamentRepository.save` because it must land as one write — a half-saved setup (new Slope,
- * old flights) would route players against numbers that never existed together.
+ * The event setup: course, holes, tees, categories and flights, plus the tournament-level rules the
+ * Settings screen edits. Kept apart from `TournamentRepository.save` because it must land as one
+ * write — a half-saved setup (new Slope, old flights) would route players against numbers that never
+ * existed together.
  *
- * In demo mode only the event row is kept, because tees and holes are the session constants; the
- * connected adapter writes all five tables in one transaction and is revision-guarded.
+ * `sections` lets the screen save one section or everything at once; the database function takes the
+ * same parameters as optional, so a section save never touches the rest. Omitted means everything.
+ *
+ * In demo mode only the tournament row is kept, because tees and holes are the session constants; the
+ * connected adapter writes every table in one transaction and is revision-guarded.
  */
 export interface SetupRepository {
-  save(input: { tournament: Tournament; tees: Tee[]; holes: Hole[] }): void;
+  save(input: {
+    tournament: Tournament;
+    tees: Tee[];
+    holes: Hole[];
+    sections?: SetupSection[] | "all";
+  }): void;
   /** The last revision seen, or null when this build has no revision to guard against. */
   revision(): number | null;
 }
