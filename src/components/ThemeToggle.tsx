@@ -105,7 +105,10 @@ export function ThemeToggle({
   );
 
   return (
-    <DropdownMenu.Root>
+    // Non-modal: a menu is a utility, not a gate. A modal one marks the rest of the page
+    // `aria-hidden` the moment it opens, which React reports as a hydration mismatch if the click
+    // landed before the page finished hydrating. Escape and an outside click still close it.
+    <DropdownMenu.Root modal={false}>
       {menuTrigger}
       <DropdownMenu.Portal>
         <DropdownMenu.Content
