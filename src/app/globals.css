@@ -647,10 +647,21 @@
     -webkit-backdrop-filter: blur(18px) saturate(1.2);
     color: var(--ink);
   }
+  /* A glass *panel* floats over the course map, and there a hairline of 12% dark ink is not enough:
+     over the map's pale fade it disappears entirely, so the panel reads as a shapeless block with no
+     shell. It gets the card's edge plus the lift shadow the other floating things use, because a
+     panel that sits over a photograph has to be separated from it by elevation, not only by a line.
+     Scoped rather than folded into .glass so the popover menus, which set their own lift, keep it. */
+  .glass-panel {
+    border-color: var(--line);
+    box-shadow: var(--shadow-lift);
+  }
   /* Glass for navigation that sits on the photo: always the club's forest with ivory text, so the
-     icons read in Ivory and Charcoal alike (the light glass above would hide them). */
+     icons read in Ivory and Charcoal alike (the light glass above would hide them). Nearly opaque
+     on purpose: the rail floats over the illustrated course map, and at 82% the map's greens showed
+     through it enough to make the icons hard to pick out. */
   .glass-forest {
-    background: rgba(8, 35, 27, 0.82);
+    background: rgba(8, 35, 27, 0.94);
     border: 1px solid rgba(238, 240, 234, 0.16);
     border-radius: 20px;
     backdrop-filter: blur(18px) saturate(1.2);
