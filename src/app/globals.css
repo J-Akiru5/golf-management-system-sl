@@ -2238,3 +2238,36 @@
   --rail-width: 212px;
   --rail-pad: 264px;
 }
+
+/* ------------------------------------------------------------------------------- help centre */
+
+/* The ring a "Show me" help step draws over the control it means. It is its own element, placed by
+   script and never on the control itself: gold reads on ivory and on charcoal alike, it takes no
+   clicks, and the pulse is dropped for anyone who asked for less motion. */
+.help-ring {
+  position: fixed;
+  z-index: 70;
+  pointer-events: none;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 3px var(--gold),
+    0 0 0 10px rgba(184, 149, 80, 0.18);
+  animation: help-ring 900ms ease-in-out 2;
+}
+
+@keyframes help-ring {
+  50% {
+    box-shadow:
+      0 0 0 3px var(--gold),
+      0 0 0 16px rgba(184, 149, 80, 0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-ring {
+    animation: none;
+    box-shadow:
+      0 0 0 3px var(--gold),
+      0 0 0 12px rgba(184, 149, 80, 0.24);
+  }
+}

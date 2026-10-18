@@ -204,13 +204,19 @@ function Players() {
             <input
               type="search"
               className="!pl-9"
+              data-help="players-search"
               placeholder="Search name, nickname, NGAP ID or home course"
               aria-label="Search players"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label="Filter by status"
+            data-help="players-filters"
+          >
             {FILTERS.map((f) => (
               <button
                 key={f.id}

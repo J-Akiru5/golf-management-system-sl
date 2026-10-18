@@ -1,5 +1,6 @@
 /**
- * Browser checks for the desk's long lists, the alerts bell, the player languages and the shell.
+ * Browser checks for the desk's long lists and the alerts bell, the player languages, the help centre
+ * and the shell.
  *
  * These cover what the unit suite cannot: that the right rows, and the right colours, actually reach
  * the screen. They found two real bugs that typecheck, lint and 382 passing unit tests all missed:
@@ -46,6 +47,19 @@ function writeImportFixture(path) {
 
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+// The desk's first-run welcome is by design: it sits over the screen until it is dismissed. This
+// browser has already seen it, so the checks below are not fighting a modal. The welcome itself is
+// checked in its own context near the end, which starts fresh.
+await context.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+  } catch {
+    // Storage off: the welcome will show, and the checks that need a modal-free page say so.
+  }
+});
 const page = await context.newPage();
 
 const errors = [];
@@ -364,6 +378,98 @@ check(
   Math.abs((await railWidth()) - 60) < 2 && (await padLeft()) === "112px",
   `(${await railWidth()}px / ${await padLeft()})`,
 );
+// -------------------------------------------------------------- help centre
+section("help centre (desk)");
+await go("/players");
+// networkidle does not mean hydrated. Typing proves React is live before the help checks click
+// anything: a panel opened while the page is still hydrating is what React reports as a mismatch.
+await search.fill("Alcantara");
+await expect(range).toHaveCount(0, { timeout: 15000 });
+await search.fill("");
+await expect(range).toHaveText("1–50 of 91", { timeout: 15000 });
+const helpButton = page.getByRole("button", { name: "Help" });
+check("the top bar carries a help button", (await helpButton.count()) > 0);
+await helpButton.click();
+const helpSheet = page.getByRole("dialog", { name: "Help" });
+await expect(helpSheet).toBeVisible({ timeout: 15000 });
+check(
+  "it opens on this screen's own guide",
+  (await helpSheet.getByText("Players", { exact: true }).count()) > 0 &&
+    (await helpSheet.getByText("Finding one player, and reading their entry.").count()) > 0,
+);
+const showMe = helpSheet.getByRole("button", { name: "Show me" });
+check("a step that names a control offers Show me", (await showMe.count()) > 0);
+await showMe.first().click();
+const ring = page.locator(".help-ring");
+await expect(ring).toHaveCount(1, { timeout: 5000 });
+const ringBox = await ring.boundingBox();
+const inputBox = await search.boundingBox();
+check(
+  "Show me draws a ring over the control it means",
+  Math.abs(ringBox.x - inputBox.x) < 3 &&
+    Math.abs(ringBox.y - inputBox.y) < 3 &&
+    Math.abs(ringBox.width - inputBox.width) < 3,
+  `(ring ${Math.round(ringBox.width)}x${Math.round(ringBox.height)} over input ${Math.round(inputBox.width)}x${Math.round(inputBox.height)})`,
+);
+await expect(ring).toHaveCount(0, { timeout: 8000 });
+check("and the ring clears itself", true);
+await page.screenshot({ path: `${SHOTS}/help-ring.png` });
+
+section("cheat sheet (print center)");
+await go("/print");
+await page.getByRole("tab", { name: "How to" }).click();
+check(
+  "the sheet lists the desk screens",
+  (await page.getByText("The desk, screen by screen").count()) > 0,
+);
+check(
+  "and the player screens",
+  (await page.getByText("Players, screen by screen", { exact: false }).count()) > 0,
+);
+const sheetLanguage = page.getByLabel("Language of the player sheet");
+await sheetLanguage.selectOption("hil");
+check(
+  "the player half prints in Hiligaynon",
+  (await page.getByText("Pangitaa ang imo grupo").count()) > 0,
+);
+await page.emulateMedia({ media: "print" });
+check("the language picker stays off paper", !(await sheetLanguage.isVisible()));
+await page.emulateMedia({ media: "screen" });
+await page.screenshot({ path: `${SHOTS}/help-cheat-sheet.png` });
+
+section("help centre (player, Hiligaynon)");
+const helpContext = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+const helpPage = await helpContext.newPage();
+watch(helpPage);
+await helpContext.addCookies([{ name: "desk-lang", value: "hil", url: BASE }]);
+await helpPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+const playerHelp = helpPage.getByRole("button", { name: "Bulig" });
+check("the player head carries a help button, in Hiligaynon", (await playerHelp.count()) > 0);
+await playerHelp.click();
+const playerSheet = helpPage.getByRole("dialog", { name: "Bulig" });
+await expect(playerSheet).toBeVisible({ timeout: 15000 });
+check(
+  "the player sheet is Hiligaynon, key by key",
+  (await playerSheet.getByText("Pangitaa ang imo grupo").count()) > 0 &&
+    (await playerSheet.getByText("Ipakita").count()) > 0,
+);
+await playerSheet.screenshot({ path: `${SHOTS}/help-player-hiligaynon.png` });
+await helpContext.close();
+
+section("first-run welcome");
+const freshContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const freshPage = await freshContext.newPage();
+watch(freshPage);
+await freshPage.goto(`${BASE}/players`, { waitUntil: "networkidle", timeout: 120000 });
+const welcome = freshPage.getByRole("dialog", { name: "Welcome to the tournament desk" });
+await expect(welcome).toBeVisible({ timeout: 20000 });
+check("a desk browser that has never been here is greeted once", true);
+await freshPage.screenshot({ path: `${SHOTS}/help-welcome.png` });
+await freshPage.getByRole("button", { name: "Got it" }).click();
+await expect(welcome).toBeHidden({ timeout: 10000 });
+await freshPage.reload({ waitUntil: "networkidle", timeout: 120000 });
+check("and never greeted again after that", (await welcome.count()) === 0);
+await freshContext.close();
 
 // -------------------------------------------------------------- mobile sheet
 section("mobile sheet");

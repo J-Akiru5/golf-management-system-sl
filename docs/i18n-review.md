@@ -1,8 +1,10 @@
 # Tagalog and Hiligaynon: review checklist
 
 The player pages speak English, Tagalog and Hiligaynon. English is the source of truth and was
-written for the club; **Tagalog and Hiligaynon are first drafts** and must be read by a native
-speaker before the first real event. Nothing in the app claims they are checked.
+written for the club; **Tagalog and Hiligaynon are first drafts**. Jeff reads both languages and is
+the reviewer, so this file is his checklist: work down it, mark anything wrong with the key name,
+and the dictionary gets fixed. Nothing in the app claims a language has been checked until the table
+at the bottom says so.
 
 ## How to read this
 
@@ -44,8 +46,15 @@ speaker before the first real event. Nothing in the app claims they are checked.
 | Language | Reviewed by | Date | Notes |
 | --- | --- | --- | --- |
 | English | Written for the club, 18 Oct 2026 | 18 Oct 2026 | Source of truth |
-| Tagalog | Not yet | - | Draft by an agent; needs a native reader |
-| Hiligaynon | Not yet | - | Draft by an agent; needs a native reader |
+| Tagalog | Jeff (owner) | - | Draft by an agent; review the keys listed above and the help panel |
+| Hiligaynon | Jeff (owner) | - | Draft by an agent; review the keys listed above and the help panel |
+
+## Added with the help centre
+
+The help panel's own copy and the two player guides are in the same dictionaries, under `help.*`:
+the button label ("Tulong" / "Bulig"), the panel wording, and the step lists for My golf and the
+pairings page. They read in the chosen language, so they belong in the same review pass. The desk's
+guides are English on purpose (decision 18) and are not part of this review.
 
 ## Not covered yet
 

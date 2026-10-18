@@ -52,6 +52,7 @@ export function PairingsView({
           <input
             type="search"
             className="grow"
+            data-help="pairings-search"
             placeholder={t("pairings.findName")}
             aria-label={t("pairings.findName")}
             value={query}
@@ -60,6 +61,7 @@ export function PairingsView({
           {flightFilter && flights.length > 1 && (
             <select
               aria-label={t("pairings.filterFlight")}
+              data-help="pairings-flight"
               value={flight}
               onChange={(e) => setFlight(e.target.value)}
             >
@@ -71,7 +73,12 @@ export function PairingsView({
               ))}
             </select>
           )}
-          <button type="button" className="btn ghost" onClick={() => window.print()}>
+          <button
+            type="button"
+            className="btn ghost"
+            data-help="pairings-print"
+            onClick={() => window.print()}
+          >
             {t("common.print")}
           </button>
         </div>

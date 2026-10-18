@@ -261,6 +261,7 @@ export default function DrawPage() {
             <button
               type="button"
               className="btn gold"
+              data-help="draw-run"
               disabled={ready === 0}
               onClick={() => makeDraw(true)}
             >
@@ -279,6 +280,7 @@ export default function DrawPage() {
                 <button
                   type="button"
                   className={`btn${isPublished && !changedSincePublish ? " ghost" : " gold"}`}
+                  data-help="draw-publish"
                   onClick={() => setPubOpen(true)}
                 >
                   {isPublished
@@ -397,7 +399,9 @@ export default function DrawPage() {
             </div>
           </section>
 
-          <IssuesPanel issues={issues} onShow={onShowIssue} />
+          <div data-help="draw-issues">
+            <IssuesPanel issues={issues} onShow={onShowIssue} />
+          </div>
         </>
       )}
 
