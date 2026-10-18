@@ -22,7 +22,7 @@ Anything not marked is a plan, not a fact.
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
 | Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), both migrations, club row seeded, `player-photos` created private, RLS checked against the anon key | 14 tables, RLS on all |
 | Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`, `src/lib/store/legacy-supabase-store.tsx`) | **Merged (PR #5) and parked**: auth guard, club-scoped repositories, frozen published snapshot, optimistic writes. Written against the earlier store contract; **not yet wired to the shell store** | 24 tests among the 218 |
-| Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Built, migration not yet applied**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger; public sign-ups off | Roles + RLS policies in the migration; 4 unit tests |
+| Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Applied 18 Oct 2026 and verified**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger; public sign-ups off. Two staff accounts exist (`admin` = owner, `member1` = desk) | Verified by signing in as each role: owner sees both member rows, desk sees only its own |
 | Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | 14 routes: Overview, Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view, plus profiles |
 | Data boundary (`src/lib/data`) | **Built as mock adapters** over the session store | `PlayerRepository`, `TournamentRepository`, `RegistrationRepository`, `HandicapImportAdapter`, `PairingsRouter`, public allow-list |
 | Brand and visual design | Clubhouse design system, Ivory / Charcoal themes, crest | Tokens in `src/app/globals.css`, contrast guarded by `src/styles/contrast.test.ts` |
@@ -243,10 +243,12 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
      checked with the anon key; `player-photos` exists as a private bucket.
    - Regenerate the database types (`supabase gen types typescript --linked`) to replace the
      hand-written `src/lib/supabase/types.ts`.
-   - Auth: **staff-only model built** — roles `owner`/`organizer`/`desk` in `club_members`, enforced
-     by RLS (`has_club_role`) with registration audit columns stamped server-side. Public sign-ups are
-     turned off in `supabase/config.toml`. Still to do: create the Auth users and their `club_members`
-     rows on the live project, then test RLS with a real login.
+   - Auth: **applied and verified 18 Oct 2026** — roles `owner`/`organizer`/`desk` in `club_members`,
+     enforced by RLS (`has_club_role`) with registration audit columns stamped server-side. Public
+     sign-ups are turned off in `supabase/config.toml`. Two staff accounts exist (`admin` = owner,
+     `member1` = desk); signing in as each proves the split — the owner sees both member rows, the
+     desk sees only its own. Accounts are test-only and their passwords must be rotated.
+     Still to do: add the golf pro as `organizer`.
    - Add the course, tee and hole rows. The real IGCC Course Rating, Slope, Par and stroke index are
      still pending from the club, so this waits on the scorecard.
    - Verify the `player-photos` storage policy with a real upload.
@@ -405,7 +407,7 @@ Agent ground rules:
 | 18 Oct 2026 | Known state after the merge: with Supabase configured, the sign-in guard and login page work, but desk screens still read and write local demo data. The data layer must be wired behind the shell's `src/lib/data/adapters.ts` interfaces. The interface says so in a banner. |
 | 18 Oct 2026 | **Staff-only auth model.** Three roles in `club_members.role`: `owner`, `organizer`, `desk`. Desk may register players and edit registrations; only owner/organizer may publish, unpublish, change tournament settings or manage members. Enforced in RLS (`has_club_role`), not by hiding buttons. Public sign-ups are off. Golfers do not need accounts, and `public.players` keeps no `user_id` so a player record is never a login identity. |
 | 18 Oct 2026 | **Registration audit is columns, not a table.** `registrations` gains `registered_by`, `updated_by` and `updated_at`, stamped by trigger from `auth.uid()` so a client cannot spoof them. No separate activity-log table. |
-| 18 Oct 2026 | Jeff supplies the first staff accounts (`admin` as owner, `member1` as desk); the golf pro's real account is added later as `organizer`. Passwords are generated at setup time and never committed or pasted into chat. |
+| 18 Oct 2026 | Jeff supplies the first staff accounts (`admin` as owner, `member1` as desk); the golf pro's real account is added later as `organizer`. These are **test-only** accounts with a shared placeholder password, created at Jeff's explicit instruction after the risk was raised; they must be rotated before the first real event. |
 
 ---
 
