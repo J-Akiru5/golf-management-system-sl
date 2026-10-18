@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
+import { SaveTruth } from "@/components/desk";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -86,7 +87,7 @@ const emptyDraft = (): Draft => ({
 });
 
 function RegisterDesk() {
-  const { tournament, players, entries, regById, adapters, dispatch } = useDesk();
+  const { tournament, players, entries, regById, adapters, dispatch, status } = useDesk();
   const params = useSearchParams();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [query, setQuery] = useState("");
@@ -238,9 +239,19 @@ function RegisterDesk() {
         }
       >
         {tournament.name} · {tournament.dates[0]} to {tournament.dates[tournament.dates.length - 1]}{" "}
-        · cut-off {fmtIso(tournament.cutOffDate)}. Everything typed here stays in this browser
-        session; nothing is sent to a server.
+        · cut-off {fmtIso(tournament.cutOffDate)}.
       </PageHeader>
+
+      {/* Where a saved entry actually goes. Demo keeps it in the session; connected writes to the
+          club database. The copy changes with the truth instead of claiming one thing always. */}
+      <SaveTruth
+        target={status === "demo" ? "session" : "database"}
+        detail={
+          status === "demo"
+            ? "This build has no Supabase connection, so an entry lives in the browser session only."
+            : undefined
+        }
+      />
 
       <SectionCard
         id="instructions-h"
@@ -278,8 +289,8 @@ function RegisterDesk() {
                 <span className="mono">{tournament.registration.payment.accountNumber}</span>
               </p>
               <p className="hint mt-1">
-                <b>Payment status is recorded by hand and starts pending.</b> This demo does not
-                take, check, verify or confirm any payment.
+                <b>Payment status is recorded by hand and starts pending.</b> Nothing is taken,
+                checked, verified or confirmed here.
               </p>
             </div>
           )}
@@ -307,16 +318,17 @@ function RegisterDesk() {
         <SectionCard
           id="saved-h"
           icon={<CircleCheck />}
-          title="Saved (this session only)"
-          subtitle="Confirmation summary. Nothing was sent anywhere."
+          title="Saved"
+          subtitle="Confirmation summary."
         >
           <div className="notice ok" role="status">
             <b>
               {savedPlayer.name} is entered as a{savedEntry.role === "guest" ? " guest" : " member"}
               .
             </b>{" "}
-            This is a local session draft: a page refresh clears it, and there is no server
-            persistence, no payment, and no mail.
+            {status === "demo"
+              ? "This is a local session draft: a page refresh clears it, and there is no server persistence, no payment, and no mail."
+              : "Recorded on the club database. Payment stays manual and nothing is mailed."}
           </div>
           <dl className="m-0 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-line bg-line sm:grid-cols-4">
             {[
