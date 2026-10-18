@@ -6,4 +6,3 @@ out
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
-supabase/.temp/    # Supabase CLI cache

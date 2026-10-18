@@ -20,7 +20,7 @@ Anything not marked is a plan, not a fact.
 | Routing engine (`src/lib/routing`) | **Built**, pure functions, no DB; **lock-aware re-run** | 26 unit tests |
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
-| Database schema (`supabase/migrations`) | **Written and reviewed in code**: the initial migration plus the data-layer migration; tested on a throwaway Postgres 16; **not applied to any real Supabase project** | 14 tables, RLS on all |
+| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), both migrations, club row seeded, `player-photos` created private, RLS checked against the anon key | 14 tables, RLS on all |
 | Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`, `src/lib/store/legacy-supabase-store.tsx`) | **Merged (PR #5) and parked**: auth guard, club-scoped repositories, frozen published snapshot, optimistic writes. Written against the earlier store contract; **not yet wired to the shell store** | 24 tests among the 214 |
 | Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | 14 routes: Overview, Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view, plus profiles |
 | Data boundary (`src/lib/data`) | **Built as mock adapters** over the session store | `PlayerRepository`, `TournamentRepository`, `RegistrationRepository`, `HandicapImportAdapter`, `PairingsRouter`, public allow-list |
@@ -221,11 +221,16 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
 ### Phase 1: first IGCC event
 
 1. **Database connection** *(needs Jeff at a computer with Supabase access)*
-   - Create the Supabase project (Pro). Link the CLI, then apply both migrations
-     (`supabase link --project-ref …` and `supabase db push`). Run `seed.sql` for the club row.
-   - Regenerate the database types (`supabase gen types typescript`) to replace the hand-written
-     `src/lib/supabase/types.ts`.
-   - Auth: organizer login, `club_members` row, RLS tested with a real user.
+   - ~~Create the Supabase project (Pro)~~ **Done**: `golf-management-system` (`egfwfyznbndunqfqzxjx`).
+   - ~~Link the CLI and apply both migrations; seed the club row~~ **Done**: `supabase link` and
+     `supabase db push --include-seed`, verified with `supabase migration list --linked`; RLS
+     checked with the anon key; `player-photos` exists as a private bucket.
+   - Regenerate the database types (`supabase gen types typescript --linked`) to replace the
+     hand-written `src/lib/supabase/types.ts`.
+   - Auth: create the Auth user and its `club_members` row (display name and role), then test RLS
+     with a real login. No users exist yet.
+   - Add the course, tee and hole rows. The real IGCC Course Rating, Slope, Par and stroke index are
+     still pending from the club, so this waits on the scorecard.
    - Verify the `player-photos` storage policy with a real upload.
    - **Wire the merged data layer to the shell.** The Supabase repositories, mappers and store were
      merged in PR #5 and parked at `src/lib/data/supabase` and
@@ -378,6 +383,7 @@ Agent ground rules:
 | 18 Oct 2026 | The interface carries a "Demo shell · local session data" badge; public pairings are built through an allow-list projection; payments stay manual and unverified. |
 | 18 Oct 2026 | Supabase data layer merged (PR #5, `feat/supabase-data`): email/password auth, membership guard, club-scoped repositories, `tournaments.published_snapshot` and the reworked `public_pairings` RPC. It was written against the earlier `Desk` contract. |
 | 18 Oct 2026 | `feat/igcc-tournament-desk-shell` merged into `develop` directly (owner's instruction). The shell keeps the app: it runs on the session store and the mock adapters. The Supabase layer was preserved rather than dropped: it moved to `src/lib/data/supabase` with `src/lib/store/legacy-supabase-store.tsx`, still compiling and tested. |
+| 18 Oct 2026 | The Supabase project `golf-management-system` (`egfwfyznbndunqfqzxjx`) was linked with the CLI and both migrations are applied, with the club row seeded and `player-photos` created as a private bucket. RLS checked with the anon and service keys. The database is empty of players, registrations and events. `supabase/config.toml` is committed so the CLI runs from the repo. |
 | 18 Oct 2026 | Known state after the merge: with Supabase configured, the sign-in guard and login page work, but desk screens still read and write local demo data. The data layer must be wired behind the shell's `src/lib/data/adapters.ts` interfaces. The interface says so in a banner. |
 
 ---

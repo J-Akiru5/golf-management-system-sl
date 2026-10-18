@@ -44,10 +44,13 @@ login page are active, but the desk screens still read and write local demo data
 layer is merged and parked at `src/lib/data/supabase` plus `src/lib/store/legacy-supabase-store.tsx`;
 wiring it into the shell store is the next database task (see `docs/handoffs/frontend-igcc-shell.md`).
 
-The Supabase project must be provisioned separately. After the owner approves and links a project,
-apply the migrations, create the club/course/tees/tournament/category/flight rows, create an Auth
-user, and add that user's `club_members` row with a display name and role. The migrations have not
-been applied anywhere yet, and the CLI is not linked to a project from this repository.
+The Supabase project is provisioned separately. The `golf-management-system` project
+(`egfwfyznbndunqfqzxjx`, ap-southeast-1) already has both migrations applied and the club row
+seeded, with `player-photos` created as a private bucket and RLS verified against the anon key.
+Still to do before the desk can run on real data: create an Auth user and its `club_members` row
+with a display name and role, add the course and tee rows, and wire the data layer to the shell
+(see below). The migrations are applied through the CLI: `supabase link --project-ref` then
+`supabase db push --include-seed`. Nothing in the app uses a service-role key.
 
 ## Routing engine
 
@@ -87,8 +90,8 @@ snapshot for the public pairings RPC). It was merged into `develop` as a foundat
 wired to the shell's store: with Supabase configured you can sign in, but the desk still shows local
 demo data. The Supabase implementation lives in `src/lib/data/supabase` and
 `src/lib/store/legacy-supabase-store.tsx`; it was written against the earlier store contract and
-stays untouched until the wiring task. Nothing in this repository has been applied to a real
-Supabase project.
+stays untouched until the wiring task. The project itself has both migrations and the club row
+applied; no player, registration or event data has been written to it.
 
 The shell's own boundary lives in `src/lib/data`: domain types with `club_id`, the cut-off freeze
 rule, the public allow-list projection, and mock adapters for `PlayerRepository`,
