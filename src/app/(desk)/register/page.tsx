@@ -17,7 +17,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
-import { type PlayerPickItem, PlayerQuickPick, SaveTruth } from "@/components/desk";
+import {
+  type PlayerPickItem,
+  PlayerQuickPick,
+  RegistrationRow,
+  SaveTruth,
+} from "@/components/desk";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -846,65 +851,56 @@ function RegisterDesk() {
               placeholder="Filter by name, NGAP ID or role"
             />
           </label>
-          <ul className="plain grid gap-2">
+          <div className="grid gap-2">
             {listRows.map(({ e, r, p }) => {
               if (!p) return null;
+              const preferred = Object.values(e.teePreferences).filter(Boolean);
               return (
-                <li
+                <RegistrationRow
                   key={e.id}
-                  className="grid gap-2 rounded-[12px] border border-line p-3 sm:flex sm:items-center sm:gap-3"
-                >
-                  <Avatar name={p.name} photo={photoOf(p)} />
-                  <span className="min-w-0 flex-1">
-                    <Link
-                      href={`/players/${p.id}`}
-                      className="block truncate font-semibold text-ink no-underline hover:underline"
-                    >
-                      {p.name}
-                    </Link>
-                    <span className="hint block">
-                      {e.role === "guest" ? "Guest" : "Member"}
-                      {e.sponsor ? " · sponsor" : ""} · shirt {e.shirt ?? "—"} · frozen{" "}
-                      {fmtIndex(r?.frozenIndex ?? null)}
-                      {r?.frozenEffectiveDate ? ` (${r.frozenEffectiveDate})` : ""}
-                    </span>
-                    <span className="hint block">
-                      Payment: {PAYMENT_LABEL[e.paymentStatus]}
-                      {Object.values(e.teePreferences).some(Boolean)
-                        ? ` · prefers ${Object.values(e.teePreferences).filter(Boolean).join(", ")}`
-                        : " · no tee preference given"}
-                    </span>
-                  </span>
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    {r && <StatusPill status={r.status} />}
-                    {r?.frozenOutdated && <span className="pill warn">Re-freeze</span>}
-                    {r?.staleIndex && <span className="pill warn">Old index</span>}
-                    {r?.frozenOutdated && (
+                  name={p.name}
+                  photo={photoOf(p)}
+                  photoConsent={p.photoConsent}
+                  role={e.role}
+                  status={r?.status ?? null}
+                  index={r?.frozenIndex ?? null}
+                  playingHandicap={r?.playingHandicap ?? null}
+                  flightName={r && r.flightId ? names.flight(r.flightId) : null}
+                  paymentStatus={e.paymentStatus}
+                  shirt={e.shirt}
+                  teePreferenceNote={
+                    preferred.length ? `prefers ${preferred.join(", ")}` : "no tee preference given"
+                  }
+                  profileHref={`/players/${p.id}`}
+                  actions={
+                    <>
+                      {r?.frozenOutdated && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() =>
+                            dispatch({
+                              type: "refreeze",
+                              tournamentId: tournament.id,
+                              entryIds: [e.id],
+                            })
+                          }
+                        >
+                          <RefreshCw aria-hidden="true" /> Re-freeze
+                        </Button>
+                      )}
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
-                        onClick={() =>
-                          dispatch({
-                            type: "refreeze",
-                            tournamentId: tournament.id,
-                            entryIds: [e.id],
-                          })
-                        }
+                        aria-label={`Remove ${p.name} from this event`}
+                        className="text-ink-muted hover:text-danger"
+                        onClick={() => dispatch({ type: "removeEntry", id: e.id })}
                       >
-                        <RefreshCw aria-hidden="true" /> Re-freeze
+                        <X aria-hidden="true" />
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Remove ${p.name} from this event`}
-                      className="text-ink-muted hover:text-danger"
-                      onClick={() => dispatch({ type: "removeEntry", id: e.id })}
-                    >
-                      <X aria-hidden="true" />
-                    </Button>
-                  </span>
-                </li>
+                    </>
+                  }
+                />
               );
             })}
             {listRows.length === 0 && (
@@ -914,7 +910,7 @@ function RegisterDesk() {
                   : "No registration matches that filter."}
               </li>
             )}
-          </ul>
+          </div>
         </SectionCard>
       </div>
     </div>
