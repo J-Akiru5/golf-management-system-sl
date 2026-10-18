@@ -2,6 +2,10 @@
 
 How TeeLine Golf is numbered, tagged and shipped. Short on purpose.
 
+**This file is the single source of truth for which version production runs.** If `package.json`,
+`CHANGELOG.md` and the tags ever disagree, stop and reconcile them before deploying anything. A
+repo-state claim about production ("it is on v0.8.0") is answered from the tag, not from memory.
+
 ## The number
 
 `MAJOR.MINOR.PATCH`, for example `0.5.1`.
@@ -18,11 +22,23 @@ Supabase plan.
 
 ## Where the version lives
 
-- `package.json` `version` is the source of truth. Bump it in the pull request that makes the release.
-- Git tag `vMAJOR.MINOR.PATCH` points at the merge commit on `develop` that carries that bump.
+- `package.json` `version` is the source of truth for the number. Bump it in the pull request that makes the release.
+- **Git tag `vMAJOR.MINOR.PATCH` marks the released commit**: the merge commit on `develop` that carries that bump. The tag, not the tip of `main`, is the authoritative release.
 - `CHANGELOG.md` has one section per version, newest first, with the migrations that ship with it.
 - The app should show `v{version} · {short commit} · {environment}` somewhere staff can see it (footer
   or About), so a tester can quote exactly what they tested. This is tracked as a task, not yet built.
+
+## What production is running
+
+```
+git tag --sort=-v:refname                             # newest tags first
+git show v0.8.0 --no-patch --format="%H %d"           # the commit the tag points at
+git ls-remote origin main                             # what main points at right now
+```
+
+Production serves the latest tag's code. `main` may carry a docs-only commit after the tag; that does
+not change the build, and the tag stays the release. Any **code** change reaches `main` only as a new
+tagged release.
 
 ## Code and database are released separately
 
@@ -46,7 +62,8 @@ version expects.
 
 5. Optional: on GitHub, Releases, "Draft a new release", pick the tag, paste the CHANGELOG section.
 6. Production tracks `main`. Move `main` forward to the tagged commit only when the owner wants that
-   version live, and say so in the release notes.
+   version live, and say so in the release notes. `main` carries only released code; a docs-only commit
+   may follow the tag, but never an untagged code change.
 
 Do not tag a commit that has not been through step 1. Do not move or delete a published tag; ship a
 new patch instead.
