@@ -192,6 +192,11 @@ Verified in `supabase/migrations`, and **applied to the `golf-management-system`
   `/enter/[id]`, `/login`), player (`/my`), staff (the desk). Only the guarded areas are in the
   proxy matcher, so public pages never pay for a session lookup.
 
+**In step, with one migration ahead of `develop`.** Every migration on `develop` is applied to the
+project, and the project is one ahead: `20261026000000_notifications.sql` (gap 11) is already applied
+and rides on PR #17. Until that merges, a `db push` from `develop` will not see it, and a new branch
+must not reuse the `20261026000000` version number.
+
 **Schema vs spec:** the migration has 14 tables: the spec's tables except `scores` (Phase 2), plus `club_members`
 (needed for RLS).
 
@@ -287,20 +292,21 @@ These are places where the spec promises something the code does not do yet. Che
     both tables, `sync_notifications`, `mark_notifications_read`, two RLS policies; verified over the
     API: both tables answer and `sync_notifications` runs). The adapter wiring and the bell panel are
     not built; they ride on PR #17.
-12. **The draw was computed in the browser and never saved.** *Fixed in code, migration not applied.*
-    `route()` is a real pure engine and it runs live: changing players, settings or a move re-runs it,
-    locked groups are kept, and the draw checks re-validate. But the current store only dispatched
-    these actions to the in-memory reducer; the old `saveTournamentDraw` belonged to the parked
-    legacy store, so with Supabase configured a generated, moved or published draw was lost on
+12. **The draw was computed in the browser and never saved.** *Fixed in code and applied; not yet
+    exercised.* `route()` is a real pure engine and it runs live: changing players, settings or a move
+    re-runs it, locked groups are kept, and the draw checks re-validate. But the current store only
+    dispatched these actions to the in-memory reducer; the old `saveTournamentDraw` belonged to the
+    parked legacy store, so with Supabase configured a generated, moved or published draw was lost on
     refresh. It now goes through `save_draw`, one transaction that checks the role and a draw
     revision (a stale screen is refused, not allowed to overwrite). The write path is covered by unit
-    tests with a fake client; it has not run against the real project because the migration is not
-    applied and the project has no course, tee, hole or tournament rows.
-13. **The public pairings page was not public.** *Fixed in code, migration not applied.* `/pairings`
+    tests with a fake client. The migration **is applied**; what has not happened is the end-to-end
+    run, because the project has no course, tee, hole or tournament rows yet.
+13. **The public pairings page was not public.** *Fixed in code and applied.* `/pairings`
     read the organizer's session store. It is now a server page that calls the anonymous
     `public_pairings` function, cached for 60 seconds and refreshed on publish. Each publish writes an
     immutable row in `pairings_versions` (version 1, 2, 3) and the page and the version number show
-    which one players are looking at. With no Supabase URL the demo page is unchanged.
+    which one players are looking at. With no Supabase URL the demo page is unchanged. Production
+    serves this page today; it shows the "not out yet" state because nothing has been published.
 
 ---
 
@@ -362,17 +368,18 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
 
 ### Scheduling and the public pairings page (built in `feat/versioned-publish`, 18 Oct 2026)
 
-**Status.** Steps 2 to 5 are in code and tested. The migration
-`supabase/migrations/20261022000000_versioned_publish.sql` is **not applied** to the real project;
-it needs the owner's go-ahead (schema and RLS change: `groups` and `group_members` become
-read-only for members, the draw is written only by `save_draw`). Step 1 waits for real tee data, so
-nothing was seeded into the real project.
+**Status.** Steps 2 to 5 are in code and tested, and the migration
+`supabase/migrations/20261022000000_versioned_publish.sql` **is applied** to the real project. It was
+applied by hand at some point without a history row; the objects were verified over the API and the
+history was recorded with `supabase migration repair --status applied 20261022000000`, so nothing was
+re-run. Step 1 is the one still open: it needs real tee data, so nothing has been seeded and the
+public page is showing its empty state.
 
 **Where scheduling stands.** The grouping is dynamic, not a static shell: category, tee, course
 handicap, flight, group and slot come from the pure engine in `src/lib/routing`, driven by tournament
-settings, and manual moves are checked by `src/lib/draw`. What is missing is trust: the result is not
-yet proven to save and reload, two editors can overwrite each other, publishing keeps one overwritten
-copy, and the public page does not read the published copy from the database (gaps 12 and 13).
+settings, and manual moves are checked by `src/lib/draw`. What is missing is trust: the save and
+reload path has not run against the real project (there are no rows yet), and the revision guard, the
+versioned publish and the public page have never been exercised with real names and real numbers.
 
 **Principles.**
 
@@ -388,15 +395,14 @@ copy, and the public page does not read the published copy from the database (ga
    labelled. Create the course, tees, holes and a tournament in the project, run a draw, save, reload
    and check the same groups and locks come back. Add a round-trip test for the mappers and
    `saveTournamentDraw`.
-2. **Stop silent overwrites.** Add a draw revision number on the tournament. A save that carries an
-   old revision is refused and the screen offers a reload. Record who moved whom (extend the audit
-   columns pattern from registrations). Schema change: owner approval before applying.
-3. **Versioned publish.** Add a `pairings_versions` table (tournament, version number, snapshot,
-   published by, published at, optional note). Publishing writes the next version; the current one is
-   what `public_pairings` returns. The publish dialog lists what changed since the live version
-   (players moved, added, removed). Unpublish stays owner/organizer only. The version number and time
-   show on the public page and on printed sheets. RLS: only owner and organizer write; anon reads only
-   through the function. Schema change: owner approval before applying.
+2. **Stop silent overwrites.** *Done 18 Oct 2026 and applied.* `tournaments.draw_revision` and the
+   `save_draw` guard: a save that carries an old revision is refused and the screen offers a reload.
+3. **Versioned publish.** *Done 18 Oct 2026 and applied.* `pairings_versions` (tournament, version
+   number, snapshot, published by, published at, note); publishing writes the next version and the
+   current one is what `public_pairings` returns. Unpublish stays owner/organizer only. The version
+   number and time show on the public page and on printed sheets. Still open from the original step:
+   the publish dialog does not list what changed since the live version (players moved, added,
+   removed); it only says whether anything changed.
 4. **Public page.** `/pairings` becomes a server-rendered page that calls `public_pairings` with the
    anon key, cached with ISR (about 60 seconds) and revalidated on publish. It shows the full list by
    wave, hole and time, plus a name search and a flight filter (the data is about 100 players, so the
@@ -411,6 +417,44 @@ copy, and the public page does not read the published copy from the database (ga
 publishes a new version. Players see the new version after the cache refreshes; the page shows the
 version and time so a stale printout is easy to spot (decision 16).
 
+### The next milestone: the organizer UAT (not handed over yet)
+
+**What it proves.** That the whole loop works with the club's own numbers and people: sign in, set up
+an event, register players, make and review a draw, print the sheets, publish, and let a player claim
+a record and read their start. It is the first time anyone outside this repo uses the product.
+
+**Definition of done.** The organizer completes the walkthrough below on `golf.syntaxure.dev` without
+a blocking error; a reload keeps the draw and its locks; publishing shows a version; a player sees
+only their own entry. Every finding is written down with a severity the same day.
+
+| # | Workstream | What it covers | Owner |
+| --- | --- | --- | --- |
+| W1 | Land PR #17 | Event setup, the tee and hole editors, the tee/hole loading fix, the paging primitive and the notifications migration. Rebase on `develop`, run the checks, merge, re-level `main`, redeploy production | The agent that built it; owner merges |
+| W2 | Long lists and alerts | Apply `paginate()` to the four lists, then the notification wiring and the bell panel (schema already live) | The agent that owns those screens |
+| W3 | Real club data, then prove the path | Course Rating, Slope, Par and stroke index from the scorecard (decision 1); decisions 3 to 7 and 9; a fresh NGAP export and a re-freeze; **and the print page's `courseDataStatus` hard-coded to `"placeholder"` must be derived from the loaded rows**, so real data prints without the watermark | Organizer, with the club |
+| W4 | Accounts, access, privacy | Rotate the two test accounts; create the golf pro as `organizer`; decide player sign-ups; one player account and one player row to claim; verify the photo consent line and a real upload | Jeff and Claude |
+| W5 | The UAT itself | The run sheet, the session, the findings, the fallback (printed sheets, unpublish, redeploy the previous build) | Jeff and the organizer |
+| W6 | Production hygiene | CI on pull requests (there is none); revoke `anon` execute on `save_draw`, `publish_pairings` and `unpublish_pairings`; a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups | Jeff |
+
+**The run sheet (one page, to be handed over).**
+
+1. Open the site with no account: the landing page, then the published pairings (no sign-in needed).
+2. Sign in as the organizer: lands on the control room, with name and role shown.
+3. Setup: enter the real ratings, categories and flight ranges. Try saving twice to see the guard
+   refuse a stale save rather than overwrite.
+4. Players: add two or three with birthdates, gender and indexes; check the eligibility review.
+5. Draw: make it, move one player by hand with a reason, lock a group, re-run and confirm the lock holds.
+6. Print: start sheet, pairings and scorecards on the club's paper; the layout should survive A4 and a
+   photocopier.
+7. Publish, then open the pairings on a phone and search a name.
+8. Player side: sign in as a player, claim the member record, and confirm the entry and start look right.
+
+**Sequence and critical path.** W1 first (it unblocks W3), W4 in parallel, W5 when W1 and W3 are done,
+W2 and W6 alongside. The longest lead item is the club's data, which is not in our hands.
+
+**Risks.** The club's two files (scorecard, NGAP export) may not arrive in time: run the UAT on
+clearly labelled sample numbers if so, which is what the print watermark exists for. PR #17 may grow
+while open: merge it as soon as the checks pass and put new work on a fresh branch.
 
 ### Phase 2: results
 
@@ -515,7 +559,10 @@ Agent ground rules:
 - [x] Lock-aware re-run built (gap 1)
 - [ ] Start sheet and scorecards printed on real paper at the club
 - [ ] Pagination applied to the players, registrations, import rows and print sheets (decision 13 settled; the primitive is built on PR #17)
-- [x] The organizer has said what alerts they expect: stored, desk-facing notifications (decision 14, settled; the panel itself is not built)
+- [x] The organizer has said what alerts they expect: stored, desk-facing notifications (decision 14, settled; the schema is live, the panel is not built)
+- [ ] The UAT run sheet handed to the organizer and the session held (section 8, "The next milestone")
+- [ ] CI on pull requests (typecheck, lint, test, build)
+- [ ] `anon` execute revoked on `save_draw`, `publish_pairings` and `unpublish_pairings`
 - [ ] Photo consent line shown before every photo; private bucket verified
 - [ ] Public pairings page checked on an older phone
 - [ ] Deployed build on `main` opened once with a staff login (production env vars confirmed first)
