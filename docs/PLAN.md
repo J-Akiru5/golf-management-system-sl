@@ -20,7 +20,7 @@ Anything not marked is a plan, not a fact.
 | Routing engine (`src/lib/routing`) | **Built**, pure functions, no DB; **lock-aware re-run** | 26 unit tests |
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
-| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), club row seeded, `player-photos` created private, RLS checked against the anon key. **All ten migrations are in step**, including the player portal (`20261023000000`, `…0001`) and the event-setup pair (`20261024000000`, `20261025000000`) | 14 tables, RLS on all; `supabase migration list --linked` shows local and remote in step |
+| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), club row seeded, `player-photos` created private, RLS checked against the anon key. **All eleven migrations are in step**, including the player portal (`20261023000000`, `…0001`) and the event-setup pair (`20261024000000`, `20261025000000`) plus the notifications schema (`20261026000000`) | 14 tables, RLS on all; `supabase migration list --linked` shows local and remote in step |
 | Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`) | **Wired (merged 18 Oct, `b8d9c7a`)**: the store uses `createSupabaseAdapters` and `loadDeskState` when a Supabase URL is configured, and the mock adapters when it is not. Not yet exercised end to end with real course and tournament rows | `src/lib/data/supabase/adapters.ts`, `load-desk-state.ts`, `domain.ts`; 24 tests |
 | Deployment | Vercel project **`golf-management-system-sl`** (team `j-akiru5s-projects`), production tracks `main` at `https://golf-management-system-sl.vercel.app`; pushes to feature branches build previews. Before the 18 Oct advance, production served the pre-TeeLine build from `main` | `vercel ls`, `vercel inspect`; production env vars not yet confirmed from the repo |
 | Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Applied 18 Oct 2026 and verified**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger. Two staff accounts exist (`admin` = owner, `member1` = desk) | Verified by signing in as each role: owner sees both member rows, desk sees only its own |
@@ -30,12 +30,12 @@ Anything not marked is a plan, not a fact.
 | Brand and visual design | **TeeLine Golf** identity: public landing page, fairway-and-flag vector mark, Ivory / Charcoal themes; the IGCC crest stays a separate club asset | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
 | Printing | **Print components and pure helpers built**: sorted start sheet, allow-listed pairings sheet, per-group 18-hole scorecards, handicap dots, and A4 print CSS | `src/lib/print` tests; dev-only preview at `/print-preview`; real course data and club-printer test still pending |
 | Merged (PR #17) | **Event setup and the notification schema**, merged into `develop` as `863c253` on 18 Oct 2026: the desk saves course, tees, holes, categories and flights in one guarded, manager-only transaction, enters the real tee and hole numbers, loads the saved tees and holes instead of the samples, adds the paging primitive, and writes the notifications migration. Its migrations `20261024000000`, `20261025000000` and `20261026000000` are all applied to the live project (verified over the API) | Section 8, step W1 done |
-| In review (PR #23) | **The alerts bell and the paged lists** (`feat/desk-lists-and-bell`): the bell in the shell, the notification loader, and paging applied to the players, registration and import review lists, plus the import review tabs. Checks green, **not yet seen in a browser** | Waiting on the owner's review |
+| Merged (PR #23) | **The alerts bell and the paged lists** (`feat/desk-lists-and-bell`, merged as `1fd2b76` on 18 Oct 2026): the bell in the shell, the notification loader, paging on the players, registration and import review lists, and the import review tabs. Checks green. **Not yet seen in a browser** | Done; the browser pass is outstanding |
 | Long lists | **Paged on the desk's lists.** `src/lib/data/paging.ts`: 50 rows a page, paged in the browser, queries unchanged. Applied to the player directory, the registration desk and the import review tabs. Switching tab, search or filter returns to page 1, and ties break on the record id so editing a row cannot move it to another page. **Deliberately not paged**: print, the draw groups and the desk's player search | Decision 13 settled; gap 10 closed for the desk screens |
-| Alerts | **Bell built.** Decision 14 is stored, desk-facing notifications (option B): `notifications` + `notification_reads` with per-user read state, `sync_notifications(tournament)` and `mark_notifications_read(tournament)`, all applied to the live project. The bell merges the live draw issues with the stored rows, de-duplicates them, and counts unresolved blocking and warning whatever their read state; read state only quiets info. The full sync cycle was checked over the API: a warning appeared and cleared when the cause was fixed, and a dismissed info notice stayed read in a fresh session | Gap 11 closed; PR #23 |
+| Alerts | **Bell built.** Decision 14 is stored, desk-facing notifications (option B): `notifications` + `notification_reads` with per-user read state, `sync_notifications(tournament)` and `mark_notifications_read(tournament)`, all applied to the live project. The bell merges the live draw issues with the stored rows, de-duplicates them, and counts unresolved blocking and warning whatever their read state; read state only quiets info. The full sync cycle was checked over the API: a warning appeared and cleared when the cause was fixed, and a dismissed info notice stayed read in a fresh session | Gap 11 closed; merged (#23, `1fd2b76`) |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 31 test files, 382 tests passing (`pnpm test`) on `feat/desk-lists-and-bell` today (29 files, 343 tests on `develop`, which is PR #17 alone). PR #23 adds 39 cases: the alert rules and the all-clear guard (23), stable ordering and the filter reset (7), the import review buckets (5) and a start sheet carrying a whole 126-strong field (4). The contrast file generates 100 of those cases, checking every design-system pair in both themes.
+Whole suite: 31 test files, 382 tests passing (`pnpm test`) on `develop` today (29 files, 343 tests before PR #23). PR #23 adds 39 cases: the alert rules and the all-clear guard (23), stable ordering and the filter reset (7), the import review buckets (5) and a start sheet carrying a whole 126-strong field (4). The contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
 **The one thing blocking a real event:** the wiring exists but the project has no course, tee, hole or
 tournament rows, so the desk has nothing real to show. Provisioning and an end-to-end pass with real
@@ -221,13 +221,13 @@ version after `20261026000000`; that number is spent.
 | Import handicaps | CSV, column mapping, match and merge queue with decisions, apply, deferred rows, import history; applies to the session's handicap records |
 | Draw control room | Generate, move (drag or Move, with a reason), lock, re-run keeping locks, override list, issues panel, publish dialog, routing explanation per player, draft / published / changed states |
 | Print center | Start sheet, pairings, per-group scorecards, handicap dots, and A4 print CSS. Published vs draft is labelled |
-| Settings | Setup wizard: basics, course and tees (pending blocks, read-only sample values), cut-off and handicap rules, categories, flights, start and groups, registration fields, live readiness checks |
+| Settings | Setup wizard: basics, course and tees, cut-off and handicap rules, categories, flights, start and groups, registration fields, live readiness checks. **No Save button by design**: every edit writes on change, and saving / saved / errors appear in the session bar. In connected mode only the course-side fields persist; the tournament-level fields do not yet (gap 14). Tee name and hole number are fixed identities, and flight ordering is read-only pending decision 6 |
 | Sign in | One page for players and staff, with account creation for players; an account's area follows what it is (a club_members row or a linked player record). Demo builds skip it entirely |
 | My golf (player area) | `/my`: link your member record by name and NGAP number, then read your own entries and published start. Applied; needs a test account and one player row to claim |
 | Public pairings | Search by name, large text, print; built through the public allow-list projection (name, flight, hole, time only) |
 | Course & holes | Hole 1 overview and green view with shot line and yardage markers drawn from anchor files. **Pictures are an illustration, not IGCC's real hole** |
 | Clubhouse display (spotlight) | 16:9 player card for the clubhouse TV, single player or rotation. Shows recorded data only |
-| Real course and tee entry | **Pending**: the tee values are deliberately read-only sample data until the club supplies the scorecard |
+| Real course and tee entry | **Pending**: course rating, slope, par and stroke index are editable in Settings, but the values on file are placeholders until the club supplies the scorecard |
 | Score encoding and results | Phase 2 |
 
 ---
@@ -260,8 +260,11 @@ These are places where the spec promises something the code does not do yet. Che
 4. **Printing** has props-driven start, pairings and scorecard components, plus tested sorting and
    handicap-dot helpers. The current desk still supplies placeholder/missing hole data, so its cards
    show the missing-data state and watermark. It has not been printed on the club's paper or printer.
-5. **Settings are editable in the demo**, but the real tee data is deliberately read-only until the
-   club supplies the scorecard, so it cannot pass as official.
+5. **Settings are editable, but two things are not what they look like.** The tee and hole values are
+   placeholders, editable in Settings, until the club supplies the scorecard. In connected mode the
+   course-side fields persist through `save_event_setup`; the tournament-level fields (name, dates,
+   state, cut-off, config rules, registration wording) update the screen only and revert on reload.
+   See gap 14.
 6. **Tee data is placeholder.** Demo and test numbers (e.g. White 71.5 / 128 / 72) are invented.
 7. **Wave rule vs. small flights.** Keeping flights whole can push a small flight to wave 2; an
    organizer decision is still needed (section 10).
@@ -279,7 +282,7 @@ These are places where the spec promises something the code does not do yet. Che
     to another page. Applied to the player directory, the registration desk and the import review
     tabs. **Print is deliberately not paged**: a start sheet is a piece of paper and must carry the
     whole field, which `src/lib/print/start-sheet.test.ts` now asserts at 126 players. The draw
-    groups and the desk's player search are not paged either. On PR #23.
+    groups and the desk's player search are not paged either. Merged (#23, `1fd2b76`).
 11. **Notifications are built.** Decision 14 was answered on 18 Oct 2026: stored,
     desk-facing notifications (option B), over derived-only alerts, because "mark as read" has to
     survive a refresh and more than one person may need to see an alert. The agreed design:
@@ -301,7 +304,7 @@ These are places where the spec promises something the code does not do yet. Che
     API on 18 Oct 2026: a `needs_review` warning appeared, cleared when the cause was fixed, a
     `cutoff_soon` info notice was dismissed, and that read state survived a fresh session. Both roles
     can call both functions. **Not yet seen in a browser**: the mobile sheet, the focus trap and the
-    light and dark appearance are unverified. On PR #23.
+    light and dark appearance are unverified. Merged into `develop` (#23, `1fd2b76`).
 12. **The draw was computed in the browser and never saved.** *Fixed in code and applied; not yet
     exercised.* `route()` is a real pure engine and it runs live: changing players, settings or a move
     re-runs it, locked groups are kept, and the draw checks re-validate. But the current store only
@@ -317,6 +320,32 @@ These are places where the spec promises something the code does not do yet. Che
     immutable row in `pairings_versions` (version 1, 2, 3) and the page and the version number show
     which one players are looking at. With no Supabase URL the demo page is unchanged. Production
     serves this page today; it shows the "not out yet" state because nothing has been published.
+14. **The Settings screen looks like it saves, and part of it does not.** *Checked in the code on
+    18 Oct 2026.* There is **no Save button on purpose**: every edit calls `adapters.setup.save()`,
+    which updates the screen and, with Supabase configured, queues `save_event_setup`. That write is
+    manager-only, revision-guarded, and covers the course, holes, tees, categories and flights. The
+    gaps around it:
+    - **Tournament-level settings are never written.** `src/lib/data/supabase/adapters.ts` already has
+      `saveTournamentRow()`, which upserts the `tournaments` row (name, dates, state, cut-off, config,
+      registration JSON), but `setup.save` never calls it. In connected mode the event name, days,
+      registered state, cut-off, max index, allowance, stale days, flight basis, start format, first
+      tee time, interval, wave gap, holes count, sponsor question, response email, desk instructions
+      and registration fields change on screen and are lost on reload.
+    - **The copy says demo when it is not.** The page header and the "Where changes live" card always
+      say the settings "live in this browser session only" and "No Supabase project is connected, so
+      nothing is written anywhere". Both are false with Supabase configured, and they contradict the
+      session bar directly above.
+    - **There is no role gate.** Settings is in the nav for every role. RLS allows tournament writes
+      only to owner/organizer and `save_event_setup` refuses anyone else with 42501, so a desk user's
+      edit applies locally, the write fails, and the screen keeps the change.
+    - **Deliberately read-only, not bugs:** tee name and hole number (a category points at a tee name;
+      a hole number is its identity), "Order inside a flight" (fixed at "By handicap, lowest first"
+      until decision 6 is answered), shirt sizes and the payment instruction (display only), and
+      there is no remove control for a category, where flights and registration fields have one.
+    - **Proposed fix, needs the owner's call:** carry the tournament-level fields in the same guarded
+      `save_event_setup` transaction (needs a migration after `20261026000000`) rather than add a
+      second, unguarded row write; gate or disable the screen for desk users; and make the copy say
+      what the session bar already knows. See decision 17.
 
 ---
 
@@ -440,7 +469,7 @@ only their own entry. Every finding is written down with a severity the same day
 | # | Workstream | What it covers | Owner |
 | --- | --- | --- | --- |
 | W1 | ~~Land PR #17~~ **Merged 18 Oct 2026** | Event setup, the tee and hole editors, the tee/hole loading fix, the paging primitive and the notifications migration. Merged into `develop` as `863c253`. `main` still needs re-levelling and production redeploying | Done |
-| W2 | Long lists and alerts | **Built and on PR #23**: the bell in the shell, and paging on the players, registration and import review lists plus the import review tabs. The full notification sync cycle was verified over the live API. Still to finish: **see it in a browser** (no screenshot of the bell exists, so the mobile sheet, the focus trap and light and dark are unverified) and a dev-only preview of every bell and pager state. The draw groups, print and the desk's player search are deliberately not paged | Owner reviews PR #23 |
+| W2 | Long lists and alerts | **Merged (#23, `1fd2b76`, 18 Oct 2026)**: the bell in the shell, and paging on the players, registration and import review lists plus the import review tabs. The full notification sync cycle was verified over the live API. Still to finish: **see it in a browser** (no screenshot of the bell exists, so the mobile sheet, the focus trap and light and dark are unverified) and a dev-only preview of every bell and pager state. The draw groups, print and the desk's player search are deliberately not paged | Done, except the browser pass |
 | W3 | Real club data, then prove the path | Course Rating, Slope, Par and stroke index from the scorecard (decision 1); decisions 3 to 7 and 9; a fresh NGAP export and a re-freeze; **and the print page's `courseDataStatus` hard-coded to `"placeholder"` must be derived from the loaded rows**, so real data prints without the watermark | Organizer, with the club |
 | W4 | Accounts, access, privacy | Rotate the two test accounts; create the golf pro as `organizer`; decide player sign-ups; one player account and one player row to claim; verify the photo consent line and a real upload | Jeff and Claude |
 | W5 | The UAT itself | The run sheet, the session, the findings, the fallback (printed sheets, unpublish, redeploy the previous build) | Jeff and the organizer |
@@ -515,10 +544,11 @@ Decisions that belong to the people named, not to an agent.
 | 10 | Product name and legal clearance | Jeff | Public branding | TeeLine Golf approved as the product direction; not represented as legally cleared |
 | 11 | Vector (SVG/PDF) crest from the club; real course pictures and hole positions | Jeff / club | Print, large displays, real course map | 320px PNG crest; illustrated placeholder course |
 | 12 | ~~Create `staging` and `main` branches~~ Partly settled 18 Oct 2026: `main` exists and is kept level with `develop`; `staging` is deliberately skipped because Jeff is a solo dev. Cleaning up the merged feature branches is still open | Jeff | Pipeline | `main` = `develop`; no `staging` |
-| 13 | ~~Pagination for the long lists~~ **Settled 18 Oct 2026:** 50 rows a page, paged in the browser; the repositories still fetch whole tables because the print path needs the full list | Jeff | — | Applied on PR #23 to the player directory, the registration desk and the import review tabs. Print, the draw groups and the desk's player search are deliberately not paged |
-| 14 | ~~Alerts in Phase 1~~ **Settled 18 Oct 2026:** stored, desk-facing notifications (option B), not derived-only alerts | Organizer | — | Two tables plus `sync_notifications(tournament)`, applied and built on PR #23 (gap 11) |
+| 13 | ~~Pagination for the long lists~~ **Settled 18 Oct 2026:** 50 rows a page, paged in the browser; the repositories still fetch whole tables because the print path needs the full list | Jeff | — | Applied and merged (#23, `1fd2b76`) to the player directory, the registration desk and the import review tabs. Print, the draw groups and the desk's player search are deliberately not paged |
+| 14 | ~~Alerts in Phase 1~~ **Settled 18 Oct 2026:** stored, desk-facing notifications (option B), not derived-only alerts | Organizer | — | Two tables plus `sync_notifications(tournament)`; built and merged (#23, `1fd2b76`, gap 11) |
 | 15 | Public pairings page: names, flight, hole and time only, or also handicap or category | Organizer | Public page content | Names, flight, hole, time |
 | 16 | After a publish, do late changes always mean a new version, and should the page mark what moved | Organizer | Publish flow | New version each time; version and time shown, no change marks |
+| 17 | **How the Settings screen persists tournament-level fields in connected mode** (event name, dates, state, cut-off, handicap rules, start rules, registration wording): carry them in the guarded `save_event_setup` transaction (a migration after `20261026000000`), or keep a separate `tournaments` row write | Jeff | Settings that stay saved once the project is connected | The screen shows changes that revert on reload (gap 14); course-side fields already persist |
 
 ---
 
@@ -569,7 +599,7 @@ Agent ground rules:
 - [x] Lock-aware re-run built (gap 1)
 - [ ] Start sheet and scorecards printed on real paper at the club
 - [x] Pagination applied to the player directory, the registration desk and the import review tabs; print, the draw groups and the desk's player search stay unpaged (decision 13, PR #23)
-- [x] The organizer has said what alerts they expect: stored, desk-facing notifications (decision 14, settled; the schema is live and the bell is built on PR #23, but it has not been seen in a browser yet)
+- [x] The organizer has said what alerts they expect: stored, desk-facing notifications (decision 14, settled; the schema is live and the bell is merged in #23, but it has not been seen in a browser yet)
 - [ ] The UAT run sheet handed to the organizer and the session held (section 8, "The next milestone")
 - [ ] CI on pull requests (typecheck, lint, test, build)
 - [ ] `anon` execute revoked on `save_draw`, `publish_pairings` and `unpublish_pairings`
@@ -623,7 +653,8 @@ Agent ground rules:
 | 18 Oct 2026 | **`main` advanced to `develop` (fast-forward) for the organizer's UAT.** Production on Vercel tracks `main`, so this is what puts the TeeLine build, the sign-in areas and the player area on the stable URL instead of a hash-named preview. `staging` is skipped on purpose (solo dev, decision 12), and `main` is kept level with `develop` after every docs merge. The plan was reconciled in the same pass: the portal block, the My golf row and the obsolete "Ready to merge" row all now match the code and the database, and the event-setup pair is recorded as applied. |
 | 18 Oct 2026 | **Pagination settled (decision 13).** 50 rows a page, paged in the browser: the repositories keep fetching whole tables, because a round trip a page is slower at the club's field size and the print path needs the full list anyway. The pure maths lives in `src/lib/data/paging.ts` with 7 tests, including the case that bites (a filter that shrinks the list must not strand you past the end). Applying it to the four long lists is the remaining UI step, on the other agent's screens. **Later the same day:** applied to the player directory, the registration desk and the import review tabs. Print is deliberately left alone, because a start sheet is a piece of paper and must carry the whole field. |
 | 18 Oct 2026 | **Notifications settled (decision 14): stored, desk-facing alerts.** Two tables (`notifications`, `notification_reads`) plus `sync_notifications(tournament)` and `mark_notifications_read(tournament)`, which compute the alerts from state that already exists, upsert the new ones and resolve the stale ones, so no writer is scattered through the app and an alert cannot go stale after the problem is fixed. Chosen over derived-only alerts because read state has to survive a refresh and more than one person may need the alert. `unique (tournament_id, kind, subject)` makes an alert idempotent. Player messaging stays Phase 3 and is a different feature. The migration `20261026000000` is applied to the live project; the wiring and the panel were built later the same day. |
-| 18 Oct 2026 | **Bell and paging built (PR #23).** The bell is a pointer, not a source of truth: it merges the live `validateDraw` issues with the stored rows and de-duplicates across the two, so the draw rules are **not** copied into SQL and the bell cannot disagree with the Draw screen's issues panel. The badge counts unresolved **blocking and warning whatever their read state**, so dismissing a notice can never hide something that stops publishing; read state only quiets info, and "Dismiss notices" states how many it will quiet. Paging resets to page 1 when the tab, search or filter changes, held in the same state as the page number so it happens in one render rather than in an effect that would flash the wrong rows, and ties break on the record id so an edit cannot move a row to another page. The import review tabs read their buckets back out of the `Resolution` instead of re-deriving them, so the tab counts and the Apply button answer from one rule. The full sync cycle was checked over the live API on 18 Oct 2026: a `needs_review` warning appeared, cleared when the cause was fixed, a `cutoff_soon` info notice was dismissed, and that read state survived a fresh session; both roles can call both functions, so no RLS or grant change was needed. **Open:** the bell has not been seen in a browser, so the mobile sheet, the focus trap and light and dark are unverified, and the dev-only preview is not built. |
+| 18 Oct 2026 | **Bell and paging built (PR #23).** The bell is a pointer, not a source of truth: it merges the live `validateDraw` issues with the stored rows and de-duplicates across the two, so the draw rules are **not** copied into SQL and the bell cannot disagree with the Draw screen's issues panel. The badge counts unresolved **blocking and warning whatever their read state**, so dismissing a notice can never hide something that stops publishing; read state only quiets info, and "Dismiss notices" states how many it will quiet. Paging resets to page 1 when the tab, search or filter changes, held in the same state as the page number so it happens in one render rather than in an effect that would flash the wrong rows, and ties break on the record id so an edit cannot move a row to another page. The import review tabs read their buckets back out of the `Resolution` instead of re-deriving them, so the tab counts and the Apply button answer from one rule. The full sync cycle was checked over the live API on 18 Oct 2026: a `needs_review` warning appeared, cleared when the cause was fixed, a `cutoff_soon` info notice was dismissed, and that read state survived a fresh session; both roles can call both functions, so no RLS or grant change was needed. **Open:** the bell has not been seen in a browser, so the mobile sheet, the focus trap and light and dark are unverified, and the dev-only preview is not built. Merged into `develop` as `1fd2b76` on 18 Oct 2026. |
+| 18 Oct 2026 | **Settings investigated (amendment, gap 14).** Jeff reported fields that look uneditable and no Save button. The missing button is by design: every edit writes on change (the session store in demo, `save_event_setup` when connected) and the session bar is where saving, saved and errors appear. The investigation found a real gap: in connected mode the tournament-level fields are never written, because `setup.save` calls only `save_event_setup` and not the existing `saveTournamentRow`; the page copy still claims nothing is written anywhere; and Settings is not role-gated, so a desk user's edit applies locally and the write is refused. Tee name, hole number, flight ordering, shirt sizes and the payment instruction are intentionally read-only. Recorded as gap 14 and decision 17; the proposed fix is to carry the tournament-level fields in the guarded `save_event_setup` transaction rather than add a second, unguarded write path. |
 
 ---
 
