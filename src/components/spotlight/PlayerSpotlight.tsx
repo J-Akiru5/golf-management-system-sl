@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { TeeLineLogo } from "@/components/TeeLineLogo";
 
 export interface SpotlightData {
   firstName: string;
@@ -35,20 +35,20 @@ export function PlayerSpotlight({ d, width = 1600 }: { d: SpotlightData; width?:
       style={{ width, height: width * (9 / 16) }}
     >
       <div
-        className="absolute top-0 left-0 origin-top-left overflow-hidden text-[#f7f4eb]"
-        style={{ width: 1600, height: 900, transform: `scale(${k})`, background: "#0c1712" }}
+        className="absolute top-0 left-0 origin-top-left overflow-hidden text-[#f7f5ee]"
+        style={{ width: 1600, height: 900, transform: `scale(${k})`, background: "#0b2b23" }}
       >
         <div
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(900px 700px at 30% 40%,rgba(45,99,73,.55),rgba(12,23,18,0) 70%),radial-gradient(600px 500px at 85% 15%,rgba(201,163,74,.12),rgba(12,23,18,0) 70%),linear-gradient(180deg,#10211a 0,#0b1511 100%)",
+              "radial-gradient(900px 700px at 30% 40%,rgba(40,93,71,.55),rgba(11,43,35,0) 70%),radial-gradient(600px 500px at 85% 15%,rgba(215,181,104,.12),rgba(11,43,35,0) 70%),linear-gradient(180deg,#0b2b23 0,#0b1511 100%)",
           }}
         />
         {d.index && (
           <div
             aria-hidden="true"
-            className="absolute top-[-40px] left-10 font-condensed text-[980px] leading-[.8] tracking-[-.02em] text-[rgba(247,244,235,.035)] select-none tnum"
+            className="absolute top-[-40px] left-10 font-condensed text-[980px] leading-[.8] tracking-[-.02em] text-[rgba(247,245,238,.035)] select-none tnum"
           >
             {d.index}
           </div>
@@ -68,30 +68,24 @@ export function PlayerSpotlight({ d, width = 1600 }: { d: SpotlightData; width?:
           className="absolute inset-x-0 bottom-0 h-[120px]"
           style={{
             background:
-              "linear-gradient(180deg,rgba(11,21,17,0),rgba(30,70,44,.9) 70%,#2a5a39 100%)",
+              "linear-gradient(180deg,rgba(11,21,17,0),rgba(11,43,35,.9) 70%,#285d47 100%)",
           }}
         />
 
         <div className="absolute top-[52px] right-[60px] left-[60px] flex items-start justify-between">
           <div className="flex items-center gap-3.5">
-            <Image
-              src="/brand/igcc-crest.png"
-              alt=""
-              width={76}
-              height={76}
-              style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,.6))" }}
-            />
+            <TeeLineLogo variant="reverse" width={190} />
             <div>
               <b className="block font-display text-[15px] font-extrabold tracking-[.04em] uppercase">
                 Iloilo Golf &amp; Country Club
               </b>
-              <span className="text-xs tracking-[.06em] text-[#a9bfb2] uppercase">
+              <span className="text-xs tracking-[.06em] text-[#c5d3ca] uppercase">
                 Est. 1907 · Sta. Barbara, Iloilo
               </span>
             </div>
           </div>
           <div className="text-right">
-            <span className="text-xs font-bold tracking-[.14em] text-[#e0bc65] uppercase">
+            <span className="text-xs font-bold tracking-[.14em] text-[#d7b568] uppercase">
               {d.eventLabel}
             </span>
             <b className="block font-serif text-[30px] leading-8 font-semibold">{d.eventName}</b>
@@ -99,7 +93,7 @@ export function PlayerSpotlight({ d, width = 1600 }: { d: SpotlightData; width?:
         </div>
 
         <div className="absolute top-[150px] left-[820px] w-[700px]">
-          <div className="flex items-center gap-3 text-[13px] font-bold tracking-[.24em] text-[#e0bc65] uppercase after:h-px after:flex-1 after:bg-[rgba(201,163,74,.6)]">
+          <div className="flex items-center gap-3 text-[13px] font-bold tracking-[.24em] text-[#d7b568] uppercase after:h-px after:flex-1 after:bg-[rgba(215,181,104,.6)]">
             {d.kicker}
           </div>
           <div
@@ -115,17 +109,17 @@ export function PlayerSpotlight({ d, width = 1600 }: { d: SpotlightData; width?:
 
         <div className="absolute top-[520px] left-[820px] grid w-[700px] grid-cols-4 border-t border-[rgba(201,163,74,.6)] pt-[18px]">
           <div>
-            <div className="font-condensed text-[84px] leading-[.9] text-[#e0bc65] tnum">
+            <div className="font-condensed text-[84px] leading-[.9] text-[#d7b568] tnum">
               {d.index ?? "—"}
             </div>
-            <div className="mt-1.5 text-[11.5px] font-bold tracking-[.14em] text-[#a9bfb2] uppercase">
+            <div className="mt-1.5 text-[11.5px] font-bold tracking-[.14em] text-[#c5d3ca] uppercase">
               Handicap Index
             </div>
           </div>
           {d.stats.slice(0, 3).map((s) => (
             <div key={s.label}>
               <div className="font-condensed text-[84px] leading-[.9] tnum">{s.value}</div>
-              <div className="mt-1.5 text-[11.5px] font-bold tracking-[.14em] text-[#a9bfb2] uppercase">
+              <div className="mt-1.5 text-[11.5px] font-bold tracking-[.14em] text-[#c5d3ca] uppercase">
                 {s.label}
               </div>
             </div>
@@ -134,7 +128,7 @@ export function PlayerSpotlight({ d, width = 1600 }: { d: SpotlightData; width?:
 
         <div className="absolute top-[690px] left-[820px] grid w-[700px] grid-cols-[1.2fr_1fr] gap-7">
           <div>
-            <h5 className="mb-2 text-xs tracking-[.18em] text-[#e0bc65] uppercase">Club record</h5>
+            <h5 className="mb-2 text-xs tracking-[.18em] text-[#d7b568] uppercase">Club record</h5>
             {d.record.length ? (
               <ul className="text-[14.5px] leading-[23px]">
                 {d.record.map((r) => (
@@ -142,21 +136,21 @@ export function PlayerSpotlight({ d, width = 1600 }: { d: SpotlightData; width?:
                 ))}
               </ul>
             ) : (
-              <p className="text-[14.5px] leading-[23px] text-[#a9bfb2]">
+              <p className="text-[14.5px] leading-[23px] text-[#c5d3ca]">
                 No tournament results recorded yet.
               </p>
             )}
           </div>
           {d.pairing.length > 0 && (
             <div>
-              <h5 className="mb-2 text-xs tracking-[.18em] text-[#e0bc65] uppercase">
+              <h5 className="mb-2 text-xs tracking-[.18em] text-[#d7b568] uppercase">
                 {d.pairingTitle}
               </h5>
               <div className="flex flex-wrap gap-1.5">
                 {d.pairing.map((p) => (
                   <span
                     key={p}
-                    className="inline-flex h-7 items-center rounded-full border border-[rgba(247,244,235,.25)] px-2.5 text-[12.5px]"
+                    className="inline-flex h-7 items-center rounded-full border border-[rgba(247,245,238,.25)] px-2.5 text-[12.5px]"
                   >
                     {p}
                   </span>
@@ -167,23 +161,23 @@ export function PlayerSpotlight({ d, width = 1600 }: { d: SpotlightData; width?:
         </div>
 
         {d.tee && (
-          <div className="absolute bottom-[52px] left-[60px] flex h-14 items-center gap-3.5 rounded-full border border-[rgba(201,163,74,.55)] bg-[rgba(12,23,18,.7)] py-0 pr-[22px] pl-2.5 backdrop-blur-[10px]">
-            <span className="grid size-[38px] place-items-center rounded-full bg-[#e0bc65] font-display text-sm font-extrabold text-[#171c19]">
+          <div className="absolute bottom-[52px] left-[60px] flex h-14 items-center gap-3.5 rounded-full border border-[rgba(215,181,104,.55)] bg-[rgba(12,23,18,.7)] py-0 pr-[22px] pl-2.5 backdrop-blur-[10px]">
+            <span className="grid size-[38px] place-items-center rounded-full bg-[#d7b568] font-display text-sm font-extrabold text-[#171c19]">
               {d.tee.hole}
             </span>
             <div>
               <b className="font-display text-[17px]">{d.tee.label}</b>
               <br />
-              <span className="text-[13px] text-[#a9bfb2]">{d.tee.date}</span>
+              <span className="text-[13px] text-[#c5d3ca]">{d.tee.date}</span>
             </div>
           </div>
         )}
         {!d.photo && d.placeholder === "silhouette" && (
-          <div className="absolute right-[60px] bottom-[30px] text-[10px] tracking-[.14em] text-[rgba(169,191,178,.6)] uppercase">
+          <div className="absolute right-[60px] bottom-[30px] text-[10px] tracking-[.14em] text-[rgba(197,211,202,.6)] uppercase">
             Photo slot · no consented photo
           </div>
         )}
-        <div className="pointer-events-none absolute inset-[22px] rounded-[22px] border border-[rgba(201,163,74,.55)]" />
+        <div className="pointer-events-none absolute inset-[22px] rounded-[22px] border border-[rgba(215,181,104,.55)]" />
       </div>
     </div>
   );
@@ -203,10 +197,10 @@ function Silhouette() {
           <stop offset="1" stopColor="#0b1511" />
         </linearGradient>
         <filter id="sp-rim" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="6" dy="-4" stdDeviation="3" floodColor="#e0bc65" floodOpacity=".55" />
+          <feDropShadow dx="6" dy="-4" stdDeviation="3" floodColor="#d7b568" floodOpacity=".55" />
         </filter>
       </defs>
-      <g fill="none" stroke="rgba(201,163,74,.18)" strokeWidth="1.2">
+      <g fill="none" stroke="rgba(215,181,104,.18)" strokeWidth="1.2">
         <ellipse cx="330" cy="520" rx="300" ry="300" />
         <ellipse cx="330" cy="520" rx="240" ry="240" />
         <ellipse cx="330" cy="520" rx="180" ry="180" />

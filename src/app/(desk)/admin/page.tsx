@@ -88,7 +88,7 @@ function ControlRoomInner({
           <p className="text-[11px] font-bold tracking-[.14em] text-[#e0bc65] uppercase">
             {shotgun ? "Shotgun start" : "Two-tee start"} · {fmtTime(waveStart)} · {date}
           </p>
-          <h1 className="mt-1.5 font-serif text-[34px] leading-[38px] font-semibold !text-[#f7f4eb] sm:text-[44px] sm:leading-[46px]">
+          <h1 className="mt-1.5 font-serif text-[34px] leading-[38px] font-semibold !text-on-forest sm:text-[44px] sm:leading-[46px]">
             {draw ? (shotgun ? "Shotgun draw" : "Two-tee draw") : tournament.name}
           </h1>
           <p className="mt-1.5 text-sm opacity-85">
