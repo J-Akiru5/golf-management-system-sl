@@ -11,6 +11,32 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.7.0] - 2026-10-18
+
+Settings that save, and two desk fixes.
+
+### Added
+- The Settings screen is draft-then-save: a page-level **Save all changes** and a **Save** on every
+  section, with the section save as the fallback when the bulk write fails. Unsaved sections are
+  marked, changes can be discarded, and a failed write leaves the section marked rather than
+  pretending it landed.
+- `save_event_setup` now carries the tournament-level fields (name, days, state, cut-off, handicap
+  rules, start rules, registration wording) in the same manager-only, revision-guarded transaction as
+  the course, tees, holes, categories and flights. Settings is owner/organizer only in the UI, the
+  same rule the database already enforced.
+
+### Fixed
+- The Settings screen no longer claims nothing is written when Supabase is connected.
+- The public entry link is built from `NEXT_PUBLIC_SITE_URL` (the deployed domain) and only falls
+  back to the browser origin in development, so a link copied on localhost is not sent to players.
+- Add a day adds the next calendar day and every day has its own date field; it no longer clones the
+  last date.
+
+### Database
+- `20261027000000_setup_tournament_fields.sql`: **written; the owner must apply it before a build
+  with this code is deployed.** It drops and re-creates `save_event_setup` with the new optional
+  parameters and re-applies the grants.
+
 ## [0.6.1] - 2026-10-18
 
 Fixes for two bugs found by checking the 0.6.0 screens in a real browser. Both had passed
@@ -139,7 +165,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.1...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.7.0...develop
+[0.7.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.5.0...v0.5.1
