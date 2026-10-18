@@ -1,0 +1,113 @@
+{
+  "meta": {
+    "product": "TeeLine Golf",
+    "version": "0.8.0",
+    "tag": "v0.8.0",
+    "commit": "06a2748",
+    "recordedAt": "2026-10-18",
+    "voice": "af_heart",
+    "speed": 0.72
+  },
+  "scenes": [
+    {
+      "id": "01-today",
+      "card": "today.html",
+      "title": "Today's way",
+      "caption": "Entries arrive on paper and through Google Forms.",
+      "narration": "Today, entries come in on paper and through Google Forms. The desk sorts them by hand, then works out the categories, the flights and the groups. TeeLine Golf brings those steps into one place. This walkthrough shows how the system works and where each task lives."
+    },
+    {
+      "id": "02-one-desk",
+      "route": "/admin",
+      "title": "One desk",
+      "caption": "The control room shows the event, the field and what needs attention.",
+      "narration": "This is the control room. It shows the event you are working on, how many players are registered, how many are ready, and what still needs attention. The same screen shows the draw state and the readiness checks. The left rail opens every desk screen. On a phone, the menu button does the same. Start here; every other screen is one click away."
+    },
+    {
+      "id": "03-setup",
+      "route": "/setup",
+      "routes": [{ "path": "/course", "after": 22 }],
+      "title": "Set up the event",
+      "caption": "Rules are settings the organizer controls, not code.",
+      "narration": "Settings holds the event. The event name, the days of play and the registration state. The course and tees section holds the numbers from the club scorecard: course rating, slope and par. The hole table holds par and stroke index. These are sample numbers in this demo; the organizer replaces them with the club's real card. Every section has its own Save, and Save all changes writes the whole setup in one step."
+    },
+    {
+      "id": "04-handicaps",
+      "route": "/import",
+      "title": "Handicaps",
+      "caption": "Matches and conflicts wait for a person to decide.",
+      "narration": "Handicaps arrive as a spreadsheet export. Choose the file, then check the column mapping. The desk reads each row and matches it to a player. Exact matches are ready to link. A new name can create a player. Where two players could match, or the number disagrees, the row waits for a person. Nothing is merged silently.",
+      "actions": [
+        { "after": 8, "clickText": "Try the sample file" },
+        { "after": 13, "scrollY": 700 },
+        { "after": 20, "scrollY": 1500 }
+      ]
+    },
+    {
+      "id": "05-entries",
+      "route": "/register",
+      "routes": [{ "path": "/enter/bamboo-tee-2026", "after": 20 }],
+      "title": "Entries",
+      "caption": "The desk takes entries; players can also enter from a phone.",
+      "narration": "The registration desk is where an entry is taken. Find a player, choose member or guest, record the sponsor answer, shirt size, tee-time preferences and payment status. The public entry link opens the same event for players. They can enter from a phone without an account. Every entry arrives as Needs review, so the desk confirms it before it counts."
+    },
+    {
+      "id": "06-draw",
+      "route": "/draw",
+      "title": "The draw",
+      "caption": "The system proposes; the organizer decides.",
+      "narration": "The draw screen is where the system proposes and the organizer decides. Make the draw, and the engine places players by category, flight and handicap. The checks panel lists anything that needs attention. To move a player, use Move and give a reason. To keep a group as it is, lock it. Re-run the proposal keeps the locked groups in place. Nothing is final until the organizer is satisfied.",
+      "actions": [
+        { "after": 16, "clickText": "Re-run proposal (keeps locks)" }
+      ]
+    },
+    {
+      "id": "07-publish",
+      "route": "/draw",
+      "title": "Publish",
+      "caption": "Players see only the frozen published list.",
+      "narration": "When the draw is ready, review and publish. The dialog shows exactly what players will see and lists anything still wrong. Publishing freezes this version. The phone view shows the published list: names, flights, holes and times. Players never see the working board.",
+      "actions": [
+        { "after": 8, "clickText": "Review and publish" },
+        { "after": 11, "clickText": "I have looked at these and want to publish anyway", "optional": true },
+        { "after": 13, "clickTextRegex": "^Publish \\d+ groups$" },
+        { "after": 17, "clickLabel": "Player view" }
+      ]
+    },
+    {
+      "id": "08-print",
+      "route": "/print",
+      "title": "Print center",
+      "caption": "The same draw becomes paper for the day.",
+      "narration": "The print center turns the same draw into paper: a start sheet for the desk, pairings for the board, and scorecards for each group. Choose the sheet and print. Paper still works on the day.",
+      "actions": [{ "after": 12, "clickText": "Scorecards" }]
+    },
+    {
+      "id": "09-not-shown",
+      "card": "not-shown.html",
+      "title": "Not shown today",
+      "caption": "Knowing what is not here matters too.",
+      "narration": "Some things are deliberately not in this version. There is no direct N G A P connection; the club exports a file. There is no online payment, no official scoring and no offline mode. Knowing what is not here matters as much as knowing what is."
+    },
+    {
+      "id": "09-help",
+      "route": "/admin",
+      "routes": [{ "path": "/print", "after": 16 }],
+      "title": "Help, when stuck",
+      "caption": "The question mark explains the screen you are on.",
+      "narration": "If you are not sure where something is, the question mark opens the guide for the screen you are on. Show me closes the guide and points at the control. The How to tab in the print center holds a printable cheat sheet for the desk and one for players. The guide is the training aid you keep using after this video.",
+      "actions": [
+        { "after": 4, "clickLabel": "Help" },
+        { "after": 9, "clickText": "Show me", "optional": true },
+        { "after": 19, "clickText": "How to" }
+      ]
+    },
+    {
+      "id": "10-closing",
+      "card": "closing.html",
+      "title": "One place, one organizer in control",
+      "caption": "TeeLine Golf. Demo data. v0.8.0.",
+      "narration": "TeeLine Golf keeps the event, the entries, the draw and the published list in one place. The organizer stays in control: the system proposes, and a person confirms. Use the help button whenever you need it. This demo uses sample data; your real event starts with the club's own scorecard and entries."
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TeeLine Golf — Today's way</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+      body {
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(1200px 700px at 75% 20%, #1d4a2c 0%, transparent 60%),
+          linear-gradient(135deg, #10251b 0%, #0b1711 100%);
+        color: #eef0ea;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      main { width: min(1500px, 88vw); display: grid; gap: 28px; }
+      img { width: 420px; max-width: 45vw; }
+      .eyebrow { color: #e0bc65; font-size: 22px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+      h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 116px; line-height: .98; letter-spacing: -.03em; }
+      p { margin: 0; max-width: 1100px; color: #b9c6ba; font-size: 34px; line-height: 1.35; }
+      .rule { width: 140px; height: 4px; background: #e0bc65; border-radius: 2px; }
+      footer { position: fixed; left: 64px; bottom: 48px; color: #8fa294; font-size: 20px; letter-spacing: .08em; text-transform: uppercase; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="../../public/brand/teeline-logo-reverse.svg" alt="TeeLine Golf" />
+      <div class="rule"></div>
+      <div class="eyebrow">Before TeeLine</div>
+      <h1>Today's way</h1>
+      <p>Entries arrive on paper and through Google Forms. The desk sorts them by hand, then works out the categories, flights and groups.</p>
+    </main>
+    <footer>TeeLine Golf · demo data · 0.8.0</footer>
+  </body>
+</html>

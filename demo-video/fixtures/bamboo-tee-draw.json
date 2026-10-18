@@ -1,0 +1,339 @@
+[
+  {
+    "number": 1,
+    "flightId": "r-a",
+    "playerIds": [
+      "p28",
+      "p31",
+      "p11",
+      "p25"
+    ],
+    "startHole": 1,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 2,
+    "flightId": "r-a",
+    "playerIds": [
+      "p22",
+      "p17",
+      "p15",
+      "p12"
+    ],
+    "startHole": 2,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 3,
+    "flightId": "r-a",
+    "playerIds": [
+      "p88",
+      "p4",
+      "p81",
+      "p37"
+    ],
+    "startHole": 3,
+    "wave": "A",
+    "time": "06:30",
+    "locked": true
+  },
+  {
+    "number": 4,
+    "flightId": "r-a",
+    "playerIds": [
+      "p8",
+      "p10",
+      "p30"
+    ],
+    "startHole": 4,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 5,
+    "flightId": "r-a",
+    "playerIds": [
+      "p14",
+      "p40",
+      "p9"
+    ],
+    "startHole": 5,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 6,
+    "flightId": "r-b",
+    "playerIds": [
+      "p27",
+      "p23",
+      "p36"
+    ],
+    "startHole": 6,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 7,
+    "flightId": "r-b",
+    "playerIds": [
+      "p39",
+      "p32",
+      "p24"
+    ],
+    "startHole": 7,
+    "wave": "A",
+    "time": "06:30",
+    "locked": true
+  },
+  {
+    "number": 8,
+    "flightId": "r-b",
+    "playerIds": [
+      "p16",
+      "p87",
+      "p1"
+    ],
+    "startHole": 8,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 9,
+    "flightId": "r-c",
+    "playerIds": [
+      "p13",
+      "p3",
+      "p18",
+      "p20"
+    ],
+    "startHole": 9,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 10,
+    "flightId": "r-c",
+    "playerIds": [
+      "p38",
+      "p29",
+      "p6",
+      "p33"
+    ],
+    "startHole": 10,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 11,
+    "flightId": "r-c",
+    "playerIds": [
+      "p19",
+      "p7",
+      "p26",
+      "p34"
+    ],
+    "startHole": 11,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 12,
+    "flightId": "r-c",
+    "playerIds": [
+      "p21",
+      "p2",
+      "p35",
+      "p5"
+    ],
+    "startHole": 12,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 13,
+    "flightId": "s-a",
+    "playerIds": [
+      "p41",
+      "p43",
+      "p44",
+      "p52"
+    ],
+    "startHole": 13,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 14,
+    "flightId": "s-a",
+    "playerIds": [
+      "p51",
+      "p56",
+      "p54",
+      "p55"
+    ],
+    "startHole": 14,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 15,
+    "flightId": "s-a",
+    "playerIds": [
+      "p42",
+      "p59",
+      "p82",
+      "p60"
+    ],
+    "startHole": 15,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 16,
+    "flightId": "s-b",
+    "playerIds": [
+      "p48",
+      "p46",
+      "p90",
+      "p57"
+    ],
+    "startHole": 16,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 17,
+    "flightId": "s-b",
+    "playerIds": [
+      "p47",
+      "p53",
+      "p50"
+    ],
+    "startHole": 17,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 18,
+    "flightId": "s-b",
+    "playerIds": [
+      "p49",
+      "p45",
+      "p58"
+    ],
+    "startHole": 18,
+    "wave": "A",
+    "time": "06:30",
+    "locked": false
+  },
+  {
+    "number": 19,
+    "flightId": "ss-a",
+    "playerIds": [
+      "p61",
+      "p68",
+      "p65"
+    ],
+    "startHole": 1,
+    "wave": "B",
+    "time": "11:30",
+    "locked": false
+  },
+  {
+    "number": 20,
+    "flightId": "ss-a",
+    "playerIds": [
+      "p64",
+      "p67",
+      "p62"
+    ],
+    "startHole": 2,
+    "wave": "B",
+    "time": "11:30",
+    "locked": false
+  },
+  {
+    "number": 21,
+    "flightId": "ss-a",
+    "playerIds": [
+      "p63",
+      "p84",
+      "p66"
+    ],
+    "startHole": 3,
+    "wave": "B",
+    "time": "11:30",
+    "locked": false
+  },
+  {
+    "number": 22,
+    "flightId": "l-a",
+    "playerIds": [
+      "p70",
+      "p83",
+      "p79"
+    ],
+    "startHole": 4,
+    "wave": "B",
+    "time": "11:30",
+    "locked": false
+  },
+  {
+    "number": 23,
+    "flightId": "l-a",
+    "playerIds": [
+      "p78",
+      "p74"
+    ],
+    "startHole": 5,
+    "wave": "B",
+    "time": "11:30",
+    "locked": false
+  },
+  {
+    "number": 24,
+    "flightId": "l-b",
+    "playerIds": [
+      "p69",
+      "p80",
+      "p73",
+      "p71"
+    ],
+    "startHole": 6,
+    "wave": "B",
+    "time": "11:30",
+    "locked": false
+  },
+  {
+    "number": 25,
+    "flightId": "l-b",
+    "playerIds": [
+      "p72",
+      "p77",
+      "p76",
+      "p75"
+    ],
+    "startHole": 7,
+    "wave": "B",
+    "time": "11:30",
+    "locked": false
+  }
+]
