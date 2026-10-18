@@ -404,6 +404,11 @@ export interface Database {
     Functions: {
       is_club_member: { Args: { p_club: string }; Returns: boolean };
       has_club_role: { Args: { p_club: string; p_roles: string[] }; Returns: boolean };
+      public_registration_form: { Args: { p_tournament: string }; Returns: Json };
+      submit_registration: {
+        Args: { p_tournament: string; p_player: Json; p_answers: Json };
+        Returns: Json;
+      };
       public_pairings: {
         Args: { p_tournament?: string | null };
         Returns: PublicPairingRow[];
