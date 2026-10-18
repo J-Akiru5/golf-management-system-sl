@@ -53,7 +53,7 @@ export function Panel({
   return (
     <section
       aria-labelledby={labelledBy}
-      className={cn(variant === "glass" ? "glass p-4" : "card", "min-w-0", className)}
+      className={cn(variant === "glass" ? "glass glass-panel p-4" : "card", "min-w-0", className)}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -318,7 +318,10 @@ export function PublishPanel({ b, variant }: { b: Board; variant?: PanelVariant 
   const [open, setOpen] = useState(false);
   const ordered = [...b.blocking, ...b.warnings];
   return (
-    <section className={cn(variant === "card" ? "card" : "glass p-4")} aria-label="Publish">
+    <section
+      className={cn(variant === "card" ? "card" : "glass glass-panel p-4")}
+      aria-label="Publish"
+    >
       <div className="flex items-center gap-2.5">
         <PublishState b={b} />
         <span className="flex-1" />

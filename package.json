@@ -1,6 +1,6 @@
 {
   "name": "golf-management-system-sl",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "TeeLine Golf tournament management by Syntaxure Labs.",
   "scripts": {
@@ -10,7 +10,8 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:ui": "node scripts/verify-ui.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.3.0",

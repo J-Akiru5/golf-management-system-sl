@@ -26,13 +26,16 @@ interface PagedListState {
 }
 
 /**
- * The page to show, given the last state and the current filter.
+ * The page state for the current filter.
  *
- * A changed filter reads as page 1 immediately, in the same render as the new rows, rather than
- * through an effect that would briefly show page 3 of a two-page list.
+ * A changed filter is a different list, and the only page you can be on in a list you have not
+ * looked at is page 1. Returning the *state* rather than just a number matters: masking the page
+ * number alone leaves the old one in storage, so coming back to a filter you have already used
+ * would drop you on the page you last left it on. That is a real bug, not a hypothetical one, and
+ * the browser check on `/players` is what caught it.
  */
-export function resolvePage(state: PagedListState, filterKey: string): number {
-  return state.key === filterKey ? state.page : 1;
+export function pageStateFor(state: PagedListState, filterKey: string): PagedListState {
+  return state.key === filterKey ? state : { page: 1, key: filterKey };
 }
 
 /** Sorts by the comparator, breaking ties on the record id so the order never wobbles. */
@@ -45,16 +48,20 @@ export function sortStable<T extends { id: string }>(
 
 export function usePagedList<T>(
   items: T[],
-  /** Changes whenever the search or filter changes, which resets paging. */
+  /** Changes whenever the search, filter or tab changes, which resets paging. */
   filterKey: string,
   pageSize = DEFAULT_PAGE_SIZE,
 ): PagedList<T> {
-  const [state, setState] = useState<PagedListState>({ page: 1, key: filterKey });
-  // Derived rather than stored: a changed filter reads as page 1 immediately, with no extra render.
-  const page = resolvePage(state, filterKey);
+  const [stored, setStored] = useState<PagedListState>(() => ({ page: 1, key: filterKey }));
+  const state = pageStateFor(stored, filterKey);
+
+  // Adopt the reset during render. React throws this pass away and re-runs with page 1 before
+  // anything paints, so the desk never glimpses rows from the page it just left, and the reset is
+  // recorded rather than merely hidden.
+  if (state !== stored) setStored(state);
 
   return {
-    page: paginate(items, page, pageSize),
-    setPage: (next: number) => setState({ page: next, key: filterKey }),
+    page: paginate(items, state.page, pageSize),
+    setPage: (next: number) => setStored({ page: next, key: filterKey }),
   };
 }

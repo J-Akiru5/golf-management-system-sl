@@ -11,6 +11,29 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.6.1] - 2026-10-18
+
+Fixes for two bugs found by checking the 0.6.0 screens in a real browser. Both had passed
+typecheck, lint, build and the whole unit suite.
+
+### Fixed
+- Clearing a search, filter or tab now returns to page 1. 0.6.0 stored the page number and only
+  *masked* it when the filter changed, so coming back to a filter you had already used dropped you
+  on the page you last left that filter on, not the top of the list.
+- The alerts panel is readable in the light theme. It paints a page surface but sits inside the dark
+  header chrome, which re-points the ink tokens at the ivory-on-dark pair, so in the light theme the
+  heading was ivory on ivory and the body copy was barely legible.
+
+### Added
+- `pnpm verify:ui`: 36 browser checks against a running dev server, covering the paging rules
+  including the print-media hiding, the import review tabs and their progress, the bell's all-clear
+  and real-alert states, the focus trap, Escape, the mobile sheet below `lg`, and both themes. It is
+  what found both bugs above. It is not part of `pnpm test`, because it needs the server up.
+
+### Database
+- No migration ships with 0.6.1. `20261024000000`, `20261025000000` and `20261026000000` remain
+  **applied live**.
+
 ## [0.6.0] - 2026-10-18
 
 Long lists and the alerts bell. This release also carries the event-setup and notification work from
@@ -116,7 +139,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.0...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.1...develop
+[0.6.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.4.0...v0.5.0
