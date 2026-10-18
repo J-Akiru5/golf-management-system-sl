@@ -231,6 +231,7 @@ const tournamentRow = (over: Partial<TournamentRow> = {}): TournamentRow => ({
   stale_index_days: 120,
   registration: null,
   board_overrides: null,
+  draw_revision: 0,
   ...over,
 });
 

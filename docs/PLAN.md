@@ -31,7 +31,7 @@ Anything not marked is a plan, not a fact.
 | Ready to merge (PR #9, PR #10) | **Desk components** (`feat/desk-components`, PR #9): props-driven registration-desk and shell components plus a dev-only preview, and `agentRules: false` so `next dev` stops rewriting AGENTS.md. **Print components** (`feat/print-components`, PR #10): print sheets and tested helpers. Both merge cleanly into `develop` | Each PR states its own verification; see `docs/handoffs/desk-components.md` |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 26 test files, 317 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
+Whole suite: 28 test files, 336 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
 **The one thing blocking a real event:** the wiring exists but the project has no course, tee, hole or
 tournament rows, so the desk has nothing real to show. Provisioning and an end-to-end pass with real
@@ -266,6 +266,20 @@ These are places where the spec promises something the code does not do yet. Che
     alert: the overview attention list and the shell bell (a shortcut to the draw's blocking count)
     are all that exists, and the session activity log forgets itself on refresh. Whether Phase 1
     needs an alert centre is decision 14.
+12. **The draw was computed in the browser and never saved.** *Fixed in code, migration not applied.*
+    `route()` is a real pure engine and it runs live: changing players, settings or a move re-runs it,
+    locked groups are kept, and the draw checks re-validate. But the current store only dispatched
+    these actions to the in-memory reducer; the old `saveTournamentDraw` belonged to the parked
+    legacy store, so with Supabase configured a generated, moved or published draw was lost on
+    refresh. It now goes through `save_draw`, one transaction that checks the role and a draw
+    revision (a stale screen is refused, not allowed to overwrite). The write path is covered by unit
+    tests with a fake client; it has not run against the real project because the migration is not
+    applied and the project has no course, tee, hole or tournament rows.
+13. **The public pairings page was not public.** *Fixed in code, migration not applied.* `/pairings`
+    read the organizer's session store. It is now a server page that calls the anonymous
+    `public_pairings` function, cached for 60 seconds and refreshed on publish. Each publish writes an
+    immutable row in `pairings_versions` (version 1, 2, 3) and the page and the version number show
+    which one players are looking at. With no Supabase URL the demo page is unchanged.
 
 ---
 
@@ -322,6 +336,58 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
 8. **Deploy:** Vercel project, env vars, `staging` and `main` branches, CI (typecheck, lint, tests, build).
 9. **Dress rehearsal:** run a full fake tournament with the organizer using real IGCC data before the real event.
 
+### Scheduling and the public pairings page (built in `feat/versioned-publish`, 18 Oct 2026)
+
+**Status.** Steps 2 to 5 are in code and tested. The migration
+`supabase/migrations/20261022000000_versioned_publish.sql` is **not applied** to the real project;
+it needs the owner's go-ahead (schema and RLS change: `groups` and `group_members` become
+read-only for members, the draw is written only by `save_draw`). Step 1 waits for real tee data, so
+nothing was seeded into the real project.
+
+**Where scheduling stands.** The grouping is dynamic, not a static shell: category, tee, course
+handicap, flight, group and slot come from the pure engine in `src/lib/routing`, driven by tournament
+settings, and manual moves are checked by `src/lib/draw`. What is missing is trust: the result is not
+yet proven to save and reload, two editors can overwrite each other, publishing keeps one overwritten
+copy, and the public page does not read the published copy from the database (gaps 12 and 13).
+
+**Principles.**
+
+- The engine stays pure and is the only place that decides a group. Persistence stores its output.
+- Publish is an explicit organizer action that creates a numbered, immutable version.
+- Players see only a published version, through the anonymous allow-listed function. No login, no
+  working board, no registration record, no photos.
+- Names, flight, hole and time only, as in `src/lib/data/public.ts`, until decision 15 says otherwise.
+
+**Steps (in order; each needs the one before).**
+
+1. **Prove persistence end to end.** Needs decision 1 for real tee data, or the demo rows clearly
+   labelled. Create the course, tees, holes and a tournament in the project, run a draw, save, reload
+   and check the same groups and locks come back. Add a round-trip test for the mappers and
+   `saveTournamentDraw`.
+2. **Stop silent overwrites.** Add a draw revision number on the tournament. A save that carries an
+   old revision is refused and the screen offers a reload. Record who moved whom (extend the audit
+   columns pattern from registrations). Schema change: owner approval before applying.
+3. **Versioned publish.** Add a `pairings_versions` table (tournament, version number, snapshot,
+   published by, published at, optional note). Publishing writes the next version; the current one is
+   what `public_pairings` returns. The publish dialog lists what changed since the live version
+   (players moved, added, removed). Unpublish stays owner/organizer only. The version number and time
+   show on the public page and on printed sheets. RLS: only owner and organizer write; anon reads only
+   through the function. Schema change: owner approval before applying.
+4. **Public page.** `/pairings` becomes a server-rendered page that calls `public_pairings` with the
+   anon key, cached with ISR (about 60 seconds) and revalidated on publish. It shows the full list by
+   wave, hole and time, plus a name search and a flight filter (the data is about 100 players, so the
+   filter runs in the browser). Mobile first, print friendly, shows "Pairings v3, updated 14 Nov 07:10",
+   and "Pairings are not out yet" before the first publish. Optional: a QR code on printed sheets.
+5. **Harden.** Tests that the anon function returns nothing for an unpublished tournament, never returns
+   anything beyond the allow-list, and that a published version cannot be edited. Check the page on a
+   Vercel preview with the anon key only. Accessibility pass. No external fonts or scripts.
+6. **Not now.** Realtime updates, SMS or Messenger notices (Phase 3), player self-service swaps.
+
+**Late changes after publish (withdrawals, sponsor groups).** The organizer edits the draw and
+publishes a new version. Players see the new version after the cache refreshes; the page shows the
+version and time so a stale printout is easy to spot (decision 16).
+
+
 ### Phase 2: results
 
 Score encoding from paper cards, gross and net per flight, tie-breaks, results export. Needs the organizer's tie-break rule. Adds the `scores` table.
@@ -373,6 +439,8 @@ Decisions that belong to the people named, not to an agent.
 | 12 | Create `staging` and `main` branches; clean up old feature branches; consider a Syntaxure organization for the repo | Jeff | Pipeline | Only `develop` |
 | 13 | Pagination for the long lists (players, registrations, import rows, print sheets): page size, and paging in SQL or in the browser | Jeff | Field size, print runs | Render every row; search suggestions capped at 8 |
 | 14 | Alerts in Phase 1: is the overview attention list plus the shell bell enough, or is an in-app notification centre wanted? | Organizer | Desk workflow | Attention list only; player messaging stays Phase 3 |
+| 15 | Public pairings page: names, flight, hole and time only, or also handicap or category | Organizer | Public page content | Names, flight, hole, time |
+| 16 | After a publish, do late changes always mean a new version, and should the page mark what moved | Organizer | Publish flow | New version each time; version and time shown, no change marks |
 
 ---
 
@@ -464,9 +532,11 @@ Agent ground rules:
 | 18 Oct 2026 | **Supabase wiring merged** (`b8d9c7a`): the store uses `createSupabaseAdapters` and `loadDeskState` behind the same adapter interfaces, and keeps the in-memory demo when no Supabase URL is set. Provisioning (course, tees, holes, a tournament) and an end-to-end pass with real data are the remaining steps. |
 | 18 Oct 2026 | **Pagination and notifications were never in the plan.** They are now gaps 10 and 11 with decisions 13 and 14. Defaults meanwhile: render every row, and keep the overview attention list plus the shell bell as the only alerts. Player messaging stays Phase 3. |
 | 18 Oct 2026 | In review, not merged: `feat/desk-components` (PR #9: props-driven registration-desk and shell components, a dev-only preview, and `agentRules: false`) and `feat/print-components` (print sheets and tested helpers). `feat/lock-aware-rerun` (`90b534d`) duplicates work already in `develop`; do not merge it. |
+| 18 Oct 2026 | **Versioned publish built** (`feat/versioned-publish`): `save_draw` and `publish_pairings` database functions, `draw_revision` guard, `pairings_versions`, server-rendered `/pairings` with flight filter and version stamp, `/api/revalidate-pairings`. The proxy no longer runs on `/pairings`, so the page can be cached. Migration written, not applied. |
+| 18 Oct 2026 | **Scheduling and public pairings plan agreed with the owner.** Publishing is explicit and versioned. The public page is `/pairings`: full list plus name search, no login. No realtime for now; refresh or ISR (about 60 seconds) is enough. Steps are in section 8. Schema changes (draw revision, `pairings_versions`) need owner approval before they are applied. |
 | 18 Oct 2026 | **Players may hold accounts (owner's instruction).** This amends the staff-only decision of the same day: golfers now use the product themselves. The link lives on `public.players.user_id`, one account per record, and is never a `club_members` role, because `is_club_member()` gates every club table. A player can read their own entry and their published start, and the claim step is the only write they can make. |
 | 18 Oct 2026 | **Route areas.** Public: `/`, `/pairings`, `/enter/[id]`, `/login`. Player: `/my`. Staff: the desk. One sign-in page serves both; where an account lands follows what it is, not where it signed in. The proxy matches only the guarded areas, so public pages never do a session lookup. Demo builds (no Supabase URL) stay open, with the banner. |
-| 18 Oct 2026 | **The player portal migration is not applied yet.** The CLI login on this machine can reach the project ref but not the project (403 from the Management API) and the stored pooler URL has no password, so `20261022000000_player_portal.sql` waits for Jeff. Until then `/my` says the area is not switched on, and no account is linked to a member record. |
+| 18 Oct 2026 | **The player portal migration is not applied yet.** The CLI login on this machine can reach the project ref but not the project (403 from the Management API) and the stored pooler URL has no password, so `20261023000000_player_portal.sql` waits for Jeff. Until then `/my` says the area is not switched on, and no account is linked to a member record. |
 
 ---
 

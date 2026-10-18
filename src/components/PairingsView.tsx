@@ -13,16 +13,23 @@ export function PairingsView({
   pairings,
   searchable = true,
   headingLevel = "group",
+  flightFilter = false,
 }: {
   pairings: PublicPairings;
   searchable?: boolean;
+  /** Adds a flight dropdown beside the name search. */
+  flightFilter?: boolean;
   /** "group" inside a dialog, "section" when it is the page's main content. */
   headingLevel?: "group" | "section";
 }) {
   const [query, setQuery] = useState("");
+  const [flight, setFlight] = useState("");
   const q = query.trim().toLowerCase();
+  const flights = [...new Set(pairings.groups.map((g) => g.flight))].sort();
   const groups = pairings.groups.filter(
-    (g) => !q || g.players.some((name) => name.toLowerCase().includes(q)),
+    (g) =>
+      (!flight || g.flight === flight) &&
+      (!q || g.players.some((name) => name.toLowerCase().includes(q))),
   );
   const shotgun = pairings.startFormat === "shotgun";
 
@@ -38,6 +45,20 @@ export function PairingsView({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+          {flightFilter && flights.length > 1 && (
+            <select
+              aria-label="Filter by flight"
+              value={flight}
+              onChange={(e) => setFlight(e.target.value)}
+            >
+              <option value="">All flights</option>
+              {flights.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          )}
           <button type="button" className="btn ghost" onClick={() => window.print()}>
             Print
           </button>
@@ -68,7 +89,7 @@ export function PairingsView({
           </article>
         ))}
       </div>
-      {groups.length === 0 && <p className="muted">No one found with that name.</p>}
+      {groups.length === 0 && <p className="muted">No one found with that name or flight.</p>}
     </>
   );
 }

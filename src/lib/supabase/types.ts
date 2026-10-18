@@ -92,6 +92,7 @@ export type TournamentRow = {
   stale_index_days: number;
   registration: Json | null;
   board_overrides: Json | null;
+  draw_revision: number;
 };
 export type CategoryRow = {
   id: string;
@@ -193,6 +194,7 @@ type PublicPairingRow = {
   start_format: "shotgun" | "two_tee";
   first_tee_time: string;
   published_at: string | null;
+  version: number | null;
   group_number: number | null;
   wave: string | null;
   start_hole: number | null;
@@ -321,6 +323,7 @@ export interface Database {
           stale_index_days?: number;
           registration?: Json | null;
           board_overrides?: Json | null;
+          draw_revision?: number;
         }
       >;
       categories: Table<
@@ -421,6 +424,26 @@ export interface Database {
         Returns: Json;
       };
       player_portal_entries: { Args: Record<string, never>; Returns: Json };
+      save_draw: {
+        Args: {
+          p_tournament: string;
+          p_expected_revision: number;
+          p_groups: Json;
+          p_overrides?: Json | null;
+        };
+        Returns: number;
+      };
+      publish_pairings: {
+        Args: {
+          p_tournament: string;
+          p_expected_revision: number;
+          p_groups: Json;
+          p_signature: string;
+          p_note?: string | null;
+        };
+        Returns: Json;
+      };
+      unpublish_pairings: { Args: { p_tournament: string }; Returns: undefined };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

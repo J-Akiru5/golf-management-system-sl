@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CategoryRule, FlightRule, Tee, TournamentConfig } from "@/lib/routing";
-import type { Published } from "@/lib/store/legacy-supabase-store";
-import type { Database, Json } from "@/lib/supabase/types";
+import type { Database } from "@/lib/supabase/types";
 import { mapCategoryRow, mapFlightRow, mapTeeRow, mapTournamentConfig } from "./mappers";
 
 type TournamentRow = Database["public"]["Tables"]["tournaments"]["Row"];
@@ -131,30 +130,4 @@ export async function saveTournamentConfig(
     .maybeSingle();
   if (error) throw new Error(`Could not save tournament settings: ${error.message}`);
   if (!data) throw new Error("The tournament was not found while saving settings.");
-}
-
-export async function saveTournamentPublication(
-  client: SupabaseClient<Database>,
-  clubId: string,
-  tournamentId: string,
-  published: Published | null,
-): Promise<void> {
-  if (
-    published &&
-    (!published.eventName || !published.date || !published.startFormat || !published.firstTeeTime)
-  ) {
-    throw new Error("The published copy is missing frozen tournament metadata.");
-  }
-  const { data, error } = await client
-    .from("tournaments")
-    .update({
-      published: published !== null,
-      published_snapshot: published ? (JSON.parse(JSON.stringify(published)) as Json) : null,
-    })
-    .eq("club_id", clubId)
-    .eq("id", tournamentId)
-    .select("id")
-    .maybeSingle();
-  if (error) throw new Error(`Could not save published pairings: ${error.message}`);
-  if (!data) throw new Error("The tournament was not found while saving published pairings.");
 }
