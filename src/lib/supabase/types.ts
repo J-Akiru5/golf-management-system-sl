@@ -205,6 +205,13 @@ export type NotificationReadRow = {
   read_at: string;
 };
 
+/** One person's dismissal of one help panel. Interface state, not club data: see the migration. */
+export type HelpSeenRow = {
+  user_id: string;
+  guide_id: string;
+  seen_at: string;
+};
+
 type PublicPairingRow = {
   tournament_id: string;
   tournament_name: string;
@@ -441,6 +448,7 @@ export interface Database {
         NotificationReadRow,
         { club_id: string; notification_id: string; user_id: string; read_at?: string }
       >;
+      help_seen: Table<HelpSeenRow, { guide_id: string; user_id?: string; seen_at?: string }>;
     };
     Views: Record<string, never>;
     Functions: {

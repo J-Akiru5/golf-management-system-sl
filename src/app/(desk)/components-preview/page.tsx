@@ -31,6 +31,7 @@ import type {
   PlayerPickItem,
   RegistrationAudit,
 } from "@/components/desk/types";
+import { CheatSheet, FirstRunWelcome, HelpButton, HelpSheet } from "@/components/help";
 
 const NOW = new Date(2026, 9, 18, 16, 0); // 18 Oct 2026, 4:00 PM
 const at = {
@@ -490,6 +491,60 @@ export default function ComponentsPreviewPage() {
           </p>
         </State>
       </Panel>
+
+      <Panel title="Help centre">
+        <State label="The ? button, on the shell's band and in glass">
+          <div className="band flex flex-wrap items-center gap-3 rounded-[14px] p-3">
+            <HelpButton audience="desk" screen="/draw" />
+            <HelpButton audience="desk" screen="/draw" overlay />
+            <HelpButton audience="player" screen="pairings" />
+          </div>
+        </State>
+
+        <State label="Help sheets, opened for real">
+          <HelpDemo />
+        </State>
+
+        <State label="First-run welcome">
+          <p className="hint">
+            Forced open here so it can be looked at. In the app it shows once per person: the
+            <b> help_seen</b> row when the migration is applied, and this browser's
+            <b> teeline-help-seen</b> key always.
+          </p>
+          <FirstRunWelcome audience="desk" force />
+        </State>
+
+        <State label="Printable cheat sheet (Print center's fourth tab)">
+          <CheatSheet />
+        </State>
+      </Panel>
+    </div>
+  );
+}
+
+/** Opens each help sheet on demand, so the preview shows the real panel and a working close. */
+function HelpDemo() {
+  const [open, setOpen] = useState<"desk" | "player" | null>(null);
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button type="button" className="btn ghost" onClick={() => setOpen("desk")}>
+        Desk sheet, on the draw screen
+      </button>
+      <button type="button" className="btn ghost" onClick={() => setOpen("player")}>
+        Player sheet, on the pairings screen
+      </button>
+      <HelpSheet
+        open={open === "desk"}
+        onOpenChange={(next) => setOpen(next ? "desk" : null)}
+        audience="desk"
+        screen="/draw"
+      />
+      <HelpSheet
+        open={open === "player"}
+        onOpenChange={(next) => setOpen(next ? "player" : null)}
+        audience="player"
+        screen="pairings"
+      />
     </div>
   );
 }

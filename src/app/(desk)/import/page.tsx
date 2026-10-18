@@ -213,6 +213,7 @@ export default function ImportPage() {
             <input
               type="file"
               accept=".csv,text/csv"
+              data-help="import-upload"
               className="absolute inset-0 cursor-pointer opacity-0"
               onChange={async (e) => {
                 const f = e.target.files?.[0];

@@ -21,6 +21,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
 import { roleLabel } from "@/components/desk";
+import { FirstRunWelcome, HelpButton } from "@/components/help";
 import { AlertsBell } from "@/components/notifications/AlertsBell";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -213,6 +214,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <AlertsBell overlay={overlay} />
 
+          <HelpButton audience="desk" screen={path} overlay={overlay} />
+
           <span
             className={cn(
               "hidden h-[52px] shrink-0 items-center gap-2.5 rounded-full py-0 pr-2 pl-1.5 md:flex",
@@ -272,6 +275,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main id="main" className={cn(!overlay && "px-4 pt-6 pb-16 sm:px-6 lg:pr-8 lg:pl-[112px]")}>
           {children}
         </main>
+
+        <FirstRunWelcome audience="desk" />
       </div>
     </TooltipProvider>
   );
