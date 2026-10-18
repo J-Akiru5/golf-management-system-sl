@@ -11,6 +11,10 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.10.0] - 2026-10-18
+
+One hardening fix, with the migration it needs.
+
 ### Security
 - **The staff-only functions are no longer reachable by an anonymous caller.** The `revoke … from
   public` line in the earlier migrations does not do what it reads as: `public` is Postgres's PUBLIC
@@ -286,7 +290,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.9.0...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.10.0...develop
+[0.10.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.7.0...v0.7.1
