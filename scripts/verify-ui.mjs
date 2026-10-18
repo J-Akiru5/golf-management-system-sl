@@ -1,0 +1,247 @@
+/**
+ * Browser checks for the desk's long lists and the alerts bell.
+ *
+ * These cover what the unit suite cannot: that the right rows, and the right colours, actually reach
+ * the screen. They found two real bugs that typecheck, lint and 382 passing unit tests all missed:
+ *
+ *   1. Clearing a search that returned to a filter you had already used landed you on the page you
+ *      had last left that filter on, not page 1. The stored page number was masked, not reset.
+ *   2. The bell's panel paints a page surface but sits inside the dark header chrome, which
+ *      re-points `--ink` at the ivory-on-forest pair. In the light theme the panel's text therefore
+ *      resolved to ivory on ivory: the heading was invisible and the body was barely legible.
+ *
+ * Usage:
+ *   pnpm dev --port 3100     # in one terminal
+ *   pnpm verify:ui           # in another
+ *
+ * Override the origin with UI_BASE. Screenshots land in `.tmp/ui-shots`. Exits non-zero if a check
+ * fails, or if any page logs a console error along the way.
+ */
+import { mkdirSync, writeFileSync } from "node:fs";
+import { chromium, expect } from "@playwright/test";
+
+const BASE = process.env.UI_BASE ?? "http://localhost:3100";
+const SHOTS = ".tmp/ui-shots";
+mkdirSync(SHOTS, { recursive: true });
+
+let pass = 0;
+let fail = 0;
+const check = (name, ok, extra = "") => {
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${extra ? `  ${extra}` : ""}`);
+  if (ok) pass += 1;
+  else fail += 1;
+};
+const section = (title) => console.log(`\n== ${title} ==`);
+
+/** A 114-row NGAP export: 110 rows settle themselves, 4 name two players and cannot. */
+function writeImportFixture(path) {
+  const lines = ["Name,NGAP ID,Index,Date"];
+  for (let i = 1; i <= 110; i += 1) {
+    const name = `Test Golfer ${String(i).padStart(3, "0")}`;
+    lines.push(`${name},${5000 + i},${(9 + (i % 25) + 0.3).toFixed(1)},11/01/2026`);
+  }
+  for (let i = 0; i < 4; i += 1) lines.push('"DELA CRUZ, Juan",7009,18.2,11/01/2026');
+  writeFileSync(path, `${lines.join("\r\n")}\r\n`);
+}
+
+const browser = await chromium.launch();
+const context = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+const page = await context.newPage();
+
+const errors = [];
+const watch = (p) => {
+  p.on("console", (m) => {
+    if (m.type() === "error") errors.push(m.text());
+  });
+  p.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+};
+watch(page);
+
+const pager = page.locator('nav[aria-label="Paging"]');
+const range = page.locator('nav[aria-label="Paging"] [role=status]').first();
+const pagerBtn = (name) => pager.getByRole("button", { name, exact: true });
+const bell = page.locator('button[aria-label^="Alerts"]');
+const panel = page.getByRole("dialog", { name: "Alerts" });
+const go = async (path) => {
+  await page.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+};
+
+// --------------------------------------------------------------- long lists
+section("/players paging");
+await go("/players");
+await expect(range).toHaveText("1–50 of 91", { timeout: 30000 });
+const playerRows = page.locator("table tbody tr");
+check("page 1 holds 50 of 91", (await playerRows.count()) === 50, `(${await playerRows.count()})`);
+check("Previous is disabled on page 1", await pagerBtn("Previous").isDisabled());
+
+await pagerBtn("Next").click();
+await expect(range).toHaveText("51–91 of 91", { timeout: 15000 });
+check("the last page holds the remainder", (await playerRows.count()) === 41, `(${await playerRows.count()})`);
+check("Next is disabled on the last page", await pagerBtn("Next").isDisabled());
+
+// Reset rule, including the case the browser check found: coming back to a filter already used.
+const search = page.locator('input[aria-label="Search players"]');
+await search.fill("a");
+await expect(range).toHaveText("1–50 of 84", { timeout: 15000 });
+check("a search typed on page 2 resets to page 1", true, "(1–50 of 84)");
+
+await search.fill("Alcantara");
+await expect(pager).toHaveCount(0, { timeout: 15000 });
+check("a search that fits one page hides the pager", true, `(${await playerRows.count()} rows)`);
+
+await search.fill("");
+await expect(range).toHaveText("1–50 of 91", { timeout: 15000 });
+check("clearing the search returns to page 1, not the page you left", true);
+
+// A pager must never reach paper.
+await page.emulateMedia({ media: "print" });
+check("the pager is hidden in print media", !(await pager.isVisible()));
+await page.emulateMedia({ media: "screen" });
+
+section("/register paging");
+await go("/register");
+await expect(range).toHaveText("1–50 of 90", { timeout: 30000 });
+const regRows = page.locator("div.grid.gap-2 > article");
+check("page 1 holds 50 of 90", (await regRows.count()) === 50, `(${await regRows.count()})`);
+await pagerBtn("Next").click();
+await expect(range).toHaveText("51–90 of 90", { timeout: 15000 });
+check("the last page holds the remainder", (await regRows.count()) === 40, `(${await regRows.count()})`);
+
+// ------------------------------------------------------------ import review
+section("/import review tabs");
+const fixture = ".tmp/ui-import.csv";
+writeImportFixture(fixture);
+await go("/import");
+await page.locator('input[type="file"]').setInputFiles(fixture);
+const tabs = page.locator('div.seg[aria-label="Review tabs"] button');
+await expect(tabs).toHaveCount(3, { timeout: 30000 });
+const counts = (await tabs.allTextContents()).map((t) => Number.parseInt((t.match(/\((\d+)\)/) ?? [])[1], 10));
+check("three tabs with counts", counts.length === 3, `(${JSON.stringify(counts)})`);
+check("the four ambiguous rows need a decision", counts[0] === 4, `(${counts[0]})`);
+check("the 110 settled rows are already decided", counts[1] === 110, `(${counts[1]})`);
+
+const progress = page.locator('span[role="status"]', { hasText: /decided/ }).first();
+check("progress counts the whole file", (await progress.textContent()).trim() === "110 of 114 decided");
+const bar = page.locator('[role="progressbar"][aria-label="Rows decided"]');
+check("the bar agrees with the text", (await bar.getAttribute("aria-valuenow")) === "110");
+
+await tabs.nth(1).click();
+await expect(range).toHaveText("1–50 of 110", { timeout: 15000 });
+check("each tab pages at 50", true, "(1–50 of 110)");
+await pagerBtn("Next").click();
+await expect(range).toHaveText("51–100 of 110", { timeout: 15000 });
+await tabs.nth(0).click();
+await expect(pager).toHaveCount(0, { timeout: 15000 });
+await tabs.nth(1).click();
+await expect(range).toHaveText("1–50 of 110", { timeout: 15000 });
+check("switching tab restarts at page 1", true);
+
+// --------------------------------------------------------------- alerts bell
+section("alerts bell");
+await go("/players");
+check("the shell has a bell", (await bell.count()) === 1);
+check("it starts all clear with no draw", (await bell.getAttribute("aria-label")) === "Alerts, all clear");
+
+await bell.click();
+await expect(panel).toBeVisible({ timeout: 15000 });
+check("the panel opens", true);
+check(
+  "the all-clear copy is exact",
+  (await panel.getByText("All clear. Nothing is stopping you from publishing.").count()) === 1,
+);
+
+// The bug the browser check found: ivory text on an ivory panel in the light theme.
+const ink = async () =>
+  panel.locator("b").first().evaluate((el) => getComputedStyle(el).color);
+const surface = await panel.evaluate((el) => getComputedStyle(el).backgroundColor);
+check("the panel is readable, not ivory on ivory", (await ink()) === "rgb(32, 37, 34)", `(${surface} / ${await ink()})`);
+
+await page.keyboard.press("Escape");
+await expect(panel).toHaveCount(0, { timeout: 15000 });
+check(
+  "Escape closes and hands focus back to the bell",
+  await bell.evaluate((el) => el === document.activeElement),
+);
+
+await bell.click();
+await expect(panel).toBeVisible({ timeout: 15000 });
+const focusables = panel.locator('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])');
+const n = await focusables.count();
+await focusables.nth(n - 1).focus();
+await page.keyboard.press("Tab");
+check("Tab wraps from the last control to the first", await focusables.first().evaluate((el) => el === document.activeElement));
+await page.keyboard.press("Shift+Tab");
+check("Shift+Tab wraps back", await focusables.nth(n - 1).evaluate((el) => el === document.activeElement));
+await page.screenshot({ path: `${SHOTS}/bell-all-clear-light.png` });
+
+await page.evaluate(() => {
+  document.documentElement.dataset.theme = "dark";
+});
+await page.waitForTimeout(400);
+check(
+  "dark theme repaints the panel",
+  (await panel.evaluate((el) => getComputedStyle(el).backgroundColor)) === "rgb(23, 28, 25)",
+);
+check("dark theme keeps its own ink", (await ink()) === "rgb(238, 241, 236)", `(${await ink()})`);
+await page.screenshot({ path: `${SHOTS}/bell-all-clear-dark.png` });
+await page.evaluate(() => {
+  document.documentElement.dataset.theme = "light";
+});
+await panel.getByRole("button", { name: "Close alerts" }).click();
+await expect(panel).toHaveCount(0, { timeout: 15000 });
+
+section("alerts bell with a real warning");
+await go("/draw");
+await page.getByRole("button", { name: "Make the draw" }).click();
+await page.waitForTimeout(2500);
+const label = await bell.getAttribute("aria-label");
+const count = Number.parseInt((label?.match(/(\d+)/) ?? [])[1] ?? "0", 10);
+check("the bell stops saying all clear", count > 0, `(${label})`);
+check("the badge matches the count", (await bell.locator("span[aria-hidden=true]").textContent()).trim() === String(count));
+
+await bell.click();
+await expect(panel).toBeVisible({ timeout: 15000 });
+const headings = (await panel.locator("h3").allTextContents()).map((t) => t.trim());
+check(
+  "the panel groups by the same words the Issues panel uses",
+  headings.length > 0 && headings.every((h) => ["Blocking", "Warning", "Info"].includes(h)),
+  `(${JSON.stringify(headings)})`,
+);
+const fixes = panel.getByRole("link", { name: /Fix/ });
+check("every alert offers a Fix link", (await fixes.count()) === count, `(${await fixes.count()})`);
+const hrefs = [];
+for (let i = 0; i < (await fixes.count()); i += 1) hrefs.push(await fixes.nth(i).getAttribute("href"));
+check(
+  "Fix points at a screen that can solve it",
+  hrefs.every((h) => /\/(draw|players|setup)/.test(h ?? "")),
+  `(${JSON.stringify(hrefs)})`,
+);
+check("the panel is readable with alerts in it", (await ink()) === "rgb(32, 37, 34)");
+await page.screenshot({ path: `${SHOTS}/bell-with-alerts-light.png` });
+
+await fixes.first().click();
+await page.waitForTimeout(1200);
+check("following Fix closes the panel and navigates", (await panel.count()) === 0 && /\/(draw|players|setup)/.test(page.url()), `(${page.url()})`);
+
+// -------------------------------------------------------------- mobile sheet
+section("mobile sheet");
+const mob = await context.newPage();
+watch(mob);
+await mob.setViewportSize({ width: 390, height: 844 });
+await mob.goto(`${BASE}/players`, { waitUntil: "networkidle", timeout: 120000 });
+await mob.locator('button[aria-label^="Alerts"]').click();
+const mobPanel = mob.getByRole("dialog", { name: "Alerts" });
+await expect(mobPanel).toBeVisible({ timeout: 15000 });
+const box = await mobPanel.boundingBox();
+check("below lg the panel is a full-width sheet", Math.abs(box.width - 390) < 2, `(width ${box.width})`);
+check("it starts under the top bar", box.y > 60 && box.y < 120, `(y ${box.y})`);
+await mob.screenshot({ path: `${SHOTS}/bell-mobile.png` });
+await mob.close();
+
+console.log(`\nconsole errors: ${errors.length}`);
+for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 200));
+console.log(`screenshots in ${SHOTS}`);
+console.log(`\n${pass} passed, ${fail} failed`);
+
+await browser.close();
+process.exit(fail === 0 && errors.length === 0 ? 0 : 1);
