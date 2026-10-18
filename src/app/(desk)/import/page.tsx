@@ -104,8 +104,22 @@ export default function ImportPage() {
       : tab === "decided"
         ? buckets.decided
         : buckets.deferred;
-  // Filter (the tab) first, then page. Switching tab returns the desk to page 1.
-  const { page, setPage } = usePagedList(tabRows, tab);
+  // Filter (the tab) first, then page. Switching tab returns the desk to page 1, and so does a new
+  // file or a changed mapping, because those rebuild the queue the pages are counting.
+  const queueKey = [
+    tab,
+    fileName,
+    mapping.name ?? "",
+    mapping.index ?? "",
+    mapping.ngapId ?? "",
+    mapping.effectiveDate ?? "",
+    mapping.dob ?? "",
+    mapping.contact ?? "",
+    dateFormat,
+    defaultDate,
+    value?.rows.length ?? 0,
+  ].join("|");
+  const { page, setPage } = usePagedList(tabRows, queueKey);
 
   const select = (field: keyof ColumnMapping, label: string, optional: boolean) => (
     <label className="field">
