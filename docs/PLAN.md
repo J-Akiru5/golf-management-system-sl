@@ -21,18 +21,21 @@ Anything not marked is a plan, not a fact.
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
 | Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), both migrations, club row seeded, `player-photos` created private, RLS checked against the anon key | 14 tables, RLS on all |
-| Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`, `src/lib/store/legacy-supabase-store.tsx`) | **Merged (PR #5) and parked**: auth guard, club-scoped repositories, frozen published snapshot, optimistic writes. Written against the earlier store contract; **not yet wired to the shell store** | 24 tests among the 246 |
+| Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`) | **Wired (merged 18 Oct, `b8d9c7a`)**: the store uses `createSupabaseAdapters` and `loadDeskState` when a Supabase URL is configured, and the mock adapters when it is not. Not yet exercised end to end with real course and tournament rows | `src/lib/data/supabase/adapters.ts`, `load-desk-state.ts`, `domain.ts`; 24 tests |
 | Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Applied 18 Oct 2026 and verified**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger; public sign-ups off. Two staff accounts exist (`admin` = owner, `member1` = desk) | Verified by signing in as each role: owner sees both member rows, desk sees only its own |
-| Organizer screens (`src/app`) | **Built on in-memory demo data**; a refresh resets everything | Public TeeLine landing at `/`, control room at `/admin`, plus Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view and profiles |
+| Organizer screens (`src/app`) | **Built**: on the session store in demo mode; with Supabase configured the same screens read and write the project through the adapters. An end-to-end pass with real event data is still pending | Public TeeLine landing at `/`, control room at `/admin`, plus Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view and profiles |
 | Data boundary (`src/lib/data`) | **Built as mock adapters** over the session store | `PlayerRepository`, `TournamentRepository`, `RegistrationRepository`, `HandicapImportAdapter`, `PairingsRouter`, public allow-list |
 | Brand and visual design | **TeeLine Golf** identity: public landing page, fairway-and-flag vector mark, Ivory / Charcoal themes; the IGCC crest stays a separate club asset | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
 | Printing | **Print components and pure helpers built**: sorted start sheet, allow-listed pairings sheet, per-group 18-hole scorecards, handicap dots, and A4 print CSS | `src/lib/print` tests; dev-only preview at `/print-preview`; real course data and club-printer test still pending |
+| Ready to merge (PR #9, PR #10) | **Desk components** (`feat/desk-components`, PR #9): props-driven registration-desk and shell components plus a dev-only preview, and `agentRules: false` so `next dev` stops rewriting AGENTS.md. **Print components** (`feat/print-components`, PR #10): print sheets and tested helpers. Both merge cleanly into `develop` | Each PR states its own verification; see `docs/handoffs/desk-components.md` |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 21 test files, 246 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
+Whole suite: 22 test files, 282 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
-**The one thing blocking a real event:** nothing the organizer does is saved. The next build step is
-the database connection (section 8, step 1). Until then the app is a working demo, not a tool.
+**The one thing blocking a real event:** the wiring exists but the project has no course, tee, hole or
+tournament rows, so the desk has nothing real to show. Provisioning and an end-to-end pass with real
+data (section 8, steps 1 and 2) come first, and the test staff accounts must be rotated before the
+event.
 
 ---
 
@@ -209,10 +212,10 @@ These are places where the spec promises something the code does not do yet. Che
 1. **Re-run and locked groups.** *Fixed in the demo shell*: `route()` takes locked groups, keeps
    their players and slots, releases a lock that no longer makes sense with the reason, and warns
    when a locked slot pushes a flight across waves. Covered by `src/lib/routing/locks.test.ts`.
-2. **Nothing persists.** All screens use `DeskProvider` in-memory state. The Supabase repositories
-   are merged and parked (`src/lib/data/supabase/*`, `src/lib/store/legacy-supabase-store.tsx`); the
-   shell store still reads and writes demo data. Wiring them behind `src/lib/data/adapters.ts` is the
-   open step, and it is why the auth model can be finished before the data flows through it.
+2. **Persistence is wired but unproven.** The store picks the Supabase adapters and loads the real
+   desk when `NEXT_PUBLIC_SUPABASE_URL` is set, and falls back to the in-memory demo when it is not
+   (merged 18 Oct). The write path has not been exercised end to end, because the project still has
+   no course, tee, hole or tournament rows; the demo screens still run on the session store.
 3. **Cut-off date is applied in the desk** (frozen onto each registration; re-freeze offered), but
    the database write is still missing.
 4. **Printing** has props-driven start, pairings and scorecard components, plus tested sorting and
@@ -227,6 +230,17 @@ These are places where the spec promises something the code does not do yet. Che
    the guard against guessing it.
 9. **Multi-day events are a demo assumption.** Age and the cut-off read the first day, because the
    club has not said which day of a multi-day event counts.
+10. **No pagination.** Every list renders in full: the player directory, the registration desk list,
+    the import review queue, the draw board, the print sheets and the public pairings. The
+    repositories fetch whole tables (no `.range()`), and the only caps are search suggestions (6 to 8
+    rows) and the issue and activity slices. That is fine at the club's field size today, but page
+    size and delivery (a SQL range or the browser) need a decision before the field grows; see
+    decision 13.
+11. **No notifications.** The only mention of notices in the spec and in this plan is Phase 3 player
+    messaging (SMS or Messenger). The app has no notification feed, no read state and no per-event
+    alert: the overview attention list and the shell bell (a shortcut to the draw's blocking count)
+    are all that exists, and the session activity log forgets itself on refresh. Whether Phase 1
+    needs an alert centre is decision 14.
 
 ---
 
@@ -271,8 +285,12 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
    event and writing to the database are not built.
 6. **Print:** build the data adapter and pass authoritative hole/tee provenance into the existing
    print assembler. Print on real paper at the club and verify the A4 layout before the event.
-7. **Deploy:** Vercel project, env vars, `staging` and `main` branches, CI (typecheck, lint, tests, build).
-8. **Dress rehearsal:** run a full fake tournament with the organizer using real IGCC data before the real event.
+7. **Long lists and alerting:** decide page size and where paging happens for the players,
+   registrations, import rows and print sheets (decision 13), and whether Phase 1 needs anything
+   beyond the overview attention list and the shell bell (decision 14). Do this before the field and
+   the print runs grow.
+8. **Deploy:** Vercel project, env vars, `staging` and `main` branches, CI (typecheck, lint, tests, build).
+9. **Dress rehearsal:** run a full fake tournament with the organizer using real IGCC data before the real event.
 
 ### Phase 2: results
 
@@ -323,6 +341,8 @@ Decisions that belong to the people named, not to an agent.
 | 10 | Product name and legal clearance | Jeff | Public branding | TeeLine Golf approved as the product direction; not represented as legally cleared |
 | 11 | Vector (SVG/PDF) crest from the club; real course pictures and hole positions | Jeff / club | Print, large displays, real course map | 320px PNG crest; illustrated placeholder course |
 | 12 | Create `staging` and `main` branches; clean up old feature branches; consider a Syntaxure organization for the repo | Jeff | Pipeline | Only `develop` |
+| 13 | Pagination for the long lists (players, registrations, import rows, print sheets): page size, and paging in SQL or in the browser | Jeff | Field size, print runs | Render every row; search suggestions capped at 8 |
+| 14 | Alerts in Phase 1: is the overview attention list plus the shell bell enough, or is an in-app notification centre wanted? | Organizer | Desk workflow | Attention list only; player messaging stays Phase 3 |
 
 ---
 
@@ -366,12 +386,14 @@ Agent ground rules:
 
 ## 13. Launch checklist (first real event)
 
-- [ ] Database applied to a real Supabase project and tested with a real login
+- [x] Database applied to a real Supabase project (18 Oct) and tested with a staff login; two test accounts exist and must be rotated before the event
 - [ ] Real IGCC tee data entered and checked against the club scorecard
 - [ ] Sample NGAP export received; import tested with the real file; fresh export uploaded before cut-off
-- [ ] Open decisions 3–7 and 9 confirmed by the organizer
-- [ ] Lock-aware re-run built (gap 1)
+- [ ] Open decisions 3-7 and 9 confirmed by the organizer
+- [x] Lock-aware re-run built (gap 1)
 - [ ] Start sheet and scorecards printed on real paper at the club
+- [ ] Long lists (players, registrations, import rows, print) hold up at the real field size; pagination decided (decision 13)
+- [ ] The organizer has said what alerts they expect beyond the overview attention list (decision 14)
 - [ ] Photo consent line shown before every photo; private bucket verified
 - [ ] Public pairings page checked on an older phone
 - [ ] Vercel spend limit set; Supabase spend cap on; backups understood
@@ -408,6 +430,9 @@ Agent ground rules:
 | 18 Oct 2026 | **Staff-only auth model.** Three roles in `club_members.role`: `owner`, `organizer`, `desk`. Desk may register players and edit registrations; only owner/organizer may publish, unpublish, change tournament settings or manage members. Enforced in RLS (`has_club_role`), not by hiding buttons. Public sign-ups are off. Golfers do not need accounts, and `public.players` keeps no `user_id` so a player record is never a login identity. |
 | 18 Oct 2026 | **Registration audit is columns, not a table.** `registrations` gains `registered_by`, `updated_by` and `updated_at`, stamped by trigger from `auth.uid()` so a client cannot spoof them. No separate activity-log table. |
 | 18 Oct 2026 | Jeff supplies the first staff accounts (`admin` as owner, `member1` as desk); the golf pro's real account is added later as `organizer`. These are **test-only** accounts with a shared placeholder password, created at Jeff's explicit instruction after the risk was raised; they must be rotated before the first real event. |
+| 18 Oct 2026 | **Supabase wiring merged** (`b8d9c7a`): the store uses `createSupabaseAdapters` and `loadDeskState` behind the same adapter interfaces, and keeps the in-memory demo when no Supabase URL is set. Provisioning (course, tees, holes, a tournament) and an end-to-end pass with real data are the remaining steps. |
+| 18 Oct 2026 | **Pagination and notifications were never in the plan.** They are now gaps 10 and 11 with decisions 13 and 14. Defaults meanwhile: render every row, and keep the overview attention list plus the shell bell as the only alerts. Player messaging stays Phase 3. |
+| 18 Oct 2026 | In review, not merged: `feat/desk-components` (PR #9: props-driven registration-desk and shell components, a dev-only preview, and `agentRules: false`) and `feat/print-components` (print sheets and tested helpers). `feat/lock-aware-rerun` (`90b534d`) duplicates work already in `develop`; do not merge it. |
 
 ---
 
