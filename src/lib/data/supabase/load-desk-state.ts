@@ -6,8 +6,9 @@
  * recorded, and only for a short window.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ManualOverride } from "@/lib/data/types";
+import type { Hole, ManualOverride } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
+import type { Tee } from "@/lib/routing";
 import type { BoardState, DeskState, Published } from "@/lib/store/state";
 import type { Database, Json, TableRow } from "@/lib/supabase/types";
 import {
@@ -81,6 +82,11 @@ export interface LoadedDesk {
   clubName: string;
   /** Each tournament's draw revision. A draw save must name the revision it started from. */
   revisions: Record<string, number>;
+  /** The course the setup edits belong to, or null when no event is set up yet. */
+  courseId: string | null;
+  /** The club's saved tees and holes, so entered ratings are read back rather than shown as samples. */
+  tees: Tee[];
+  holes: Hole[];
 }
 
 export async function loadDeskState(
@@ -209,9 +215,45 @@ export async function loadDeskState(
   const entries = asArray(entryRows.data).map(toRegistrationEntry);
   const active = tournaments.find((t) => t.state === "open")?.id ?? tournaments[0]?.id ?? null;
 
+  // The tees and holes the setup edits. Without these the desk would show the sample ratings even
+  // after they had been saved, which reads as "it did not save".
+  const courseId = asArray(tournamentRows.data).find((t) => t.id === active)?.course_id ?? null;
+  let tees: Tee[] = [];
+  let holes: Hole[] = [];
+  if (courseId) {
+    const [teeRows, holeRows] = await Promise.all([
+      client.from("tees").select("*").eq("club_id", clubId).eq("course_id", courseId).order("name"),
+      client
+        .from("holes")
+        .select("*")
+        .eq("club_id", clubId)
+        .eq("course_id", courseId)
+        .order("number"),
+    ]);
+    if (teeRows.error) throw new Error(`Could not load tees: ${teeRows.error.message}`);
+    if (holeRows.error) throw new Error(`Could not load holes: ${holeRows.error.message}`);
+    tees = asArray(teeRows.data).map((row) => ({
+      id: row.id,
+      name: row.name,
+      courseRating: Number(row.course_rating),
+      slope: Number(row.slope),
+      par: Number(row.par),
+    }));
+    holes = asArray(holeRows.data).map((row) => ({
+      id: `${row.course_id}-${row.number}`,
+      courseId: row.course_id,
+      number: row.number,
+      par: row.par,
+      strokeIndex: row.stroke_index,
+    }));
+  }
+
   return {
     clubName: club.name,
     revisions,
+    courseId,
+    tees,
+    holes,
     state: {
       clubId,
       tournaments,

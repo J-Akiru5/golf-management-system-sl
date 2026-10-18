@@ -16,13 +16,14 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
 import { Button } from "@/components/ui/button";
 import { checkTournament } from "@/lib/data/config-checks";
-import type { RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
-import type { CategoryRule, FlightRule, StartFormat, TournamentConfig } from "@/lib/routing";
+import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
+import type { CategoryRule, FlightRule, StartFormat, Tee, TournamentConfig } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
 
@@ -45,7 +46,10 @@ export default function SetupPage() {
       tournament={tournament}
       tees={tees}
       holes={holes}
-      save={adapters.tournaments.save}
+      // The whole setup goes through one write, so a half-saved setup cannot land.
+      save={(next, nextTees, nextHoles) =>
+        adapters.setup.save({ tournament: next, tees: nextTees, holes: nextHoles })
+      }
     />
   );
 }
@@ -59,13 +63,38 @@ function SetupWizard({
   tournament: Tournament;
   tees: ReturnType<typeof useDesk>["tees"];
   holes: ReturnType<typeof useDesk>["holes"];
-  save: (t: Tournament) => void;
+  save: (
+    t: Tournament,
+    tees: ReturnType<typeof useDesk>["tees"],
+    holes: ReturnType<typeof useDesk>["holes"],
+  ) => void;
 }) {
-  const update = (patch: Partial<Tournament>) => save({ ...tournament, ...patch });
+  // Tees and holes are edited locally and saved with the tournament, so one write carries the whole
+  // setup. They are seeded from the loaded desk and re-seeded when it changes.
+  const [draftTees, setDraftTees] = useState(tees);
+  const [draftHoles, setDraftHoles] = useState(holes);
+  useEffect(() => setDraftTees(tees), [tees]);
+  useEffect(() => setDraftHoles(holes), [holes]);
+
+  const update = (patch: Partial<Tournament>) =>
+    save({ ...tournament, ...patch }, draftTees, draftHoles);
   const updateConfig = (patch: Partial<TournamentConfig>) =>
     update({ config: { ...tournament.config, ...patch } });
   const updateRegistration = (patch: Partial<TournamentRegistration>) =>
     update({ registration: { ...tournament.registration, ...patch } });
+
+  // Ratings and stroke index only: a tee's name is what a category points at, and a hole's number is
+  // its identity, so neither is editable here.
+  const updateTee = (id: string, patch: Partial<Tee>) => {
+    const next = draftTees.map((t) => (t.id === id ? { ...t, ...patch } : t));
+    setDraftTees(next);
+    save(tournament, next, draftHoles);
+  };
+  const updateHole = (number: number, patch: Partial<Hole>) => {
+    const next = draftHoles.map((h) => (h.number === number ? { ...h, ...patch } : h));
+    setDraftHoles(next);
+    save(tournament, draftTees, next);
+  };
 
   const checks = checkTournament(tournament, tees, holes);
   const bad = checks.filter((c) => c.level === "bad").length;
@@ -201,9 +230,10 @@ function SetupWizard({
             <div className="notice warn flex items-start gap-2.5" role="note">
               <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
               <p className="text-[13px]">
-                <b>Pending from the club:</b> real Course Rating, Slope, Par and stroke index for
-                every tee and hole. The numbers below are sample data for the demo, not IGCC
-                scorecard data, and they are read-only on purpose so they cannot pass as real.
+                <b>Enter IGCC&rsquo;s real numbers from the club scorecard.</b> Course Rating,
+                Slope, Par and stroke index come from the card, not from this app. What is on screen
+                now is sample data until the desk replaces it, and every edit here is written with
+                the event setup in one go.
               </p>
             </div>
             <div className="table-wrap !shadow-none">
@@ -218,12 +248,49 @@ function SetupWizard({
                   </tr>
                 </thead>
                 <tbody>
-                  {tees.map((t) => (
+                  {draftTees.map((t) => (
                     <tr key={t.id}>
                       <td className="font-semibold">{t.name}</td>
-                      <td className="num mono">{t.courseRating}</td>
-                      <td className="num mono">{t.slope}</td>
-                      <td className="num mono">{t.par}</td>
+                      <td className="num">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="50"
+                          max="90"
+                          aria-label={`${t.name} course rating`}
+                          value={t.courseRating}
+                          onChange={(e) => {
+                            const n = num(e.target.value);
+                            if (n !== null) updateTee(t.id, { courseRating: n });
+                          }}
+                        />
+                      </td>
+                      <td className="num">
+                        <input
+                          type="number"
+                          min="55"
+                          max="155"
+                          aria-label={`${t.name} slope`}
+                          value={t.slope}
+                          onChange={(e) => {
+                            const n = num(e.target.value);
+                            if (n !== null) updateTee(t.id, { slope: n });
+                          }}
+                        />
+                      </td>
+                      <td className="num">
+                        <input
+                          type="number"
+                          min="27"
+                          max="80"
+                          aria-label={`${t.name} par`}
+                          value={t.par}
+                          onChange={(e) => {
+                            const n = num(e.target.value);
+                            if (n !== null) updateTee(t.id, { par: n });
+                          }}
+                        />
+                      </td>
                       <td>
                         <span className="pill warn">Sample</span>
                       </td>
@@ -233,11 +300,57 @@ function SetupWizard({
               </table>
             </div>
             <p className="hint">
-              {holes.length} holes on file. Par and stroke index per hole:{" "}
-              {holes.every((h) => h.par !== null && h.strokeIndex !== null)
+              {draftHoles.length} holes on file. Par and stroke index per hole:{" "}
+              {draftHoles.every((h) => h.par !== null && h.strokeIndex !== null)
                 ? "entered"
                 : "not entered yet. Scorecards print placeholders and say so."}
             </p>
+            {draftHoles.length > 0 && (
+              <div className="table-wrap !shadow-none">
+                <table>
+                  <thead>
+                    <tr>
+                      <th className="num">Hole</th>
+                      <th className="num">Par</th>
+                      <th className="num">Stroke index</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {draftHoles.map((h) => (
+                      <tr key={h.number}>
+                        <td className="num mono">{h.number}</td>
+                        <td className="num">
+                          <input
+                            type="number"
+                            min="3"
+                            max="6"
+                            aria-label={`Hole ${h.number} par`}
+                            value={h.par ?? ""}
+                            onChange={(e) => {
+                              const n = num(e.target.value);
+                              if (n !== null) updateHole(h.number, { par: n });
+                            }}
+                          />
+                        </td>
+                        <td className="num">
+                          <input
+                            type="number"
+                            min="1"
+                            max={draftHoles.length}
+                            aria-label={`Hole ${h.number} stroke index`}
+                            value={h.strokeIndex ?? ""}
+                            onChange={(e) => {
+                              const n = num(e.target.value);
+                              if (n !== null) updateHole(h.number, { strokeIndex: n });
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard id="rules" icon={<CalendarClock />} title="Cut-off & handicap">

@@ -142,6 +142,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Desk["member"]>(connected ? undefined : undefined);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [loadedTees, setLoadedTees] = useState<Tee[] | null>(null);
+  const [loadedHoles, setLoadedHoles] = useState<Hole[] | null>(null);
 
   // One read on load. Without a Supabase URL the desk stays on the in-memory demo, unchanged.
   useEffect(() => {
@@ -164,6 +166,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         setClient(supabase);
         setMember({ displayName: signedIn.displayName, role: signedIn.role });
         revisions.current = loaded.revisions;
+        setLoadedTees(loaded.tees);
+        setLoadedHoles(loaded.holes);
         rawDispatch({ type: "hydrate", state: loaded.state });
         setStatus("ready");
       } catch (loadError) {
@@ -312,8 +316,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       club: DEMO_CLUB,
       tournaments: state.tournaments,
       tournament,
-      tees: DEMO_TEES,
-      holes: DEMO_HOLES,
+      tees: loadedTees ?? DEMO_TEES,
+      holes: loadedHoles ?? DEMO_HOLES,
       players: state.players,
       playerById: new Map(state.players.map((p) => [p.id, p])),
       entries,
@@ -333,7 +337,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       names: {
         category: lookup(tournament?.categories ?? []),
         flight: lookup(tournament?.flights ?? []),
-        tee: lookup(DEMO_TEES),
+        tee: lookup(loadedTees ?? DEMO_TEES),
       },
       deferred: state.deferred,
       pendingRefreeze: registrations.filter((r) => r.frozenOutdated),
