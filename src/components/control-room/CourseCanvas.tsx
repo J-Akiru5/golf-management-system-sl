@@ -110,13 +110,13 @@ function paint(ctx: CanvasRenderingContext2D) {
     ctx.beginPath();
     ctx.ellipse(gx, gy, 18, 13, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#f7f4eb";
+    ctx.strokeStyle = "#f7f5ee";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(gx, gy);
     ctx.lineTo(gx, gy - 22);
     ctx.stroke();
-    ctx.fillStyle = "#f7f4eb";
+    ctx.fillStyle = "#f7f5ee";
     ctx.beginPath();
     ctx.moveTo(gx, gy - 22);
     ctx.lineTo(gx + 12, gy - 18);

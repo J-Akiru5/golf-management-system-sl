@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
-import { Crest } from "@/components/Crest";
+import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TournamentSelect } from "@/components/TournamentSelect";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -52,7 +52,7 @@ const isCurrent = (path: string, href: string) =>
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const overlay = path === "/";
+  const overlay = path === "/admin";
   const desk = useDesk();
   const { registrations, draw, warnings, tournament, deferred } = desk;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   ).length;
 
   const nav: NavItem[] = [
-    { href: "/", label: "Overview", icon: LayoutGrid, group: "main" },
+    { href: "/admin", label: "Control room", icon: LayoutGrid, group: "main" },
     { href: "/tournaments", label: "Tournaments", icon: Trophy, group: "main" },
     { href: "/players", label: "Players", icon: Users, alert: review > 0, group: "main" },
     {
@@ -166,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Menu className="size-5" />
             </SheetTrigger>
-            <SheetContent side="left" title="Menu" description="Iloilo Golf & Country Club">
+            <SheetContent side="left" title="Menu" description="TeeLine Golf tournament office">
               <nav aria-label="Main" className="grid gap-1">
                 {nav.filter((n) => n.group !== "more").map((n) => renderNavLink(n, true))}
                 <div className="my-2 border-t border-line" role="presentation" />
@@ -174,24 +174,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               </nav>
               <div className="mt-auto grid gap-3">
                 <ThemeToggle />
-                <p className="hint">By Syntaxure Labs</p>
+                <p className="hint">Developed by Syntaxure Labs</p>
               </div>
             </SheetContent>
           </Sheet>
 
           <Link
-            href="/"
+            href="/admin"
             className="on-photo flex min-w-0 items-center gap-3 no-underline lg:w-[318px]"
           >
-            <Crest size={52} className="shrink-0" />
-            <span className="hidden min-w-0 sm:block">
-              <span className="block truncate font-display text-[15px] font-extrabold leading-[18px] text-ink">
-                Iloilo Golf &amp; Country Club
-              </span>
-              <span className="block truncate text-xs text-ink-muted">
-                Tournament office · Sta. Barbara
-              </span>
-            </span>
+            <TeeLineLogo variant="reverse" width={206} className="shrink-0" />
           </Link>
 
           <ShellSearch overlay={overlay} />
