@@ -33,9 +33,10 @@ Settings that save, and two desk fixes.
   last date.
 
 ### Database
-- `20261027000000_setup_tournament_fields.sql`: **written; the owner must apply it before a build
-  with this code is deployed.** It drops and re-creates `save_event_setup` with the new optional
-  parameters and re-applies the grants.
+- `20261027000000_setup_tournament_fields.sql`: **applied live on 18 Oct 2026.** It drops and
+  re-creates `save_event_setup` with the new optional parameters and re-applies the grants. Verified
+  over the API: an owner call writes the tournament-level values and returns `{ok, revision}`, the
+  row changes in nothing but `draw_revision`, and a desk account is refused with 42501.
 
 ## [0.6.1] - 2026-10-18
 
