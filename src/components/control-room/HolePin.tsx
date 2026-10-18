@@ -12,11 +12,11 @@ import { cn } from "@/lib/ui/cn";
 type Board = ReturnType<typeof useBoard>;
 
 const DISC: Record<PinStatus, string> = {
-  full: "bg-[#f7f4eb] text-[#171c19]",
+  full: "bg-[#f7f5ee] text-[#171c19]",
   short: "bg-[#f29a4b] text-[#171c19]",
   blocking: "bg-[#ff7b70] text-[#171c19]",
   empty: "border border-[rgba(238,240,234,.7)] bg-transparent text-[#eef0ea]",
-  selected: "bg-[#171c19] text-[#e0bc65]",
+  selected: "bg-[#171c19] text-[#d7b568]",
 };
 
 /**
@@ -45,7 +45,7 @@ export const HolePin = forwardRef<
         inline ? "relative" : "absolute -translate-x-1/2 -translate-y-1/2",
         "flex items-center gap-1.5 rounded-full border py-0 pr-2.5 pl-1 text-xs font-semibold whitespace-nowrap backdrop-blur-[8px] transition-shadow",
         sel
-          ? "z-10 h-[34px] border-[#e0bc65] bg-[#e0bc65] text-[#171c19] shadow-lift"
+          ? "z-10 h-[34px] border-[#d7b568] bg-[#d7b568] text-[#171c19] shadow-lift"
           : "h-[30px] border-[rgba(238,240,234,.18)] bg-[rgba(14,22,18,.66)] text-[#eef0ea] hover:border-[rgba(238,240,234,.45)]",
         className,
       )}

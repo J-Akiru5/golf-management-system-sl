@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Crest } from "@/components/Crest";
+import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
 import { fmtDateLabel } from "@/lib/data/labels";
@@ -31,13 +31,13 @@ export default function PublicPairings() {
   return (
     <div className="public">
       <header className="public-head">
-        <div className="flex items-center gap-3">
-          <Crest size={48} />
+        <div className="flex flex-wrap items-center gap-3">
+          <TeeLineLogo variant="reverse" width={172} />
           <span className="leading-tight">
-            <b className="block font-display text-[15px] font-extrabold">
-              Iloilo Golf &amp; Country Club
+            <b className="block font-display text-[13px] font-semibold">
+              Club tournament pairings
             </b>
-            <span className="text-xs text-on-forest-muted">Est. 1907 · Sta. Barbara, Iloilo</span>
+            <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
           </span>
         </div>
         <p className="overline mt-3 !text-gold">
@@ -60,7 +60,7 @@ export default function PublicPairings() {
 
       <p className="hint no-print">
         This is a local demo preview, not a published page. It shows names, flight, hole and time
-        only. <Link href="/">Back to the tournament office</Link>
+        only. <Link href="/">TeeLine Golf home</Link>
       </p>
     </div>
   );
