@@ -15,6 +15,12 @@
   --line-strong: #747d75;
   --ink: #202522;
   --ink-muted: #626b64;
+  /* The page's ink pair, kept apart from --ink. A page-coloured popup inside the dark chrome (the
+     alerts bell) has to point back at it, and a custom property cannot be un-shadowed from a
+     descendant: the chrome re-points --ink at the ivory-on-forest pair, which is invisible on the
+     popup's own ivory surface. */
+  --ink-page: #202522;
+  --ink-muted-page: #626b64;
   --forest: #073d2e;
   --on-forest: #f7f5ee;
   --on-forest-muted: #cad7cf;
@@ -74,6 +80,8 @@
     --line-strong: #87948b;
     --ink: #eef1ec;
     --ink-muted: #b1bbb3;
+    --ink-page: #eef1ec;
+    --ink-muted-page: #b1bbb3;
     --forest: #0b2b23;
     --on-forest: #f7f5ee;
     --on-forest-muted: #c5d3ca;
@@ -111,6 +119,8 @@
   --line-strong: #87948b;
   --ink: #eef1ec;
   --ink-muted: #b1bbb3;
+  --ink-page: #eef1ec;
+  --ink-muted-page: #b1bbb3;
   --forest: #0b2b23;
   --on-forest: #f7f5ee;
   --on-forest-muted: #c5d3ca;
@@ -149,6 +159,8 @@
   --line-strong: #87948b;
   --ink: #eef1ec;
   --ink-muted: #b1bbb3;
+  --ink-page: #eef1ec;
+  --ink-muted-page: #b1bbb3;
   --forest: #0b2b23;
   --on-forest: #f7f5ee;
   --on-forest-muted: #c5d3ca;
@@ -723,6 +735,17 @@
     --ink: #f7f5ee;
     --ink-muted: #c5d3ca;
     text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
+  }
+  /* A popup that paints a page surface while sitting inside the dark chrome (the alerts bell).
+     The chrome re-points --ink at the ivory-on-forest pair, so without this the panel's own text
+     resolves to ivory on an ivory panel and disappears in the light theme.
+     `color` is set as well as the token: an element with no colour rule of its own inherits the
+     chrome's used value, so pointing the token back is not enough on its own. */
+  .on-surface {
+    color: var(--ink-page);
+    --ink: var(--ink-page);
+    --ink-muted: var(--ink-muted-page);
+    --focus: var(--gold);
   }
   .well {
     background: var(--surface-sunken);
