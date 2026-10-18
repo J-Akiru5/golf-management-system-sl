@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export const metadata: Metadata = {
   title: "Every round, beautifully organized",
@@ -22,8 +23,8 @@ const capabilities = [
     title: "Tournament operations",
     description:
       "Keep event settings, registration details, categories, and start arrangements together in one clear workspace.",
-    href: "/setup",
-    link: "Explore the tournament desk",
+    href: "/login",
+    link: "Sign in to the desk",
   },
   {
     number: "02",
@@ -31,8 +32,8 @@ const capabilities = [
     title: "A considered player record",
     description:
       "Review player details and imported handicap indexes, with eligibility and routing questions surfaced for the organizer.",
-    href: "/players",
-    link: "Visit the player directory",
+    href: "/login",
+    link: "Sign in to the desk",
   },
   {
     number: "03",
@@ -40,8 +41,8 @@ const capabilities = [
     title: "Pairings, ready to share",
     description:
       "Review the proposed groups, resolve draw issues, and publish a player view that keeps private profile details private.",
-    href: "/draw",
-    link: "See how the draw works",
+    href: "/login",
+    link: "Sign in to the desk",
   },
 ];
 
@@ -74,8 +75,8 @@ export default function HomePage() {
             <a href="#workflow">How it works</a>
             <Link href="/pairings">Player pairings</Link>
           </nav>
-          <Link className="site-nav-action" href="/admin">
-            Organizer desk <ArrowRight aria-hidden="true" />
+          <Link className="site-nav-action" href="/login">
+            Sign in <ArrowRight aria-hidden="true" />
           </Link>
         </header>
 
@@ -158,8 +159,8 @@ export default function HomePage() {
             Keep the organizer in control at every step. TeeLine proposes; the club reviews and
             decides what is ready to publish.
           </p>
-          <Link className="button-outline" href="/admin">
-            Explore the organizer desk <ArrowRight aria-hidden="true" />
+          <Link className="button-outline" href="/login">
+            Sign in to the desk <ArrowRight aria-hidden="true" />
           </Link>
         </div>
         <ol className="workflow-steps">
@@ -197,13 +198,14 @@ export default function HomePage() {
           <TeeLineLogo variant="reverse" width={190} />
         </Link>
         <p>Developed by Syntaxure Labs</p>
-        <Link href="/admin">Organizer preview</Link>
+        <Link href="/login">Sign in</Link>
       </footer>
 
       <aside className="preview-note" role="note">
         <span>Product preview</span>
-        The organizer desk currently uses demo data. Changes reset when the page is refreshed; no
-        database is connected yet.
+        {isSupabaseConfigured()
+          ? "The desk and the player area are behind sign-in. Pairings stay public."
+          : "This build runs on demo data with no accounts. Changes reset when the page is refreshed."}
       </aside>
     </main>
   );
