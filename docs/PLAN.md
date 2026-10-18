@@ -30,7 +30,7 @@ Anything not marked is a plan, not a fact.
 | Ready to merge (PR #9, PR #10) | **Desk components** (`feat/desk-components`, PR #9): props-driven registration-desk and shell components plus a dev-only preview, and `agentRules: false` so `next dev` stops rewriting AGENTS.md. **Print components** (`feat/print-components`, PR #10): print sheets and tested helpers. Both merge cleanly into `develop` | Each PR states its own verification; see `docs/handoffs/desk-components.md` |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 21 test files, 246 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
+Whole suite: 22 test files, 282 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
 **The one thing blocking a real event:** the wiring exists but the project has no course, tee, hole or
 tournament rows, so the desk has nothing real to show. Provisioning and an end-to-end pass with real
