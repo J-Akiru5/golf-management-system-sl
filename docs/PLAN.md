@@ -20,9 +20,9 @@ Anything not marked is a plan, not a fact.
 | Routing engine (`src/lib/routing`) | **Built**, pure functions, no DB; **lock-aware re-run** | 26 unit tests |
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
-| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), club row seeded, `player-photos` created private, RLS checked against the anon key. **All eleven migrations are in step**, including the player portal (`20261023000000`, `…0001`) and the event-setup pair (`20261024000000`, `20261025000000`) plus the notifications schema (`20261026000000`) | 14 tables, RLS on all; `supabase migration list --linked` shows local and remote in step |
+| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), club row seeded, `player-photos` created private, RLS checked against the anon key. **All twelve migrations are in step**, including the player portal (`20261023000000`, `.0001`), the event-setup pair (`20261024000000`, `20261025000000`), the notifications schema (`20261026000000`) and the help seen-state (`20261028000000`) | 14 tables, RLS on all; `supabase migration list --linked` shows local and remote in step |
 | Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`) | **Wired (merged 18 Oct, `b8d9c7a`)**: the store uses `createSupabaseAdapters` and `loadDeskState` when a Supabase URL is configured, and the mock adapters when it is not. Not yet exercised end to end with real course and tournament rows | `src/lib/data/supabase/adapters.ts`, `load-desk-state.ts`, `domain.ts`; 24 tests |
-| Deployment | Vercel project **`golf-management-system-sl`** (team `j-akiru5s-projects`), production tracks `main` at `https://golf-management-system-sl.vercel.app`; pushes to feature branches build previews. Before the 18 Oct advance, production served the pre-TeeLine build from `main` | `vercel ls`, `vercel inspect`; production env vars not yet confirmed from the repo |
+| Deployment | Vercel project **`golf-management-system-sl`** (team `j-akiru5s-projects`), production tracks `main` at **https://golf.syntaxure.dev**; `main` and `develop` are level at 0.8.0, and feature branches build previews. **Set `NEXT_PUBLIC_SITE_URL` to that domain in Vercel** so player share links do not depend on the host the desk happens to use | `vercel ls`, `vercel inspect`; production env vars are not in the repo |
 | Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Applied 18 Oct 2026 and verified**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger. Two staff accounts exist (`admin` = owner, `member1` = desk) | Verified by signing in as each role: owner sees both member rows, desk sees only its own |
 | Player auth and the player area (`src/lib/auth/routes.ts`, `src/app/(player)`, `src/lib/player`) | **Built, tested and applied.** One sign-in page for players and staff, `/my` with a claim step and a read-only view of the player's own entry and published start. The database half is live; what is missing is a test account linked to a test player | `routes.test.ts` (15), `portal.test.ts` (7), `claim.test.ts` (4); guard matrix checked over HTTP with a Supabase URL configured; the three functions answered correctly against the live project (see section 7) |
 | Organizer screens (`src/app`) | **Built**: on the session store in demo mode; with Supabase configured the same screens read and write the project through the adapters. An end-to-end pass with real event data is still pending | Public TeeLine landing at `/`, control room at `/admin`, plus Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view and profiles |
@@ -31,21 +31,22 @@ Anything not marked is a plan, not a fact.
 | Printing | **Print components and pure helpers built**: sorted start sheet, allow-listed pairings sheet, per-group 18-hole scorecards, handicap dots, and A4 print CSS | `src/lib/print` tests; dev-only preview at `/print-preview`; real course data and club-printer test still pending |
 | Merged (PR #17) | **Event setup and the notification schema**, merged into `develop` as `863c253` on 18 Oct 2026: the desk saves course, tees, holes, categories and flights in one guarded, manager-only transaction, enters the real tee and hole numbers, loads the saved tees and holes instead of the samples, adds the paging primitive, and writes the notifications migration. Its migrations `20261024000000`, `20261025000000` and `20261026000000` are all applied to the live project (verified over the API) | Section 8, step W1 done |
 | Merged (PR #23) | **The alerts bell and the paged lists** (`feat/desk-lists-and-bell`): the bell in the shell, the notification loader, paging applied to the players, registration and import review lists, and the import review tabs. Merged into `develop` as `1fd2b76` on 18 Oct 2026. It shipped with two bugs that browser checking found and the follow-up below fixes | Follow-up PR `fix/desk-browser-found` |
-| Merged (PR #27) | **Settings that save** (`feat/settings-saves`, merged as `45dce3c` on 18 Oct 2026, tagged `v0.7.0`): draft-then-save with a Save on every section plus Save all changes, the tournament-level fields carried by the guarded `save_event_setup`, the entry link on the deployed domain, and Add a day incrementing with every day editable. Migration `20261027000000_setup_tournament_fields.sql` is **applied live** and verified over the API | Merged; `main` is still on v0.6.1 |
+| Merged (PR #27) | **Settings that save** (`feat/settings-saves`, merged as `45dce3c` on 18 Oct 2026, tagged `v0.7.0`): draft-then-save with a Save on every section plus Save all changes, the tournament-level fields carried by the guarded `save_event_setup`, the entry link on the deployed domain, and Add a day incrementing with every day editable. Migration `20261027000000_setup_tournament_fields.sql` is **applied live** and verified over the API | Merged; release line is now 0.8.0 |
+| Releases | **v0.7.0** settings that save; **v0.7.1** the bell waiting for the connected desk; **v0.8.0** the help centre, shell polish, player languages and one shared draw revision. `develop` and `main` are level at `06a2748` (v0.8.0), and `main` is production | tags `v0.7.0`, `v0.7.1`, `v0.8.0`; `git ls-remote` |
 | Long lists | **Paged on the desk's lists.** `src/lib/data/paging.ts`: 50 rows a page, paged in the browser, queries unchanged. Applied to the player directory, the registration desk and the import review tabs. Switching tab, search or filter returns to page 1, and ties break on the record id so editing a row cannot move it to another page. **Deliberately not paged**: print, the draw groups and the desk's player search | Decision 13 settled; gap 10 closed for the desk screens |
 | Alerts | **Bell built.** Decision 14 is stored, desk-facing notifications (option B): `notifications` + `notification_reads` with per-user read state, `sync_notifications(tournament)` and `mark_notifications_read(tournament)`, all applied to the live project. The bell merges the live draw issues with the stored rows, de-duplicates them, and counts unresolved blocking and warning whatever their read state; read state only quiets info. The full sync cycle was checked over the API: a warning appeared and cleared when the cause was fixed, and a dismissed info notice stayed read in a fresh session | Gap 11 closed; merged (#23, `1fd2b76`) |
 | Merged (PR #28) | **Player languages**: English, Tagalog and Hiligaynon on the player surfaces (`src/lib/i18n`). A cookie-backed choice with the browser's preference as the fallback, typed dictionaries with coverage tests, a language picker in the player header, and the portal, pairings, demo pairings and entry pages reading their copy from the dictionary. Tagalog and Hiligaynon are drafts; **Jeff reads both languages and reviews them himself** (checklist in `docs/i18n-review.md`). Desk chrome is still English | `docs/i18n-review.md`; `verify:ui` section "player languages" |
-| Merged (PR #31) | **The help centre**: a "?" in every shell with a step list for the screen, a first-run welcome, and a printable cheat sheet (`src/lib/help`, `src/components/help`). Desk guides are English literals with `data-help` anchors on the real controls, player guides are dictionary keys so they are translated, and "Show me" closes the panel and rings the control. Seen-state is per user in `help_seen` (migration `20261028000000`, **applied 18 Oct 2026** in the SQL editor, verified over the API) with localStorage always written, so the welcome shows once per person and once per browser. Merged into `develop` as `3b863e1` on 18 Oct 2026 | `verify:ui` sections "help centre", "cheat sheet", "first-run welcome" |
+| Merged (PR #31) | **The help centre**: a "?" in every shell with a step list for the screen, a first-run welcome, and a printable cheat sheet (`src/lib/help`, `src/components/help`). Desk guides are English literals with `data-help` anchors on the real controls, player guides are dictionary keys so they are translated, and "Show me" closes the panel and rings the control. Seen-state is per user in `help_seen` (migration `20261028000000`, **applied 18 Oct 2026** in the SQL editor, verified over the API) with localStorage always written, so the welcome shows once per person and once per browser. Merged into `develop` as `3b863e1` on 18 Oct 2026. A **Report a bug** action is a nice-to-have, not built (section 8, decision 21) | `verify:ui` sections "help centre", "cheat sheet", "first-run welcome" |
 | Merged (PR #32) | **Shell polish**: the theme control is a dropdown (System / Light / Dark), the rail names its icons, and the rail expands into labelled rows. `src/lib/ui/rail.ts` holds the saved choice and the two numbers `globals.css` turns into `--rail-width`/`--rail-pad`; a pre-paint script applies it so a saved expanded rail never flashes compact, and the tooltips say what an alert dot means. The control room's absolute panels read the same variable instead of a hard-coded 112px. Merged into `develop` as `9054332` on 18 Oct 2026 | `verify:ui` section "shell: tooltips, theme and rail" |
 | Merged (PR #33) | **The public entry form's own copy in English, Tagalog and Hiligaynon** (30 keys under `enter.form.*`): labels, hints, the "optional" and "to be confirmed" suffixes, the send button and the review note. What the club typed — instructions, extra questions, tee labels, the payment note — is their text and is passed through unchanged. The dev-only preview page renders the real form with a language picker, because the form is otherwise only reachable against a connected project | `verify:ui` section "entry form in three languages" |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 34 test files, 406 tests passing (`pnpm test`) on `develop` today; before the settings work it was 31 files and 384 tests. The settings work added 18 cases (per-section payload mapping, the calendar maths behind Add a day, and the entry-link URL rules) and the 0.7.1 fix added 4 for when the stored alert check may run. Separately, `pnpm verify:ui` runs 36 checks in a real browser against a running dev server. It is not part of `pnpm test`, because it needs the server up.
+Whole suite: 41 test files, 446 tests passing (`pnpm test`) on `develop` today. Separately, `pnpm verify:ui` drives a real browser against a running dev server (paging, the bell, the help centre, player languages and the shell), and is not part of `pnpm test` because it needs the server up.
 
-**The one thing blocking a real event:** the wiring exists but the project has no course, tee, hole or
-tournament rows, so the desk has nothing real to show. Provisioning and an end-to-end pass with real
-data (section 8, steps 1 and 2) come first, and the test staff accounts must be rotated before the
-event.
+**The one thing blocking a real event:** the project now has one event ("24th Bamboo Tee", open), a
+course row and its registration wording, but **no tees, no hole rows, no players, no registrations
+and no groups**. The club's scorecard and an NGAP export are still needed, then the loop has to run
+end to end with that data; the two test staff accounts must be rotated before the event.
 
 ---
 
@@ -390,36 +391,30 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
      and it needs Jeff: turn on "Allow new users to sign up" for the project (or create player
      accounts by hand), decide whether email confirmation is required, and add one player row with a
      test account to claim it, so the claim flow and `/my` can be exercised with real data. The
-     project currently has no players and no events.
-   - Add the course, tee and hole rows. The real IGCC Course Rating, Slope, Par and stroke index are
+     project now has one event and still no players.
+   - Add the tee and hole rows. The real IGCC Course Rating, Slope, Par and stroke index are
      still pending from the club, so this waits on the scorecard.
    - Verify the `player-photos` storage policy with a real upload.
-   - **Wire the merged data layer to the shell.** The Supabase repositories, mappers and store were
-     merged in PR #5 and parked at `src/lib/data/supabase` and
-     `src/lib/store/legacy-supabase-store.tsx`; they were written against the earlier `Desk`
-     contract. Port them to the shell's domain types (`src/lib/data/types.ts`) and implement the
-     adapters behind `src/lib/data/adapters.ts`: players, handicap records, tournaments,
-     registrations, groups, the import queue's write path and the frozen public snapshot. Until
-     this is done, the desk runs on local demo data even when Supabase is configured.
-2. **Real course data:** the setup wizard is editable, but the tee and hole values are deliberately
-   locked as sample data. Enter IGCC's real Course Rating, Slope, Par and stroke index per tee and
-   hole, checked against the club scorecard.
+   - ~~Wire the merged data layer to the shell~~ **Done**: the store uses `createSupabaseAdapters`
+     and `loadDeskState` when Supabase is configured, and the mock adapters otherwise. The desk read
+     and wrote the live project in the 18 Oct browser pass.
+2. **Real course data:** the setup wizard is editable and saves through the guarded transaction, but
+   the course, tee and hole values on file are still placeholders. Enter IGCC's real Course Rating,
+   Slope, Par and stroke index per tee and hole, checked against the club scorecard.
 3. **NGAP import end to end:** get a real sample export, set the default mapping, review the merge
    queue with real names, and confirm the cut-off behaviour with the organizer.
 4. **Lock-aware re-run:** built in the demo (`route()` takes locked groups; tests cover lock
    stability, release reasons and two-tee alternation). The database version follows step 1.
-5. **Registration desk:** demo built (directory search, new player, member/guest, tee-time
-   preferences, payment recorded by hand, cut-off freeze and re-freeze). Copying a list from a past
-   event and writing to the database are not built.
+5. **Registration desk:** built on demo and connected data (directory search, new player, member/guest,
+   tee-time preferences, payment recorded by hand, cut-off freeze and re-freeze). Copying a list from a
+   past event is not built.
 6. **Print:** build the data adapter and pass authoritative hole/tee provenance into the existing
    print assembler. Print on real paper at the club and verify the A4 layout before the event.
-7. **Long lists and alerting:** both decisions are settled. Apply the paging primitive (decision 13)
-   to the players, registrations, import rows and print sheets. Build the notification centre
-   (decision 14): the two tables, `sync_notifications(tournament)`, the adapter wiring and the bell
-   panel, starting with the migration applied and tested against the live project so a
-   hanging-guard class of bug is caught immediately. Do this before the field and the print runs
-   grow.
-8. **Deploy:** done except CI. The Vercel project and env vars are live and production tracks `main` at `golf.syntaxure.dev`; `staging` is skipped on purpose (solo dev). Still to do: CI (typecheck, lint, tests, build) on pull requests.
+7. **Long lists and alerting:** *Done 18 Oct 2026.* Paging and the stored alerts are merged (#23),
+   browser-checked (#25), and the bell waits for the connected desk before checking (0.7.1).
+8. **Deploy:** done except CI. The Vercel project and env vars are live, production tracks `main` at
+   `golf.syntaxure.dev`, and `main` is level with `develop` at 0.8.0; `staging` is skipped on purpose
+   (solo dev). Still to do: CI (typecheck, lint, tests, build) on pull requests.
 9. **Dress rehearsal:** run a full fake tournament with the organizer using real IGCC data before the real event.
 
 ### Scheduling and the public pairings page (built in `feat/versioned-publish`, 18 Oct 2026)
@@ -485,12 +480,12 @@ only their own entry. Every finding is written down with a severity the same day
 
 | # | Workstream | What it covers | Owner |
 | --- | --- | --- | --- |
-| W1 | ~~Land PR #17~~ **Merged 18 Oct 2026** | Event setup, the tee and hole editors, the tee/hole loading fix, the paging primitive and the notifications migration. Merged into `develop` as `863c253`. `main` still needs re-levelling and production redeploying | Done |
-| W2 | Long lists and alerts | **Merged in PR #23, with a follow-up**: the bell in the shell, and paging on the players, registration and import review lists plus the import review tabs. The full notification sync cycle was verified over the live API, and the screens were **seen in a browser** (`pnpm verify:ui`: 36 checks, no console errors), which found two bugs now fixed on `fix/desk-browser-found`. Still to finish: a dev-only preview of every bell and pager state. The draw groups, print and the desk's player search are deliberately not paged | Owner reviews the follow-up |
+| W1 | ~~Land PR #17~~ **Merged 18 Oct 2026** | Event setup, the tee and hole editors, the tee/hole loading fix, the paging primitive and the notifications migration. Merged into `develop` as `863c253`. `main` is level with `develop` at 0.8.0 | Done |
+| W2 | Long lists and alerts | **Merged in PR #23, with a follow-up**: the bell in the shell, and paging on the players, registration and import review lists plus the import review tabs. The full notification sync cycle was verified over the live API, and the screens were **seen in a browser** (`pnpm verify:ui`), which found two bugs now fixed in 0.6.1. The bell also waits for the connected desk before checking (0.7.1). The draw groups, print and the desk's player search are deliberately not paged | Done |
 | W3 | Real club data, then prove the path | Course Rating, Slope, Par and stroke index from the scorecard (decision 1); decisions 3 to 7 and 9; a fresh NGAP export and a re-freeze; **and the print page's `courseDataStatus` hard-coded to `"placeholder"` must be derived from the loaded rows**, so real data prints without the watermark | Organizer, with the club |
 | W4 | Accounts, access, privacy | Rotate the two test accounts; create the golf pro as `organizer`; decide player sign-ups; one player account and one player row to claim; verify the photo consent line and a real upload | Jeff and Claude |
 | W5 | The UAT itself | The run sheet, the session, the findings, the fallback (printed sheets, unpublish, redeploy the previous build) | Jeff and the organizer |
-| W6 | Production hygiene | CI on pull requests (there is none); revoke `anon` execute on `save_draw`, `publish_pairings` and `unpublish_pairings`; a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups | Jeff |
+| W6 | Production hygiene | CI on pull requests (there is none); revoke `anon` execute on `save_draw`, `publish_pairings` and `unpublish_pairings`; a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups; set `NEXT_PUBLIC_SITE_URL` in Vercel to the production domain | Jeff |
 
 **The run sheet (one page, to be handed over).**
 
@@ -509,8 +504,16 @@ only their own entry. Every finding is written down with a severity the same day
 W2 and W6 alongside. The longest lead item is the club's data, which is not in our hands.
 
 **Risks.** The club's two files (scorecard, NGAP export) may not arrive in time: run the UAT on
-clearly labelled sample numbers if so, which is what the print watermark exists for. PR #17 may grow
-while open: merge it as soon as the checks pass and put new work on a fresh branch.
+clearly labelled sample numbers if so, which is what the print watermark exists for. PR #24 (UAT
+readiness) is open: merge it as soon as the checks pass and keep new work on a fresh branch.
+
+### Nice to have (not blocking the UAT)
+
+- **Report a bug from the app.** A "Report a bug" action in the help centre (desk and player shells)
+  that captures the current screen, the signed-in role and the version/build, then opens a prefilled
+  GitHub issue with an optional note. No schema, no backend and no player data; the version means a
+  report can be matched to exactly what the tester saw. It is **not needed for the UAT**; decision 21
+  settles where reports go and what context they may carry.
 
 ### Phase 2: results
 
@@ -569,6 +572,7 @@ Decisions that belong to the people named, not to an agent.
 | 18 | Languages: which locales, whether translated pages get their own URLs, and who reviews the drafts | Jeff / club | Player-facing copy | English (source) + Tagalog + Hiligaynon, chosen by cookie, no `/tl` URLs yet; golf terms stay English; the drafts are reviewed by Jeff, who reads both (checklist in `docs/i18n-review.md`) |
 | 19 | Help and onboarding: which screens get a guide, how the welcome is recorded, and what the cheat sheet is | Jeff | Documentation inside the app | One "?" per shell (desk top bar, player header, pairings head) with a step list for the current screen and a "Show me" ring; welcome once per person (per user in `help_seen`, applied, and per browser always); the cheat sheet is Print center's fourth tab and prints the player page in any of the three languages |
 | 20 | The theme control and the rail: one dropdown or three, and what happens when the sidebar is expanded | Jeff | The shell's chrome | One dropdown with System / Light / Dark (Ivory and Charcoal named in the options), kept in `starter-theme`; the rail is compact by default, expands to labelled rows on request, and remembers the choice per browser; icons explain themselves on hover and focus |
+| 21 | **Where a "Report a bug" report goes** (help-centre action): a prefilled GitHub issue, a mail draft to the owner, or a stored table; and what context it may carry | Jeff | Nice to have only; not the UAT | Prefilled GitHub issue with the current screen, role and version/build; no schema and no player data |
 
 ---
 
@@ -691,6 +695,7 @@ Agent ground rules:
 | 18 Oct 2026 | **The rail's saved state is applied before the first paint.** Expanding shifts every page, so the choice rides the same trick as the theme: a small script in the root layout sets `data-rail="expanded"` on `<html>` and `globals.css` reads it. `src/lib/ui/rail.test.ts` asserts that the module and the stylesheet agree on the width and the padding, so changing one without the other fails `pnpm test`. |
 | 18 Oct 2026 | **The register pager check was flaky, and is fixed rather than tolerated.** `pnpm verify:ui` clicked Next on the register page and the click was swallowed because the page had not hydrated yet (`networkidle` is not the same as interactive). It now clicks, waits, and clicks again if the page number has not moved; page 2 disables Next, so a retry cannot overshoot. The flake was seen twice, once on this branch and once on `feat/help-centre`. |
 | 18 Oct 2026 | **The public entry form now speaks the reader's language (decision 18), on `feat/entry-form-i18n`.** This was the last piece of player-facing copy still in English: 30 keys under `enter.form.*` cover the labels, the hints, the "optional" and "to be confirmed" suffixes, the send button and the review note. The rule from the rest of the work holds: what the club typed is theirs and passes through unchanged, so an instruction, an extra question or the payment note still reads as the organizer wrote it. The form is otherwise only reachable against a connected project, so the dev-only preview page now renders the real form behind a language picker, and `pnpm verify:ui` checks the labels change in Hiligaynon and Tagalog and back. |
+| 18 Oct 2026 | **A "Report a bug" action is marked as a nice-to-have (decision 21).** Jeff wants an in-app way to report a bug, but it is not needed for the UAT. The default is a help-centre action that opens a prefilled GitHub issue with the current screen, the signed-in role, the version/build and an optional note; no schema, no backend and no player data. It is listed under section 8's nice-to-haves, not in the UAT workstreams. |
 
 ---
 
