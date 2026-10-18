@@ -98,9 +98,11 @@ function ControlRoomInner({
               ? `${tournament.name} · ${waveGroups.length} groups across ${shotgun ? `18 holes · Wave ${wave}` : "holes 1 and 10"}`
               : `${b.ready.length} players ready · no draw yet`}
           </p>
-          {tournament.nameNeedsConfirmation && !draw && (
+          {(tournament.nameNeedsConfirmation || b.status === "demo") && !draw && (
             <p className="mt-1 text-xs opacity-80">
-              Sample event title; confirm it with the organizer. Demo data only.
+              {tournament.nameNeedsConfirmation &&
+                "The event name still needs the organizer's confirmation. "}
+              {b.status === "demo" && "Demo data only."}
             </p>
           )}
           {shotgun && b.waves.length > 1 && (

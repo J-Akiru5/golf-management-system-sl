@@ -319,7 +319,7 @@ export function RegisterConfirm({
         </div>
         <p className="hint">
           {paymentNote ??
-            "This demo does not take, check or verify payments. Bank details are shown to the desk only."}
+            "TeeLine does not take, check or verify payments. Bank details are shown to the desk only."}
         </p>
       </fieldset>
 

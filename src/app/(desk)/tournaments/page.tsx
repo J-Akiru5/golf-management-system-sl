@@ -3,6 +3,7 @@
 import { CalendarRange, Flag, Plus, Printer, Settings2, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { RoleGate } from "@/components/desk";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { fmtIso, fmtRange } from "@/lib/data/labels";
@@ -11,13 +12,17 @@ import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
 
 /**
- * The demo's tournament list. Events are editable configuration, not hard-coded: a new one starts
- * from the current template and lives in this browser session only.
+ * The tournament list. Events are editable configuration, not hard-coded: a new one starts from the
+ * current event (or, for a club with none, the starter categories) and is saved to the club
+ * database. In the demo build it lives in this browser session only.
  */
 export default function TournamentsPage() {
-  const { tournaments, tournament, state, adapters } = useDesk();
-  const [name, setName] = useState("New demo event");
-  const [date, setDate] = useState("2026-12-05");
+  const { tournaments, tournament, state, adapters, status, member } = useDesk();
+  const connected = status !== "demo";
+  const [name, setName] = useState(connected ? "" : "New demo event");
+  const [date, setDate] = useState(() =>
+    connected ? new Date().toISOString().slice(0, 10) : "2026-12-05",
+  );
 
   const entryCount = (id: string) => state.entries.filter((e) => e.tournamentId === id).length;
   const boardState = (id: string) => {
@@ -33,14 +38,36 @@ export default function TournamentsPage() {
         title="Tournaments"
         crumbs={[{ label: "Tournament office", href: "/" }, { label: "Tournaments" }]}
         actions={
-          <Button variant="ghost" onClick={() => adapters.tournaments.select(null)}>
-            Clear selection (see the empty state)
-          </Button>
+          connected ? undefined : (
+            <Button variant="ghost" onClick={() => adapters.tournaments.select(null)}>
+              Clear selection (see the empty state)
+            </Button>
+          )
         }
       >
-        A demo event is a set of rules, dates and registrations. Nothing here is saved to a server,
-        and the titles with a note still need the organizer's word.
+        An event is a set of rules, dates and registrations.{" "}
+        {connected
+          ? "Events are saved to the club database."
+          : "Nothing here is saved to a server."}{" "}
+        Titles with a note still need the organizer&rsquo;s word.
       </PageHeader>
+
+      {tournaments.length === 0 && (
+        <div className="card flex items-start gap-3">
+          <Trophy className="mt-0.5 size-5 shrink-0 text-fairway" aria-hidden="true" />
+          <p className="text-[14px]">
+            <b>
+              {status === "loading"
+                ? "Loading the club's events…"
+                : status === "error"
+                  ? "The events could not be loaded."
+                  : "There are no events yet."}
+            </b>{" "}
+            {status === "ready" &&
+              "Create the first one below. It starts from the starter categories and tees, which are samples until you enter the club scorecard in Settings."}
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {tournaments.map((t) => {
@@ -72,7 +99,8 @@ export default function TournamentsPage() {
               </div>
               {t.nameNeedsConfirmation && (
                 <p className="notice warn !py-2 text-[13px]">
-                  The event title is a demo sample. Confirm the real name with the organizer.
+                  The event name has not been confirmed. Check it with the organizer, then clear the
+                  note in Settings.
                 </p>
               )}
               <dl className="m-0 grid grid-cols-3 gap-px overflow-hidden rounded-[12px] border border-line bg-line">
@@ -129,8 +157,12 @@ export default function TournamentsPage() {
       <SectionCard
         id="new-h"
         icon={<Plus />}
-        title="New demo event"
-        subtitle="Copies the current categories, flights and rules as a starting point. Session only."
+        title={connected ? "New event" : "New demo event"}
+        subtitle={
+          connected
+            ? "Copies the current categories, flights and rules as a starting point, and saves the event."
+            : "Copies the current categories, flights and rules as a starting point. Session only."
+        }
       >
         <div className="grid items-end gap-3.5 sm:grid-cols-[minmax(0,1fr)_12rem_auto]">
           <label className="field">
@@ -141,17 +173,26 @@ export default function TournamentsPage() {
             <span>Date of play</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
-          <Button
-            variant="primary"
-            disabled={!name.trim() || !date}
-            onClick={() => adapters.tournaments.createFromTemplate(name.trim(), date)}
+          <RoleGate
+            role={member?.role}
+            allow={["owner", "organizer"]}
+            mode="disable"
+            disabledReason="Only the owner or an organizer can create an event."
           >
-            <Plus aria-hidden="true" /> Create
-          </Button>
+            <Button
+              variant="primary"
+              disabled={!name.trim() || !date || status === "loading" || status === "error"}
+              onClick={() => adapters.tournaments.createFromTemplate(name.trim(), date)}
+            >
+              <Plus aria-hidden="true" /> Create
+            </Button>
+          </RoleGate>
         </div>
         <p className="hint">
-          The new event starts with no registrations and its own empty board, so the empty states
-          are real rather than mocked. It is a demo record: no Supabase project is connected.
+          The new event starts with no registrations and its own empty board.{" "}
+          {connected
+            ? "It is written to the club database, then the desk reloads to read it back."
+            : "It is a demo record: no Supabase project is connected."}
         </p>
       </SectionCard>
     </div>

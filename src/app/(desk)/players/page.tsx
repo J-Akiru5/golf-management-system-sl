@@ -374,8 +374,7 @@ function Players() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={9} className="muted">
-                  No players match. Clear the search, or choose All. The directory starts with
-                  fictional demo players.
+                  No players match. Clear the search, or choose All.
                 </td>
               </tr>
             )}

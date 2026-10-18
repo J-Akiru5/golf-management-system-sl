@@ -34,7 +34,6 @@ import type {
   RegistrationEntry,
   Tournament,
 } from "@/lib/data/types";
-import { DEMO_CLUB, DEMO_HOLES, DEMO_TEES } from "@/lib/demo/data";
 import type { DrawGroup } from "@/lib/draw/validate";
 import type { Tee } from "@/lib/routing";
 import {
@@ -48,7 +47,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Database } from "@/lib/supabase/types";
 import { type DrawJob, planDrawJobs } from "./draw-persist";
-import { activeTournament, boardOf, entriesFor, initialState, reducer } from "./state";
+import { activeTournament, boardOf, emptyState, entriesFor, initialState, reducer } from "./state";
 
 export type { Action, ApplyImportPayload, BoardState, DeskState, Published } from "./state";
 export { buildPublished } from "./state";
@@ -127,14 +126,32 @@ const DRAW_ACTIONS: ReadonlySet<Action["type"]> = new Set([
 ]);
 
 export function DeskProvider({ children }: { children: ReactNode }) {
-  const [state, rawDispatch] = useReducer(reducer, undefined, initialState);
+  const connected = isSupabaseConfigured();
+  // A connected desk starts empty and fills from the database. It never starts from the demo, so
+  // invented players and the sample event cannot show while loading or after a failed load.
+  const [state, rawDispatch] = useReducer(
+    reducer,
+    undefined,
+    connected ? emptyState : initialState,
+  );
   // The newest state, including actions dispatched since the last render, so two quick edits
   // compare against each other and not against a stale snapshot.
   const latest = useRef(state);
   latest.current = state;
   // Each tournament's draw revision as the database last confirmed it.
   const revisions = useRef<Record<string, number>>({});
-  const connected = isSupabaseConfigured();
+  // An event to keep selected across the next load, for example one that was just created.
+  const keepSelected = useRef<string | null>(null);
+  // Handed to the adapters, which are rebuilt on every state change, so the revision outlives them.
+  const revisionStore = useMemo(
+    () => ({
+      get: (id: string) => revisions.current[id],
+      set: (id: string, revision: number) => {
+        revisions.current[id] = revision;
+      },
+    }),
+    [],
+  );
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null);
   const [status, setStatus] = useState<Desk["status"]>(connected ? "loading" : "demo");
   const [error, setError] = useState<string | null>(null);
@@ -142,8 +159,6 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Desk["member"]>(connected ? undefined : undefined);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-  const [loadedTees, setLoadedTees] = useState<Tee[] | null>(null);
-  const [loadedHoles, setLoadedHoles] = useState<Hole[] | null>(null);
 
   // One read on load. Without a Supabase URL the desk stays on the in-memory demo, unchanged.
   useEffect(() => {
@@ -161,13 +176,14 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         const { data, error: authError } = await supabase.auth.getUser();
         if (authError || !data.user) throw new Error("Sign in to load the tournament desk.");
         const signedIn = await getDeskMember(supabase, data.user.id);
-        const loaded = await loadDeskState(supabase, signedIn.clubId);
+        const loaded = await loadDeskState(supabase, signedIn.clubId, {
+          preferTournamentId: keepSelected.current ?? latest.current.activeTournamentId,
+        });
+        keepSelected.current = null;
         if (!active) return;
         setClient(supabase);
         setMember({ displayName: signedIn.displayName, role: signedIn.role });
         revisions.current = loaded.revisions;
-        setLoadedTees(loaded.tees);
-        setLoadedHoles(loaded.holes);
         rawDispatch({ type: "hydrate", state: loaded.state });
         setStatus("ready");
       } catch (loadError) {
@@ -182,6 +198,10 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   }, [connected, reloadToken]);
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+  const onEventCreated = useCallback((id: string) => {
+    keepSelected.current = id;
+    setReloadToken((n) => n + 1);
+  }, []);
 
   // One queue for every draw write, so saves and publishes reach the database in the order the
   // organizer made them.
@@ -253,8 +273,10 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         setLastSavedAt(new Date().toISOString());
       },
       onBusy: setSaving,
+      onEventCreated,
+      revisions: revisionStore,
     });
-  }, [state, connected, client, dispatch]);
+  }, [state, connected, client, dispatch, onEventCreated, revisionStore]);
 
   const value = useMemo<Desk>(() => {
     const tournament = activeTournament(state);
@@ -308,16 +330,16 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         createdAt: "",
         source: "desk",
       };
-      return registrationFor({ tournament, tees: DEMO_TEES, player, entry, records: [] });
+      return registrationFor({ tournament, tees: state.tees, player, entry, records: [] });
     };
 
     return {
       state,
-      club: DEMO_CLUB,
+      club: state.club,
       tournaments: state.tournaments,
       tournament,
-      tees: loadedTees ?? DEMO_TEES,
-      holes: loadedHoles ?? DEMO_HOLES,
+      tees: state.tees,
+      holes: state.holes,
       players: state.players,
       playerById: new Map(state.players.map((p) => [p.id, p])),
       entries,
@@ -337,7 +359,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       names: {
         category: lookup(tournament?.categories ?? []),
         flight: lookup(tournament?.flights ?? []),
-        tee: lookup(loadedTees ?? DEMO_TEES),
+        tee: lookup(state.tees),
       },
       deferred: state.deferred,
       pendingRefreeze: registrations.filter((r) => r.frozenOutdated),

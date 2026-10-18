@@ -56,3 +56,44 @@ describe("checkTournament", () => {
     expect(gap?.detail).toContain("Regular");
   });
 });
+
+describe("course data checks follow what is saved", () => {
+  const filled = DEMO_HOLES.map((h) => ({ ...h, par: 4, strokeIndex: h.number }));
+
+  it("asks for a confirmation until an owner or organizer gives it", () => {
+    const pending = checkTournament(bambooTee, DEMO_TEES, filled);
+    expect(pending.find((c) => c.id === "tees")?.level).toBe("warn");
+    expect(pending.find((c) => c.id === "holes")?.level).toBe("ok");
+
+    const confirmed = checkTournament(
+      { ...bambooTee, courseDataConfirmed: true },
+      DEMO_TEES,
+      filled,
+    );
+    expect(confirmed.find((c) => c.id === "tees")?.level).toBe("ok");
+  });
+
+  it("blocks when no tees are saved at all", () => {
+    expect(checkTournament(bambooTee, [], filled).find((c) => c.id === "tees")?.level).toBe("bad");
+  });
+
+  it("treats an empty hole list as not entered, not as fine", () => {
+    const none = checkTournament(bambooTee, DEMO_TEES, []).find((c) => c.id === "holes");
+    expect(none?.level).toBe("warn");
+    expect(none?.label).toContain("18 holes");
+  });
+
+  it("blocks a repeated stroke index", () => {
+    const repeated = filled.map((h) => (h.number === 6 ? { ...h, strokeIndex: 1 } : h));
+    const check = checkTournament(bambooTee, DEMO_TEES, repeated).find((c) => c.id === "holes");
+    expect(check?.level).toBe("bad");
+    expect(check?.detail).toContain("holes 1 and 6");
+  });
+
+  it("no longer calls the numbers a demo", () => {
+    const text = checkTournament(bambooTee, DEMO_TEES, filled)
+      .map((c) => `${c.label} ${c.detail}`)
+      .join(" ");
+    expect(text).not.toMatch(/this demo/i);
+  });
+});

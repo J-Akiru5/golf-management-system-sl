@@ -16,12 +16,14 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { RoleGate } from "@/components/desk";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
 import { Button } from "@/components/ui/button";
 import { checkTournament } from "@/lib/data/config-checks";
+import { courseDataStatus, holesComplete, strokeIndexProblem } from "@/lib/data/course-data";
 import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
 import type { CategoryRule, FlightRule, StartFormat, Tee, TournamentConfig } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -38,14 +40,33 @@ const SECTIONS = [
   ["review", "Review & readiness"],
 ] as const;
 
+/** 18 empty rows, so the card can be typed in from nothing. Blank is saved as nothing, never as a guess. */
+const blankHoles = (courseId: string): Hole[] =>
+  Array.from({ length: 18 }, (_, i) => ({
+    id: `${courseId}-${i + 1}`,
+    courseId,
+    number: i + 1,
+    par: null,
+    strokeIndex: null,
+  }));
+
 export default function SetupPage() {
-  const { tournament, tees, holes, adapters } = useDesk();
+  const { tournament, tees, holes, adapters, status, member } = useDesk();
+  const courseId = tournament?.courseId ?? "";
+  // Stable, so the editor is not re-seeded (and a half-typed value lost) on every render.
+  const shownHoles = useMemo(
+    () => (holes.length > 0 ? holes : blankHoles(courseId)),
+    [holes, courseId],
+  );
   if (!tournament) return <NeedsTournament what="Settings" />;
   return (
     <SetupWizard
       tournament={tournament}
       tees={tees}
-      holes={holes}
+      holes={shownHoles}
+      connected={status !== "demo"}
+      role={member?.role}
+      confirmCourse={(confirmed) => adapters.setup.confirmCourse(tournament.id, confirmed)}
       // The whole setup goes through one write, so a half-saved setup cannot land.
       save={(next, nextTees, nextHoles) =>
         adapters.setup.save({ tournament: next, tees: nextTees, holes: nextHoles })
@@ -59,7 +80,14 @@ function SetupWizard({
   tees,
   holes,
   save,
+  connected,
+  role,
+  confirmCourse,
 }: {
+  /** True when the desk reads and writes the club database; false in the in-memory demo. */
+  connected: boolean;
+  role: "owner" | "organizer" | "desk" | null | undefined;
+  confirmCourse: (confirmed: boolean) => void;
   tournament: Tournament;
   tees: ReturnType<typeof useDesk>["tees"];
   holes: ReturnType<typeof useDesk>["holes"];
@@ -97,6 +125,13 @@ function SetupWizard({
   };
 
   const checks = checkTournament(tournament, tees, holes);
+  const cardProblem = strokeIndexProblem(draftHoles);
+  const cardComplete = holesComplete(draftHoles) && cardProblem === null;
+  const status = courseDataStatus({
+    confirmed: tournament.courseDataConfirmed,
+    tees: draftTees,
+    holes: draftHoles,
+  });
   const bad = checks.filter((c) => c.level === "bad").length;
   const warn = checks.filter((c) => c.level === "warn").length;
 
@@ -126,8 +161,10 @@ function SetupWizard({
           </span>
         }
       >
-        Every rule here is a setting for this event, not a fixed law. Changes apply to the demo
-        board immediately and live in this browser session only.
+        Every rule here is a setting for this event, not a fixed law.{" "}
+        {connected
+          ? "Changes are saved to the club database as you make them. Changing the tees, holes, categories or flights marks the current draw as out of date, so run it again."
+          : "Changes apply to the demo board immediately and live in this browser session only."}
       </PageHeader>
 
       <nav aria-label="Setup sections" className="flex flex-wrap gap-2">
@@ -225,15 +262,38 @@ function SetupWizard({
             id="course"
             icon={<Flag />}
             title="Course & tees"
-            subtitle="Pending blocks. Nothing here is IGCC's real scorecard data yet."
+            subtitle={
+              status === "official"
+                ? "Confirmed against the club scorecard."
+                : "Not confirmed yet. Sheets carry a placeholder mark until it is."
+            }
           >
-            <div className="notice warn flex items-start gap-2.5" role="note">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+            <div
+              className={cn(
+                "notice flex items-start gap-2.5",
+                status === "official" ? "ok" : "warn",
+              )}
+              role="note"
+            >
+              {status === "official" ? (
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+              ) : (
+                <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+              )}
               <p className="text-[13px]">
-                <b>Enter IGCC&rsquo;s real numbers from the club scorecard.</b> Course Rating,
-                Slope, Par and stroke index come from the card, not from this app. What is on screen
-                now is sample data until the desk replaces it, and every edit here is written with
-                the event setup in one go.
+                {status === "official" ? (
+                  <>
+                    <b>These numbers were confirmed.</b> Changing any rating, par or stroke index
+                    withdraws the confirmation, because the card on screen is then no longer the one
+                    that was checked.
+                  </>
+                ) : (
+                  <>
+                    <b>Enter the club&rsquo;s real numbers from its scorecard.</b> Course Rating,
+                    Slope, Par and stroke index come from the card, not from this app. Until an
+                    owner or organizer confirms them below, treat what is on screen as sample data.
+                  </>
+                )}
               </p>
             </div>
             <div className="table-wrap !shadow-none">
@@ -292,7 +352,11 @@ function SetupWizard({
                         />
                       </td>
                       <td>
-                        <span className="pill warn">Sample</span>
+                        {tournament.courseDataConfirmed ? (
+                          <span className="pill ok">Confirmed</span>
+                        ) : (
+                          <span className="pill warn">Not confirmed</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -300,11 +364,16 @@ function SetupWizard({
               </table>
             </div>
             <p className="hint">
-              {draftHoles.length} holes on file. Par and stroke index per hole:{" "}
+              Par and stroke index per hole:{" "}
               {draftHoles.every((h) => h.par !== null && h.strokeIndex !== null)
-                ? "entered"
-                : "not entered yet. Scorecards print placeholders and say so."}
+                ? "all 18 entered."
+                : "not complete. The card is saved once all 18 holes have both, and scorecards leave the gaps blank and say so."}
             </p>
+            {cardProblem && (
+              <p className="notice bad text-[13px]" role="alert">
+                {cardProblem}
+              </p>
+            )}
             {draftHoles.length > 0 && (
               <div className="table-wrap !shadow-none">
                 <table>
@@ -351,6 +420,31 @@ function SetupWizard({
                 </table>
               </div>
             )}
+            <div className="well grid gap-2 p-3.5">
+              <RoleGate
+                role={role}
+                allow={["owner", "organizer"]}
+                mode="disable"
+                disabledReason="Only the owner or an organizer can confirm the course data."
+              >
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={tournament.courseDataConfirmed}
+                    disabled={!cardComplete || draftTees.length === 0}
+                    onChange={(e) => confirmCourse(e.target.checked)}
+                  />
+                  <span>
+                    <b>These tees and holes match the club scorecard.</b>
+                    <span className="hint block">
+                      {cardComplete
+                        ? "Tick this once you have checked every rating, par and stroke index against the printed card. Sheets then print without the placeholder mark."
+                        : "Available once all 18 holes have a par and a stroke index."}
+                    </span>
+                  </span>
+                </label>
+              </RoleGate>
+            </div>
           </SectionCard>
 
           <SectionCard id="rules" icon={<CalendarClock />} title="Cut-off & handicap">
@@ -411,7 +505,7 @@ function SetupWizard({
                     updateConfig({ flightBasis: e.target.value as TournamentConfig["flightBasis"] })
                   }
                 >
-                  <option value="index">Handicap index (demo assumption)</option>
+                  <option value="index">Handicap index (default until the club confirms)</option>
                   <option value="courseHandicap">Course handicap</option>
                 </select>
               </label>
@@ -924,8 +1018,9 @@ function SetupWizard({
               <Save className="size-4 text-fairway" aria-hidden="true" /> Where changes live
             </h3>
             <p className="hint">
-              This is a demo shell: settings live in this browser session and are gone on refresh.
-              No Supabase project is connected, so nothing is written anywhere.
+              {connected
+                ? "Settings are saved to the club database. A save that would overwrite a newer change by someone else is refused, and the screen asks you to reload."
+                : "This is a demo shell: settings live in this browser session and are gone on refresh. No Supabase project is connected, so nothing is written anywhere."}
             </p>
             <p className="hint">
               <Link href="/draw">Open the draw</Link> to see a setting take effect on the proposal.

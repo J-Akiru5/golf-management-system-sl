@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppVersion } from "@/components/AppVersion";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { signInWithPassword, signUpWithPassword } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -133,6 +134,7 @@ export default async function LoginPage({
         <p className="hint text-center">
           By Syntaxure Labs. There is no password reset yet; ask the club if you are locked out.
         </p>
+        <AppVersion className="text-center" />
       </div>
     </main>
   );

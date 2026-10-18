@@ -287,7 +287,7 @@ function RegisterDesk() {
               {tournament.registration.responseEmail || "Not set"}
             </p>
             <p className="hint mt-1">
-              The address registrations are answered from. It is not a login and this demo sends no
+              The address registrations are answered from. It is not a login and TeeLine sends no
               mail.
             </p>
           </div>
@@ -950,7 +950,11 @@ function RegisterDesk() {
           id="list-h"
           icon={<Search />}
           title={`Registrations (${entries.length})`}
-          subtitle="Everyone entered in this event. This list is session-only demo data."
+          subtitle={
+            status === "demo"
+              ? "Everyone entered in this event. This list is session-only demo data."
+              : "Everyone entered in this event."
+          }
           action={
             <Button
               variant="secondary"
@@ -1032,7 +1036,7 @@ function RegisterDesk() {
             {listRows.length === 0 && (
               <li className="card muted">
                 {entries.length === 0
-                  ? "No registrations in this event yet. This sample event starts empty."
+                  ? "No registrations in this event yet."
                   : "No registration matches that filter."}
               </li>
             )}

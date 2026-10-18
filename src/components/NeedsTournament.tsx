@@ -1,16 +1,45 @@
 "use client";
 
-import { CalendarPlus, Trophy } from "lucide-react";
+import { CalendarPlus, LoaderCircle, Trophy, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useDesk } from "@/lib/store/desk-store";
 
 /**
- * The designed empty state for pages that need an event. It is reachable from the tournament
- * selector ("Clear selection"), so nobody has to guess what the desk looks like with no event.
+ * The designed empty state for pages that need an event. It says which of four things is true:
+ * the desk is still loading, it failed to load, the club has no event yet, or an event just has not
+ * been picked. In the demo it is reachable from the tournament selector ("Clear selection").
  */
 export function NeedsTournament({ what }: { what: string }) {
-  const { tournaments, adapters } = useDesk();
+  const { tournaments, adapters, status } = useDesk();
+  const demo = status === "demo";
+
+  if (status === "loading" || status === "error") {
+    const failed = status === "error";
+    return (
+      <div className="card grid min-h-[320px] place-items-center text-center" role="status">
+        <div className="grid max-w-[40rem] justify-items-center gap-3">
+          <span className="grid size-12 place-items-center rounded-full bg-fairway-soft text-fairway">
+            {failed ? (
+              <TriangleAlert className="size-6 text-danger" aria-hidden="true" />
+            ) : (
+              <LoaderCircle className="size-6 animate-spin" aria-hidden="true" />
+            )}
+          </span>
+          <h1 className="text-[22px] leading-7">
+            {failed ? "The tournament desk did not load" : "Loading the tournament desk…"}
+          </h1>
+          <p className="muted">
+            {failed
+              ? `${what} needs the club's data, and it could not be read. Use Retry at the top of the page, or sign in again.`
+              : `${what} opens as soon as the club's events and players have loaded.`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const none = tournaments.length === 0;
   return (
     <div className="grid gap-6">
       <div className="card grid min-h-[320px] place-items-center text-center">
@@ -18,10 +47,15 @@ export function NeedsTournament({ what }: { what: string }) {
           <span className="grid size-12 place-items-center rounded-full bg-fairway-soft text-fairway">
             <Trophy className="size-6" aria-hidden="true" />
           </span>
-          <h1 className="text-[22px] leading-7">No tournament selected</h1>
+          <h1 className="text-[22px] leading-7">
+            {none ? "No tournament yet" : "No tournament selected"}
+          </h1>
           <p className="muted">
-            {what} works on one event at a time. Pick an event to carry on, or make a new demo event
-            (session only).
+            {none
+              ? `${what} works on one event at a time, and this club has none yet. Create the first event to carry on.`
+              : demo
+                ? `${what} works on one event at a time. Pick an event to carry on, or make a new demo event (session only).`
+                : `${what} works on one event at a time. Pick an event to carry on, or create a new one.`}
           </p>
           <ul className="grid w-full gap-2 text-left">
             {tournaments.map((t) => (
@@ -44,8 +78,10 @@ export function NeedsTournament({ what }: { what: string }) {
               </li>
             ))}
           </ul>
-          <Button variant="secondary" asChild className="mt-1">
-            <Link href="/tournaments">Manage tournaments</Link>
+          <Button variant={none ? "primary" : "secondary"} asChild className="mt-1">
+            <Link href="/tournaments">
+              {none ? "Create the first event" : "Manage tournaments"}
+            </Link>
           </Button>
         </div>
       </div>

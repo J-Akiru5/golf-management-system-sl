@@ -17,9 +17,23 @@ import {
   type NewEntryInput,
   type NewPlayerInput,
 } from "@/lib/data/adapters";
+import { courseNumbersChanged, holesComplete, strokeIndexProblem } from "@/lib/data/course-data";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
-import type { HandicapRecord, PlayerRecord, RegistrationEntry, Tournament } from "@/lib/data/types";
-import type { Action, DeskState } from "@/lib/store/state";
+import { starterSetup } from "@/lib/data/starter";
+import type {
+  HandicapRecord,
+  Hole,
+  PlayerRecord,
+  RegistrationEntry,
+  Tournament,
+} from "@/lib/data/types";
+import type { Tee } from "@/lib/routing";
+import {
+  type Action,
+  activeTournament,
+  type DeskState,
+  tournamentTemplate,
+} from "@/lib/store/state";
 import type { Database, Json } from "@/lib/supabase/types";
 import {
   toDeferredMatchInsert,
@@ -38,9 +52,25 @@ export interface SupabaseAdapterOptions {
   /** Called when the queue starts and when it drains. */
   onBusy: (busy: boolean) => void;
   clubId: string;
+  /**
+   * Called once a new event is fully written (course, event row and setup), so the desk can reload
+   * and pick up the database's own ids for its categories and flights.
+   */
+  onEventCreated?: (tournamentId: string) => void;
+  /**
+   * Each event's draw revision as the database last confirmed it, shared with the draw writes.
+   * The setup function checks and bumps the same counter, so both must read and write one copy;
+   * a copy held inside this object would be lost every time the desk state changes and the
+   * adapters are rebuilt, and the guard would then never refuse anything.
+   */
+  revisions?: {
+    get: (tournamentId: string) => number | undefined;
+    set: (tournamentId: string, revision: number) => void;
+  };
 }
 
 const uuid = () => crypto.randomUUID();
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Serialises writes so two edits to the same row cannot race. */
 export function createQueue(
@@ -169,8 +199,8 @@ export function createSupabaseAdapters(
 
    * Tournaments -------------------------------------------------------------------------------- */
 
-  const saveTournamentRow = (tournament: Tournament) => {
-    enqueue(async () => {
+  const writeTournament = async (tournament: Tournament) => {
+    {
       const { error } = await client.from("tournaments").upsert(
         {
           id: tournament.id,
@@ -199,8 +229,9 @@ export function createSupabaseAdapters(
         { onConflict: "id" },
       );
       fail("Could not save the event", error);
-    });
+    }
   };
+  const saveTournamentRow = (tournament: Tournament) => enqueue(() => writeTournament(tournament));
 
   const tournaments: Adapters["tournaments"] = {
     list: () => state.tournaments,
@@ -215,19 +246,37 @@ export function createSupabaseAdapters(
       saveTournamentRow(tournament);
     },
     createFromTemplate: (name, date) => {
-      // The template itself is built by the store's reducer path; mirror it here with a real id.
+      // A club with no event yet has no tees or categories to copy, so it starts from the starter
+      // setup. Either way the new event gets its own categories and flights (they belong to one
+      // event), so ids are left off and the database assigns them; the desk reloads to read them.
+      const base = activeTournament(state) ?? state.tournaments[0] ?? null;
+      const useStarter = !base || state.tees.length === 0;
+      const starter = starterSetup();
+      const tees = useStarter ? starter.tees : state.tees;
+      const courseId = base?.courseId ?? uuid();
       const created: Tournament = {
-        ...(state.tournaments[0] as Tournament),
+        ...tournamentTemplate(state, name, date),
         id: uuid(),
-        name,
-        nameNeedsConfirmation: true,
-        dates: [date],
-        createdAt: new Date().toISOString(),
+        courseId,
+        categories: useStarter ? starter.categories : (base?.categories ?? []),
+        flights: useStarter ? starter.flights : (base?.flights ?? []),
       };
-      created.config = { ...created.config, date };
-      dispatch({ type: "saveTournament", tournament: created });
+      dispatch({ type: "saveSetup", tournament: created, tees, holes: state.holes });
       dispatch({ type: "selectTournament", id: created.id });
-      saveTournamentRow(created);
+      enqueue(async () => {
+        if (!base) {
+          const { error } = await client.from("courses").insert({
+            id: courseId,
+            club_id: clubId,
+            name: `${state.club.name || "Club"} course`,
+            holes: 18,
+          });
+          fail("Could not set up the course", error);
+        }
+        await writeTournament(created);
+        await saveSetupRows({ tournament: created, tees, holes: null, expectedRevision: null });
+        options.onEventCreated?.(created.id);
+      });
       return created;
     },
   };
@@ -412,55 +461,110 @@ export function createSupabaseAdapters(
 
    * Event setup -------------------------------------------------------------------------------- */
 
-  // The revision this browser last saw. The guard only bites from the second save onward, because
-  // the desk state does not carry the revision yet; a save without one is unguarded but still atomic.
-  let setupRevision: number | null = null;
+  /** One save_event_setup call. Holes go only as a whole, valid card: the table cannot hold a blank par. */
+  const saveSetupRows = async (input: {
+    tournament: Tournament;
+    tees: Tee[];
+    holes: Hole[] | null;
+    expectedRevision: number | null;
+  }) => {
+    const { tournament, tees, holes } = input;
+    const teeNameById = new Map(tees.map((tee) => [tee.id, tee.name]));
+    const categoryNameById = new Map(
+      tournament.categories.map((category) => [category.id, category.name]),
+    );
+    // Ids the database did not issue (starter and copied rows) are left off so it inserts them.
+    const dbId = (id: string) => (UUID.test(id) ? id : "");
+    const { data, error } = await client.rpc("save_event_setup", {
+      p_tournament: tournament.id,
+      p_expected_revision: input.expectedRevision,
+      p_course: { holes: tournament.config.holes },
+      p_holes: holes
+        ? holes.map((hole) => ({
+            number: hole.number,
+            par: hole.par,
+            strokeIndex: hole.strokeIndex,
+          }))
+        : null,
+      p_tees: tees.map((tee) => ({
+        name: tee.name,
+        courseRating: tee.courseRating,
+        slope: tee.slope,
+        par: tee.par,
+      })),
+      p_categories: tournament.categories.map((category) => ({
+        id: dbId(category.id),
+        name: category.name,
+        gender: category.gender,
+        minAge: category.minAge,
+        maxAge: category.maxAge,
+        teeName: teeNameById.get(category.teeId) ?? "",
+      })),
+      p_flights: tournament.flights.map((flight) => ({
+        id: dbId(flight.id),
+        categoryName: categoryNameById.get(flight.categoryId) ?? "",
+        name: flight.name,
+        min: flight.min,
+        max: flight.max,
+      })),
+    });
+    if (error) throw new Error(`Could not save the event setup: ${error.message}`);
+    const result = data as unknown as { revision?: number } | null;
+    if (typeof result?.revision === "number")
+      options.revisions?.set(tournament.id, result.revision);
+  };
+
+  /** A separate write, so a database without 20261027000000 refuses it with a clear message. */
+  const setCourseConfirmed = async (tournamentId: string, confirmed: boolean) => {
+    const { error } = await client
+      .from("tournaments")
+      .update({ course_data_confirmed: confirmed })
+      .eq("club_id", clubId)
+      .eq("id", tournamentId);
+    if (error) {
+      const missing = /course_data_confirmed/.test(error.message);
+      throw new Error(
+        missing
+          ? "The database does not have the course-confirmation column yet (migration 20261027000000)."
+          : `Could not record the course confirmation: ${error.message}`,
+      );
+    }
+  };
 
   const setup: Adapters["setup"] = {
     save: ({ tournament, tees, holes }) => {
-      dispatch({ type: "saveTournament", tournament });
-      const teeNameById = new Map(tees.map((tee) => [tee.id, tee.name]));
-      const categoryNameById = new Map(
-        tournament.categories.map((category) => [category.id, category.name]),
+      // Changing a rating or a hole after the organizer confirmed the card withdraws the confirmation.
+      const changed = courseNumbersChanged(
+        { tees: state.tees, holes: state.holes },
+        { tees, holes },
       );
+      const withdraws = changed && tournament.courseDataConfirmed;
+      const next = withdraws ? { ...tournament, courseDataConfirmed: false } : tournament;
+      dispatch({ type: "saveSetup", tournament: next, tees, holes });
+      // A hole card is all or nothing: a blank par or a repeated stroke index is not written.
+      const writableHoles = holesComplete(holes) && !strokeIndexProblem(holes) ? holes : null;
       enqueue(async () => {
-        const { data, error } = await client.rpc("save_event_setup", {
-          p_tournament: tournament.id,
-          p_expected_revision: setupRevision,
-          p_course: { holes: tournament.config.holes },
-          p_holes: holes.map((hole) => ({
-            number: hole.number,
-            par: hole.par ?? 4,
-            strokeIndex: hole.strokeIndex ?? hole.number,
-          })),
-          p_tees: tees.map((tee) => ({
-            name: tee.name,
-            courseRating: tee.courseRating,
-            slope: tee.slope,
-            par: tee.par,
-          })),
-          p_categories: tournament.categories.map((category) => ({
-            id: category.id,
-            name: category.name,
-            gender: category.gender,
-            minAge: category.minAge,
-            maxAge: category.maxAge,
-            teeName: teeNameById.get(category.teeId) ?? "",
-          })),
-          p_flights: tournament.flights.map((flight) => ({
-            id: flight.id,
-            categoryName: categoryNameById.get(flight.categoryId) ?? "",
-            name: flight.name,
-            min: flight.min,
-            max: flight.max,
-          })),
+        await saveSetupRows({
+          tournament: next,
+          tees,
+          holes: writableHoles,
+          // Read when the write runs, not when it was queued, so it is the latest known.
+          expectedRevision: options.revisions?.get(next.id) ?? null,
         });
-        if (error) throw new Error(`Could not save the event setup: ${error.message}`);
-        const result = data as unknown as { revision?: number } | null;
-        setupRevision = typeof result?.revision === "number" ? result.revision : setupRevision;
+        // The event row carries the name, dates, start format, group sizes and registration form.
+        // The setup function does not write them, so they are saved here, after it has passed the
+        // revision guard (a refused save must not leave half of itself behind).
+        await writeTournament(next);
+        if (withdraws) await setCourseConfirmed(next.id, false);
       });
     },
-    revision: () => setupRevision,
+    confirmCourse: (tournamentId, confirmed) => {
+      const t = state.tournaments.find((x) => x.id === tournamentId);
+      if (!t) return;
+      dispatch({ type: "saveTournament", tournament: { ...t, courseDataConfirmed: confirmed } });
+      enqueue(() => setCourseConfirmed(tournamentId, confirmed));
+    },
+    revision: () => options.revisions?.get(state.activeTournamentId ?? "") ?? null,
   };
 
   return { players, tournaments, registrations, imports, router, setup };

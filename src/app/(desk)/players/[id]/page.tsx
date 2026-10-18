@@ -190,8 +190,10 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
               </p>
             )}
             <p className="hint">
-              Tee ratings on this screen are sample values, not IGCC's scorecard. The app never
-              computes an official WHS index; it only reads what the import supplies.
+              {tournament.courseDataConfirmed
+                ? "Tee ratings are the ones confirmed against the club scorecard."
+                : "Tee ratings are not confirmed against the club scorecard yet, so treat playing handicaps as provisional."}{" "}
+              The app never computes an official WHS index; it only reads what the import supplies.
             </p>
           </SectionCard>
 
@@ -425,8 +427,8 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
               </div>
             </dl>
             <p className="hint">
-              Birthdates, contact details and photos are personal data. This demo makes no
-              legal-compliance claim; the desk keeps them for organizer use only.
+              Birthdates, contact details and photos are personal data under the Data Privacy Act of
+              2012. The desk keeps them for organizer use only and never shows them on public pages.
             </p>
           </SectionCard>
         </div>
