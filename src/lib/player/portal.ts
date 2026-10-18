@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Translate } from "@/lib/i18n/t";
 import type { Database } from "@/lib/supabase/types";
 
 /**
@@ -146,45 +147,48 @@ export async function loadPortal(client: SupabaseClient<Database>): Promise<Port
  * The database has not had this migration yet. PostgREST answers with PGRST202 when a function is
  * missing from its schema cache; anything else is a real failure and is shown as one.
  */
-export function portalErrorMessage(error: unknown): string {
+export function portalErrorMessage(error: unknown, t: Translate): string {
   const message = error instanceof Error ? error.message : String(error);
   const code = (error as { code?: unknown } | null)?.code;
 
   if (code === "PGRST202" || /could not find the function/i.test(message)) {
-    return "The player area is not switched on for this project yet. The club has to apply the player portal migration first.";
+    return t("player.error.notReady");
   }
   if (code === "PGRST301" || /jwt|not authenticated/i.test(message)) {
-    return "Your session has ended. Sign in again to see your entry.";
+    return t("player.error.session");
   }
-  return `The player area could not load: ${message}`;
+  return t("player.error.generic", { message });
 }
 
 /* ---------------------------------------------------------------------------------------------- */
 /* Wording. Pure, so the page stays a template and the tests pin the words.                        */
+/* Every string comes from the dictionary, so the player reads their own language.                 */
 /* ---------------------------------------------------------------------------------------------- */
 
-export function statusLabel(status: PortalStatus): string {
-  if (status === "ineligible") return "Cannot be placed in a group";
-  if (status === "needs_review") return "Entry received, being checked by the club";
-  return "Entered";
+export function statusLabel(t: Translate, status: PortalStatus): string {
+  if (status === "ineligible") return t("player.status.ineligible");
+  if (status === "needs_review") return t("player.status.needsReview");
+  return t("player.status.ok");
 }
 
-export function paymentLabel(status: PortalPayment): string {
-  if (status === "paid") return "Recorded as paid";
-  if (status === "waived") return "Waived";
-  return "Not recorded yet";
+export function paymentLabel(t: Translate, status: PortalPayment): string {
+  if (status === "paid") return t("player.payment.paid");
+  if (status === "waived") return t("player.payment.waived");
+  return t("player.payment.unpaid");
 }
 
 /** "Hole 10A · 7:00 AM", "Tee 1 · 12:00 PM", or why there is no start to show. */
-export function startLabel(entry: PortalEntry, formatTime: (hhmm: string) => string): string {
+export function startLabel(
+  entry: PortalEntry,
+  t: Translate,
+  formatTime: (hhmm: string) => string,
+): string {
   if (!entry.start) {
-    return entry.published
-      ? "Your group is not on the published list. Ask the club."
-      : "Pairings are not out yet.";
+    return entry.published ? t("player.start.notListed") : t("player.start.notPublished");
   }
   const where =
     entry.startFormat === "shotgun"
-      ? `Hole ${entry.start.hole ?? "?"}${entry.start.wave ?? ""}`
-      : `Tee ${entry.start.hole ?? "?"}`;
+      ? t("player.start.hole", { hole: entry.start.hole ?? "?", wave: entry.start.wave ?? "" })
+      : t("player.start.tee", { hole: entry.start.hole ?? "?" });
   return entry.start.time ? `${where} · ${formatTime(entry.start.time)}` : where;
 }

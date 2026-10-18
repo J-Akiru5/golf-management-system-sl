@@ -8,6 +8,7 @@ import {
   type RegistrationFormConfig,
   submitRegistration,
 } from "@/lib/data/supabase/public-registration";
+import { useI18n } from "@/lib/i18n/context";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -16,6 +17,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
  * an entry always lands as Needs review for the desk.
  */
 export default function EnterTournament() {
+  const { t } = useI18n();
   const { id } = useParams<{ id: string }>();
   const [config, setConfig] = useState<RegistrationFormConfig | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error" | "demo">("loading");
@@ -40,7 +42,7 @@ export default function EnterTournament() {
       } catch (loadError) {
         if (!active) return;
         setState("error");
-        setError(loadError instanceof Error ? loadError.message : "Could not load the entry form.");
+        setError(loadError instanceof Error ? loadError.message : null);
       }
     })();
     return () => {
@@ -51,9 +53,9 @@ export default function EnterTournament() {
   return (
     <div className="public">
       <header className="public-head">
-        <p className="overline mt-3 !text-gold">Tournament entry</p>
+        <p className="overline mt-3 !text-gold">{t("enter.overline")}</p>
         <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-          {config?.name ?? "Enter the tournament"}
+          {config?.name ?? t("enter.title")}
         </h1>
         {config && config.dates.length > 0 && (
           <p className="text-on-forest-muted">
@@ -66,31 +68,31 @@ export default function EnterTournament() {
         )}
       </header>
 
-      {state === "loading" && <p role="status">Loading the entry form…</p>}
+      {state === "loading" && <p role="status">{t("enter.loading")}</p>}
 
       {state === "demo" && (
         <div className="notice" role="status">
-          <b>This build is running on demo data.</b> Connect Supabase to take tournament entries.
+          <b>{t("enter.demoTitle")}</b> {t("enter.demoBody")}
         </div>
       )}
 
       {state === "missing" && (
         <div className="notice" role="status">
-          <b>That tournament was not found.</b> Check the link the organizer sent you.
+          <b>{t("enter.missingTitle")}</b> {t("enter.missingBody")}
         </div>
       )}
 
       {state === "error" && (
         <div className="notice bad" role="alert">
-          <b>Could not load the entry form.</b> {error}
+          <b>{t("enter.errorTitle")}</b> {error ?? ""}
         </div>
       )}
 
       {state === "ready" && config && !config.isOpen && (
         <div className="notice" role="status">
-          <b>Entries are closed for this event.</b>
-          {config.cutOffDate ? ` The deadline was ${config.cutOffDate}.` : ""} Please contact the
-          organizer.
+          <b>{t("enter.closedTitle")}</b>
+          {config.cutOffDate ? t("enter.closedDeadline", { date: config.cutOffDate }) : ""}{" "}
+          {t("enter.closedBody")}
         </div>
       )}
 

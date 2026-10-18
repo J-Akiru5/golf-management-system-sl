@@ -223,6 +223,48 @@ await fixes.first().click();
 await page.waitForTimeout(1200);
 check("following Fix closes the panel and navigates", (await panel.count()) === 0 && /\/(draw|players|setup)/.test(page.url()), `(${page.url()})`);
 
+// -------------------------------------------------------------- player languages
+section("player languages");
+const langContext = await browser.newContext({ viewport: { width: 1200, height: 950 } });
+const langPage = await langContext.newPage();
+watch(langPage);
+const setLang = async (value) => {
+  await langContext.addCookies([{ name: "desk-lang", value, url: BASE }]);
+  await langPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+};
+
+await langPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+check(
+  "the pairings page is English when nothing is chosen",
+  (await langPage.getByText("Club tournament pairings").count()) > 0,
+);
+
+await setLang("hil");
+check(
+  "Hiligaynon is served from the dictionary",
+  (await langPage.getByText("Pairing sang tournament sang club").count()) > 0,
+);
+check("the page is marked lang=hil", (await langPage.locator('[lang="hil"]').count()) > 0);
+
+await setLang("tl");
+check(
+  "Tagalog is served from the dictionary",
+  (await langPage.getByText("Pairings ng tournament ng club").count()) > 0,
+);
+
+await langPage.goto(`${BASE}/my`, { waitUntil: "networkidle", timeout: 120000 });
+const switcher = langPage.getByLabel("Wika");
+check("the picker is labelled in the chosen language", (await switcher.count()) > 0);
+await switcher.selectOption("en");
+await langPage.getByText("This build runs on demo data").first().waitFor({ timeout: 20000 });
+check(
+  "choosing English switches the page back",
+  (await langPage.getByText("There is no player area here", { exact: false }).count()) > 0 ||
+    (await langPage.getByText("no player area here").count()) > 0,
+);
+await langPage.screenshot({ path: `${SHOTS}/player-languages.png` });
+await langContext.close();
+
 // -------------------------------------------------------------- mobile sheet
 section("mobile sheet");
 const mob = await context.newPage();

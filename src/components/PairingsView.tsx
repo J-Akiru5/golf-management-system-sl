@@ -3,11 +3,15 @@
 import { useState } from "react";
 import type { PublicPairings } from "@/lib/data/types";
 import { fmtTime } from "@/lib/format";
+import { useI18n } from "@/lib/i18n/context";
 
 /**
  * Player-facing pairings: names, flight, hole and time only. Built from an allow-listed
  * `PublicPairings` object, never from player or registration records. Used by the public page and
  * by the organizer's publish preview, so what they check is what players get.
+ *
+ * The words come from the i18n context. Outside the player/public layouts (the desk's publish
+ * preview) the context falls back to English, which is what the organizer expects there.
  */
 export function PairingsView({
   pairings,
@@ -22,6 +26,7 @@ export function PairingsView({
   /** "group" inside a dialog, "section" when it is the page's main content. */
   headingLevel?: "group" | "section";
 }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [flight, setFlight] = useState("");
   const q = query.trim().toLowerCase();
@@ -33,6 +38,13 @@ export function PairingsView({
   );
   const shotgun = pairings.startFormat === "shotgun";
 
+  const groupLabel = (startHole: number, wave: string | null) => {
+    if (!shotgun) return t("pairings.groupTee", { hole: startHole });
+    return wave
+      ? t("pairings.groupHoleWave", { hole: startHole, wave })
+      : t("pairings.groupHole", { hole: startHole });
+  };
+
   return (
     <>
       {searchable && (
@@ -40,18 +52,18 @@ export function PairingsView({
           <input
             type="search"
             className="grow"
-            placeholder="Find your name"
-            aria-label="Find your name"
+            placeholder={t("pairings.findName")}
+            aria-label={t("pairings.findName")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
           {flightFilter && flights.length > 1 && (
             <select
-              aria-label="Filter by flight"
+              aria-label={t("pairings.filterFlight")}
               value={flight}
               onChange={(e) => setFlight(e.target.value)}
             >
-              <option value="">All flights</option>
+              <option value="">{t("pairings.allFlights")}</option>
               {flights.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -60,7 +72,7 @@ export function PairingsView({
             </select>
           )}
           <button type="button" className="btn ghost" onClick={() => window.print()}>
-            Print
+            {t("common.print")}
           </button>
         </div>
       )}
@@ -68,11 +80,7 @@ export function PairingsView({
         {groups.map((g) => (
           <article key={g.number} className="group">
             <div className="group-head">
-              <b>
-                {shotgun
-                  ? `Hole ${g.startHole}${g.wave ? ` · Wave ${g.wave}` : ""}`
-                  : `Tee ${g.startHole}`}
-              </b>
+              <b>{groupLabel(g.startHole, g.wave)}</b>
               <span className="mono">{fmtTime(g.time)}</span>
             </div>
             {g.players.map((name) => {
@@ -89,7 +97,7 @@ export function PairingsView({
           </article>
         ))}
       </div>
-      {groups.length === 0 && <p className="muted">No one found with that name or flight.</p>}
+      {groups.length === 0 && <p className="muted">{t("pairings.noMatch")}</p>}
     </>
   );
 }

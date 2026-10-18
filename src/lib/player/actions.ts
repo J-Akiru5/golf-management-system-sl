@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getI18n } from "@/lib/i18n/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { claimCode, claimSucceeded, validateClaimInput } from "./claim";
 
@@ -10,10 +11,11 @@ import { claimCode, claimSucceeded, validateClaimInput } from "./claim";
  * the page as a code, so no database message is ever rendered raw.
  */
 export async function claimPlayerRecord(formData: FormData): Promise<void> {
+  const { t } = await getI18n();
   const name = String(formData.get("name") ?? "");
   const ngapId = String(formData.get("ngapId") ?? "");
 
-  const check = validateClaimInput({ name, ngapId });
+  const check = validateClaimInput(t, { name, ngapId });
   if (!check.ok) redirect("/my?claim=invalid");
 
   const client = await createSupabaseServerClient();
