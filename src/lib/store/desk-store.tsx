@@ -10,12 +10,19 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
 } from "react";
 import { getDeskMember } from "@/lib/auth/member";
 import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
 import { registrationFor } from "@/lib/data/registrations";
-import { createSupabaseAdapters } from "@/lib/data/supabase/adapters";
+import { createQueue, createSupabaseAdapters } from "@/lib/data/supabase/adapters";
+import {
+  publishPairings,
+  refreshPublicPage,
+  saveDraw,
+  unpublishPairings,
+} from "@/lib/data/supabase/draw-sync";
 import { loadDeskState } from "@/lib/data/supabase/load-desk-state";
 import type {
   Club,
@@ -40,6 +47,7 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Database } from "@/lib/supabase/types";
+import { type DrawJob, planDrawJobs } from "./draw-persist";
 import { activeTournament, boardOf, entriesFor, initialState, reducer } from "./state";
 
 export type { Action, ApplyImportPayload, BoardState, DeskState, Published } from "./state";
@@ -109,8 +117,23 @@ interface Desk {
 
 const Ctx = createContext<Desk | null>(null);
 
+/** Actions that change the draw or what is published; with Supabase these are written to it. */
+const DRAW_ACTIONS: ReadonlySet<Action["type"]> = new Set([
+  "generate",
+  "move",
+  "setGroupLocked",
+  "publish",
+  "unpublish",
+]);
+
 export function DeskProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  const [state, rawDispatch] = useReducer(reducer, undefined, initialState);
+  // The newest state, including actions dispatched since the last render, so two quick edits
+  // compare against each other and not against a stale snapshot.
+  const latest = useRef(state);
+  latest.current = state;
+  // Each tournament's draw revision as the database last confirmed it.
+  const revisions = useRef<Record<string, number>>({});
   const connected = isSupabaseConfigured();
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null);
   const [status, setStatus] = useState<Desk["status"]>(connected ? "loading" : "demo");
@@ -140,7 +163,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         if (!active) return;
         setClient(supabase);
         setMember({ displayName: signedIn.displayName, role: signedIn.role });
-        dispatch({ type: "hydrate", state: loaded.state });
+        revisions.current = loaded.revisions;
+        rawDispatch({ type: "hydrate", state: loaded.state });
         setStatus("ready");
       } catch (loadError) {
         if (!active) return;
@@ -155,6 +179,65 @@ export function DeskProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
 
+  // One queue for every draw write, so saves and publishes reach the database in the order the
+  // organizer made them.
+  const drawQueue = useRef<ReturnType<typeof createQueue> | null>(null);
+  if (!drawQueue.current) {
+    drawQueue.current = createQueue({
+      onError: setError,
+      onSaved: () => {
+        setError(null);
+        setLastSavedAt(new Date().toISOString());
+      },
+      onBusy: setSaving,
+    });
+  }
+
+  const runDrawJob = useCallback(async (job: DrawJob, supabase: SupabaseClient<Database>) => {
+    const revision = revisions.current[job.tournamentId] ?? 0;
+    if (job.kind === "save") {
+      revisions.current[job.tournamentId] = await saveDraw(
+        supabase,
+        job.tournamentId,
+        revision,
+        job.draw,
+        job.overrides,
+      );
+      return;
+    }
+    if (job.kind === "publish") {
+      const result = await publishPairings(supabase, job.tournamentId, revision, job.published);
+      rawDispatch({
+        type: "publishAck",
+        tournamentId: job.tournamentId,
+        version: result.version,
+        at: result.at,
+      });
+    } else {
+      await unpublishPairings(supabase, job.tournamentId);
+    }
+    await refreshPublicPage(supabase);
+  }, []);
+
+  // Every screen dispatches through this. In demo mode it is the plain reducer; with Supabase the
+  // draw actions are also queued for the database.
+  const dispatch = useCallback<Dispatch<Action>>(
+    (action) => {
+      if (!client || !DRAW_ACTIONS.has(action.type)) {
+        rawDispatch(action);
+        return;
+      }
+      const before = latest.current;
+      const after = reducer(before, action);
+      latest.current = after;
+      rawDispatch(action);
+      for (const job of planDrawJobs(action, before, after)) {
+        drawQueue.current?.(() => runDrawJob(job, client));
+      }
+    },
+    [client, runDrawJob],
+  );
+
   const adapters = useMemo<Adapters>(() => {
     if (!connected || !client) return createMockAdapters(state, dispatch);
     return createSupabaseAdapters(state, dispatch, {
@@ -167,7 +250,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       },
       onBusy: setSaving,
     });
-  }, [state, connected, client]);
+  }, [state, connected, client, dispatch]);
 
   const value = useMemo<Desk>(() => {
     const tournament = activeTournament(state);
@@ -265,7 +348,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       lastSavedAt,
       reload,
     };
-  }, [state, adapters, status, error, saving, member, connected, lastSavedAt, reload]);
+  }, [state, adapters, dispatch, status, error, saving, member, connected, lastSavedAt, reload]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

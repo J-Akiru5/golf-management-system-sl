@@ -41,6 +41,7 @@ function toPublished(value: Json | null, tournamentId: string): Published | null
     tournamentId,
     at: raw.at,
     signature: raw.signature,
+    version: typeof raw.version === "number" ? raw.version : undefined,
     groups: raw.groups
       .filter((g): g is Record<string, unknown> => typeof g === "object" && g !== null)
       .map((g) => ({
@@ -78,6 +79,8 @@ function toOverrides(value: Json | null): ManualOverride[] {
 export interface LoadedDesk {
   state: DeskState;
   clubName: string;
+  /** Each tournament's draw revision. A draw save must name the revision it started from. */
+  revisions: Record<string, number>;
 }
 
 export async function loadDeskState(
@@ -151,6 +154,7 @@ export async function loadDeskState(
   // Boards are rebuilt from the stored groups so a saved draw survives a refresh.
   const tournamentIds = tournaments.map((t) => t.id);
   const boards: Record<string, BoardState> = {};
+  const revisions: Record<string, number> = {};
   if (tournamentIds.length) {
     const { data: groupRows, error: groupError } = await client
       .from("groups")
@@ -192,6 +196,7 @@ export async function loadDeskState(
       const row = asArray(tournamentRows.data).find((t) => t.id === tournament.id) as
         | TableRow<"tournaments">
         | undefined;
+      revisions[tournament.id] = row?.draw_revision ?? 0;
       boards[tournament.id] = {
         draw: draw.length ? draw : null,
         warnings: [],
@@ -206,6 +211,7 @@ export async function loadDeskState(
 
   return {
     clubName: club.name,
+    revisions,
     state: {
       clubId,
       tournaments,

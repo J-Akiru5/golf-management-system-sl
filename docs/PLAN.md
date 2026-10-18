@@ -30,7 +30,7 @@ Anything not marked is a plan, not a fact.
 | Ready to merge (PR #9, PR #10) | **Desk components** (`feat/desk-components`, PR #9): props-driven registration-desk and shell components plus a dev-only preview, and `agentRules: false` so `next dev` stops rewriting AGENTS.md. **Print components** (`feat/print-components`, PR #10): print sheets and tested helpers. Both merge cleanly into `develop` | Each PR states its own verification; see `docs/handoffs/desk-components.md` |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
-Whole suite: 22 test files, 282 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
+Whole suite: 25 test files, 308 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
 
 **The one thing blocking a real event:** the wiring exists but the project has no course, tee, hole or
 tournament rows, so the desk has nothing real to show. Provisioning and an end-to-end pass with real
@@ -241,17 +241,20 @@ These are places where the spec promises something the code does not do yet. Che
     alert: the overview attention list and the shell bell (a shortcut to the draw's blocking count)
     are all that exists, and the session activity log forgets itself on refresh. Whether Phase 1
     needs an alert centre is decision 14.
-12. **The draw is computed in the browser and only saved if Supabase is configured.** `route()` is a
-    real pure engine and it does run live: changing players, tournament settings or a move re-runs it,
-    locked groups are kept, and the draw checks re-validate. But `src/lib/store/state.ts` runs it on the
-    client. With Supabase configured, `saveTournamentDraw` and `saveGroupLock` write the groups; that
-    path has not been exercised because the project has no course, tee, hole or tournament rows. There
-    is also no guard against two staff editing the same draw (last write wins).
-13. **The public pairings page is not public yet.** `/pairings` reads the organizer's session store
-    (`useDesk()`), so it only shows what is in that browser. The anonymous SQL function
-    `public_pairings` exists and reads the frozen `tournaments.published_snapshot`, but only the parked
-    legacy store calls it. The snapshot is one overwritten copy: no version number, no history, no
-    record of what changed between two publishes.
+12. **The draw was computed in the browser and never saved.** *Fixed in code, migration not applied.*
+    `route()` is a real pure engine and it runs live: changing players, settings or a move re-runs it,
+    locked groups are kept, and the draw checks re-validate. But the current store only dispatched
+    these actions to the in-memory reducer; the old `saveTournamentDraw` belonged to the parked
+    legacy store, so with Supabase configured a generated, moved or published draw was lost on
+    refresh. It now goes through `save_draw`, one transaction that checks the role and a draw
+    revision (a stale screen is refused, not allowed to overwrite). The write path is covered by unit
+    tests with a fake client; it has not run against the real project because the migration is not
+    applied and the project has no course, tee, hole or tournament rows.
+13. **The public pairings page was not public.** *Fixed in code, migration not applied.* `/pairings`
+    read the organizer's session store. It is now a server page that calls the anonymous
+    `public_pairings` function, cached for 60 seconds and refreshed on publish. Each publish writes an
+    immutable row in `pairings_versions` (version 1, 2, 3) and the page and the version number show
+    which one players are looking at. With no Supabase URL the demo page is unchanged.
 
 ---
 
@@ -303,7 +306,13 @@ Order matters: each step unblocks the next. Effort is not estimated here on purp
 8. **Deploy:** Vercel project, env vars, `staging` and `main` branches, CI (typecheck, lint, tests, build).
 9. **Dress rehearsal:** run a full fake tournament with the organizer using real IGCC data before the real event.
 
-### Scheduling and the public pairings page (planned, 18 Oct 2026)
+### Scheduling and the public pairings page (built in `feat/versioned-publish`, 18 Oct 2026)
+
+**Status.** Steps 2 to 5 are in code and tested. The migration
+`supabase/migrations/20261022000000_versioned_publish.sql` is **not applied** to the real project;
+it needs the owner's go-ahead (schema and RLS change: `groups` and `group_members` become
+read-only for members, the draw is written only by `save_draw`). Step 1 waits for real tee data, so
+nothing was seeded into the real project.
 
 **Where scheduling stands.** The grouping is dynamic, not a static shell: category, tee, course
 handicap, flight, group and slot come from the pure engine in `src/lib/routing`, driven by tournament
@@ -492,6 +501,7 @@ Agent ground rules:
 | 18 Oct 2026 | **Supabase wiring merged** (`b8d9c7a`): the store uses `createSupabaseAdapters` and `loadDeskState` behind the same adapter interfaces, and keeps the in-memory demo when no Supabase URL is set. Provisioning (course, tees, holes, a tournament) and an end-to-end pass with real data are the remaining steps. |
 | 18 Oct 2026 | **Pagination and notifications were never in the plan.** They are now gaps 10 and 11 with decisions 13 and 14. Defaults meanwhile: render every row, and keep the overview attention list plus the shell bell as the only alerts. Player messaging stays Phase 3. |
 | 18 Oct 2026 | In review, not merged: `feat/desk-components` (PR #9: props-driven registration-desk and shell components, a dev-only preview, and `agentRules: false`) and `feat/print-components` (print sheets and tested helpers). `feat/lock-aware-rerun` (`90b534d`) duplicates work already in `develop`; do not merge it. |
+| 18 Oct 2026 | **Versioned publish built** (`feat/versioned-publish`): `save_draw` and `publish_pairings` database functions, `draw_revision` guard, `pairings_versions`, server-rendered `/pairings` with flight filter and version stamp, `/api/revalidate-pairings`. The proxy no longer runs on `/pairings`, so the page can be cached. Migration written, not applied. |
 | 18 Oct 2026 | **Scheduling and public pairings plan agreed with the owner.** Publishing is explicit and versioned. The public page is `/pairings`: full list plus name search, no login. No realtime for now; refresh or ISR (about 60 seconds) is enough. Steps are in section 8. Schema changes (draw revision, `pairings_versions`) need owner approval before they are applied. |
 
 ---

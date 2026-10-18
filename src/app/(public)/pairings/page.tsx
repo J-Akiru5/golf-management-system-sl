@@ -1,32 +1,49 @@
-"use client";
-
 import Link from "next/link";
-import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
+import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
 import { fmtTime } from "@/lib/format";
-import { useDesk } from "@/lib/store/desk-store";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createSupabasePublicClient } from "@/lib/supabase/public";
+import { DemoPairings } from "./DemoPairings";
 
 /**
- * What players see. It reads the frozen published copy (through the public allow-list projection),
- * never the organizer's working board, and never a player or registration record.
+ * The page players open. Built on the server from the published version in the database, with no
+ * login, and cached: it refreshes within a minute on its own and immediately when the organizer
+ * publishes (the desk calls /api/revalidate-pairings).
  */
-export default function PublicPairings() {
-  const { published, tournament } = useDesk();
+export const revalidate = 60;
 
-  if (!tournament) return <NeedsTournament what="The player view" />;
+const manila = new Intl.DateTimeFormat("en-PH", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Manila",
+});
 
-  const pairings = published
-    ? toPublicPairings({
-        published,
-        tournamentName: tournament.name,
-        dateLabel: fmtDateLabel(tournament.dates),
-        startFormat: tournament.config.startFormat,
-        firstTeeTime: tournament.config.firstTeeTime,
-      })
-    : null;
+export default async function PublicPairingsPage() {
+  if (!isSupabaseConfigured()) return <DemoPairings />;
+
+  let data: Awaited<ReturnType<typeof loadPublicPairings>> = null;
+  let failed = false;
+  try {
+    data = await loadPublicPairings(createSupabasePublicClient());
+  } catch {
+    failed = true;
+  }
+
+  const published = data?.published ?? null;
+  const pairings =
+    data && published
+      ? toPublicPairings({
+          published,
+          tournamentName: data.name,
+          dateLabel: fmtDateLabel([data.date]),
+          startFormat: data.startFormat,
+          firstTeeTime: data.firstTeeTime,
+        })
+      : null;
 
   return (
     <div className="public">
@@ -38,27 +55,41 @@ export default function PublicPairings() {
             <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
           </span>
         </div>
-        <p className="overline mt-3 !text-gold">
-          {tournament.config.startFormat === "shotgun" ? "Shotgun start" : "Two-tee start"} ·{" "}
-          {fmtTime(tournament.config.firstTeeTime)}
-        </p>
-        <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-          {tournament.name}
-        </h1>
-        <p className="text-on-forest-muted">{fmtDateLabel(tournament.dates)}</p>
+        {data && (
+          <>
+            <p className="overline mt-3 !text-gold">
+              {data.startFormat === "shotgun" ? "Shotgun start" : "Two-tee start"} ·{" "}
+              {fmtTime(data.firstTeeTime)}
+            </p>
+            <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
+              {data.name}
+            </h1>
+            <p className="text-on-forest-muted">{fmtDateLabel([data.date])}</p>
+          </>
+        )}
       </header>
 
-      {!pairings ? (
+      {failed ? (
+        <div className="notice" role="status">
+          <b>Pairings can't be loaded right now.</b> Please try again in a few minutes.
+        </div>
+      ) : !pairings || !published ? (
         <div className="notice" role="status">
           <b>Pairings are not out yet.</b> Please check again later.
         </div>
       ) : (
-        <PairingsView pairings={pairings} headingLevel="section" />
+        <>
+          <p className="hint no-print" data-testid="pairings-version">
+            {published.version ? `Pairings version ${published.version} · ` : ""}
+            updated {manila.format(new Date(published.at))} (Philippine time). If you have a printed
+            copy, check that the version matches.
+          </p>
+          <PairingsView pairings={pairings} headingLevel="section" flightFilter />
+        </>
       )}
 
       <p className="hint no-print">
-        This is a local demo preview, not a published page. It shows names, flight, hole and time
-        only. <Link href="/">TeeLine Golf home</Link>
+        Names, flight, hole and time only. <Link href="/">TeeLine Golf home</Link>
       </p>
     </div>
   );

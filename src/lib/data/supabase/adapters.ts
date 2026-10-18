@@ -43,7 +43,9 @@ export interface SupabaseAdapterOptions {
 const uuid = () => crypto.randomUUID();
 
 /** Serialises writes so two edits to the same row cannot race. */
-function createQueue(options: SupabaseAdapterOptions) {
+export function createQueue(
+  options: Pick<SupabaseAdapterOptions, "onError" | "onSaved" | "onBusy">,
+) {
   let pending: Promise<unknown> = Promise.resolve();
   let depth = 0;
   return (work: () => Promise<unknown>) => {

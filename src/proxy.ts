@@ -37,10 +37,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const pathname = request.nextUrl.pathname;
   const isLogin = pathname === "/login";
   const isAuthHandler = pathname.startsWith("/auth/");
-  const isPublicPairings = pathname === "/pairings";
   const { data, error } = await client.auth.getUser();
 
-  if (isPublicPairings || isAuthHandler) return response;
+  if (isAuthHandler) return response;
   if (isLogin && (!data.user || error)) return response;
 
   if (!data.user || error) {
@@ -75,7 +74,6 @@ export const config = {
     "/setup/:path*",
     "/course/:path*",
     "/spotlight/:path*",
-    "/pairings",
     "/login",
     "/auth/:path*",
   ],

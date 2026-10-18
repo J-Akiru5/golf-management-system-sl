@@ -37,6 +37,8 @@ export interface Published {
   /** Who is in which group at publish time; compared with the board to spot unpublished changes. */
   signature: string;
   groups: PublishedGroup[];
+  /** Assigned by the database on publish (1, 2, 3...). Absent in the in-memory demo. */
+  version?: number;
 }
 
 /** One tournament's working board. Nothing here survives a refresh. */
@@ -98,7 +100,9 @@ export type Action =
   | { type: "move"; playerId: string; toGroup: number; reason: string }
   | { type: "setGroupLocked"; group: number; locked: boolean; reason: string }
   | { type: "publish" }
-  | { type: "unpublish" };
+  | { type: "unpublish" }
+  /** The database confirmed a publish and assigned its version number and time. */
+  | { type: "publishAck"; tournamentId: string; version: number; at: string };
 
 export const initialState = (): DeskState => {
   const seed = makeDemoSeed();
@@ -540,6 +544,15 @@ export function reducer(state: DeskState, a: Action): DeskState {
 
     case "unpublish":
       return withBoard(state, state.activeTournamentId, { ...boardOf(state), published: null });
+
+    case "publishAck": {
+      const board = state.boards[a.tournamentId];
+      if (!board?.published) return state;
+      return withBoard(state, a.tournamentId, {
+        ...board,
+        published: { ...board.published, version: a.version, at: a.at },
+      });
+    }
   }
 }
 

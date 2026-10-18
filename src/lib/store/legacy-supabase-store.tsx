@@ -55,6 +55,8 @@ export interface Published {
   /** Who is in which group at publish time; compared with the board to spot unpublished changes. */
   signature: string;
   groups: PublishedGroup[];
+  /** Assigned by the database on publish (1, 2, 3...). */
+  version?: number;
   /** Tournament metadata is frozen with the pairing rows so later setup edits stay private. */
   eventName?: string;
   date?: string;
