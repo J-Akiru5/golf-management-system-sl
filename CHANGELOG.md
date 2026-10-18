@@ -12,6 +12,7 @@ Supabase project, because the code and the database are released separately.
 ### Documentation
 - `docs/PLAN.md` states that `docs/VERSIONING.md` and the annotated `vX.Y.Z` tags are the single
   source of truth for what production runs; `docs/VERSIONING.md` gains "What production is running".
+- `docs/avp/AVP_PRODUCTION_BRIEF.md`: brief for AI agents that will build the 5-minute board demo video.
 
 ## [0.8.0] - 2026-10-18
 
