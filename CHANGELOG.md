@@ -11,7 +11,16 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.12.0] - 2026-10-19
+
+The checks run by themselves now, and the operational documents exist.
+
 ### Added
+- **CI on every pull request** (`.github/workflows/ci.yml`): typecheck, lint, test and build, plus the
+  browser pass in `scripts/verify-ui.mjs` against a real dev server. That gap is what let two bugs
+  reach `main`: an alerts panel with ivory text on an ivory background, and a paging rule that sent
+  the desk back to page 2. Both passed typecheck, lint, 486 tests and build. CI needs no secrets: with
+  no Supabase URL in the environment the app runs on the demo seed, which is what the harness expects.
 - `docs/UAT_RUN_SHEET.md`: the walkthrough the organizer works through, printable, with the version
   field to fill in first, what they should see at each of the eight steps, a severity scale and a
   findings table. It corrects the plan's step 3, which said to "save twice" to see the stale-save
@@ -22,6 +31,9 @@ Nothing yet.
   site is down, plus the known failure modes and what they look like. It states the one thing that
   code rollback cannot undo, which is the database, and why every migration so far being additive is
   what makes a code rollback safe on its own.
+
+### Changed
+- `.vercel` is ignored, so a Vercel CLI link in a worktree cannot be committed by accident.
 
 ### Security
 - The `player-photos` bucket now caps uploads at 5 MiB and three image types. It was private and
@@ -334,7 +346,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.11.0...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.12.0...develop
+[0.12.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.8.0...v0.9.0
