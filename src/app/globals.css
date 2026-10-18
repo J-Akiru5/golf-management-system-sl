@@ -2222,3 +2222,19 @@
     transform: none;
   }
 }
+
+/* ------------------------------------------------------------------------------------ shell rail */
+
+/* One variable the shell and the control room both read. The rail is compact by default; the
+   pre-paint script sets data-rail="expanded" on <html> when that is the saved choice, so the first
+   paint is already the right width. --rail-pad is the rail's left offset (24px), its width, and the
+   28px gap before the page content: rail.test.ts keeps these numbers and the module in step. */
+:root {
+  --rail-width: 60px;
+  --rail-pad: 112px;
+}
+
+:root[data-rail="expanded"] {
+  --rail-width: 212px;
+  --rail-pad: 264px;
+}

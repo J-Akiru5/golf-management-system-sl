@@ -86,7 +86,7 @@ function ControlRoomInner({
       >
         <CourseCanvas cover={cover} />
 
-        <div className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[112px]">
+        <div className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[var(--rail-pad)]">
           <p className="text-[11px] font-bold tracking-[.14em] text-[#e0bc65] uppercase">
             {shotgun ? "Shotgun start" : "Two-tee start"} · {fmtTime(waveStart)} · {date}
           </p>
@@ -157,7 +157,7 @@ function ControlRoomInner({
           })}
 
         {COURSE_IS_PLACEHOLDER && (
-          <p className="absolute bottom-3 left-4 rounded-full bg-[rgba(14,22,18,.7)] px-3 py-1 text-[11px] text-[#c9d3cc] sm:left-6 lg:left-[112px] xl:bottom-[262px]">
+          <p className="absolute bottom-3 left-4 rounded-full bg-[rgba(14,22,18,.7)] px-3 py-1 text-[11px] text-[#c9d3cc] sm:left-6 lg:left-[var(--rail-pad)] xl:bottom-[262px]">
             Illustrated layout · not IGCC’s real holes
           </p>
         )}
@@ -176,7 +176,7 @@ function ControlRoomInner({
             <ReadinessPanel b={b} />
           </ScrollFade>
         </aside>
-        <div className="absolute right-[428px] bottom-6 left-[112px] hidden h-[230px] grid-cols-[300px_minmax(0,1fr)] gap-3.5 xl:grid">
+        <div className="absolute right-[428px] bottom-6 left-[var(--rail-pad)] hidden h-[230px] grid-cols-[300px_minmax(0,1fr)] gap-3.5 xl:grid">
           <DivisionsPanel b={b} />
           <HandicapHistogram b={b} />
         </div>
@@ -222,7 +222,7 @@ function ControlRoomInner({
         </div>
       </section>
 
-      <div className={cn("grid gap-4 p-4 sm:p-6 md:grid-cols-2 lg:pl-[112px] xl:hidden")}>
+      <div className={cn("grid gap-4 p-4 sm:p-6 md:grid-cols-2 lg:pl-[var(--rail-pad)] xl:hidden")}>
         <AttentionPanel b={b} variant="card" className="md:col-span-2" />
         <DivisionsPanel b={b} variant="card" />
         <HandicapHistogram b={b} variant="card" />

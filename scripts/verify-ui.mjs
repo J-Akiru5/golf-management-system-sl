@@ -1,5 +1,5 @@
 /**
- * Browser checks for the desk's long lists and the alerts bell.
+ * Browser checks for the desk's long lists, the alerts bell, the player languages and the shell.
  *
  * These cover what the unit suite cannot: that the right rows, and the right colours, actually reach
  * the screen. They found two real bugs that typecheck, lint and 382 passing unit tests all missed:
@@ -103,7 +103,15 @@ await go("/register");
 await expect(range).toHaveText("1–50 of 90", { timeout: 30000 });
 const regRows = page.locator("div.grid.gap-2 > article");
 check("page 1 holds 50 of 90", (await regRows.count()) === 50, `(${await regRows.count()})`);
-await pagerBtn("Next").click();
+// networkidle does not mean hydrated, and a click that lands too early is swallowed rather than
+// queued. The register page is the heaviest list in the shell, so it is the one that shows it:
+// click, and if the page number has not moved, wait and click again. On page 2 Next is disabled,
+// so a retry can never overshoot to a page that does not exist.
+for (let attempt = 0; attempt < 3; attempt += 1) {
+  if (!(await pagerBtn("Next").isDisabled())) await pagerBtn("Next").click();
+  await page.waitForTimeout(700);
+  if ((await range.textContent())?.includes("51–90")) break;
+}
 await expect(range).toHaveText("51–90 of 90", { timeout: 15000 });
 check("the last page holds the remainder", (await regRows.count()) === 40, `(${await regRows.count()})`);
 
@@ -265,6 +273,98 @@ check(
 await langPage.screenshot({ path: `${SHOTS}/player-languages.png` });
 await langContext.close();
 
+// --------------------------------------------------------------- shell: theme, rail, tooltips
+section("shell: tooltips, theme and rail");
+await go("/players");
+// networkidle is not the same as hydrated: prove React is live before a menu opens, or the modal
+// layer it adds can land mid-hydration and be reported as a mismatch.
+const shellSearch = page.locator('input[aria-label="Search players"]');
+await shellSearch.fill("Alcantara");
+await expect(pager).toHaveCount(0, { timeout: 15000 });
+await shellSearch.fill("");
+await expect(range).toHaveText("1–50 of 91", { timeout: 15000 });
+const rail = page.locator('nav[aria-label="Main"]');
+const main = page.locator("#main");
+const railWidth = async () => (await rail.boundingBox()).width;
+const padLeft = async () => await main.evaluate((el) => getComputedStyle(el).paddingLeft);
+
+// The compact rail has no room for words, so each icon explains itself on hover or focus.
+const railPlayers = rail.locator('a[aria-label="Players"]');
+await railPlayers.focus();
+await expect(page.getByRole("tooltip")).toHaveText(/^Players( · needs attention)?$/, {
+  timeout: 8000,
+});
+check("focusing a rail icon names it, and says what the dot means", true);
+
+const themeButton = rail.locator('button[aria-label^="Colour theme"]');
+await themeButton.focus();
+await expect(page.getByRole("tooltip")).toContainText("Colour theme", { timeout: 8000 });
+check("the theme control names itself in the compact rail", true);
+
+await themeButton.click();
+const themeMenu = page.getByRole("menu");
+await expect(themeMenu).toBeVisible({ timeout: 8000 });
+const items = (await themeMenu.getByRole("menuitemradio").allTextContents()).map((t) => t.trim());
+check(
+  "the theme dropdown is System, Light and Dark",
+  items.length === 3 &&
+    items[0]?.includes("System") === true &&
+    items[1]?.includes("Light") === true &&
+    items[2]?.includes("Dark") === true,
+  `(${JSON.stringify(items)})`,
+);
+await themeMenu.getByRole("menuitemradio", { name: /Dark/ }).click();
+check(
+  "picking Dark paints the dark theme and remembers it",
+  (await page.evaluate(() => document.documentElement.dataset.theme)) === "dark" &&
+    (await page.evaluate(() => localStorage.getItem("starter-theme"))) === "dark",
+);
+await page.screenshot({ path: `${SHOTS}/shell-theme-dark.png` });
+await page.reload({ waitUntil: "networkidle", timeout: 120000 });
+check(
+  "and it survives a reload",
+  (await page.evaluate(() => document.documentElement.dataset.theme)) === "dark",
+);
+
+await rail.locator('button[aria-label^="Colour theme"]').click();
+await page.getByRole("menu").getByRole("menuitemradio", { name: /System/ }).click();
+check(
+  "System clears both the attribute and the stored choice",
+  (await page.evaluate(() => document.documentElement.dataset.theme ?? null)) === null &&
+    (await page.evaluate(() => localStorage.getItem("starter-theme"))) === null,
+);
+
+check("the rail starts compact", Math.abs((await railWidth()) - 60) < 2, `(${await railWidth()}px)`);
+check("and the content starts 112px in", (await padLeft()) === "112px", `(${await padLeft()})`);
+
+await page.getByRole("button", { name: "Expand the menu" }).click();
+await page.waitForTimeout(400);
+check(
+  "expanding widens the rail and puts the words back",
+  Math.abs((await railWidth()) - 212) < 2 && (await rail.getByText("Registration desk").count()) > 0,
+  `(${await railWidth()}px)`,
+);
+check("the content moves over with it", (await padLeft()) === "264px", `(${await padLeft()})`);
+await page.screenshot({ path: `${SHOTS}/shell-rail-expanded.png` });
+
+await page.reload({ waitUntil: "networkidle", timeout: 120000 });
+check(
+  "the rail comes back expanded from the saved choice",
+  Math.abs((await railWidth()) - 212) < 2 && (await padLeft()) === "264px",
+);
+check(
+  "and the rail says how to put it back",
+  (await page.getByRole("button", { name: "Collapse" }).count()) > 0,
+);
+
+await page.getByRole("button", { name: "Collapse" }).click();
+await page.waitForTimeout(300);
+check(
+  "collapsing returns it to compact",
+  Math.abs((await railWidth()) - 60) < 2 && (await padLeft()) === "112px",
+  `(${await railWidth()}px / ${await padLeft()})`,
+);
+
 // -------------------------------------------------------------- mobile sheet
 section("mobile sheet");
 const mob = await context.newPage();
@@ -278,6 +378,23 @@ const box = await mobPanel.boundingBox();
 check("below lg the panel is a full-width sheet", Math.abs(box.width - 390) < 2, `(width ${box.width})`);
 check("it starts under the top bar", box.y > 60 && box.y < 120, `(y ${box.y})`);
 await mob.screenshot({ path: `${SHOTS}/bell-mobile.png` });
+
+// The same theme dropdown has to work inside the mobile menu, not just in the rail.
+await mob.keyboard.press("Escape");
+await mob.getByRole("button", { name: "Open menu" }).click();
+const mobSheet = mob.getByRole("dialog", { name: "Menu" });
+await expect(mobSheet).toBeVisible({ timeout: 15000 });
+await mobSheet.getByRole("button", { name: /System|Light|Dark/ }).click();
+const mobMenu = mob.getByRole("menu");
+await expect(mobMenu).toBeVisible({ timeout: 10000 });
+const mobBox = await mobMenu.boundingBox();
+check(
+  "the theme dropdown opens inside the mobile menu, on screen",
+  mobBox.x >= 0 && mobBox.x + mobBox.width <= 391 && mobBox.width > 100,
+  `(x ${Math.round(mobBox.x)} w ${Math.round(mobBox.width)})`,
+);
+await mob.keyboard.press("Escape");
+await mob.screenshot({ path: `${SHOTS}/shell-theme-mobile.png` });
 await mob.close();
 
 console.log(`\nconsole errors: ${errors.length}`);
