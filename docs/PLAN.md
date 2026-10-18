@@ -20,15 +20,16 @@ Anything not marked is a plan, not a fact.
 | Routing engine (`src/lib/routing`) | **Built**, pure functions, no DB; **lock-aware re-run** | 26 unit tests |
 | Draw checks (`src/lib/draw`) | **Built**: blocking / warning / info issues, move rules | 15 unit tests |
 | NGAP CSV import logic (`src/lib/ngap`) | **Built**: mapping, match/merge review queue, strict plan | 25 unit tests; no `.xlsx`; no DB writes |
-| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), club row seeded, `player-photos` created private, RLS checked against the anon key. **The player portal (`20261023000000`, `…0001`) is applied too**: `players.user_id`, `current_player_id`, `claim_player_record`, `player_portal_entries` | 14 tables, RLS on all; `supabase migration list --linked` shows local and remote in step |
+| Database schema (`supabase/migrations`) | **Applied to the real project** on 18 Oct 2026: `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1), club row seeded, `player-photos` created private, RLS checked against the anon key. **All ten migrations are in step**, including the player portal (`20261023000000`, `…0001`) and the event-setup pair (`20261024000000`, `20261025000000`) | 14 tables, RLS on all; `supabase migration list --linked` shows local and remote in step |
 | Supabase data layer (`src/lib/auth`, `src/lib/supabase`, `src/lib/data/supabase`) | **Wired (merged 18 Oct, `b8d9c7a`)**: the store uses `createSupabaseAdapters` and `loadDeskState` when a Supabase URL is configured, and the mock adapters when it is not. Not yet exercised end to end with real course and tournament rows | `src/lib/data/supabase/adapters.ts`, `load-desk-state.ts`, `domain.ts`; 24 tests |
+| Deployment | Vercel project **`golf-management-system-sl`** (team `j-akiru5s-projects`), production tracks `main` at `https://golf-management-system-sl.vercel.app`; pushes to feature branches build previews. Before the 18 Oct advance, production served the pre-TeeLine build from `main` | `vercel ls`, `vercel inspect`; production env vars not yet confirmed from the repo |
 | Staff auth and roles (`20261019000000_staff_auth_audit.sql`, `src/lib/auth/roles.ts`) | **Applied 18 Oct 2026 and verified**: `owner` / `organizer` / `desk`; publishing, tournament settings and member management are owner/organizer only, in RLS; registration audit columns stamped by trigger. Two staff accounts exist (`admin` = owner, `member1` = desk) | Verified by signing in as each role: owner sees both member rows, desk sees only its own |
 | Player auth and the player area (`src/lib/auth/routes.ts`, `src/app/(player)`, `src/lib/player`) | **Built, tested and applied.** One sign-in page for players and staff, `/my` with a claim step and a read-only view of the player's own entry and published start. The database half is live; what is missing is a test account linked to a test player | `routes.test.ts` (15), `portal.test.ts` (7), `claim.test.ts` (4); guard matrix checked over HTTP with a Supabase URL configured; the three functions answered correctly against the live project (see section 7) |
 | Organizer screens (`src/app`) | **Built**: on the session store in demo mode; with Supabase configured the same screens read and write the project through the adapters. An end-to-end pass with real event data is still pending | Public TeeLine landing at `/`, control room at `/admin`, plus Tournaments, Players, Registration desk, Import, Draw, Print center, Settings, Course & holes, Clubhouse display, Player view and profiles |
 | Data boundary (`src/lib/data`) | **Built as mock adapters** over the session store | `PlayerRepository`, `TournamentRepository`, `RegistrationRepository`, `HandicapImportAdapter`, `PairingsRouter`, public allow-list |
 | Brand and visual design | **TeeLine Golf** identity: public landing page, fairway-and-flag vector mark, Ivory / Charcoal themes; the IGCC crest stays a separate club asset | Tokens in `src/app/globals.css`, logo variants in `public/brand`, contrast guarded by `src/styles/contrast.test.ts` |
 | Printing | **Print components and pure helpers built**: sorted start sheet, allow-listed pairings sheet, per-group 18-hole scorecards, handicap dots, and A4 print CSS | `src/lib/print` tests; dev-only preview at `/print-preview`; real course data and club-printer test still pending |
-| Ready to merge (PR #9, PR #10) | **Desk components** (`feat/desk-components`, PR #9): props-driven registration-desk and shell components plus a dev-only preview, and `agentRules: false` so `next dev` stops rewriting AGENTS.md. **Print components** (`feat/print-components`, PR #10): print sheets and tested helpers. Both merge cleanly into `develop` | Each PR states its own verification; see `docs/handoffs/desk-components.md` |
+| In flight (PR #17) | **Event setup** (`feat/event-setup-editing`): the desk saves course, tees, holes, categories and flights in one guarded, manager-only transaction, and can enter the real tee and hole numbers. Its migrations `20261024000000` and `20261025000000` are on `develop` and **applied** (verified: `save_event_setup` answers "Tournament not found" for an unknown id). The app side is open and mergeable | PR #17 |
 | Scores, results | **Not started** (Phase 2) | No `scores` table yet |
 
 Whole suite: 28 test files, 336 tests passing (`pnpm test`); the contrast file generates 100 of those cases, checking every design-system pair in both themes.
@@ -174,7 +175,7 @@ Verified in `supabase/migrations`, and **applied to the `golf-management-system`
 - `registrations.registered_by`, `updated_by` and `updated_at` are stamped by trigger from the
   session (`auth.uid()`), so a client cannot set or spoof them. There is no separate activity table.
 
-**Player portal (`20261022000000_player_portal.sql`, written 18 Oct 2026, NOT applied yet):**
+**Player portal (`20261023000000_player_portal.sql` and `…0001`, applied 18 Oct 2026):**
 
 - `public.players.user_id` links one account to one directory entry, with a unique partial index.
   The link is deliberately **not** a `club_members` role: `is_club_member()` gates every club table,
@@ -215,7 +216,7 @@ Verified in `supabase/migrations`, and **applied to the `golf-management-system`
 | Print center | Start sheet, pairings, per-group scorecards, handicap dots, and A4 print CSS. Published vs draft is labelled |
 | Settings | Setup wizard: basics, course and tees (pending blocks, read-only sample values), cut-off and handicap rules, categories, flights, start and groups, registration fields, live readiness checks |
 | Sign in | One page for players and staff, with account creation for players; an account's area follows what it is (a club_members row or a linked player record). Demo builds skip it entirely |
-| My golf (player area) | `/my`: link your member record by name and NGAP number, then read your own entries and published start. Needs the player portal migration applied |
+| My golf (player area) | `/my`: link your member record by name and NGAP number, then read your own entries and published start. Applied; needs a test account and one player row to claim |
 | Public pairings | Search by name, large text, print; built through the public allow-list projection (name, flight, hole, time only) |
 | Course & holes | Hole 1 overview and green view with shot line and yardage markers drawn from anchor files. **Pictures are an illustration, not IGCC's real hole** |
 | Clubhouse display (spotlight) | 16:9 player card for the clubhouse TV, single player or rotation. Shows recorded data only |
@@ -501,6 +502,7 @@ Agent ground rules:
 - [ ] The organizer has said what alerts they expect beyond the overview attention list (decision 14)
 - [ ] Photo consent line shown before every photo; private bucket verified
 - [ ] Public pairings page checked on an older phone
+- [ ] Deployed build on `main` opened once with a staff login (production env vars confirmed first)
 - [ ] Player portal exercised with a real account and one claimed player row (the migration is applied; sign-ups or a hand-made account are still needed)
 - [ ] Vercel spend limit set; Supabase spend cap on; backups understood
 - [ ] Dress rehearsal with the organizer
@@ -545,6 +547,7 @@ Agent ground rules:
 | 18 Oct 2026 | **Route areas.** Public: `/`, `/pairings`, `/enter/[id]`, `/login`. Player: `/my`. Staff: the desk. One sign-in page serves both; where an account lands follows what it is, not where it signed in. The proxy matches only the guarded areas, so public pages never do a session lookup. Demo builds (no Supabase URL) stay open, with the banner. |
 | 18 Oct 2026 | **The player portal migration is applied.** `20261023000000_player_portal.sql` and `20261023000001_player_portal_grants.sql` are live on `golf-management-system`; `supabase migration list --linked` shows local and remote in step. The file was renumbered from `20261022000000`, which `feat/versioned-publish` had already taken, and its projection function was rewritten after the first push attempt failed on a CTE reference inside a nested subquery (it now joins the CTE); the failed attempt applied nothing. The three functions were then checked against the live project. |
 | 18 Oct 2026 | **A hand-applied migration was recorded, not re-run.** The `20261022000000_versioned_publish` objects (`pairings_versions`, `tournaments.draw_revision`, the new `public_pairings`) were already in the database but absent from the migration history, so `db push` refused to move past them. Their existence was verified over the API first, then `supabase migration repair --status applied 20261022000000` recorded them. Follow-up for Jeff: anon can still execute `save_draw`, `publish_pairings` and `unpublish_pairings` (each refuses a caller without a staff role), so the `revoke … from public` lines in that file are worth re-checking. |
+| 18 Oct 2026 | **`main` advanced to `develop` (fast-forward) for the organizer's UAT.** Production on Vercel tracks `main`, so this is what puts the TeeLine build, the sign-in areas and the player area on the stable URL instead of a hash-named preview. `staging` still does not exist (decision 12). The plan was reconciled in the same pass: the portal block, the My golf row and the obsolete "Ready to merge" row all now match the code and the database, and the event-setup pair is recorded as applied. |
 
 ---
 
