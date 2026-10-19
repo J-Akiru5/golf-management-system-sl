@@ -11,6 +11,22 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.17.0] - 2026-10-20
+
+The AVP demo-video workstream, merged from `avp/demo-0.9`, which was the last local branch holding
+unmerged work.
+
+### Added
+- **The AVP demo-video toolchain**: a fixture generator that produces a draw and a published snapshot,
+  the step script that drives the recording, the capture and phone-scene tools, and the small public
+  form hook the demo needs. It records the product being used end to end rather than describing it.
+- Development dependencies for the video toolchain. They are build-time only; nothing is added to the
+  application bundle.
+
+### Notes
+- `.gitignore` carries both the Vercel link state and the demo-video output folders. That was the only
+  conflict in the merge, and both sides were kept, so neither was lost.
+
 ## [0.16.0] - 2026-10-20
 
 The benchmark pass on the public landing page, and the research behind it.
