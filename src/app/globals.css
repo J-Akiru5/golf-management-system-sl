@@ -516,6 +516,7 @@
     gap: 6px;
   }
   .field > span,
+  .field > label,
   legend {
     font-size: 13px;
     line-height: 18px;
@@ -540,9 +541,84 @@
     font: inherit;
     width: 100%;
   }
+  /* A textarea shows its whole value by default: it sizes to the content instead of keeping the
+     two-row height and scrolling the rest out of sight. Long unbroken words wrap rather than being
+     cut at the right edge. Browsers without field-sizing take the height from the shared component
+     in src/components/ui/resizable-textarea.tsx. */
   textarea {
     height: auto;
+    min-height: 64px;
     padding: 10px 12px;
+    field-sizing: content;
+    overflow-wrap: break-word;
+  }
+  /* The whole top and bottom edge is the drag target, not just the browser's corner grip. Each
+     edge is a focusable separator as well, so the same height change is available from the
+     keyboard. See src/components/ui/resizable-textarea.tsx. */
+  .resizable-textarea {
+    position: relative;
+    min-width: 0;
+  }
+  .resizable-textarea textarea {
+    display: block;
+    resize: none;
+    overflow-y: auto;
+  }
+  .resize-edge {
+    position: absolute;
+    right: 0;
+    left: 0;
+    z-index: 1;
+    height: 24px;
+    cursor: ns-resize;
+    touch-action: none;
+  }
+  .resize-edge::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: var(--line);
+    transform: translateY(-50%);
+    transition:
+      height var(--motion-fast) var(--ease-standard),
+      background-color var(--motion-fast) var(--ease-standard);
+  }
+  .resize-edge:hover::before,
+  .resize-edge:focus-visible::before {
+    height: 3px;
+    background: var(--fairway);
+  }
+  .resize-edge:focus-visible {
+    outline-offset: -2px;
+  }
+  .resize-edge-top {
+    top: -12px;
+  }
+  .resize-edge-bottom {
+    bottom: -12px;
+  }
+  .resize-edge-off {
+    cursor: default;
+    pointer-events: none;
+  }
+  .resize-edge-off::before {
+    background: transparent;
+  }
+  /* A finger needs the 44px target the rest of the shell uses; a mouse does not need the field
+     covered that far in. */
+  @media (pointer: coarse) {
+    .resize-edge {
+      height: 44px;
+    }
+    .resize-edge-top {
+      top: -22px;
+    }
+    .resize-edge-bottom {
+      bottom: -22px;
+    }
   }
   input::placeholder {
     color: var(--ink-muted);
