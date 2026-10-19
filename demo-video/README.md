@@ -47,16 +47,19 @@ Owner feedback drove these rules; keep them when editing `steps.json`.
 1. Every screen change shows the full page first. Scenes hold 1.2 s (`clockOffsetMs`) before the first
    focus move; a route inside a scene is covered by a `pauseAfter` on that line plus a 0.5 s beat.
 2. Focus is one motion. Cursor travel (0.45 s) and zoom (0.5 s) start together, and the ring goes up at
-   the same moment, because the zoom origin is the target centre and the control stays inside the ring
-   for the whole move. When the zoom lands, the ring snaps once to the settled rect. The geometry never
-   tweens: a tween repaints the full-screen dim every frame, and that is what made it look sluggish.
+   the same moment on the same curve. The ring's final geometry is computed from the target's layout
+   rect (origin-free transform maths), so it is exact when the move lands and never has to snap or
+   catch up. Each target is resolved and scrolled into view during the idle gap before its line, so
+   selector cost never delays the ring.
 3. The caption never covers the control. It sits at the bottom unless the target reaches into the
    caption strip, in which case it moves to the top; tall targets that touch both keep the bottom.
-4. The page load must not push the picture out of step. The recorder measures the recorded video with
-   ffprobe and derives the content start from the video's own duration, because Playwright's video
-   drops idle frames and wall-clock offsets drift.
+4. The page load must not push the picture out of step. The recorder flashes one bright frame before
+   the clock starts, finds the last flash frame with ffmpeg and trims to it. Wall-clock offsets cannot
+   do this job: the screen recorder slows its clock whenever the page paints nothing.
 5. The phone is shown when the phone is mentioned. `cards/phone.html` is generated from the published
    fixture by `tools/generate-phone.mjs` and is the visual for the mobile scene.
+6. Zooms never break the frame. A target too large to fit stays at 1:1 instead of being magnified, and
+   a target on the left half pans the page right just enough to keep its left edge clear of the rail.
 
 ## Fluidity
 

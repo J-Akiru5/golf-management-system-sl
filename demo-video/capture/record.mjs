@@ -21,6 +21,8 @@ const shim = resolve(local, "Microsoft/WinGet/Links");
 const ffprobe =
   process.env.FFPROBE ??
   (existsSync(resolve(shim, "ffprobe.exe")) ? resolve(shim, "ffprobe.exe") : "ffprobe");
+const ffmpeg =
+  process.env.FFMPEG ?? (existsSync(resolve(shim, "ffmpeg.exe")) ? resolve(shim, "ffmpeg.exe") : "ffmpeg");
 
 const durationOf = (file) =>
   Number(
@@ -34,6 +36,33 @@ const durationOf = (file) =>
       file,
     ], { encoding: "utf8" }).trim(),
   );
+
+/**
+ * Finds the start marker in a recording. The video clock slows down whenever the page paints
+ * nothing, so wall-clock offsets cannot say where the scene content begins; the bright frame the
+ * overlay flashes before the clock starts can. Returns seconds into the file, or null.
+ */
+const flashAt = (file) => {
+  try {
+    const bytes = execFileSync(
+      ffmpeg,
+      ["-v", "error", "-i", file, "-vf", "fps=25,scale=1:1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+      { maxBuffer: 64 * 1024 * 1024 },
+    );
+    let last = -1;
+    for (let i = 0; i * 3 + 2 < bytes.length; i += 1) {
+      const r = bytes[i * 3];
+      const g = bytes[i * 3 + 1];
+      const b = bytes[i * 3 + 2];
+      if (r > 170 && b > 170 && g < 90) last = i;
+    }
+    // The last flash frame is the reliable edge: a slow capture can miss the start of the flash but
+    // cannot miss its end, and the clock starts fractionally after the flash finishes.
+    return last >= 0 ? last / 25 : null;
+  } catch {
+    return null;
+  }
+};
 const only = (process.env.AVP_SCENES ?? "")
   .split(",")
   .map((s) => s.trim())
@@ -92,6 +121,14 @@ const overlaySource = ({ step, total, title, caption }) => {
       #avp-cursor .arrow { position: absolute; left: 8px; top: 8px; width: 34px; height: 34px;
         filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
       @keyframes avp-pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: .8; } }
+      /* A pixel nobody can see, animated every frame: it keeps the compositor producing frames so the
+         recorded video's clock tracks wall time instead of compressing idle stretches. */
+      #avp-beat { position: fixed; right: 0; bottom: 0; width: 2px; height: 2px; background: #0c1a13;
+        animation: avp-beat .3s linear infinite alternate; }
+      @keyframes avp-beat { from { opacity: .88; } to { opacity: 1; } }
+      /* Bright marker for the first frame of the scene; the recorder finds it with ffmpeg and trims
+         to it, so the picture and the voice cannot start apart. */
+      #avp-flash { position: fixed; inset: 0; background: #ff00ff; display: none; }
       #avp-ripple { position: fixed; width: 20px; height: 20px; margin: -10px 0 0 -10px;
         border-radius: 50%; border: 4px solid #e0bc65; opacity: 0; }
       #avp-ripple.go { animation: avp-ripple .7s ease-out; }
@@ -114,6 +151,8 @@ const overlaySource = ({ step, total, title, caption }) => {
         </svg>
       </div>
       <div id="avp-ripple"></div>
+      <div id="avp-beat"></div>
+      <div id="avp-flash"></div>
     `;
     document.body.appendChild(root);
 
@@ -123,6 +162,26 @@ const overlaySource = ({ step, total, title, caption }) => {
     const cursorEl = document.getElementById("avp-cursor");
     const rippleEl = document.getElementById("avp-ripple");
     const contentEl = () => document.querySelector("main") ?? document.body.firstElementChild;
+    // The content element carries one absolute transform: translate(X, Y) scale(S) with origin 0 0.
+    // Tracking it lets every target rect be converted to layout coordinates, so the ring geometry can
+    // be predicted exactly instead of measured late and snapped.
+    let curS = 1;
+    let curX = 0;
+    let curY = 0;
+    const SPOT_SPREAD = 8;
+    const spotTransition = "transform .5s cubic-bezier(.22,.61,.36,1), opacity .12s ease";
+
+    const setSpotGeometry = (rect) => {
+      spotEl.style.transition = "none";
+      spotEl.style.transform = "none";
+      spotEl.style.transformOrigin = "center";
+      spotEl.style.left = `${rect.x - SPOT_SPREAD}px`;
+      spotEl.style.top = `${rect.y - SPOT_SPREAD}px`;
+      spotEl.style.width = `${rect.width + SPOT_SPREAD * 2}px`;
+      spotEl.style.height = `${rect.height + SPOT_SPREAD * 2}px`;
+      void spotEl.offsetWidth;
+      spotEl.style.transition = spotTransition;
+    };
 
     window.__avp = {
       setCaption(text) {
@@ -155,30 +214,97 @@ const overlaySource = ({ step, total, title, caption }) => {
           spotEl.classList.remove("on");
           return;
         }
-        spotEl.style.left = `${rect.x - 8}px`;
-        spotEl.style.top = `${rect.y - 8}px`;
-        spotEl.style.width = `${rect.width + 16}px`;
-        spotEl.style.height = `${rect.height + 16}px`;
+        setSpotGeometry(rect);
         spotEl.classList.add("on");
+      },
+      flash(ms) {
+        const el = document.getElementById("avp-flash");
+        if (!el) return;
+        el.style.display = "block";
+        setTimeout(() => {
+          el.style.display = "none";
+        }, ms);
+      },
+      /**
+       * Reveal the ring at `to`, travelling from `from` with the same curve the zoom uses, so the
+       * ring and the control stay locked together for the whole move instead of the ring waiting for
+       * the zoom to finish.
+       */
+      spotlightTo(from, to) {
+        if (!to) {
+          spotEl.classList.remove("on");
+          return;
+        }
+        setSpotGeometry(to);
+        spotEl.classList.add("on");
+        const moved =
+          from &&
+          (Math.abs(from.x - to.x) > 0.5 ||
+            Math.abs(from.y - to.y) > 0.5 ||
+            Math.abs(from.width - to.width) > 0.5 ||
+            Math.abs(from.height - to.height) > 0.5);
+        if (!moved) return;
+        const dx = from.x + from.width / 2 - (to.x + to.width / 2);
+        const dy = from.y + from.height / 2 - (to.y + to.height / 2);
+        const sx = (from.width + SPOT_SPREAD * 2) / (to.width + SPOT_SPREAD * 2);
+        const sy = (from.height + SPOT_SPREAD * 2) / (to.height + SPOT_SPREAD * 2);
+        spotEl.style.transition = "none";
+        spotEl.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+        void spotEl.offsetWidth;
+        spotEl.style.transition = spotTransition;
+        spotEl.style.transform = "none";
+      },
+      /**
+       * Scale the content so the target is magnified in place, or centred when it is too large to
+       * fit the frame. Returns the target's exact rect after the move.
+       */
+      zoomTo(scale, rect) {
+        const el = contentEl();
+        if (!el || !rect) return rect;
+        const box = el.getBoundingClientRect();
+        const layoutX = box.left - curX;
+        const layoutY = box.top - curY;
+        const lw = rect.width / curS;
+        const lh = rect.height / curS;
+        // box.left/top already carry the current translate, so the local rect is just the visual
+        // offset divided by the current scale.
+        const lx = (rect.x - box.left) / curS;
+        const ly = (rect.y - box.top) / curS;
+        // Never scale past what reads well on screen: oversized panels stay at 1:1.
+        const fit = Math.max(1, Math.min((window.innerWidth * 0.92) / lw, (window.innerHeight * 0.86) / lh));
+        const s = Math.min(scale, fit);
+        const oversized = lw > window.innerWidth * 0.92 || lh > window.innerHeight * 0.86;
+        const centreX = oversized ? window.innerWidth / 2 : rect.x + rect.width / 2;
+        const centreY = oversized ? window.innerHeight / 2 : rect.y + rect.height / 2;
+        let X = centreX - layoutX - s * (lx + lw / 2);
+        const Y = centreY - layoutY - s * (ly + lh / 2);
+        // A target on the left half must not drag the page's left edge in under the rail; nudge the
+        // frame right instead. Right-half targets may pan past it, which reads as a camera move.
+        if (rect.x + rect.width / 2 < window.innerWidth * 0.5) {
+          X = Math.max(X, 96 - layoutX);
+        }
+        el.style.transformOrigin = "0 0";
+        el.style.willChange = "transform";
+        el.style.backfaceVisibility = "hidden";
+        el.style.transition = "transform .5s cubic-bezier(.22,.61,.36,1)";
+        el.style.transform = `translate(${X}px, ${Y}px) scale(${s})`;
+        curS = s;
+        curX = X;
+        curY = Y;
+        return { x: layoutX + X + s * lx, y: layoutY + Y + s * ly, width: lw * s, height: lh * s };
       },
       zoom(scale, rect) {
         const el = contentEl();
         if (!el) return;
-        // Keep the page on its own compositor layer so the zoom animates on the GPU instead of
-        // re-rasterising the whole page every frame (that is what made the move look uneven).
-        el.style.willChange = "transform";
-        el.style.backfaceVisibility = "hidden";
         if (!scale || scale === 1 || !rect) {
           el.style.transition = "transform .5s cubic-bezier(.22,.61,.36,1)";
-          el.style.transform = "scale(1)";
+          el.style.transform = "none";
+          curS = 1;
+          curX = 0;
+          curY = 0;
           return;
         }
-        const box = el.getBoundingClientRect();
-        const originX = rect.x + rect.width / 2 - box.left;
-        const originY = rect.y + rect.height / 2 - box.top;
-        el.style.transformOrigin = `${originX}px ${originY}px`;
-        el.style.transition = "transform .5s cubic-bezier(.22,.61,.36,1)";
-        el.style.transform = `scale(${scale})`;
+        return window.__avp.zoomTo(scale, rect);
       },
       ready: true,
     };
@@ -258,14 +384,59 @@ for (const [index, scene] of steps.scenes.entries()) {
   const schedule = [...captionAt.map((c) => ({ ...c, type: "caption" })), ...events.map((e) => ({ ...e, type: "event" }))]
     .sort((a, b) => a.at - b.at);
 
+  // Flash a marker frame, then start the clock. The recorder finds the flash in the recording and
+  // trims to it, so the voice and the picture always begin together.
+  await page.evaluate(() => window.__avp?.flash(300));
+  await sleep(320);
   const started = Date.now();
   // Every screen change gets a full-page beat before any focus move, and the voice has a pause in the
   // audio for page loads; the clock offset keeps the visuals aligned even when a load runs long.
   let clockOffsetMs = 1200;
+  // Text selectors cost a few hundred milliseconds to resolve, so an event that starts on the line
+  // would show its ring late. Starting a touch early puts the ring up exactly with the words.
+  const eventLeadMs = 350;
+  const trace = (label, at) => {
+    if (process.env.AVP_TRACE) {
+      console.log(`      ${label} at ${(((at ?? Date.now()) - started) / 1000).toFixed(2)}`);
+    }
+  };
+  const firstEvent = schedule.find((s) => s.type === "event" && s.target);
+  const cache = new Map();
+  /**
+   * Resolving a text selector and scrolling a control into view costs a few hundred milliseconds.
+   * Doing it while the page is idle, just before the line it belongs to, means the ring can go up the
+   * moment its line starts instead of after the query has finished.
+   */
+  const prefetch = async (item) => {
+    if (!item?.target || cache.has(item)) return;
+    const locator = page.locator(item.target).first();
+    try {
+      if ((await locator.count()) === 0) {
+        cache.set(item, { locator: null, rect: null });
+        return;
+      }
+      if (item.scroll) {
+        await locator
+          .evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }))
+          .catch(() => {});
+        await sleep(120);
+      }
+      const rect = await locator.evaluate(rectOf).catch(() => null);
+      cache.set(item, { locator, rect });
+    } catch {
+      cache.set(item, { locator: null, rect: null });
+    }
+  };
+  if (firstEvent) await prefetch(firstEvent);
   for (const item of schedule) {
-    const due = item.type === "caption" ? item.at * 1000 : item.at * 1000 + clockOffsetMs;
+    const due = item.type === "caption" ? item.at * 1000 : item.at * 1000 + clockOffsetMs - eventLeadMs;
     const wait = due - (Date.now() - started);
     if (wait > 0) await sleep(wait);
+    if (process.env.AVP_TRACE && item.type === "event") {
+      console.log(
+        `    trace ${scene.id} line ${item.line} ${item.target ?? item.route ?? ""} due ${(due / 1000).toFixed(2)} start ${((Date.now() - started) / 1000).toFixed(2)}`,
+      );
+    }
     try {
       if (item.type === "caption") {
         await page.evaluate((text) => window.__avp?.setCaption(text), item.text);
@@ -287,69 +458,64 @@ for (const [index, scene] of steps.scenes.entries()) {
         await sleep(500);
         const over = Date.now() - before - pauseMs;
         if (over > 0) clockOffsetMs += over;
+        // The page changed, so every cached rect is stale.
+        cache.clear();
+        const idx = schedule.indexOf(item);
+        const next = schedule.slice(idx + 1).find((s) => s.type === "event" && s.target);
+        if (next) await prefetch(next);
         continue;
       }
       let locator = null;
+      let rect = null;
       if (item.target) {
-        locator = page.locator(item.target).first();
-        if ((await locator.count()) === 0) {
+        if (!cache.has(item)) await prefetch(item);
+        const hit = cache.get(item);
+        locator = hit?.locator ?? null;
+        rect = hit?.rect ?? null;
+        if (!locator) {
           if (!item.optional) console.warn(`  ! ${scene.id}: target not found "${item.target}"`);
           continue;
         }
-        if (item.scroll) {
-          await locator.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
-          // Belt and braces: some controls sit in a transformed subtree where the Playwright scroll
-          // silently does nothing, so scroll again through the DOM and confirm it landed.
-          await locator
-            .evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }))
-            .catch(() => {});
-          await sleep(320);
-          const box = await locator.evaluate(rectOf).catch(() => null);
-          if (box && (box.height === 0 || box.y + box.height < 0 || box.y > 1440)) {
-            console.warn(`  ! ${scene.id}: "${item.target}" still off-screen after scroll`);
-          }
-        }
-        await sleep(250);
       }
-      const rect = locator ? await locator.evaluate(rectOf) : null;
-      // Keep the caption off the control it would otherwise cover: try the bottom, fall back to the
-      // top only when the target does not reach the top strip.
-      if (rect) {
-        const captionTopY = 1440 - 48 - 130;
-        const overlapsBottom = rect.y + rect.height > captionTopY && rect.y < 1440 - 48;
-        const overlapsTop = rect.y < 280 && rect.y + rect.height > 150;
-        await page.evaluate((on) => window.__avp?.captionTop(on), overlapsBottom && !overlapsTop);
+      let finalRect = rect;
+      if (rect && item.zoom && item.zoom !== 1) {
+        finalRect =
+          (await page.evaluate(({ scale, r }) => window.__avp?.zoomTo(scale, r) ?? r, {
+            scale: item.zoom,
+            r: rect,
+          })) ?? rect;
+      } else if (item.zoom === 1) {
+        await page.evaluate(() => window.__avp?.zoom(1, null));
       }
       const wantSpot =
         Boolean(rect) && item.spotlight !== false && Boolean(item.spotlight || item.click || item.zoom);
-      // A trailing reset with no target still zooms out, so a scene can close on the full page.
-      if (!rect && item.zoom === 1) {
-        await page.evaluate(() => window.__avp?.zoom(1, null));
+      const framed = finalRect ?? rect;
+      trace(`measured line ${item.line}`);
+      // Keep the caption off the control it would otherwise cover: try the bottom, fall back to the
+      // top only when the target does not reach the top strip.
+      if (framed) {
+        const captionTopY = 1440 - 48 - 130;
+        const overlapsBottom = framed.y + framed.height > captionTopY && framed.y < 1440 - 48;
+        const overlapsTop = framed.y < 280 && framed.y + framed.height > 150;
+        await page.evaluate((on) => window.__avp?.captionTop(on), overlapsBottom && !overlapsTop);
       }
-      // The ring goes up with the cursor, not after the zoom: the zoom origin is the target centre, so
-      // the control stays inside the ring for the whole move instead of waiting to catch up.
-      if (wantSpot) await page.evaluate((r) => window.__avp?.spotlight(r), rect);
-      const actions = [];
-      if (rect && item.cursor !== false) {
-        actions.push(page.evaluate((r) => window.__avp?.cursorTo(r.x + r.width / 2, r.y + r.height / 2), rect));
+      // Ring and zoom start together, and the ring travels on the same curve, so it is already on the
+      // control when the zoom lands. Nothing waits, nothing has to catch up.
+      if (wantSpot) {
+        await page.evaluate(({ from, to }) => window.__avp?.spotlightTo(from, to), {
+          from: rect,
+          to: finalRect ?? rect,
+        });
       }
-      if (rect && item.zoom) {
-        actions.push(page.evaluate(({ scale, r }) => window.__avp?.zoom(scale, r), { scale: item.zoom, r: rect }));
+      if (framed && item.cursor !== false) {
+        await page.evaluate((r) => window.__avp?.cursorTo(r.x + r.width / 2, r.y + r.height / 2), framed);
       }
-      await Promise.all(actions);
-      // When the zoom lands, snap the ring to where the control now sits. No tween on the geometry:
-      // a tween repaints the full-screen dim every frame, which is what made the ring look sluggish.
-      let settled = rect;
-      if (rect && item.zoom) {
-        await sleep(520);
-        settled = locator ? await locator.evaluate(rectOf).catch(() => rect) : rect;
-        if (wantSpot && settled) await page.evaluate((r) => window.__avp?.spotlight(r), settled);
-      } else if (rect) {
-        await sleep(100);
-      }
+      const moving = Boolean(rect && item.zoom && item.zoom !== 1);
+      await sleep(moving ? 520 : rect ? 100 : 0);
+      trace("settled");
       if (rect && item.click) {
         await sleep(100);
-        await page.evaluate((r) => window.__avp?.ripple(r.x + r.width / 2, r.y + r.height / 2), settled ?? rect);
+        await page.evaluate((r) => window.__avp?.ripple(r.x + r.width / 2, r.y + r.height / 2), framed ?? rect);
         await locator.click({ timeout: 4000 }).catch((error) => {
           if (!item.optional) console.warn(`  ! ${scene.id}: click failed on "${item.target}": ${error.message}`);
         });
@@ -360,6 +526,9 @@ for (const [index, scene] of steps.scenes.entries()) {
     } catch (error) {
       if (!item.optional) console.warn(`  ! ${scene.id}: ${error.message}`);
     }
+    const idx = schedule.indexOf(item);
+    const next = schedule.slice(idx + 1).find((s) => s.type === "event" && s.target);
+    if (next) await prefetch(next);
   }
 
   const contentSeconds = (Date.now() - started) / 1000;
@@ -382,10 +551,12 @@ for (const [index, scene] of steps.scenes.entries()) {
     const out = resolve(rawDir, `${scene.id}.webm`);
     await video.saveAs(out);
     const rawDuration = durationOf(out);
+    const marked = flashAt(out);
+    if (marked === null) console.warn(`  ! ${scene.id}: start marker not found in the recording`);
     timing[scene.id] = {
       raw: out,
       audio: resolve(VIDEO, sceneTimeline.audio),
-      trimStart: Math.max(0, rawDuration - contentWall - 0.25),
+      trimStart: marked !== null ? marked + 0.08 : Math.max(0, rawDuration - contentWall - 0.25),
       seconds: sceneSeconds,
     };
   }

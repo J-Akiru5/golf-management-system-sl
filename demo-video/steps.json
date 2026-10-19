@@ -28,15 +28,21 @@
       "title": "One desk",
       "lines": [
         "This is the control room.",
-        "It shows the event you are working on, how many players are registered, and how many are ready.",
-        "The same screen shows the draw state and the readiness checks.",
+        { "text": "It shows the event you are working on.", "pauseAfter": 0.45 },
+        { "text": "It also counts the players: how many are registered, and how many are ready.", "pauseAfter": 0.45 },
+        { "text": "The same screen shows the draw state.", "pauseAfter": 0.4 },
+        { "text": "The readiness checks sit beside it.", "pauseAfter": 0.45 },
         "The left rail opens every desk screen.",
         "Start here. Every other screen is one click away."
       ],
       "events": [
         { "line": 0, "target": "h1:has-text('Shotgun draw')", "spotlight": true, "cursor": true },
-        { "line": 3, "target": "nav[aria-label='Main']", "spotlight": true, "zoom": 1.2, "cursor": true },
-        { "line": 4, "spotlight": false, "zoom": 1 }
+        { "line": 1, "target": "section[aria-labelledby='attention-h']", "spotlight": true, "zoom": 1.12, "cursor": true, "scroll": true },
+        { "line": 2, "target": "p:has-text('registrations ·')", "spotlight": true, "zoom": 1.12, "cursor": true },
+        { "line": 3, "target": "text=Draft · players", "spotlight": true, "zoom": 1.15, "cursor": true },
+        { "line": 4, "target": "section[aria-labelledby='ready-h']", "spotlight": true, "zoom": 1.12, "cursor": true, "scroll": true },
+        { "line": 5, "target": "nav[aria-label='Main']", "spotlight": true, "zoom": 1.15, "cursor": true },
+        { "line": 6, "spotlight": false, "zoom": 1 }
       ]
     },
     {
@@ -57,7 +63,7 @@
         { "line": 1, "offset": 2.1, "target": "button:has-text('Add a day')", "spotlight": true, "zoom": 1.06, "cursor": true, "scroll": true, "click": true },
         { "line": 2, "target": "section:has(h2:has-text('Course & tees'))", "spotlight": true, "zoom": 1.12, "cursor": true, "scroll": true },
         { "line": 3, "target": "table:has-text('Stroke index')", "spotlight": true, "zoom": 1.1, "cursor": true, "scroll": true },
-        { "line": 4, "target": "text=real numbers from its scorecard", "spotlight": true, "cursor": true },
+        { "line": 4, "target": "p:has-text('treat what is on screen as sample data')", "spotlight": true, "zoom": 1.08, "cursor": true, "scroll": true },
         { "line": 5, "target": "button:has-text('Save all changes')", "spotlight": true, "zoom": 1, "cursor": true, "click": true },
         { "line": 5, "when": "end", "target": "text=No unsaved changes", "spotlight": true }
       ]
@@ -76,10 +82,10 @@
       ],
       "events": [
         { "line": 0, "target": "h1:has-text('Handicap imports')", "spotlight": true, "cursor": true },
-        { "line": 1, "target": "button:has-text('Try the sample file')", "spotlight": true, "zoom": 1.2, "cursor": true, "click": true },
-        { "line": 2, "target": "h2:has-text('Which column is which')", "spotlight": true, "cursor": true, "scroll": true },
-        { "line": 3, "target": "text=Match and merge queue", "spotlight": true, "zoom": 1.2, "cursor": true, "scroll": true },
-        { "line": 4, "target": "text=Needs decision", "spotlight": true, "zoom": 1.3, "cursor": true },
+        { "line": 1, "target": "button:has-text('Try the sample file')", "spotlight": true, "zoom": 1.15, "cursor": true, "click": true },
+        { "line": 2, "target": "section[aria-labelledby='columns-h']", "spotlight": true, "zoom": 1.06, "cursor": true, "scroll": true },
+        { "line": 3, "target": "section[aria-labelledby='review-h']", "spotlight": true, "zoom": 1.06, "cursor": true, "scroll": true },
+        { "line": 4, "target": "text=Needs decision", "spotlight": true, "zoom": 1.18, "cursor": true, "scroll": true },
         { "line": 5, "spotlight": false, "zoom": 1 }
       ]
     },

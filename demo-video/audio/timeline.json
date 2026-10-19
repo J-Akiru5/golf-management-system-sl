@@ -32,7 +32,7 @@
     },
     "02-one-desk": {
       "audio": "audio/02-one-desk.wav",
-      "duration": 22.166,
+      "duration": 25.481,
       "lines": [
         {
           "start": 0.25,
@@ -42,25 +42,37 @@
         },
         {
           "start": 2.625,
-          "end": 9.601,
-          "pauseAfter": 0.22,
-          "text": "It shows the event you are working on, how many players are registered, and how many are ready."
+          "end": 5.163,
+          "pauseAfter": 0.45,
+          "text": "It shows the event you are working on."
         },
         {
-          "start": 9.821,
-          "end": 14.258,
-          "pauseAfter": 0.22,
-          "text": "The same screen shows the draw state and the readiness checks."
+          "start": 5.613,
+          "end": 11.331,
+          "pauseAfter": 0.45,
+          "text": "It also counts the players: how many are registered, and how many are ready."
         },
         {
-          "start": 14.478,
-          "end": 17.571,
+          "start": 11.781,
+          "end": 14.533,
+          "pauseAfter": 0.4,
+          "text": "The same screen shows the draw state."
+        },
+        {
+          "start": 14.933,
+          "end": 17.343,
+          "pauseAfter": 0.45,
+          "text": "The readiness checks sit beside it."
+        },
+        {
+          "start": 17.793,
+          "end": 20.887,
           "pauseAfter": 0.22,
           "text": "The left rail opens every desk screen."
         },
         {
-          "start": 17.791,
-          "end": 21.546,
+          "start": 21.107,
+          "end": 24.861,
           "pauseAfter": 0.22,
           "text": "Start here. Every other screen is one click away."
         }
