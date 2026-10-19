@@ -1,0 +1,460 @@
+{
+  "scenes": {
+    "01-today": {
+      "audio": "audio/01-today.wav",
+      "duration": 20.773,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 4.751,
+          "pauseAfter": 0.22,
+          "text": "Today, entries come in on paper and through Google Forms."
+        },
+        {
+          "start": 4.971,
+          "end": 10.902,
+          "pauseAfter": 0.22,
+          "text": "The desk sorts them by hand, then works out the categories, the flights and the groups."
+        },
+        {
+          "start": 11.122,
+          "end": 14.962,
+          "pauseAfter": 0.22,
+          "text": "TeeLine Golf brings those steps into one place."
+        },
+        {
+          "start": 15.182,
+          "end": 20.153,
+          "pauseAfter": 0.22,
+          "text": "This walkthrough shows how the system works and where each task lives."
+        }
+      ]
+    },
+    "02-one-desk": {
+      "audio": "audio/02-one-desk.wav",
+      "duration": 25.481,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 2.405,
+          "pauseAfter": 0.22,
+          "text": "This is the control room."
+        },
+        {
+          "start": 2.625,
+          "end": 5.163,
+          "pauseAfter": 0.45,
+          "text": "It shows the event you are working on."
+        },
+        {
+          "start": 5.613,
+          "end": 11.331,
+          "pauseAfter": 0.45,
+          "text": "It also counts the players: how many are registered, and how many are ready."
+        },
+        {
+          "start": 11.781,
+          "end": 14.533,
+          "pauseAfter": 0.4,
+          "text": "The same screen shows the draw state."
+        },
+        {
+          "start": 14.933,
+          "end": 17.343,
+          "pauseAfter": 0.45,
+          "text": "The readiness checks sit beside it."
+        },
+        {
+          "start": 17.793,
+          "end": 20.887,
+          "pauseAfter": 0.22,
+          "text": "The left rail opens every desk screen."
+        },
+        {
+          "start": 21.107,
+          "end": 24.861,
+          "pauseAfter": 0.22,
+          "text": "Start here. Every other screen is one click away."
+        }
+      ]
+    },
+    "03-setup": {
+      "audio": "audio/03-setup.wav",
+      "duration": 34.887,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 2.255,
+          "pauseAfter": 0.22,
+          "text": "Settings holds the event."
+        },
+        {
+          "start": 2.475,
+          "end": 7.169,
+          "pauseAfter": 0.22,
+          "text": "The event name, the days of play and the registration state."
+        },
+        {
+          "start": 7.389,
+          "end": 15.282,
+          "pauseAfter": 0.22,
+          "text": "The course and tees section holds the numbers from the club scorecard: course rating, slope and par."
+        },
+        {
+          "start": 15.502,
+          "end": 18.851,
+          "pauseAfter": 0.22,
+          "text": "The hole table holds par and stroke index."
+        },
+        {
+          "start": 19.071,
+          "end": 26.666,
+          "pauseAfter": 0.22,
+          "text": "These are sample numbers in this demo. The organizer replaces them with the club's real card."
+        },
+        {
+          "start": 26.886,
+          "end": 34.267,
+          "pauseAfter": 0.22,
+          "text": "Every section has its own Save, and Save all changes writes the whole setup in one step."
+        }
+      ]
+    },
+    "04-handicaps": {
+      "audio": "audio/04-handicaps.wav",
+      "duration": 25.693,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 3.493,
+          "pauseAfter": 0.22,
+          "text": "Handicaps arrive as a spreadsheet export."
+        },
+        {
+          "start": 3.713,
+          "end": 7.019,
+          "pauseAfter": 0.22,
+          "text": "Choose the file, then check the column mapping."
+        },
+        {
+          "start": 7.239,
+          "end": 11.079,
+          "pauseAfter": 0.22,
+          "text": "The desk reads each row and matches it to a player."
+        },
+        {
+          "start": 11.299,
+          "end": 16.334,
+          "pauseAfter": 0.22,
+          "text": "Exact matches are ready to link. A new name can create a player."
+        },
+        {
+          "start": 16.554,
+          "end": 22.591,
+          "pauseAfter": 0.22,
+          "text": "Where two players could match, or the number disagrees, the row waits for a person."
+        },
+        {
+          "start": 22.811,
+          "end": 25.073,
+          "pauseAfter": 0.22,
+          "text": "Nothing is merged silently."
+        }
+      ]
+    },
+    "05-entries": {
+      "audio": "audio/05-entries.wav",
+      "duration": 30.113,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 4.069,
+          "pauseAfter": 0.22,
+          "text": "The registration desk is where an entry is taken."
+        },
+        {
+          "start": 4.289,
+          "end": 13.974,
+          "pauseAfter": 0.22,
+          "text": "Find a player, choose member or guest, record the sponsor answer, shirt size, tee-time preferences and payment status."
+        },
+        {
+          "start": 14.194,
+          "end": 21.085,
+          "pauseAfter": 2.2,
+          "text": "The public entry link opens the same event for players. They can enter without an account."
+        },
+        {
+          "start": 23.285,
+          "end": 29.493,
+          "pauseAfter": 0.22,
+          "text": "Every entry arrives as Needs review, so the desk confirms it before it counts."
+        }
+      ]
+    },
+    "05b-phone": {
+      "audio": "audio/05b-phone.wav",
+      "duration": 14.821,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 2.575,
+          "pauseAfter": 0.22,
+          "text": "Players do not need an account."
+        },
+        {
+          "start": 2.795,
+          "end": 6.657,
+          "pauseAfter": 0.22,
+          "text": "They open the link on a phone and see the published list."
+        },
+        {
+          "start": 6.877,
+          "end": 11.122,
+          "pauseAfter": 0.22,
+          "text": "Names, flights, holes and times, with a search box."
+        },
+        {
+          "start": 11.342,
+          "end": 14.201,
+          "pauseAfter": 0.22,
+          "text": "This is the view the club shares on the day."
+        }
+      ]
+    },
+    "06-draw": {
+      "audio": "audio/06-draw.wav",
+      "duration": 32.121,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 5.967,
+          "pauseAfter": 0.22,
+          "text": "The draw screen is where the system proposes and the organizer decides."
+        },
+        {
+          "start": 6.187,
+          "end": 12.395,
+          "pauseAfter": 0.22,
+          "text": "Make the draw, and the engine places players by category, flight and handicap."
+        },
+        {
+          "start": 12.615,
+          "end": 16.37,
+          "pauseAfter": 0.22,
+          "text": "The checks panel lists anything that needs attention."
+        },
+        {
+          "start": 16.59,
+          "end": 19.961,
+          "pauseAfter": 0.22,
+          "text": "To move a player, use Move and give a reason."
+        },
+        {
+          "start": 20.181,
+          "end": 22.762,
+          "pauseAfter": 0.22,
+          "text": "To keep a group as it is, lock it."
+        },
+        {
+          "start": 22.982,
+          "end": 26.865,
+          "pauseAfter": 0.22,
+          "text": "Re-run the proposal keeps the locked groups in place."
+        },
+        {
+          "start": 27.085,
+          "end": 31.501,
+          "pauseAfter": 0.22,
+          "text": "Nothing is final until the organizer is satisfied."
+        }
+      ]
+    },
+    "07-publish": {
+      "audio": "audio/07-publish.wav",
+      "duration": 21.825,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 3.301,
+          "pauseAfter": 0.22,
+          "text": "When the draw is ready, review and publish."
+        },
+        {
+          "start": 3.521,
+          "end": 9.537,
+          "pauseAfter": 0.22,
+          "text": "The dialog shows exactly what players will see and lists anything still wrong."
+        },
+        {
+          "start": 9.757,
+          "end": 12.295,
+          "pauseAfter": 0.22,
+          "text": "Publishing freezes this version."
+        },
+        {
+          "start": 12.515,
+          "end": 18.403,
+          "pauseAfter": 0.22,
+          "text": "The player view shows the published list: names, flights, holes and times."
+        },
+        {
+          "start": 18.623,
+          "end": 21.205,
+          "pauseAfter": 0.22,
+          "text": "Players never see the working board."
+        }
+      ]
+    },
+    "08-print": {
+      "audio": "audio/08-print.wav",
+      "duration": 15.646,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 10.405,
+          "pauseAfter": 0.22,
+          "text": "The print center turns the same draw into paper: a start sheet for the desk, pairings for the board, and scorecards for each group."
+        },
+        {
+          "start": 10.625,
+          "end": 12.545,
+          "pauseAfter": 0.22,
+          "text": "Choose the sheet and print."
+        },
+        {
+          "start": 12.765,
+          "end": 15.026,
+          "pauseAfter": 0.22,
+          "text": "Paper still works on the day."
+        }
+      ]
+    },
+    "09-not-shown": {
+      "audio": "audio/09-not-shown.wav",
+      "duration": 20.111,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 3.535,
+          "pauseAfter": 0.22,
+          "text": "Some things are deliberately not in this version."
+        },
+        {
+          "start": 3.755,
+          "end": 9.174,
+          "pauseAfter": 0.22,
+          "text": "There is no direct N G A P connection; the club exports a file."
+        },
+        {
+          "start": 9.394,
+          "end": 14.983,
+          "pauseAfter": 0.22,
+          "text": "There is no online payment, no official scoring and no offline mode."
+        },
+        {
+          "start": 15.203,
+          "end": 19.491,
+          "pauseAfter": 0.22,
+          "text": "Knowing what is not here matters as much as knowing what is."
+        }
+      ]
+    },
+    "10-help": {
+      "audio": "audio/10-help.wav",
+      "duration": 26.059,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 7.013,
+          "pauseAfter": 0.22,
+          "text": "If you are not sure where something is, the question mark opens the guide for the screen you are on."
+        },
+        {
+          "start": 7.233,
+          "end": 10.945,
+          "pauseAfter": 2.2,
+          "text": "Show me closes the guide and points at the control."
+        },
+        {
+          "start": 13.145,
+          "end": 20.334,
+          "pauseAfter": 0.22,
+          "text": "The How to tab in the print center holds a printable cheat sheet for the desk and one for players."
+        },
+        {
+          "start": 20.554,
+          "end": 25.439,
+          "pauseAfter": 0.22,
+          "text": "The guide is the training aid you keep using after this video."
+        }
+      ]
+    },
+    "11-roles": {
+      "audio": "audio/11-roles.wav",
+      "duration": 25.899,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 2.895,
+          "pauseAfter": 0.22,
+          "text": "Not everyone can change everything."
+        },
+        {
+          "start": 3.115,
+          "end": 9.046,
+          "pauseAfter": 0.22,
+          "text": "An owner or organizer can change the event setup and publish the list."
+        },
+        {
+          "start": 9.266,
+          "end": 13.917,
+          "pauseAfter": 0.22,
+          "text": "The desk can register players, take entries and make the draw."
+        },
+        {
+          "start": 14.137,
+          "end": 17.635,
+          "pauseAfter": 0.22,
+          "text": "Every registration keeps who entered it and when."
+        },
+        {
+          "start": 17.855,
+          "end": 25.279,
+          "pauseAfter": 0.22,
+          "text": "The published list is a frozen copy. Later edits never change what players already saw."
+        }
+      ]
+    },
+    "12-closing": {
+      "audio": "audio/12-closing.wav",
+      "duration": 25.637,
+      "lines": [
+        {
+          "start": 0.25,
+          "end": 7.077,
+          "pauseAfter": 0.22,
+          "text": "TeeLine Golf keeps the event, the entries, the draw and the published list in one place."
+        },
+        {
+          "start": 7.297,
+          "end": 13.931,
+          "pauseAfter": 0.22,
+          "text": "The organizer stays in control: the system proposes, and a person confirms."
+        },
+        {
+          "start": 14.151,
+          "end": 17.053,
+          "pauseAfter": 0.22,
+          "text": "Use the help button whenever you need it."
+        },
+        {
+          "start": 17.273,
+          "end": 25.017,
+          "pauseAfter": 0.22,
+          "text": "This demo uses sample data; your real event starts with the club's own scorecard and entries."
+        }
+      ]
+    }
+  }
+}
