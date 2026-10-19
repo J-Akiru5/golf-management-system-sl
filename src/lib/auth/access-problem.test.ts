@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type DeskAccessProblem, accessProblemCopy } from "./access-problem";
+import { accessProblemCopy, type DeskAccessProblem } from "./access-problem";
 
 const problems: DeskAccessProblem[] = ["no-club", "multi-club", "bad-role"];
 
