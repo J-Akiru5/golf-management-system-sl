@@ -21,16 +21,19 @@ export const DESK_GUIDES: HelpGuide[] = [
         text: literal(
           "The course map, the waves, the readiness checks and the publish panel all live here.",
         ),
+        anchor: "control-map",
       },
       {
         text: literal(
           "Readiness tells you what still blocks publishing; the same problems appear in the bell.",
         ),
+        anchor: "control-readiness",
       },
       {
         text: literal(
           "Publishing from here and from Draw & pairings do the same thing: they freeze the list players see.",
         ),
+        anchor: "control-publish",
       },
     ],
   },
@@ -52,6 +55,7 @@ export const DESK_GUIDES: HelpGuide[] = [
         text: literal(
           "Open a player to see their entries, frozen handicap, tee and payment state.",
         ),
+        anchor: "players-open",
       },
     ],
   },
@@ -65,11 +69,13 @@ export const DESK_GUIDES: HelpGuide[] = [
         text: literal(
           "An entry from the public form lands as Needs review: the player typed it, so someone should look.",
         ),
+        anchor: "register-list",
       },
       {
         text: literal(
           "Confirming an entry frees the player for the draw; an entry left unconfirmed will not be placed.",
         ),
+        anchor: "register-review",
       },
       {
         text: literal(
@@ -92,11 +98,13 @@ export const DESK_GUIDES: HelpGuide[] = [
         text: literal(
           "The tabs show what matched, what is new and what conflicts; apply the resolution when the counts look right.",
         ),
+        anchor: "import-tabs",
       },
       {
         text: literal(
           "An index older than the event's stale days is flagged. The frozen index is what the event uses.",
         ),
+        anchor: "import-review",
       },
     ],
   },
@@ -140,11 +148,13 @@ export const DESK_GUIDES: HelpGuide[] = [
         text: literal(
           "Print with the browser's dialog. The navigation and buttons are left off the sheet; A4 and Letter are both laid out for.",
         ),
+        anchor: "print-now",
       },
       {
         text: literal(
           "The version line on the pairings sheet is what a player checks their printed copy against.",
         ),
+        anchor: "print-version",
       },
     ],
   },
@@ -158,16 +168,19 @@ export const DESK_GUIDES: HelpGuide[] = [
         text: literal(
           "Set the course, holes, tees, categories and flights here. Course-side changes save as you go; the session bar shows the state.",
         ),
+        anchor: "setup-course",
       },
       {
         text: literal(
           "Handicap rules (allowance, maximum index, stale days) and the start rules live on this screen too.",
         ),
+        anchor: "setup-rules",
       },
       {
         text: literal(
           "Flights decide how the draw splits a category, so set them before running the draw.",
         ),
+        anchor: "setup-flights",
       },
     ],
   },
@@ -179,6 +192,7 @@ export const PLAYER_GUIDES: HelpGuide[] = [
     id: "player.my",
     title: key("help.player.my.title"),
     summary: key("help.player.my.summary"),
+    routes: ["/my"],
     steps: [
       { text: key("help.player.my.entry"), anchor: "my-entry" },
       { text: key("help.player.my.notListed") },
@@ -190,10 +204,11 @@ export const PLAYER_GUIDES: HelpGuide[] = [
     id: "player.pairings",
     title: key("help.player.pairings.title"),
     summary: key("help.player.pairings.summary"),
+    routes: ["/pairings"],
     steps: [
       { text: key("help.player.pairings.find"), anchor: "pairings-search" },
       { text: key("help.player.pairings.flight"), anchor: "pairings-flight" },
-      { text: key("help.player.pairings.read") },
+      { text: key("help.player.pairings.read"), anchor: "pairings-groups" },
       { text: key("help.player.pairings.print"), anchor: "pairings-print" },
     ],
   },
@@ -239,15 +254,21 @@ export function welcomeFor(audience: "desk" | "player"): WelcomePanel {
 /** Which player guide a player screen uses. */
 export type PlayerScreen = "my" | "pairings";
 
-const PLAYER_SCREEN_GUIDE: Record<PlayerScreen, string> = {
-  my: "player.my",
-  pairings: "player.pairings",
+const PLAYER_SCREEN_ROUTE: Record<PlayerScreen, string> = {
+  my: "/my",
+  pairings: "/pairings",
 };
+
+/** True when a path is the route itself or a record under it, e.g. /players/p-123. */
+export function matchesRoute(path: string, route: string): boolean {
+  if (route === "/") return path === "/";
+  return path === route || path.startsWith(`${route}/`);
+}
 
 /** The desk guides, with the guide for the current route first and the rest after it. */
 export function deskGuidesFor(path: string): HelpGuide[] {
   const onScreen = DESK_GUIDES.filter((g) =>
-    (g.routes ?? []).some((route) => path === route || path.startsWith(`${route}/`)),
+    (g.routes ?? []).some((route) => matchesRoute(path, route)),
   );
   const rest = DESK_GUIDES.filter((g) => !onScreen.includes(g));
   return [...onScreen, ...rest];
@@ -255,9 +276,9 @@ export function deskGuidesFor(path: string): HelpGuide[] {
 
 /** The player guides, with the guide for the current screen first. */
 export function playerGuidesFor(screen: PlayerScreen): HelpGuide[] {
-  const id = PLAYER_SCREEN_GUIDE[screen];
-  const onScreen = PLAYER_GUIDES.filter((g) => g.id === id);
-  const rest = PLAYER_GUIDES.filter((g) => g.id !== id);
+  const route = PLAYER_SCREEN_ROUTE[screen];
+  const onScreen = PLAYER_GUIDES.filter((g) => (g.routes ?? []).includes(route));
+  const rest = PLAYER_GUIDES.filter((g) => !onScreen.includes(g));
   return [...onScreen, ...rest];
 }
 

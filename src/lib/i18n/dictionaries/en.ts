@@ -172,6 +172,7 @@ export const en = {
     thisScreen: "This screen",
     more: "More help",
     showMe: "Show me",
+    missing: "That control is not on this screen right now.",
     welcome: {
       player: {
         title: "Welcome to My golf",

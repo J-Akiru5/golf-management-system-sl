@@ -20,6 +20,12 @@ export interface HelpStep {
    * read; a step with one can point at the actual button.
    */
   anchor?: string;
+  /**
+   * The route that holds the control, when it is not the guide's own route. A guide already lists
+   * the routes it is about, so most anchored steps inherit `routes[0]`; set this only for a step
+   * that points somewhere else.
+   */
+  route?: string;
 }
 
 export interface HelpGuide {
@@ -46,4 +52,15 @@ export const key = (k: TranslationKey): HelpText => ({ kind: "key", key: k });
 /** Resolves a guide's copy: literals as written, keys through the reader's dictionary. */
 export function helpText(text: HelpText, t: Translate): string {
   return text.kind === "literal" ? text.text : t(text.key);
+}
+
+/**
+ * The route an anchored step points at, or null when the step points at no control.
+ *
+ * The step's own `route` wins, so a guide can point at one control elsewhere. Otherwise the
+ * guide's first route is the screen its controls live on.
+ */
+export function stepRoute(guide: HelpGuide, step: HelpStep): string | null {
+  if (!step.anchor) return null;
+  return step.route ?? guide.routes?.[0] ?? null;
 }

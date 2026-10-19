@@ -169,6 +169,7 @@ export const tl: Dictionary = {
     thisScreen: "Ang screen na ito",
     more: "Iba pang tulong",
     showMe: "Ipakita",
+    missing: "Wala sa screen na ito ang control na iyon sa ngayon.",
     welcome: {
       player: {
         title: "Maligayang pagdating sa My golf",

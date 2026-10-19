@@ -21,10 +21,26 @@ const ANCHOR_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 /** Elements worth moving the keyboard focus to. A ring around a div should not steal focus. */
 const FOCUSABLE = "input, select, textarea, button, a[href], [tabindex]:not([tabindex='-1'])";
 
+/**
+ * A control is rendered when it has a box. The same anchor can appear twice for responsive
+ * layouts and drawers (the rail and the mobile sheet, a table and its card list); the copy that
+ * is hidden on this screen must not win the lookup.
+ */
+function isRendered(element: HTMLElement): boolean {
+  // A fake root in a unit test has no layout engine, so treat it as rendered.
+  return typeof element.getClientRects !== "function" || element.getClientRects().length > 0;
+}
+
 /** The element a step points at, or null when the screen has no such control. */
 export function findHelpTarget(root: ParentNode, anchor: string): HTMLElement | null {
   if (!ANCHOR_PATTERN.test(anchor)) return null;
-  return root.querySelector<HTMLElement>(`[data-help="${anchor}"]`);
+  const selector = `[data-help="${anchor}"]`;
+  if (typeof root.querySelectorAll === "function") {
+    const matches = Array.from(root.querySelectorAll<HTMLElement>(selector));
+    return matches.find(isRendered) ?? null;
+  }
+  const single = root.querySelector<HTMLElement>(selector);
+  return single && isRendered(single) ? single : null;
 }
 
 /** Draws the ring element over the control's box. Exported so a test can drive it with a fake. */

@@ -359,7 +359,7 @@ export default function ImportPage() {
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="seg" role="group" aria-label="Review tabs">
+            <div className="seg" role="group" aria-label="Review tabs" data-help="import-tabs">
               {(
                 [
                   {
@@ -408,7 +408,7 @@ export default function ImportPage() {
             </div>
           )}
 
-          <div className="table-wrap !shadow-none">
+          <div className="table-wrap !shadow-none" data-help="import-review">
             <table>
               <thead>
                 <tr>

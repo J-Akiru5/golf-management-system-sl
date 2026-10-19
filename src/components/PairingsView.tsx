@@ -83,7 +83,7 @@ export function PairingsView({
           </button>
         </div>
       )}
-      <div className="groups">
+      <div className="groups" data-help="pairings-groups">
         {groups.map((g) => (
           <article key={g.number} className="group">
             <div className="group-head">

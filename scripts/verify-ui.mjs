@@ -373,10 +373,10 @@ check(
   "the rail comes back expanded from the saved choice",
   Math.abs((await railWidth()) - 212) < 2 && (await padLeft()) === "264px",
 );
-check(
-  "and the rail says how to put it back",
-  (await page.getByRole("button", { name: "Collapse" }).count()) > 0,
-);
+// The reload has painted but React may not have attached the control yet; wait for it rather
+// than counting on the first frame after networkidle.
+await expect(page.getByRole("button", { name: "Collapse" })).toHaveCount(1, { timeout: 15000 });
+check("and the rail says how to put it back", true);
 
 await page.getByRole("button", { name: "Collapse" }).click();
 await page.waitForTimeout(300);
@@ -422,6 +422,38 @@ await expect(ring).toHaveCount(0, { timeout: 8000 });
 check("and the ring clears itself", true);
 await page.screenshot({ path: `${SHOTS}/help-ring.png` });
 
+// A step about a control on another screen must navigate there before it rings. This is the bug
+// the section exists to keep fixed: the Draw & pairings guide is in the panel on /players.
+await helpButton.click();
+const crossSheet = page.getByRole("dialog", { name: "Help" });
+await expect(crossSheet).toBeVisible({ timeout: 15000 });
+const drawSummary = crossSheet
+  .locator("summary")
+  .filter({ hasText: /^Draw & pairings$/ });
+await drawSummary.click();
+const drawGuide = drawSummary.locator("xpath=..");
+await drawGuide.getByRole("button", { name: "Show me" }).first().click();
+await expect(page).toHaveURL(/\/draw$/, { timeout: 15000 });
+check("Show me on another screen's step navigates there", true);
+const crossRing = page.locator(".help-ring");
+await expect(crossRing).toHaveCount(1, { timeout: 15000 });
+const runTarget = page.locator('[data-help="draw-run"]').first();
+const runBox = await runTarget.boundingBox();
+const crossBox = await crossRing.boundingBox();
+check(
+  "and rings the control only after that page renders",
+  runBox &&
+    crossBox &&
+    Math.abs(crossBox.x - runBox.x) < 3 &&
+    Math.abs(crossBox.y - runBox.y) < 3 &&
+    Math.abs(crossBox.width - runBox.width) < 3,
+  runBox && crossBox
+    ? `(ring ${Math.round(crossBox.width)}x${Math.round(crossBox.height)} over control ${Math.round(runBox.width)}x${Math.round(runBox.height)})`
+    : "(no box)",
+);
+await page.screenshot({ path: `${SHOTS}/help-navigate-ring.png` });
+await expect(crossRing).toHaveCount(0, { timeout: 8000 });
+
 section("cheat sheet (print center)");
 await go("/print");
 await page.getByRole("tab", { name: "How to" }).click();
@@ -462,6 +494,47 @@ check(
 );
 await playerSheet.screenshot({ path: `${SHOTS}/help-player-hiligaynon.png` });
 await helpContext.close();
+
+section("help centre (player, cross-screen)");
+// This navigation crosses layouts (player to public), so the help component that asked for the
+// ring is unmounted before the page with the control is mounted. The request has to survive that.
+const playerCrossContext = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+await playerCrossContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+  } catch {
+    // Storage off: the welcome will show; this section only needs the help panel.
+  }
+});
+const playerCrossPage = await playerCrossContext.newPage();
+watch(playerCrossPage);
+await playerCrossPage.goto(`${BASE}/my`, { waitUntil: "networkidle", timeout: 120000 });
+const myHelp = playerCrossPage.getByRole("button", { name: "Help" });
+check("the player area carries a help button", (await myHelp.count()) > 0);
+await myHelp.click();
+const mySheet = playerCrossPage.getByRole("dialog", { name: "Help" });
+await expect(mySheet).toBeVisible({ timeout: 15000 });
+const pairingsSummary = mySheet.locator("summary").filter({ hasText: /^Find your group$/ });
+await pairingsSummary.click();
+await pairingsSummary
+  .locator("xpath=..")
+  .getByRole("button", { name: "Show me" })
+  .first()
+  .click();
+await expect(playerCrossPage).toHaveURL(/\/pairings$/, { timeout: 15000 });
+check("a player step on another screen navigates there", true);
+// The demo pairings are not published, so there is no search box to ring. The panel has to say
+// that instead of doing nothing.
+const missingSheet = playerCrossPage.getByRole("dialog", { name: "Help" });
+await expect(missingSheet).toBeVisible({ timeout: 15000 });
+check(
+  "and a control that is not there is explained, not silent",
+  (await missingSheet.getByText("That control is not on this screen right now.").count()) > 0,
+);
+await playerCrossContext.close();
 
 section("first-run welcome");
 const freshContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });

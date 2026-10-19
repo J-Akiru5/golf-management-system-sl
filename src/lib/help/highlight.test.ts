@@ -38,6 +38,22 @@ describe("findHelpTarget", () => {
     const anchor = "my-pairings-2";
     expect(findHelpTarget(fakeRoot([anchor]), anchor)).not.toBeNull();
   });
+
+  it("skips a hidden copy and finds the one rendered on this screen", () => {
+    const hidden = { getClientRects: () => [] };
+    const shown = { getClientRects: () => [{}] };
+    const root = {
+      querySelectorAll: () => [hidden, shown],
+    } as unknown as ParentNode;
+    expect(findHelpTarget(root, "players-open")).toBe(shown as unknown as HTMLElement);
+  });
+
+  it("returns null when every copy of the anchor is hidden", () => {
+    const root = {
+      querySelectorAll: () => [{ getClientRects: () => [] }],
+    } as unknown as ParentNode;
+    expect(findHelpTarget(root, "players-open")).toBeNull();
+  });
 });
 
 describe("the ring", () => {

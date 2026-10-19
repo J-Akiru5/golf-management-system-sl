@@ -44,7 +44,7 @@ function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
   const unconfirmed = entry.status !== "ok";
 
   return (
-    <article className="card grid gap-3" data-help="my-entry">
+    <article className="card grid gap-3">
       <header className="grid gap-1">
         <h3 className="font-serif text-[24px] leading-7 font-semibold">{entry.eventName}</h3>
         <p className="hint">
@@ -77,10 +77,7 @@ function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
 
       <p className="hint">
         {entry.published ? t("player.published.yes") : t("player.published.no")}{" "}
-        <Link href="/pairings" data-help="my-pairings">
-          {t("player.seeFullList")}
-        </Link>
-        .
+        <Link href="/pairings">{t("player.seeFullList")}</Link>.
       </p>
     </article>
   );
@@ -88,7 +85,7 @@ function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
 
 function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
   return (
-    <section className="card grid gap-4" aria-labelledby="claim-h">
+    <section className="card grid gap-4" aria-labelledby="claim-h" data-help="my-claim">
       <div className="grid gap-1">
         <h2 id="claim-h" className="text-[18px]">
           {t("player.claim.heading")}
@@ -102,11 +99,7 @@ function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
         </p>
       )}
 
-      <form
-        action={claimPlayerRecord}
-        className="grid gap-3.5 sm:max-w-[26rem]"
-        data-help="my-claim"
-      >
+      <form action={claimPlayerRecord} className="grid gap-3.5 sm:max-w-[26rem]">
         <label className="field">
           <span>{t("player.claim.name")}</span>
           <input name="name" type="text" autoComplete="name" />
@@ -136,11 +129,15 @@ function PortalBody({
   linkedMessage: string | null;
 }) {
   if (!state.linked || !state.player) {
-    return <ClaimCard t={t} notice={notice} />;
+    return (
+      <div data-help="my-entry">
+        <ClaimCard t={t} notice={notice} />
+      </div>
+    );
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4" data-help="my-entry">
       {linkedMessage && (
         <p className="notice ok" role="status">
           {linkedMessage}
@@ -181,7 +178,7 @@ export default async function MyGolfPage({
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="grid gap-4">
+      <div className="grid gap-4" data-help="my-entry">
         <h1 className="font-serif text-[30px] leading-9 font-semibold">{t("player.title")}</h1>
         <p className="notice" role="status">
           {t("player.demo.body")} <Link href="/pairings">{t("player.demo.link")}</Link>.
@@ -201,7 +198,7 @@ export default async function MyGolfPage({
     state = await loadPortal(client);
   } catch (error) {
     return (
-      <div className="grid gap-4">
+      <div className="grid gap-4" data-help="my-entry">
         <h1 className="font-serif text-[30px] leading-9 font-semibold">{t("player.title")}</h1>
         <p className="notice bad" role="alert">
           {portalErrorMessage(error, t)}
