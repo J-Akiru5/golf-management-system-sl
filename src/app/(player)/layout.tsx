@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { SignOutForm } from "@/components/SignOutForm";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
-import { signOut } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export const metadata: Metadata = {
@@ -28,15 +29,12 @@ export default function PlayerLayout({ children }: { children: ReactNode }) {
             All pairings
           </Link>
           {isSupabaseConfigured() && (
-            <form action={signOut}>
-              <button type="submit" className="btn small ghost !border-on-forest-muted">
-                Sign out
-              </button>
-            </form>
+            <SignOutForm className="btn small ghost !border-on-forest-muted" />
           )}
         </nav>
       </header>
-      <main className="public">{children}</main>
+      <main className="public mobile-bar-space">{children}</main>
+      <PlayerBottomBar />
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { PairingsView } from "@/components/PairingsView";
+import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
@@ -46,7 +48,8 @@ export default async function PublicPairingsPage() {
       : null;
 
   return (
-    <div className="public">
+    <div className="public mobile-bar-space">
+      <PlayerOfflineNotice path="/pairings" />
       <header className="public-head">
         <div className="flex flex-wrap items-center gap-3">
           <TeeLineLogo variant="reverse" width={172} />
@@ -91,6 +94,7 @@ export default async function PublicPairingsPage() {
       <p className="hint no-print">
         Names, flight, hole and time only. <Link href="/">TeeLine Golf home</Link>
       </p>
+      <PlayerBottomBar />
     </div>
   );
 }

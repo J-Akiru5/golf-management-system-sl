@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -30,7 +31,7 @@ export function DemoPairings() {
     : null;
 
   return (
-    <div className="public">
+    <div className="public mobile-bar-space">
       <header className="public-head">
         <div className="flex flex-wrap items-center gap-3">
           <TeeLineLogo variant="reverse" width={172} />
@@ -61,6 +62,7 @@ export function DemoPairings() {
         This is a local demo preview, not a published page. It shows names, flight, hole and time
         only. <Link href="/">TeeLine Golf home</Link>
       </p>
+      <PlayerBottomBar />
     </div>
   );
 }
