@@ -641,6 +641,14 @@ A fourth piece of work runs alongside them: **a benchmark of mobile golf and spo
 answer #60's "how do they handle actual mobile system" before the bottom bar is designed rather than
 after. Its output is a written comparison, not code.
 
+#### Gap 20: the Desk's "Event instructions" panel is a heading with nothing under it
+
+Found while working #58, on a different screen, and confirmed by reading it: `src/app/(desk)/register/page.tsx`
+renders a section titled "Event instructions" at line 291 and never renders the instructions. The
+`instructions` value is written in Settings and shown to players on the public entry form
+(`src/components/public/RegistrationForm.tsx:88`), so the desk is asked to check something it cannot
+see. This is a display bug, not a data one, so it is recorded rather than folded into #58.
+
 ### Phase 2: results
 
 Score encoding from paper cards, gross and net per flight, tie-breaks, results export. Needs the organizer's tie-break rule. Adds the `scores` table.
