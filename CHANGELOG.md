@@ -11,6 +11,19 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.18.1] - 2026-10-20
+
+A performance fix for the largest paint on the public landing page.
+
+### Fixed
+- **The hero headline was invisible during its own entrance, which delays LCP rather than decorating
+  it.** Chrome does not count an element painted at `opacity: 0` as an LCP candidate. The hero already
+  carried an older `hero-arrive` animation starting from zero, and the 0.18.0 motion pass added a
+  second one on the `h1`, so removing the hero photograph did not help: the largest paint was still
+  waiting on an animation. The headline and the copy are now at full opacity in the first frame and
+  do not animate at all. The eyebrow, actions and stat strip keep their stagger as movement only, via
+  `rise-in-transform`, which never touches opacity.
+
 ## [0.18.0] - 2026-10-20
 
 The landing page moves from a flat sports layout to a live one: gradients, motion and inline SVG in

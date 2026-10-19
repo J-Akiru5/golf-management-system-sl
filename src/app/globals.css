@@ -3102,3 +3102,48 @@
 .strip-card {
   box-shadow: 0 26px 64px -32px rgb(0 0 0 / 62%);
 }
+
+/* --------------------------------------------------------------------- public site: LCP first */
+
+/* Chrome does not count an element painted at opacity 0 as an LCP candidate, so a fade-in on the
+   headline does not decorate the largest paint, it delays it. That was true of the older
+   `hero-arrive` on .hero-content, and the motion pass added a second one on the h1. Both are gone:
+   the headline and the copy the page is judged on are at full opacity in the first frame, and only
+   transform is allowed to move.
+
+   The supporting parts keep their stagger, but as movement alone. This was the biggest trap the
+   research pass found, and it was live on the page. */
+.teeline-site .hero-content,
+.teeline-site .hero-content h1,
+.teeline-site .hero-copy {
+  animation: none;
+}
+
+@keyframes rise-in-transform {
+  from {
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.teeline-site .hero-eyebrow {
+  animation: rise-in-transform 620ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.teeline-site .hero-actions {
+  animation: rise-in-transform 760ms cubic-bezier(0.2, 0.7, 0.2, 1) 90ms both;
+}
+
+.teeline-site .hero-stats {
+  animation: rise-in-transform 760ms cubic-bezier(0.2, 0.7, 0.2, 1) 140ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .teeline-site .hero-eyebrow,
+  .teeline-site .hero-actions,
+  .teeline-site .hero-stats {
+    animation: none;
+  }
+}
