@@ -1,6 +1,5 @@
 import { ArrowDown, ArrowRight, CalendarDays, Layers3, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { TournamentCarousel } from "@/components/public/TournamentCarousel";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -154,15 +153,47 @@ export default async function HomePage() {
         className={`teeline-hero${events.length > 0 ? " with-strip" : ""}`}
         aria-labelledby="hero-title"
       >
-        <Image
-          src="/course/hole-1/overview.webp"
-          alt="Illustrated golf fairway running between wooded course contours"
-          fill
-          priority
-          sizes="100vw"
-          className="hero-photo"
-        />
-        <div className="hero-shade" aria-hidden="true" />
+        {/* Decorative only: a plain field, not a photograph. Layered gradients and inline SVG give
+            it the club's own language (a green, yardage arcs, a flag) and nothing is downloaded. */}
+        <div className="hero-canvas" aria-hidden="true">
+          <span className="hero-glow hero-glow-a" />
+          <span className="hero-glow hero-glow-b" />
+          <svg
+            className="hero-contours"
+            viewBox="0 0 1440 820"
+            preserveAspectRatio="xMidYMid slice"
+            fill="none"
+          >
+            <defs>
+              <linearGradient id="hero-contour-stroke" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#d8bd81" stopOpacity="0.32" />
+                <stop offset="55%" stopColor="#d8bd81" stopOpacity="0.1" />
+                <stop offset="100%" stopColor="#d8bd81" stopOpacity="0" />
+              </linearGradient>
+              <radialGradient id="hero-green" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#3f9a70" stopOpacity="0.42" />
+                <stop offset="100%" stopColor="#3f9a70" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx="1128" cy="486" r="380" fill="url(#hero-green)" />
+            <g stroke="url(#hero-contour-stroke)" strokeWidth="1.4">
+              <path d="M-60 690C170 612 236 430 470 408c214-20 306 128 508 76 186-48 268-198 522-156" />
+              <path d="M-60 728C174 654 252 470 482 446c208-22 314 126 514 82 182-40 274-186 524-140" />
+              <path d="M-70 766C178 698 268 512 494 486c204-22 322 122 520 88 176-32 280-174 526-124" />
+              <path d="M-80 804C182 742 284 556 506 526c200-24 330 118 526 94 170-22 286-160 528-108" />
+            </g>
+            <g stroke="#d8bd81" strokeOpacity="0.24" strokeDasharray="2 11">
+              <circle cx="1128" cy="486" r="150" />
+              <circle cx="1128" cy="486" r="234" />
+              <circle cx="1128" cy="486" r="318" />
+            </g>
+            <g stroke="#d8bd81" strokeOpacity="0.55" strokeWidth="2">
+              <path d="M1128 486v-132" />
+              <path d="M1128 354l62 21-62 21z" fill="#d8bd81" fillOpacity="0.3" />
+            </g>
+          </svg>
+          <span className="hero-grid" />
+        </div>
 
         <header className="site-nav">
           <Link href="/" className="site-brand">
