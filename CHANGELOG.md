@@ -11,6 +11,54 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.14.0] - 2026-10-20
+
+Three issues the owner reported from using the deployed build, worked at the same time and released
+together. No migration.
+
+### Added
+- **"Show me" now takes you to the control it names** (#59). Each help step knows the route its control
+  lives on. When the control is on another screen the panel closes, navigates, and rings the control
+  once the destination has rendered and its box has stopped moving. A request is claimed once, so two
+  shells mounted during a layout change cannot draw two rings, and an unclaimed one expires after 15
+  seconds. Hidden duplicate anchors are skipped, which matters for the desktop table against the
+  mobile cards. If the control is genuinely absent the panel reopens and says so rather than doing
+  nothing. All seven desk guides and both player guides were audited; two causes of silent clicks were
+  found and fixed: steps had no route at all, and some anchors existed in only one state.
+- **A textarea shows all of its text, and resizes from either edge** (#58). A shared
+  `ResizableTextarea` measures its content, so nothing sits behind a scrollbar, and both the top and
+  bottom edge are full-width drag rails rather than the small browser corner grip. A drag can never
+  make the field shorter than its text. Both rails are focusable separators with arrow keys, Page
+  keys, Home to fit and End to open fully, because a resize that only works with a mouse is a bug for
+  everyone else. It re-measures when the column narrows and when a bundled font arrives late, which is
+  how a last line usually gets clipped.
+- **Two bottom bars and an installable, offline-capable PWA** (#60). The desk bar holds Today, Draw,
+  Register (raised centre), Players and More; the player bar holds My golf, Pairings and Club home. The
+  sidebar stays the primary navigation where there is room, and the drawer stays on phones because the
+  desk has eleven screens and the bar holds four. The app installs to a home screen with bundled
+  icons, and a service worker keeps the shell and the pages actually opened.
+- **The offline copy is labelled and bounded** (#60). Every restored screen says it is a saved copy
+  and names the time it was saved, and nothing the app would otherwise call live, published or final
+  is presented that way from a cache. Signing out clears the snapshots, so a shared desk phone keeps
+  no roster after the person holding it walks away. Photos are never cached. Offline writes are
+  refused with a sentence that says nothing was queued, rather than replayed later.
+- `docs/mobile-benchmark.md`, a comparison of twelve golf and club apps, which decided the bar
+  contents. It found that Golf Genius, the biggest platform in this market, has no bottom bar at all
+  on its event app, and that none of the twelve documents offline tournament data.
+
+### Changed
+- **The player portal has one entry view.** The live page and the saved copy now render the same
+  component, so the offline screen cannot show a field the live one hides. The offline page passes an
+  English translator, because a static page served with no server cannot read the language cookie.
+- A saved desk copy is restored only when the browser reports itself offline. A refusal from the
+  server, such as an account with no club membership, is a real answer and is shown as one rather
+  than covered with an older copy.
+
+### Known
+- The bottom bars were checked with headless Chrome at 390×844 and 1280×900 but are not yet covered by
+  `pnpm verify:ui`, which stands at 78 checks. Their item lists have unit tests.
+- The offline player view reads in English only, as the note above describes.
+
 ## [0.13.1] - 2026-10-19
 
 The desk loads for a signed-in owner. Documentation and a client fix, no migration.
