@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { instructionText } from "@/lib/data/instructions";
 import type {
   RegistrationFormConfig,
   SubmissionAnswers,
@@ -25,6 +26,7 @@ export function RegistrationForm({
   onSubmit: (player: SubmissionPlayer, answers: SubmissionAnswers) => Promise<string>;
 }) {
   const { t } = useI18n();
+  const instructions = instructionText(config.instructions);
   const [name, setName] = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [gender, setGender] = useState<"M" | "F" | "">("");
@@ -85,7 +87,7 @@ export function RegistrationForm({
 
   return (
     <form className="stack" onSubmit={submit} style={{ gap: "1rem" }}>
-      {config.instructions && <div className="notice">{config.instructions}</div>}
+      {instructions && <div className="notice whitespace-pre-wrap">{instructions}</div>}
 
       <div className="form-grid">
         <label className="field">

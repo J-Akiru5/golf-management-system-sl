@@ -576,7 +576,7 @@ only their own entry. Every finding is written down with a severity the same day
 | --- | --- | --- | --- |
 | W1 | ~~Land PR #17~~ **Merged 18 Oct 2026** | Event setup, the tee and hole editors, the tee/hole loading fix, the paging primitive and the notifications migration. Merged into `develop` as `863c253`. `main` is level with `develop` at 0.8.0 | Done |
 | W2 | Long lists and alerts | **Merged in PR #23, with a follow-up**: the bell in the shell, and paging on the players, registration and import review lists plus the import review tabs. The full notification sync cycle was verified over the live API, and the screens were **seen in a browser** (`pnpm verify:ui`), which found two bugs now fixed in 0.6.1. The bell also waits for the connected desk before checking (0.7.1). The draw groups, print and the desk's player search are deliberately not paged | Done |
-| W3 | Real club data, then prove the path | Course Rating, Slope, Par and stroke index from the scorecard (decision 1); decisions 3 to 7 and 9; a fresh NGAP export and a re-freeze; **and the print page's `courseDataStatus` hard-coded to `"placeholder"` must be derived from the loaded rows**, so real data prints without the watermark | Organizer, with the club |
+| W3 | Real club data, then prove the path | Course Rating, Slope, Par and stroke index from the scorecard (decision 1); decisions 3 to 7 and 9; a fresh NGAP export and a re-freeze. ~~The print page's `courseDataStatus` hard-coded to `"placeholder"`~~ **Already derived from the loaded rows** when checked on 20 Oct 2026: `src/app/(desk)/print/page.tsx:74` reads `tournament.courseDataConfirmed`, the tees and the holes, so real confirmed data prints without the watermark. The only remaining `"placeholder"` literal is in the dev-only `_print-preview` route, where it is deliberate | Organizer, with the club |
 | W4 | Accounts, access, privacy | Rotate the two test accounts; create the golf pro as `organizer`; decide player sign-ups; one player account and one player row to claim; verify the photo consent line and a real upload | Jeff and Claude |
 | W5 | The UAT itself | The run sheet, the session, the findings, the fallback (printed sheets, unpublish, redeploy the previous build) | Jeff and the organizer |
 | W6 | Production hygiene | ~~revoke `anon` execute on the staff functions~~ **Done 19 Oct 2026** (`20261030000000`, and `20261031000000` makes it the default for anything new); CI on pull requests (there is none); a deliberate deploy step after each merge, since Vercel does not auto-deploy `main`; spend limits and backups; set `NEXT_PUBLIC_SITE_URL` in Vercel to the production domain; show `v{version} · {short commit} · {environment}` in the shell | Jeff |
@@ -645,11 +645,19 @@ after. Its output is a written comparison, not code.
 
 #### Gap 20: the Desk's "Event instructions" panel is a heading with nothing under it
 
+**Fixed 20 Oct 2026**, in `fix/event-instructions-display`.
+
 Found while working #58, on a different screen, and confirmed by reading it: `src/app/(desk)/register/page.tsx`
 renders a section titled "Event instructions" at line 291 and never renders the instructions. The
 `instructions` value is written in Settings and shown to players on the public entry form
 (`src/components/public/RegistrationForm.tsx:88`), so the desk is asked to check something it cannot
 see. This is a display bug, not a data one, so it is recorded rather than folded into #58.
+
+The fix also covers the half that #58 created: now that Settings offers a real multi-line field, an
+organizer can write a numbered list, and both screens have to keep those breaks instead of collapsing
+them into one sentence. `src/lib/data/instructions.ts` normalises the text once, so the desk and the
+entry form cannot drift, and a field holding only spaces counts as empty rather than rendering a
+blank box.
 
 ### Phase 2: results
 
