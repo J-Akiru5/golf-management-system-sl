@@ -3,6 +3,9 @@ name: CI
 # The four checks AGENTS.md asks for before every commit, plus the browser pass that found the bugs
 # the other four could not see: an alerts panel whose text was ivory on ivory, and a list that sent
 # the desk back to page 2 when a search was cleared. Both passed typecheck, lint, test and build.
+#
+# Deployment is separate: Vercel only auto-deploys `develop` and `main`, because vercel.json disables
+# every other branch. The deploy-policy step below keeps that rule from being loosened by accident.
 on:
   pull_request:
     branches: [develop, main]
@@ -30,6 +33,20 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+
+      # Throttling control: preview builds for every branch burned minutes. Vercel reads this map
+      # from the branch being built, so the rule lives in the repo next to the code it protects.
+      - name: Deploy policy
+        run: |
+          node <<'NODE'
+          const d = require("./vercel.json")?.git?.deploymentEnabled ?? {};
+          const ok = d.develop === true && d.main === true && d["*"] === false && d["**"] === false;
+          if (!ok) {
+            console.error("vercel.json must allow only develop and main to auto-deploy");
+            process.exit(1);
+          }
+          console.log("deploy policy: develop and main only");
+          NODE
 
       - name: Install
         run: pnpm install --frozen-lockfile
