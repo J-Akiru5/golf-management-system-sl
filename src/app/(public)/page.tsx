@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowRight, CalendarDays, Flag, Layers3, UsersRound } from "lucide-react";
+import { ArrowDown, ArrowRight, CalendarDays, Layers3, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -139,6 +139,15 @@ export default async function HomePage() {
   const events = await openEvents(today);
   const featured = events[0] ?? null;
 
+  // Formatted here, on the server, so the stat strip cannot differ between browsers.
+  const cutOffShort = featured
+    ? new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "short",
+        timeZone: "UTC",
+      }).format(new Date(`${featured.cutOffDate}T00:00:00Z`))
+    : null;
+
   return (
     <main className="teeline-site">
       <section
@@ -215,24 +224,28 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <aside className="hero-note" aria-label="TeeLine product introduction">
-          <span className="hero-note-mark" aria-hidden="true">
-            <Flag />
-          </span>
-          <span>
-            <b>Made for the whole day</b>
-            <small>From the first entry to the first tee.</small>
-          </span>
-        </aside>
-        <p className="hero-caption">Illustrative course artwork · not a photograph of IGCC</p>
-        <a
-          className="hero-scroll"
-          href="#experience"
-          aria-label="Scroll to explore the TeeLine experience"
-        >
-          <span>Scroll to explore</span>
-          <ArrowDown aria-hidden="true" />
-        </a>
+        {/* The benchmark's first move: put a number where the slogan would go. Every value is the
+            event's own; the strip is absent entirely when there is no open event to describe. */}
+        {featured && (
+          <dl className="hero-stats" aria-label="Event at a glance">
+            <div>
+              <dt>Entries</dt>
+              <dd>{featured.entered}</dd>
+            </div>
+            <div>
+              <dt>Cut-off</dt>
+              <dd>{cutOffShort}</dd>
+            </div>
+            <div>
+              <dt>Days</dt>
+              <dd>{featured.dates.length}</dd>
+            </div>
+            <div>
+              <dt>First tee</dt>
+              <dd>{featured.firstTeeTime}</dd>
+            </div>
+          </dl>
+        )}
       </section>
 
       {events.length > 0 && <TournamentCarousel events={events} today={today} />}
