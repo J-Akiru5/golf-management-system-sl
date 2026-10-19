@@ -630,6 +630,37 @@
   input[type="range"] {
     accent-color: var(--fairway);
   }
+
+  /* ---------- Auth ---------- */
+  .auth-brand {
+    background:
+      radial-gradient(900px 560px at 18% 0%, rgba(224, 188, 101, 0.18), transparent 60%),
+      linear-gradient(155deg, #082116 0%, #123c29 55%, #082116 100%);
+    color: #f7f5ee;
+  }
+  .password-field {
+    position: relative;
+    display: block;
+  }
+  .password-field input {
+    padding-right: 4.5rem;
+  }
+  .password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    height: 32px;
+    padding: 0 10px;
+    transform: translateY(-50%);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+  }
+  .password-toggle:hover {
+    color: var(--ink);
+    background: var(--surface-sunken);
+  }
   input[type="checkbox"],
   input[type="radio"] {
     width: 18px;

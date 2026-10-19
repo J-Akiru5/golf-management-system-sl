@@ -1,11 +1,27 @@
 "use server";
 
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { REMEMBER_COOKIE, rememberCookieOptions } from "@/lib/auth/cookies";
+import { passwordProblem } from "@/lib/auth/password";
 import { landingFor } from "@/lib/auth/routes";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDeskMember } from "./member";
 import { safeRedirectPath } from "./redirect";
+
+/** The public address used in email links: the configured site URL wins, the request host is the fallback. */
+async function siteBase(): Promise<string> {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  if (configured) return configured;
+  const requestHeaders = await headers();
+  const host =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+  const proto =
+    requestHeaders.get("x-forwarded-proto") ??
+    (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
+  return `${proto}://${host}`;
+}
 
 /**
  * Where this account belongs: the desk for a club member, the player area for a linked player, and
@@ -43,7 +59,13 @@ export async function signInWithPassword(formData: FormData): Promise<void> {
     redirect("/login?error=credentials_required");
   }
 
-  const client = await createSupabaseServerClient();
+  // The preference is written first and passed to the client explicitly: the auth cookies are set in
+  // the same action, and the request cookie store does not have to show the write back.
+  const remember = formData.get("remember") === "on";
+  const store = await cookies();
+  store.set(REMEMBER_COOKIE, remember ? "1" : "0", rememberCookieOptions(remember));
+
+  const client = await createSupabaseServerClient({ remembered: remember });
   const { error } = await client.auth.signInWithPassword({ email: email.trim(), password });
   if (error) redirect("/login?error=sign_in_failed");
 
@@ -81,7 +103,49 @@ export async function signUpWithPassword(formData: FormData): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
+  const store = await cookies();
+  store.delete(REMEMBER_COOKIE);
   const client = await createSupabaseServerClient();
   await client.auth.signOut();
   redirect("/login?message=signed_out");
+}
+
+/**
+ * Sends a recovery link. The reply never says whether the address has an account, so the page
+ * cannot be used to enumerate players.
+ */
+export async function requestPasswordReset(formData: FormData): Promise<void> {
+  if (!isSupabaseConfigured()) redirect("/forgot-password?error=supabase_not_configured");
+  const email = formData.get("email");
+  if (typeof email !== "string" || !email.trim()) {
+    redirect("/forgot-password?error=email_required");
+  }
+
+  const client = await createSupabaseServerClient();
+  const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${await siteBase()}/auth/confirm?next=/reset-password`,
+  });
+  if (error) redirect("/forgot-password?error=reset_failed");
+  redirect("/login?message=reset_sent");
+}
+
+/** Sets the new password from the recovery session, then ends that session. */
+export async function updatePassword(formData: FormData): Promise<void> {
+  if (!isSupabaseConfigured()) redirect("/reset-password?error=supabase_not_configured");
+  const password = formData.get("password");
+  const confirm = formData.get("confirm");
+  const problem = passwordProblem(
+    typeof password === "string" ? password : "",
+    typeof confirm === "string" ? confirm : "",
+  );
+  if (problem) redirect(`/reset-password?error=${problem}`);
+
+  const client = await createSupabaseServerClient();
+  const { data } = await client.auth.getUser();
+  if (!data.user) redirect("/reset-password?error=reset_session");
+  const { error } = await client.auth.updateUser({ password: password as string });
+  if (error) redirect("/reset-password?error=update_failed");
+
+  await client.auth.signOut();
+  redirect("/login?message=password_updated");
 }
