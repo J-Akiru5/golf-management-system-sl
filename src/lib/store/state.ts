@@ -23,6 +23,11 @@ import {
 import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
 import type { MergeRow, ResolvedImportRow } from "@/lib/ngap";
 import { type RoutingInput, route, type Tee } from "@/lib/routing";
+// AVP THROWAWAY BRANCH ONLY: the frozen draw for the recorded demo. It loads only when the recording
+// flag is set, so the product tests still start from an empty board.
+import drawFixture from "../../../demo-video/fixtures/bamboo-tee-draw.json";
+
+const AVP_DEMO = process.env.NEXT_PUBLIC_AVP_DEMO === "1";
 
 /** What players see. A frozen copy, so organizer edits never leak out before they publish again. */
 export interface PublishedGroup {
@@ -153,7 +158,19 @@ export const initialState = (): DeskState => {
     entries: seed.entries,
     batches: [],
     deferred: [],
-    boards: {},
+    // AVP THROWAWAY BRANCH ONLY: start with a populated board when the recording flag is set, so
+    // /draw and /print have something to show. It starts unpublished, so the video publishes in
+    // scene 7. On the product branches, and in the tests, this is `{}`.
+    boards: AVP_DEMO
+      ? {
+          "bamboo-tee-2026": {
+            draw: drawFixture as unknown as DrawGroup[],
+            warnings: [],
+            published: null,
+            overrides: [],
+          },
+        }
+      : {},
     importedCount: 0,
     seq: 0,
   };

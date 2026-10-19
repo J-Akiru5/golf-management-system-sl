@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TeeLine Golf — Not shown today</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+      body {
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(1100px 650px at 70% 20%, #1d4a2c 0%, transparent 60%),
+          linear-gradient(135deg, #10251b 0%, #0b1711 100%);
+        color: #eef0ea;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      main { width: min(1500px, 88vw); display: grid; gap: 24px; }
+      img { width: 360px; max-width: 40vw; }
+      .eyebrow { color: #e0bc65; font-size: 22px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+      h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 88px; line-height: 1; letter-spacing: -.03em; }
+      ul { margin: 0; padding-left: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+      li { color: #b9c6ba; font-size: 28px; line-height: 1.35; }
+      li::before { content: "—"; color: #e0bc65; margin-right: 12px; }
+      footer { position: fixed; left: 64px; bottom: 48px; color: #8fa294; font-size: 20px; letter-spacing: .08em; text-transform: uppercase; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="../../public/brand/teeline-logo-reverse.svg" alt="TeeLine Golf" />
+      <div class="eyebrow">Deliberately not in this version</div>
+      <h1>Not shown today</h1>
+      <ul>
+        <li>Excel import (CSV only)</li>
+        <li>Direct NGAP connection</li>
+        <li>Online payment</li>
+        <li>Offline use</li>
+        <li>Official scoring and results</li>
+        <li>Player self-service changes</li>
+      </ul>
+    </main>
+    <footer>TeeLine Golf · demo data · 0.9.0</footer>
+  </body>
+</html>
+
