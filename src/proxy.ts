@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { authCookieOptions, REMEMBER_COOKIE, rememberPreference } from "@/lib/auth/cookies";
 import { decide, type Identity } from "@/lib/auth/routes";
 import { currentPlayerId } from "@/lib/player/portal";
 import type { Database } from "@/lib/supabase/types";
@@ -30,6 +31,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   }
 
   let response = NextResponse.next({ request });
+  const remembered = rememberPreference(request.cookies.get(REMEMBER_COOKIE)?.value);
   const client = createServerClient<Database>(url, anonKey, {
     cookies: {
       getAll: () => request.cookies.getAll(),
@@ -37,7 +39,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
         for (const { name, value } of cookiesToSet) request.cookies.set(name, value);
         response = NextResponse.next({ request });
         for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
+          response.cookies.set(name, value, authCookieOptions(options ?? {}, remembered));
         }
       },
     },

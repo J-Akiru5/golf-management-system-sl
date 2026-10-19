@@ -615,6 +615,47 @@ await mob.keyboard.press("Escape");
 await mob.screenshot({ path: `${SHOTS}/shell-theme-mobile.png` });
 await mob.close();
 
+// ---------------------------------------------------------------- sign in
+section("sign in page");
+const auth = await context.newPage();
+watch(auth);
+await auth.goto(`${BASE}/login`, { waitUntil: "networkidle", timeout: 120000 });
+check("the wide sign-in page is split, with the brand panel", await auth.getByTestId("auth-brand").isVisible());
+check(
+  "it offers a way back to the club home",
+  (await auth.getByTestId("back-home").getAttribute("href")) === "/",
+);
+check("it has a remember-me choice", (await auth.locator('input[name="remember"]').count()) === 1);
+const passwordInput = auth.locator('[data-testid="password-input"]');
+check("the password starts hidden", (await passwordInput.getAttribute("type")) === "password");
+await auth.getByRole("button", { name: "Show password" }).click();
+check("Show reveals it", (await passwordInput.getAttribute("type")) === "text");
+await auth.getByRole("button", { name: "Hide password" }).click();
+check("Hide covers it again", (await passwordInput.getAttribute("type")) === "password");
+await auth.screenshot({ path: `${SHOTS}/login-desktop.png` });
+
+await auth.getByRole("link", { name: "Forgot password?" }).click();
+await expect(auth).toHaveURL(/\/forgot-password$/, { timeout: 15000 });
+check(
+  "Forgot password leads to the reset request",
+  (await auth.getByRole("button", { name: "Send reset link" }).count()) === 1,
+);
+await auth.goto(`${BASE}/reset-password`, { waitUntil: "networkidle", timeout: 120000 });
+check(
+  "without a recovery session the reset page asks for a new link",
+  (await auth.getByRole("link", { name: "Request a new link" }).count()) === 1,
+);
+
+await auth.setViewportSize({ width: 390, height: 844 });
+await auth.goto(`${BASE}/login`, { waitUntil: "networkidle", timeout: 120000 });
+check(
+  "on a phone the brand panel collapses to the logo and club home",
+  !(await auth.getByTestId("auth-brand").isVisible()) &&
+    (await auth.getByTestId("club-home").isVisible()),
+);
+await auth.screenshot({ path: `${SHOTS}/login-mobile.png` });
+await auth.close();
+
 console.log(`\nconsole errors: ${errors.length}`);
 for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 200));
 console.log(`screenshots in ${SHOTS}`);
