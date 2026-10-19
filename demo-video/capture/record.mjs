@@ -75,14 +75,14 @@ const overlaySource = ({ step, total, title, caption }) => {
       #avp-caption { position: fixed; left: 50%; bottom: 48px; transform: translateX(-50%);
         max-width: 2000px; padding: 18px 30px; border-radius: 18px; background: rgba(12, 26, 19, .94);
         color: #eef0ea; font-size: 34px; line-height: 1.3; text-align: center;
-        box-shadow: 0 12px 40px rgba(0,0,0,.4); transition: opacity .16s ease, top .22s ease, bottom .22s ease; }
+        box-shadow: 0 12px 40px rgba(0,0,0,.4); transition: opacity .12s ease, top .18s ease, bottom .18s ease; }
       #avp-caption.top { top: 150px; bottom: auto; }
       #avp-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(6, 16, 11, .43);
         outline: 4px solid #e6ba4c; outline-offset: 3px;
-        transition: all .16s ease; opacity: 0; }
+        transition: opacity .12s ease; opacity: 0; }
       #avp-spot.on { opacity: 1; }
       #avp-cursor { position: fixed; left: 0; top: 0; width: 68px; height: 68px; opacity: 0;
-        transition: transform .52s cubic-bezier(.22,.61,.36,1), opacity .2s ease; }
+        transition: transform .45s cubic-bezier(.22,.61,.36,1), opacity .18s ease; }
       #avp-cursor.on { opacity: 1; }
       #avp-cursor .ring { position: absolute; inset: 12px; border-radius: 50%;
         border: 4px solid #e0bc65; box-shadow: 0 0 0 7px rgba(224, 188, 101, .22), 0 2px 12px rgba(0,0,0,.35);
@@ -131,7 +131,7 @@ const overlaySource = ({ step, total, title, caption }) => {
         setTimeout(() => {
           captionEl.textContent = text;
           captionEl.style.opacity = "1";
-        }, 170);
+        }, 110);
       },
       captionTop(on) {
         captionEl.classList.toggle("top", Boolean(on));
@@ -164,8 +164,12 @@ const overlaySource = ({ step, total, title, caption }) => {
       zoom(scale, rect) {
         const el = contentEl();
         if (!el) return;
+        // Keep the page on its own compositor layer so the zoom animates on the GPU instead of
+        // re-rasterising the whole page every frame (that is what made the move look uneven).
+        el.style.willChange = "transform";
+        el.style.backfaceVisibility = "hidden";
         if (!scale || scale === 1 || !rect) {
-          el.style.transition = "transform .62s cubic-bezier(.22,.61,.36,1)";
+          el.style.transition = "transform .5s cubic-bezier(.22,.61,.36,1)";
           el.style.transform = "scale(1)";
           return;
         }
@@ -173,7 +177,7 @@ const overlaySource = ({ step, total, title, caption }) => {
         const originX = rect.x + rect.width / 2 - box.left;
         const originY = rect.y + rect.height / 2 - box.top;
         el.style.transformOrigin = `${originX}px ${originY}px`;
-        el.style.transition = "transform .62s cubic-bezier(.22,.61,.36,1)";
+        el.style.transition = "transform .5s cubic-bezier(.22,.61,.36,1)";
         el.style.transform = `scale(${scale})`;
       },
       ready: true,
@@ -219,7 +223,11 @@ for (const [index, scene] of steps.scenes.entries()) {
 
   const context = await browser.newContext({
     viewport: { width: 2560, height: 1440 },
-    recordVideo: { dir: rawDir, size: { width: 2560, height: 1440 } },
+    // The delivered cut is 1080p, so raster at 0.75x: the layout stays 2560 wide, the screencast has
+    // 44 per cent less to rasterise, and the recorder keeps up during the moves instead of dropping
+    // to a handful of frames a second.
+    deviceScaleFactor: 0.75,
+    recordVideo: { dir: rawDir, size: { width: 1920, height: 1080 } },
   });
   const contextStart = Date.now();
   await context.addInitScript(overlaySource, {
@@ -253,7 +261,7 @@ for (const [index, scene] of steps.scenes.entries()) {
   const started = Date.now();
   // Every screen change gets a full-page beat before any focus move, and the voice has a pause in the
   // audio for page loads; the clock offset keeps the visuals aligned even when a load runs long.
-  let clockOffsetMs = 1500;
+  let clockOffsetMs = 1200;
   for (const item of schedule) {
     const due = item.type === "caption" ? item.at * 1000 : item.at * 1000 + clockOffsetMs;
     const wait = due - (Date.now() - started);
@@ -312,6 +320,15 @@ for (const [index, scene] of steps.scenes.entries()) {
         const overlapsTop = rect.y < 280 && rect.y + rect.height > 150;
         await page.evaluate((on) => window.__avp?.captionTop(on), overlapsBottom && !overlapsTop);
       }
+      const wantSpot =
+        Boolean(rect) && item.spotlight !== false && Boolean(item.spotlight || item.click || item.zoom);
+      // A trailing reset with no target still zooms out, so a scene can close on the full page.
+      if (!rect && item.zoom === 1) {
+        await page.evaluate(() => window.__avp?.zoom(1, null));
+      }
+      // The ring goes up with the cursor, not after the zoom: the zoom origin is the target centre, so
+      // the control stays inside the ring for the whole move instead of waiting to catch up.
+      if (wantSpot) await page.evaluate((r) => window.__avp?.spotlight(r), rect);
       const actions = [];
       if (rect && item.cursor !== false) {
         actions.push(page.evaluate((r) => window.__avp?.cursorTo(r.x + r.width / 2, r.y + r.height / 2), rect));
@@ -320,17 +337,19 @@ for (const [index, scene] of steps.scenes.entries()) {
         actions.push(page.evaluate(({ scale, r }) => window.__avp?.zoom(scale, r), { scale: item.zoom, r: rect }));
       }
       await Promise.all(actions);
-      // Let the move and the zoom settle, then measure again so the highlight lands exactly on the
-      // control as it now sits on screen.
-      await sleep(rect && item.zoom ? 660 : 140);
-      const settled = locator ? await locator.evaluate(rectOf).catch(() => rect) : rect;
-      if (settled && item.spotlight !== false && (item.spotlight || item.click || item.zoom)) {
-        await page.evaluate((r) => window.__avp?.spotlight(r), settled);
-        await sleep(160);
+      // When the zoom lands, snap the ring to where the control now sits. No tween on the geometry:
+      // a tween repaints the full-screen dim every frame, which is what made the ring look sluggish.
+      let settled = rect;
+      if (rect && item.zoom) {
+        await sleep(520);
+        settled = locator ? await locator.evaluate(rectOf).catch(() => rect) : rect;
+        if (wantSpot && settled) await page.evaluate((r) => window.__avp?.spotlight(r), settled);
+      } else if (rect) {
+        await sleep(100);
       }
-      if (settled && item.click) {
-        await sleep(120);
-        await page.evaluate((r) => window.__avp?.ripple(r.x + r.width / 2, r.y + r.height / 2), settled);
+      if (rect && item.click) {
+        await sleep(100);
+        await page.evaluate((r) => window.__avp?.ripple(r.x + r.width / 2, r.y + r.height / 2), settled ?? rect);
         await locator.click({ timeout: 4000 }).catch((error) => {
           if (!item.optional) console.warn(`  ! ${scene.id}: click failed on "${item.target}": ${error.message}`);
         });

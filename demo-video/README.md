@@ -44,11 +44,12 @@ Do not cherry-pick these into a product branch.
 
 Owner feedback drove these rules; keep them when editing `steps.json`.
 
-1. Every screen change shows the full page first. Scenes hold 1.5 s (`clockOffsetMs`) before the first
+1. Every screen change shows the full page first. Scenes hold 1.2 s (`clockOffsetMs`) before the first
    focus move; a route inside a scene is covered by a `pauseAfter` on that line plus a 0.5 s beat.
-2. Focus is one motion. Cursor travel (0.52 s) and zoom (0.62 s) start together; the spotlight is
-   measured again after they settle, so the ring lands on the control as it now sits on screen.
-   The ring stays up for the rest of the line.
+2. Focus is one motion. Cursor travel (0.45 s) and zoom (0.5 s) start together, and the ring goes up at
+   the same moment, because the zoom origin is the target centre and the control stays inside the ring
+   for the whole move. When the zoom lands, the ring snaps once to the settled rect. The geometry never
+   tweens: a tween repaints the full-screen dim every frame, and that is what made it look sluggish.
 3. The caption never covers the control. It sits at the bottom unless the target reaches into the
    caption strip, in which case it moves to the top; tall targets that touch both keep the bottom.
 4. The page load must not push the picture out of step. The recorder measures the recorded video with
@@ -56,3 +57,16 @@ Owner feedback drove these rules; keep them when editing `steps.json`.
    drops idle frames and wall-clock offsets drift.
 5. The phone is shown when the phone is mentioned. `cards/phone.html` is generated from the published
    fixture by `tools/generate-phone.mjs` and is the visual for the mobile scene.
+
+## Fluidity
+
+The screencast is 25 fps, so the build encodes at 25 fps: forcing 30 duplicated frames twice a second
+and read as judder. The capture context rasterises at `deviceScaleFactor: 0.75` (layout stays 2560,
+frames come out 1920 wide, which is the delivered size) so the renderer keeps up during moves, and the
+zoom target carries a compositor hint. Check a cut by pulling frames from any 2 s window that contains
+a move; every frame should be distinct:
+
+```bash
+ffmpeg -y -ss 47.4 -t 2.2 -i out/avp-5min.mp4 -fps_mode passthrough frames/f%03d.png
+Get-ChildItem frames/*.png | ForEach-Object { (Get-FileHash $_ -Algorithm MD5).Hash } | Sort-Object -Unique | Measure-Object
+```
