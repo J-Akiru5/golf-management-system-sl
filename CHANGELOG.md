@@ -11,6 +11,27 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.13.1] - 2026-10-19
+
+The desk loads for a signed-in owner. Documentation and a client fix, no migration.
+
+### Fixed
+- **The desk did not load on the first render after signing in** (gap 16). `DeskProvider` sits in the
+  root layout, so it wraps the sign-in page: its one read ran before the session cookie existed, found
+  nothing, and gave up. Signing in is a server action, so the redirect that followed was a client-side
+  navigation, the root layout did not remount, and the effect never ran again. The desk told a
+  signed-in owner to sign in, and a browser reload appeared to fix it because that remounts
+  everything. The load now re-runs when the route changes, and only when the previous attempt found no
+  session. Verified against the live project: error, then loading, then ready in four seconds.
+
+### Added
+- The retry and the `onAuthStateChange` subscription are kept: they cover a session arriving after the
+  first render, from another tab, which the route-change fix does not.
+
+### Database
+- No migration ships with 0.13.1. `20261033000000_public_open_events.sql` remains **written, not
+  applied** (gap 17).
+
 ## [0.13.0] - 2026-10-19
 
 The public page leads with the events a visitor can enter. One migration, **not applied**.
@@ -393,7 +414,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.13.0...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.13.1...develop
+[0.13.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.11.0...v0.12.0
