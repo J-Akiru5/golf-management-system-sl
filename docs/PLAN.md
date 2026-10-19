@@ -442,6 +442,14 @@ These are places where the spec promises something the code does not do yet. Che
     function lists only the first, checks the payload carries no unexpected field, and rolls the
     probes back.
 
+    **Applied 20 Oct 2026.** The owner re-authenticated the CLI, and `supabase db push --linked` applied
+    this one together with `20261034000000_course_maps.sql`, which had merged in the meantime;
+    `supabase migration list --linked` now shows local and remote in step at eighteen migrations.
+    Verified from outside the app with the **anon key**, which is what a visitor's browser uses:
+    `public_open_events()` answers 200 and returns one open event, the 24th Bamboo Tee, 12 to 15 Nov,
+    cut-off 1 Nov, shotgun, first tee 06:30. The landing page strip therefore has real data behind it,
+    and the deliberate no-strip fallback is no longer what a visitor sees.
+
 18. **A signed-in account with no club membership gets the same screen as a broken load.** Found 19 Oct
     2026 while planning the first-run onboarding. `getDeskMember` throws "This account is not a member
     of a club", the desk store catches it and sets its status to error, and `NeedsTournament` then shows

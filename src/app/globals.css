@@ -2686,3 +2686,152 @@
       0 0 0 12px rgba(184, 149, 80, 0.24);
   }
 }
+
+/* --------------------------------------------------------------------- public site: sport */
+
+/* The signed-in app keeps its calm serif display. This file's public surface is the marketing page,
+   and the owner's note on it was that it read as an elegant travel brochure rather than a sports
+   product. Sports pages lean on a bold, tight, often condensed sans, with uppercase labels and
+   numbers carrying the emphasis that photography carries on a travel page.
+
+   Scoped to .teeline-site on purpose: the desk, the player area and print are untouched, and this
+   whole layer can be reviewed, reverted or replaced as one thing. Both faces are already bundled,
+   so nothing new is fetched and no external call is made. */
+
+.teeline-site {
+  font-family: var(--f-sans);
+}
+
+.teeline-site :is(h1, h2, h3, h4) {
+  font-family: var(--f-condensed);
+  font-weight: 400; /* Bebas Neue ships one weight; size carries the emphasis. */
+  font-style: normal;
+  letter-spacing: 0.015em;
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+
+/* The hero is the loudest thing on the page, which is the point of a sports landing page. */
+.teeline-site .hero-content h1 {
+  font-size: clamp(68px, 12vw, 164px);
+  letter-spacing: 0.005em;
+  line-height: 0.8;
+}
+
+/* A real event name has to stay readable, so it drops a step rather than wrapping to five lines. */
+.teeline-site .hero-content h1.event-title {
+  font-size: clamp(48px, 8.2vw, 104px);
+  line-height: 0.88;
+}
+
+/* Gold italic was the travel-brochure signature: a flourish on a word. In sport the accent is flat. */
+.teeline-site .hero-content h1 em {
+  font-style: normal;
+  color: var(--gold);
+}
+
+/* The small labels are the cheapest place to add the sports register, and the hardest to miss. */
+.teeline-site :is(.hero-eyebrow, .section-kicker),
+.teeline-site .hero-note b {
+  font-family: var(--f-sans);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.teeline-site :is(.experience-section h2, .workflow-heading h2, .pairings-callout h2) {
+  font-size: clamp(38px, 5.4vw, 74px);
+  line-height: 0.9;
+}
+
+.teeline-site .strip-card h3 {
+  font-size: clamp(30px, 4.4vw, 52px);
+  line-height: 0.92;
+}
+
+/* Big numerals read as scoreboards. Tabular, so a value changing cannot shift its row. */
+.teeline-site :is(.capability-topline span, .step-number) {
+  font-family: var(--f-condensed);
+  font-size: 1.35em;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Buttons are labels in sport, not sentences. */
+.teeline-site
+:is(.button-light, .button-quiet, .button-outline, .button-dark, .site-nav-action, .strip-cta) {
+  font-family: var(--f-sans);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- public site: schedule strip */
+
+/* The event's days as a fixtures strip, the way a sports site shows a schedule. Every value comes
+   from the event row: the dates the organizer set and the event's first tee. Nothing is inferred. */
+.site-schedule {
+  display: grid;
+  gap: 24px;
+  padding: clamp(28px, 5vw, 56px) clamp(20px, 6vw, 96px);
+  background: #101613;
+  color: #fffdf7;
+}
+
+.site-schedule .section-kicker {
+  color: var(--gold);
+}
+
+.site-schedule h2 {
+  color: #fffdf7;
+  font-size: clamp(34px, 5vw, 64px);
+}
+
+.site-schedule .schedule-meta {
+  margin-top: 6px;
+  color: rgb(247 245 238 / 74%);
+  font-size: 15px;
+}
+
+.schedule-days {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(96px, 1fr);
+  gap: 1px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  background: rgb(247 245 238 / 22%);
+}
+
+.schedule-days li {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 18px 10px;
+  background: #101613;
+}
+
+.schedule-weekday,
+.schedule-month {
+  color: rgb(247 245 238 / 68%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.schedule-day {
+  color: #fffdf7;
+  font-family: var(--f-condensed);
+  font-size: clamp(38px, 5vw, 58px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .schedule-days {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
