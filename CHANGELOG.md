@@ -11,6 +11,29 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.16.0] - 2026-10-20
+
+The benchmark pass on the public landing page, and the research behind it.
+
+### Added
+- **`docs/public-landing-benchmark.md`**: sixteen sports sites compared on display type, hero
+  treatment, event display and athlete highlights, from the NBA and Formula 1 to the PGA Tour, LIV
+  and an amateur association. Its conclusion is that display type is sans almost everywhere in sport,
+  that a sports hero is an event frame rather than destination photography, and that events are shown
+  as data rather than as mood copy. The only serif displays in the sample belong to the
+  institution-first golf bodies.
+- **A four-cell stat strip in the hero**: entries, cut-off, days and first tee, set in tabular
+  numerals at 30px. This is the benchmark's first move, "put a number where the slogan would go". Every
+  value is the event's own, and the strip is absent when no event is open.
+
+### Changed
+- The hero is 680px rather than 720 to 900: a frame for the event, not a landscape to scroll past.
+- Public buttons square off to 4px against flat colour bands, and the small labels carry the weight.
+  The signed-in app keeps its own radii and its serif.
+- **Removed three pieces of brochure furniture**: the glass note card, the artwork caption and the
+  "scroll to explore" cue. All three are travel-page conventions, and none of them told a visitor
+  anything about the event.
+
 ## [0.15.0] - 2026-10-20
 
 The public landing page becomes a sports page, two migrations that were written but unapplied are now

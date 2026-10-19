@@ -2804,3 +2804,62 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* --------------------------------------------------- public site: hero height and stat strip */
+
+/* The benchmark's first move is to put a number where the slogan would go, and its second is a
+   frame rather than a landscape: a sports hero presents the event, it does not ask you to scroll
+   past a view. 680px instead of the 720 to 900 the travel layout used. */
+.teeline-site .teeline-hero {
+  min-height: 680px;
+}
+
+/* Third move: hard edges and a scoreboard grid. Sport does not use pills or floating cards, so the
+   public buttons square off to 4px against flat colour bands. The app keeps its own radii. */
+.teeline-site
+:is(.button-light, .button-quiet, .button-outline, .button-dark, .strip-cta, .site-nav-action) {
+  border-radius: 4px;
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  max-width: 760px;
+  margin-top: 34px;
+  background: rgb(247 245 238 / 26%);
+}
+
+.hero-stats > div {
+  display: grid;
+  gap: 4px;
+  padding: 14px 12px;
+  background: rgb(9 14 11 / 76%);
+}
+
+.hero-stats dt {
+  color: rgb(247 245 238 / 66%);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero-stats dd {
+  margin: 0;
+  color: #fffdf7;
+  font-family: var(--f-condensed);
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .teeline-site .teeline-hero {
+    min-height: 0;
+  }
+
+  .hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
