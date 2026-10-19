@@ -1,8 +1,9 @@
 "use client";
 
-import { CalendarPlus, LoaderCircle, TriangleAlert, Trophy } from "lucide-react";
+import { CalendarPlus, LoaderCircle, TriangleAlert, Trophy, UserX } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { accessProblemCopy } from "@/lib/auth/access-problem";
 import { useDesk } from "@/lib/store/desk-store";
 
 /**
@@ -11,8 +12,32 @@ import { useDesk } from "@/lib/store/desk-store";
  * been picked. In the demo it is reachable from the tournament selector ("Clear selection").
  */
 export function NeedsTournament({ what }: { what: string }) {
-  const { tournaments, adapters, status } = useDesk();
+  const { tournaments, adapters, status, accessProblem } = useDesk();
   const demo = status === "demo";
+
+  // The account itself cannot use a desk. Said plainly, with no retry, because retrying cannot help
+  // and a person who is told to retry will keep doing it.
+  if (accessProblem) {
+    const copy = accessProblemCopy(accessProblem);
+    return (
+      <div className="card grid min-h-[320px] place-items-center text-center" role="status">
+        <div className="grid max-w-[44rem] justify-items-center gap-3">
+          <span className="grid size-12 place-items-center rounded-full bg-fairway-soft text-fairway">
+            <UserX className="size-6" aria-hidden="true" />
+          </span>
+          <h1 className="text-[22px] leading-7">{copy.title}</h1>
+          <p className="muted">{copy.body}</p>
+          <p className="muted">
+            <b>What to do: </b>
+            {copy.next}
+          </p>
+          <Button variant="secondary" asChild className="mt-1">
+            <Link href="/">Club home</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (status === "loading" || status === "error") {
     const failed = status === "error";

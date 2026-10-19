@@ -18,6 +18,13 @@ Supabase project, because the code and the database are released separately.
   collapsed into one sentence. A field holding only spaces counts as empty rather than rendering a
   blank box.
 
+- **A signed-in account with no club now gets the truth instead of a dead end** (gap 18). `getDeskMember`
+  threw a plain error with a message, the store folded it into the generic failure state, and the empty
+  state said "The tournament desk did not load" next to a Retry button that could never help. The
+  membership problem is now a typed reason kept apart from a failed read, and the screen says the
+  account is not in a club, what that means, and who can fix it. A test pins that none of the three
+  access problems offers a retry.
+
 ## [0.14.0] - 2026-10-20
 
 Three issues the owner reported from using the deployed build, worked at the same time and released

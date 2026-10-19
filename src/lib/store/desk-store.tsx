@@ -14,7 +14,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { getDeskMember } from "@/lib/auth/member";
+import type { DeskAccessProblem } from "@/lib/auth/access-problem";
+import { DeskAccessError, getDeskMember } from "@/lib/auth/member";
 import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
 import { registrationFor } from "@/lib/data/registrations";
 import {
@@ -108,6 +109,11 @@ interface Desk {
   status: "demo" | "loading" | "ready" | "error";
   /** Set when a Supabase read or write failed. Never swallowed. */
   error: string | null;
+  /**
+   * Set when the account cannot use a desk at all, which is a different thing from a read that
+   * failed: the screens must not offer a retry for any of these.
+   */
+  accessProblem: DeskAccessProblem | null;
   /** True while a write is in flight, for a "saving…" label. */
   saving: boolean;
   /**
@@ -178,6 +184,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null);
   const [status, setStatus] = useState<Desk["status"]>(connected ? "loading" : "demo");
   const [error, setError] = useState<string | null>(null);
+  const [accessProblem, setAccessProblem] = useState<DeskAccessProblem | null>(null);
   const [saving, setSaving] = useState(false);
   const [member, setMember] = useState<Desk["member"]>(connected ? undefined : undefined);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -241,6 +248,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         if (authError || !data.user) {
           // Worth another try when the route changes: see the comment on the effect below.
           awaitingSession.current = true;
+          setAccessProblem(null);
           return "no-session";
         }
         userId = data.user.id;
@@ -257,6 +265,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         rawDispatch({ type: "hydrate", state: loaded.state });
         setStatus("ready");
         setCachedAt(null);
+        setAccessProblem(null);
         void saveDeskSnapshot(
           userId,
           signedIn.clubId,
@@ -268,6 +277,9 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         return "ready";
       } catch (loadError) {
         if (!active) return "failed";
+        // An account with no club is not a failed read, and telling that person to retry sends them
+        // round a loop that cannot end.
+        setAccessProblem(loadError instanceof DeskAccessError ? loadError.problem : null);
         // A saved copy is shown only when the connection is genuinely down. A refusal from the
         // server (no club membership, a bad row, a policy) is a real answer, and covering it with
         // an older copy would hide the one thing the desk needs to see.
@@ -511,6 +523,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       classifyDraft,
       status,
       error,
+      accessProblem,
       saving,
       member: connected ? member : undefined,
       lastSavedAt,
@@ -524,6 +537,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     dispatch,
     status,
     error,
+    accessProblem,
     saving,
     member,
     connected,
