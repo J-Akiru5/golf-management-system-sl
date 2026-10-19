@@ -40,6 +40,8 @@ import type {
   Tournament,
 } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
+import { NO_DESK_SNAPSHOT_NOTICE, OFFLINE_WRITE_NOTICE, toDeskSnapshot } from "@/lib/offline/cache";
+import { lastDeskUserId, loadDeskSnapshot, saveDeskSnapshot } from "@/lib/offline/store";
 import type { Tee } from "@/lib/routing";
 import {
   type Action,
@@ -115,6 +117,10 @@ interface Desk {
   member?: { displayName: string; role: "owner" | "organizer" | "desk" } | null;
   /** ISO timestamp of the last successful write. */
   lastSavedAt?: string | null;
+  /** True when the phone has no connection, or the desk is showing a saved copy. */
+  offline: boolean;
+  /** ISO time the saved copy was written, or null when the desk read from the network. */
+  cachedAt: string | null;
   /** Re-runs the load after a failure, for the retry control. */
   reload: () => void;
 }
@@ -128,6 +134,16 @@ const DRAW_ACTIONS: ReadonlySet<Action["type"]> = new Set([
   "setGroupLocked",
   "publish",
   "unpublish",
+]);
+
+/**
+ * Actions that only move around what is already on screen. Every other action changes data, and
+ * is refused while the phone is offline rather than saved into a queue that would run later.
+ */
+const LOCAL_ONLY_ACTIONS: ReadonlySet<Action["type"]> = new Set([
+  "hydrate",
+  "selectTournament",
+  "publishAck",
 ]);
 
 export function DeskProvider({ children }: { children: ReactNode }) {
@@ -166,6 +182,26 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Desk["member"]>(connected ? undefined : undefined);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [networkOnline, setNetworkOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  // The queue and the dispatcher were created once; they read the current truth through this ref.
+  // Writes are allowed only on a live, loaded desk: not while loading, not on a failed load, and
+  // not on a saved copy.
+  const canWriteRef = useRef(!connected);
+  canWriteRef.current = !connected || (status === "ready" && networkOnline && cachedAt === null);
+
+  useEffect(() => {
+    const sync = () => setNetworkOnline(navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
 
   // One read on load, and one more chance after it. Without a Supabase URL the desk stays on the
   // in-memory demo, unchanged.
@@ -195,11 +231,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     let active = true;
     setStatus("loading");
     setError(null);
-
     const supabase = createSupabaseBrowserClient();
 
     /** "no-session" is kept apart from a failure: it is the one case worth trying again. */
     const load = async (): Promise<"ready" | "no-session" | "failed"> => {
+      let userId: string | null = null;
       try {
         const { data, error: authError } = await supabase.auth.getUser();
         if (authError || !data.user) {
@@ -207,8 +243,9 @@ export function DeskProvider({ children }: { children: ReactNode }) {
           awaitingSession.current = true;
           return "no-session";
         }
+        userId = data.user.id;
         awaitingSession.current = false;
-        const signedIn = await getDeskMember(supabase, data.user.id);
+        const signedIn = await getDeskMember(supabase, userId);
         const loaded = await loadDeskState(supabase, signedIn.clubId, {
           preferTournamentId: keepSelected.current ?? latest.current.activeTournamentId,
         });
@@ -219,11 +256,42 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         revisions.current = loaded.revisions;
         rawDispatch({ type: "hydrate", state: loaded.state });
         setStatus("ready");
+        setCachedAt(null);
+        void saveDeskSnapshot(
+          userId,
+          signedIn.clubId,
+          toDeskSnapshot(loaded, {
+            displayName: signedIn.displayName,
+            role: signedIn.role,
+          }),
+        );
         return "ready";
       } catch (loadError) {
         if (!active) return "failed";
+        // A saved copy is shown only when the connection is genuinely down. A refusal from the
+        // server (no club membership, a bad row, a policy) is a real answer, and covering it with
+        // an older copy would hide the one thing the desk needs to see.
+        const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+        const savedFor = offline ? (userId ?? lastDeskUserId()) : null;
+        const snapshot = savedFor ? await loadDeskSnapshot(savedFor) : null;
+        if (!active) return "failed";
+        if (snapshot) {
+          setMember(snapshot.payload.member);
+          revisions.current = snapshot.payload.revisions;
+          rawDispatch({ type: "hydrate", state: snapshot.payload.state });
+          setStatus("ready");
+          setCachedAt(snapshot.savedAt);
+          setError(null);
+          return "ready";
+        }
         setStatus("error");
-        setError(loadError instanceof Error ? loadError.message : "Could not load the desk.");
+        setError(
+          offline
+            ? NO_DESK_SNAPSHOT_NOTICE
+            : loadError instanceof Error
+              ? loadError.message
+              : "Could not load the desk.",
+        );
         return "failed";
       }
     };
@@ -279,6 +347,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         setLastSavedAt(new Date().toISOString());
       },
       onBusy: setSaving,
+      canWrite: () => canWriteRef.current,
     });
   }
 
@@ -313,6 +382,12 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   // draw actions are also queued for the database.
   const dispatch = useCallback<Dispatch<Action>>(
     (action) => {
+      // Offline is not a queue: the change is refused before it reaches the reducer, so the screen
+      // cannot show a value that the database never received.
+      if (connected && !LOCAL_ONLY_ACTIONS.has(action.type) && !canWriteRef.current) {
+        setError(OFFLINE_WRITE_NOTICE);
+        return;
+      }
       if (!client || !DRAW_ACTIONS.has(action.type)) {
         rawDispatch(action);
         return;
@@ -325,7 +400,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         drawQueue.current?.(() => runDrawJob(job, client));
       }
     },
-    [client, runDrawJob],
+    [client, connected, runDrawJob],
   );
 
   const adapters = useMemo<Adapters>(() => {
@@ -334,6 +409,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       client,
       clubId: state.clubId,
       revisions: revisionStore,
+      canWrite: () => canWriteRef.current,
       onError: setError,
       onSaved: () => {
         setError(null);
@@ -438,9 +514,24 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       saving,
       member: connected ? member : undefined,
       lastSavedAt,
+      offline: connected && (!networkOnline || cachedAt !== null),
+      cachedAt,
       reload,
     };
-  }, [state, adapters, dispatch, status, error, saving, member, connected, lastSavedAt, reload]);
+  }, [
+    state,
+    adapters,
+    dispatch,
+    status,
+    error,
+    saving,
+    member,
+    connected,
+    lastSavedAt,
+    networkOnline,
+    cachedAt,
+    reload,
+  ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

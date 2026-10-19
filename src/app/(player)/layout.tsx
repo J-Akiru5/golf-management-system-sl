@@ -3,8 +3,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { FirstRunWelcome, HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { SignOutForm } from "@/components/SignOutForm";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
-import { signOut } from "@/lib/auth/actions";
 import { I18nProvider } from "@/lib/i18n/context";
 import { getI18n } from "@/lib/i18n/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -41,16 +42,13 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
             <HelpButton audience="player" screen="my" />
             <LanguageSwitcher tone="on-forest" />
             {isSupabaseConfigured() && (
-              <form action={signOut}>
-                <button type="submit" className="btn small ghost !border-on-forest-muted">
-                  {t("player.nav.signOut")}
-                </button>
-              </form>
+              <SignOutForm className="btn small ghost !border-on-forest-muted" />
             )}
           </nav>
         </header>
-        <main className="public">{children}</main>
+        <main className="public mobile-bar-space">{children}</main>
         <FirstRunWelcome audience="player" />
+        <PlayerBottomBar />
       </div>
     </I18nProvider>
   );

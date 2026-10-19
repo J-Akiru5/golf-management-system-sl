@@ -24,13 +24,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { roleLabel } from "@/components/desk";
 import { FirstRunWelcome, HelpButton } from "@/components/help";
+import { DeskBottomBar } from "@/components/MobileTabBar";
 import { AlertsBell } from "@/components/notifications/AlertsBell";
+import { SignOutForm } from "@/components/SignOutForm";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TournamentSelect } from "@/components/TournamentSelect";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tip, TooltipProvider } from "@/components/ui/tooltip";
-import { signOut } from "@/lib/auth/actions";
 import { validateDraw } from "@/lib/draw/validate";
 import { useDesk } from "@/lib/store/desk-store";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -264,11 +265,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             {supabaseConfigured &&
               (member ? (
-                <form action={signOut}>
-                  <button type="submit" className="chrome-btn no-print">
-                    Sign out
-                  </button>
-                </form>
+                <SignOutForm className="chrome-btn no-print" />
               ) : (
                 status === "error" && (
                   <Link href="/login" className="chrome-btn no-print no-underline">
@@ -330,12 +327,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <main
           id="main"
-          className={cn(!overlay && "px-4 pt-6 pb-16 sm:px-6 lg:pr-8 lg:pl-[var(--rail-pad)]")}
+          className={cn(
+            "mobile-bar-space",
+            !overlay && "px-4 pt-6 pb-16 sm:px-6 lg:pr-8 lg:pl-[var(--rail-pad)]",
+          )}
         >
           {children}
         </main>
 
         <FirstRunWelcome audience="desk" />
+        <DeskBottomBar onMore={() => setMenuOpen(true)} />
       </div>
     </TooltipProvider>
   );

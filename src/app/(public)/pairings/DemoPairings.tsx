@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { HelpButton } from "@/components/help";
+import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -33,7 +34,7 @@ export function DemoPairings() {
     : null;
 
   return (
-    <div className="public">
+    <div className="public mobile-bar-space">
       <header className="public-head">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -68,6 +69,7 @@ export function DemoPairings() {
       <p className="hint no-print">
         {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link>
       </p>
+      <PlayerBottomBar />
     </div>
   );
 }
