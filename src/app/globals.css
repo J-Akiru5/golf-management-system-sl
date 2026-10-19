@@ -2727,14 +2727,8 @@
 }
 
 /* Buttons are labels in sport, not sentences. */
-.teeline-site :is(
-  .button-light,
-  .button-quiet,
-  .button-outline,
-  .button-dark,
-  .site-nav-action,
-  .strip-cta
-) {
+.teeline-site
+:is(.button-light, .button-quiet, .button-outline, .button-dark, .site-nav-action, .strip-cta) {
   font-family: var(--f-sans);
   font-weight: 800;
   letter-spacing: 0.1em;
