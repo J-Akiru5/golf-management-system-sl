@@ -334,7 +334,13 @@ export function RegisterConfirm({
             Back
           </button>
         )}
-        <button type="button" className="btn" onClick={onConfirm} disabled={!canSave}>
+        <button
+          type="button"
+          className="btn"
+          data-help="register-review"
+          onClick={onConfirm}
+          disabled={!canSave}
+        >
           <BadgeCheck aria-hidden="true" />
           {saving ? "Saving…" : confirmLabel}
         </button>

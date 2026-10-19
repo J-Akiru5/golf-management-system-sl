@@ -95,7 +95,12 @@ export default function PrintCenter() {
                 <Smartphone aria-hidden="true" /> Public preview
               </Link>
             </Button>
-            <Button variant="gold" onClick={() => window.print()} className="no-print">
+            <Button
+              variant="gold"
+              onClick={() => window.print()}
+              className="no-print"
+              data-help="print-now"
+            >
               <Printer aria-hidden="true" /> Print this sheet
             </Button>
           </>
@@ -135,7 +140,7 @@ export default function PrintCenter() {
             </button>
           ))}
         </div>
-        <span className={cn("pill", published ? "ok" : "info")}>
+        <span className={cn("pill", published ? "ok" : "info")} data-help="print-version">
           {published
             ? changedSincePublish
               ? "Published, with newer changes on the board"

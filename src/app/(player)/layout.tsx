@@ -31,7 +31,11 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
           <span className="text-sm font-semibold">{t("player.title")}</span>
           <span className="flex-1" />
           <nav aria-label="Player" className="flex flex-wrap items-center gap-4 text-sm">
-            <Link href="/pairings" className="text-on-forest no-underline hover:underline">
+            <Link
+              href="/pairings"
+              data-help="my-pairings"
+              className="text-on-forest no-underline hover:underline"
+            >
               {t("player.nav.allPairings")}
             </Link>
             <HelpButton audience="player" screen="my" />

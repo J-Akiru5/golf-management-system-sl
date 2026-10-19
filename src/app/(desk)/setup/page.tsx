@@ -423,6 +423,7 @@ function SetupWizard({
             <SectionCard
               id="course"
               icon={<Flag />}
+              dataHelp="setup-course"
               title="Course & tees"
               subtitle={
                 courseStatus === "official"
@@ -620,6 +621,7 @@ function SetupWizard({
             <SectionCard
               id="rules"
               icon={<CalendarClock />}
+              dataHelp="setup-rules"
               title="Cut-off & handicap"
               action={sectionAction("rules")}
             >
@@ -816,6 +818,7 @@ function SetupWizard({
             <SectionCard
               id="flights"
               icon={<Layers />}
+              dataHelp="setup-flights"
               title="Flights"
               subtitle="Fixed handicap ranges per category. Ranges must not overlap."
               action={sectionAction("flights")}
