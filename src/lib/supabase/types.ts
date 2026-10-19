@@ -37,6 +37,50 @@ export type HoleRow = {
   par: number;
   stroke_index: number;
 };
+/** One versioned course map. The app reads only the published row for its course. */
+export type CourseMapRow = {
+  id: string;
+  club_id: string;
+  course_id: string;
+  version: number;
+  status: string;
+  note: string | null;
+  base_image: string | null;
+  created_by: string | null;
+  created_at: string;
+  technical_confirmed_at: string | null;
+  validation_confirmed_at: string | null;
+  published_by: string | null;
+  published_at: string | null;
+};
+
+/** Marker positions on one map version, normalised 0..1 from the top-left. Not survey geometry. */
+export type CourseMapHoleRow = {
+  club_id: string;
+  map_id: string;
+  number: number;
+  tee_x: number | null;
+  tee_y: number | null;
+  green_x: number | null;
+  green_y: number | null;
+  direction: string | null;
+  source: string;
+  notes: string | null;
+};
+
+/** A recorded confirmation or change request on a map version. Never edited once written. */
+export type CourseMapReviewRow = {
+  id: string;
+  club_id: string;
+  map_id: string;
+  kind: string;
+  reviewer_name: string;
+  reviewer_user: string | null;
+  decision: string;
+  note: string | null;
+  created_at: string;
+};
+
 export type PlayerRow = {
   id: string;
   club_id: string;
@@ -452,10 +496,62 @@ export interface Database {
         { club_id: string; notification_id: string; user_id: string; read_at?: string }
       >;
       help_seen: Table<HelpSeenRow, { guide_id: string; user_id?: string; seen_at?: string }>;
+      course_maps: Table<
+        CourseMapRow,
+        {
+          club_id: string;
+          course_id: string;
+          version: number;
+          status?: string;
+          note?: string | null;
+          base_image?: string | null;
+          created_by?: string | null;
+        }
+      >;
+      course_map_holes: Table<
+        CourseMapHoleRow,
+        {
+          club_id: string;
+          map_id: string;
+          number: number;
+          tee_x?: number | null;
+          tee_y?: number | null;
+          green_x?: number | null;
+          green_y?: number | null;
+          direction?: string | null;
+          source?: string;
+          notes?: string | null;
+        }
+      >;
+      course_map_reviews: Table<
+        CourseMapReviewRow,
+        {
+          club_id: string;
+          map_id: string;
+          kind: string;
+          reviewer_name: string;
+          reviewer_user?: string | null;
+          decision: string;
+          note?: string | null;
+        }
+      >;
     };
     Views: Record<string, never>;
     Functions: {
       is_club_member: { Args: { p_club: string }; Returns: boolean };
+      create_course_map: { Args: { p_course: string; p_note?: string | null }; Returns: string };
+      save_course_map_holes: { Args: { p_map: string; p_holes: Json }; Returns: number };
+      record_course_map_review: {
+        Args: {
+          p_map: string;
+          p_kind: string;
+          p_reviewer_name: string;
+          p_decision: string;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
+      publish_course_map: { Args: { p_map: string }; Returns: string };
       sync_notifications: { Args: { p_tournament: string }; Returns: number };
       mark_notifications_read: { Args: { p_tournament: string }; Returns: number };
       has_club_role: { Args: { p_club: string; p_roles: string[] }; Returns: boolean };
