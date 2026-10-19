@@ -11,6 +11,10 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.13.0] - 2026-10-19
+
+The public page leads with the events a visitor can enter. One migration, **not applied**.
+
 ### Added
 - **The public landing page leads with the events a visitor can enter** (decision 23). A strip under
   the hero, one slide at a time, showing the club crest, the event name, its dates and day count, the
@@ -389,7 +393,8 @@ Scaffold.
 ### Database
 - `20261017000000_init.sql`: applied live.
 
-[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.12.1...develop
+[Unreleased]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.13.0...develop
+[0.13.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/J-Akiru5/golf-management-system-sl/compare/v0.10.0...v0.11.0
