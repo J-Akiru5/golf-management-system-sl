@@ -54,6 +54,9 @@ Do not push to `develop` directly. `main` is production and is kept level with `
 merge; there is no `staging` yet. Check the remote (`git ls-remote`) before stating what is merged or
 what a branch contains.
 
+Only `develop` and `main` auto-deploy. `vercel.json` disables Vercel deployments for every other
+branch, so previews are off by design; do not re-enable them without the owner.
+
 ## Writing style
 
 Plain language. No em-dash pile-ups, no marketing words. Do not call the owner an "engineer" in documents.
