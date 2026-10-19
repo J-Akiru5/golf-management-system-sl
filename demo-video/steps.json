@@ -41,8 +41,7 @@
         { "line": 2, "target": "p:has-text('registrations ·')", "spotlight": true, "zoom": 1.12, "cursor": true },
         { "line": 3, "target": "text=Draft · players", "spotlight": true, "zoom": 1.15, "cursor": true },
         { "line": 4, "target": "section[aria-labelledby='ready-h']", "spotlight": true, "zoom": 1.12, "cursor": true, "scroll": true },
-        { "line": 5, "target": "nav[aria-label='Main']", "spotlight": true, "zoom": 1.15, "cursor": true },
-        { "line": 6, "spotlight": false, "zoom": 1 }
+        { "line": 5, "spotlight": false, "zoom": 1 }
       ]
     },
     {

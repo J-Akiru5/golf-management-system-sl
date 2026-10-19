@@ -416,6 +416,9 @@ for (const [index, scene] of steps.scenes.entries()) {
         return;
       }
       if (item.scroll) {
+        // Scrolling early keeps the ring on time later, but the old ring must not float over the new
+        // position while the page moves.
+        await page.evaluate(() => window.__avp?.spotlight(null));
         await locator
           .evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }))
           .catch(() => {});
@@ -428,6 +431,19 @@ for (const [index, scene] of steps.scenes.entries()) {
     }
   };
   if (firstEvent) await prefetch(firstEvent);
+  /**
+   * Warms the next event's target just in time: late enough that the current ring stays up for its
+   * own line, early enough that the selector and scroll work is done before the next line starts.
+   */
+  const warmNext = async (item) => {
+    const idx = schedule.indexOf(item);
+    const next = schedule.slice(idx + 1).find((s) => s.type === "event" && s.target);
+    if (!next || cache.has(next)) return;
+    const nextDue = next.at * 1000 + clockOffsetMs - eventLeadMs;
+    const wait = nextDue - 1100 - (Date.now() - started);
+    if (wait > 0) await sleep(wait);
+    await prefetch(next);
+  };
   for (const item of schedule) {
     const due = item.type === "caption" ? item.at * 1000 : item.at * 1000 + clockOffsetMs - eventLeadMs;
     const wait = due - (Date.now() - started);
@@ -460,9 +476,7 @@ for (const [index, scene] of steps.scenes.entries()) {
         if (over > 0) clockOffsetMs += over;
         // The page changed, so every cached rect is stale.
         cache.clear();
-        const idx = schedule.indexOf(item);
-        const next = schedule.slice(idx + 1).find((s) => s.type === "event" && s.target);
-        if (next) await prefetch(next);
+        await warmNext(item);
         continue;
       }
       let locator = null;
@@ -521,14 +535,16 @@ for (const [index, scene] of steps.scenes.entries()) {
         });
       }
       if (item.spotlight === false) {
-        await page.evaluate(() => window.__avp?.spotlight(null));
+        // Pull-out beats return to the full page, so no focus artefacts are left on screen.
+        await page.evaluate(() => {
+          window.__avp?.spotlight(null);
+          window.__avp?.cursorOff();
+        });
       }
     } catch (error) {
       if (!item.optional) console.warn(`  ! ${scene.id}: ${error.message}`);
     }
-    const idx = schedule.indexOf(item);
-    const next = schedule.slice(idx + 1).find((s) => s.type === "event" && s.target);
-    if (next) await prefetch(next);
+    await warmNext(item);
   }
 
   const contentSeconds = (Date.now() - started) / 1000;
