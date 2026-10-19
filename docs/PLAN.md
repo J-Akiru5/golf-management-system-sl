@@ -615,6 +615,32 @@ label. Keep new work on a fresh branch.
   report can be matched to exactly what the tester saw. It is **not needed for the UAT**; decision 21
   settles where reports go and what context they may carry.
 
+### Reported after the first production deploy (19 Oct 2026)
+
+Three issues from the owner, found by using the deployed build rather than by reading it. Tracked as
+[#58](https://github.com/J-Akiru5/golf-management-system-sl/issues/58),
+[#59](https://github.com/J-Akiru5/golf-management-system-sl/issues/59) and
+[#60](https://github.com/J-Akiru5/golf-management-system-sl/issues/60).
+
+| # | What it is | Kind | Release |
+| --- | --- | --- | --- |
+| #58 | Settings: the desk instructions field cuts its own text and does not show all of it. Every text input should display in full, and a textarea should resize by dragging its top or bottom edge **anywhere along the edge**, not only the corner grabber | A fix, plus a small interaction change | 0.14.0 |
+| #59 | The help centre's "Show me" names a control on another screen but does not take you there. It should navigate to the page first and then ring the control it means | A feature | 0.14.0 |
+| #60 | The mobile experience is incomplete. Two bottom bars (desk and player, decisions 27), benchmarked against how other mobile golf systems do it, and the app made an **offline-capable PWA** that opens with no signal and shows what it last saw, under the three conditions in decision 26 | A feature | 0.14.0 |
+
+They arrive after the first deploy, so they are worked as a batch and cut together as **0.14.0**: two of
+the three are new workflows, which is a minor bump per `docs/VERSIONING.md`, and shipping three
+versions in one day buys nothing. If the mobile work runs long, #58 and #59 can go first as **0.13.2**,
+since both are a fix and a small behaviour change.
+
+**They are split across worktrees, one per issue**, because they overlap in the files they touch: #58
+and #60 both need `globals.css`, and #59 and #60 both need the shell. Three agents in one directory
+would fight over the same files, so each gets its own and the results are integrated on `develop`.
+
+A fourth piece of work runs alongside them: **a benchmark of mobile golf and sports-club apps**, to
+answer #60's "how do they handle actual mobile system" before the bottom bar is designed rather than
+after. Its output is a written comparison, not code.
+
 ### Phase 2: results
 
 Score encoding from paper cards, gross and net per flight, tie-breaks, results export. Needs the organizer's tie-break rule. Adds the `scores` table.
@@ -802,6 +828,9 @@ Agent ground rules:
 | 18 Oct 2026 | **A "Report a bug" action is marked as a nice-to-have (decision 21).** Jeff wants an in-app way to report a bug, but it is not needed for the UAT. The default is a help-centre action that opens a prefilled GitHub issue with the current screen, the signed-in role, the version/build and an optional note; no schema, no backend and no player data. It is listed under section 8's nice-to-haves, not in the UAT workstreams. |
 | 18 Oct 2026 | **Versioning is the single production source of truth (decision 22).** `docs/VERSIONING.md`, `package.json`, `CHANGELOG.md` and the annotated `vX.Y.Z` tags define what production runs; the tag is authoritative even when a docs-only commit sits on `main` after it. Code reaches `main` |only as a tagged release. Current: v0.8.0 tagged at `06a2748`, and `develop` and `main` carry it and are kept level. Open task: show `v{version} · {short commit} · {environment}` in the shell (W6). |
 | 19 Oct 2026 | **The launch checklist was worked, and two of its items were wrong.** CI now runs the four checks plus the browser pass on every pull request (`.github/workflows/ci.yml`), which is the gap that let two bugs reach main: an alerts panel with ivory text on an ivory background, and a paging rule that sent the desk back to page 2. Both passed typecheck, lint, 486 tests and build. The photo item asked for "the private bucket verified", which implied photos go there; they do not, and never have, because the app has no upload path at all and `photo_path` is written by nothing. Photos are shrunk in the browser and kept in the session. The consent half was already sound: the form gates Save on the box being ticked, and `photoOf()` returns nothing unless photo and consent are both set. The bucket was private already, and anon could not list it, read a path or use the public route; it now caps uploads at 5 MiB and three image types. The player portal was exercised end to end with two throwaway accounts and one throwaway row, all removed afterwards: the first claimed the record and its portal resolved to it, the second was refused with `taken` and resolved to nothing, which is the part worth knowing. The run sheet became `docs/UAT_RUN_SHEET.md` and corrected its own step 3, since two saves in one tab cannot be stale and the guard needs two tabs. `docs/RUNBOOK.md` covers deploy, rollback and running the day from paper, and states the one thing a code rollback cannot undo: the database. Every migration so far is additive for that reason. |
+
+| 19 Oct 2026 | **The app becomes an offline-capable PWA (issue #60, decision 26).** Jeff chose the heavier of the three options put to him: not "installable only", but "opens with no signal and shows what it last saw", chosen after two risks were stated plainly — player names, handicap indexes and phone numbers left on a shared phone, and a draw cached this morning shown as if it were current. Three conditions therefore ride with the choice as requirements rather than polish. Every screen showing cached data says so and says when it was saved; nothing the app would otherwise mark live, published or final is presented that way from cache without that notice; and signing out clears the cache, because a shared desk phone must not keep a roster after the person holding it walks away. Photos are never cached: consent is recorded per photo and a cache sits outside that control. Offline writes are refused with a clear message rather than queued, because a write that quietly applies hours later is worse than one that fails in front of you. |
+| 19 Oct 2026 | **Two bottom bars, not one (issue #60, decision 27).** Jeff chose a separate bar for the desk and for the player area. The two want different things from a thumb: the organizer walking the course needs the draw, the register desk and the start sheet, while a player needs their entry and their tee time. One bar serving both would compromise both. The sidebar remains the primary navigation where there is room for it, and the bar holds the three to five things worth reaching without opening a menu. |
 
 ---
 
