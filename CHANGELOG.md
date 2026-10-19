@@ -11,6 +11,28 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+### Added
+- **The public landing page leads with the events a visitor can enter** (decision 23). A strip under
+  the hero, one slide at a time, showing the club crest, the event name, its dates and day count, the
+  start format and first tee time, the entry cut-off with a countdown, and how many are entered, with
+  a link into the entry form. The hero headline and its date line switch to the featured event; the
+  marketing copy below is untouched. One slide is rendered at a time rather than a translated track,
+  because a track leaves the other slides' links focusable unless each is managed by hand. It advances
+  every seven seconds, pauses on hover and on focus, stops entirely under `prefers-reduced-motion`,
+  and the arrows work from the keyboard.
+- `docs/carousel-preview` at `/carousel-preview`, development only, with five events so every state
+  is reachable: both date forms, a cut-off inside three days, a cut-off that closes today, no entries
+  yet, and a name long enough to wrap.
+
+### Database
+- `20261033000000_public_open_events.sql`: **written, NOT applied.** Adds `public_open_events()`, the
+  first public function that **enumerates** anything, returning open events only (state `open`,
+  cut-off not passed) and a deliberately short field list: no contacts, no club instructions, no fee
+  text, no player data. An explicit anon grant, required since 20261031000000 made new functions
+  private by default. Self-verifying: it inserts an open, a draft and a closed event, proves only the
+  first is listed, checks the payload carries no unexpected field, and rolls the probes back. Until
+  it is applied the landing page shows no strip rather than falling back to the sample events.
+
 ## [0.12.1] - 2026-10-19
 
 What a signed-in pass against the live project found, written down. Documentation only, no migration.

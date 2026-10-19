@@ -305,14 +305,21 @@ const padLeft = async () => await main.evaluate((el) => getComputedStyle(el).pad
 // The compact rail has no room for words, so each icon explains itself on hover or focus.
 const railPlayers = rail.locator('a[aria-label="Players"]');
 await railPlayers.focus();
-await expect(page.getByRole("tooltip")).toHaveText(/^Players( · needs attention)?$/, {
-  timeout: 8000,
-});
+// Scoped by name, not `getByRole("tooltip")` on its own. Radix keeps a closed tooltip in the DOM,
+// so a bare role lookup matches both the one just closed and the one now opening and fails on
+// strict mode. That is a race, and it failed CI once before this line was tightened.
+await expect(page.getByRole("tooltip", { name: /^Players/ })).toHaveText(
+  /^Players( · needs attention)?$/,
+  { timeout: 8000 },
+);
 check("focusing a rail icon names it, and says what the dot means", true);
 
 const themeButton = rail.locator('button[aria-label^="Colour theme"]');
 await themeButton.focus();
-await expect(page.getByRole("tooltip")).toContainText("Colour theme", { timeout: 8000 });
+await expect(page.getByRole("tooltip", { name: /Colour theme/ }).first()).toContainText(
+  "Colour theme",
+  { timeout: 8000 },
+);
 check("the theme control names itself in the compact rail", true);
 
 await themeButton.click();
