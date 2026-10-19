@@ -46,6 +46,47 @@ async function openEvents(today: string): Promise<PublicEvent[]> {
   }
 }
 
+/**
+ * The event's days as a fixtures strip, the way a sports site shows a schedule.
+ *
+ * Every value is real. The dates are the ones the organizer entered and the tee time is the event's
+ * first tee, so the strip cannot say anything the desk does not already hold. Weekday names are
+ * formatted on the server in Manila time with a fixed locale, so the markup matches in every browser
+ * and does not change across midnight.
+ */
+function ScheduleStrip({ event }: { event: PublicEvent }) {
+  const days = event.dates.map((date) => {
+    const at = new Date(`${date}T00:00:00Z`);
+    const part = (options: Intl.DateTimeFormatOptions) =>
+      new Intl.DateTimeFormat("en-GB", { ...options, timeZone: "UTC" }).format(at);
+    return {
+      date,
+      weekday: part({ weekday: "short" }),
+      day: part({ day: "2-digit" }),
+      month: part({ month: "short" }),
+    };
+  });
+
+  return (
+    <section className="site-schedule" aria-labelledby="schedule-title">
+      <div>
+        <p className="section-kicker">Schedule</p>
+        <h2 id="schedule-title">{event.name}</h2>
+        <p className="schedule-meta">{formatLabel(event.startFormat, event.firstTeeTime)}</p>
+      </div>
+      <ol className="schedule-days">
+        {days.map((day) => (
+          <li key={day.date}>
+            <span className="schedule-weekday">{day.weekday}</span>
+            <b className="schedule-day">{day.day}</b>
+            <span className="schedule-month">{day.month}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export const metadata: Metadata = {
   title: "Every round, beautifully organized",
   description:
@@ -195,6 +236,7 @@ export default async function HomePage() {
       </section>
 
       {events.length > 0 && <TournamentCarousel events={events} today={today} />}
+      {featured && <ScheduleStrip event={featured} />}
 
       <section id="experience" className="experience-section">
         <div className="section-intro">

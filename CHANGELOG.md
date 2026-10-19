@@ -9,6 +9,26 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.15.0] - 2026-10-20
+
+The public landing page becomes a sports page, two migrations that were written but unapplied are now
+live, and two desk display bugs are fixed.
+
+### Changed
+- **The public landing page now reads as sport rather than as travel.** The display face moves off
+  Cormorant Garamond, a serif, onto Bebas Neue with the bundled sans for labels: uppercase, tight,
+  large, and numerals set tabular so they read like a scoreboard. The gold italic flourish in the hero
+  is gone, because a flourish is what made it look like a brochure. Everything is scoped to
+  `.teeline-site`, so the desk, the player area and print keep the calm serif they were designed with.
+
+### Added
+- **A schedule strip on the landing page.** The featured event's days as a fixtures band, one cell per
+  day with the weekday, date and month. Every value comes from the event row; nothing is inferred, and
+  the weekday is formatted on the server in Manila time so the markup cannot shift across midnight or
+  between browsers.
+
 ### Fixed
 - **The registration desk can read the event instructions again** (gap 20). The "Event instructions"
   panel printed its heading and nothing under it, while the same text is shown to players on the entry
@@ -24,6 +44,13 @@ Supabase project, because the code and the database are released separately.
   membership problem is now a typed reason kept apart from a failed read, and the screen says the
   account is not in a club, what that means, and who can fix it. A test pins that none of the three
   access problems offers a retry.
+
+### Database
+- `20261033000000_public_open_events.sql` and `20261034000000_course_maps.sql` were applied to the live
+  project on 20 Oct 2026, and `supabase migration list --linked` shows local and remote in step at
+  eighteen migrations. `public_open_events()` answers with the anon key of a visitor and returns the
+  24th Bamboo Tee, so the landing page strip now has real data behind it. `course_maps` reads for the
+  service role and is refused to anon, which is the intended shape.
 
 ## [0.14.0] - 2026-10-20
 
