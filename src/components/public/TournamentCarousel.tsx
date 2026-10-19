@@ -92,7 +92,9 @@ export function TournamentCarousel({ events, today }: { events: PublicEvent[]; t
       <div className="strip-head">
         <h2 id="tournament-strip-title">
           <span aria-hidden="true" />
-          {events.length === 1 ? "1 event open for entry" : `${events.length} events open for entry`}
+          {events.length === 1
+            ? "1 event open for entry"
+            : `${events.length} events open for entry`}
         </h2>
         {slides.length > 1 && (
           <div className="strip-controls">
