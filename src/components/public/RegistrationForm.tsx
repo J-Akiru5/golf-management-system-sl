@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { instructionText } from "@/lib/data/instructions";
 import type {
   RegistrationFormConfig,
   SubmissionAnswers,
   SubmissionPlayer,
 } from "@/lib/data/supabase/public-registration";
-import { instructionText } from "@/lib/data/instructions";
 import { useI18n } from "@/lib/i18n/context";
 
 /**
