@@ -450,6 +450,11 @@ These are places where the spec promises something the code does not do yet. Che
     is what the owner called counterintuitive: the read failed, the account has no club, or the club has
     no event yet. The third case is already handled properly ("this club has none yet. Create the first
     event to carry on"); the first two are not distinguished from it or from each other.
+    **Fixed 20 Oct 2026**, in `fix/no-club-message`. `getDeskMember` now throws a typed `DeskAccessError`
+    carrying a reason (`no-club`, `multi-club`, `bad-role`); the store keeps that reason in
+    `accessProblem` rather than folding it into `error`; and `NeedsTournament` renders a panel for it
+    before the load-failure branch. The copy is decided by a pure `accessProblemCopy`, and a test
+    asserts that none of the three offers a retry, which is the specific mistake this gap was.
 19. **The desk cannot load at all until gap 16 is fixed, and that is what production shows.** A signed-in
     owner opening `/admin` on the deployed build sees "Not signed in · Session unavailable" in the shell
     and "Sign in to load the tournament desk" above it, while the address bar is `/admin`, which only a
