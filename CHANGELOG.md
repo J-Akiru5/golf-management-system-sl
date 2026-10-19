@@ -9,7 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- **The registration desk can read the event instructions again** (gap 20). The "Event instructions"
+  panel printed its heading and nothing under it, while the same text is shown to players on the entry
+  form, so the desk was asked to check instructions it could not see. It now renders, keeps the
+  organizer's line breaks, and says where to add them when none are set. The entry form keeps those
+  breaks too: since 0.14.0 the Settings field is a real multi-line box, and a four-step list was being
+  collapsed into one sentence. A field holding only spaces counts as empty rather than rendering a
+  blank box.
 
 ## [0.14.0] - 2026-10-20
 

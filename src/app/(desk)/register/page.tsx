@@ -31,6 +31,7 @@ import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Pager } from "@/components/paging/Pager";
 import { usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
+import { instructionText } from "@/lib/data/instructions";
 import { fmtIso } from "@/lib/data/labels";
 import { PAYMENT_LABEL, type PaymentStatus, type PlayerRecord } from "@/lib/data/types";
 import { fmtIndex, photoOf } from "@/lib/format";
@@ -165,6 +166,8 @@ function RegisterDesk() {
 
   if (!tournament) return <NeedsTournament what="The registration desk" />;
 
+  const instructions = instructionText(tournament.registration.instructions);
+
   const fee = tournament.registration.fields.filter(
     (f) => f.appliesTo === "both" || f.appliesTo === draft.role,
   );
@@ -294,6 +297,20 @@ function RegisterDesk() {
         subtitle="Shown to the desk while taking a registration."
       >
         <div className="grid gap-3 sm:grid-cols-2">
+          {/* The organizer writes these for the desk, so the desk has to be able to read them.
+              Line breaks are kept: a four-step instruction list must not become one sentence. */}
+          <div className="rounded-[12px] bg-surface-sunken p-3 sm:col-span-2">
+            <p className="overline">What to tell players</p>
+            {instructions ? (
+              <p className="mt-1 text-[14px] whitespace-pre-wrap">{instructions}</p>
+            ) : (
+              <p className="hint mt-1">
+                None set. Add them under Registration in{" "}
+                <Link href="/setup#registration">Settings</Link> so the desk and the entry form say
+                the same thing.
+              </p>
+            )}
+          </div>
           <div className="rounded-[12px] bg-surface-sunken p-3">
             <p className="overline">Response email</p>
             <p className="mono mt-1 break-all">
