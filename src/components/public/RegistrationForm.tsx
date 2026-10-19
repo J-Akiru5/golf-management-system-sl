@@ -91,6 +91,7 @@ export function RegistrationForm({
         <label className="field">
           <span>{t("enter.form.fullName")}</span>
           <input
+            type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -121,16 +122,26 @@ export function RegistrationForm({
         </label>
         <label className="field">
           <span>{t("enter.form.ngap")}</span>
-          <input value={ngapId} onChange={(e) => setNgapId(e.target.value)} inputMode="numeric" />
+          <input
+            type="text"
+            value={ngapId}
+            onChange={(e) => setNgapId(e.target.value)}
+            inputMode="numeric"
+          />
           <span className="hint">{t("enter.form.ngapHelp")}</span>
         </label>
         <label className="field">
           <span>{t("enter.form.mobile")}</span>
-          <input value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} />
+          <input
+            type="tel"
+            value={contactNumber}
+            onChange={(e) => setContactNumber(e.target.value)}
+            autoComplete="tel"
+          />
         </label>
         <label className="field">
           <span>{t("enter.form.homeCourse")}</span>
-          <input value={homeCourse} onChange={(e) => setHomeCourse(e.target.value)} />
+          <input type="text" value={homeCourse} onChange={(e) => setHomeCourse(e.target.value)} />
         </label>
         {config.shirtSizes.length > 0 && (
           <label className="field">
@@ -210,6 +221,7 @@ export function RegistrationForm({
         <label className="field">
           <span>{t("enter.form.declaredIndex")}</span>
           <input
+            type="text"
             value={declaredWshHandicap}
             onChange={(e) => setDeclaredWshHandicap(e.target.value)}
             placeholder={t("enter.form.declaredIndexPlaceholder")}
@@ -218,7 +230,11 @@ export function RegistrationForm({
         </label>
         <label className="field">
           <span>{t("enter.form.wshId")}</span>
-          <input value={declaredWshId} onChange={(e) => setDeclaredWshId(e.target.value)} />
+          <input
+            type="text"
+            value={declaredWshId}
+            onChange={(e) => setDeclaredWshId(e.target.value)}
+          />
         </label>
         <label className="field">
           <span>{t("enter.form.email")}</span>

@@ -523,6 +523,7 @@
     font-weight: 500;
     color: var(--ink);
   }
+  input:not([type]),
   input[type="text"],
   input[type="date"],
   input[type="time"],
@@ -530,6 +531,7 @@
   input[type="search"],
   input[type="email"],
   input[type="password"],
+  input[type="tel"],
   select,
   textarea {
     height: 40px;
