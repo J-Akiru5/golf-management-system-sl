@@ -1630,6 +1630,14 @@
   line-height: 0.87;
   text-wrap: balance;
 }
+/* When the headline is an event's name rather than a slogan it has to hold a real title without
+   swallowing the fold, so it drops to a size a name can actually be read at. */
+.hero-content h1.event-title {
+  font-size: clamp(38px, 5.4vw, 72px);
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  text-wrap: pretty;
+}
 .hero-content h1 em {
   color: #d8bd81;
   font-weight: 500;
@@ -1758,6 +1766,228 @@
   width: 14px;
   height: 14px;
   color: #d8bd81;
+}
+/* The strip is pulled up over the foot of the hero on purpose, so whatever is already pinned there
+   has to move clear of it. Without this the artwork caption and the scroll cue sit underneath the
+   strip's own heading. */
+.teeline-hero.with-strip .hero-caption,
+.teeline-hero.with-strip .hero-scroll {
+  bottom: 78px;
+}
+@media (max-width: 720px) {
+  .teeline-hero.with-strip .hero-caption,
+  .teeline-hero.with-strip .hero-scroll {
+    bottom: 62px;
+  }
+}
+/* ------------------------------------------------------- the strip of events open for entry */
+/* Directly under the hero and pulled up over it, so the first thing a visitor meets is what they
+   can enter rather than a slogan. The dark panel, the crest and the countdown are what give the
+   page an app's feel instead of a brochure's. */
+.tournament-strip {
+  position: relative;
+  z-index: 2;
+  width: min(100%, var(--content-width));
+  margin: -44px auto 0;
+  padding: 0 clamp(24px, 7vw, 96px);
+}
+.strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.strip-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #f7f5ee;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.strip-head h2 span {
+  width: 26px;
+  height: 1px;
+  background: #d8bd81;
+}
+.strip-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.strip-controls > button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgb(238 240 234 / 22%);
+  border-radius: 999px;
+  background: rgb(8 35 27 / 55%);
+  color: #f7f5ee;
+  cursor: pointer;
+}
+.strip-controls > button:hover {
+  background: rgb(8 35 27 / 92%);
+}
+.strip-controls > button svg {
+  width: 16px;
+  height: 16px;
+}
+.strip-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.strip-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(238 240 234 / 35%);
+  cursor: pointer;
+  transition: width var(--motion-standard) var(--ease-standard);
+}
+.strip-dots button.on {
+  width: 22px;
+  background: #d8bd81;
+}
+.strip-slide {
+  border-radius: 20px;
+  outline: none;
+}
+.strip-slide:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.strip-card {
+  display: grid;
+  align-items: center;
+  gap: clamp(14px, 2.5vw, 26px);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: clamp(18px, 2.6vw, 26px) clamp(18px, 3vw, 30px);
+  border: 1px solid rgb(238 240 234 / 16%);
+  border-radius: 20px;
+  background: linear-gradient(120deg, rgb(8 35 27 / 97%), rgb(11 43 35 / 86%));
+  box-shadow: 0 20px 44px rgb(0 0 0 / 30%);
+  animation: strip-in 420ms var(--ease-standard) both;
+}
+@keyframes strip-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.strip-crest {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+.strip-body {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.strip-body h3 {
+  margin: 0;
+  color: #fffdf7;
+  font-family: var(--f-serif);
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.strip-dates,
+.strip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: #cad7cf;
+  font-size: 13.5px;
+}
+.strip-dates b {
+  color: #f7f5ee;
+}
+.strip-dates span {
+  padding-left: 8px;
+  border-left: 1px solid rgb(238 240 234 / 22%);
+}
+.strip-dates svg,
+.strip-meta svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: #d8bd81;
+}
+.strip-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(238 240 234 / 40%);
+}
+.strip-cutoff {
+  margin: 0;
+  color: #cad7cf;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.strip-cutoff.urgent {
+  color: #e7c27f;
+}
+.strip-cta {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: #d8bd81;
+  color: #14201a;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.strip-cta:hover {
+  background: #e7c27f;
+}
+.strip-cta svg {
+  width: 15px;
+  height: 15px;
+}
+/* Two columns rather than three once the label stops fitting beside the body. */
+@media (max-width: 720px) {
+  .strip-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .strip-cta {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+  .strip-head {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .strip-card {
+    animation: none;
+  }
+  .strip-dots button {
+    transition: none;
+  }
 }
 .experience-section {
   width: min(100%, var(--content-width));

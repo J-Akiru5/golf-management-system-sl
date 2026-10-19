@@ -476,6 +476,12 @@ export interface Database {
         Returns: Json;
       };
       public_registration_form: { Args: { p_tournament: string }; Returns: Json };
+      /**
+       * The events a signed-out visitor may see: open, cut-off not passed. Added by hand with
+       * 20261033000000_public_open_events.sql, which is not applied to the live project yet, so
+       * `supabase gen types typescript` cannot produce it. Remove this comment when it can.
+       */
+      public_open_events: { Args: Record<string, never>; Returns: Json };
       submit_registration: {
         Args: { p_tournament: string; p_player: Json; p_answers: Json };
         Returns: Json;

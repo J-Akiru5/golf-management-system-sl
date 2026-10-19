@@ -400,6 +400,16 @@ These are places where the spec promises something the code does not do yet. Che
     speculative change to the auth path is worse than a reload. It is step 2 of the acceptance test,
     so the organizer will meet it first: `docs/RUNBOOK.md` has the workaround, and the run sheet
     should be read knowing this is expected once.
+17. **The public events list is written but not applied.** `public_open_events()` and its grant are in
+    `20261033000000_public_open_events.sql`, and the landing page, the carousel and its tests are all
+    on `develop`. The migration is **not applied**: the Supabase CLI is on an account that cannot see
+    the golf project, so `db push` answers 403, and re-authenticating needs a browser. Until it is
+    applied the landing page shows **no strip at all** rather than falling back to the sample events,
+    which is deliberate: a live site inventing a tournament is worse than one section fewer. Apply it
+    with `supabase db push --linked` and the strip appears, listing the 24th Bamboo Tee, whose cut-off
+    (1 Nov) has not passed. Its self-check inserts an open, a draft and a closed event, proves the
+    function lists only the first, checks the payload carries no unexpected field, and rolls the
+    probes back.
 
 ---
 
@@ -619,7 +629,8 @@ Decisions that belong to the people named, not to an agent.
 | 19 | Help and onboarding: which screens get a guide, how the welcome is recorded, and what the cheat sheet is | Jeff | Documentation inside the app | One "?" per shell (desk top bar, player header, pairings head) with a step list for the current screen and a "Show me" ring; welcome once per person (per user in `help_seen`, applied, and per browser always); the cheat sheet is Print center's fourth tab and prints the player page in any of the three languages |
 | 20 | The theme control and the rail: one dropdown or three, and what happens when the sidebar is expanded | Jeff | The shell's chrome | One dropdown with System / Light / Dark (Ivory and Charcoal named in the options), kept in `starter-theme`; the rail is compact by default, expands to labelled rows on request, and remembers the choice per browser; icons explain themselves on hover and focus |
 | 21 | **Where a "Report a bug" report goes** (help-centre action): a prefilled GitHub issue, a mail draft to the owner, or a stored table; and what context it may carry | Jeff | Nice to have only; not the UAT | Prefilled GitHub issue with the current screen, role and version/build; no schema and no player data |
-| 22 | ~~Which run is "the version"~~ **Settled 18 Oct 2026:** versioning is the single source of truth for production. `package.json` carries the number, `CHANGELOG.md` records the contents, and the annotated `vX.Y.Z` tag on the `develop` merge commit is the authoritative release; `main` carries only released code plus docs-only commits | Jeff | Every deploy | Current: **v0.8.0** tagged at `06a2748`; `develop` and `main` carry it and are kept level; the app version display is still to add (W6) |
+| 22 | ~~Which run is "the version"~~ **Settled 18 Oct 2026:** versioning is the single source of truth for production. `package.json` carries the number, `CHANGELOG.md` records the contents, and the annotated `vX.Y.Z` tag on the `develop` merge commit is the authoritative release; `main` carries only released code plus docs-only commits | Jeff | Every deploy | Current: **v0.12.1**; `develop` and `main` are kept level after every release |
+| 23 | **What the public landing page shows of the club's events, and how much of it is data** | Jeff | A visitor's first impression, and what an unannounced event could leak | Settled 19 Oct 2026: a strip under the hero listing **only events open for entry** (state `open`, cut-off not passed), each card carrying the name, dates and day count, start format and first tee time, the entry cut-off with a countdown, and the confirmed entry count, plus the club crest and an entry link. The hero headline and its date line switch to the featured event. Marketing copy elsewhere is untouched. The list comes from a new `public_open_events()`, the first public function that **enumerates** anything, so its field list is deliberately short: no contacts, no club instructions, no fee text, no player data. Those stay in `registration` jsonb, where they belong to the desk |
 
 ---
 

@@ -2,9 +2,49 @@ import { ArrowDown, ArrowRight, CalendarDays, Flag, Layers3, UsersRound } from "
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { TournamentCarousel } from "@/components/public/TournamentCarousel";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { loadPublicOpenEvents } from "@/lib/data/supabase/public-events";
+import { demoOpenEvents } from "@/lib/public/demo-events";
+import {
+  cutOffLabel,
+  dateRange,
+  daysBetween,
+  enteredLabel,
+  formatLabel,
+  type PublicEvent,
+} from "@/lib/public/highlights";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { APP_VERSION_LABEL } from "@/lib/version";
+
+/**
+ * Today, as the server sees it, in the club's timezone.
+ *
+ * Passed into the carousel rather than looked up there: this page is server rendered and then
+ * hydrated, so a countdown computed on both sides from `new Date()` would disagree across midnight
+ * and React would report a mismatch. One clock, read once, on the server.
+ */
+function todayInManila(): string {
+  // en-CA gives YYYY-MM-DD, which is the form the database and the helpers both use.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
+}
+
+/**
+ * The events a visitor can enter, or nothing.
+ *
+ * `null` from the loader means the read failed, which includes the migration that adds
+ * `public_open_events()` not being applied yet. That is shown as no strip rather than as the sample
+ * events: a live site inventing a tournament is worse than a page with one section fewer.
+ */
+async function openEvents(today: string): Promise<PublicEvent[]> {
+  if (!isSupabaseConfigured()) return demoOpenEvents(today);
+  try {
+    return (await loadPublicOpenEvents(createSupabasePublicClient())) ?? [];
+  } catch {
+    return [];
+  }
+}
 
 export const metadata: Metadata = {
   title: "Every round, beautifully organized",
@@ -53,10 +93,17 @@ const steps = [
   ["03", "Publish", "Release the approved pairings for players to find on their phones."],
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const today = todayInManila();
+  const events = await openEvents(today);
+  const featured = events[0] ?? null;
+
   return (
     <main className="teeline-site">
-      <section className="teeline-hero" aria-labelledby="hero-title">
+      <section
+        className={`teeline-hero${events.length > 0 ? " with-strip" : ""}`}
+        aria-labelledby="hero-title"
+      >
         <Image
           src="/course/hole-1/overview.webp"
           alt="Illustrated golf fairway running between wooded course contours"
@@ -83,19 +130,42 @@ export default function HomePage() {
 
         <div className="hero-content">
           <p className="hero-eyebrow">
-            <span aria-hidden="true" /> A calmer way to run tournament day
+            <span aria-hidden="true" />{" "}
+            {featured ? "Open for entry now" : "A calmer way to run tournament day"}
           </p>
-          <h1 id="hero-title">
-            Every round,
-            <br />
-            <em>beautifully</em> organized.
-          </h1>
-          <p className="hero-copy">
-            A clearer way to manage golf tournaments, player registrations, and the moments that
-            bring the club together.
-          </p>
+          {featured ? (
+            <>
+              <h1 id="hero-title" className={featured ? "event-title" : undefined}>
+                {featured.name}
+                <br />
+                <em>{dateRange(featured.dates)}</em>
+              </h1>
+              <p className="hero-copy">
+                {formatLabel(featured.startFormat, featured.firstTeeTime)} ·{" "}
+                {cutOffLabel(daysBetween(today, featured.cutOffDate))} ·{" "}
+                {enteredLabel(featured.entered)}
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 id="hero-title">
+                Every round,
+                <br />
+                <em>beautifully</em> organized.
+              </h1>
+              <p className="hero-copy">
+                A clearer way to manage golf tournaments, player registrations, and the moments that
+                bring the club together.
+              </p>
+            </>
+          )}
           <div className="hero-actions">
-            <Link className="button-light" href="/pairings">
+            {featured && (
+              <Link className="button-light" href={`/enter/${featured.tournamentId}`}>
+                Enter this event <ArrowRight aria-hidden="true" />
+              </Link>
+            )}
+            <Link className={featured ? "button-quiet" : "button-light"} href="/pairings">
               View published pairings <ArrowRight aria-hidden="true" />
             </Link>
             <a className="button-quiet" href="#experience">
@@ -123,6 +193,8 @@ export default function HomePage() {
           <ArrowDown aria-hidden="true" />
         </a>
       </section>
+
+      {events.length > 0 && <TournamentCarousel events={events} today={today} />}
 
       <section id="experience" className="experience-section">
         <div className="section-intro">
