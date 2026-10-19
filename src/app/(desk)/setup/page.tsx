@@ -22,6 +22,7 @@ import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
 import { Button } from "@/components/ui/button";
+import { ResizableTextarea } from "@/components/ui/resizable-textarea";
 import { checkTournament } from "@/lib/data/config-checks";
 import { courseDataStatus, holesComplete, strokeIndexProblem } from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
@@ -1157,14 +1158,17 @@ function SetupWizard({
                     onChange={(e) => updateRegistration({ responseEmail: e.target.value })}
                   />
                 </label>
-                <label className="field sm:col-span-2">
-                  <span>Desk instructions</span>
-                  <textarea
+                <div className="field sm:col-span-2">
+                  <label htmlFor="desk-instructions">Desk instructions</label>
+                  <ResizableTextarea
+                    id="desk-instructions"
+                    resizeLabel="Desk instructions"
                     rows={2}
+                    disabled={!canEdit}
                     value={draft.registration.instructions ?? ""}
                     onChange={(e) => updateRegistration({ instructions: e.target.value })}
                   />
-                </label>
+                </div>
               </div>
               <div className="notice" role="note">
                 <p className="text-[13px]">
