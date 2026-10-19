@@ -386,7 +386,7 @@ These are places where the spec promises something the code does not do yet. Che
     but no native speaker has read it yet, and the desk chrome stays English for now. Golf terms
     stay in English on purpose (flight, tee, handicap, hole, shotgun) because that is how the club
     speaks them. Decision 18; the review checklist is `docs/i18n-review.md`.
-16. **The desk does not load on the first client render after signing in.** *Found 19 Oct 2026 on the
+16. **The desk did not load on the first client render after signing in.** *Fixed 19 Oct 2026.*
     live project, reproducible.* Sign in as staff: the redirect lands on `/admin` correctly, but the
     desk says "The tournament desk did not load" and the account chip reads "Not signed in · Session
     unavailable", with a Retry button. **Reloading fixes it every time**, and every later navigation
@@ -412,6 +412,24 @@ These are places where the spec promises something the code does not do yet. Che
     encoding. The retry and the subscription are kept: they cover a session arriving late, from
     another tab, which is a real case even though it is not this one.
 17. **The public events list is written but not applied.** `public_open_events()` and its grant are in
+    **Fixed 19 Oct 2026, and the cause was neither of the two things tried.** `DeskProvider` sits in
+    the **root** layout, so it wraps the sign-in page as well. Its one read therefore runs while the
+    visitor is still signing in: the diagnostic showed `AuthSessionMissingError` with `cookie=` empty,
+    because there was no cookie yet. Signing in is a server action, so the redirect that follows is a
+    client-side navigation, the root layout does not remount, and the effect never ran again. The desk
+    then sat on "Sign in to load the tournament desk" for someone who was already signed in. A browser
+    reload remounted everything, which is why that always appeared to fix it. The browser client could
+    not have helped: the session arrived in a response from the server, so `onAuthStateChange` never
+    saw an event in this tab. The load now re-runs when the route changes, and only when the previous
+    attempt found no session. Verified against the live project: error, then loading, then ready in
+    four seconds, with the desk showing the event, the member and the hole pins.
+
+    Two wrong turns are worth recording. The first fix was a retry plus an auth-state subscription, on
+    the theory that the render beat the cookie; it could not work, for the reason above. The second was
+    `isSingleton: false` on the browser client, on the theory that a cached client had captured an
+    empty session; that was wrong too, and it produced "Multiple GoTrueClient instances" warnings in
+    every page, so it was reverted. Both were guesses until the diagnostic was printed, and the
+    diagnostic is what found it. Measure before changing the auth path.
     `20261033000000_public_open_events.sql`, and the landing page, the carousel and its tests are all
     on `develop`. The migration is **not applied**: the Supabase CLI is on an account that cannot see
     the golf project, so `db push` answers 403, and re-authenticating needs a browser. Until it is

@@ -1,6 +1,7 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { usePathname } from "next/navigation";
 import {
   createContext,
   type Dispatch,
@@ -169,11 +170,22 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   // One read on load, and one more chance after it. Without a Supabase URL the desk stays on the
   // in-memory demo, unchanged.
   //
-  // The retry and the subscription both exist because of gap 16. Signing in happens through a server
-  // action, so the session cookie is set by that response, and this component can mount and look for
-  // a session before the browser has applied it. Reading once and giving up produced the worst
-  // possible screen: the server had let the visitor in, so they were looking at the desk, and the
-  // desk told them to sign in.
+  // Why there is a second chance at all (gap 16): this provider sits in the **root** layout, so it
+  // wraps the sign-in page too. Its one read therefore happens while the visitor is still signing in,
+  // finds no session, and gives up. Signing in is a server action, so the redirect that follows is a
+  // client-side navigation: the root layout does not remount, this effect does not run again, and the
+  // desk sits on "Sign in to load the tournament desk" for someone who is already signed in. A
+  // browser reload remounts everything, which is why that always appeared to fix it.
+  //
+  // The browser client cannot help either: the session arrived in a response from the server, so
+  // `onAuthStateChange` in this tab never sees an event. Arriving at another route is the only signal
+  // the page gets, so that is what is used, and only when the previous attempt found no session.
+  const pathname = usePathname();
+  const awaitingSession = useRef(false);
+  useEffect(() => {
+    if (awaitingSession.current) setReloadToken((n) => n + 1);
+  }, [pathname]);
+
   useEffect(() => {
     if (!connected) {
       setStatus("demo");
@@ -190,7 +202,12 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     const load = async (): Promise<"ready" | "no-session" | "failed"> => {
       try {
         const { data, error: authError } = await supabase.auth.getUser();
-        if (authError || !data.user) return "no-session";
+        if (authError || !data.user) {
+          // Worth another try when the route changes: see the comment on the effect below.
+          awaitingSession.current = true;
+          return "no-session";
+        }
+        awaitingSession.current = false;
         const signedIn = await getDeskMember(supabase, data.user.id);
         const loaded = await loadDeskState(supabase, signedIn.clubId, {
           preferTournamentId: keepSelected.current ?? latest.current.activeTournamentId,
