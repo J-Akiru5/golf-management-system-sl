@@ -22,6 +22,7 @@ import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
 import { Button } from "@/components/ui/button";
+import { ResizableTextarea } from "@/components/ui/resizable-textarea";
 import { checkTournament } from "@/lib/data/config-checks";
 import { courseDataStatus, holesComplete, strokeIndexProblem } from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
@@ -422,6 +423,7 @@ function SetupWizard({
             <SectionCard
               id="course"
               icon={<Flag />}
+              dataHelp="setup-course"
               title="Course & tees"
               subtitle={
                 courseStatus === "official"
@@ -619,6 +621,7 @@ function SetupWizard({
             <SectionCard
               id="rules"
               icon={<CalendarClock />}
+              dataHelp="setup-rules"
               title="Cut-off & handicap"
               action={sectionAction("rules")}
             >
@@ -815,6 +818,7 @@ function SetupWizard({
             <SectionCard
               id="flights"
               icon={<Layers />}
+              dataHelp="setup-flights"
               title="Flights"
               subtitle="Fixed handicap ranges per category. Ranges must not overlap."
               action={sectionAction("flights")}
@@ -1157,14 +1161,17 @@ function SetupWizard({
                     onChange={(e) => updateRegistration({ responseEmail: e.target.value })}
                   />
                 </label>
-                <label className="field sm:col-span-2">
-                  <span>Desk instructions</span>
-                  <textarea
+                <div className="field sm:col-span-2">
+                  <label htmlFor="desk-instructions">Desk instructions</label>
+                  <ResizableTextarea
+                    id="desk-instructions"
+                    resizeLabel="Desk instructions"
                     rows={2}
+                    disabled={!canEdit}
                     value={draft.registration.instructions ?? ""}
                     onChange={(e) => updateRegistration({ instructions: e.target.value })}
                   />
-                </label>
+                </div>
               </div>
               <div className="notice" role="note">
                 <p className="text-[13px]">

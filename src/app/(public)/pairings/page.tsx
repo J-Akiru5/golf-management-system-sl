@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { HelpButton } from "@/components/help";
+import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { PairingsView } from "@/components/PairingsView";
+import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
@@ -51,7 +53,8 @@ export default async function PublicPairingsPage() {
       : null;
 
   return (
-    <div className="public">
+    <div className="public mobile-bar-space">
+      <PlayerOfflineNotice path="/pairings" />
       <header className="public-head">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -102,6 +105,7 @@ export default async function PublicPairingsPage() {
       <p className="hint no-print">
         {t("pairings.footer")} <Link href="/">{t("pairings.home")}</Link>
       </p>
+      <PlayerBottomBar />
     </div>
   );
 }

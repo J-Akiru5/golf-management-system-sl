@@ -57,6 +57,7 @@ export function SectionCard({
   action,
   id,
   className,
+  dataHelp,
   children,
 }: {
   icon?: ReactNode;
@@ -65,10 +66,16 @@ export function SectionCard({
   action?: ReactNode;
   id: string;
   className?: string;
+  /** The anchor a help step points at, when the whole card is the control it means. */
+  dataHelp?: string;
   children: ReactNode;
 }) {
   return (
-    <section aria-labelledby={id} className={cn("card grid gap-4 sm:p-5", className)}>
+    <section
+      aria-labelledby={id}
+      data-help={dataHelp}
+      className={cn("card grid gap-4 sm:p-5", className)}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {icon && (

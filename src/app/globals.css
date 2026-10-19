@@ -516,6 +516,7 @@
     gap: 6px;
   }
   .field > span,
+  .field > label,
   legend {
     font-size: 13px;
     line-height: 18px;
@@ -540,9 +541,84 @@
     font: inherit;
     width: 100%;
   }
+  /* A textarea shows its whole value by default: it sizes to the content instead of keeping the
+     two-row height and scrolling the rest out of sight. Long unbroken words wrap rather than being
+     cut at the right edge. Browsers without field-sizing take the height from the shared component
+     in src/components/ui/resizable-textarea.tsx. */
   textarea {
     height: auto;
+    min-height: 64px;
     padding: 10px 12px;
+    field-sizing: content;
+    overflow-wrap: break-word;
+  }
+  /* The whole top and bottom edge is the drag target, not just the browser's corner grip. Each
+     edge is a focusable separator as well, so the same height change is available from the
+     keyboard. See src/components/ui/resizable-textarea.tsx. */
+  .resizable-textarea {
+    position: relative;
+    min-width: 0;
+  }
+  .resizable-textarea textarea {
+    display: block;
+    resize: none;
+    overflow-y: auto;
+  }
+  .resize-edge {
+    position: absolute;
+    right: 0;
+    left: 0;
+    z-index: 1;
+    height: 24px;
+    cursor: ns-resize;
+    touch-action: none;
+  }
+  .resize-edge::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: var(--line);
+    transform: translateY(-50%);
+    transition:
+      height var(--motion-fast) var(--ease-standard),
+      background-color var(--motion-fast) var(--ease-standard);
+  }
+  .resize-edge:hover::before,
+  .resize-edge:focus-visible::before {
+    height: 3px;
+    background: var(--fairway);
+  }
+  .resize-edge:focus-visible {
+    outline-offset: -2px;
+  }
+  .resize-edge-top {
+    top: -12px;
+  }
+  .resize-edge-bottom {
+    bottom: -12px;
+  }
+  .resize-edge-off {
+    cursor: default;
+    pointer-events: none;
+  }
+  .resize-edge-off::before {
+    background: transparent;
+  }
+  /* A finger needs the 44px target the rest of the shell uses; a mouse does not need the field
+     covered that far in. */
+  @media (pointer: coarse) {
+    .resize-edge {
+      height: 44px;
+    }
+    .resize-edge-top {
+      top: -22px;
+    }
+    .resize-edge-bottom {
+      bottom: -22px;
+    }
   }
   input::placeholder {
     color: var(--ink-muted);
@@ -1378,6 +1454,81 @@
     font-size: 17px;
     min-height: 52px;
   }
+
+  /* ---------- Phone bottom bars ----------
+     The bars sit above the iOS home indicator. Their space is reserved on the page so the last
+     row is never hidden behind them, and they disappear once the desktop rail takes over. */
+  .mobile-bar-space {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  .mobile-tabbar {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    align-items: stretch;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--forest);
+    color: var(--on-forest);
+    border-top: 1px solid rgba(238, 240, 234, 0.16);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
+    --ink: var(--on-forest);
+    --ink-muted: var(--on-forest-muted);
+    --focus: var(--gold);
+  }
+  .mobile-tabbar-item {
+    flex: 1 1 0;
+    min-width: 44px;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 4px;
+    border: 0;
+    background: transparent;
+    color: var(--on-forest-muted);
+    font: 600 11px / 14px var(--f-sans);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-tabbar-item.is-current {
+    color: var(--gold);
+  }
+  .mobile-tabbar-icon {
+    display: grid;
+    place-items: center;
+  }
+  /* The centre action is raised, like the platform bars in the benchmark, because it starts a
+     task rather than opening a place. Register is the only one. */
+  .mobile-tabbar-action {
+    width: 40px;
+    height: 40px;
+    margin-top: -18px;
+    border: 3px solid var(--forest);
+    border-radius: 999px;
+    background: var(--gold);
+    color: var(--on-gold);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+    box-sizing: border-box;
+  }
+  .mobile-tabbar-item:active {
+    background: rgba(238, 240, 234, 0.08);
+  }
+  .mobile-tabbar-item:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: -2px;
+  }
+  @media (min-width: 1024px) {
+    .mobile-tabbar {
+      display: none;
+    }
+    .mobile-bar-space {
+      padding-bottom: 64px;
+    }
+  }
 }
 
 @keyframes flash {
@@ -1420,7 +1571,8 @@
 }
 @media print {
   .no-print,
-  .shell-chrome {
+  .shell-chrome,
+  .mobile-tabbar {
     display: none !important;
   }
   body {

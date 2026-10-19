@@ -835,7 +835,7 @@ function RegisterDesk() {
                     <Button type="button" variant="ghost" onClick={resetForm}>
                       Cancel
                     </Button>
-                    <Button type="submit" variant="primary">
+                    <Button type="submit" variant="primary" data-help="register-review">
                       <BadgeCheck aria-hidden="true" /> Review entry
                     </Button>
                   </div>
@@ -962,6 +962,7 @@ function RegisterDesk() {
         <SectionCard
           id="list-h"
           icon={<Search />}
+          dataHelp="register-list"
           title={`Registrations (${entries.length})`}
           subtitle={
             status === "demo"

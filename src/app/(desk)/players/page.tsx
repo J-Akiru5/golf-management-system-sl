@@ -298,6 +298,7 @@ function Players() {
                   <td>
                     <Link
                       href={`/players/${p.id}`}
+                      data-help="players-open"
                       className="flex min-w-0 items-center gap-2.5 font-semibold text-ink no-underline hover:underline"
                     >
                       <Avatar name={p.name} photo={photoOf(p)} />
@@ -410,6 +411,7 @@ function Players() {
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/players/${p.id}`}
+                    data-help="players-open"
                     className="block truncate font-semibold text-ink no-underline hover:underline"
                   >
                     {p.name}

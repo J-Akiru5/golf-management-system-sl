@@ -316,7 +316,12 @@ export default function DrawPage() {
               ))}
             </select>
           </label>
-          <button type="button" className="btn ghost" onClick={() => makeDraw(true)}>
+          <button
+            type="button"
+            className="btn ghost"
+            data-help="draw-run"
+            onClick={() => makeDraw(true)}
+          >
             Re-run proposal (keeps locks)
           </button>
           <span className="hint">

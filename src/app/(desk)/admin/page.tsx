@@ -82,6 +82,7 @@ function ControlRoomInner({
       <section
         ref={mapRef}
         aria-label="Course map"
+        data-help="control-map"
         className="relative h-[460px] overflow-hidden sm:h-[max(640px,100dvh)] xl:h-[max(100dvh,900px)]"
       >
         <CourseCanvas cover={cover} />
@@ -174,8 +175,8 @@ function ControlRoomInner({
           >
             <SessionLogDrawer />
             <AttentionPanel b={b} />
-            <PublishPanel b={b} />
-            <ReadinessPanel b={b} />
+            <PublishPanel b={b} dataHelp="control-publish" />
+            <ReadinessPanel b={b} dataHelp="control-readiness" />
           </ScrollFade>
         </aside>
         <div className="absolute right-[428px] bottom-6 left-[var(--rail-pad)] hidden h-[230px] grid-cols-[300px_minmax(0,1fr)] gap-3.5 xl:grid">
@@ -192,8 +193,8 @@ function ControlRoomInner({
           </SheetTrigger>
           <SheetContent title="Draw status" description={tournament.name} className="scheme-dark">
             <AttentionPanel b={b} variant="card" />
-            <ReadinessPanel b={b} variant="card" />
-            <PublishPanel b={b} variant="card" />
+            <ReadinessPanel b={b} variant="card" dataHelp="control-readiness" />
+            <PublishPanel b={b} variant="card" dataHelp="control-publish" />
           </SheetContent>
         </Sheet>
       </section>

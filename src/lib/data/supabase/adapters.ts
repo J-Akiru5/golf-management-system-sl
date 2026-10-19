@@ -28,6 +28,7 @@ import type {
   RegistrationEntry,
   Tournament,
 } from "@/lib/data/types";
+import { OFFLINE_WRITE_NOTICE } from "@/lib/offline/cache";
 import type { Tee } from "@/lib/routing";
 import {
   type Action,
@@ -79,17 +80,27 @@ export interface SupabaseAdapterOptions {
    * and pick up the database's own ids for its categories and flights.
    */
   onEventCreated?: (tournamentId: string) => void;
+  /**
+   * False when the phone has no connection or the desk was restored from a saved copy. A write is
+   * then refused before it starts and nothing is queued for later.
+   */
+  canWrite?: () => boolean;
 }
 
 const uuid = () => crypto.randomUUID();
 
 /** Serialises writes so two edits to the same row cannot race. */
 export function createQueue(
-  options: Pick<SupabaseAdapterOptions, "onError" | "onSaved" | "onBusy">,
+  options: Pick<SupabaseAdapterOptions, "onError" | "onSaved" | "onBusy" | "canWrite">,
 ) {
   let pending: Promise<unknown> = Promise.resolve();
   let depth = 0;
   return (work: () => Promise<unknown>) => {
+    if (options.canWrite && !options.canWrite()) {
+      // Refusing here is the difference between an honest failure and a change that looks saved.
+      options.onError(OFFLINE_WRITE_NOTICE);
+      return;
+    }
     depth += 1;
     options.onBusy(true);
     pending = pending
@@ -98,12 +109,17 @@ export function createQueue(
         options.onSaved();
       })
       .catch((error: unknown) => {
-        options.onError(error instanceof Error ? error.message : "Could not save the change.");
+        const message = error instanceof Error ? error.message : "Could not save the change.";
+        const looksOffline =
+          (typeof navigator !== "undefined" && navigator.onLine === false) ||
+          /failed to fetch|networkerror|network request failed|load failed/i.test(message);
+        options.onError(looksOffline ? OFFLINE_WRITE_NOTICE : message);
       })
       .finally(() => {
         depth -= 1;
         if (depth === 0) options.onBusy(false);
       });
+    return pending;
   };
 }
 

@@ -42,6 +42,7 @@ export function Panel({
   className,
   children,
   labelledBy,
+  dataHelp,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -50,10 +51,12 @@ export function Panel({
   className?: string;
   children: ReactNode;
   labelledBy?: string;
+  dataHelp?: string;
 }) {
   return (
     <section
       aria-labelledby={labelledBy}
+      data-help={dataHelp}
       className={cn(variant === "glass" ? "glass glass-panel p-4" : "card", "min-w-0", className)}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -134,7 +137,15 @@ function Bar({ pct }: { pct: number }) {
   );
 }
 
-export function ReadinessPanel({ b, variant }: { b: Board; variant?: PanelVariant }) {
+export function ReadinessPanel({
+  b,
+  variant,
+  dataHelp,
+}: {
+  b: Board;
+  variant?: PanelVariant;
+  dataHelp?: string;
+}) {
   const total = b.registrations.length;
   const maxIndex = b.tournament?.config.maxIndex ?? 0;
   if (!b.draw) {
@@ -143,6 +154,7 @@ export function ReadinessPanel({ b, variant }: { b: Board; variant?: PanelVarian
         title="Draw readiness"
         variant={variant}
         labelledBy="ready-h"
+        dataHelp={dataHelp}
         action={<GoLink href="/players" label="Open players" />}
       >
         <div className="grid grid-cols-2 gap-2.5">
@@ -187,6 +199,7 @@ export function ReadinessPanel({ b, variant }: { b: Board; variant?: PanelVarian
       title="Draw readiness"
       variant={variant}
       labelledBy="ready-h"
+      dataHelp={dataHelp}
       action={<GoLink href="/draw" label="Open the draw" />}
     >
       <div className="grid grid-cols-2 gap-2.5">
@@ -314,7 +327,15 @@ export function PublishState({ b }: { b: Board }) {
   );
 }
 
-export function PublishPanel({ b, variant }: { b: Board; variant?: PanelVariant }) {
+export function PublishPanel({
+  b,
+  variant,
+  dataHelp,
+}: {
+  b: Board;
+  variant?: PanelVariant;
+  dataHelp?: string;
+}) {
   const { dispatch, isPublished, changedSincePublish } = b;
   const [open, setOpen] = useState(false);
   const ordered = [...b.blocking, ...b.warnings];
@@ -322,6 +343,7 @@ export function PublishPanel({ b, variant }: { b: Board; variant?: PanelVariant 
     <section
       className={cn(variant === "card" ? "card" : "glass glass-panel p-4")}
       aria-label="Publish"
+      data-help={dataHelp}
     >
       <div className="flex items-center gap-2.5">
         <PublishState b={b} />

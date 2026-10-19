@@ -9,11 +9,12 @@ import {
   DESK_GUIDES,
   deskGuidesFor,
   helpAnchors,
+  matchesRoute,
   PLAYER_GUIDES,
   playerGuidesFor,
   welcomeFor,
 } from "./guides";
-import { type HelpText, helpText } from "./types";
+import { type HelpText, helpText, stepRoute } from "./types";
 
 /**
  * Chrome anchors are not guide targets: the help button, its panel and the welcome panel carry
@@ -33,17 +34,26 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** Every `data-help="…"` written anywhere in the source. */
+/**
+ * Every anchor written anywhere in the source. Components such as `SectionCard` and `Panel` take
+ * the attribute as a `dataHelp` prop, so both spellings count.
+ *
+ * The walk is memoised: two tests need the same map, and the suite runs many workers at once.
+ */
+let sourceAnchors: Map<string, string[]> | null = null;
+
 function anchorsInSource(): Map<string, string[]> {
+  if (sourceAnchors) return sourceAnchors;
   const found = new Map<string, string[]>();
   for (const file of sourceFiles(SOURCE_ROOT)) {
     const text = readFileSync(file, "utf8");
-    for (const match of text.matchAll(/data-help="([a-z0-9-]+)"/g)) {
-      const anchor = match[1];
+    for (const match of text.matchAll(/data-help="([a-z0-9-]+)"|dataHelp="([a-z0-9-]+)"/g)) {
+      const anchor = match[1] ?? match[2];
       if (!anchor) continue;
       found.set(anchor, [...(found.get(anchor) ?? []), file.replace(SOURCE_ROOT, "src")]);
     }
   }
+  sourceAnchors = found;
   return found;
 }
 
@@ -94,7 +104,7 @@ describe("guides", () => {
     for (const anchor of helpAnchors()) {
       expect(inSource.has(anchor), `no data-help="${anchor}" anywhere in src`).toBe(true);
     }
-  });
+  }, 20000);
 
   it("leaves no data-help attribute that no guide explains", () => {
     const guideAnchors = new Set(helpAnchors());
@@ -105,12 +115,46 @@ describe("guides", () => {
         `data-help="${anchor}" in ${files.join(", ")} is in no guide`,
       ).toBe(true);
     }
-  });
+  }, 20000);
 
   it("uses anchor-shaped names only, because they reach a CSS selector", () => {
     for (const anchor of helpAnchors()) {
       expect(anchor).toMatch(/^[a-z0-9][a-z0-9-]*$/);
     }
+  });
+
+  it("knows the route of every step that points at a control", () => {
+    for (const guide of allGuides()) {
+      for (const step of guide.steps) {
+        if (!step.anchor) continue;
+        const route = stepRoute(guide, step);
+        expect(route, `${guide.id} points at ${step.anchor} with no route`).toBeTruthy();
+        expect(route).toMatch(/^\//);
+      }
+    }
+  });
+
+  it("takes an explicit step route over the guide's first route", () => {
+    const guide = allGuides()[0];
+    if (!guide) throw new Error("no guides");
+    const step = guide.steps[0] ?? { text: guide.title };
+    expect(stepRoute(guide, { ...step, anchor: "players-search", route: "/elsewhere" })).toBe(
+      "/elsewhere",
+    );
+    expect(stepRoute(guide, { ...step, anchor: "players-search", route: undefined })).toBe(
+      guide.routes?.[0] ?? null,
+    );
+    expect(stepRoute(guide, { text: guide.title })).toBeNull();
+  });
+});
+
+describe("route matching", () => {
+  it("treats a record under a route as part of it, but not a different route", () => {
+    expect(matchesRoute("/players", "/players")).toBe(true);
+    expect(matchesRoute("/players/p-123", "/players")).toBe(true);
+    expect(matchesRoute("/players-old", "/players")).toBe(false);
+    expect(matchesRoute("/", "/")).toBe(true);
+    expect(matchesRoute("/pairings", "/")).toBe(false);
   });
 });
 

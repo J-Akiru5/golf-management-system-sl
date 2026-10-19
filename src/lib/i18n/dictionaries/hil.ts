@@ -169,6 +169,7 @@ export const hil: Dictionary = {
     thisScreen: "Ini nga screen",
     more: "Iban pa nga bulig",
     showMe: "Ipakita",
+    missing: "Wala sa sini nga screen ang control nga imo ginapangita subong.",
     welcome: {
       player: {
         title: "Maayo nga pag-abot sa My golf",
