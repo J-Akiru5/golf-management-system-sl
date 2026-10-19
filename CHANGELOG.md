@@ -11,6 +11,32 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.18.0] - 2026-10-20
+
+The landing page moves from a flat sports layout to a live one: gradients, motion and inline SVG in
+place of the illustrated background.
+
+### Changed
+- **The hero is painted, not photographed.** The illustrated course image is gone. The field is
+  layered radial and linear gradients with two slow drifting glows, inline SVG contours, yardage arcs
+  and a flag, and a masked hairline grid. Nothing is downloaded, and all of it is vector.
+- **Motion, in CSS only.** The glows drift over 22 and 26 seconds, the contour layer settles in, and
+  the eyebrow, headline, copy, actions and stat strip rise in on a 70ms stagger. Every animation
+  touches only `transform` or `opacity`, so the compositor runs it without layout or paint work. The
+  page stays server rendered and the motion costs no hydration.
+- **The stat strip lost its rules.** Four cells separated by a 1px seam read as a table, so they are
+  now soft gradient tiles with an inner highlight. The schedule band gets a gradient field instead of
+  a flat slab.
+- **The event strip is a real carousel.** It always shows the open event and an explicit "no upcoming
+  events yet" card, and advances on its own every 6.5 seconds. Pausing on hover or focus, the arrow
+  keys and `prefers-reduced-motion` all still work.
+- **The strip no longer overlaps the hero.** It was pulled up 44px over the hero's foot, which put
+  its heading across the new stat strip.
+
+### Added
+- `carouselSlides` in `src/lib/public/slides.ts`, with tests for zero, one, two and three open
+  events, including that no empty card is invented when there are real ones.
+
 ## [0.17.0] - 2026-10-20
 
 The AVP demo-video workstream, merged from `avp/demo-0.9`, which was the last local branch holding

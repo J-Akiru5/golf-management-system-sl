@@ -22,12 +22,18 @@ import {
   nextIndex,
   type PublicEvent,
 } from "@/lib/public/highlights";
+import { carouselSlides } from "@/lib/public/slides";
 
 /** How long a slide stays before the next one. Long enough to read the cut-off line. */
-const DWELL_MS = 7000;
+const DWELL_MS = 6500;
 
 /**
  * The strip of events a visitor can enter.
+ *
+ * It always shows two cards: whatever is open, then an explicit "nothing else scheduled" card. The
+ * second one matters more than it looks. With a single event the strip used to be a static card, and
+ * with none it disappeared, so a visitor could not tell an empty calendar from a failed read. A
+ * fixed pair answers that without inventing an event.
  *
  * One slide is rendered at a time rather than a translated track of all of them. That is deliberately
  * the duller build: a track holds the other slides in the DOM, so their links stay focusable unless
@@ -53,25 +59,25 @@ export function TournamentCarousel({ events, today }: { events: PublicEvent[]; t
     return () => query.removeEventListener("change", apply);
   }, []);
 
+  // More than one open event: show them all. Otherwise the open event (if any) plus the empty card.
+  const slides = carouselSlides(events);
+  const current = Math.min(index, slides.length - 1);
+
   const go = useCallback(
-    (step: number) => setIndex((current) => nextIndex(current, events.length, step)),
-    [events.length],
+    (step: number) => setIndex((value) => nextIndex(value, slides.length, step)),
+    [slides.length],
   );
 
-  const autoAdvancing = events.length > 1 && !paused && !reducedMotion;
+  const autoAdvancing = slides.length > 1 && !paused && !reducedMotion;
   useEffect(() => {
     if (!autoAdvancing) return;
     const timer = setTimeout(() => go(1), DWELL_MS);
     return () => clearTimeout(timer);
   }, [autoAdvancing, go, index]);
 
-  if (events.length === 0) return null;
-
-  const event = events[index];
-  if (!event) return null;
-
-  const days = daysBetween(today, event.cutOffDate);
-  const urgent = cutOffIsUrgent(days);
+  const event = slides[current] ?? null;
+  const days = event ? daysBetween(today, event.cutOffDate) : 0;
+  const urgent = event ? cutOffIsUrgent(days) : false;
 
   return (
     <section
@@ -86,22 +92,22 @@ export function TournamentCarousel({ events, today }: { events: PublicEvent[]; t
       <div className="strip-head">
         <h2 id="tournament-strip-title">
           <span aria-hidden="true" />
-          {events.length === 1 ? "Open for entry" : `${events.length} events open for entry`}
+          {events.length === 1 ? "1 event open for entry" : `${events.length} events open for entry`}
         </h2>
-        {events.length > 1 && (
+        {slides.length > 1 && (
           <div className="strip-controls">
             <button type="button" onClick={() => go(-1)} aria-label="Previous event">
               <ChevronLeft aria-hidden="true" />
             </button>
             <span className="strip-dots" role="tablist" aria-label="Choose an event">
-              {events.map((e, i) => (
+              {slides.map((slide, i) => (
                 <button
-                  key={e.tournamentId}
+                  key={slide?.tournamentId ?? "no-upcoming"}
                   type="button"
                   role="tab"
-                  aria-selected={i === index}
-                  aria-label={e.name}
-                  className={i === index ? "on" : ""}
+                  aria-selected={i === current}
+                  aria-label={slide?.name ?? "No upcoming events"}
+                  className={i === current ? "on" : ""}
                   onClick={() => setIndex(i)}
                 />
               ))}
@@ -121,13 +127,13 @@ export function TournamentCarousel({ events, today }: { events: PublicEvent[]; t
         // The two together are what make it a carousel to a screen reader.
         role="group"
         aria-roledescription="carousel"
-        aria-label={`Event ${index + 1} of ${events.length}`}
+        aria-label={`Card ${current + 1} of ${slides.length}`}
         // Focusable so the arrow keys below can actually reach it. Without this the region
         // advertised keyboard control that no keyboard could operate: the handler was there, but
         // the browser had nowhere to send the key.
         tabIndex={0}
         onKeyDown={(e) => {
-          if (events.length < 2) return;
+          if (slides.length < 2) return;
           if (e.key === "ArrowLeft") {
             e.preventDefault();
             go(-1);
@@ -139,33 +145,47 @@ export function TournamentCarousel({ events, today }: { events: PublicEvent[]; t
         }}
       >
         {/* Keyed so the slide replays its entrance; the animation is dropped for reduced motion. */}
-        <article key={event.tournamentId} className="strip-card">
-          <Image
-            src="/brand/igcc-crest.png"
-            alt=""
-            width={72}
-            height={72}
-            className="strip-crest"
-          />
-          <div className="strip-body">
-            <h3>{event.name}</h3>
-            <p className="strip-dates">
-              <CalendarDays aria-hidden="true" />
-              <b>{dateRange(event.dates)}</b>
-              <span>{dayCount(event.dates)}</span>
-            </p>
-            <p className="strip-meta">
-              <Clock aria-hidden="true" />
-              <span>{formatLabel(event.startFormat, event.firstTeeTime)}</span>
-              <span className="strip-dot" aria-hidden="true" />
-              <UsersRound aria-hidden="true" />
-              <span>{enteredLabel(event.entered)}</span>
-            </p>
-            <p className={`strip-cutoff${urgent ? " urgent" : ""}`}>{cutOffLabel(days)}</p>
-          </div>
-          <Link className="strip-cta" href={`/enter/${event.tournamentId}`}>
-            Enter <ArrowRight aria-hidden="true" />
-          </Link>
+        <article key={event?.tournamentId ?? "no-upcoming"} className="strip-card">
+          {event ? (
+            <>
+              <Image
+                src="/brand/igcc-crest.png"
+                alt=""
+                width={72}
+                height={72}
+                className="strip-crest"
+              />
+              <div className="strip-body">
+                <h3>{event.name}</h3>
+                <p className="strip-dates">
+                  <CalendarDays aria-hidden="true" />
+                  <b>{dateRange(event.dates)}</b>
+                  <span>{dayCount(event.dates)}</span>
+                </p>
+                <p className="strip-meta">
+                  <Clock aria-hidden="true" />
+                  <span>{formatLabel(event.startFormat, event.firstTeeTime)}</span>
+                  <span className="strip-dot" aria-hidden="true" />
+                  <UsersRound aria-hidden="true" />
+                  <span>{enteredLabel(event.entered)}</span>
+                </p>
+                <p className={`strip-cutoff${urgent ? " urgent" : ""}`}>{cutOffLabel(days)}</p>
+              </div>
+              <Link className="strip-cta" href={`/enter/${event.tournamentId}`}>
+                Enter <ArrowRight aria-hidden="true" />
+              </Link>
+            </>
+          ) : (
+            <div className="strip-body strip-empty">
+              <h3>No upcoming events yet</h3>
+              <p className="strip-meta">
+                The next tournament appears here the moment the club opens entries.
+              </p>
+              <p className="strip-cutoff">
+                <Link href="/pairings">See the published pairings</Link>
+              </p>
+            </div>
+          )}
         </article>
       </div>
     </section>
