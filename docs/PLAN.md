@@ -400,6 +400,17 @@ These are places where the spec promises something the code does not do yet. Che
     speculative change to the auth path is worse than a reload. It is step 2 of the acceptance test,
     so the organizer will meet it first: `docs/RUNBOOK.md` has the workaround, and the run sheet
     should be read knowing this is expected once.
+    **Narrowed on 19 Oct 2026, and it is not a race.** The first fix tried was a retry plus a
+    subscription to `onAuthStateChange`, on the theory that the render beat the cookie. It did not
+    help. What the cookie actually holds, read from inside the page: a well-formed, base64-prefixed
+    `@supabase/ssr` session with `access_token`, `refresh_token`, `user` and an `expires_at` an hour
+    away, and `document.cookie` returns it. So the session is real, complete and current, the server
+    agrees, and the only thing that cannot see it is the browser client reading its own cookie. That
+    rules out the token, the data and the timing, and leaves the client's cookie handling: the next
+    thing to test is what `createBrowserClient` resolves when it is handed the same cookie, and
+    whether the server client that wrote it and the browser client that must read it disagree about
+    encoding. The retry and the subscription are kept: they cover a session arriving late, from
+    another tab, which is a real case even though it is not this one.
 17. **The public events list is written but not applied.** `public_open_events()` and its grant are in
     `20261033000000_public_open_events.sql`, and the landing page, the carousel and its tests are all
     on `develop`. The migration is **not applied**: the Supabase CLI is on an account that cannot see
@@ -411,6 +422,21 @@ These are places where the spec promises something the code does not do yet. Che
     function lists only the first, checks the payload carries no unexpected field, and rolls the
     probes back.
 
+18. **A signed-in account with no club membership gets the same screen as a broken load.** Found 19 Oct
+    2026 while planning the first-run onboarding. `getDeskMember` throws "This account is not a member
+    of a club", the desk store catches it and sets its status to error, and `NeedsTournament` then shows
+    **"The tournament desk did not load"** with a Retry button. Retrying cannot help: nothing is broken,
+    the account simply belongs to no club. The same screen therefore means three different things, which
+    is what the owner called counterintuitive: the read failed, the account has no club, or the club has
+    no event yet. The third case is already handled properly ("this club has none yet. Create the first
+    event to carry on"); the first two are not distinguished from it or from each other.
+19. **The desk cannot load at all until gap 16 is fixed, and that is what production shows.** A signed-in
+    owner opening `/admin` on the deployed build sees "Not signed in · Session unavailable" in the shell
+    and "Sign in to load the tournament desk" above it, while the address bar is `/admin`, which only a
+    signed-in visitor is allowed to reach. The **server** has the session and the **client** does not.
+    The club has an event on file (the 24th Bamboo Tee, open, cut-off 1 Nov), so nothing is missing from
+    the data. Until gap 16 is fixed, no first-run onboarding can run either: it would render into a desk
+    that has already failed to load.
 ---
 
 ## 8. Roadmap
@@ -617,6 +643,8 @@ Decisions that belong to the people named, not to an agent.
 | 7 | Photo visibility | Organizer | Privacy copy | Desk and organizer only |
 | 8 | Results and tie-break rule | Organizer | Phase 2 | None |
 | 9 | Small flight near the end of wave 1 (e.g. 3-group Ladies): split, fill from another flight, or move to wave 2 | Organizer | Shotgun layout | Keep whole, flag |
+| 24 | **Who may create a club, and how a first-run account gets one** | Jeff | Every new club; the shape of tenancy | Settled 19 Oct 2026: **only a super admin creates clubs.** A brand-new account cannot, and IGCC remains the only club. The intuitive end state is self-service creation, and it is deliberately not built yet. Because no super-admin concept exists today (`club_members.role` is owner/organizer/desk, and the init migration says clubs and memberships are made with the service role), this needs a platform-admin concept that is **not** a club role: a super admin is above clubs, so a row in `club_members` would be the wrong home for one |
+| 25 | **How the client gets its session after signing in** | Jeff | Whether the desk loads at all | Settled 19 Oct 2026: **subscribe to auth state.** The desk store reads the session once on mount and never again, so the first render after a server-side sign-in finds none and gives up (gap 16). It will subscribe to `onAuthStateChange` as well, and retry once, rather than resolving the session on the server and passing it down: the connected desk is a client store that writes through the browser client, so handing it a server session would split the thing that owns the session in two |
 | 10 | Product name and legal clearance | Jeff | Public branding | TeeLine Golf approved as the product direction; not represented as legally cleared |
 | 11 | Vector (SVG/PDF) crest from the club; real course pictures and hole positions | Jeff / club | Print, large displays, real course map | 320px PNG crest; illustrated placeholder course |
 | 12 | ~~Create `staging` and `main` branches~~ Partly settled 18 Oct 2026: `main` exists and is kept level with `develop`; `staging` is deliberately skipped because Jeff is a solo dev. Cleaning up the merged feature branches is still open | Jeff | Pipeline | `main` = `develop`; no `staging` |

@@ -166,7 +166,14 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  // One read on load. Without a Supabase URL the desk stays on the in-memory demo, unchanged.
+  // One read on load, and one more chance after it. Without a Supabase URL the desk stays on the
+  // in-memory demo, unchanged.
+  //
+  // The retry and the subscription both exist because of gap 16. Signing in happens through a server
+  // action, so the session cookie is set by that response, and this component can mount and look for
+  // a session before the browser has applied it. Reading once and giving up produced the worst
+  // possible screen: the server had let the visitor in, so they were looking at the desk, and the
+  // desk told them to sign in.
   useEffect(() => {
     if (!connected) {
       setStatus("demo");
@@ -176,30 +183,65 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     let active = true;
     setStatus("loading");
     setError(null);
-    void (async () => {
+
+    const supabase = createSupabaseBrowserClient();
+
+    /** "no-session" is kept apart from a failure: it is the one case worth trying again. */
+    const load = async (): Promise<"ready" | "no-session" | "failed"> => {
       try {
-        const supabase = createSupabaseBrowserClient();
         const { data, error: authError } = await supabase.auth.getUser();
-        if (authError || !data.user) throw new Error("Sign in to load the tournament desk.");
+        if (authError || !data.user) return "no-session";
         const signedIn = await getDeskMember(supabase, data.user.id);
         const loaded = await loadDeskState(supabase, signedIn.clubId, {
           preferTournamentId: keepSelected.current ?? latest.current.activeTournamentId,
         });
+        if (!active) return "failed";
         keepSelected.current = null;
-        if (!active) return;
         setClient(supabase);
         setMember({ displayName: signedIn.displayName, role: signedIn.role });
         revisions.current = loaded.revisions;
         rawDispatch({ type: "hydrate", state: loaded.state });
         setStatus("ready");
+        return "ready";
       } catch (loadError) {
-        if (!active) return;
+        if (!active) return "failed";
         setStatus("error");
         setError(loadError instanceof Error ? loadError.message : "Could not load the desk.");
+        return "failed";
       }
+    };
+
+    void (async () => {
+      if ((await load()) !== "no-session") return;
+      // One more attempt on the next tick, which is enough for a cookie that was set by the response
+      // this render came with.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (!active) return;
+      if ((await load()) !== "no-session") return;
+      // Still nothing. Say so plainly rather than claiming the desk is broken.
+      setStatus("error");
+      setError("Sign in to load the tournament desk.");
     })();
+
+    // A session can also arrive after this render: another tab signing in, or the cookie landing
+    // late. Without this the desk would sit on the sign-in message until a manual reload.
+    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
+      if (!active) return;
+      if (event === "SIGNED_IN") {
+        void load();
+        return;
+      }
+      if (event === "SIGNED_OUT") {
+        setClient(null);
+        setMember(undefined);
+        setStatus("error");
+        setError("Sign in to load the tournament desk.");
+      }
+    });
+
     return () => {
       active = false;
+      subscription.subscription.unsubscribe();
     };
   }, [connected, reloadToken]);
 
