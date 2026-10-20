@@ -11,6 +11,20 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.18.2] - 2026-10-20
+
+Two layout bugs that the first real screenshot exposed. Neither was visible to the type checker, the
+unit suite, the build or the browser harness, because all of them check behaviour rather than
+composition.
+
+### Fixed
+- **The stat strip ran off the left edge.** It is a sibling of `.hero-content`, so it inherited none of
+  that block's width, margin or padding: it went full width and the Entries tile was cut off, while the
+  headline above it was indented. It now takes the same box, so the two columns line up.
+- **The carousel heading was ivory on ivory.** `.strip-head h2` was `#f7f5ee`, which was right when the
+  strip sat over the dark hero. Once the strip moved onto the page, the heading became invisible. It now
+  uses `--ink`, which flips with the theme.
+
 ## [0.18.1] - 2026-10-20
 
 A performance fix for the largest paint on the public landing page.
