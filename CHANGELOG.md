@@ -11,6 +11,24 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.20.0] - 2026-10-20
+
+A real footer, and the legal pages the site was missing.
+
+### Added
+- **`/privacy` and `/terms`**, written from the data model rather than invented: what is collected,
+  what the public pairings page is allowed to show, that photographs need recorded consent, and the
+  rights under RA 10173. Both are marked **draft** at the top, because the club has not reviewed them,
+  and the two answers only the club can give — the retention period and the privacy contact — are left
+  as visible placeholders rather than guessed.
+- **A four-column footer** with the club, product and legal links, a copyright bar carrying the
+  version, and a photography credit. The old footer was a logo, one line and a sign-in link, which is
+  why the page looked like it stopped rather than ended.
+
+### Notes
+- The legal copy lives as markdown and is generated into `src/content/legal` by
+  `scripts/gen-legal.mjs`, so the club's adviser can correct it without touching JSX.
+
 ## [0.19.0] - 2026-10-20
 
 Real scroll motion, and the content below the hero treated as a designed page rather than a leaflet.
