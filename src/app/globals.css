@@ -3281,6 +3281,23 @@
 .teeline-site .pairings-callout .section-kicker {
   color: var(--gold);
 }
+/* --------------------------------------------------------------- public site: dark bands */
+
+/* Three sections sit on a dark field: the workflow, the schedule band and the pairings callout.
+   They were inheriting the light-surface ink tokens, so any descendant that asked for `var(--ink)`
+   came out near-black on near-black. That is exactly what happened to the workflow heading, and to
+   the step copy through `--ink-muted`.
+
+   Redefining the tokens inside each band fixes every descendant at once, including any added later,
+   instead of patching selectors one at a time and missing one. The band's own background is left
+   alone; only the text and rule colours change. */
+.teeline-site :is(.workflow-section, .site-schedule, .pairings-callout) {
+  --ink: #fffdf7;
+  --ink-muted: #d7ded6;
+  --line: rgb(247 245 238 / 20%);
+  color: var(--ink);
+}
+
 /* The stat strip is a sibling of .hero-content, so it inherited none of that block's box: it ran
    full width with no inset, which cut the first tile off the left edge while the headline above was
    indented. It now takes the same width, margins and padding, so the two columns line up. */

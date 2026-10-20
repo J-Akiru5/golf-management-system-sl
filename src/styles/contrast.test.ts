@@ -100,3 +100,32 @@ describe("control room", () => {
     expect(tokens(':root:not([data-theme="light"]) .scheme-dark')).toEqual(themes.dark);
   });
 });
+
+describe("public dark bands", () => {
+  // The workflow, the schedule band and the pairings callout sit on a dark field and redefine the ink
+  // tokens. Before that rule existed they inherited the light-surface tokens, so a heading asking for
+  // var(--ink) came out near-black on near-black: that is exactly how the workflow heading became
+  // unreadable. These tests fail if the rule is removed, or if its colours are darkened again.
+  const BANDS = ["#0b2b23", "#101613"];
+
+  it("redefines the ink tokens inside every band to something readable", () => {
+    const selector = ".teeline-site :is(.workflow-section, .site-schedule, .pairings-callout) {";
+    const start = css.indexOf(selector);
+    expect(start, "the dark-band token rule is missing").toBeGreaterThan(-1);
+
+    const body = css.slice(start, css.indexOf("}", start));
+    const ink = /--ink:\s*(#[0-9a-fA-F]{6})/.exec(body)?.[1];
+    const muted = /--ink-muted:\s*(#[0-9a-fA-F]{6})/.exec(body)?.[1];
+    expect(ink, "the band does not redefine --ink").toBeTruthy();
+    expect(muted, "the band does not redefine --ink-muted").toBeTruthy();
+
+    for (const band of BANDS) {
+      expect(ratio(ink as string, band), `ink on ${band}`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(muted as string, band), `muted on ${band}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it.each(BANDS)("keeps an ivory heading readable on %s", (band) => {
+    expect(ratio("#fffdf7", band)).toBeGreaterThanOrEqual(4.5);
+  });
+});
