@@ -1,9 +1,9 @@
 # Scoring implementation plan
 
-> **Status:** 21 Oct 2026. The deterministic scoring engine is built and tested. The database design
-> below is a proposal: no scoring migration has been written or applied, no screen reads the engine,
-> and no OCR or public leaderboard exists yet. `docs/PLAN.md` remains the single project plan; this
-> document is the scoring design and build sequence behind it.
+> **Status:** 21 Oct 2026. The deterministic scoring engine is built and tested. The database schema
+> and workflow are written as two migrations, **not applied and not tested against a database**. No
+> screen reads the engine, and no OCR or public leaderboard exists yet. `docs/PLAN.md` remains the
+> single project plan; this document is the scoring design and build sequence behind it.
 
 The requirement source is the scoring specification supplied on 21 Oct 2026. Where that document
 leaves a business rule open, this plan keeps it configurable and says what it blocks.
@@ -29,14 +29,16 @@ evidence always produces the same result.
 
 **Not built, and not claimed:**
 
-- a scoring schema, migration or repository;
+- a repository or server action that calls the engine;
 - a scorecard screen, webcam capture, upload or OCR worker;
-- provisional or final publication, and any public leaderboard;
+- a provisional or final publication screen, and any public leaderboard;
 - a tie-break procedure;
 - official results or winner declaration;
-- any database transaction, row-level security policy or RPC for scoring.
+- an applied, tested database migration. The schema and workflow SQL exist as
+  `supabase/migrations/20261035000000_scoring_schema.sql` and
+  `20261036000000_scoring_workflow.sql`, written for review and **not applied**.
 
-The app still only prints scorecards. `docs/PLAN.md` records that no scoring exists.
+The app still only prints scorecards. `docs/PLAN.md` records that no scoring is wired.
 
 ---
 
@@ -183,7 +185,7 @@ then, points standings can be displayed, but no winner is declared.
 
 ---
 
-## 6. Database design (proposed, not written)
+## 6. Database design (written, not applied)
 
 All tables carry `club_id` and use composite foreign keys, matching the existing schema. The design
 follows the existing rule: a table is readable by club staff under RLS, but writes go through a
@@ -197,10 +199,11 @@ guarded function.
   `allowance`, `handicap_rounding`, `stroke_min`, `stroke_max`, `required_cards`,
   `allow_provisional_single_card`, `min_ocr_confidence`, `provisional_publication`,
   `tie_break_policy_id`, `finalization_authority`, `rules_version`, `created_at`.
-- `status in ('draft','open','scoring','provisional','final')`.
 - `required_cards` is nullable; null means the organizer has not confirmed the count, and nothing
   can be verified.
 - `provisional_publication in ('off','verified_holes')`, default `off`.
+- `status in ('draft','open','scoring','provisional','final')`. A trigger allows only forward moves:
+  draft to open, open to scoring, scoring to provisional or final, provisional to final.
 - unique `(tournament_id, day_number)` and `(tournament_id, play_date)`.
 - The 18-hole daily competition is one row. Standings never cross rows.
 
@@ -238,8 +241,11 @@ current model stands and the scoring engine's `sum(holes.par) === tee.par` check
 
 `groups`
 
-- Add `round_id` (backfill from a default round per tournament, then not null).
-- Replace the unique key `(tournament_id, number)` with `(round_id, number)`.
+- Add `round_id` (backfill from a default round per tournament, then not null). A trigger fills it for
+  the current `save_draw()`, which does not name a round.
+- Keep the tournament-wide unique key `(tournament_id, number)` for now. Moving the draw save to a
+  round parameter and replacing it with `(round_id, number)` is a later step, so the existing draw
+  path keeps working.
 - The live project has no group rows, so the backfill is empty in practice. This is still a change
   to an existing table and needs the owner's approval.
 
@@ -301,13 +307,16 @@ current model stands and the scoring engine's `sum(holes.par) === tee.par` check
 
 `approved_hole_scores`
 
-- `id`, `club_id`, `round_id`, `player_id`, `hole_number`, `strokes`, `provenance`,
-  `source_card_ids uuid[]`, `resolution_id`, `approved_by`, `approved_at`, `superseded_at`.
+- `id`, `club_id`, `round_id`, `player_id`, `hole_number`, `strokes`, `verification`,
+  `provenance`, `source_card_ids uuid[]`, `resolution_id`, `approved_by`, `approved_at`,
+  `superseded_at`.
 - partial unique `(round_id, player_id, hole_number) where superseded_at is null`.
+- `verification in ('verified','provisional')`. A conflict or pending hole has no row.
 - `provenance in ('agreement','single_card','desk_resolution')`.
 - A new value supersedes the old row; rows are never updated in place.
 - A trigger requires `resolution_id` when provenance is `desk_resolution`, and requires it to match
-  the same round, player and hole.
+  the same round, player and hole. A pure supersede update is allowed after the resolution has been
+  replaced, because the historical row still names it.
 
 ### 6.5 Results, publications and tie-breaks
 
@@ -319,6 +328,8 @@ current model stands and the scoring engine's `sum(holes.par) === tee.par` check
 - partial unique `(round_id, player_id) where superseded_at is null`.
 - `status in ('provisional','final')`.
 - Written in the same transaction as the canonical change that caused it.
+- Finalization flips the current row to `final`. The immutable publication snapshot is the historical
+  record; `round_results` keeps one current row per player and round.
 
 `round_publications`
 
@@ -328,13 +339,16 @@ current model stands and the scoring engine's `sum(holes.par) === tee.par` check
 - `state in ('provisional','final')`.
 - A publication is an immutable snapshot. Players read only the latest one through a
   security-definer function, never the live tables. This mirrors `pairings_versions`.
+- The snapshot carries the event name, play date, and a gross and net list with player name, flight
+  name, points, strokes, holes counted and holes total. No player ids, handicap indexes, contacts or
+  photos.
 
 `tie_break_policies`
 
 - `id`, `club_id`, `name`, `procedure`, `written_source`, `version`, `confirmed_by`, `confirmed_at`.
-- `procedure` names a procedure the code implements. Until one is implemented, no policy row may be
-  attached to a finalized round. The finalization gate only checks that a confirmed policy exists;
-  the RPC must additionally require a supported procedure.
+- `procedure` names a procedure the code implements. The implemented `finalize_round` checks that a
+  confirmed policy exists, but it does not verify that the procedure is implemented. Do not enable
+  finalization for a real event until the procedure is implemented and that check is added.
 
 ### 6.6 Audit
 
@@ -351,17 +365,20 @@ current model stands and the scoring engine's `sum(holes.par) === tee.par` check
 
 | Function | Does |
 | --- | --- |
-| `submit_scorecard(...)` | Idempotent on `capture_key`; inserts card, image, extraction and entries in one transaction |
-| `approve_scorecard(card, actor, reason)` | Locks the card and round, re-checks the card's own integrity, marks it approved, records the audit row |
-| `resolve_hole(round, player, hole, strokes, reason, actor)` | Inserts an append-only resolution, supersedes the current canonical row, recalculates the player's result |
-| `replace_canonical_scores(round, player, rows, actor)` | Verifies each proposed row against the approved cards or the head resolution, then supersedes and inserts canonical rows |
-| `publish_round(round, state, actor)` | Writes the next immutable publication snapshot, provisional or final |
-| `finalize_round(round, actor)` | Re-checks every finalization gate, requires a confirmed supported tie-break policy, writes the final publication and sets the round status |
+| `save_handicap_snapshot(round_entry, index, source, date, allowance, rounding, rules)` | Recomputes Course and Playing Handicap from the tee, stores the snapshot, and writes an audit row |
+| `submit_scorecard(round_entry, scorer, source, capture_key, entries, ...)` | Idempotent on `capture_key`; inserts card, image, extraction and entries in one transaction |
+| `approve_scorecard(card, canonical, reason)` | Locks the card and round, re-checks the card's own integrity, marks it approved, applies the canonical proposal, records the audit row |
+| `reject_scorecard(card, reason)` | Rejects a submitted card with a reason and an audit row |
+| `resolve_hole(round, player, hole, strokes, reason, canonical)` | Inserts an append-only resolution, applies the canonical proposal, recalculates the player's result |
+| `apply_canonical(round, player, rows)` | Verifies each proposed row against the approved cards or the head resolution, then supersedes and inserts canonical rows. Private |
+| `publish_round(round, note)` | Writes the next immutable provisional snapshot |
+| `finalize_round(round, note)` | Re-checks every finalization gate, writes the final snapshot and sets the round status. It checks that a confirmed tie-break policy exists, not that its procedure is implemented |
+| `public_round_results(round)` | Anonymous read of the latest immutable snapshot |
 
-`replace_canonical_scores` is deliberately a verifier, not a second scoring engine. The TypeScript
-engine decides agreement and conflict; the RPC refuses any proposed value that is not supported by
-the approved cards or a resolution. This keeps one algorithm while preventing a client from
-inventing a score.
+`apply_canonical` is deliberately a verifier, not a second scoring engine. The TypeScript engine
+decides agreement and conflict; the RPC refuses any proposed value that is not supported by the
+approved cards or a resolution. This keeps one algorithm while preventing a client from inventing a
+score.
 
 All functions are `security definer`, `set search_path = ''`, and revoked from `anon`. A new
 function is private until its migration grants it, following `20261031000000`.
@@ -370,11 +387,12 @@ function is private until its migration grants it, following `20261031000000`.
 
 - Approval, resolution and recalculation happen in one transaction. A failed transaction leaves no
   card approved with half-updated canonical scores.
-- `select ... for update` on the card, round and current canonical rows.
-- A card approval carries the revision the desk saw; a stale revision is refused.
+- Approval and submission lock the round row; the card row is locked for the approval. Concurrent
+  submissions therefore cannot collide on a revision.
 - The partial unique indexes are the last line of defence: one current canonical score per hole and
   one current result per player.
-- Round status moves forward only. Reopening a finalized round is a separate audited action.
+- Round status moves forward only. The current trigger does not allow a finalized round to reopen;
+  reopening would need a separate audited function.
 
 ### 6.9 Roles and storage
 
@@ -391,12 +409,20 @@ function is private until its migration grants it, following `20261031000000`.
 
 ### 6.10 Migration order
 
-The next free version after `20261034000000_course_maps.sql` is `20261035000000_scoring.sql`.
-**`20261034000000` is written but not applied.** `supabase db push` would apply both. Do not run it
-until the owner has either approved the course-map migration too or decided how to sequence them.
+The scoring work is split into two reviewable migrations:
 
-The scoring migration is additive except for `groups.round_id`. It must not be applied to the live
-project without the owner's explicit approval, a backup and the normal reviewed-migration process.
+- `20261035000000_scoring_schema.sql`: tables, constraints, triggers, RLS, the `groups.round_id`
+  transition and the private `scorecard-images` bucket.
+- `20261036000000_scoring_workflow.sql`: `save_handicap_snapshot`, `submit_scorecard`,
+  `approve_scorecard`, `reject_scorecard`, `resolve_hole`, `apply_canonical`,
+  `recalculate_player_results`, `publish_round`, `finalize_round` and `public_round_results`.
+
+Both are written and **not applied**. **`20261034000000_course_maps.sql` is also written and not
+applied**, so `supabase db push` would apply all three. Do not run it until the owner has decided
+the sequence, reviewed the SQL and arranged a backup and a disposable test.
+
+The scoring migrations are additive except for `groups.round_id`. They must not be applied to the
+live project without explicit approval and the normal reviewed-migration process.
 
 ---
 
@@ -412,21 +438,23 @@ project without the owner's explicit approval, a backup and the normal reviewed-
 | SC-06 OCR and fallback | Same validation for all three sources in `cards.test.ts` | Camera, upload and OCR worker |
 | SC-07 Provisional publication | Verified-hole-only boards in `standings.test.ts` | Publication policy and public snapshot |
 | SC-08 Official finalization | Gate in `standings.test.ts` | Finalization RPC, tie-break procedure, authority |
-| SC-09 Idempotency | Design only | `capture_key`, image hash, extraction attempt keys |
-| SC-10 Concurrency | Design only | Locks, revision guard, partial unique indexes |
-| SC-11 Auditability | Resolution fields in the engine | Append-only tables and RPC audit rows |
-| SC-12 Recovery | Design only | Transaction boundaries and retry tests |
+| SC-09 Idempotency | SQL written, not applied | `capture_key`, image hash, extraction attempt keys |
+| SC-10 Concurrency | SQL written, not applied | Round locks, one-current partial unique indexes |
+| SC-11 Auditability | Engine fields plus SQL written, not applied | `scoring_audit` and append-only history tables |
+| SC-12 Recovery | SQL written, not applied | Transaction boundaries; retry and failure tests still needed |
 
-SC-09 to SC-12 are database properties. They cannot be claimed from a pure module.
+SC-09 to SC-12 are database properties. The mechanisms exist in the written SQL, but they are not
+claimed as tested until the migrations are applied to a disposable project and the checks run. A pure
+module cannot prove them.
 
 ---
 
 ## 8. Build sequence
 
 1. **Engine. Done 21 Oct 2026.** Calculations, validation, reconciliation, boards and gate.
-2. **Schema. Next, and it needs the owner.** Review the tables above, the `groups.round_id` change,
-   the RPCs, the roles and the storage bucket. Write `20261035000000_scoring.sql`, test it on a
-   disposable branch or local database, then apply under the normal process.
+2. **Schema. Written, not applied, and it needs the owner.** The two migrations above exist for
+   review. Test them on a disposable project, check the constraints, the triggers, the functions and
+   the RLS policies, and only then apply under the normal process. Nothing in the app calls them yet.
 3. **Scorecard workflow.** Repository, server actions, manual entry first, card approval, desk
    resolution, audit view. No OCR yet.
 4. **Provisional publication.** Persist canonical scores and results, write `publish_round`, and add
@@ -446,7 +474,7 @@ multiplies the ways a score can be wrong.
 
 | # | Decision | Default now | Blocks |
 | --- | --- | --- | --- |
-| S1 | Approve the scoring schema, including `groups.round_id` | Not written, not applied | Everything after the engine |
+| S1 | Approve the scoring schema, including `groups.round_id` | Written, not applied | Everything after the engine |
 | S2 | Required scorecards per player, and whether a single card may show provisionally | `requiredCards: null`, single-card display off; nothing publishes | Verification and finalization |
 | S3 | Scorer rotation patterns and validation rules | Manual assignment; self-scoring blocked | Card identity and rotation checks |
 | S4 | Course/tee data, allowance and rounding for non-100% events | WHS two-step; 100% confirmed so far | Valid net results |
@@ -462,7 +490,37 @@ S5 and S8 must be answered before a tournament is activated for official scoring
 
 ---
 
-## 10. Risks
+## 10. Verification after applying
+
+Run this on a disposable Supabase project, never on the live one first.
+
+1. Apply the schema and workflow migrations in order, with the course-map migration either already
+   applied or consciously included.
+2. Create a course with 18 holes, at least one tee, a tournament, players, registrations, a day-1
+   round, round entries and scorer assignments.
+3. Save a handicap snapshot and compare its Course Handicap and Playing Handicap with
+   `calculateHandicap` for the same inputs, including a plus handicap and a 95% allowance.
+4. Submit two complete cards for one player. Approve the first, check that its holes are provisional
+   or verified according to the policy, then approve the second and check that the canonical rows
+   become verified and the results recalculate.
+5. Make one hole disagree. Approve both cards and confirm the hole has no canonical row and no
+   result counts it. Resolve it with a reason and confirm the canonical row, the result and the
+   `scoring_audit` row.
+6. Retry the same `capture_key` and the same image hash. Confirm no second card or image exists.
+7. Try two approvals of the same card at once. One succeeds; the other is refused by the card status.
+8. Turn provisional publication on, publish, and confirm `public_round_results` returns the snapshot.
+   Confirm anon cannot read `scorecards`, `approved_hole_scores` or `round_results` directly.
+9. Try to finalize with the tie-break policy missing, the card count missing, a net result missing
+   and a hole unverified. Each attempt must fail with its own message. Then set all four and confirm
+   the final publication and the immutable rows.
+10. Check that a direct `update competition_rounds set status = 'final'` without a final publication
+    is refused, and that a scoring setting cannot change after the round leaves draft/open.
+
+Record the result of each check. The SQL is not claimed as tested until these pass.
+
+---
+
+## 11. Risks
 
 - **Wrong tee data.** Every net result inherits the Course Rating, Slope, par and stroke index. The
   real IGCC values are still missing. Placeholder numbers must never reach a real event.
@@ -477,5 +535,6 @@ S5 and S8 must be answered before a tournament is activated for official scoring
   cards; the engine does not.
 - **Scorecards are personal data.** Names and scores on an image need the same consent and retention
   discipline as photos, and the privacy policy does not mention scorecards yet.
-- **The plan is ahead of the code.** This document describes a schema that does not exist. Treat every
-  table and RPC above as a proposal until the migration is applied and verified.
+- **The plan is ahead of the code.** The scoring migrations are written but not applied or tested.
+  Treat every table, trigger and function above as a proposal until it runs on a disposable project
+  and the checks pass.
