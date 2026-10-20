@@ -1,7 +1,8 @@
 # Production integrity review: imports, authentication and the player model
 
 **Status date:** 21 October 2026
-**Branch:** `feat/production-integrity`, based on `origin/develop` `4231b60`
+**Branch:** `feat/production-integrity`, based on `origin/develop` `0c233b4`
+**Pull request:** [#87](https://github.com/J-Akiru5/golf-management-system-sl/pull/87), open and mergeable into `develop`
 **Production release inspected:** `v0.19.0 · 7143f20`, built 20 October 2026
 **Database project:** `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1)
 **Migration in this change:** `20261035000000_player_registration_model.sql`, written and reviewed here, **not applied to production**
@@ -58,7 +59,11 @@ registrations.
 
 `develop` builds as a Vercel **Preview** target (the production branch is `main`). That is the one
 allowed automatic deployment for `develop`. This branch is not `develop` or `main`, so `vercel.json`
-does not deploy it. No deployment was triggered while investigating.
+does not deploy it. No deployment was created when the branch was pushed: the newest Vercel deployment
+remained two hours old at the time of the check. No deployment was triggered while investigating.
+
+The pull request is [#87](https://github.com/J-Akiru5/golf-management-system-sl/pull/87). It is open,
+mergeable into `develop`, and must not be merged until the owner has reviewed the migration plan.
 
 ---
 
@@ -394,6 +399,8 @@ Run on the branch:
 | `pnpm test` | **65 files, 654 tests passed** |
 | `pnpm build` | pass, 28 routes generated |
 | Production code/version | verified from the deployed page |
+| Pull request | [#87](https://github.com/J-Akiru5/golf-management-system-sl/pull/87), open and mergeable into `develop` |
+| New Vercel deployment from the branch | none; the newest deployment remained two hours old after the push |
 | Production database reads | read-only; counts above |
 | Migration applied | **no** |
 | Production login tested | **no**; no credentials used |
