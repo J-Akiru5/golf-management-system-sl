@@ -82,6 +82,9 @@ export default function SetupPage() {
       error={error}
       save={(input) => adapters.setup.save(input)}
       confirmCourse={(confirmed) => adapters.setup.confirmCourse(tournament.id, confirmed)}
+      saveDayRule={(required, max) =>
+        adapters.tournaments.saveDayRule(tournament.id, required, max)
+      }
     />
   );
 }
@@ -96,6 +99,7 @@ function SetupWizard({
   error,
   save,
   confirmCourse,
+  saveDayRule,
 }: {
   tournament: Tournament;
   tees: ReturnType<typeof useDesk>["tees"];
@@ -111,6 +115,7 @@ function SetupWizard({
     sections: SetupSection[] | "all";
   }) => void;
   confirmCourse: (confirmed: boolean) => void;
+  saveDayRule: (required: number | null, max: number | null) => Promise<void>;
 }) {
   // Everything on this screen is a draft until a save button is pressed. The old screen wrote on
   // every keystroke; the bulk write could not be retried as a whole, and a single failure left a
@@ -122,6 +127,13 @@ function SetupWizard({
     holes.length > 0 ? holes : blankHoles(tournament.courseId),
   );
   const [dirty, setDirty] = useState<SetupSection[]>([]);
+  const [dayRuleRequired, setDayRuleRequired] = useState<number | null>(
+    tournament.requiredDays ?? null,
+  );
+  const [dayRuleMax, setDayRuleMax] = useState<number | null>(tournament.maxDays ?? null);
+  const [dayRuleSaving, setDayRuleSaving] = useState(false);
+  const [dayRuleMessage, setDayRuleMessage] = useState("");
+  const [dayRuleError, setDayRuleError] = useState("");
   // Re-seed when the desk loads or a save lands. A save dispatches what was just sent, so this
   // mirrors the draft back rather than replacing unsaved work.
   useEffect(() => setDraft(tournament), [tournament]);
@@ -406,6 +418,71 @@ function SetupWizard({
                   own date field, so a specific date can be set. Age and cut-off are read on the
                   first day until the club says which day counts. This is an open question.
                 </p>
+                <div className="grid gap-2 rounded-[12px] border border-line bg-surface-sunken p-3">
+                  <b className="text-[14px]">Playing-day rule</b>
+                  <p className="hint">
+                    A four-day event can require two days, for example. The rule is checked when a
+                    registration is saved or imported. Leave both empty for no rule.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="field">
+                      <span>Must play exactly (days)</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={draft.dates.length}
+                        value={dayRuleRequired ?? ""}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDayRuleRequired(e.target.value ? Number(e.target.value) : null)
+                        }
+                      />
+                    </label>
+                    <label className="field">
+                      <span>May play at most (days)</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={draft.dates.length}
+                        value={dayRuleMax ?? ""}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          setDayRuleMax(e.target.value ? Number(e.target.value) : null)
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={!canEdit || dayRuleSaving}
+                      onClick={async () => {
+                        setDayRuleSaving(true);
+                        setDayRuleError("");
+                        setDayRuleMessage("");
+                        try {
+                          await saveDayRule(dayRuleRequired, dayRuleMax);
+                          setDayRuleMessage("Playing-day rule saved.");
+                        } catch (e) {
+                          setDayRuleError(
+                            e instanceof Error ? e.message : "The day rule could not be saved.",
+                          );
+                        } finally {
+                          setDayRuleSaving(false);
+                        }
+                      }}
+                    >
+                      {dayRuleSaving ? "Saving…" : "Save rule"}
+                    </Button>
+                    {dayRuleMessage && <span className="hint">{dayRuleMessage}</span>}
+                    {dayRuleError && (
+                      <span className="hint !text-danger" role="alert">
+                        {dayRuleError}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
               <label className="check text-[14px]">
                 <input

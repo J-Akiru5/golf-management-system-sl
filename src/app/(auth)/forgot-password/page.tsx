@@ -41,6 +41,11 @@ export default async function ForgotPasswordPage({
         <p className="hint">
           Remembered it? <Link href="/login">Back to sign in</Link>.
         </p>
+        <p className="hint">
+          Open the email on this device, in the same browser you used to request it. A link opened
+          inside an email app&apos;s built-in browser can fail because the session started in the
+          other browser. If that happens, copy the link into this browser.
+        </p>
       </div>
 
       {!configured && (

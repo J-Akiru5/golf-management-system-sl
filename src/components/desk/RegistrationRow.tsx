@@ -73,6 +73,8 @@ export interface RegistrationRowProps {
   flightName?: string | null;
   paymentStatus?: PaymentStatus | null;
   shirt?: string | null;
+  /** The selected playing days, already summarised, e.g. "Days 1, 2". */
+  daysNote?: string | null;
   /** E.g. "prefers 6:30 AM" summary the assembler builds from the entry. */
   teePreferenceNote?: string | null;
   /** Added by / at / overridden. All optional. */
@@ -101,6 +103,7 @@ export function RegistrationRow({
   flightName = null,
   paymentStatus = null,
   shirt = null,
+  daysNote = null,
   teePreferenceNote = null,
   audit,
   profileHref,
@@ -116,6 +119,7 @@ export function RegistrationRow({
   ].filter((part): part is string => part !== null);
   const secondary = [
     shirt ? `shirt ${shirt}` : null,
+    daysNote ? daysNote : null,
     paymentStatus ? `Payment: ${paymentLabel(paymentStatus)}` : null,
     teePreferenceNote ?? null,
   ].filter((part): part is string => part !== null);

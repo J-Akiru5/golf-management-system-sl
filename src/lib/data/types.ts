@@ -139,6 +139,18 @@ export interface TournamentPayment {
   note: string;
 }
 
+/** One scheduled day of an event. The day number is stable; the date is what people read. */
+export interface TournamentDay {
+  id: string;
+  dayNumber: number;
+  /** ISO date. */
+  playDate: string;
+  label: string;
+  /** HH:MM, or null when the day's start is not set. */
+  startTime: string | null;
+  isPlayingDay: boolean;
+}
+
 export interface TournamentRegistration {
   responseEmail: string;
   /** The supplied question wording, kept editable. */
@@ -161,6 +173,12 @@ export interface Tournament {
   courseId: string;
   /** All days of play, ISO. The first day is what age is measured on until the club says otherwise. */
   dates: string[];
+  /** Structured days, when the connected database has them. Demo derives them from the dates. */
+  days?: TournamentDay[];
+  /** How many playing days a registration must take, or null for no rule. */
+  requiredDays?: number | null;
+  /** The most playing days a registration may take, or null for no limit. */
+  maxDays?: number | null;
   /** ISO. The index on or before this date is the one frozen onto a registration. */
   cutOffDate: string;
   /** Cut-off and dates are sample values until the organizer confirms them. */
@@ -212,6 +230,8 @@ export interface RegistrationEntry {
   shirt: string | null;
   /** Tee time asked for, per day (ISO date key). A preference, never a confirmed start. */
   teePreferences: Record<string, string | null>;
+  /** Selected tournament day numbers. Structured; never a display string. */
+  selectedDays?: number[];
   /** Given by the participant on the form; informational, not used for eligibility. */
   declaredWshId: string | null;
   declaredWshHandicap: string | null;

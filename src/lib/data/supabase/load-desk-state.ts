@@ -6,7 +6,8 @@
  * recorded, and only for a short window.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Hole, ManualOverride } from "@/lib/data/types";
+import { daysOfTournament } from "@/lib/data/dates";
+import type { Hole, ManualOverride, TournamentDay } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
 import type { Tee } from "@/lib/routing";
 import type { BoardState, DeskState, Published } from "@/lib/store/state";
@@ -26,6 +27,17 @@ const PHOTO_URL_SECONDS = 30 * 60;
 
 function asArray<T>(rows: T[] | null): T[] {
   return rows ?? [];
+}
+
+/** A database that has not applied an optional migration is a supported state, not a load failure. */
+function missingObject(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return (
+    error.code === "42P01" ||
+    error.code === "42703" ||
+    error.code === "PGRST205" ||
+    /does not exist|schema cache|column .* not found/i.test(error.message ?? "")
+  );
 }
 
 function toPublished(value: Json | null, tournamentId: string): Published | null {
@@ -143,8 +155,46 @@ export async function loadDeskState(
 
   const categories = asArray(categoryRows.data).map(toCategoryRule);
   const flights = asArray(flightRows.data).map(toFlightRule);
-  const tournaments = asArray(tournamentRows.data).map((row) =>
+  const baseTournaments = asArray(tournamentRows.data).map((row) =>
     toTournament(row, categories, flights),
+  );
+
+  // Structured days are optional: a database that has not applied 20261035000000 still loads and
+  // the UI derives the same shape from the event dates.
+  let daysByTournament: Record<string, TournamentDay[]> = {};
+  const dayRows = await client
+    .from("tournament_days")
+    .select("id, tournament_id, day_number, play_date, label, start_time, is_playing_day")
+    .eq("club_id", clubId)
+    .order("day_number");
+  if (dayRows.error && !missingObject(dayRows.error)) {
+    throw new Error(`Could not load the event days: ${dayRows.error.message}`);
+  }
+  if (!dayRows.error) {
+    const grouped = new Map<string, TournamentDay[]>();
+    for (const row of asArray(dayRows.data)) {
+      if (!row.is_playing_day) continue;
+      const list = grouped.get(row.tournament_id) ?? [];
+      list.push({
+        id: row.id,
+        dayNumber: row.day_number,
+        playDate: row.play_date,
+        label: row.label,
+        startTime: row.start_time ? row.start_time.slice(0, 5) : null,
+        isPlayingDay: row.is_playing_day,
+      });
+      grouped.set(row.tournament_id, list);
+    }
+    daysByTournament = Object.fromEntries(grouped);
+  }
+  const tournaments = baseTournaments.map((tournament) => ({
+    ...tournament,
+    days: daysByTournament[tournament.id]?.length
+      ? daysByTournament[tournament.id]
+      : daysOfTournament(tournament),
+  }));
+  daysByTournament = Object.fromEntries(
+    tournaments.map((tournament) => [tournament.id, tournament.days ?? []]),
   );
 
   // Signed URLs only where consent exists, and only for this club's objects.
@@ -217,6 +267,43 @@ export async function loadDeskState(
   }
 
   const entries = asArray(entryRows.data).map(toRegistrationEntry);
+
+  // The selected days live in registration_days after 20261035000000. Before it, the old
+  // teePreferences keys are the only record; derive the same day numbers so the UI is unchanged.
+  const dayNumberById = new Map(
+    asArray(dayRows.data).map((row) => [
+      row.id,
+      { tournamentId: row.tournament_id, dayNumber: row.day_number },
+    ]),
+  );
+  const selectedByRegistration = new Map<string, number[]>();
+  const registrationDayRows = await client
+    .from("registration_days")
+    .select("registration_id, tournament_day_id, selected")
+    .eq("club_id", clubId)
+    .eq("selected", true);
+  if (registrationDayRows.error && !missingObject(registrationDayRows.error)) {
+    throw new Error(`Could not load the playing days: ${registrationDayRows.error.message}`);
+  }
+  if (!registrationDayRows.error) {
+    for (const row of asArray(registrationDayRows.data)) {
+      const day = dayNumberById.get(row.tournament_day_id);
+      if (!day) continue;
+      const list = selectedByRegistration.get(row.registration_id) ?? [];
+      list.push(day.dayNumber);
+      selectedByRegistration.set(row.registration_id, list);
+    }
+  }
+  const withDays = entries.map((entry) => {
+    const stored = selectedByRegistration.get(entry.id);
+    if (stored?.length) return { ...entry, selectedDays: [...stored].sort((a, b) => a - b) };
+    const tournamentDays = daysByTournament[entry.tournamentId] ?? [];
+    const derived = Object.entries(entry.teePreferences)
+      .filter(([, value]) => Boolean(value))
+      .map(([date]) => tournamentDays.find((day) => day.playDate === date)?.dayNumber)
+      .filter((day): day is number => typeof day === "number");
+    return { ...entry, selectedDays: [...new Set(derived)].sort((a, b) => a - b) };
+  });
   const preferred = options.preferTournamentId
     ? tournaments.find((t) => t.id === options.preferTournamentId)?.id
     : undefined;
@@ -269,9 +356,10 @@ export async function loadDeskState(
       holes,
       tournaments,
       activeTournamentId: active,
+      days: daysByTournament,
       players,
       records: asArray(recordRows.data).map(toHandicapRecord),
-      entries,
+      entries: withDays,
       batches: asArray(batchRows.data).map(toImportBatch),
       deferred: asArray(deferredRows.data).map(toDeferredMatch),
       boards,
