@@ -361,13 +361,48 @@ export default async function HomePage() {
       </section>
 
       <footer className="site-footer">
-        <Link href="/">
-          <TeeLineLogo variant="reverse" width={190} />
-        </Link>
-        <p>
-          Developed by Syntaxure Labs · <span className="select-all">{APP_VERSION_LABEL}</span>
+        <div className="footer-grid">
+          <div className="footer-brand">
+            <Link href="/" aria-label="TeeLine Golf home">
+              <TeeLineLogo variant="reverse" width={190} />
+            </Link>
+            <p>
+              The tournament desk for Iloilo Golf and Country Club. Entries, the draw and the
+              published pairings, in one place.
+            </p>
+          </div>
+
+          <nav className="footer-col" aria-label="Product">
+            <h2>Product</h2>
+            <Link href="/pairings">Published pairings</Link>
+            <Link href="/login">Sign in to the desk</Link>
+          </nav>
+
+          <div className="footer-col">
+            <h2>Club</h2>
+            <p>Iloilo Golf and Country Club</p>
+            <p className="footer-placeholder">[Contact address to be confirmed by the club]</p>
+          </div>
+
+          <nav className="footer-col" aria-label="Legal">
+            <h2>Legal</h2>
+            <Link href="/privacy">Privacy policy</Link>
+            <Link href="/terms">Terms of service</Link>
+          </nav>
+        </div>
+
+        <div className="footer-bar">
+          <p>© {new Date().getFullYear()} Iloilo Golf and Country Club</p>
+          <p>
+            Developed by Syntaxure Labs · <span className="select-all">{APP_VERSION_LABEL}</span>
+          </p>
+          <Link href="/login">Sign in</Link>
+        </div>
+
+        <p className="footer-credit">
+          Photographs from Unsplash and Pexels, used under their free licences. Sources are recorded
+          in the repository.
         </p>
-        <Link href="/login">Sign in</Link>
       </footer>
 
       <aside className="preview-note" role="note">
