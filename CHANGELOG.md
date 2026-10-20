@@ -16,6 +16,12 @@ Nothing yet.
 A real footer, and the legal pages the site was missing.
 
 ### Added
+- **Photographic capability cards.** Each of the three cards now leads with a real photograph,
+  treated down to a duotone in the club's green and scrimmed where the text sits, so it reads as
+  atmosphere rather than stock imagery. The image scales on hover; nothing else moves. Sourced from
+  Pexels under its free licence, no faces identifiable, no watermarks, and the sources are recorded in
+  `docs/photo-credits.md`. The landscape shot of the fairway at dawn is committed alongside them for
+  later use.
 - **`/privacy` and `/terms`**, written from the data model rather than invented: what is collected,
   what the public pairings page is allowed to show, that photographs need recorded consent, and the
   rights under RA 10173. Both are marked **draft** at the top, because the club has not reviewed them,

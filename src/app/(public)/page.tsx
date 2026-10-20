@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowRight, CalendarDays, Layers3, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { MotionLayer } from "@/components/public/MotionLayer";
 import { TournamentCarousel } from "@/components/public/TournamentCarousel";
@@ -105,6 +106,7 @@ const capabilities = [
     title: "Tournament operations",
     description:
       "Keep event settings, registration details, categories, and start arrangements together in one clear workspace.",
+    image: "/photos/tee-box.webp",
     href: "/login",
     link: "Sign in to the desk",
   },
@@ -114,6 +116,7 @@ const capabilities = [
     title: "A considered player record",
     description:
       "Review player details and imported handicap indexes, with eligibility and routing questions surfaced for the organizer.",
+    image: "/photos/scorecard.webp",
     href: "/login",
     link: "Sign in to the desk",
   },
@@ -123,6 +126,7 @@ const capabilities = [
     title: "Pairings, ready to share",
     description:
       "Review the proposed groups, resolve draw issues, and publish a player view that keeps private profile details private.",
+    image: "/photos/players-fairway.webp",
     href: "/login",
     link: "Sign in to the desk",
   },
@@ -296,17 +300,29 @@ export default async function HomePage() {
         </div>
 
         <div className="capability-list" aria-label="TeeLine capabilities" data-motion="group">
-          {capabilities.map(({ number, icon: Icon, title, description, href, link }) => (
+          {capabilities.map(({ number, icon: Icon, title, description, image, href, link }) => (
             <article className="capability" key={number} data-motion="item">
-              <div className="capability-topline">
-                <span>{number}</span>
-                <Icon aria-hidden="true" />
+              {/* Decorative: the card's meaning is in the words, so the photo carries no alt text. */}
+              <div className="capability-media">
+                <Image
+                  src={image}
+                  alt=""
+                  fill
+                  sizes="(max-width: 900px) 100vw, 33vw"
+                  className="capability-photo"
+                />
               </div>
-              <h3>{title}</h3>
-              <p>{description}</p>
-              <Link href={href}>
-                {link} <ArrowRight aria-hidden="true" />
-              </Link>
+              <div className="capability-body">
+                <div className="capability-topline">
+                  <span>{number}</span>
+                  <Icon aria-hidden="true" />
+                </div>
+                <h3>{title}</h3>
+                <p>{description}</p>
+                <Link href={href}>
+                  {link} <ArrowRight aria-hidden="true" />
+                </Link>
+              </div>
             </article>
           ))}
         </div>
