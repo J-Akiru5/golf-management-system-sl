@@ -83,9 +83,7 @@ export function matchPlayer(input: MatchInput, existing: ExistingPlayerRef[]): M
         : "exact"
       : conflicts.length > 0
         ? "weak"
-        : signals.length > 1
-          ? "strong"
-          : "strong";
+        : "strong";
 
     return [
       {

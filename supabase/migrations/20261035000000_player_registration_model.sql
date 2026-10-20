@@ -378,6 +378,8 @@ as $$
 declare
   v_registration record;
   v_day record;
+  v_holes smallint;
+  v_first_tee time;
 begin
   select r.id, r.club_id, r.tournament_id into v_registration
   from public.registrations r
@@ -387,7 +389,7 @@ begin
     raise exception 'Registration % does not exist.', new.registration_id;
   end if;
 
-  select d.id, d.club_id, d.tournament_id, d.is_playing_day into v_day
+  select d.id, d.club_id, d.tournament_id, d.is_playing_day, d.start_time into v_day
   from public.tournament_days d
   where d.id = new.tournament_day_id;
 
@@ -401,6 +403,21 @@ begin
 
   if new.selected and not v_day.is_playing_day then
     raise exception 'That day is not a playing day for this event.';
+  end if;
+
+  select c.holes, t.first_tee_time into v_holes, v_first_tee
+  from public.tournaments t
+  join public.courses c on c.id = t.course_id and c.club_id = t.club_id
+  where t.id = v_registration.tournament_id and t.club_id = v_registration.club_id;
+
+  if new.start_hole is not null and (new.start_hole < 1 or new.start_hole > coalesce(v_holes, 18)) then
+    raise exception 'Start hole % is outside this course''s % holes.', new.start_hole, coalesce(v_holes, 18);
+  end if;
+
+  if new.tee_time is not null
+     and new.tee_time < coalesce(v_day.start_time, v_first_tee, '00:00'::time) then
+    raise exception 'Tee time % is before the day start %.', new.tee_time,
+      coalesce(v_day.start_time, v_first_tee, '00:00'::time);
   end if;
 
   new.club_id := v_registration.club_id;

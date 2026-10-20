@@ -637,7 +637,11 @@ export function RegistrationImport() {
                 <Check aria-hidden="true" />
                 {committing
                   ? "Committing and verifying…"
-                  : `Commit ${preview.summary.insert + preview.summary.update} registration${preview.summary.insert + preview.summary.update === 1 ? "" : "s"}`}
+                  : preview.summary.insert + preview.summary.update > 0
+                    ? `Commit ${preview.summary.insert + preview.summary.update} registration${
+                        preview.summary.insert + preview.summary.update === 1 ? "" : "s"
+                      }`
+                    : "Record the reviewed batch"}
               </Button>
               {result && (
                 <span className="hint" role="status">
