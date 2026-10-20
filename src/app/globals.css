@@ -3148,6 +3148,139 @@
   }
 }
 
+/* --------------------------------------------------- public site: the sections below the hero */
+
+/* The content below the hero was built as a brochure: generous, but flat and without a beat. It now
+   shares the hero's register and has a consistent vertical rhythm, so the page reads as one thing
+   rather than a poster followed by a leaflet. Every rule here is additive and scoped; none of it
+   changes the signed-in app. */
+
+.teeline-site .experience-section,
+.teeline-site .workflow-section {
+  padding-block: clamp(64px, 9vw, 132px);
+}
+
+.teeline-site :is(.section-intro, .workflow-heading) {
+  max-width: 62rem;
+}
+
+.teeline-site :is(.section-intro h2, .workflow-heading h2) {
+  color: var(--ink);
+}
+
+.teeline-site :is(.section-intro > p:last-child, .workflow-heading > p) {
+  max-width: 46rem;
+  font-size: clamp(15px, 1.2vw, 17px);
+  line-height: 1.75;
+}
+
+/* The capability cards get an edge and a lift. The number reads as a score, not a footnote. */
+.teeline-site .capability {
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 16px;
+  transition:
+    transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.teeline-site .capability:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 28px 60px -36px rgb(12 40 28 / 55%);
+}
+
+.teeline-site .capability-topline span {
+  font-size: 40px;
+  color: var(--fairway);
+}
+
+.teeline-site .capability h3 {
+  font-family: var(--f-condensed);
+  font-size: clamp(22px, 2.1vw, 30px);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.teeline-site .capability a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* The workflow becomes a timeline rather than three stacked lines. */
+.teeline-site .workflow-steps {
+  position: relative;
+  margin-top: clamp(32px, 4vw, 56px);
+}
+
+.teeline-site .workflow-steps li {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 20px;
+  align-items: start;
+  padding: 22px 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+}
+
+.teeline-site .workflow-steps li:last-child {
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+}
+
+.teeline-site .workflow-steps .step-number {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--fairway-soft);
+  color: var(--fairway);
+  font-family: var(--f-condensed);
+  font-size: 22px;
+  letter-spacing: 0.04em;
+}
+
+.teeline-site .workflow-steps b {
+  display: block;
+  font-family: var(--f-condensed);
+  font-size: clamp(20px, 1.8vw, 26px);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.teeline-site .workflow-steps small {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-muted);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+/* The pairings callout is a band, not a footnote. */
+.teeline-site .pairings-callout {
+  border-radius: 20px;
+  background:
+    radial-gradient(700px 320px at 88% 0%, rgb(58 132 96 / 38%), transparent 70%),
+    linear-gradient(150deg, #0b1a14 0%, #12301f 60%, #0a1712 100%);
+  color: #f7f5ee;
+}
+
+.teeline-site .pairings-callout h2 {
+  max-width: 40rem;
+  color: #fffdf7;
+  font-size: clamp(30px, 3.6vw, 52px);
+}
+
+.teeline-site .pairings-callout p {
+  color: rgb(247 245 238 / 78%);
+}
+
+.teeline-site .pairings-callout .section-kicker {
+  color: var(--gold);
+}
 /* The stat strip is a sibling of .hero-content, so it inherited none of that block's box: it ran
    full width with no inset, which cut the first tile off the left edge while the headline above was
    indented. It now takes the same width, margins and padding, so the two columns line up. */
