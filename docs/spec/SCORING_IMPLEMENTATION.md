@@ -194,8 +194,13 @@ guarded function.
 `competition_rounds`
 
 - `id`, `club_id`, `tournament_id`, `day_number`, `play_date`, `hole_count`, `status`,
-  `rules_version`, `created_at`.
+  `allowance`, `handicap_rounding`, `stroke_min`, `stroke_max`, `required_cards`,
+  `allow_provisional_single_card`, `min_ocr_confidence`, `provisional_publication`,
+  `tie_break_policy_id`, `finalization_authority`, `rules_version`, `created_at`.
 - `status in ('draft','open','scoring','provisional','final')`.
+- `required_cards` is nullable; null means the organizer has not confirmed the count, and nothing
+  can be verified.
+- `provisional_publication in ('off','verified_holes')`, default `off`.
 - unique `(tournament_id, day_number)` and `(tournament_id, play_date)`.
 - The 18-hole daily competition is one row. Standings never cross rows.
 
@@ -206,6 +211,30 @@ guarded function.
 - This is the per-day participation record. It supports separate daily eligibility without changing
   the existing `registrations` unique key `(tournament_id, player_id)`. A player may have one
   tournament registration and a separate entry, result and flight for each day.
+
+`scorer_rotation_policies`
+
+- `id`, `club_id`, `tournament_id`, `kind`, `config jsonb`, `confirmed_by`, `confirmed_at`.
+- `kind` names a pattern the rotation validator implements, for example a reciprocal cycle.
+- Until the organizer confirms the pattern, no policy row is active and the desk assigns a marker by
+  hand. Self-scoring is always blocked.
+
+`scorer_assignments`
+
+- `id`, `club_id`, `round_id`, `player_id`, `scorer_id`, `policy_id`, `assigned_by`, `assigned_at`,
+  `active`.
+- partial unique `(round_id, player_id) where active`.
+- check `player_id <> scorer_id`.
+- A trigger checks that both people are active `round_entries` in the same round, and that the
+  assignment satisfies the policy when one is configured.
+
+**Existing hole model gap.** `holes` is keyed by `(course_id, number)` with a unique
+`(course_id, stroke_index)`, so it cannot represent a different par or stroke index per tee. The
+scoring engine accepts a `RoundCourse` whose holes belong to the selected tee, but the database
+proposal does not yet change `holes`. If IGCC's Ladies or Senior tees have their own par or stroke
+index allocation, the schema needs `tee_holes` (or `tee_id` on `holes`) and the unique keys move to
+the tee. That is an owner decision before real net scoring. If all tees share one allocation, the
+current model stands and the scoring engine's `sum(holes.par) === tee.par` check proves it.
 
 `groups`
 
@@ -426,6 +455,7 @@ multiplies the ways a score can be wrong.
 | S7 | Provisional publication: who sees partial scores, and when | Off | Live leaderboard visibility |
 | S8 | Final approval authority: desk alone or a committee | Organizer/owner; finalization not enabled | Official results workflow |
 | S9 | Scorecard image retention and access | Private bucket, no retention period set | Privacy policy and storage |
+| S10 | Whether each tee has its own par and stroke indexes | One shared allocation until confirmed | Correct net scoring on a tee with its own allocation; `tee_holes` schema |
 
 The first action is S1. The other decisions can be answered while the workflow is built, but S2,
 S5 and S8 must be answered before a tournament is activated for official scoring.
@@ -436,6 +466,10 @@ S5 and S8 must be answered before a tournament is activated for official scoring
 
 - **Wrong tee data.** Every net result inherits the Course Rating, Slope, par and stroke index. The
   real IGCC values are still missing. Placeholder numbers must never reach a real event.
+- **One hole allocation for every tee.** The current `holes` table cannot hold a different par or
+  stroke index per tee. If the Ladies or Senior tees differ, net scoring is wrong until `tee_holes`
+  exists. The engine's par-total check fails closed, but a shared allocation can still be wrong
+  without being inconsistent.
 - **Two rounding rules.** Routing and scoring must agree before a non-100% allowance is used.
 - **SQL and TypeScript drift.** The RPC verifies canonical proposals rather than rescoring. Contract
   tests against the engine are required once the migration exists.

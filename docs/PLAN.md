@@ -721,7 +721,7 @@ module cannot prove them.
 | --- | --- | --- |
 | Required scorecards per player, and single-card provisional display | None; nothing publishes | Verification and finalization |
 | Scorer rotation patterns | Manual assignment; self-scoring blocked | Card identity checks |
-| Course/tee data, allowance and rounding for non-100% events | WHS two-step; 100% confirmed so far | Valid net results |
+| Course/tee data (including whether each tee has its own par and stroke indexes), allowance and rounding | WHS two-step; 100% confirmed so far; one shared hole allocation | Valid net results |
 | Written tie-break rule | None; finalization blocked | Official ranking and winners |
 | Multi-day eligibility | One entry per day; no cross-day totals | Per-day registration rules |
 | Provisional publication visibility | Off | Live leaderboard |
