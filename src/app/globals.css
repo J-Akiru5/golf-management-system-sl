@@ -3521,9 +3521,16 @@
    moves on hover, and only its transform. */
 .teeline-site .capability {
   display: grid;
+  height: 100%;
   grid-template-rows: auto 1fr;
   padding: 0;
   overflow: hidden;
+}
+
+/* The list was centring its items, so a card with a longer title sat lower and taller than its
+   neighbours. Stretching them makes the three read as one row. */
+.teeline-site .capability-list {
+  align-items: stretch;
 }
 
 .capability-media {
