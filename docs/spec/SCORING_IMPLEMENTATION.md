@@ -432,12 +432,12 @@ live project without explicit approval and the normal reviewed-migration process
 | --- | --- | --- |
 | SC-01 Gross Stableford | Covered by `stableford.test.ts` | Repository and screen |
 | SC-02 Net Stableford | Covered by `handicap.test.ts` and `stableford.test.ts` | Real tee data and allowance confirmation |
-| SC-03 Separate daily results | Covered by `standings.test.ts` | `competition_rounds` and `round_entries` |
-| SC-04 Multiple scorecards | Covered by `reconcile.test.ts` | Card tables and capture path |
-| SC-05 Desk resolution | Covered by `reconcile.test.ts` | `hole_resolutions`, RPC and audit |
+| SC-03 Separate daily results | Covered by `standings.test.ts` | `competition_rounds` and `round_entries` written, not applied |
+| SC-04 Multiple scorecards | Covered by `reconcile.test.ts` | Card tables written, not applied; capture path still needed |
+| SC-05 Desk resolution | Covered by `reconcile.test.ts` | `hole_resolutions`, RPC and audit written, not applied |
 | SC-06 OCR and fallback | Same validation for all three sources in `cards.test.ts` | Camera, upload and OCR worker |
-| SC-07 Provisional publication | Verified-hole-only boards in `standings.test.ts` | Publication policy and public snapshot |
-| SC-08 Official finalization | Gate in `standings.test.ts` | Finalization RPC, tie-break procedure, authority |
+| SC-07 Provisional publication | Verified-hole-only boards in `standings.test.ts` | Publication policy and public snapshot written, not applied |
+| SC-08 Official finalization | Gate in `standings.test.ts` | Finalization RPC written, not applied; tie-break procedure and authority still needed |
 | SC-09 Idempotency | SQL written, not applied | `capture_key`, image hash, extraction attempt keys |
 | SC-10 Concurrency | SQL written, not applied | Round locks, one-current partial unique indexes |
 | SC-11 Auditability | Engine fields plus SQL written, not applied | `scoring_audit` and append-only history tables |
@@ -455,10 +455,10 @@ module cannot prove them.
 2. **Schema. Written, not applied, and it needs the owner.** The two migrations above exist for
    review. Test them on a disposable project, check the constraints, the triggers, the functions and
    the RLS policies, and only then apply under the normal process. Nothing in the app calls them yet.
-3. **Scorecard workflow.** Repository, server actions, manual entry first, card approval, desk
-   resolution, audit view. No OCR yet.
-4. **Provisional publication.** Persist canonical scores and results, write `publish_round`, and add
-   the desk and player boards. Incomplete rounds show holes counted.
+3. **Scorecard workflow.** Wire the written RPCs into a repository and server actions: manual entry
+   first, card approval, desk resolution, audit view. No OCR yet.
+4. **Provisional publication.** `publish_round` and `public_round_results` are written, not applied.
+   Add the repository, the desk board and the player board. Incomplete rounds show holes counted.
 5. **Computer vision.** Webcam capture, upload, OCR extraction, confidence review and manual
    confirmation. The OCR worker never decides a rule or a conflict.
 6. **Production readiness.** Round-trip tests with real course data, concurrent approval tests,
