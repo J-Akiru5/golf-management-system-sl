@@ -3147,3 +3147,21 @@
     animation: none;
   }
 }
+
+/* The stat strip is a sibling of .hero-content, so it inherited none of that block's box: it ran
+   full width with no inset, which cut the first tile off the left edge while the headline above was
+   indented. It now takes the same width, margins and padding, so the two columns line up. */
+.teeline-site .hero-stats {
+  width: min(100%, var(--content-width));
+  max-width: none;
+  margin: 0 auto;
+  padding: 0 clamp(24px, 7vw, 96px) 52px;
+  box-sizing: border-box;
+}
+
+/* The strip's heading was ivory, which was correct when the strip sat on the dark hero. It now sits
+   on the page, so ivory on ivory made it invisible. --ink flips with the theme, which is what this
+   needs. */
+.teeline-site .strip-head h2 {
+  color: var(--ink);
+}
