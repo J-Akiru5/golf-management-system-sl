@@ -196,7 +196,9 @@ create table public.scorecard_images (
   id uuid primary key default gen_random_uuid(),
   club_id uuid not null,
   scorecard_id uuid not null,
-  storage_path text not null check (btrim(storage_path) <> ''),
+  storage_path text not null check (
+    btrim(storage_path) <> '' and storage_path like club_id::text || '/%'
+  ),
   sha256 text not null check (sha256 ~ '^[0-9a-f]{64}$'),
   mime_type text not null
     check (mime_type in ('image/jpeg', 'image/png', 'image/webp', 'application/pdf')),
@@ -498,6 +500,31 @@ revoke all on function public.assert_scorer_participants() from public, anon, au
 create trigger scorer_assignments_assert
   before insert or update on public.scorer_assignments
   for each row execute function public.assert_scorer_participants();
+
+create or replace function public.stamp_scorer_assignment()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.assigned_by := coalesce((select auth.uid()), new.assigned_by);
+    new.assigned_at := now();
+  else
+    new.assigned_by := old.assigned_by;
+    new.assigned_at := old.assigned_at;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.stamp_scorer_assignment()
+  from public, anon, authenticated;
+
+create trigger scorer_assignments_stamp
+  before insert or update on public.scorer_assignments
+  for each row execute function public.stamp_scorer_assignment();
 
 create trigger scorecards_assert
   before insert or update on public.scorecards

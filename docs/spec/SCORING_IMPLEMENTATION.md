@@ -339,6 +339,8 @@ current model stands and the scoring engine's `sum(holes.par) === tee.par` check
 - `state in ('provisional','final')`.
 - A publication is an immutable snapshot. Players read only the latest one through a
   security-definer function, never the live tables. This mirrors `pairings_versions`.
+- After a correction, the provisional publication is stale until the desk publishes a new version.
+  The public function never reads live results.
 - The snapshot carries the event name, play date, and a gross and net list with player name, flight
   name, points, strokes, holes counted and holes total. No player ids, handicap indexes, contacts or
   photos.
