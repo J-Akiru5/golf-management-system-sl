@@ -4,7 +4,7 @@ Golf tournament management for **Iloilo Golf & Country Club (IGCC)**, built by *
 The organizer adds players; the system routes each one to a category, tee, flight, group and start
 slot; the organizer reviews, overrides and publishes; players read their pairings on a phone.
 
-> **Status date:** 18 Oct 2026 · **Branch state:** `develop` is the only long-lived branch ·
+> **Status date:** 21 Oct 2026 · **Branch state:** `develop` is the only long-lived branch ·
 > **Product name:** TeeLine Golf (approved direction; trademark clearance has not been established)
 
 This is the single plan for humans and AI agents. Section 1 is the 60-second version. Everything
@@ -41,9 +41,13 @@ Anything not marked is a plan, not a fact.
 | Merged (PR #33) | **The public entry form's own copy in English, Tagalog and Hiligaynon** (30 keys under `enter.form.*`): labels, hints, the "optional" and "to be confirmed" suffixes, the send button and the review note. What the club typed — instructions, extra questions, tee labels, the payment note — is their text and is passed through unchanged. The dev-only preview page renders the real form with a language picker, because the form is otherwise only reachable against a connected project | `verify:ui` section "entry form in three languages" |
 | Merged (PR #64) | **The two aerial references are recorded and the per-hole review is written** (`docs/course-map/review.md`, images beside it, SHA-256 hashes recorded): neither reference is authoritative, the two layouts disagree on every hole number, and the checklist for Sir Philip plus the validation workflow for Ma'am Mary Ann are in that document. No layout is in the app; it still uses the illustrated placeholder | Decision 11 |
 | Course map approval (Phase 2, in review) | **The versioning and approval design, the migration and the lifecycle logic** (`docs/course-map/approval-design.md`, `supabase/migrations/20261034000000_course_maps.sql`, `src/lib/course/map-lifecycle.ts` + tests): versions move draft → awaiting technical → awaiting validation → approved → published, with append-only reviews naming the reviewer, one published map per course enforced by a partial unique index, published versions immutable, and any placement edit withdrawing both confirmations. Writes only through four guarded functions; the tables are SELECT-only. **The migration is written, not applied**, and no UI is wired | PR `feat/course-map-approval`; awaiting the owner's verification |
-| Scores, results | **Not started** (Phase 2) | No `scores` table yet |
+| Scoring engine (`src/lib/scoring`) | **Built, pure and tested** (21 Oct 2026): gross and net Stableford, the WHS handicap snapshot, stroke allocation, card validation for all three capture paths, multi-card reconciliation with desk resolutions, provisional boards and the finalization gate. **Nothing reads it yet** | 90 unit tests in 6 files; `pnpm typecheck` clean; design and schema proposal in [`docs/spec/SCORING_IMPLEMENTATION.md`](spec/SCORING_IMPLEMENTATION.md) |
+| Scores, results | **Engine only.** No scoring schema, scorecard screen, OCR, publication or official results. The schema proposal awaits the owner's approval | No scoring table yet; `src/lib/scoring` is not wired to the app |
 
-Whole suite: 41 test files, 446 tests passing (`pnpm test`) on `develop` today. Separately, `pnpm verify:ui` drives a real browser against a running dev server (paging, the bell, the help centre, player languages and the shell), and is not part of `pnpm test` because it needs the server up.
+Whole suite: 65 test files, 701 tests passing (`pnpm test`) on `feat/scoring-engine` today; the scoring
+engine adds 6 files and 90 of those tests. Separately, `pnpm verify:ui` drives a real browser against a
+running dev server (paging, the bell, the help centre, player languages and the shell), and is not part
+of `pnpm test` because it needs the server up.
 
 **The one thing blocking a real event:** the project now has one event ("24th Bamboo Tee", open), a
 course row and its registration wording, but **no tees, no hole rows, no players, no registrations
@@ -257,7 +261,7 @@ plan quotes it; it does not redefine it.
 | Course & holes | Hole 1 overview and green view with shot line and yardage markers drawn from anchor files. **Pictures are an illustration, not IGCC's real hole** |
 | Clubhouse display (spotlight) | 16:9 player card for the clubhouse TV, single player or rotation. Shows recorded data only |
 | Real course and tee entry | **Pending**: course rating, slope, par and stroke index are editable in Settings, but the values on file are placeholders until the club supplies the scorecard |
-| Score encoding and results | Phase 2 |
+| Score encoding and results | **Phase 2, engine only.** The pure scoring engine is built; no screen, schema, OCR or publication exists |
 
 ---
 
@@ -674,7 +678,55 @@ blank box.
 
 ### Phase 2: results
 
-Score encoding from paper cards, gross and net per flight, tie-breaks, results export. Needs the organizer's tie-break rule. Adds the `scores` table.
+**Status.** The deterministic engine is built (21 Oct 2026). The schema, scorecard workflow, OCR,
+publication and official results are not started. The full design, table shapes, RPCs, acceptance
+mapping and open decisions live in
+[`docs/spec/SCORING_IMPLEMENTATION.md`](spec/SCORING_IMPLEMENTATION.md).
+
+**Step 1, the engine: done.** `src/lib/scoring` is pure, with no database, clock or network. It
+calculates gross and net Stableford from approved gross scores, stores the WHS pipeline as separate
+values, allocates handicap strokes by stroke index, validates one card revision, compares independent
+cards without picking a majority, derives canonical holes only from agreement or a desk resolution,
+builds provisional boards from verified holes, and blocks finalization while the required card
+count, unresolved conflicts, net results, tie-break rule or authority are missing. 90 tests; see
+SC-01 to SC-08 in the design document.
+
+**Step 2, the schema: needs the owner.** A new migration, proposed as
+`20261035000000_scoring.sql`, adds `competition_rounds`, per-day `round_entries`, handicap snapshots,
+cards, images, extraction attempts, entries, append-only resolutions and canonical scores, results,
+immutable publications and a scoring audit. It also adds `round_id` to the existing `groups` table,
+which is the one change to a table already in production. No row exists there yet, but it is still a
+schema change and needs explicit approval. **`20261034000000_course_maps.sql` is written and not
+applied**, so `supabase db push` would apply both; the sequence must be decided before either is
+pushed.
+
+**Step 3, the scorecard workflow.** Manual entry first, through the same validation and approval
+pipeline the camera and upload will use. The desk approves a card, resolves a conflict with a reason,
+and the correction stays in the audit trail.
+
+**Step 4, provisional publication.** Persist canonical scores and derived results, snapshot a
+publication, and show the desk and player boards. A hole that is pending or in conflict is left out;
+an incomplete round shows how many holes it counts. No winner is declared.
+
+**Step 5, computer vision.** Webcam capture, manual upload, OCR extraction, confidence review and
+manual confirmation. The OCR worker reads paper; it never decides a competition rule or a conflict.
+
+**Step 6, readiness.** Real course data, concurrent approvals, failed-transaction recovery, role
+checks and a simulated four-player tournament. This is where SC-09 to SC-12 are proved; a pure
+module cannot prove them.
+
+**What the organizer still has to confirm** (details and defaults in the design document):
+
+| Dependency | Default now | Blocks |
+| --- | --- | --- |
+| Required scorecards per player, and single-card provisional display | None; nothing publishes | Verification and finalization |
+| Scorer rotation patterns | Manual assignment; self-scoring blocked | Card identity checks |
+| Course/tee data, allowance and rounding for non-100% events | WHS two-step; 100% confirmed so far | Valid net results |
+| Written tie-break rule | None; finalization blocked | Official ranking and winners |
+| Multi-day eligibility | One entry per day; no cross-day totals | Per-day registration rules |
+| Provisional publication visibility | Off | Live leaderboard |
+| Final approval authority | Organizer/owner; finalization not enabled | Official-result workflow |
+
 
 ### Phase 3: growth
 
@@ -716,7 +768,7 @@ Decisions that belong to the people named, not to an agent.
 | 5 | Flight not divisible by 4 | Organizer | Group sizes | Even split, min 3 |
 | 6 | Ordering inside a flight | Organizer | Groups | By handicap |
 | 7 | Photo visibility | Organizer | Privacy copy | Desk and organizer only |
-| 8 | Results and tie-break rule | Organizer | Phase 2 | None |
+| 8 | Results and tie-break rule | Organizer | Phase 2 official results; the engine is built, but finalization stays blocked without it | None; scoring dependencies S2, S5 and S8 in [`docs/spec/SCORING_IMPLEMENTATION.md`](spec/SCORING_IMPLEMENTATION.md) |
 | 9 | Small flight near the end of wave 1 (e.g. 3-group Ladies): split, fill from another flight, or move to wave 2 | Organizer | Shotgun layout | Keep whole, flag |
 | 24 | **Who may create a club, and how a first-run account gets one** | Jeff | Every new club; the shape of tenancy | Settled 19 Oct 2026: **only a super admin creates clubs.** A brand-new account cannot, and IGCC remains the only club. The intuitive end state is self-service creation, and it is deliberately not built yet. Because no super-admin concept exists today (`club_members.role` is owner/organizer/desk, and the init migration says clubs and memberships are made with the service role), this needs a platform-admin concept that is **not** a club role: a super admin is above clubs, so a row in `club_members` would be the wrong home for one |
 | 25 | **How the client gets its session after signing in** | Jeff | Whether the desk loads at all | Settled 19 Oct 2026: **subscribe to auth state.** The desk store reads the session once on mount and never again, so the first render after a server-side sign-in finds none and gives up (gap 16). It will subscribe to `onAuthStateChange` as well, and retry once, rather than resolving the session on the server and passing it down: the connected desk is a client store that writes through the browser client, so handing it a server session would split the thing that owns the session in two |
@@ -877,6 +929,8 @@ Agent ground rules:
 | 20 Oct 2026 | **Photography is sourced, treated and credited (decision 30).** The owner asked for real industry-grade golf photographs, never AI generated, with an artistic treatment. Four Pexels photographs are committed to `public/photos`: a fairway at dawn, a tee box, a scorecard and players crossing a fairway. Each is used under the Pexels License, which allows commercial use and modification without payment. No faces are identifiable, no watermarks, and nothing is generated. They are treated in CSS to a duotone in the club's green with a scrim where text sits, so they read as atmosphere rather than stock imagery, and the card image is the only thing that moves on hover. `docs/photo-credits.md` records the photographer, licence and source URL for each, and states plainly that **none of them are IGCC's own course**, so they must never be captioned as the club's. The scorecard shot is the weakest of the four: it is a tight crop of a portrait original, and it carries a handwritten first name. It should be replaced with a purpose-shot image before the club uses this page for a real campaign. |
 | 20 Oct 2026 | **Privacy and terms are drafted from the code, and marked as drafts (decision 31).** Neither page existed, and the footer had nowhere to send anyone. Both are now written from what the software actually stores and exposes, against the Philippine Data Privacy Act (RA 10173), and both open with a draft banner. The copy lives as markdown under `docs/legal` and is generated into `src/content/legal` by `scripts/gen-legal.mjs`, so the club's adviser can correct it without touching JSX. **Two answers are left as visible placeholders rather than guessed**: the retention period, and the privacy contact. The drafting found five real gaps the club should decide on, all recorded in the documents' notes: **the desk may not persist an uploaded photo at all** (the active adapter does not write the file or `photo_path`, so a photo can live only in the browser session); **claiming a record is not identity-verified**, since a signed-in account can claim an unclaimed record by unique name or NGAP number; **the role rules are wider than the labels**, so a `desk` account can write players, registrations, courses and tees; **there is no automatic retention**, and unpublishing does not remove names from a published snapshot; and the **theme preference is `localStorage`, not a cookie**, which the policy states correctly. |
 | 20 Oct 2026 | **The public dark bands redefine the ink tokens (decision 32).** The workflow heading was `var(--ink)` on `#0b2b23`, so it rendered near-black on near-black, and the step copy failed the same way through `--ink-muted`. Rather than patch two selectors, the three dark bands — workflow, schedule and pairings callout — now redefine `--ink`, `--ink-muted` and `--line` inside themselves, so every descendant resolves to ivory on a dark field, including ones added later. `contrast.test.ts` asserts the rule exists and that both tokens clear 4.5:1 against `#0b2b23` and `#101613`. The lesson is the same one from the earlier layout bugs: typecheck, lint, the unit suite, the build and the browser harness all passed while the page was unreadable, because none of them measure colour or composition. |
+
+| 21 Oct 2026 | **Scoring starts with a pure engine, and every unconfirmed rule stays configuration (decision 33).** The scoring specification is implemented as `src/lib/scoring`: gross and net Stableford, a WHS snapshot that keeps the index, source, date, Course Handicap, allowance, Playing Handicap and rules version separate, stroke allocation by stroke index, card validation shared by webcam, upload and manual entry, multi-card reconciliation, provisional boards and a finalization gate. The engine never chooses a first card, last card or majority value; only a desk resolution with a reason makes a disputed hole canonical. A player cannot mark their own card. Gross survives missing handicap data, but net is `unavailable` rather than estimated. `requiredCards: null` and single-card provisional display off are the defaults, so with the organizer's rules missing **nothing is verified and nothing is published**; finalization is blocked while the card count, a conflict, a net result, the tie-break rule or the finalizing authority is missing. Two rounding modes are stored because the club has confirmed 100% only: at 100% they agree, and the routing helper's single rounding matches the `"single"` mode, so they must be reconciled before a non-100% allowance is used for both draw and scoring. The finalization gate checks that a written tie-break policy exists but **does not apply a procedure**; that is a separate build once the organizer supplies the rule. The schema is designed but **not written or applied**: the next migration is proposed as `20261035000000_scoring.sql`, it changes the existing `groups` table by adding `round_id`, and `20261034000000_course_maps.sql` is still parked, so `db push` would apply both. The full design and the nine owner decisions are in [`docs/spec/SCORING_IMPLEMENTATION.md`](spec/SCORING_IMPLEMENTATION.md). |
 
 ---
 
