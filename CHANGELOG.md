@@ -11,6 +11,24 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.19.0] - 2026-10-20
+
+Real scroll motion, and the content below the hero treated as a designed page rather than a leaflet.
+
+### Added
+- **Lenis and GSAP ScrollTrigger**, loaded after the page is interactive. Lenis gives the page its
+  weight; ScrollTrigger runs the reveals. Both are imported inside an effect, so neither is in the
+  first paint and the hero never waits on a bundle. The page also works without them: reveals animate
+  *from* an offset, so with no script, and with `prefers-reduced-motion: reduce`, every section is
+  simply already there.
+- `data-motion` hooks: `reveal` for a section that arrives once, `group` and `item` for a staggered
+  set, and `parallax` for decorative layers.
+
+### Changed
+- **The sections below the hero now have a rhythm.** A consistent vertical beat, a card treatment for
+  the three capabilities with a lift on hover, the workflow as a timeline with numbered discs and
+  rules, and the pairings callout as a dark band rather than a footnote.
+
 ## [0.18.2] - 2026-10-20
 
 Two layout bugs that the first real screenshot exposed. Neither was visible to the type checker, the

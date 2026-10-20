@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowRight, CalendarDays, Layers3, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MotionLayer } from "@/components/public/MotionLayer";
 import { TournamentCarousel } from "@/components/public/TournamentCarousel";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { loadPublicOpenEvents } from "@/lib/data/supabase/public-events";
@@ -149,6 +150,7 @@ export default async function HomePage() {
 
   return (
     <main className="teeline-site">
+      <MotionLayer />
       <section
         className={`teeline-hero${events.length > 0 ? " with-strip" : ""}`}
         aria-labelledby="hero-title"
@@ -283,7 +285,7 @@ export default async function HomePage() {
       {featured && <ScheduleStrip event={featured} />}
 
       <section id="experience" className="experience-section">
-        <div className="section-intro">
+        <div className="section-intro" data-motion="reveal">
           <p className="section-kicker">TeeLine Golf · Tournament desk</p>
           <h2>Less time untangling details. More time together on the course.</h2>
           <p>
@@ -293,9 +295,9 @@ export default async function HomePage() {
           </p>
         </div>
 
-        <div className="capability-list" aria-label="TeeLine capabilities">
+        <div className="capability-list" aria-label="TeeLine capabilities" data-motion="group">
           {capabilities.map(({ number, icon: Icon, title, description, href, link }) => (
-            <article className="capability" key={number}>
+            <article className="capability" key={number} data-motion="item">
               <div className="capability-topline">
                 <span>{number}</span>
                 <Icon aria-hidden="true" />
@@ -311,7 +313,7 @@ export default async function HomePage() {
       </section>
 
       <section id="workflow" className="workflow-section">
-        <div className="workflow-heading">
+        <div className="workflow-heading" data-motion="reveal">
           <p className="section-kicker">A clear path to the first tee</p>
           <h2>Good tournament days start with a plan.</h2>
           <p>
@@ -322,9 +324,9 @@ export default async function HomePage() {
             Sign in to the desk <ArrowRight aria-hidden="true" />
           </Link>
         </div>
-        <ol className="workflow-steps">
+        <ol className="workflow-steps" data-motion="group">
           {steps.map(([number, title, description]) => (
-            <li key={number}>
+            <li key={number} data-motion="item">
               <span className="step-number">{number}</span>
               <span>
                 <b>{title}</b>
@@ -333,7 +335,13 @@ export default async function HomePage() {
             </li>
           ))}
         </ol>
-        <svg className="workflow-contours" viewBox="0 0 640 380" fill="none" aria-hidden="true">
+        <svg
+          className="workflow-contours"
+          viewBox="0 0 640 380"
+          fill="none"
+          aria-hidden="true"
+          data-motion="parallax"
+        >
           <path d="M-40 292C114 242 144 94 330 96c122 1 145 121 329 37" />
           <path d="M-45 319C105 274 163 123 331 123c118 0 157 118 336 47" />
           <path d="M-42 347C105 306 178 153 334 151c116-1 166 112 341 59" />
@@ -341,7 +349,7 @@ export default async function HomePage() {
         </svg>
       </section>
 
-      <section className="pairings-callout">
+      <section className="pairings-callout" data-motion="reveal">
         <div>
           <p className="section-kicker">For players</p>
           <h2>When pairings are published, they should be easy to find.</h2>
