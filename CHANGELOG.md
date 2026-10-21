@@ -9,12 +9,69 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.22.0] - 2026-10-21
+
+Production integrity: imports that persist, the registration workbook, structured playing days, tee
+times, and a clearer sign-in. The scoring engine shipped in 0.21.0.
+
+### Added
+- **Registration workbook import** (`/import`): CSV and XLSX, worksheet selection, deterministic
+  column mapping, an optional schema-validated AI proposal that sees only headers and value shapes,
+  a per-row preview, human approval, a single-transaction commit and an independent read-back. Member
+  and guest rows become separate players; a guest does not inherit the member's birthdate, contact,
+  payment or shirt.
+- **Canonical player, membership and event-day model**: club-scoped `player_memberships`,
+  `tournament_days`, `registration_days`, explicit registration facts, import batches and per-row
+  outcomes, and an append-only audit log. Birthdate and gender are nullable so an incomplete guest
+  profile is saved as Needs review instead of invented.
+- **Structured public day selection**: the entry form shows each playing day's date and start time,
+  sends a `days` array, and the server revalidates it against the event's required and maximum rule.
+  The 24th Bamboo Tee is set to exactly two days.
+- **Tee times screen** (`/tee-times`): one tab per playing day, the players who selected it, and a
+  time, start hole and confirmation saved through `assign_registration_day_tee`. Day selection stays
+  a separate write.
+- **Sign-in diagnosis**: provider errors now distinguish an unconfirmed email from a wrong password,
+  with a resend-confirmation flow and same-browser reset guidance.
+- **NGAP WHS FAQ reference** (`docs/ngap/wsh-faq.md`), reproduced from the 2024 NGAP FAQ with its two
+  source gaps recorded. Not shown in the app yet.
+
+### Fixed
+- **The handicap import reported success before any write and could not create players.** It now
+  awaits a guarded transaction, refuses rows without a matching player, records each row's outcome,
+  and reloads the desk from the database before showing the result. The two production batches that
+  claimed 17 and 42 records are left as evidence, not treated as state.
+- **Registration day and tee-time writes were not structured or checked.** They now go through
+  `set_registration_days` and `assign_registration_day_tee`, with duplicate, tournament, hole-range and
+  day-start validation.
+
 ### Changed
 - **`/pairings` has a desktop layout.** `.public` caps every public page at 56rem, which is right for a
   phone but left the pairings page as a narrow column in the middle of a wide screen. The page now
   takes 80rem from 1024px up, with a taller header band and a larger event name, and the empty state
   is a centred dashed panel rather than a bar of text. Nothing below 1024px changes, and the class is
   scoped to the pairings container so `/my` keeps its phone-first width.
+
+### Database
+- **Applied 21 Oct 2026** to the live project: `20261037000000_player_registration_model.sql` and
+  `20261038000000_public_day_selection.sql`, recorded in `supabase_migrations`.
+- `20261035000000_scoring_schema.sql` and `20261036000000_scoring_workflow.sql` were applied on
+  21 Oct 2026 with the scoring work (0.21.0).
+- The registration migration was renumbered from `20261035000000` to `20261037000000` because the
+  scoring pair already owns those two versions. Existing players, registrations, payments and
+  schedules were preserved: one player and zero registrations before and after.
+
+### Notes
+- **0.20.0 and 0.21.0 were develop-only version numbers.** They were never tagged or promoted to
+  `main`. `v0.22.0` is the next release after the production tag `v0.19.0`.
+- The public form on production `main` is still the old form until this release is promoted. It can
+  satisfy the active two-day rule only by choosing two day preferences; the new explicit picker is in
+  this release.
+- The draw remains a single-day board. The Tee times screen assigns per-day times; it does not generate
+  a multi-day draw.
+- The connected `/tee-times` click-through was not run with a staff account. The RPC, loader, build,
+  unit tests and demo browser check are green.
 
 ## [0.21.0] - 2026-10-21
 
