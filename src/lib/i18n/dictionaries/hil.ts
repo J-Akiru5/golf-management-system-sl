@@ -143,6 +143,12 @@ export const hil: Dictionary = {
       yes: "Huo",
       no: "Indi",
       teeTimes: "Mga gusto nga oras sang tee",
+      playingDays: "Mga adlaw sang paghampang",
+      playingDaysHelp:
+        "Pilia ang mga adlaw nga magahampang ka. Bulag ini sa gusto mo nga oras sang tee.",
+      playingDaysRequired: "Pilia ang eksakto nga {count} adlaw sang paghampang.",
+      playingDaysMax: "Pilia ang tubtob {count} adlaw sang paghampang.",
+      startsAt: "Magasugod {time}",
       day: "Adlaw {number}",
       toBeConfirmed: " (i-confirm pa)",
       noPreference: "Wala sing preference",

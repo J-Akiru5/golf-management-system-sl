@@ -27,7 +27,7 @@ evidence always produces the same result.
 | `standings.ts` | Provisional gross and net boards, and the finalization gate |
 
 **Verified:** 91 unit tests pass and `pnpm typecheck` is clean. Biome is clean on `src/lib/scoring`.
-The sample scoring repository adds 7 tests, and the full suite is 709 tests across 66 files.
+The sample scoring repository adds 7 tests, and the full suite is 760 tests across 74 files.
 
 **Built but not connected:** `src/lib/data/scoring.ts` is the repository contract and an in-memory
 implementation; `src/app/(desk)/scores/page.tsx` uses it for manual entry, approval, conflict
@@ -425,7 +425,7 @@ The scoring work is split into two reviewable migrations:
 
 Both were **applied to the live project on 21 Oct 2026**, after a dry run listed only these two.
 `20261034000000_course_maps.sql` was already applied on 20 Oct, so the sequencing concern in the
-earlier draft was stale. The live schema now has 38 tables and `groups.round_id`; `groups` had zero
+earlier draft was stale. The live schema now has 45 tables and `groups.round_id`; `groups` had zero
 rows, so the backfill changed nothing. The schema objects are verified through the REST OpenAPI
 schema. **The main workflow path passed an end-to-end rollback test on 21 Oct 2026.** A temporary
 `DO` block in the SQL editor created a disposable event and called the real `save_handicap_snapshot`,

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { REMEMBER_COOKIE, rememberCookieOptions } from "@/lib/auth/cookies";
 import { passwordProblem } from "@/lib/auth/password";
 import { landingFor } from "@/lib/auth/routes";
+import { signInErrorCode } from "@/lib/auth/sign-in-error";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDeskMember } from "./member";
@@ -67,7 +68,11 @@ export async function signInWithPassword(formData: FormData): Promise<void> {
 
   const client = await createSupabaseServerClient({ remembered: remember });
   const { error } = await client.auth.signInWithPassword({ email: email.trim(), password });
-  if (error) redirect("/login?error=sign_in_failed");
+  if (error) {
+    // The provider's message is the difference between a wrong password and an account that was
+    // never confirmed. Folding both into "sign-in failed" is what made the phone report unusable.
+    redirect(`/login?error=${signInErrorCode(error.message)}`);
+  }
 
   const { data, error: userError } = await client.auth.getUser();
   if (userError || !data.user) {
@@ -76,6 +81,22 @@ export async function signInWithPassword(formData: FormData): Promise<void> {
   }
 
   redirect(await homeFor(client, data.user.id, safeRedirectPath(formData.get("next"))));
+}
+
+/**
+ * Sends a fresh confirmation link. The reply is the same whether or not the address needs one, so
+ * this cannot be used to enumerate accounts. A staff account is provisioned by the owner, not by
+ * this form; a player account is the one that normally needs confirmation.
+ */
+export async function resendConfirmation(formData: FormData): Promise<void> {
+  if (!isSupabaseConfigured()) redirect("/login?error=supabase_not_configured");
+  const email = formData.get("email");
+  if (typeof email !== "string" || !email.trim()) {
+    redirect("/login?error=email_required");
+  }
+  const client = await createSupabaseServerClient();
+  await client.auth.resend({ type: "signup", email: email.trim() });
+  redirect("/login?message=confirmation_sent");
 }
 
 /**

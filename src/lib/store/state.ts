@@ -1,3 +1,4 @@
+import { daysOfTournament } from "@/lib/data/dates";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { registrationFor } from "@/lib/data/registrations";
 import type {
@@ -11,6 +12,7 @@ import type {
   PlayerRecord,
   RegistrationEntry,
   Tournament,
+  TournamentDay,
 } from "@/lib/data/types";
 import {
   DEMO_CLUB,
@@ -77,6 +79,8 @@ export interface DeskState {
   holes: Hole[];
   tournaments: Tournament[];
   activeTournamentId: string | null;
+  /** Structured days per tournament. Demo derives them; connected mode reads tournament_days. */
+  days: Record<string, TournamentDay[]>;
   players: PlayerRecord[];
   records: HandicapRecord[];
   entries: RegistrationEntry[];
@@ -133,6 +137,7 @@ export const emptyState = (): DeskState => ({
   holes: [],
   tournaments: [],
   activeTournamentId: null,
+  days: {},
   players: [],
   records: [],
   entries: [],
@@ -146,13 +151,15 @@ export const emptyState = (): DeskState => ({
 /** The in-memory demo, used only when no Supabase URL is configured. */
 export const initialState = (): DeskState => {
   const seed = makeDemoSeed();
+  const tournaments = makeDemoTournaments();
   return {
     clubId: DEMO_CLUB.id,
     club: DEMO_CLUB,
     tees: DEMO_TEES,
     holes: DEMO_HOLES,
-    tournaments: makeDemoTournaments(),
+    tournaments,
     activeTournamentId: "bamboo-tee-2026",
+    days: Object.fromEntries(tournaments.map((t) => [t.id, daysOfTournament(t)])),
     players: seed.players,
     records: seed.records,
     entries: seed.entries,
@@ -322,16 +329,26 @@ export function reducer(state: DeskState, a: Action): DeskState {
 
     case "saveTournament": {
       const exists = state.tournaments.some((t) => t.id === a.tournament.id);
+      const previous = state.tournaments.find((t) => t.id === a.tournament.id);
+      const datesChanged = !previous || previous.dates.join("|") !== a.tournament.dates.join("|");
       return {
         ...state,
         tournaments: exists
           ? state.tournaments.map((t) => (t.id === a.tournament.id ? a.tournament : t))
           : [...state.tournaments, a.tournament],
+        days: datesChanged
+          ? {
+              ...state.days,
+              [a.tournament.id]: daysOfTournament({ ...a.tournament, days: undefined }),
+            }
+          : state.days,
       };
     }
 
     case "saveSetup": {
       const exists = state.tournaments.some((t) => t.id === a.tournament.id);
+      const previous = state.tournaments.find((t) => t.id === a.tournament.id);
+      const datesChanged = !previous || previous.dates.join("|") !== a.tournament.dates.join("|");
       return {
         ...state,
         tees: a.tees,
@@ -339,6 +356,12 @@ export function reducer(state: DeskState, a: Action): DeskState {
         tournaments: exists
           ? state.tournaments.map((t) => (t.id === a.tournament.id ? a.tournament : t))
           : [...state.tournaments, a.tournament],
+        days: datesChanged
+          ? {
+              ...state.days,
+              [a.tournament.id]: daysOfTournament({ ...a.tournament, days: undefined }),
+            }
+          : state.days,
       };
     }
 

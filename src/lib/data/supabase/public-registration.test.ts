@@ -24,6 +24,12 @@ describe("parseFormConfig", () => {
           needsConfirmation: true,
         },
       ],
+      days: [
+        { dayNumber: 1, playDate: "2026-11-12", label: "Day 1", startTime: "06:30:00" },
+        { dayNumber: 2, playDate: "2026-11-13", label: "Day 2", startTime: null },
+      ],
+      requiredDays: 2,
+      maxDays: 2,
       fields: [
         {
           id: "cart",
@@ -55,6 +61,9 @@ describe("parseFormConfig", () => {
       instructions: "Register at the pro shop",
     });
     expect(config?.teeTimes[0]).toMatchObject({ day: 1, needsConfirmation: true });
+    expect(config?.days[0]).toMatchObject({ dayNumber: 1, playDate: "2026-11-12" });
+    expect(config?.requiredDays).toBe(2);
+    expect(config?.maxDays).toBe(2);
     expect(config?.payment?.method).toBe("Cash");
   });
 
@@ -66,6 +75,9 @@ describe("parseFormConfig", () => {
       isOpen: false,
       shirtSizes: [],
       teeTimes: [],
+      days: [],
+      requiredDays: null,
+      maxDays: null,
       fields: [],
       payment: null,
       instructions: null,

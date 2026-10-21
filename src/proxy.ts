@@ -97,6 +97,7 @@ export const config = {
     "/admin/:path*",
     "/tournaments/:path*",
     "/register/:path*",
+    "/tee-times/:path*",
     "/players/:path*",
     "/import/:path*",
     "/draw/:path*",

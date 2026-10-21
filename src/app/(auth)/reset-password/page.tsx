@@ -74,6 +74,10 @@ export default async function ResetPasswordPage({
                 {error}
               </p>
             )}
+            <p className="hint">
+              Open the link in the same browser you used to request it. If it opened inside an email
+              app, copy it into that browser.
+            </p>
             <Link href="/forgot-password" className="btn">
               Request a new link
             </Link>

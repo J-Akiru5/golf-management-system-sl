@@ -94,9 +94,21 @@ export function toRegistrationEntry(row: RegistrationRow): RegistrationEntry {
     clubId: row.club_id,
     tournamentId: row.tournament_id,
     playerId: row.player_id,
-    role: answers.role === "guest" ? "guest" : "member",
-    sponsor: typeof answers.sponsor === "boolean" ? answers.sponsor : null,
-    shirt: str(answers.shirt),
+    role:
+      row.membership_type === "guest"
+        ? "guest"
+        : row.membership_type === "member"
+          ? "member"
+          : answers.role === "guest"
+            ? "guest"
+            : "member",
+    sponsor:
+      typeof row.sponsor === "boolean"
+        ? row.sponsor
+        : typeof answers.sponsor === "boolean"
+          ? answers.sponsor
+          : null,
+    shirt: str(row.shirt_size) ?? str(answers.shirt),
     teePreferences: Object.fromEntries(
       Object.entries(teePreferences).map(([day, value]) => [day, str(value)]),
     ),
@@ -223,6 +235,8 @@ export function toTournament(
     nameNeedsConfirmation: row.name_needs_confirmation,
     courseId: row.course_id,
     dates: row.dates?.length ? row.dates : [row.play_date],
+    requiredDays: row.required_days ?? null,
+    maxDays: row.max_days ?? null,
     cutOffDate: row.cutoff_date,
     scheduleNeedsConfirmation: row.schedule_needs_confirmation,
     courseDataConfirmed: row.course_data_confirmed === true,
@@ -267,12 +281,15 @@ export function toDeferredMatch(row: DeferredMatchRow): DeferredMatch {
 // Domain -> row ---------------------------------------------------------------------------------
 
 export function toPlayerInsert(player: PlayerRecord) {
+  if (!player.birthdate || !player.gender) {
+    throw new Error("A player added from the desk needs a birthdate and a gender.");
+  }
   return {
     id: player.id,
     club_id: player.clubId,
     full_name: player.name,
-    birthdate: player.birthdate ?? "",
-    gender: player.gender ?? "M",
+    birthdate: player.birthdate,
+    gender: player.gender,
     ngap_id: player.ngapId,
     phone: player.contactNumber,
     photo_consent_at: player.photoConsent ? new Date().toISOString() : null,

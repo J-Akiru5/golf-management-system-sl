@@ -6,6 +6,8 @@
  * module supplies a sample configuration with no database behind it. The submit handler on the page
  * returns a demo message and writes nothing.
  */
+
+import { daysOfTournament } from "@/lib/data/dates";
 import type { RegistrationFormConfig } from "@/lib/data/supabase/public-registration";
 import { makeDemoTournaments } from "./data";
 
@@ -22,6 +24,9 @@ export const DEMO_PUBLIC_FORM: RegistrationFormConfig = {
   isOpen: true,
   shirtSizes: registration.shirtSizes,
   teeTimes: registration.teeTimes,
+  days: daysOfTournament(tournament),
+  requiredDays: tournament.requiredDays ?? null,
+  maxDays: tournament.maxDays ?? null,
   fields: registration.fields.map((field) => ({
     id: field.id,
     label: field.label,
