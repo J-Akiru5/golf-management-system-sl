@@ -37,13 +37,7 @@ import {
   tournamentTemplate,
 } from "@/lib/store/state";
 import type { Database, Json } from "@/lib/supabase/types";
-import {
-  toDeferredMatchInsert,
-  toImportBatchInsert,
-  toPlayerInsert,
-  toRegistrationAnswers,
-  toRegistrationInsert,
-} from "./domain";
+import { toPlayerInsert, toRegistrationAnswers, toRegistrationInsert } from "./domain";
 
 /**
  * The draw revision this browser last saw, per tournament.
@@ -88,6 +82,11 @@ export interface SupabaseAdapterOptions {
 }
 
 const uuid = () => crypto.randomUUID();
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 /** Serialises writes so two edits to the same row cannot race. */
 export function createQueue(
@@ -198,8 +197,8 @@ export function createSupabaseAdapters(
           .from("players")
           .update({
             full_name: next.name,
-            birthdate: next.birthdate ?? "",
-            gender: next.gender ?? "M",
+            birthdate: next.birthdate,
+            gender: next.gender,
             ngap_id: next.ngapId,
             phone: next.contactNumber,
             first_name: next.firstName,
@@ -272,6 +271,32 @@ export function createSupabaseAdapters(
       dispatch({ type: "saveTournament", tournament });
       saveTournamentRow(tournament);
     },
+    days: (tournamentId) => state.days[tournamentId] ?? [],
+    saveDayRule: async (tournamentId, required, max) => {
+      const { data, error } = await client.rpc("save_day_rule", {
+        p_tournament: tournamentId,
+        p_required: required,
+        p_max: max,
+      });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "The playing-day rule needs migration 20261037000000. Nothing was saved."
+            : `Could not save the day rule: ${error.message}`,
+        );
+      }
+      const result = data as unknown as { ok?: boolean; message?: string } | null;
+      if (!result?.ok) throw new Error(result?.message ?? "The day rule was refused.");
+      const tournament = state.tournaments.find((t) => t.id === tournamentId);
+      if (tournament) {
+        dispatch({
+          type: "saveTournament",
+          tournament: { ...tournament, requiredDays: required, maxDays: max },
+        });
+      }
+    },
     createFromTemplate: (name, date) => {
       // A club with no event yet has no tees or categories to copy, so it starts from the starter
       // setup. Either way the new event gets its own categories and flights (they belong to one
@@ -341,6 +366,8 @@ export function createSupabaseAdapters(
         sponsor: input.sponsor,
         shirt: input.shirt,
         teePreferences: input.teePreferences,
+        selectedDays: input.selectedDays,
+        dayTee: {},
         declaredWshId: input.declaredWshId,
         declaredWshHandicap: input.declaredWshHandicap,
         extra: input.extra,
@@ -353,6 +380,24 @@ export function createSupabaseAdapters(
       enqueue(async () => {
         const { error } = await client.from("registrations").insert(entryRow(entry, tournamentId));
         fail("Could not register the player", error);
+        if (input.selectedDays.length) {
+          const { data, error: dayError } = await client.rpc("set_registration_days", {
+            p_registration: entry.id,
+            p_days: input.selectedDays,
+          });
+          if (dayError) {
+            const missing =
+              dayError.code === "PGRST202" || /function .* does not exist/i.test(dayError.message);
+            throw new Error(
+              missing
+                ? "The registration was written, but the playing days need migration 20261037000000. Edit the entry after it is applied."
+                : `Could not save the playing days: ${dayError.message}`,
+            );
+          }
+          const dayResult = data as unknown as { ok?: boolean; message?: string } | null;
+          if (!dayResult?.ok)
+            throw new Error(dayResult?.message ?? "The playing days were refused.");
+        }
       });
       return entry;
     },
@@ -414,6 +459,55 @@ export function createSupabaseAdapters(
         }
       });
     },
+    setDays: async (entryId, days) => {
+      const { data, error } = await client.rpc("set_registration_days", {
+        p_registration: entryId,
+        p_days: days,
+      });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "The playing days need migration 20261037000000. Nothing was saved."
+            : `Could not save the playing days: ${error.message}`,
+        );
+      }
+      const result = data as unknown as { ok?: boolean; message?: string } | null;
+      if (!result?.ok) throw new Error(result?.message ?? "The playing days were refused.");
+      dispatch({ type: "updateEntry", id: entryId, patch: { selectedDays: days } });
+    },
+    assignDayTee: async (entryId, dayNumber, assignment) => {
+      const { data, error } = await client.rpc("assign_registration_day_tee", {
+        p_registration: entryId,
+        p_day: dayNumber,
+        p_tee_time: assignment.teeTime,
+        p_start_hole: assignment.startHole,
+        p_confirmed: assignment.confirmed,
+      });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "The tee-time assignment needs migration 20261037000000. Nothing was saved."
+            : `Could not save the tee time: ${error.message}`,
+        );
+      }
+      const result = data as unknown as { ok?: boolean; message?: string } | null;
+      if (!result?.ok) throw new Error(result?.message ?? "The tee time was refused.");
+      const entry = state.entries.find((item) => item.id === entryId);
+      dispatch({
+        type: "updateEntry",
+        id: entryId,
+        patch: {
+          dayTee: {
+            ...(entry?.dayTee ?? {}),
+            [dayNumber]: assignment,
+          },
+        },
+      });
+    },
   };
 
   /**
@@ -427,62 +521,83 @@ export function createSupabaseAdapters(
     parse: mock.imports.parse,
     guessMapping: mock.imports.guessMapping,
     review: mock.imports.review,
-    apply: (payload) => {
-      dispatch({ type: "applyImport", payload });
-      const batch = {
-        id: uuid(),
-        clubId,
-        fileName: payload.fileName,
-        importedAt: new Date().toISOString(),
-        rowCount: payload.rowCount,
-        appliedCount: payload.rows.length,
-        skippedCount: payload.skippedCount,
-        note: payload.note,
-      };
-      enqueue(async () => {
-        const records = payload.rows.flatMap((row) =>
-          row.playerId && row.index !== undefined
-            ? [
-                {
-                  club_id: clubId,
-                  player_id: row.playerId,
-                  handicap_index: row.index,
-                  effective_date: row.effectiveDate,
-                  source: "ngap_import" as const,
-                },
-              ]
-            : [],
-        );
-        if (records.length) {
-          const { error } = await client
-            .from("handicap_records")
-            .upsert(records, { onConflict: "player_id,effective_date" });
-          fail("Could not save the imported handicaps", error);
-        }
-        const { error: batchError } = await client
-          .from("handicap_import_batches")
-          .insert(toImportBatchInsert(batch));
-        fail("Could not record the import", batchError);
-        if (payload.deferred.length) {
-          const { error: deferredError } = await client.from("deferred_matches").insert(
-            payload.deferred.map((row) =>
-              toDeferredMatchInsert({
-                id: uuid(),
-                clubId,
-                name: row.name,
-                ngapId: row.ngapId,
-                index: row.index,
-                effectiveDate: row.effectiveDate,
-                reason: row.conflicts.concat(row.warnings).join(" ") || "Needs a decision",
-                candidatePlayerIds: row.candidates.map((c) => c.playerId),
-                fileName: payload.fileName,
-                at: new Date().toISOString(),
-              }),
-            ),
-          );
-          fail("Could not save the deferred rows", deferredError);
-        }
+    apply: async (payload) => {
+      // A handicap line is not a player profile: it has no reliable birthdate, gender or contact
+      // fields for a new directory entry. Refuse before anything is written; the registration
+      // import is the path that creates players.
+      const unresolved = payload.rows.filter((row) => row.createNew || !row.playerId);
+      if (unresolved.length) {
+        return {
+          ok: false,
+          message: `${unresolved.length} row(s) have no player in the directory. Add those players on the Players screen, then re-upload. Nothing was written.`,
+        };
+      }
+
+      const rows = payload.rows.map((row) => ({
+        row: row.row,
+        playerId: row.playerId,
+        name: row.name,
+        ngapId: row.ngapId,
+        index: row.index,
+        effectiveDate: row.effectiveDate,
+      }));
+      const deferred = payload.deferred.map((row) => ({
+        name: row.name,
+        ngapId: row.ngapId,
+        index: row.index,
+        effectiveDate: row.effectiveDate,
+        reason: row.conflicts.concat(row.warnings).join(" ") || "Needs a decision",
+        candidatePlayerIds: row.candidates.map((c) => c.playerId),
+      }));
+      const digest = await sha256Hex(JSON.stringify({ file: payload.fileName, rows, deferred }));
+      const key = `handicap:${clubId}:${digest}`;
+      const { data, error } = await client.rpc("commit_handicap_import", {
+        p_file_name: payload.fileName,
+        p_file_sha256: digest,
+        p_rows: rows as unknown as Json,
+        p_deferred: deferred as unknown as Json,
+        p_idempotency_key: key,
       });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+        const message = missing
+          ? "The database does not have the import function yet (migration 20261037000000). Nothing was written."
+          : `Could not commit the handicap import: ${error.message}`;
+        options.onError(message);
+        return { ok: false, message };
+      }
+      const result = (data ?? {}) as {
+        ok?: boolean;
+        partial?: boolean;
+        alreadyCommitted?: boolean;
+        message?: string;
+        batchId?: string;
+        inserted?: number;
+        updated?: number;
+        rejected?: number;
+        rowCount?: number;
+      };
+      if (result.ok === false && !result.partial) {
+        return {
+          ok: false,
+          message: result.message ?? "The import was refused. Nothing was written.",
+        };
+      }
+      if (result.partial) {
+        options.onError(
+          `${result.rejected ?? 0} row(s) were rejected and recorded in the batch. The valid rows were committed.`,
+        );
+      }
+      return {
+        ok: true,
+        partial: Boolean(result.partial),
+        alreadyCommitted: Boolean(result.alreadyCommitted),
+        batchId: result.batchId,
+        inserted: result.inserted ?? 0,
+        updated: result.updated ?? 0,
+        rejected: result.rejected ?? 0,
+      };
     },
   };
 

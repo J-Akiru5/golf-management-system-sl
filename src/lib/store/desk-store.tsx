@@ -17,6 +17,7 @@ import {
 import type { DeskAccessProblem } from "@/lib/auth/access-problem";
 import { DeskAccessError, getDeskMember } from "@/lib/auth/member";
 import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
+import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
 import { registrationFor } from "@/lib/data/registrations";
 import {
   createQueue,
@@ -39,6 +40,7 @@ import type {
   PlayerRecord,
   RegistrationEntry,
   Tournament,
+  TournamentDay,
 } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
 import { NO_DESK_SNAPSHOT_NOTICE, OFFLINE_WRITE_NOTICE, toDeskSnapshot } from "@/lib/offline/cache";
@@ -76,6 +78,8 @@ interface Desk {
   tournament: Tournament | null;
   tees: Tee[];
   holes: Hole[];
+  /** The active event's structured days. Empty when no event is selected. */
+  days: TournamentDay[];
   /** Every player in the club directory. */
   players: PlayerRecord[];
   playerById: Map<string, PlayerRecord>;
@@ -436,7 +440,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     const tournament = activeTournament(state);
     const board = boardOf(state);
     const registrations = buildRegistrations(state);
-    const entries = tournament ? entriesFor(state, tournament.id) : [];
+    const days = tournament ? (state.days[tournament.id] ?? daysOfTournament(tournament)) : [];
+    const entries = (tournament ? entriesFor(state, tournament.id) : []).map((entry) => ({
+      ...entry,
+      selectedDays: selectedDaysOf(entry, days),
+    }));
     const draw = board.draw;
     const signature = draw?.map((g) => `${g.number}:${g.playerIds.join(",")}`).join("|") ?? "";
     const inDraw = new Set(draw?.flatMap((g) => g.playerIds) ?? []);
@@ -494,6 +502,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       tournament,
       tees: state.tees,
       holes: state.holes,
+      days,
       players: state.players,
       playerById: new Map(state.players.map((p) => [p.id, p])),
       entries,

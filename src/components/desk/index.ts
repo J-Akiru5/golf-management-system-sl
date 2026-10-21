@@ -26,6 +26,7 @@ export type { PlayerQuickPickProps } from "./PlayerQuickPick";
 export { PlayerQuickPick } from "./PlayerQuickPick";
 export type { RegisterConfirmProps } from "./RegisterConfirm";
 export { RegisterConfirm } from "./RegisterConfirm";
+export { RegistrationDaysEditor } from "./RegistrationDaysEditor";
 export type {
   OverriddenBadgeProps,
   RegisteredByProps,

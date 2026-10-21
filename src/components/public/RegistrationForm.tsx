@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { daySelectionProblem } from "@/lib/data/day-selection";
 import { instructionText } from "@/lib/data/instructions";
 import type {
   RegistrationFormConfig,
@@ -38,6 +39,7 @@ export function RegistrationForm({
   const [sponsor, setSponsor] = useState<boolean | null>(null);
   const [shirt, setShirt] = useState("");
   const [teePreferences, setTeePreferences] = useState<Record<string, string>>({});
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [declaredWshId, setDeclaredWshId] = useState("");
   const [declaredWshHandicap, setDeclaredWshHandicap] = useState("");
   const [extra, setExtra] = useState<Record<string, string>>({});
@@ -49,6 +51,19 @@ export function RegistrationForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
+    const problem = daySelectionProblem(selectedDays, config.requiredDays, config.maxDays);
+    if (problem) {
+      setMessage({
+        tone: "bad",
+        text:
+          problem === "required" && config.requiredDays !== null
+            ? t("enter.form.playingDaysRequired", { count: config.requiredDays })
+            : config.maxDays !== null
+              ? t("enter.form.playingDaysMax", { count: config.maxDays })
+              : t("enter.form.error"),
+      });
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
@@ -69,6 +84,7 @@ export function RegistrationForm({
           teePreferences: Object.fromEntries(
             Object.entries(teePreferences).map(([day, value]) => [day, value || null]),
           ),
+          days: selectedDays,
           declaredWshId: declaredWshId.trim() || null,
           declaredWshHandicap: declaredWshHandicap.trim() || null,
           extra,
@@ -189,6 +205,47 @@ export function RegistrationForm({
             <span>{t("enter.form.no")}</span>
           </label>
         </fieldset>
+      )}
+
+      {config.days.length > 0 && (
+        <section className="stack" style={{ gap: ".5rem" }}>
+          <h2>{t("enter.form.playingDays")}</h2>
+          <p className="hint">{t("enter.form.playingDaysHelp")}</p>
+          <div className="form-grid">
+            {config.days.map((day) => {
+              const checked = selectedDays.includes(day.dayNumber);
+              return (
+                <label key={day.dayNumber} className="check">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() =>
+                      setSelectedDays((current) =>
+                        checked
+                          ? current.filter((n) => n !== day.dayNumber)
+                          : [...current, day.dayNumber].sort((a, b) => a - b),
+                      )
+                    }
+                  />
+                  <span>
+                    <b>{day.label || t("enter.form.day", { number: day.dayNumber })}</b> ·{" "}
+                    {day.playDate}
+                    {day.startTime
+                      ? ` · ${t("enter.form.startsAt", { time: day.startTime.slice(0, 5) })}`
+                      : ""}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <p className="hint">
+            {config.requiredDays !== null
+              ? t("enter.form.playingDaysRequired", { count: config.requiredDays })
+              : config.maxDays !== null
+                ? t("enter.form.playingDaysMax", { count: config.maxDays })
+                : null}
+          </p>
+        </section>
       )}
 
       {config.teeTimes.length > 0 && (
