@@ -6,7 +6,7 @@
  * recorded, and only for a short window.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { daysOfTournament } from "@/lib/data/dates";
+import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
 import type { DayTeeAssignment, Hole, ManualOverride, TournamentDay } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
 import type { Tee } from "@/lib/routing";
@@ -315,13 +315,9 @@ export async function loadDeskState(
       };
     }
     const tournamentDays = daysByTournament[entry.tournamentId] ?? [];
-    const derived = Object.entries(entry.teePreferences)
-      .filter(([, value]) => Boolean(value))
-      .map(([date]) => tournamentDays.find((day) => day.playDate === date)?.dayNumber)
-      .filter((day): day is number => typeof day === "number");
     return {
       ...entry,
-      selectedDays: [...new Set(derived)].sort((a, b) => a - b),
+      selectedDays: selectedDaysOf(entry, tournamentDays),
       dayTee,
     };
   });
