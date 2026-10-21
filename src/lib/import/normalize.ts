@@ -2,6 +2,7 @@ import { type DateFormat, parseDateValue, parseDaySelection } from "./dates";
 import { matchPlayer, nameKey } from "./match";
 import type {
   ColumnMapping,
+  DayColumn,
   ExistingPlayerRef,
   ExistingRegistrationRef,
   ImportIssue,
@@ -137,6 +138,8 @@ function issue(
 
 export interface NormalizeContext {
   mapping: ColumnMapping;
+  /** Separate DAY 1 ... DAY N columns, when the workbook uses them instead of one GAME DATES cell. */
+  dayColumns?: readonly DayColumn[];
   fixedMembershipType: "member" | "guest" | null;
   dateFormat: DateFormat;
   days: TournamentDayRef[];
@@ -331,8 +334,20 @@ function normalizeOne(
     nullIfEmpty(get("sponsorDetails")) ?? (variant.fromPair ? variant.memberName : null);
   const sponsor = sponsorFromColumn ?? (sponsorDetails ? true : null);
 
+  const dayColumns = context.dayColumns ?? [];
+  const columnDays = dayColumns
+    .filter((column) => parseBoolean(raw[column.header]) === true)
+    .map((column) => column.dayNumber)
+    .sort((a, b) => a - b);
   const dayText = get("gameDates");
-  const dayParse = parseDaySelection(dayText, context.days, context.dateFormat);
+  const dayParse =
+    dayColumns.length > 0
+      ? {
+          days: [...new Set(columnDays)],
+          uncertain: false,
+          note: columnDays.length === 0 ? "No playing-day column is marked TRUE." : null,
+        }
+      : parseDaySelection(dayText, context.days, context.dateFormat);
   let days = dayParse.days;
   const override = context.dayOverrides?.[row];
   if (override) days = [...new Set(override)].sort((a, b) => a - b);

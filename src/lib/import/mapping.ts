@@ -2,6 +2,7 @@ import {
   CANONICAL_FIELDS,
   type CanonicalField,
   type ColumnMapping,
+  type DayColumn,
   type MappingKey,
   type MappingSuggestion,
   SOURCE_SLOTS,
@@ -152,6 +153,21 @@ function valuesLookLikeNames(values: string[]): boolean {
   return nonNames.length / present.length < 0.6;
 }
 
+/** Detects separate `DAY 1`, `D2` or `day_3` columns and maps each to its day number. */
+function detectDayColumns(lookup: Map<string, string>, used: Set<string>): DayColumn[] {
+  const columns: DayColumn[] = [];
+  for (const [normalized, original] of lookup) {
+    if (used.has(original)) continue;
+    const match = normalized.match(/^(?:day|d)\s*(\d{1,2})$/);
+    if (!match) continue;
+    const dayNumber = Number(match[1]);
+    if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 31) continue;
+    columns.push({ dayNumber, header: original });
+    used.add(original);
+  }
+  return columns.sort((a, b) => a.dayNumber - b.dayNumber);
+}
+
 export interface SuggestOptions {
   /** Up to a few values per header, used only to tell a name column from a Yes/No column. */
   samples?: Record<string, string[]>;
@@ -226,6 +242,8 @@ export function suggestMapping(headers: string[], options: SuggestOptions = {}):
     used.add(best.header);
   }
 
+  const dayColumns = mapping.gameDates ? [] : detectDayColumns(lookup, used);
+
   if (!mapping.name && (mapping.memberName || mapping.guestName)) {
     notes.push(
       mapping.memberName && mapping.guestName
@@ -238,7 +256,14 @@ export function suggestMapping(headers: string[], options: SuggestOptions = {}):
       "The paid column is treated as status and the amount column as the amount. Both are shown before commit.",
     );
   }
-  if (!mapping.gameDates) {
+  if (dayColumns.length > 0) {
+    notes.push(
+      `Separate playing-day columns were detected: ${dayColumns
+        .map((column) => column.header)
+        .join(", ")}. A TRUE cell selects that day.`,
+    );
+  }
+  if (!mapping.gameDates && dayColumns.length === 0) {
     notes.push("No game-dates column was found. The operator must choose each player's days.");
   }
   if (!mapping.birthdate || !mapping.gender) {
@@ -252,6 +277,7 @@ export function suggestMapping(headers: string[], options: SuggestOptions = {}):
     confidence,
     reasons,
     unmappedHeaders: headers.filter((h) => !used.has(h)),
+    dayColumns,
     fixedMembershipType,
     source: "deterministic",
     notes,
@@ -325,6 +351,64 @@ export function validateMapping(
       fixedMembershipType === "member" || fixedMembershipType === "guest"
         ? fixedMembershipType
         : null,
+  };
+}
+
+export interface DayColumnValidation {
+  ok: boolean;
+  errors: string[];
+  dayColumns: DayColumn[];
+}
+
+/**
+ * Validates the separate day-column proposal independently of the main mapping. The server owns
+ * this list, so a client cannot point a day at a column that is not in the sheet or reuse a day.
+ */
+export function validateDayColumns(value: unknown, headers: string[]): DayColumnValidation {
+  const errors: string[] = [];
+  if (value === undefined || value === null) return { ok: true, errors, dayColumns: [] };
+  if (!Array.isArray(value)) {
+    return { ok: false, errors: ["The day columns are not a list."], dayColumns: [] };
+  }
+
+  const byHeader = new Map(headers.map((header) => [header, header]));
+  const byNormalized = new Map(headers.map((header) => [normalizeHeader(header), header]));
+  const seenDays = new Set<number>();
+  const dayColumns: DayColumn[] = [];
+
+  for (const item of value) {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) {
+      errors.push("A day-column entry is not an object.");
+      continue;
+    }
+    const dayNumber = Number((item as { dayNumber?: unknown }).dayNumber);
+    const headerValue = (item as { header?: unknown }).header;
+    if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 31) {
+      errors.push("A day-column entry has an invalid day number.");
+      continue;
+    }
+    if (seenDays.has(dayNumber)) {
+      errors.push(`Day ${dayNumber} is mapped more than once.`);
+      continue;
+    }
+    if (typeof headerValue !== "string" || headerValue.trim() === "") {
+      errors.push(`Day ${dayNumber} has no column.`);
+      continue;
+    }
+    const header =
+      byHeader.get(headerValue) ?? byNormalized.get(normalizeHeader(headerValue)) ?? null;
+    if (!header) {
+      errors.push(`Column "${headerValue}" is not in this sheet.`);
+      continue;
+    }
+    seenDays.add(dayNumber);
+    dayColumns.push({ dayNumber, header });
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    dayColumns: dayColumns.sort((a, b) => a.dayNumber - b.dayNumber),
   };
 }
 

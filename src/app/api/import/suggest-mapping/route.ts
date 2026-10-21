@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canonicalFieldListForPrompt, parseAiMapping } from "@/lib/import/mapping";
+import { canonicalFieldListForPrompt, parseAiMapping, suggestMapping } from "@/lib/import/mapping";
 import { importSession } from "@/lib/import/server";
 
 export const runtime = "nodejs";
@@ -167,5 +167,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       error: `The AI proposal was rejected: ${validated.error ?? "invalid shape"}`,
     });
   }
-  return NextResponse.json({ available: true, suggestion: validated.suggestion });
+  return NextResponse.json({
+    available: true,
+    suggestion: {
+      ...validated.suggestion,
+      dayColumns: suggestMapping(headers).dayColumns,
+    },
+  });
 }

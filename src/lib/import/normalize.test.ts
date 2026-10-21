@@ -199,4 +199,48 @@ describe("normalizeRows", () => {
     expect(rows[0]?.action).toBe("reject");
     expect(rows[0]?.issues.some((i) => i.message.includes("exactly 2"))).toBe(true);
   });
+
+  it("reads separate day columns and applies the same day rule", () => {
+    const rows = normalizeRows(
+      {
+        headers: [
+          "PLAYER NAME",
+          "PLAYER TYPE",
+          "DAY 1",
+          "DAY 2",
+          "DAY 3",
+          "DAY 4",
+          "GENDER",
+          "DATE OF BIRTH",
+        ],
+        rows: [["Juan Dela Cruz", "Member", "FALSE", "FALSE", "TRUE", "TRUE", "M", "1/2/1980"]],
+      },
+      {
+        mapping: {
+          name: "PLAYER NAME",
+          membershipType: "PLAYER TYPE",
+          gender: "GENDER",
+          birthdate: "DATE OF BIRTH",
+        },
+        dayColumns: [
+          { dayNumber: 1, header: "DAY 1" },
+          { dayNumber: 2, header: "DAY 2" },
+          { dayNumber: 3, header: "DAY 3" },
+          { dayNumber: 4, header: "DAY 4" },
+        ],
+        fixedMembershipType: null,
+        dateFormat: "mdy",
+        days,
+        dayRule: { required: 2, max: 4 },
+        existingPlayers: [],
+        existingRegistrations: [],
+      },
+    );
+
+    expect(rows[0]?.days).toEqual([3, 4]);
+    expect(rows[0]?.action).toBe("insert");
+    expect(
+      rows[0]?.issues.some((issue) => issue.field === "days" && issue.severity === "error"),
+    ).toBe(false);
+  });
 });

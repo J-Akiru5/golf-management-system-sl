@@ -4,7 +4,7 @@ Golf tournament management for **Iloilo Golf & Country Club (IGCC)**, built by *
 The organizer adds players; the system routes each one to a category, tee, flight, group and start
 slot; the organizer reviews, overrides and publishes; players read their pairings on a phone.
 
-> **Status date:** 21 Oct 2026 · **Branch state:** `develop` is the only long-lived branch ·
+> **Status date:** 22 Oct 2026 · **Branch state:** `develop` is the only long-lived branch ·
 > **Product name:** TeeLine Golf (approved direction; trademark clearance has not been established)
 
 This is the single plan for humans and AI agents. Section 1 is the 60-second version. Everything
@@ -43,19 +43,22 @@ Anything not marked is a plan, not a fact.
 | Merged (PR #33) | **The public entry form's own copy in English, Tagalog and Hiligaynon** (30 keys under `enter.form.*`): labels, hints, the "optional" and "to be confirmed" suffixes, the send button and the review note. What the club typed — instructions, extra questions, tee labels, the payment note — is their text and is passed through unchanged. The dev-only preview page renders the real form with a language picker, because the form is otherwise only reachable against a connected project | `verify:ui` section "entry form in three languages" |
 | Merged (PR #64) | **The two aerial references are recorded and the per-hole review is written** (`docs/course-map/review.md`, images beside it, SHA-256 hashes recorded): neither reference is authoritative, the two layouts disagree on every hole number, and the checklist for Sir Philip plus the validation workflow for Ma'am Mary Ann are in that document. No layout is in the app; it still uses the illustrated placeholder | Decision 11 |
 | Course map approval (Phase 2, in review) | **The versioning and approval design, the migration and the lifecycle logic** (`docs/course-map/approval-design.md`, `supabase/migrations/20261034000000_course_maps.sql`, `src/lib/course/map-lifecycle.ts` + tests): versions move draft → awaiting technical → awaiting validation → approved → published, with append-only reviews naming the reviewer, one published map per course enforced by a partial unique index, published versions immutable, and any placement edit withdrawing both confirmations. Writes only through four guarded functions; the tables are SELECT-only. **The migration is applied** (20 Oct 2026, verified again 21 Oct 2026), and no UI is wired | PR `feat/course-map-approval`; awaiting the owner's verification of the five decisions |
-| Scoring engine (`src/lib/scoring`) | **Built, pure and tested** (21 Oct 2026): gross and net Stableford, the WHS handicap snapshot, stroke allocation, card validation for all three capture paths, multi-card reconciliation with desk resolutions, provisional boards and the finalization gate. The sample `/scores` workflow reads it; no database write path is wired | 91 unit tests in 6 files; `pnpm typecheck` clean; design and applied schema in [`docs/spec/SCORING_IMPLEMENTATION.md`](spec/SCORING_IMPLEMENTATION.md) |
-| Scores, results | **Engine, applied migrations, an end-to-end rollback test, and a sample workflow.** The scoring schema and workflow are **applied to the live project** (21 Oct 2026), and the real RPCs were exercised against a disposable event: 18 verified holes, 2 approved cards, 1 desk resolution, 2 publications, 3 final results, 25 audit rows, and a final public snapshot with 3 gross rows. The test raised at the end and rolled every test row back. A sample `/scores` desk screen now exercises manual entry, approval, conflict resolution and the boards in memory; it is not wired to the applied RPCs, and there is no OCR or connected publication | `supabase/migrations/20261035000000_scoring_schema.sql`, `20261036000000_scoring_workflow.sql`; `src/lib/data/scoring.ts`, `src/app/(desk)/scores/page.tsx`; the live database has the scoring tables and `groups.round_id` |
+| Scoring engine (`src/lib/scoring`) | **Built, pure and tested** (21 Oct 2026): gross and net Stableford, the WHS handicap snapshot, stroke allocation, card validation for all three capture paths, multi-card reconciliation with desk resolutions, provisional boards and the finalization gate. The connected `/scores` workflow reads and writes through the applied RPCs (0.23.0) | 91 unit tests in 6 files; `pnpm typecheck` clean; design and applied schema in [`docs/spec/SCORING_IMPLEMENTATION.md`](spec/SCORING_IMPLEMENTATION.md) |
+| Scores, results | **Engine, applied migrations, an end-to-end rollback test, and the connected desk.** The scoring schema and workflow are **applied to the live project** (21 Oct 2026), and the real RPCs were exercised against a disposable event: 18 verified holes, 2 approved cards, 1 desk resolution, 2 publications, 3 final results, 25 audit rows, and a final public snapshot with 3 gross rows. The test raised at the end and rolled every test row back. `/scores` now uses `desk.scoring`, which is connected when Supabase is configured and in-memory in the demo; there is no OCR yet | `supabase/migrations/20261035000000_scoring_schema.sql`, `20261036000000_scoring_workflow.sql`; `src/lib/data/scoring.ts`, `src/lib/data/supabase/scoring.ts`, `src/app/(desk)/scores/page.tsx`; the live database has the scoring tables and `groups.round_id` |
 | Production integrity review (21 Oct 2026) | **Diagnosis and fix in `feat/production-integrity`**: the two production import batches claimed 17 and 42 records while the database has 0 handicap records and 0 registrations; the cause is a client-only success message plus an apply path that never created players. The branch adds the awaited handicap import, the registration workbook import, the canonical player/membership/day model, audit logging, the explicit public day picker, a per-day Tee times screen and auth error mapping. Migration `20261037000000` and `20261038000000` are **applied to production and recorded**; the two-day rule is active for the 24th Bamboo Tee. No production credential was reset and no deployment to `main` was made | [`docs/production-integrity-2026-10-21.md`](production-integrity-2026-10-21.md), [`docs/STAFF_ACCESS.md`](STAFF_ACCESS.md), [`docs/IMPORT_RUNBOOK.md`](IMPORT_RUNBOOK.md) |
 
-Whole suite: 74 test files, 760 tests passing (`pnpm test`) on `feat/scoring-engine` today; the scoring
+Whole suite: 76 test files, 776 tests passing (`pnpm test`) on the merged `develop` tree; the scoring
 engine adds 6 files and 91 of those tests, and the demo scoring repository adds 7 more. Separately, `pnpm verify:ui` drives a real browser against a
 running dev server (paging, the bell, the help centre, player languages and the shell), and is not part
 of `pnpm test` because it needs the server up.
 
-**The one thing blocking a real event:** the project now has one event ("24th Bamboo Tee", open), a
-course row and its registration wording, but **no tees, no hole rows, no players, no registrations
-and no groups**. The club's scorecard and an NGAP export are still needed, then the loop has to run
-end to end with that data; the two test staff accounts must be rotated before the event.
+**The one thing blocking a real event:** the project has one event ("24th Bamboo Tee", open), a course
+row and its registration wording. The 24th Bamboo Tee workbook was imported on 22 Oct 2026: 100
+registrations (batch `1cb414cd`) with 200 selected days were written and read back. 44 rows whose
+playing days were blank or short of the two-day rule were recorded as rejected, and 82 imported
+profiles still need a birthdate and gender before they can be routed. **There are still no tees, no
+hole rows and no groups.** The club's scorecard and an NGAP export are still needed, then the loop has
+to run end to end with that data; the two test staff accounts must be rotated before the event.
 
 ---
 
@@ -209,11 +212,10 @@ Verified in `supabase/migrations`, and **applied to the `golf-management-system`
   `/enter/[id]`, `/login`), player (`/my`), staff (the desk). Only the guarded areas are in the
   proxy matcher, so public pages never pay for a session lookup.
 
-**In step, with one deliberate exception.** Every migration on `develop` is applied to the live
-project. The scoring pair on `feat/scoring-engine` (`20261035000000`, `20261036000000`) is **also
-applied** as of 21 Oct 2026, so the live schema is ahead of `develop` until PR #86 merges. The
-course-map migration `20261034000000` was applied on 20 Oct 2026 and is in step. A new migration must
-use a version after `20261036000000`; those numbers are spent.
+**In step.** Every migration on `develop` is applied to the live project (23 migrations, 45 tables,
+last checked 21 Oct 2026): the scoring pair (`20261035000000`, `20261036000000`), the course-map
+migration (`20261034000000`) and the registration/day pair (`20261037000000`, `20261038000000`). A new
+migration must use a version after `20261038000000`; those numbers are spent.
 
 **Schema vs spec:** the live schema has **45 tables**: the original 14, the course-map tables, the 15 scoring tables, and the seven registration/import/day tables from the production-integrity work. `scores` is no longer one table; the scoring model separates cards, OCR attempts,
 desk resolutions, canonical hole scores, results and publications.

@@ -43,6 +43,12 @@ export type SourceSlot = (typeof SOURCE_SLOTS)[number];
 
 export type MappingKey = CanonicalField | SourceSlot;
 
+/** A workbook that marks each playing day in its own column, e.g. DAY 1 ... DAY 4. */
+export interface DayColumn {
+  dayNumber: number;
+  header: string;
+}
+
 export type ColumnMapping = Partial<Record<MappingKey, string | null>>;
 
 export type MappingSource = "deterministic" | "ai" | "manual";
@@ -53,6 +59,8 @@ export interface MappingSuggestion {
   confidence: Partial<Record<MappingKey, number>>;
   reasons: Partial<Record<MappingKey, string>>;
   unmappedHeaders: string[];
+  /** Day columns detected as separate DAY 1 ... DAY N columns. */
+  dayColumns?: DayColumn[];
   /** When a single `MEMBER` or `GUEST` name column is mapped, every row gets this type. */
   fixedMembershipType?: "member" | "guest" | null;
   source: MappingSource;

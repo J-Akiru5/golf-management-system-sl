@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAiMapping, suggestMapping, validateMapping } from "./mapping";
+import { parseAiMapping, suggestMapping, validateDayColumns, validateMapping } from "./mapping";
 
 const headers = [
   "MEMBER",
@@ -66,6 +66,64 @@ describe("suggestMapping", () => {
     expect(result.mapping.name).toBe("NAME");
     expect(result.mapping.handicap).toBe("INDEX");
     expect(result.mapping.email).toBeUndefined();
+  });
+
+  it("detects separate day columns instead of a single GAME DATES column", () => {
+    const result = suggestMapping([
+      "player_name",
+      "player_type",
+      "day_1",
+      "day_2",
+      "day_3",
+      "day_4",
+      "gender",
+    ]);
+    expect(result.mapping.name).toBe("player_name");
+    expect(result.mapping.membershipType).toBe("player_type");
+    expect(result.mapping.gameDates).toBeUndefined();
+    expect(result.dayColumns).toEqual([
+      { dayNumber: 1, header: "day_1" },
+      { dayNumber: 2, header: "day_2" },
+      { dayNumber: 3, header: "day_3" },
+      { dayNumber: 4, header: "day_4" },
+    ]);
+    expect(result.unmappedHeaders).not.toContain("day_1");
+    expect(result.notes.join(" ")).toContain("Separate playing-day columns");
+  });
+});
+
+describe("validateDayColumns", () => {
+  it("accepts real columns and rejects unknown or duplicate days", () => {
+    expect(
+      validateDayColumns(
+        [
+          { dayNumber: 3, header: "day_3" },
+          { dayNumber: 4, header: "day_4" },
+        ],
+        ["day_1", "day_2", "day_3", "day_4"],
+      ),
+    ).toEqual({
+      ok: true,
+      errors: [],
+      dayColumns: [
+        { dayNumber: 3, header: "day_3" },
+        { dayNumber: 4, header: "day_4" },
+      ],
+    });
+
+    const unknown = validateDayColumns([{ dayNumber: 1, header: "missing" }], ["day_1"]);
+    expect(unknown.ok).toBe(false);
+    expect(unknown.errors.join(" ")).toContain("not in this sheet");
+
+    const duplicate = validateDayColumns(
+      [
+        { dayNumber: 1, header: "day_1" },
+        { dayNumber: 1, header: "day_2" },
+      ],
+      ["day_1", "day_2"],
+    );
+    expect(duplicate.ok).toBe(false);
+    expect(duplicate.errors.join(" ")).toContain("more than once");
   });
 });
 
