@@ -21,6 +21,7 @@ export const STAFF_PREFIXES = [
   "/players",
   "/import",
   "/draw",
+  "/scores",
   "/print",
   "/setup",
   "/course",

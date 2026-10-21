@@ -23,6 +23,7 @@ describe("areaOf", () => {
       "/players",
       "/players/p1",
       "/draw",
+      "/scores",
       "/print",
       "/setup",
       "/register",

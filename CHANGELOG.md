@@ -9,14 +9,47 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
-
 ### Changed
 - **`/pairings` has a desktop layout.** `.public` caps every public page at 56rem, which is right for a
   phone but left the pairings page as a narrow column in the middle of a wide screen. The page now
   takes 80rem from 1024px up, with a taller header band and a larger event name, and the empty state
   is a centred dashed panel rather than a bar of text. Nothing below 1024px changes, and the class is
   scoped to the pairings container so `/my` keeps its phone-first width.
+
+## [0.21.0] - 2026-10-21
+
+The scoring engine, its database, and a sample scorecard workflow.
+
+### Added
+- **Deterministic scoring engine** (`src/lib/scoring`): gross and net Stableford, the WHS Course and
+  Playing Handicap pipeline, stroke allocation, card validation for webcam, upload and manual entry,
+  multi-card reconciliation with desk resolutions, provisional boards and the finalization gate.
+  Ninety-one unit tests. The sample workflow reads it; nothing writes to the database yet.
+- **Sample scorecard workflow**: `/scores` with manual entry, card approval and rejection, conflict
+  resolution, gross and net boards, provisional publication and the finalization gate. It runs on an
+  in-memory repository (`src/lib/data/scoring.ts`) and is explicitly labelled as a sample.
+- **Scoring schema and workflow**: 15 tables for daily rounds, per-day entries, scorer rotation,
+  handicap snapshots, cards, images, extraction attempts, entries, append-only resolutions and
+  canonical scores, results, immutable publications and a scoring audit; plus guarded functions for
+  submission, approval, rejection, resolution, publication and finalization.
+- **`public_round_results()`**, the anonymous read of the latest published results snapshot.
+
+### Database
+- **Applied 21 Oct 2026** to the live project: `20261035000000_scoring_schema.sql` and
+  `20261036000000_scoring_workflow.sql`. `groups` gained `round_id`; it had zero rows, so the
+  backfill changed nothing. `20261034000000_course_maps.sql` was already applied on 20 Oct.
+- The live schema is ahead of `develop` until this branch merges.
+
+### Notes
+- **The main workflow path was verified on 21 Oct 2026.** A temporary `DO` block in the SQL editor
+  created a disposable event and called the real RPCs: 18 verified holes, 2 approved cards, 1 desk
+  resolution, 2 publications, 3 final results, 25 audit rows, and a final public snapshot with 3
+  gross rows. It raised at the end, so every test row rolled back.
+- Not yet covered: concurrent approvals, the image-hash idempotency path, an anonymous read of the
+  published function, a 95% allowance against the engine, and the negative finalization gates.
+- The `/scores` screen is a sample. It does not write to the database, and the Supabase scoring
+  adapter is the next step. No OCR, connected publication or official results exist. The tie-break
+  procedure is not implemented; finalization only checks that a confirmed policy exists.
 
 ## [0.20.0] - 2026-10-20
 
