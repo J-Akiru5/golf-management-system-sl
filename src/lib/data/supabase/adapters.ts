@@ -283,7 +283,7 @@ export function createSupabaseAdapters(
           error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
         throw new Error(
           missing
-            ? "The playing-day rule needs migration 20261035000000. Nothing was saved."
+            ? "The playing-day rule needs migration 20261037000000. Nothing was saved."
             : `Could not save the day rule: ${error.message}`,
         );
       }
@@ -367,6 +367,7 @@ export function createSupabaseAdapters(
         shirt: input.shirt,
         teePreferences: input.teePreferences,
         selectedDays: input.selectedDays,
+        dayTee: {},
         declaredWshId: input.declaredWshId,
         declaredWshHandicap: input.declaredWshHandicap,
         extra: input.extra,
@@ -389,7 +390,7 @@ export function createSupabaseAdapters(
               dayError.code === "PGRST202" || /function .* does not exist/i.test(dayError.message);
             throw new Error(
               missing
-                ? "The registration was written, but the playing days need migration 20261035000000. Edit the entry after it is applied."
+                ? "The registration was written, but the playing days need migration 20261037000000. Edit the entry after it is applied."
                 : `Could not save the playing days: ${dayError.message}`,
             );
           }
@@ -468,13 +469,44 @@ export function createSupabaseAdapters(
           error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
         throw new Error(
           missing
-            ? "The playing days need migration 20261035000000. Nothing was saved."
+            ? "The playing days need migration 20261037000000. Nothing was saved."
             : `Could not save the playing days: ${error.message}`,
         );
       }
       const result = data as unknown as { ok?: boolean; message?: string } | null;
       if (!result?.ok) throw new Error(result?.message ?? "The playing days were refused.");
       dispatch({ type: "updateEntry", id: entryId, patch: { selectedDays: days } });
+    },
+    assignDayTee: async (entryId, dayNumber, assignment) => {
+      const { data, error } = await client.rpc("assign_registration_day_tee", {
+        p_registration: entryId,
+        p_day: dayNumber,
+        p_tee_time: assignment.teeTime,
+        p_start_hole: assignment.startHole,
+        p_confirmed: assignment.confirmed,
+      });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "The tee-time assignment needs migration 20261037000000. Nothing was saved."
+            : `Could not save the tee time: ${error.message}`,
+        );
+      }
+      const result = data as unknown as { ok?: boolean; message?: string } | null;
+      if (!result?.ok) throw new Error(result?.message ?? "The tee time was refused.");
+      const entry = state.entries.find((item) => item.id === entryId);
+      dispatch({
+        type: "updateEntry",
+        id: entryId,
+        patch: {
+          dayTee: {
+            ...(entry?.dayTee ?? {}),
+            [dayNumber]: assignment,
+          },
+        },
+      });
     },
   };
 
@@ -530,7 +562,7 @@ export function createSupabaseAdapters(
         const missing =
           error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
         const message = missing
-          ? "The database does not have the import function yet (migration 20261035000000). Nothing was written."
+          ? "The database does not have the import function yet (migration 20261037000000). Nothing was written."
           : `Could not commit the handicap import: ${error.message}`;
         options.onError(message);
         return { ok: false, message };

@@ -3,6 +3,7 @@
 import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { daySelectionProblem } from "@/lib/data/day-selection";
 import { fmtIso } from "@/lib/data/labels";
 import type { RegistrationEntry, TournamentDay } from "@/lib/data/types";
 
@@ -78,11 +79,12 @@ export function RegistrationDaysEditor({
           disabled={saving}
           onClick={async () => {
             setError("");
-            if (required !== null && required !== undefined && selected.length !== required) {
+            const problem = daySelectionProblem(selected, required ?? null, max ?? null);
+            if (problem === "required") {
               setError(`This event requires exactly ${required} day(s).`);
               return;
             }
-            if (max !== null && max !== undefined && selected.length > max) {
+            if (problem === "maximum") {
               setError(`This event allows at most ${max} day(s).`);
               return;
             }

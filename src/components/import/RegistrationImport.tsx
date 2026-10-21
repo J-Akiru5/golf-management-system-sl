@@ -570,7 +570,7 @@ export function RegistrationImport() {
             )}
             {!preview.schemaReady && (
               <Notice tone="bad" alert>
-                Migration 20261035000000 is not applied to this database. The preview is valid, but
+                Migration 20261037000000 is not applied to this database. The preview is valid, but
                 the commit is disabled and nothing can be written.
               </Notice>
             )}

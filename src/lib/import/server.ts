@@ -83,7 +83,7 @@ function fallbackDays(
 
 /**
  * Reads the event, its days and the players the import has to match against. Every optional
- * object is feature-detected: a database that has not applied 20261035000000 still shows a usable
+ * object is feature-detected: a database that has not applied 20261037000000 still shows a usable
  * preview against the old `dates` array, but `schemaReady` is false and the commit is refused.
  */
 export async function loadTournamentImportContext(
@@ -120,7 +120,7 @@ export async function loadTournamentImportContext(
       return { ok: false, message: `Could not read the event days: ${dayResult.error.message}` };
     }
     schemaReady = false;
-    schemaProblems.push("The structured day table is not applied yet (migration 20261035000000).");
+    schemaProblems.push("The structured day table is not applied yet (migration 20261037000000).");
     days = fallbackDays(tournament.dates, tournament.play_date, tournament.first_tee_time);
   } else {
     days = (dayResult.data ?? []).map((row) => ({
@@ -232,7 +232,7 @@ export async function storeOriginalUpload(
     return {
       path: null,
       warning:
-        "The original file could not be stored because the private import bucket is not set up. Apply migration 20261035000000 before committing.",
+        "The original file could not be stored because the private import bucket is not set up. Apply migration 20261037000000 before committing.",
     };
   }
   return { path: null, warning: `The original file could not be stored: ${error.message}` };

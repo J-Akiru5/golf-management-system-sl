@@ -16,6 +16,14 @@ export interface FormDay {
   needsConfirmation: boolean;
 }
 
+/** One actual playing day offered by the event. The day number is what the server stores. */
+export interface FormPlayingDay {
+  dayNumber: number;
+  playDate: string;
+  label: string;
+  startTime: string | null;
+}
+
 export interface FormField {
   id: string;
   label: string;
@@ -42,6 +50,9 @@ export interface RegistrationFormConfig {
   isOpen: boolean;
   shirtSizes: string[];
   teeTimes: FormDay[];
+  days: FormPlayingDay[];
+  requiredDays: number | null;
+  maxDays: number | null;
   fields: FormField[];
   sponsorQuestion: string;
   instructions: string | null;
@@ -65,6 +76,8 @@ export interface SubmissionAnswers {
   sponsor: boolean | null;
   shirt: string | null;
   teePreferences: Record<string, string | null>;
+  /** Tournament day numbers chosen by the player. */
+  days: number[];
   declaredWshId: string | null;
   declaredWshHandicap: string | null;
   extra: Record<string, string>;
@@ -95,6 +108,19 @@ export function parseFormConfig(value: Json): RegistrationFormConfig | null {
     cutOffDate: typeof raw.cutOffDate === "string" ? raw.cutOffDate : "",
     isOpen: raw.isOpen === true,
     shirtSizes: strings(raw.shirtSizes),
+    days: (Array.isArray(raw.days) ? raw.days : [])
+      .map((day) => {
+        const d = record(day);
+        return {
+          dayNumber: typeof d.dayNumber === "number" ? d.dayNumber : 0,
+          playDate: typeof d.playDate === "string" ? d.playDate : "",
+          label: typeof d.label === "string" ? d.label : "",
+          startTime: typeof d.startTime === "string" ? d.startTime : null,
+        };
+      })
+      .filter((day) => day.dayNumber > 0 && day.playDate !== ""),
+    requiredDays: typeof raw.requiredDays === "number" ? raw.requiredDays : null,
+    maxDays: typeof raw.maxDays === "number" ? raw.maxDays : null,
     teeTimes: (Array.isArray(raw.teeTimes) ? raw.teeTimes : []).map((day) => {
       const d = record(day);
       return {

@@ -86,7 +86,7 @@ export type PlayerRow = {
   club_id: string;
   full_name: string;
   // The hand-written row type keeps the historical non-null shape for the legacy mapper. The
-  // database relaxes both columns in 20261035000000, and the current desk maps them through
+  // database relaxes both columns in 20261037000000, and the current desk maps them through
   // `toPlayerRecord`, which allows null. The import writes through an RPC, not this insert type.
   birthdate: string;
   gender: "M" | "F";
@@ -102,12 +102,12 @@ export type PlayerRow = {
   email: string | null;
   /** The account that claimed this record. Null until claimed; one account per entry. */
   user_id: string | null;
-  /** Added by 20261035000000. Optional so code still loads on a database without it. */
+  /** Added by 20261037000000. Optional so code still loads on a database without it. */
   whs_id?: string | null;
   updated_at?: string;
 };
 
-/** Club-scoped member/guest classification. Added by 20261035000000. */
+/** Club-scoped member/guest classification. Added by 20261037000000. */
 export type PlayerMembershipRow = {
   id: string;
   club_id: string;
@@ -158,14 +158,14 @@ export type TournamentRow = {
   course_data_confirmed?: boolean;
   stale_index_days: number;
   registration: Json | null;
-  // Added by 20261035000000. Optional so the desk still loads before that migration is applied.
+  // Added by 20261037000000. Optional so the desk still loads before that migration is applied.
   required_days?: number | null;
   max_days?: number | null;
   board_overrides: Json | null;
   draw_revision: number;
 };
 
-/** One stable day of an event. Added by 20261035000000. */
+/** One stable day of an event. Added by 20261037000000. */
 export type TournamentDayRow = {
   id: string;
   club_id: string;
@@ -180,7 +180,7 @@ export type TournamentDayRow = {
   updated_at: string;
 };
 
-/** A player's selected day and, separately, the assigned tee time. Added by 20261035000000. */
+/** A player's selected day and, separately, the assigned tee time. Added by 20261037000000. */
 export type RegistrationDayRow = {
   id: string;
   club_id: string;
@@ -244,7 +244,7 @@ export type RegistrationRow = {
   frozen_record_id: string | null;
   frozen_effective_date: string | null;
   frozen_at: string | null;
-  // Added by 20261035000000. Optional so an older database still types.
+  // Added by 20261037000000. Optional so an older database still types.
   membership_type?: "member" | "guest" | null;
   shirt_size?: string | null;
   payment_amount?: number | null;
@@ -781,7 +781,7 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       is_club_member: { Args: { p_club: string }; Returns: boolean };
-      /** Added by 20261035000000; all return JSON and are granted to authenticated only. */
+      /** Added by 20261037000000; all return JSON and are granted to authenticated only. */
       save_day_rule: {
         Args: { p_tournament: string; p_required: number | null; p_max: number | null };
         Returns: Json;

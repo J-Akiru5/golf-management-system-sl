@@ -5,6 +5,7 @@ import { explainRegistration, type RoutingExplanation } from "@/lib/data/explain
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import type { SetupSection } from "@/lib/data/setup-payload";
 import type {
+  DayTeeAssignment,
   HandicapRecord,
   Hole,
   PaymentStatus,
@@ -133,6 +134,8 @@ export interface RegistrationRepository {
   refreeze(tournamentId: string, entryIds?: string[]): void;
   /** Replaces the player's selected day numbers. Resolves after the database accepts them. */
   setDays(entryId: string, days: number[]): Promise<void>;
+  /** Assigns the confirmed tee time and start hole for one selected day. */
+  assignDayTee(entryId: string, dayNumber: number, assignment: DayTeeAssignment): Promise<void>;
 }
 
 export interface ImportCommitResult {
@@ -274,6 +277,7 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         shirt: input.shirt,
         teePreferences: input.teePreferences,
         selectedDays: input.selectedDays,
+        dayTee: {},
         declaredWshId: input.declaredWshId,
         declaredWshHandicap: input.declaredWshHandicap,
         extra: input.extra,
@@ -290,6 +294,15 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     refreeze: (tournamentId, entryIds) => dispatch({ type: "refreeze", tournamentId, entryIds }),
     setDays: async (entryId, days) => {
       dispatch({ type: "updateEntry", id: entryId, patch: { selectedDays: days } });
+    },
+    assignDayTee: async (entryId, dayNumber, assignment) => {
+      const entry = state.entries.find((item) => item.id === entryId);
+      if (!entry) throw new Error("That registration was not found.");
+      dispatch({
+        type: "updateEntry",
+        id: entryId,
+        patch: { dayTee: { ...(entry.dayTee ?? {}), [dayNumber]: assignment } },
+      });
     },
   };
 

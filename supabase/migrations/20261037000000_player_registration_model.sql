@@ -1734,7 +1734,7 @@ begin
     select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname in ('commit_registration_import', 'save_day_rule', 'set_registration_days')
       and p.proacl is not null
-      and exists (select 1 from unnest(p.proacl) a where a like 'anon=%')
+      and exists (select 1 from unnest(p.proacl) a where a::text like 'anon=%')
   ) then
     raise exception 'An import function is executable by anon';
   end if;

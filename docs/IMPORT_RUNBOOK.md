@@ -1,7 +1,7 @@
 # Registration workbook import: operator runbook
 
 This is for the Syntaxure Labs person running the import. It assumes migration
-`20261035000000` is applied and the desk is connected to the project.
+`20261037000000` is applied and the desk is connected to the project.
 
 ## Before the file
 
@@ -72,7 +72,7 @@ This is for the Syntaxure Labs person running the import. It assumes migration
 
 | Symptom | What it means | What to do |
 | --- | --- | --- |
-| "The database update ... is not applied" | migration `20261035000000` is missing | stop; ask the owner to apply it; nothing was written |
+| "The database update ... is not applied" | migration `20261037000000` is missing | stop; ask the owner to apply it; nothing was written |
 | A row says "No birthdate or gender on the row" | the workbook has a name but no usable DOB/gender | the player is saved as Needs review; complete the profile on the Players screen |
 | "More than one player matches" | the directory has two people with that name | use the NGAP ID to tell them apart, or choose the right candidate |
 | "This event requires exactly N days" | the row's `GAME DATES` does not match the rule | correct the cell, or choose the days in the preview |

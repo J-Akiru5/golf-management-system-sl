@@ -27,7 +27,7 @@ export function nextPlayDay(dates: string[], fallback: string): string {
 
 /**
  * The structured day list a screen should show. A connected desk provides `days` from the
- * `tournament_days` table; the demo, and a connected database before migration 20261035000000,
+ * `tournament_days` table; the demo, and a connected database before migration 20261037000000,
  * derive the same shape from the dates (and the old tee-time preferences) so the UI has one
  * contract either way.
  */

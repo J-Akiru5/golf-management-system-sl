@@ -215,6 +215,15 @@ export interface FrozenIndex {
   frozenAt: string;
 }
 
+/** One registration's confirmed tee time on one day. Kept apart from the day selection. */
+export interface DayTeeAssignment {
+  /** HH:MM, or null when no time is assigned. */
+  teeTime: string | null;
+  /** Starting hole, or null. */
+  startHole: number | null;
+  confirmed: boolean;
+}
+
 /**
  * A registration: one player in one event. Member and guest are explicit roles, and every entry
  * links to a player profile.
@@ -232,6 +241,8 @@ export interface RegistrationEntry {
   teePreferences: Record<string, string | null>;
   /** Selected tournament day numbers. Structured; never a display string. */
   selectedDays?: number[];
+  /** Confirmed tee-time assignments, keyed by tournament day number. */
+  dayTee?: Record<number, DayTeeAssignment>;
   /** Given by the participant on the form; informational, not used for eligibility. */
   declaredWshId: string | null;
   declaredWshHandicap: string | null;

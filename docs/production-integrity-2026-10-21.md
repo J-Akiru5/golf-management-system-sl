@@ -5,7 +5,9 @@
 **Pull request:** [#87](https://github.com/J-Akiru5/golf-management-system-sl/pull/87), open and mergeable into `develop`
 **Production release inspected:** `v0.19.0 · 7143f20`, built 20 October 2026
 **Database project:** `golf-management-system` (`egfwfyznbndunqfqzxjx`, ap-southeast-1)
-**Migration in this change:** `20261035000000_player_registration_model.sql`, written and reviewed here, **not applied to production**
+**Migrations:** `20261037000000_player_registration_model.sql` and
+`20261038000000_public_day_selection.sql`, **applied to production on 21 October 2026** and recorded in
+`supabase_migrations.schema_migrations`
 
 ---
 
@@ -33,8 +35,9 @@ unconfirmed address and a wrong password.
 
 The branch fixes the false success, adds the registration import the workbook needed, adds the
 canonical player/membership/tournament-day model, and puts the privileged writes behind guarded
-database functions. The migration is additive and has not been executed anywhere yet. Nothing was
-deployed, no production credential was reset, and no production data was changed.
+database functions. Both migrations are additive and were applied to production on 21 October 2026;
+the public day picker and the tee-time assignment screen are part of the same branch. Nothing was
+deployed to `main`; no production credential was reset.
 
 ---
 
@@ -46,7 +49,7 @@ deployed, no production credential was reset, and no production data was changed
 | Production alias | `golf.syntaxure.dev` → Vercel production deployment | `vercel inspect` |
 | `main` on the remote | `7143f20` | `git ls-remote origin main` |
 | `develop` on the remote | `4231b60` | `git ls-remote origin develop` |
-| Database | project above, 18 migrations' objects present | read-only table/column probes |
+| Database | project above; the two new migrations are applied and recorded; production also carries the `scoring_schema` and `scoring_workflow` migrations from `feat/scoring-engine` | read-only table/column/function probes; migration history query |
 | Existing event | **24th Bamboo Tee**, open, 12–15 Nov 2026, cut-off 1 Nov, not published | `tournaments` read |
 | Production env names | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `vercel env ls production`; values not printed |
 | Missing production env | `NEXT_PUBLIC_SITE_URL` | same |
@@ -56,6 +59,35 @@ deployed, no production credential was reset, and no production data was changed
 The application is connected to the intended database. The existing records are intact. Production
 does **not** mix development data: there is one club, one course, one event, one player and no
 registrations.
+
+### Migration application and version collision
+
+The first version written for this work was `20261035000000`. By the time it was applied, production
+already had a `20261035000000` row named `scoring_schema` and a `20261036000000` row named
+`scoring_workflow` from the separate `feat/scoring-engine` branch. Running our SQL under the old
+version would have hidden it behind the wrong history row. The file was renumbered to
+`20261037000000`, applied in the Supabase SQL editor, and recorded as
+`20261037000000 / player_registration_model`. The public day-selection migration is
+`20261038000000 / public_day_selection`.
+
+Verified after applying:
+
+| Object | Result |
+| --- | --- |
+| `player_memberships`, `tournament_days`, `registration_days`, `import_batches`, `import_rows`, `handicap_import_rows`, `audit_log` | all present |
+| RLS on all seven | enabled |
+| `players.birthdate`, `players.gender` | nullable as designed |
+| `players.whs_id`, `players.updated_at` | present |
+| `tournaments.required_days`, `max_days` | present; current event set to 2 / 2 |
+| `commit_registration_import`, `commit_handicap_import`, `save_day_rule`, `set_registration_days`, `assign_registration_day_tee`, `check_registration_day_rule`, `audit_row_change` | all present |
+| `tournament_days` backfill | 4 rows for the current event |
+| Existing players / registrations | 1 player, 0 registrations, unchanged |
+
+The production public form on `main` is still the old form until this branch is promoted. It does not
+render the explicit picker; the new database function accepts its tee-time keys as a fallback. A
+player on the old form must choose two day preferences to satisfy the now-active two-day rule. This is
+a temporary compatibility window, not the desired end state; the new form on `develop` has the
+picker.
 
 `develop` builds as a Vercel **Preview** target (the production branch is `main`). That is the one
 allowed automatic deployment for `develop`. This branch is not `develop` or `main`, so `vercel.json`
@@ -203,10 +235,11 @@ credentials were reset or created.
 
 ## 5. Data model added in this branch
 
-The migration is `supabase/migrations/20261035000000_player_registration_model.sql`. It is additive:
-no existing table, column, row or policy is dropped or truncated. The `drop ... if exists` statements
-target constraint, trigger and policy names this migration creates, so a re-run is safe and no
-pre-existing object is removed.
+The migrations are `supabase/migrations/20261037000000_player_registration_model.sql` and
+`supabase/migrations/20261038000000_public_day_selection.sql`. They are additive: no existing table,
+column, row or policy is dropped or truncated. The `drop ... if exists` statements target constraint,
+trigger and policy names the migrations create, so a re-run is safe and no pre-existing object is
+removed.
 
 ### 5.1 Player identity and membership
 
@@ -380,11 +413,18 @@ duplicates. The existing unique key `(tournament_id, player_id)` is the final gu
   Changing days does not touch the player, payment or schedule fields.
 - Day selection and tee-time assignment are separate: `registration_days.selected` versus
   `registration_days.tee_time` / `start_hole`.
+- A dedicated **Tee times** screen (desk navigation) shows one playing day at a time, the players who
+  selected it, and their current time, start hole and confirmation state. Each row saves through
+  `assign_registration_day_tee`; the database checks the course's hole count and the day's start time.
+  The screen distinguishes assigned, confirmed and still-to-assign players and refuses one field
+  without the other.
 
-The public entry form still sends day choices as `teePreferences` keys. An AFTER INSERT trigger fills
-`registration_days` from those keys, so the old form keeps working. The public form does not yet show
-an explicit "choose your days" control; before enabling a required-day rule, update it so a player
-cannot submit without the required days. This is listed as a remaining risk.
+The public entry form now shows the explicit **Playing days** picker from
+`public_registration_form`. It displays each day's date and start time, sends a `days` array of day
+numbers, and refuses to submit when the event's required count is not met. `submit_registration`
+revalidates the day numbers, writes `registration_days` explicitly, and deactivates any day the old
+`teePreferences` fallback had attached. The old form on production `main` is still in its
+compatibility window until this branch is promoted.
 
 ---
 
@@ -396,7 +436,7 @@ Run on the branch:
 | --- | --- |
 | `pnpm typecheck` | pass |
 | `pnpm lint` | pass |
-| `pnpm test` | **65 files, 654 tests passed** |
+| `pnpm test` | **67 files, 662 tests passed** |
 | `pnpm build` | pass, 28 routes generated |
 | Production code/version | verified from the deployed page |
 | Pull request | [#87](https://github.com/J-Akiru5/golf-management-system-sl/pull/87), open and mergeable into `develop` |
@@ -426,20 +466,45 @@ repository. The script itself is in git-ignored `.tmp/`.
 
 ---
 
-## 9. Migration plan and approval
+## 9. Migration application and verification
 
-### 9.1 Before applying
+### 9.1 What was applied
 
-1. Take a Supabase backup or confirm point-in-time recovery for the project.
-2. Record `supabase migration list --linked` and the current row counts of `players`,
-   `registrations`, `groups`, `group_members`, `handicap_records`, `handicap_import_batches` and
-   `deferred_matches`.
-3. Review this migration and its rollback notes with the owner.
-4. Apply it to a **branch project or local database** first, then run the verification queries.
-5. Only then apply to production, in a quiet window, with the code deployment held until the schema
-   is in place.
+Both migrations were applied to production on 21 October 2026 through the Supabase SQL editor,
+because the CLI account available on this machine cannot see the golf project (it lists only `mdm` and
+`syntaxure-labs`).
 
-### 9.2 Apply
+| Version | Name | Status |
+| --- | --- | --- |
+| `20261037000000` | `player_registration_model` | applied, recorded |
+| `20261038000000` | `public_day_selection` | applied, recorded |
+
+The version numbers had to move. Production already had `20261035000000 / scoring_schema` and
+`20261036000000 / scoring_workflow` from `feat/scoring-engine`. Our first file was written as
+`20261035000000`; it was renumbered to `20261037000000` before being recorded. `supabase_migrations`
+is the authority and now lists both of our rows.
+
+### 9.2 Verification actually run
+
+| Check | Result |
+| --- | --- |
+| Seven new tables | present |
+| RLS on all seven | enabled |
+| Seven new functions | present |
+| `players.birthdate` / `gender` nullable | yes |
+| `players.whs_id`, `updated_at` | present |
+| `tournaments.required_days` / `max_days` | present; event set to 2 / 2 |
+| `tournament_days` backfill | 4 rows for the 24th Bamboo Tee |
+| Existing players / registrations | 1 player, 0 registrations, unchanged |
+| `public_registration_form` | returns `requiredDays = 2`, four days, first label `Day 1` |
+| Migration history | `20261037000000` and `20261038000000` recorded |
+
+The detailed verification query and its output are in the SQL editor history and in the production
+evidence captured during this work. The two migrated functions were not exercised with a real public
+submission because that would create a player and registration; the form and server validation are
+covered by tests and the function logic revalidates the same rules.
+
+### 9.3 Applying to another environment
 
 ```bash
 supabase link --project-ref <branch-or-production-ref>
@@ -447,48 +512,15 @@ supabase db push --linked
 supabase migration list --linked
 ```
 
-The migration must be the next version after `20261034000000`. It is `20261035000000`.
-
-### 9.3 Verify
-
-```sql
--- The new objects exist.
-select table_name from information_schema.tables
- where table_schema = 'public'
-   and table_name in ('player_memberships','tournament_days','registration_days',
-                      'import_batches','import_rows','handicap_import_rows','audit_log')
- order by table_name;
-
--- Every event has at least one day row, and the count matches its dates.
-select t.id, t.name, cardinality(t.dates) as dates, count(d.id) as day_rows
-  from public.tournaments t
-  left join public.tournament_days d on d.tournament_id = t.id
- group by t.id, t.name, t.dates;
-
--- Existing registrations kept their payment, frozen index and player.
-select count(*) from public.registrations;
-select count(*) from public.registrations where payment_status is not null;
-
--- The new functions are not executable by anon.
-select p.proname, p.proacl
-  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
- where n.nspname = 'public'
-   and p.proname in ('commit_registration_import','commit_handicap_import',
-                     'save_day_rule','set_registration_days');
-
--- RLS is on.
-select relname, relrowsecurity
-  from pg_class c join pg_namespace n on n.oid = c.relnamespace
- where n.nspname = 'public'
-   and relname in ('player_memberships','tournament_days','registration_days',
-                   'import_batches','import_rows','handicap_import_rows','audit_log');
-```
+Both files are additive. A branch project that does not have the 24th Bamboo Tee still applies the
+schema; the two-day rule update is guarded to that specific event. The migration history must record
+the same versions, or `db push` will not know they are in step.
 
 ### 9.4 Rollback
 
 The code rollback is a normal Vercel promotion or a revert on `develop`. The old code reads the new
-columns as optional, so it keeps working if the schema is present. The migration itself is additive;
-if it has to be reversed, write a reverse migration that drops the new tables, functions, triggers and
+columns as optional, so it keeps working if the schema is present. The migrations are additive; if
+they have to be reversed, write a reverse migration that drops the new tables, functions, triggers and
 the added columns **only after a backup**. Do not drop production tables to "roll back" a deploy.
 
 ### 9.5 Production data reconciliation
@@ -500,8 +532,9 @@ the added columns **only after a backup**. Do not drop production tables to "rol
   will match them by name (and NGAP ID if supplied) and either create their registration or skip it if
   one already exists. If they are not in the field, the desk can remove them after a review; that is a
   normal desk action, not a migration step.
-- Do not run the new registration import against production until the migration is applied. The page
-  blocks the commit, but the API also returns a 409 rather than writing half a batch.
+- The registration import is now unblocked. The two-day rule is active, so a desk import row must
+  select exactly two days or it is rejected. The public form on `main` is still the old form until
+  this branch is promoted; see the compatibility note above.
 
 ---
 
@@ -509,28 +542,33 @@ the added columns **only after a backup**. Do not drop production tables to "rol
 
 | Risk or gap | State | Owner action |
 | --- | --- | --- |
-| Migration not applied anywhere | by design; no production write was made | review, back up, apply to a branch project, then production |
+| Production `main` still serves the old public form | the new database rule is active; the old form can satisfy it only by choosing two tee-time preferences | promote the new form to `main` when ready; do not leave the compatibility window open longer than necessary |
 | Production login not reproduced | no credentials used and none should be shared | confirm the phone account; follow `docs/STAFF_ACCESS.md` |
 | Two test staff accounts | still on the project | rotate before the event |
 | `NEXT_PUBLIC_SITE_URL` absent in Vercel | reset links fall back to the request host, which is correct on production but should be explicit | add the variable in Vercel |
 | AI mapping endpoint | not configured; deterministic mapping is the default | configure only if the club wants it; the app never sends row data |
-| Public form has no explicit day picker | the trigger fills days from tee preferences; a required-day rule can refuse a submission with no days | update the form before enabling a required-day rule |
-| Multi-day tee-time assignment | `assign_registration_day_tee` exists, but the draw is still single-day and no screen calls it | build the day/tee-time screen before the event needs it |
+| Multi-day tee-time assignment | the Tee times screen and `assign_registration_day_tee` are built; the draw itself is still a single-day board | use the screen for the event's day times; extend the draw to per-day boards only if the club needs generated multi-day starts |
 | Original uploads and import rows contain personal data | private bucket, owner/organizer RLS, immutable | set a retention period; delete old uploads and rows with the service role |
 | The import does not overwrite existing player profile fields | deliberate: it creates missing players and registrations; edits are a separate desk action | use the player profile for corrections |
 | No dedicated membership editor on the player screen | the table and the import write it; the registration desk records member/guest per event | add a small membership panel when the club starts using member numbers |
 | `develop` previews may lack env vars | the connected import cannot be exercised on a preview without them | use a branch project or local env |
-| Deployment | this branch is not `develop` or `main`; no deploy was made | PR into `develop`; apply the migration before the code reaches production |
+| `feat/scoring-engine` migrations are in production but not in `develop` | production has `20261035000000 / scoring_schema` and `20261036000000 / scoring_workflow`; the branch is separate | reconcile that branch into `develop` separately; do not reuse its versions |
+| Deployment | no deployment to `main` was made | merge this branch into `develop`; promote `main` only when the old public-form window is acceptable to close |
 
 ---
 
 ## 11. Files changed
 
-- `supabase/migrations/20261035000000_player_registration_model.sql`
+- `supabase/migrations/20261037000000_player_registration_model.sql`
+- `supabase/migrations/20261038000000_public_day_selection.sql`
 - `src/lib/import/{types,dates,mapping,match,normalize,preview,file,server,index}.ts`
 - `src/app/api/import/{preview,commit,suggest-mapping}/route.ts`
 - `src/components/import/RegistrationImport.tsx`
 - `src/app/(desk)/import/{page,HandicapImport}.tsx`
+- `src/app/(desk)/tee-times/page.tsx`
+- `src/components/desk/RegistrationDaysEditor.tsx`
+- `src/lib/data/{day-selection,tee-time}.ts`
+- `src/components/public/RegistrationForm.tsx`, `src/lib/data/supabase/public-registration.ts`
 - `src/app/(desk)/register/page.tsx`, `src/app/(desk)/setup/page.tsx`
 - `src/components/desk/RegistrationRow.tsx`
 - `src/lib/data/{adapters,types,dates}.ts`

@@ -99,7 +99,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!context.schemaReady) {
     return jsonError(
       409,
-      "This database has not applied migration 20261035000000. The import is blocked until it is applied; nothing was written.",
+      "This database has not applied migration 20261037000000. The import is blocked until it is applied; nothing was written.",
       { schemaProblems: context.schemaProblems },
     );
   }
@@ -184,7 +184,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return jsonError(
       missing ? 409 : 500,
       missing
-        ? "The import function is not in the database. Apply migration 20261035000000; nothing was written."
+        ? "The import function is not in the database. Apply migration 20261037000000; nothing was written."
         : `The import was refused: ${error.message}`,
     );
   }

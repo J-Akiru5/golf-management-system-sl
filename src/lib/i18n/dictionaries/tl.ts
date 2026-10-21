@@ -143,6 +143,12 @@ export const tl: Dictionary = {
       yes: "Oo",
       no: "Hindi",
       teeTimes: "Mga gustong oras ng tee",
+      playingDays: "Mga araw ng laro",
+      playingDaysHelp:
+        "Piliin ang mga araw na maglalaro ka. Hiwalay ito sa gusto mong oras ng tee.",
+      playingDaysRequired: "Pumili ng eksaktong {count} araw ng laro.",
+      playingDaysMax: "Pumili ng hanggang {count} araw ng laro.",
+      startsAt: "Magsisimula {time}",
       day: "Araw {number}",
       toBeConfirmed: " (kukumpirmahin pa)",
       noPreference: "Walang preference",
