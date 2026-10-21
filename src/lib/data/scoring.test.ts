@@ -39,6 +39,7 @@ function seed(overrides: Partial<ScoringRoundSeed> = {}): ScoringRoundSeed {
     ],
     tieBreak: TIE_BREAK,
     approvedBy: "organizer-1",
+    finalizationAuthority: "organizer",
     provisionalPublication: true,
     ...overrides,
   };

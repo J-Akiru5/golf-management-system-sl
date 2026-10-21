@@ -2,6 +2,7 @@ import type { ScoringPlayerSeed, ScoringRoundSeed } from "@/lib/data/scoring";
 import {
   calculateHandicap,
   type HoleDefinition,
+  PROPOSED_SCORING_RULES,
   type RoundCourse,
   type TeeRatings,
 } from "@/lib/scoring";
@@ -89,16 +90,13 @@ export function buildDemoScoringSeed(): ScoringRoundSeed {
 
   return {
     roundId: DEMO_SCORING_COURSE.roundId,
-    tournamentId: "demo-scoring",
+    tournamentId: "bamboo-tee-2026",
     course: DEMO_SCORING_COURSE,
-    policy: {
-      requiredCards: 2,
-      allowProvisionalSingleCard: true,
-      minOcrConfidence: 0.85,
-    },
+    policy: PROPOSED_SCORING_RULES.verification,
     players,
-    tieBreak: null,
+    tieBreak: PROPOSED_SCORING_RULES.tieBreak,
     approvedBy: "demo-organizer",
+    finalizationAuthority: PROPOSED_SCORING_RULES.finalizationAuthority,
     roundStatus: "scoring",
     provisionalPublication: true,
   };

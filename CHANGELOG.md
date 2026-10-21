@@ -9,6 +9,19 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **Connected scoring repository** (`src/lib/data/supabase/scoring.ts`): reads the persisted round,
+  cards, resolutions and snapshots, derives the view with the same pure engine, and writes through
+  the guarded RPCs. `/scores` now uses `desk.scoring`, which is live when Supabase is configured and
+  in-memory in the demo.
+- **Proposed scoring defaults** (`src/lib/scoring/defaults.ts`): two independent cards, single-card
+  provisional display, a proposed back-9 tie-break that stays **unconfirmed**, organizer finalization
+  authority, verified-holes provisional publication, a reciprocal scorer cycle, 100% allowance, WHS
+  rounding, independent days, 0.85 OCR confidence and a 1–20 stroke range. They are starting values
+  stored per round, not hard-coded rules; finalization still blocks until the tie-break is confirmed.
+- **Generated database types** in `src/lib/supabase/generated-types.ts`, used by the scoring adapter.
+  The app’s existing hand-written types remain in place until the wider type migration is scheduled.
+
 ### Changed
 - **`/pairings` has a desktop layout.** `.public` caps every public page at 56rem, which is right for a
   phone but left the pairings page as a narrow column in the middle of a wide screen. The page now
