@@ -6,6 +6,7 @@ import type {
   FinalizationReadiness,
   NetExclusion,
   PlayerRoundTotals,
+  RoundCourse,
   StandingsBoard,
   StandingsExclusion,
   StandingsInput,
@@ -92,8 +93,23 @@ export function buildStandings(input: StandingsInput): StandingsResult {
       continue;
     }
 
+    // Players can be on different tees in the same daily round. The snapshot carries the tee the
+    // handicap was taken from, so score against that tee rather than the round's first tee.
+    const playerCourse: RoundCourse = player.handicap
+      ? {
+          ...input.course,
+          tee: {
+            id: player.handicap.teeId,
+            name: player.handicap.teeId,
+            courseRating: player.handicap.courseRating,
+            slope: player.handicap.slope,
+            par: player.handicap.coursePar,
+          },
+        }
+      : input.course;
+
     const scored = scoreRound({
-      course: input.course,
+      course: playerCourse,
       scores: holes.map((hole) => ({ hole: hole.hole, grossStrokes: hole.strokes })),
       handicap: player.handicap,
       requireComplete: false,

@@ -3,6 +3,7 @@
 import {
   Bell,
   CircleUserRound,
+  ClipboardCheck,
   ClipboardList,
   Download,
   Flag,
@@ -125,6 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       group: "main",
     },
     { href: "/draw", label: "Draw & pairings", icon: Flag, alert: blocking > 0, group: "main" },
+    { href: "/scores", label: "Scores", icon: ClipboardCheck, group: "main" },
     { href: "/print", label: "Print center", icon: Printer, group: "main" },
     { href: "/setup", label: "Settings", icon: SlidersHorizontal, group: "main" },
     { href: "/course", label: "Course & holes", icon: MapIcon, group: "more" },

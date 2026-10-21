@@ -29,11 +29,15 @@ const COURSE: RoundCourse = {
 };
 
 function snapshotFor(index: number): HandicapSnapshot {
+  return snapshotForTee(index, FLAT_TEE);
+}
+
+function snapshotForTee(index: number, tee: TeeRatings): HandicapSnapshot {
   const result = calculateHandicap({
     index,
     indexSource: "NGAP export 2026-11",
     indexEffectiveDate: "2026-11-01",
-    tee: FLAT_TEE,
+    tee,
     allowance: 1,
     rounding: "whs",
     rulesVersion: "test-rules-v1",
@@ -211,6 +215,26 @@ describe("provisional standings", () => {
     expect(result.netExcluded).toEqual([
       expect.objectContaining({ playerId: "p1", reason: "handicap_unavailable" }),
     ]);
+  });
+
+  it("uses each player's own tee snapshot in the same daily round", () => {
+    const otherTee: TeeRatings = {
+      id: "red",
+      name: "Red",
+      courseRating: 70,
+      slope: 120,
+      par: 72,
+    };
+    const p1 = player("p1", "Alpha", 0, canonicalFor("p1"));
+    const p2Base = player("p2", "Bravo", 18, canonicalFor("p2"));
+    const p2 = { ...p2Base, handicap: snapshotForTee(18, otherTee) };
+
+    const result = buildStandings(standingsInput([p1, p2]));
+    const row = result.net.rows.find((candidate) => candidate.playerId === "p2");
+
+    expect(result.excluded).toEqual([]);
+    expect(row?.netStatus).toBe("calculated");
+    expect(row?.netPoints).toBe(53);
   });
 
   it("is deterministic", () => {

@@ -13,13 +13,16 @@ Nothing yet.
 
 ## [0.21.0] - 2026-10-21
 
-The scoring engine and its database, applied before any screen reads them.
+The scoring engine, its database, and a sample scorecard workflow.
 
 ### Added
 - **Deterministic scoring engine** (`src/lib/scoring`): gross and net Stableford, the WHS Course and
   Playing Handicap pipeline, stroke allocation, card validation for webcam, upload and manual entry,
   multi-card reconciliation with desk resolutions, provisional boards and the finalization gate.
-  Ninety unit tests. Nothing in the app calls it yet.
+  Ninety-one unit tests. The sample workflow reads it; nothing writes to the database yet.
+- **Sample scorecard workflow**: `/scores` with manual entry, card approval and rejection, conflict
+  resolution, gross and net boards, provisional publication and the finalization gate. It runs on an
+  in-memory repository (`src/lib/data/scoring.ts`) and is explicitly labelled as a sample.
 - **Scoring schema and workflow**: 15 tables for daily rounds, per-day entries, scorer rotation,
   handicap snapshots, cards, images, extraction attempts, entries, append-only resolutions and
   canonical scores, results, immutable publications and a scoring audit; plus guarded functions for
@@ -33,11 +36,15 @@ The scoring engine and its database, applied before any screen reads them.
 - The live schema is ahead of `develop` until this branch merges.
 
 ### Notes
-- **The workflow is not functionally verified end to end.** The schema objects are verified through
-  the REST schema, but the temporary rollback migration that exercises the RPCs did not run because
-  the Supabase CLI token reverted to an account without project access.
-- No scorecard screen, OCR, publication screen or official results exist. The tie-break procedure is
-  not implemented; finalization only checks that a confirmed policy exists.
+- **The main workflow path was verified on 21 Oct 2026.** A temporary `DO` block in the SQL editor
+  created a disposable event and called the real RPCs: 18 verified holes, 2 approved cards, 1 desk
+  resolution, 2 publications, 3 final results, 25 audit rows, and a final public snapshot with 3
+  gross rows. It raised at the end, so every test row rolled back.
+- Not yet covered: concurrent approvals, the image-hash idempotency path, an anonymous read of the
+  published function, a 95% allowance against the engine, and the negative finalization gates.
+- The `/scores` screen is a sample. It does not write to the database, and the Supabase scoring
+  adapter is the next step. No OCR, connected publication or official results exist. The tie-break
+  procedure is not implemented; finalization only checks that a confirmed policy exists.
 
 ## [0.20.0] - 2026-10-20
 

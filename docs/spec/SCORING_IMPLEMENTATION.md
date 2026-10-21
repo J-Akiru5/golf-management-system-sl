@@ -1,10 +1,10 @@
 # Scoring implementation plan
 
 > **Status:** 21 Oct 2026. The deterministic scoring engine is built and tested. The scoring schema
-> and workflow are **applied to the live Supabase project**, but the workflow has **not been
-> functionally verified end to end** and no screen reads it. No OCR or public leaderboard exists yet.
-> `docs/PLAN.md` remains the single project plan; this document is the scoring design and build
-> sequence behind it.
+> and workflow are **applied to the live Supabase project**, and the main workflow path passed an
+> end-to-end rollback test. A sample `/scores` desk screen reads the engine in memory; no connected
+> repository or OCR exists yet. `docs/PLAN.md` remains the single project plan; this document is the
+> scoring design and build sequence behind it.
 
 The requirement source is the scoring specification supplied on 21 Oct 2026. Where that document
 leaves a business rule open, this plan keeps it configurable and says what it blocks.
@@ -26,18 +26,21 @@ evidence always produces the same result.
 | `reconcile.ts` | Multiple cards to canonical hole scores, with desk resolutions |
 | `standings.ts` | Provisional gross and net boards, and the finalization gate |
 
-**Verified:** 90 unit tests pass and `pnpm typecheck` is clean. Biome is clean on `src/lib/scoring`.
+**Verified:** 91 unit tests pass and `pnpm typecheck` is clean. Biome is clean on `src/lib/scoring`.
+The sample scoring repository adds 7 tests, and the full suite is 709 tests across 66 files.
+
+**Built but not connected:** `src/lib/data/scoring.ts` is the repository contract and an in-memory
+implementation; `src/app/(desk)/scores/page.tsx` uses it for manual entry, approval, conflict
+resolution, the boards and the publication gates. It does not write to the database.
 
 **Not built, and not claimed:**
 
-- a repository or server action that calls the engine;
-- a scorecard screen, webcam capture, upload or OCR worker;
-- a provisional or final publication screen, and any public leaderboard;
+- a connected repository or server action that calls the applied RPCs;
+- webcam capture, upload, OCR and a production scorecard image path;
+- a connected publication screen and any public leaderboard;
 - a tie-break procedure;
 - official results or winner declaration;
-- an end-to-end functional verification of the live workflow. The schema and workflow are applied
-  (see section 6), but the temporary verification migration that exercises the RPCs against a
-  disposable event has not run.
+- the remaining verification edge cases listed in section 10.
 
 The app still only prints scorecards. `docs/PLAN.md` records that no scoring is wired.
 
@@ -424,10 +427,15 @@ Both were **applied to the live project on 21 Oct 2026**, after a dry run listed
 `20261034000000_course_maps.sql` was already applied on 20 Oct, so the sequencing concern in the
 earlier draft was stale. The live schema now has 38 tables and `groups.round_id`; `groups` had zero
 rows, so the backfill changed nothing. The schema objects are verified through the REST OpenAPI
-schema. **The workflow is not yet functionally verified end to end.** A temporary verification
-migration was written to create a disposable event, exercise the RPCs, assert the rows and roll
-itself back, but it could not run because the CLI token reverted to the account that cannot see the
-golf project.
+schema. **The main workflow path passed an end-to-end rollback test on 21 Oct 2026.** A temporary
+`DO` block in the SQL editor created a disposable event and called the real `save_handicap_snapshot`,
+`submit_scorecard`, `approve_scorecard`, `resolve_hole`, `publish_round` and `finalize_round`
+functions. It asserted 18 verified holes, 2 approved cards, 1 current resolution, 2 publications,
+3 final results, 25 audit rows and a final public snapshot with 3 gross rows, then raised
+`SCORING_VERIFICATION_OK`. The raise rolled the whole transaction back; no test row remains.
+**Still not covered:** concurrent approvals, the image-hash idempotency path, an anonymous read of
+the published function, a 95% allowance against the TypeScript engine, and the individual negative
+finalization gates.
 
 ---
 
@@ -438,29 +446,32 @@ golf project.
 | SC-01 Gross Stableford | Covered by `stableford.test.ts` | Repository and screen |
 | SC-02 Net Stableford | Covered by `handicap.test.ts` and `stableford.test.ts` | Real tee data and allowance confirmation |
 | SC-03 Separate daily results | Covered by `standings.test.ts` | `competition_rounds` and `round_entries` applied |
-| SC-04 Multiple scorecards | Covered by `reconcile.test.ts` | Card tables applied; capture path still needed |
+| SC-04 Multiple scorecards | Covered by `reconcile.test.ts` and the sample repository | Manual entry screen built; webcam/upload/OCR still needed |
 | SC-05 Desk resolution | Covered by `reconcile.test.ts` | `hole_resolutions`, RPC and audit applied |
 | SC-06 OCR and fallback | Same validation for all three sources in `cards.test.ts` | Camera, upload and OCR worker |
 | SC-07 Provisional publication | Verified-hole-only boards in `standings.test.ts` | Publication policy and public snapshot applied |
 | SC-08 Official finalization | Gate in `standings.test.ts` | Finalization RPC applied; tie-break procedure and authority still needed |
-| SC-09 Idempotency | SQL applied, not functionally verified | `capture_key`, image hash, extraction attempt keys |
-| SC-10 Concurrency | SQL applied, not functionally verified | Round locks, one-current partial unique indexes |
-| SC-11 Auditability | Engine fields plus SQL applied | `scoring_audit` and append-only history tables |
-| SC-12 Recovery | SQL applied, not functionally verified | Transaction boundaries; retry and failure tests still needed |
+| SC-09 Idempotency | Capture-key retry verified; image hash not yet tested | `capture_key`, image hash, extraction attempt keys |
+| SC-10 Concurrency | Sequential path verified; concurrent approvals not yet tested | Round locks, one-current partial unique indexes |
+| SC-11 Auditability | Verified in the rollback test: 25 audit rows | `scoring_audit` and append-only history tables |
+| SC-12 Recovery | Transaction rollback verified; retry/failure paths not fully tested | Transaction boundaries; retry and failure tests still needed |
 
-SC-09 to SC-12 are database properties. The mechanisms are applied, but they are not claimed as
-verified until the end-to-end checks run.
+The main workflow path is verified. SC-10, the image-hash path, the anonymous read, a 95% allowance
+and the negative finalization gates still need their own checks.
 
 ---
 
 ## 8. Build sequence
 
 1. **Engine. Done 21 Oct 2026.** Calculations, validation, reconciliation, boards and gate.
-2. **Schema. Applied 21 Oct 2026.** The two migrations are live. The next step is functional
-   verification of the triggers, functions and RLS policies against a disposable event; the
-   verification checklist is in section 10. Nothing in the app calls them yet.
-3. **Scorecard workflow.** Wire the applied RPCs into a repository and server actions: manual entry
-   first, card approval, desk resolution, audit view. No OCR yet.
+2. **Schema. Applied and main-path verified 21 Oct 2026.** The two migrations are live and the
+   rollback test passed. The remaining checks are concurrent approvals, the image-hash path, the
+   anonymous read, a 95% allowance and the negative finalization gates. Nothing in the app calls the
+   tables yet.
+3. **Scorecard workflow. Sample built.** `src/lib/data/scoring.ts` is the repository contract plus an
+   in-memory implementation, and `/scores` exercises manual entry, approval, desk resolution, the
+   boards and the publication gates. The next step is the Supabase adapter that calls the applied
+   RPCs; OCR is later.
 4. **Provisional publication.** `publish_round` and `public_round_results` are applied. Add the
    repository, the desk board and the player board. Incomplete rounds show holes counted.
 5. **Computer vision.** Webcam capture, upload, OCR extraction, confidence review and manual
@@ -478,7 +489,7 @@ multiplies the ways a score can be wrong.
 
 | # | Decision | Default now | Blocks |
 | --- | --- | --- | --- |
-| S1 | Approve the scoring schema, including `groups.round_id` | Applied 21 Oct 2026; functional verification pending | Everything after the engine |
+| S1 | Approve the scoring schema, including `groups.round_id` | Applied and main-path verified 21 Oct 2026 | Everything after the engine |
 | S2 | Required scorecards per player, and whether a single card may show provisionally | `requiredCards: null`, single-card display off; nothing publishes | Verification and finalization |
 | S3 | Scorer rotation patterns and validation rules | Manual assignment; self-scoring blocked | Card identity and rotation checks |
 | S4 | Course/tee data, allowance and rounding for non-100% events | WHS two-step; 100% confirmed so far | Valid net results |
@@ -489,18 +500,24 @@ multiplies the ways a score can be wrong.
 | S9 | Scorecard image retention and access | Private bucket, no retention period set | Privacy policy and storage |
 | S10 | Whether each tee has its own par and stroke indexes | One shared allocation until confirmed | Correct net scoring on a tee with its own allocation; `tee_holes` schema |
 
-S1 is done: the schema is applied. The first remaining action is the functional verification in
-section 10. The other decisions can be answered while the workflow is built, but S2, S5 and S8 must
-be answered before a tournament is activated for official scoring.
+S1 is done: the schema is applied and the main path verified. The remaining verification items are
+listed in section 10. The other decisions can be answered while the workflow is built, but S2, S5 and
+S8 must be answered before a tournament is activated for official scoring.
 
 ---
 
 ## 10. Verification of the applied workflow
 
 The schema and workflow are applied. Run the functional checks against a disposable event, not the
-real tournament. While the CLI can reach the project, the safest form is a temporary migration that
-creates its own event, exercises the RPCs, asserts the rows and raises at the end so the whole
-transaction rolls back. That migration must not be committed.
+real tournament. While the CLI can reach the project, the safest form is a temporary `DO` block (or
+migration) that creates its own event, exercises the RPCs, asserts the rows and raises at the end so
+the whole transaction rolls back. That block must not be committed.
+
+**The 21 Oct 2026 rollback run covered:** steps 2 to 5, the capture-key retry in step 6, provisional
+publication and finalization in steps 8 and 9, and the transaction rollback itself. **Not yet
+covered:** the plus-handicap and 95% allowance comparison in step 3, the image-hash half of step 6,
+concurrent approvals in step 7, the anonymous read in step 8, the negative finalization gates in
+step 9, and the direct status/settings guards in step 10.
 
 1. The schema and workflow are applied. If rebuilding from scratch, apply them in order, with the
    course-map migration already applied.
@@ -524,7 +541,8 @@ transaction rolls back. That migration must not be committed.
 10. Check that a direct `update competition_rounds set status = 'final'` without a final publication
     is refused, and that a scoring setting cannot change after the round leaves draft/open.
 
-Record the result of each check. The workflow is not claimed as verified until these pass.
+Record the result of each check. The main path is verified; the workflow is not claimed as fully
+verified until the remaining items pass.
 
 ---
 
@@ -543,6 +561,6 @@ Record the result of each check. The workflow is not claimed as verified until t
   cards; the engine does not.
 - **Scorecards are personal data.** Names and scores on an image need the same consent and retention
   discipline as photos, and the privacy policy does not mention scorecards yet.
-- **The schema is ahead of the app, and the workflow is unverified.** The migrations are applied, but
-  no app code calls them and the end-to-end checks have not run. Treat the workflow as unverified
-  until the checklist passes; the schema objects themselves are present.
+- **The schema is ahead of the app.** The migrations are applied and the main workflow path is
+  verified, but no app code calls them and the concurrency, image-hash, anonymous-read and negative
+  gate checks have not run. Treat those paths as unverified until the checklist is complete.
