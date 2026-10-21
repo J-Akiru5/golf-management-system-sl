@@ -53,7 +53,7 @@ export default async function PublicPairingsPage() {
       : null;
 
   return (
-    <div className="public mobile-bar-space">
+    <div className="public public-pairings mobile-bar-space">
       <PlayerOfflineNotice path="/pairings" />
       <header className="public-head">
         <div className="flex items-start justify-between gap-3">
@@ -72,7 +72,7 @@ export default async function PublicPairingsPage() {
               {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
               {fmtTime(data.firstTeeTime)}
             </p>
-            <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
+            <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px] lg:text-[56px] lg:leading-[60px]">
               {data.name}
             </h1>
             <p className="text-on-forest-muted">{fmtDateLabel([data.date])}</p>
@@ -85,9 +85,10 @@ export default async function PublicPairingsPage() {
           <b>{t("pairings.failedTitle")}</b> {t("pairings.failedBody")}
         </div>
       ) : !pairings || !published ? (
-        <div className="notice" role="status">
-          <b>{t("pairings.notOutTitle")}</b> {t("pairings.notOutBody")}
-        </div>
+        <section className="pairings-empty" role="status">
+          <h2>{t("pairings.notOutTitle")}</h2>
+          <p>{t("pairings.notOutBody")}</p>
+        </section>
       ) : (
         <>
           <p className="hint no-print" data-testid="pairings-version">

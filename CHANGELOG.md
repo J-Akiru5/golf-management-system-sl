@@ -11,6 +11,13 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+### Changed
+- **`/pairings` has a desktop layout.** `.public` caps every public page at 56rem, which is right for a
+  phone but left the pairings page as a narrow column in the middle of a wide screen. The page now
+  takes 80rem from 1024px up, with a taller header band and a larger event name, and the empty state
+  is a centred dashed panel rather than a bar of text. Nothing below 1024px changes, and the class is
+  scoped to the pairings container so `/my` keeps its phone-first width.
+
 ## [0.20.0] - 2026-10-20
 
 A real footer, and the legal pages the site was missing.
