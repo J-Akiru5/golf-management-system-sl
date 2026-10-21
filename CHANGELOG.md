@@ -11,6 +11,34 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.21.0] - 2026-10-21
+
+The scoring engine and its database, applied before any screen reads them.
+
+### Added
+- **Deterministic scoring engine** (`src/lib/scoring`): gross and net Stableford, the WHS Course and
+  Playing Handicap pipeline, stroke allocation, card validation for webcam, upload and manual entry,
+  multi-card reconciliation with desk resolutions, provisional boards and the finalization gate.
+  Ninety unit tests. Nothing in the app calls it yet.
+- **Scoring schema and workflow**: 15 tables for daily rounds, per-day entries, scorer rotation,
+  handicap snapshots, cards, images, extraction attempts, entries, append-only resolutions and
+  canonical scores, results, immutable publications and a scoring audit; plus guarded functions for
+  submission, approval, rejection, resolution, publication and finalization.
+- **`public_round_results()`**, the anonymous read of the latest published results snapshot.
+
+### Database
+- **Applied 21 Oct 2026** to the live project: `20261035000000_scoring_schema.sql` and
+  `20261036000000_scoring_workflow.sql`. `groups` gained `round_id`; it had zero rows, so the
+  backfill changed nothing. `20261034000000_course_maps.sql` was already applied on 20 Oct.
+- The live schema is ahead of `develop` until this branch merges.
+
+### Notes
+- **The workflow is not functionally verified end to end.** The schema objects are verified through
+  the REST schema, but the temporary rollback migration that exercises the RPCs did not run because
+  the Supabase CLI token reverted to an account without project access.
+- No scorecard screen, OCR, publication screen or official results exist. The tie-break procedure is
+  not implemented; finalization only checks that a confirmed policy exists.
+
 ## [0.20.0] - 2026-10-20
 
 A real footer, and the legal pages the site was missing.
