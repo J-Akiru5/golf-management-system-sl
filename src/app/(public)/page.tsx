@@ -209,6 +209,7 @@ export default async function HomePage() {
             <a href="#experience">The experience</a>
             <a href="#workflow">How it works</a>
             <Link href="/pairings">Player pairings</Link>
+            <Link href="/faq">NGAP FAQ</Link>
           </nav>
           <Link className="site-nav-action" href="/login">
             Sign in <ArrowRight aria-hidden="true" />
