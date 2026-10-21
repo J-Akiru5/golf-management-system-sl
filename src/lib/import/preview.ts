@@ -74,6 +74,7 @@ function summarize(rows: NormalizedRegistrationRow[]): PreviewSummary {
 export function buildPreview(table: SourceTable, options: PreviewOptions): ImportPreview {
   const rows = normalizeRows(table, {
     mapping: options.mapping.mapping as ColumnMapping,
+    dayColumns: options.mapping.dayColumns,
     fixedMembershipType: options.mapping.fixedMembershipType ?? null,
     dateFormat: options.dateFormat,
     days: options.days,

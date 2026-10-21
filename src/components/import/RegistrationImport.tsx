@@ -180,6 +180,7 @@ export function RegistrationImport() {
         JSON.stringify({
           mapping: useMapping.mapping,
           fixedMembershipType: useMapping.fixedMembershipType ?? null,
+          dayColumns: useMapping.dayColumns ?? [],
         }),
       );
     }
@@ -317,6 +318,7 @@ export function RegistrationImport() {
       JSON.stringify({
         mapping: mapping.mapping,
         fixedMembershipType: mapping.fixedMembershipType ?? null,
+        dayColumns: mapping.dayColumns ?? [],
       }),
     );
     body.append("decisions", JSON.stringify(decisions));
@@ -543,6 +545,13 @@ export function RegistrationImport() {
                 ))}
               </div>
             </details>
+            <p className="hint">
+              {mapping.dayColumns?.length
+                ? `Separate day columns: ${mapping.dayColumns
+                    .map((column) => column.header)
+                    .join(", ")}. A TRUE cell selects that day.`
+                : "Playing days come from the GAME DATES column, or the desk chooses them per row."}
+            </p>
             <p className="hint">
               {mapping.unmappedHeaders.length > 0
                 ? `Not used: ${mapping.unmappedHeaders.join(", ")}. Their raw values are kept on the batch row.`

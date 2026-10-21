@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { idempotencyKey, parseWorkbook } from "@/lib/import/file";
-import { validateMapping } from "@/lib/import/mapping";
+import { validateDayColumns, validateMapping } from "@/lib/import/mapping";
 import { buildPreview, toCommitRows } from "@/lib/import/preview";
 import {
   importSession,
@@ -75,9 +75,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     return jsonError(400, e instanceof Error ? e.message : "The workbook could not be read.");
   }
 
-  const mappingInput = parseJsonField<{ mapping?: unknown; fixedMembershipType?: unknown }>(
-    form.get("mapping"),
-  );
+  const mappingInput = parseJsonField<{
+    mapping?: unknown;
+    fixedMembershipType?: unknown;
+    dayColumns?: unknown;
+  }>(form.get("mapping"));
   if (!mappingInput)
     return jsonError(400, "The column mapping is missing. Preview the file again.");
   const validation = validateMapping(
@@ -85,8 +87,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     parsed.table.headers,
     mappingInput.fixedMembershipType,
   );
-  if (!validation.ok) {
-    return jsonError(400, validation.errors.join(" "), { mappingErrors: validation.errors });
+  const dayValidation = validateDayColumns(mappingInput.dayColumns, parsed.table.headers);
+  const mappingErrors = [...validation.errors, ...dayValidation.errors];
+  if (!validation.ok || !dayValidation.ok) {
+    return jsonError(400, mappingErrors.join(" "), { mappingErrors });
   }
 
   const contextResult = await loadTournamentImportContext(
@@ -115,6 +119,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     tournamentId,
     mapping: {
       mapping: validation.mapping,
+      dayColumns: dayValidation.dayColumns,
       confidence: {},
       reasons: {},
       unmappedHeaders: [],

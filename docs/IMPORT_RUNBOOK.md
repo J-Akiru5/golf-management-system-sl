@@ -19,7 +19,8 @@ This is for the Syntaxure Labs person running the import. It assumes migration
 2. Choose the file. If it has more than one worksheet, choose the sheet.
 3. Check the header row and the mapping. The club's usual columns are detected:
    `MEMBER`, `GUEST`, `GAME DATES`, `GENDER`, `DATE OF BIRTH`, `WHS ID/HANDICAP`, `CONTACT NO.`,
-   `EMAIL`, `HOME COURSE`, T-shirt size and `PAID`.
+   `EMAIL`, `HOME COURSE`, T-shirt size and `PAID`. Separate playing-day columns are detected too:
+   `DAY 1` … `DAY N`, or an export such as `day_1` … `day_4`. A TRUE, 1 or YES cell selects that day.
 4. If a column is wrong, change it and press **Refresh preview**. The preview is rebuilt from the
    file, not from the old rows.
 5. Read the tiles:
@@ -30,6 +31,9 @@ This is for the Syntaxure Labs person running the import. It assumes migration
    - **Profiles to review**: new players with no birthdate or gender. They are saved, but the desk
      must complete the profile before they can be routed.
    - **Rejected rows**: rows with a hard problem. The reason is shown against the row.
+   A blank day cell is not treated as FALSE. A row that does not meet the event's day rule (for
+   example, exactly two days) is rejected, even when the player is otherwise valid. Choose the days
+   on the row or correct the workbook; do not guess them.
 6. Work through every **Needs a decision** row:
    - **Link** to the right candidate when it is the same person.
    - **Create separate** only when you know it is a different person with the same name. If the new

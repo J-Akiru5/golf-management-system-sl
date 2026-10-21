@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseWorkbook } from "@/lib/import/file";
-import { suggestMapping, validateMapping } from "@/lib/import/mapping";
+import { suggestMapping, validateDayColumns, validateMapping } from "@/lib/import/mapping";
 import { buildPreview } from "@/lib/import/preview";
 import {
   importSession,
@@ -70,9 +70,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!contextResult.ok) return jsonError(404, contextResult.message);
   const context = contextResult.context;
 
-  const providedMapping = parseJsonField<{ mapping?: unknown; fixedMembershipType?: unknown }>(
-    form.get("mapping"),
-  );
+  const providedMapping = parseJsonField<{
+    mapping?: unknown;
+    fixedMembershipType?: unknown;
+    dayColumns?: unknown;
+  }>(form.get("mapping"));
   let mapping;
   if (providedMapping) {
     const validation = validateMapping(
@@ -80,19 +82,24 @@ export async function POST(request: Request): Promise<NextResponse> {
       parsed.table.headers,
       providedMapping.fixedMembershipType,
     );
-    if (!validation.ok) {
-      return jsonError(400, validation.errors.join(" "), {
-        mappingErrors: validation.errors,
+    const dayValidation = validateDayColumns(providedMapping.dayColumns, parsed.table.headers);
+    const mappingErrors = [...validation.errors, ...dayValidation.errors];
+    if (!validation.ok || !dayValidation.ok) {
+      return jsonError(400, mappingErrors.join(" "), {
+        mappingErrors,
         headers: parsed.table.headers,
       });
     }
+    const usedHeaders = new Set([
+      ...Object.values(validation.mapping).filter((header): header is string => Boolean(header)),
+      ...dayValidation.dayColumns.map((column) => column.header),
+    ]);
     mapping = {
       mapping: validation.mapping,
+      dayColumns: dayValidation.dayColumns,
       confidence: {},
       reasons: {},
-      unmappedHeaders: parsed.table.headers.filter(
-        (h) => !Object.values(validation.mapping).filter(Boolean).includes(h),
-      ),
+      unmappedHeaders: parsed.table.headers.filter((header) => !usedHeaders.has(header)),
       fixedMembershipType: validation.fixedMembershipType,
       source: "manual" as const,
       notes: ["Mapping confirmed by the operator."],

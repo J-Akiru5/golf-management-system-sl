@@ -9,7 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- **Registration workbook day columns**: workbooks that mark each playing day in its own column
+  (`DAY 1` … `DAY N`, or an export such as `day_1` … `day_4`) are now read correctly. A TRUE, 1 or YES
+  cell selects that day; blank cells are not treated as FALSE. The event's playing-day rule is applied
+  exactly as it is for a single `GAME DATES` cell, and a row that does not meet it is rejected and
+  recorded with its reason instead of being guessed. No migration.
+- **Verified against the real 24th Bamboo Tee workbook**: the preview read 144 rows, the commit wrote
+  100 registrations and read back 200 day selections, and 44 rows with blank day assignments were
+  recorded as rejected for the desk to complete.
 
 ## [0.23.0] - 2026-10-21
 
