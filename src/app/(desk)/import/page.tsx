@@ -12,8 +12,10 @@ import { HandicapImport } from "./HandicapImport";
 type Tab = "registrations" | "handicaps";
 
 export default function ImportPage() {
-  const { tournament } = useDesk();
-  const [tab, setTab] = useState<Tab>("registrations");
+  const { tournament, status } = useDesk();
+  // The registration import needs a connected project; in the demo the handicap CSV is the only
+  // import that can be exercised, so that is the tab the page opens on.
+  const [tab, setTab] = useState<Tab>(status === "demo" ? "handicaps" : "registrations");
 
   if (!tournament) return <NeedsTournament what="Imports" />;
 
