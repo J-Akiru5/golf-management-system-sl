@@ -17,7 +17,7 @@ import {
 import type { DeskAccessProblem } from "@/lib/auth/access-problem";
 import { DeskAccessError, getDeskMember } from "@/lib/auth/member";
 import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
-import { daysOfTournament } from "@/lib/data/dates";
+import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
 import { registrationFor } from "@/lib/data/registrations";
 import {
   createQueue,
@@ -440,8 +440,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     const tournament = activeTournament(state);
     const board = boardOf(state);
     const registrations = buildRegistrations(state);
-    const entries = tournament ? entriesFor(state, tournament.id) : [];
     const days = tournament ? (state.days[tournament.id] ?? daysOfTournament(tournament)) : [];
+    const entries = (tournament ? entriesFor(state, tournament.id) : []).map((entry) => ({
+      ...entry,
+      selectedDays: selectedDaysOf(entry, days),
+    }));
     const draw = board.draw;
     const signature = draw?.map((g) => `${g.number}:${g.playerIds.join(",")}`).join("|") ?? "";
     const inDraw = new Set(draw?.flatMap((g) => g.playerIds) ?? []);

@@ -158,6 +158,21 @@ await tabs.nth(1).click();
 await expect(range).toHaveText("1–50 of 110", { timeout: 15000 });
 check("switching tab restarts at page 1", true);
 
+// --------------------------------------------------------------- tee times
+section("/tee-times");
+await go("/tee-times");
+await expect(page.getByRole("heading", { name: "Tee times", exact: true }).first()).toBeVisible({
+  timeout: 30000,
+});
+const teeDayTabs = page.locator('div.seg[aria-label="Playing day"] button');
+check("one tab per playing day", (await teeDayTabs.count()) === 4, `(${await teeDayTabs.count()})`);
+const teeRows = page.locator("tbody tr");
+check("the first day has players", (await teeRows.count()) > 0, `(${await teeRows.count()})`);
+check(
+  "a row has a tee-time input",
+  (await page.locator('input[type="time"]').count()) > 0,
+);
+
 // --------------------------------------------------------------- alerts bell
 section("alerts bell");
 await go("/players");

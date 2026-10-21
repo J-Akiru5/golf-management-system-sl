@@ -4,7 +4,7 @@
  * Everything is done in UTC on purpose: a date field is a calendar day, not an instant, and local
  * time arithmetic would shift it near midnight or across a daylight-saving change.
  */
-import type { Tournament, TournamentDay } from "@/lib/data/types";
+import type { RegistrationEntry, Tournament, TournamentDay } from "@/lib/data/types";
 
 /** Adds whole days to an ISO date (YYYY-MM-DD). An unreadable date is returned unchanged. */
 export function addIsoDays(iso: string, days: number): string {
@@ -47,4 +47,20 @@ export function daysOfTournament(t: Tournament): TournamentDay[] {
       isPlayingDay: true,
     };
   });
+}
+
+/**
+ * The days an entry selected, from the old teePreferences keys, for a demo entry or a database that
+ * predates registration_days. A null preference means the player did not choose that day.
+ */
+export function selectedDaysOf(
+  entry: Pick<RegistrationEntry, "teePreferences" | "selectedDays">,
+  days: TournamentDay[],
+): number[] {
+  if (entry.selectedDays) return entry.selectedDays;
+  const derived = Object.entries(entry.teePreferences)
+    .filter(([, value]) => Boolean(value))
+    .map(([date]) => days.find((day) => day.playDate === date)?.dayNumber)
+    .filter((day): day is number => typeof day === "number");
+  return [...new Set(derived)].sort((a, b) => a - b);
 }
