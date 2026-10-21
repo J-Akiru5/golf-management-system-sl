@@ -9,6 +9,10 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.23.1] - 2026-10-22
+
 ### Fixed
 - **Registration workbook day columns**: workbooks that mark each playing day in its own column
   (`DAY 1` … `DAY N`, or an export such as `day_1` … `day_4`) are now read correctly. A TRUE, 1 or YES
