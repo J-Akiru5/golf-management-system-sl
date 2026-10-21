@@ -504,6 +504,31 @@ S1 is done: the schema is applied and the main path verified. The remaining veri
 listed in section 10. The other decisions can be answered while the workflow is built, but S2, S5 and
 S8 must be answered before a tournament is activated for official scoring.
 
+### Proposed defaults now in code
+
+The user asked for logical starting values that stay configurable. They live in
+`src/lib/scoring/defaults.ts` (`PROPOSED_SCORING_RULES`) and in the per-round database columns. They
+are **proposals**, not the organizer's confirmed rules.
+
+| Setting | Proposed value | Where it is configured |
+| --- | --- | --- |
+| Required cards | 2 independent cards | `competition_rounds.required_cards` |
+| Single-card provisional display | On | `competition_rounds.allow_provisional_single_card` |
+| Tie-break | Back 9, then back 6, then back 3, then the last hole | `tie_break_policies`; the proposed row has empty confirmation fields, so finalization stays blocked |
+| Finalization authority | Organizer (owner also allowed) | `competition_rounds.finalization_authority` |
+| Provisional publication | Verified holes only | `competition_rounds.provisional_publication` |
+| Scorer rotation | Reciprocal cycle: each player marks the next, last marks the first | `scorer_rotation_policies` / `scorer_assignments`; helper `reciprocalRotation()` |
+| Allowance | 100% | `competition_rounds.allowance` |
+| Handicap rounding | WHS two-step | `competition_rounds.handicap_rounding` |
+| Multi-day eligibility | Each day independent | `competition_rounds` / `round_entries` |
+| OCR confidence | 0.85 | `competition_rounds.min_ocr_confidence` |
+| Stroke range | 1 to 20 | `competition_rounds.stroke_min` / `stroke_max` |
+
+None of these values is hard-coded into the engine. Changing a round's configuration changes the
+result; the proposed constant is only the starting point for a new event and the sample round. The
+tie-break is deliberately unconfirmed, so the current gate still refuses to finalize until the
+organizer supplies the written rule.
+
 ---
 
 ## 10. Verification of the applied workflow

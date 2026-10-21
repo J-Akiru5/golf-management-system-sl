@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PROPOSED_SCORING_RULES } from "../defaults";
 import { calculateHandicap } from "../handicap";
 import { deriveCanonicalHoleScores } from "../reconcile";
 import { buildStandings, checkFinalization } from "../standings";
@@ -355,6 +356,14 @@ describe("finalization gate", () => {
 
   it("blocks without the organizer's tie-break rule", () => {
     const readiness = finalize({ tieBreak: null });
+    expect(readiness.ready).toBe(false);
+    expect(readiness.blockers).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "tie_break_unconfirmed" })]),
+    );
+  });
+
+  it("does not treat the proposed default tie-break as confirmed", () => {
+    const readiness = finalize({ tieBreak: PROPOSED_SCORING_RULES.tieBreak });
     expect(readiness.ready).toBe(false);
     expect(readiness.blockers).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: "tie_break_unconfirmed" })]),
