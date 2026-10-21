@@ -23,6 +23,7 @@ import {
   type PlayerPickItem,
   PlayerQuickPick,
   RegisterConfirm,
+  RegistrationDaysEditor,
   RegistrationRow,
   SaveTruth,
 } from "@/components/desk";
@@ -33,7 +34,12 @@ import { usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
 import { instructionText } from "@/lib/data/instructions";
 import { fmtIso } from "@/lib/data/labels";
-import { PAYMENT_LABEL, type PaymentStatus, type PlayerRecord } from "@/lib/data/types";
+import {
+  PAYMENT_LABEL,
+  type PaymentStatus,
+  type PlayerRecord,
+  type RegistrationEntry,
+} from "@/lib/data/types";
 import { fmtIndex, photoOf } from "@/lib/format";
 import { shrinkPhoto } from "@/lib/photo";
 import { useDesk } from "@/lib/store/desk-store";
@@ -67,6 +73,7 @@ interface Draft {
   guestShirt: string;
   declaredWshId: string;
   declaredWshHandicap: string;
+  selectedDays: number[];
   teePreferences: Record<string, string>;
   extra: Record<string, string>;
   paymentStatus: PaymentStatus;
@@ -92,13 +99,15 @@ const emptyDraft = (): Draft => ({
   guestShirt: "",
   declaredWshId: "",
   declaredWshHandicap: "",
+  selectedDays: [],
   teePreferences: {},
   extra: {},
   paymentStatus: "not_recorded",
 });
 
 function RegisterDesk() {
-  const { tournament, players, entries, regById, adapters, dispatch, status, names } = useDesk();
+  const { tournament, players, entries, regById, adapters, dispatch, status, names, days } =
+    useDesk();
   const params = useSearchParams();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [query, setQuery] = useState("");
@@ -164,6 +173,20 @@ function RegisterDesk() {
   );
   const { page, setPage } = usePagedList(orderedRows, listQuery);
 
+  async function saveDays(entry: RegistrationEntry, next: number[]) {
+    if (tournament?.requiredDays !== null && tournament?.requiredDays !== undefined) {
+      if (next.length !== tournament.requiredDays) {
+        throw new Error(`This event requires exactly ${tournament.requiredDays} playing day(s).`);
+      }
+    }
+    if (tournament?.maxDays !== null && tournament?.maxDays !== undefined) {
+      if (next.length > tournament.maxDays) {
+        throw new Error(`This event allows at most ${tournament.maxDays} playing day(s).`);
+      }
+    }
+    await adapters.registrations.setDays(entry.id, next);
+  }
+
   if (!tournament) return <NeedsTournament what="The registration desk" />;
 
   const instructions = instructionText(tournament.registration.instructions);
@@ -188,6 +211,16 @@ function RegisterDesk() {
       out.push(
         `${tournament?.registration.sponsorQuestion ?? "Sponsor question"} Answer yes or no.`,
       );
+    if (tournament?.requiredDays !== null && tournament?.requiredDays !== undefined) {
+      if (draft.selectedDays.length !== tournament.requiredDays) {
+        out.push(`This event requires exactly ${tournament.requiredDays} playing day(s).`);
+      }
+    }
+    if (tournament?.maxDays !== null && tournament?.maxDays !== undefined) {
+      if (draft.selectedDays.length > tournament.maxDays) {
+        out.push(`This event allows at most ${tournament.maxDays} playing day(s).`);
+      }
+    }
     for (const f of tournament?.registration.fields ?? []) {
       if (!f.required) continue;
       if (f.appliesTo !== "both" && f.appliesTo !== draft.role) continue;
@@ -239,6 +272,7 @@ function RegisterDesk() {
           draft.teePreferences[d.date] || null,
         ]),
       ),
+      selectedDays: draft.selectedDays,
       declaredWshId: draft.declaredWshId.trim() || null,
       declaredWshHandicap: draft.declaredWshHandicap.trim() || null,
       extra: draft.extra,
@@ -733,36 +767,84 @@ function RegisterDesk() {
                   </fieldset>
 
                   <fieldset className="grid gap-3">
+                    <legend className="overline float-left mb-2 w-full">Playing days</legend>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {days.map((day) => {
+                        const checked = draft.selectedDays.includes(day.dayNumber);
+                        return (
+                          <label
+                            key={day.id}
+                            className="flex items-start gap-2 rounded-[10px] border border-line px-3 py-2"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={checked}
+                              onChange={() =>
+                                set({
+                                  selectedDays: checked
+                                    ? draft.selectedDays.filter((n) => n !== day.dayNumber)
+                                    : [...draft.selectedDays, day.dayNumber].sort((a, b) => a - b),
+                                })
+                              }
+                            />
+                            <span className="min-w-0">
+                              <b className="block">
+                                {day.label} · {fmtIso(day.playDate)}
+                              </b>
+                              <span className="hint block">
+                                {day.startTime ? `Starts ${day.startTime}` : "Start time not set"}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="hint">
+                      {tournament.requiredDays !== null && tournament.requiredDays !== undefined
+                        ? `This event requires exactly ${tournament.requiredDays} day(s).`
+                        : tournament.maxDays !== null && tournament.maxDays !== undefined
+                          ? `Choose up to ${tournament.maxDays} day(s).`
+                          : "Choose the days this player is entered for. The desk can change them later."}
+                    </p>
+                  </fieldset>
+
+                  <fieldset className="grid gap-3">
                     <legend className="overline float-left mb-2 w-full">
-                      Game-date and tee-time preferences
+                      Tee-time preferences for the selected days
                     </legend>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      {tournament.registration.teeTimes.map((d) => (
-                        <label key={d.date} className="field">
-                          <span className="flex flex-wrap items-center gap-1.5">
-                            {d.label} · {fmtIso(d.date)}
-                            {d.needsConfirmation && (
-                              <span className="pill warn">Confirm the time</span>
-                            )}
-                          </span>
-                          <select
-                            value={draft.teePreferences[d.date] ?? ""}
-                            onChange={(e) =>
-                              set({
-                                teePreferences: {
-                                  ...draft.teePreferences,
-                                  [d.date]: e.target.value,
-                                },
-                              })
-                            }
-                          >
-                            <option value="">Not given</option>
-                            {d.options.map((o) => (
-                              <option key={o}>{o}</option>
-                            ))}
-                          </select>
-                        </label>
-                      ))}
+                      {tournament.registration.teeTimes
+                        .filter((d) => {
+                          const day = days.find((x) => x.playDate === d.date);
+                          return day ? draft.selectedDays.includes(day.dayNumber) : false;
+                        })
+                        .map((d) => (
+                          <label key={d.date} className="field">
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              {d.label} · {fmtIso(d.date)}
+                              {d.needsConfirmation && (
+                                <span className="pill warn">Confirm the time</span>
+                              )}
+                            </span>
+                            <select
+                              value={draft.teePreferences[d.date] ?? ""}
+                              onChange={(e) =>
+                                set({
+                                  teePreferences: {
+                                    ...draft.teePreferences,
+                                    [d.date]: e.target.value,
+                                  },
+                                })
+                              }
+                            >
+                              <option value="">Not given</option>
+                              {d.options.map((o) => (
+                                <option key={o}>{o}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ))}
                     </div>
                     <p className="hint">
                       Saved as preferences. The draw decides the real start; nothing here confirms a
@@ -1015,7 +1097,16 @@ function RegisterDesk() {
           <div className="grid gap-2">
             {page.items.map(({ e, r, p }) => {
               if (!p) return null;
-              const preferred = Object.values(e.teePreferences).filter(Boolean);
+              const selectedDays = e.selectedDays ?? [];
+              const preferred = Object.entries(e.teePreferences)
+                .filter(([date, value]) => {
+                  if (!value) return false;
+                  return selectedDays.some(
+                    (dayNumber) =>
+                      days.find((day) => day.dayNumber === dayNumber)?.playDate === date,
+                  );
+                })
+                .map(([, value]) => value);
               return (
                 <RegistrationRow
                   key={e.id}
@@ -1029,12 +1120,24 @@ function RegisterDesk() {
                   flightName={r && r.flightId ? names.flight(r.flightId) : null}
                   paymentStatus={e.paymentStatus}
                   shirt={e.shirt}
+                  daysNote={
+                    selectedDays.length
+                      ? `Days ${selectedDays.join(", ")}`
+                      : "No playing days selected"
+                  }
                   teePreferenceNote={
                     preferred.length ? `prefers ${preferred.join(", ")}` : "no tee preference given"
                   }
                   profileHref={`/players/${p.id}`}
                   actions={
                     <>
+                      <RegistrationDaysEditor
+                        entry={e}
+                        days={days}
+                        required={tournament.requiredDays}
+                        max={tournament.maxDays}
+                        onSave={(next) => saveDays(e, next)}
+                      />
                       {r?.frozenOutdated && (
                         <Button
                           variant="secondary"

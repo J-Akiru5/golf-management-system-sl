@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addIsoDays, nextPlayDay } from "./dates";
+import { makeDemoTournaments } from "@/lib/demo/data";
+import { addIsoDays, daysOfTournament, nextPlayDay } from "./dates";
 
 describe("addIsoDays", () => {
   it("adds a day inside the same month", () => {
@@ -34,5 +35,45 @@ describe("nextPlayDay", () => {
   it("falls back to tomorrow when even the fallback is unreadable", () => {
     const next = nextPlayDay([], "not-a-date");
     expect(next).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("daysOfTournament", () => {
+  it("derives one structured day per event date when the database has no day rows", () => {
+    const tournament = makeDemoTournaments()[0];
+    expect(tournament).toBeDefined();
+    if (!tournament) return;
+    const withoutDays = {
+      ...tournament,
+      days: undefined,
+      registration: { ...tournament.registration, teeTimes: [] },
+    };
+    const days = daysOfTournament(withoutDays);
+    expect(days).toHaveLength(withoutDays.dates.length);
+    expect(days[0]?.dayNumber).toBe(1);
+    expect(days[0]?.playDate).toBe(withoutDays.dates[0]);
+    expect(days[0]?.startTime).toBe(withoutDays.config.firstTeeTime);
+    expect(days[1]?.startTime).toBeNull();
+  });
+
+  it("uses the saved structured days when they exist", () => {
+    const tournament = makeDemoTournaments()[0];
+    expect(tournament).toBeDefined();
+    if (!tournament) return;
+    const days = daysOfTournament({
+      ...tournament,
+      days: [
+        {
+          id: "d1",
+          dayNumber: 1,
+          playDate: "2026-11-12",
+          label: "Day 1",
+          startTime: "06:30",
+          isPlayingDay: true,
+        },
+      ],
+    });
+    expect(days).toHaveLength(1);
+    expect(days[0]?.id).toBe("d1");
   });
 });

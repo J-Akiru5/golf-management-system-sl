@@ -1,15 +1,18 @@
 import type { Dispatch } from "react";
 import { courseNumbersChanged } from "@/lib/data/course-data";
+import { daysOfTournament } from "@/lib/data/dates";
 import { explainRegistration, type RoutingExplanation } from "@/lib/data/explain";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import type { SetupSection } from "@/lib/data/setup-payload";
 import type {
+  DayTeeAssignment,
   HandicapRecord,
   Hole,
   PaymentStatus,
   PlayerRecord,
   RegistrationEntry,
   Tournament,
+  TournamentDay,
 } from "@/lib/data/types";
 import { SAMPLE_NGAP_CSV } from "@/lib/demo/data";
 import {
@@ -62,6 +65,8 @@ export interface NewEntryInput {
   sponsor: boolean | null;
   shirt: string | null;
   teePreferences: Record<string, string | null>;
+  /** Selected tournament day numbers. Empty means the desk has not chosen yet. */
+  selectedDays: number[];
   declaredWshId: string | null;
   declaredWshHandicap: string | null;
   extra: Record<string, string>;
@@ -87,6 +92,10 @@ export interface TournamentRepository {
   select(id: string | null): void;
   save(tournament: Tournament): void;
   createFromTemplate(name: string, date: string): Tournament;
+  /** The structured days of one event. Demo derives them from the old date list. */
+  days(tournamentId: string): TournamentDay[];
+  /** Owner/organizer only; the database function enforces it. */
+  saveDayRule(tournamentId: string, required: number | null, max: number | null): Promise<void>;
 }
 
 /**
@@ -123,6 +132,22 @@ export interface RegistrationRepository {
   remove(id: string): void;
   /** Copies the latest index on or before the cut-off onto the entries again. */
   refreeze(tournamentId: string, entryIds?: string[]): void;
+  /** Replaces the player's selected day numbers. Resolves after the database accepts them. */
+  setDays(entryId: string, days: number[]): Promise<void>;
+  /** Assigns the confirmed tee time and start hole for one selected day. */
+  assignDayTee(entryId: string, dayNumber: number, assignment: DayTeeAssignment): Promise<void>;
+}
+
+export interface ImportCommitResult {
+  ok: boolean;
+  partial?: boolean;
+  alreadyCommitted?: boolean;
+  batchId?: string;
+  inserted?: number;
+  updated?: number;
+  skipped?: number;
+  rejected?: number;
+  message?: string;
 }
 
 export interface HandicapImportAdapter {
@@ -134,7 +159,8 @@ export interface HandicapImportAdapter {
     missing: (keyof ColumnMapping)[];
   };
   review(file: ParsedFile, players: PlayerRecord[], options: ImportOptions): MergeQueue;
-  apply(payload: ApplyImportPayload): void;
+  /** Resolves only after the database has committed the batch, or rejects with the reason. */
+  apply(payload: ApplyImportPayload): Promise<ImportCommitResult>;
 }
 
 export interface PairingsRouter {
@@ -218,6 +244,20 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       dispatch({ type: "selectTournament", id: t.id });
       return t;
     },
+    days: (tournamentId) => {
+      const existing = state.days[tournamentId];
+      if (existing?.length) return existing;
+      const tournament = state.tournaments.find((t) => t.id === tournamentId);
+      return tournament ? daysOfTournament(tournament) : [];
+    },
+    saveDayRule: async (tournamentId, required, max) => {
+      const tournament = state.tournaments.find((t) => t.id === tournamentId);
+      if (!tournament) throw new Error("That event was not found.");
+      dispatch({
+        type: "saveTournament",
+        tournament: { ...tournament, requiredDays: required, maxDays: max },
+      });
+    },
   };
 
   const registrations: RegistrationRepository = {
@@ -236,6 +276,8 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         sponsor: input.sponsor,
         shirt: input.shirt,
         teePreferences: input.teePreferences,
+        selectedDays: input.selectedDays,
+        dayTee: {},
         declaredWshId: input.declaredWshId,
         declaredWshHandicap: input.declaredWshHandicap,
         extra: input.extra,
@@ -250,6 +292,18 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     update: (id, patch) => dispatch({ type: "updateEntry", id, patch }),
     remove: (id) => dispatch({ type: "removeEntry", id }),
     refreeze: (tournamentId, entryIds) => dispatch({ type: "refreeze", tournamentId, entryIds }),
+    setDays: async (entryId, days) => {
+      dispatch({ type: "updateEntry", id: entryId, patch: { selectedDays: days } });
+    },
+    assignDayTee: async (entryId, dayNumber, assignment) => {
+      const entry = state.entries.find((item) => item.id === entryId);
+      if (!entry) throw new Error("That registration was not found.");
+      dispatch({
+        type: "updateEntry",
+        id: entryId,
+        patch: { dayTee: { ...(entry.dayTee ?? {}), [dayNumber]: assignment } },
+      });
+    },
   };
 
   const imports: HandicapImportAdapter = {
@@ -269,7 +323,15 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         })),
         options,
       ),
-    apply: (payload) => dispatch({ type: "applyImport", payload }),
+    apply: (payload) => {
+      dispatch({ type: "applyImport", payload });
+      return Promise.resolve({
+        ok: true,
+        inserted: payload.rows.length,
+        skipped: payload.deferred.length,
+        batchId: `demo-${Date.now().toString(36)}`,
+      });
+    },
   };
 
   const router: PairingsRouter = {

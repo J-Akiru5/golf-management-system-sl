@@ -146,6 +146,12 @@ export const en = {
       yes: "Yes",
       no: "No",
       teeTimes: "Preferred tee times",
+      playingDays: "Playing days",
+      playingDaysHelp:
+        "Choose the days you will play. This is separate from a tee-time preference.",
+      playingDaysRequired: "Choose exactly {count} playing day(s).",
+      playingDaysMax: "Choose at most {count} playing day(s).",
+      startsAt: "Starts {time}",
       day: "Day {number}",
       toBeConfirmed: " (to be confirmed)",
       noPreference: "No preference",

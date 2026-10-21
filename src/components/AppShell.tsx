@@ -2,6 +2,7 @@
 
 import {
   Bell,
+  CalendarClock,
   CircleUserRound,
   ClipboardList,
   Download,
@@ -117,6 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       alert: registerAttention > 0,
       group: "main",
     },
+    { href: "/tee-times", label: "Tee times", icon: CalendarClock, group: "main" },
     {
       href: "/import",
       label: "Handicap imports",
