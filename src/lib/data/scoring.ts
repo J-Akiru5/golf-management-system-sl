@@ -1,3 +1,4 @@
+import type { FinalizationAuthority } from "@/lib/scoring";
 import {
   buildStandings,
   type CanonicalRound,
@@ -19,6 +20,8 @@ export type ScoringRoundStatus = "draft" | "open" | "scoring" | "provisional" | 
 
 export interface ScoringPlayerSeed {
   registrationId: string;
+  /** The per-day entry, when the connected repository has one. The demo does not need it. */
+  roundEntryId?: string;
   playerId: string;
   playerName: string;
   flightId: string | null;
@@ -45,6 +48,7 @@ export interface ScoringRoundSeed {
   resolutions?: readonly Resolution[];
   tieBreak?: TieBreakPolicy | null;
   approvedBy?: string | null;
+  finalizationAuthority?: FinalizationAuthority | null;
   roundStatus?: ScoringRoundStatus;
   provisionalPublication?: boolean;
 }
@@ -63,6 +67,7 @@ export interface ScoringRoundView {
   requiredCards: number | null;
   tieBreak: TieBreakPolicy | null;
   approvedBy: string | null;
+  finalizationAuthority: FinalizationAuthority | null;
   publications: ScoringPublication[];
   provisionalPublication: boolean;
 }
@@ -170,6 +175,7 @@ export function createDemoScoringRepository(
       requiredCards: seed.policy.requiredCards,
       tieBreak: seed.tieBreak ?? null,
       approvedBy: seed.approvedBy ?? null,
+      finalizationAuthority: seed.finalizationAuthority ?? null,
       publications: publications.map((publication) => ({ ...publication })),
       provisionalPublication: seed.provisionalPublication ?? false,
     };
@@ -326,6 +332,12 @@ export function createDemoScoringRepository(
 
     async finalizeRound(tournamentId) {
       assertTournament(tournamentId);
+      if (!seed.finalizationAuthority) {
+        throw new Error("The final approval authority has not been confirmed.");
+      }
+      if (seed.finalizationAuthority === "committee") {
+        throw new Error("Committee finalization is not implemented.");
+      }
       const current = view();
       if (!current.finalization.ready) {
         throw new Error(current.finalization.blockers.map((blocker) => blocker.message).join(" "));

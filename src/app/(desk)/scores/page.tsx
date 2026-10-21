@@ -7,10 +7,11 @@ import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { createDemoScoringRepository, type ScoringRoundView } from "@/lib/data/scoring";
-import { buildDemoScoringSeed } from "@/lib/demo/scoring";
+import type { ScoringRoundView } from "@/lib/data/scoring";
 import {
   type CardIssue,
+  type HoleDefinition,
+  reciprocalRotation,
   type Scorecard,
   type StandingsBoard,
   type StandingsRow,
@@ -18,16 +19,11 @@ import {
 } from "@/lib/scoring";
 import { useDesk } from "@/lib/store/desk-store";
 
-const SEED = buildDemoScoringSeed();
-const PLAYERS = SEED.players;
-const HOLES = SEED.course.holes;
-const TOTAL_PAR = HOLES.reduce((sum, hole) => sum + hole.par, 0);
-
 const DEMO_NOTICE =
   "Sample scoring preview. Cards, approvals, resolutions and standings live in this browser only and are not written to the database. The scoring schema and RPCs are applied; this screen is not wired to them yet.";
 
-function emptyStrokes(): Record<number, string> {
-  return Object.fromEntries(HOLES.map((hole) => [hole.number, String(hole.par)]));
+function strokesFor(holes: readonly HoleDefinition[]): Record<number, string> {
+  return Object.fromEntries(holes.map((hole) => [hole.number, String(hole.par)]));
 }
 
 function issueLabel(issues: CardIssue[]): string {
@@ -37,33 +33,62 @@ function issueLabel(issues: CardIssue[]): string {
 }
 
 export default function ScoresPage() {
-  const { member, tournament } = useDesk();
-  const [repository] = useState(() => createDemoScoringRepository(SEED, { actor: "desk-demo" }));
+  const { member, tournament, scoring, status } = useDesk();
+  const tournamentId = tournament?.id ?? "";
   const [view, setView] = useState<ScoringRoundView | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [playerId, setPlayerId] = useState(PLAYERS[0]?.playerId ?? "");
-  const [scorerId, setScorerId] = useState(PLAYERS[1]?.playerId ?? "");
-  const [strokes, setStrokes] = useState<Record<number, string>>(emptyStrokes);
+  const [playerId, setPlayerId] = useState("");
+  const [scorerId, setScorerId] = useState("");
+  const [strokes, setStrokes] = useState<Record<number, string>>({});
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
   const [resolutionDrafts, setResolutionDrafts] = useState<
     Record<string, { strokes: string; reason: string }>
   >({});
 
+  const players = view?.players ?? [];
+  const holes = view?.course.holes ?? [];
+  const totalPar = holes.reduce((sum, hole) => sum + hole.par, 0);
+  const courseKey = view
+    ? `${view.roundId}:${holes.map((hole) => `${hole.number}:${hole.par}:${hole.strokeIndex}`).join("|")}`
+    : "";
+
   useEffect(() => {
+    if (!tournamentId) return;
     let cancelled = false;
-    repository
-      .loadRound(SEED.tournamentId)
+    setLoaded(false);
+    setError(null);
+    scoring
+      .loadRound(tournamentId)
       .then((next) => {
-        if (!cancelled) setView(next);
+        if (cancelled) return;
+        setView(next);
+        setLoaded(true);
       })
       .catch((reason: unknown) => {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason));
+        if (cancelled) return;
+        setError(reason instanceof Error ? reason.message : String(reason));
+        setLoaded(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [repository]);
+  }, [scoring, tournamentId]);
+
+  useEffect(() => {
+    if (!view) return;
+    setStrokes(strokesFor(view.course.holes));
+    const first = view.players[0]?.playerId ?? "";
+    const rotation = reciprocalRotation(view.players.map((player) => player.playerId));
+    setPlayerId(first);
+    setScorerId(
+      rotation.find((assignment) => assignment.playerId === first)?.scorerId ??
+        view.players[1]?.playerId ??
+        "",
+    );
+    // Reset the entry form only when the round or its course changes, not after every approval.
+  }, [courseKey]);
 
   const conflicts = useMemo(() => {
     if (!view) return [];
@@ -74,7 +99,7 @@ export default function ScoresPage() {
     );
   }, [view]);
 
-  const writtenTotal = HOLES.reduce((sum, hole) => {
+  const writtenTotal = holes.reduce((sum, hole) => {
     const value = Number(strokes[hole.number]);
     return sum + (Number.isInteger(value) ? value : 0);
   }, 0);
@@ -97,7 +122,7 @@ export default function ScoresPage() {
       setError("A player cannot mark their own card.");
       return;
     }
-    const entries = HOLES.map((hole) => ({
+    const entries = holes.map((hole) => ({
       hole: hole.number,
       strokes: Number(strokes[hole.number]),
       confidence: null,
@@ -108,7 +133,7 @@ export default function ScoresPage() {
       return;
     }
     void run(() =>
-      repository.submitCard(SEED.tournamentId, {
+      scoring.submitCard(tournamentId, {
         playerId,
         scorerId,
         source: "manual",
@@ -132,7 +157,7 @@ export default function ScoresPage() {
       return;
     }
     void run(() =>
-      repository.resolveHole(SEED.tournamentId, {
+      scoring.resolveHole(tournamentId, {
         playerId: playerIdToResolve,
         hole,
         strokes: value,
@@ -165,19 +190,28 @@ export default function ScoresPage() {
               disabled={busy}
             >
               <RotateCcw className="size-4" aria-hidden="true" />
-              Reset preview
+              Refresh
             </Button>
           </>
         }
       >
-        Gross and net Stableford from approved hole scores. The sample round uses placeholder pars
-        and stroke indexes and never writes to the live database.
+        {status === "demo"
+          ? "Gross and net Stableford from approved hole scores. The sample round uses placeholder pars and stroke indexes and never writes to the live database."
+          : "Gross and net Stableford from approved hole scores. Cards and desk decisions are written through the guarded database functions."}
       </PageHeader>
 
-      <div className="notice warn" role="note">
-        <b>Sample round. </b>
-        {DEMO_NOTICE}
-      </div>
+      {status === "demo" ? (
+        <div className="notice warn" role="note">
+          <b>Sample round. </b>
+          {DEMO_NOTICE}
+        </div>
+      ) : (
+        <div className="notice info" role="note">
+          <b>Connected round. </b>
+          Only approved cards and desk resolutions become canonical. Publication and finalization
+          stay blocked until the configured gates are met.
+        </div>
+      )}
 
       {error && (
         <div className="notice bad" role="alert">
@@ -186,15 +220,25 @@ export default function ScoresPage() {
       )}
 
       {!view ? (
-        <div className="card" role="status">
-          Loading the sample scoring round…
-        </div>
+        loaded ? (
+          <div className="card grid gap-2">
+            <h2>No scoring round configured</h2>
+            <p className="muted">
+              This event has no daily scoring round yet, or its course and tee data are incomplete.
+              Set up the course, holes and round first; then this screen can load the field.
+            </p>
+          </div>
+        ) : (
+          <div className="card" role="status">
+            Loading the scoring round…
+          </div>
+        )
       ) : (
         <>
           <section className="tiles" aria-label="Scoring at a glance">
             <div className="tile">
               <b className="mono">{view.players.length}</b>
-              <span>Players in the sample round</span>
+              <span>Players in the round</span>
             </div>
             <div className="tile">
               <b className="mono">{view.cards.length}</b>
@@ -231,10 +275,26 @@ export default function ScoresPage() {
                     <span>Player</span>
                     <select
                       value={playerId}
-                      onChange={(event) => setPlayerId(event.target.value)}
-                      disabled={busy}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        setPlayerId(next);
+                        if (next === scorerId) {
+                          const rotation = reciprocalRotation(
+                            players.map((player) => player.playerId),
+                          );
+                          const mapped = rotation.find(
+                            (assignment) => assignment.playerId === next,
+                          )?.scorerId;
+                          setScorerId(
+                            mapped ??
+                              players.find((player) => player.playerId !== next)?.playerId ??
+                              "",
+                          );
+                        }
+                      }}
+                      disabled={busy || players.length < 2}
                     >
-                      {PLAYERS.map((player) => (
+                      {players.map((player) => (
                         <option key={player.playerId} value={player.playerId}>
                           {player.playerName}
                         </option>
@@ -246,19 +306,33 @@ export default function ScoresPage() {
                     <select
                       value={scorerId}
                       onChange={(event) => setScorerId(event.target.value)}
-                      disabled={busy}
+                      disabled={busy || players.length < 2}
                     >
-                      {PLAYERS.filter((player) => player.playerId !== playerId).map((player) => (
-                        <option key={player.playerId} value={player.playerId}>
-                          {player.playerName}
-                        </option>
-                      ))}
+                      {players
+                        .filter((player) => player.playerId !== playerId)
+                        .map((player) => (
+                          <option key={player.playerId} value={player.playerId}>
+                            {player.playerName}
+                          </option>
+                        ))}
                     </select>
                   </label>
                 </div>
 
+                <p className="hint">
+                  Proposed rotation: each player marks the next, and the last marks the first.
+                  Change the marker if the desk assigned a different one.
+                </p>
+
+                {players.length < 2 && (
+                  <p className="notice warn" role="status">
+                    At least two active players are needed before a card can be entered: one player
+                    and one marker.
+                  </p>
+                )}
+
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                  {HOLES.map((hole) => (
+                  {holes.map((hole) => (
                     <label key={hole.number} className="field">
                       <span className="text-[11px]">
                         H{hole.number} · par {hole.par} · SI {hole.strokeIndex}
@@ -284,13 +358,13 @@ export default function ScoresPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="hint">
                     Written total <b className="mono">{writtenTotal}</b> · par{" "}
-                    <b className="mono">{TOTAL_PAR}</b>
+                    <b className="mono">{totalPar}</b>
                   </p>
                   <div className="flex gap-2">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setStrokes(emptyStrokes())}
+                      onClick={() => setStrokes(strokesFor(holes))}
                       disabled={busy}
                     >
                       Reset to par
@@ -299,7 +373,7 @@ export default function ScoresPage() {
                       variant="primary"
                       size="sm"
                       onClick={submitCard}
-                      disabled={busy}
+                      disabled={busy || players.length < 2}
                       data-help="scores-submit"
                     >
                       Submit card
@@ -343,7 +417,7 @@ export default function ScoresPage() {
                           }
                           onApprove={() =>
                             void run(() =>
-                              repository.approveCard(SEED.tournamentId, card.id, "Desk approval"),
+                              scoring.approveCard(tournamentId, card.id, "Desk approval"),
                             )
                           }
                           onReject={() => {
@@ -352,9 +426,7 @@ export default function ScoresPage() {
                               setError("A rejection needs a reason.");
                               return;
                             }
-                            void run(() =>
-                              repository.rejectCard(SEED.tournamentId, card.id, reason),
-                            );
+                            void run(() => scoring.rejectCard(tournamentId, card.id, reason));
                           }}
                         />
                       ))}
@@ -484,12 +556,16 @@ export default function ScoresPage() {
                     ? "Provisional published"
                     : "Scoring open"}
               </span>
+              <span className="pill">Authority: {view.finalizationAuthority ?? "not set"}</span>
             </div>
 
-            {view.finalization.blockers.length > 0 ? (
+            {view.finalization.blockers.length > 0 || !view.finalizationAuthority ? (
               <div className="notice warn" role="status">
                 <b>Finalization is blocked:</b>
                 <ul>
+                  {!view.finalizationAuthority && (
+                    <li>The final approval authority has not been confirmed.</li>
+                  )}
                   {view.finalization.blockers.map((blocker) => (
                     <li
                       key={`${blocker.code}-${blocker.playerId ?? "round"}-${blocker.hole ?? ""}`}
@@ -517,9 +593,7 @@ export default function ScoresPage() {
                   size="sm"
                   disabled={busy || view.roundStatus === "final" || !view.provisionalPublication}
                   onClick={() =>
-                    void run(() =>
-                      repository.publishRound(SEED.tournamentId, "Sample provisional publication"),
-                    )
+                    void run(() => scoring.publishRound(tournamentId, "Provisional publication"))
                   }
                 >
                   Publish provisional
@@ -534,11 +608,14 @@ export default function ScoresPage() {
                 <Button
                   variant="gold"
                   size="sm"
-                  disabled={busy || !view.finalization.ready || view.roundStatus === "final"}
+                  disabled={
+                    busy ||
+                    !view.finalization.ready ||
+                    !view.finalizationAuthority ||
+                    view.roundStatus === "final"
+                  }
                   onClick={() =>
-                    void run(() =>
-                      repository.finalizeRound(SEED.tournamentId, "Sample final publication"),
-                    )
+                    void run(() => scoring.finalizeRound(tournamentId, "Final publication"))
                   }
                 >
                   Finalize results
@@ -546,8 +623,9 @@ export default function ScoresPage() {
               </RoleGate>
             </div>
             <p className="hint">
-              The sample round has no organizer tie-break rule, so finalization stays blocked on
-              purpose. The engine and the database gate the same requirement.
+              {status === "demo"
+                ? "The sample uses a proposed tie-break that is deliberately unconfirmed, so finalization stays blocked. The organizer's written rule is still required."
+                : "Finalization stays blocked until the organizer's card count, net results, tie-break rule and final approval authority are all recorded."}
             </p>
           </SectionCard>
         </>
@@ -574,9 +652,9 @@ function CardRow({
   onReject: () => void;
 }) {
   const playerName =
-    PLAYERS.find((player) => player.playerId === card.playerId)?.playerName ?? card.playerId;
+    view.players.find((player) => player.playerId === card.playerId)?.playerName ?? card.playerId;
   const scorerName =
-    PLAYERS.find((player) => player.playerId === card.scorerId)?.playerName ?? card.scorerId;
+    view.players.find((player) => player.playerId === card.scorerId)?.playerName ?? card.scorerId;
   const validation = validateScorecard(card, {
     course: view.course,
     minOcrConfidence: view.policy.minOcrConfidence,

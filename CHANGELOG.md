@@ -11,6 +11,23 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.23.0] - 2026-10-21
+
+The scorecard workflow now writes through the guarded database functions.
+
+### Added
+- **Connected scoring repository** (`src/lib/data/supabase/scoring.ts`): reads the persisted round,
+  cards, resolutions and snapshots, derives the view with the same pure engine, and writes through
+  the guarded RPCs. `/scores` now uses `desk.scoring`, which is live when Supabase is configured and
+  in-memory in the demo.
+- **Proposed scoring defaults** (`src/lib/scoring/defaults.ts`): two independent cards, single-card
+  provisional display, a proposed back-9 tie-break that stays **unconfirmed**, organizer finalization
+  authority, verified-holes provisional publication, a reciprocal scorer cycle, 100% allowance, WHS
+  rounding, independent days, 0.85 OCR confidence and a 1–20 stroke range. They are starting values
+  stored per round, not hard-coded rules; finalization still blocks until the tie-break is confirmed.
+- **Generated database types** in `src/lib/supabase/generated-types.ts`, used by the scoring adapter.
+  The app’s existing hand-written types remain in place until the wider type migration is scheduled.
+
 ## [0.22.0] - 2026-10-21
 
 Production integrity: imports that persist, the registration workbook, structured playing days, tee
@@ -35,7 +52,7 @@ times, and a clearer sign-in. The scoring engine shipped in 0.21.0.
 - **Sign-in diagnosis**: provider errors now distinguish an unconfirmed email from a wrong password,
   with a resend-confirmation flow and same-browser reset guidance.
 - **NGAP WHS FAQ reference** (`docs/ngap/wsh-faq.md`), reproduced from the 2024 NGAP FAQ with its two
-  source gaps recorded. Not shown in the app yet.
+  source gaps recorded.
 
 ### Fixed
 - **The handicap import reported success before any write and could not create players.** It now

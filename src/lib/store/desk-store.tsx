@@ -19,6 +19,7 @@ import { DeskAccessError, getDeskMember } from "@/lib/auth/member";
 import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
 import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
 import { registrationFor } from "@/lib/data/registrations";
+import { createDemoScoringRepository, type ScoringRepository } from "@/lib/data/scoring";
 import {
   createQueue,
   createSupabaseAdapters,
@@ -31,6 +32,7 @@ import {
   unpublishPairings,
 } from "@/lib/data/supabase/draw-sync";
 import { loadDeskState } from "@/lib/data/supabase/load-desk-state";
+import { createSupabaseScoringRepository } from "@/lib/data/supabase/scoring";
 import type {
   Club,
   DeferredMatch,
@@ -42,6 +44,7 @@ import type {
   Tournament,
   TournamentDay,
 } from "@/lib/data/types";
+import { buildDemoScoringSeed } from "@/lib/demo/scoring";
 import type { DrawGroup } from "@/lib/draw/validate";
 import { NO_DESK_SNAPSHOT_NOTICE, OFFLINE_WRITE_NOTICE, toDeskSnapshot } from "@/lib/offline/cache";
 import { lastDeskUserId, loadDeskSnapshot, saveDeskSnapshot } from "@/lib/offline/store";
@@ -106,6 +109,8 @@ interface Desk {
   pendingRefreeze: DeskRegistration[];
   flags: { playerId: string; message: string }[];
   adapters: Adapters;
+  /** Scorecard workflow. Connected when Supabase is configured, in-memory in the demo. */
+  scoring: ScoringRepository;
   dispatch: Dispatch<Action>;
   /** Preview used by the add-player form: where a draft player would land. */
   classifyDraft: (draft: DraftPlayer) => DeskRegistration | null;
@@ -436,6 +441,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     });
   }, [state, connected, client, dispatch, onEventCreated, revisionStore]);
 
+  const scoring = useMemo<ScoringRepository>(() => {
+    if (!connected || !client) return createDemoScoringRepository(buildDemoScoringSeed());
+    return createSupabaseScoringRepository({ client });
+  }, [connected, client]);
+
   const value = useMemo<Desk>(() => {
     const tournament = activeTournament(state);
     const board = boardOf(state);
@@ -535,6 +545,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       accessProblem,
       saving,
       member: connected ? member : undefined,
+      scoring,
       lastSavedAt,
       offline: connected && (!networkOnline || cachedAt !== null),
       cachedAt,
@@ -543,6 +554,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   }, [
     state,
     adapters,
+    scoring,
     dispatch,
     status,
     error,
