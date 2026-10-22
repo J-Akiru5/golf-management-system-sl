@@ -24,17 +24,20 @@ validator.
 
 The bell already loads the event's registrations. Each alert is derived from that list, not stored:
 
-- A one-minute timer, and returning to the tab, asks the database for **one count**: how many entries
-  for this event are still `needs_review`.
-- When the count rises, the desk reloads once. The new registration is now in the list, so its alert
-  appears with the next render.
-- Nothing reloads on a timer when the count is unchanged, and no reload is triggered by the timer
-  itself. That keeps a half-typed form from being thrown away.
+- Every minute, and on returning to the tab, the bell refreshes the stored alerts on whatever desk
+  screen is open. `sync_notifications` recounts the waiting entries from the database, so the summary
+  moves even when the list on screen is old.
+- On `/register` it also asks for **one count** of entries still `needs_review`. When the count rises,
+  that screen reloads once, so the named alerts and the queue itself update together.
+- Other screens never reload on a timer. Nothing is refreshed when the count is unchanged, and no
+  timer throws away an open setup, draw or scorecard form.
 
 Limits worth stating plainly:
 
 - The alert is in-app only. It appears while a desk screen is open (or when one is next opened).
   Email is Phase 2 and needs the Resend key and a verified sender domain.
+- On screens other than the registration desk, a new entry appears as the counted summary in the
+  bell; the named per-entry alerts appear when the registration desk loads or refreshes.
 - The count is read with the signed-in member's session; a signed-out visitor sees nothing.
 - If the count cannot be read, the bell keeps its last state rather than claiming zero.
 
