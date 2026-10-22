@@ -116,6 +116,7 @@ path, contact, birthdate or handicap.
 | `pnpm test` | Pass, 79 files / 786 tests |
 | `pnpm build` | Pass, Next.js production build; `/caddies`, `/audit` static, `/leaderboard` dynamic |
 | Demo browser checks | Pass, 13/13 in `scripts/verify-caddie-photos-ui.mjs` (`/caddies`, player editor, caddie assignment, `/audit`, `/leaderboard`, `/pairings`; no console errors) |
+| Existing browser suite | Pass, 90/90 in `pnpm verify:ui`; no console errors |
 | Migration syntax | Formatted/parsed by `sql-formatter`; not executed against PostgreSQL |
 | Production migration | **Not applied**; no production evidence claimed |
 | Connected staff click-through | Not possible in this session; preview deployments are protected |
@@ -152,6 +153,8 @@ public bucket or setting it private turns public photos off immediately; do not 
 - Branch `feat/caddie-profiles-public-photos` was pushed to `origin` at commit `58e74ab` (this record
   then adds one docs commit; use the branch head).
 - No pull request was opened and nothing was merged into `develop` or `main`.
+- Pull request: https://github.com/J-Akiru5/golf-management-system-sl/pull/95 (base `develop`, open).
+- Nothing was merged into `develop` or `main`.
 - No tag was created. The owner creates and pushes `v0.24.0` only after review and merge.
 - No Vercel deployment was triggered. The branch is deployment-ineligible under `vercel.json`.
 - `VERSION` and `package.json` are both `0.24.0`; `CHANGELOG.md` has the 0.24.0 section.
