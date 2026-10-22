@@ -16,7 +16,9 @@ can see an entry arrive while the screen is open.
   two players as two, not three.
 
 The same alerts belong to every owner and organizer who can see the event; the registrations read
-through the existing row-level security, so no new access rule was added.
+through the existing row-level security, so no new access rule was added. They are shown on a
+connected desk only: the demo state has no public entry form, so its bell stays driven by the draw
+validator.
 
 ## How it stays current
 

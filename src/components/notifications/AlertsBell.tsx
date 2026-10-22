@@ -68,14 +68,13 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
   const alerts = useMemo(() => {
     // One alert per entry waiting at the desk, named after the player. Derived from the loaded
     // registrations, so it clears itself the moment the entry is confirmed; no migration, no
-    // stored row to go stale.
+    // stored row to go stale. Demo mode has no public form, so it keeps the bell it had.
     const playerNames = new Map(players.map((player) => [player.id, player.name]));
-    const pending = registrationAlerts(
-      registrations,
-      (playerId) => playerNames.get(playerId) ?? null,
-    );
+    const pending = connected
+      ? registrationAlerts(registrations, (playerId) => playerNames.get(playerId) ?? null)
+      : [];
     return buildAlerts(stored, issues, pending);
-  }, [stored, issues, players, registrations]);
+  }, [stored, issues, players, registrations, connected]);
   const count = badgeCount(alerts);
   const groups = groupAlerts(alerts);
   const dismissable = dismissableCount(alerts);
