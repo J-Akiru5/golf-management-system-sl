@@ -85,8 +85,7 @@ path, contact, birthdate or handicap.
    re-run and is audited.
 5. An admin can edit all agreed player fields; the before/after column names are in `audit_log`; a
    desk account cannot use the edit/delete controls, and the API refuses where RLS says so.
-6. Typecheck, lint, tests and build pass; the migration is written and not applied without owner
-   approval.
+6. Typecheck, lint, tests and build pass; the migration is applied and recorded in production.
 
 ## Current evidence and gaps from reconnaissance
 
@@ -117,11 +116,18 @@ path, contact, birthdate or handicap.
 | `pnpm build` | Pass, Next.js production build; `/caddies`, `/audit` static, `/leaderboard` dynamic |
 | Demo browser checks | Pass, 13/13 in `scripts/verify-caddie-photos-ui.mjs` (`/caddies`, player editor, caddie assignment, `/audit`, `/leaderboard`, `/pairings`; no console errors) |
 | Existing browser suite | Pass, 90/90 in `pnpm verify:ui`; no console errors |
-| Migration syntax | Formatted/parsed by `sql-formatter`; not executed against PostgreSQL |
-| Production migration | **Not applied**; no production evidence claimed |
+| Migration syntax | Formatted/parsed by `sql-formatter`; migration executed through the Supabase SQL editor |
+| Production migration | **Applied 22 Oct 2026** and recorded as `20261039000000 / caddies_public_photos` |
+| Post-apply schema read-back | Pass: 2 player columns, path constraint, both caddie tables with RLS, 4 policies, public bucket, 5 functions, anon/authenticated grants |
+| Public RPC read-back | Pass: `public_pairings`, `public_published_rounds` and `public_player_photos` return HTTP 200 for `anon` |
+| Storage policies | Pass: `player_photos_public_read` (anon, authenticated) and `player_photos_public_staff_write` (authenticated) |
 | Connected staff click-through | Not possible in this session; preview deployments are protected |
 
-## Applying the migration (owner)
+## Applying the migration (completed 22 Oct 2026)
+
+The migration was applied through the Supabase SQL editor on project `egfwfyznbndunqfqzxjx` (the live
+`golf-management-system` project) and recorded in `supabase_migrations.schema_migrations`. The
+post-apply read-back is in the table above.
 
 1. Take a backup or confirm the project's point-in-time recovery window.
 2. Run `supabase/migrations/20261039000000_caddies_public_photos.sql` in the Supabase SQL editor on
@@ -144,18 +150,19 @@ public bucket or setting it private turns public photos off immediately; do not 
 ## Blockers / handoff
 
 - Real production course/tee data and the roster import remain separate owner actions.
-- The migration must be reviewed and applied by the owner; this branch does not apply it.
+- The migration is applied and recorded; no further database step is required for 0.24.0.
 - No deployment to `main` is part of this task.
 - Connected browser checks need a staff account and a non-protected environment.
 
 ## Remote state at handoff
 
-- Branch `feat/caddie-profiles-public-photos` was pushed to `origin` at commit `58e74ab` (this record
-  then adds one docs commit; use the branch head).
-- Pull request: https://github.com/J-Akiru5/golf-management-system-sl/pull/95 (base `develop`, open).
-- Nothing was merged into `develop` or `main`.
-- No tag was created. The owner creates and pushes `v0.24.0` only after review and merge.
-- No Vercel deployment was triggered. The branch is deployment-ineligible under `vercel.json`.
+- Pull request #95 merged into `develop` at `d774ddd`.
+- Migration `20261039000000_caddies_public_photos.sql` applied and recorded on 22 Oct 2026.
+- The merge triggered the normal `develop` automatic deployment; no manual deployment was run.
+- `main` was not touched.
+- No tag was created. The owner creates and pushes `v0.24.0` only after the release check.
 - `VERSION` and `package.json` are both `0.24.0`; `CHANGELOG.md` has the 0.24.0 section.
 - `node scripts/release-check.mjs --tag v0.24.0` could not run because this repository does not
   contain that script. Do not tag until the owner's release check is satisfied.
+- Republish the current pairings/round so new snapshots carry player ids and can show photos. Older
+  snapshots remain names-only and are intentionally safe.
