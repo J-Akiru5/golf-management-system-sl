@@ -152,7 +152,6 @@ public bucket or setting it private turns public photos off immediately; do not 
 
 - Branch `feat/caddie-profiles-public-photos` was pushed to `origin` at commit `58e74ab` (this record
   then adds one docs commit; use the branch head).
-- No pull request was opened and nothing was merged into `develop` or `main`.
 - Pull request: https://github.com/J-Akiru5/golf-management-system-sl/pull/95 (base `develop`, open).
 - Nothing was merged into `develop` or `main`.
 - No tag was created. The owner creates and pushes `v0.24.0` only after review and merge.
@@ -160,5 +159,3 @@ public bucket or setting it private turns public photos off immediately; do not 
 - `VERSION` and `package.json` are both `0.24.0`; `CHANGELOG.md` has the 0.24.0 section.
 - `node scripts/release-check.mjs --tag v0.24.0` could not run because this repository does not
   contain that script. Do not tag until the owner's release check is satisfied.
-
-
