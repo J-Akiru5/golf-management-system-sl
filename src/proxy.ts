@@ -99,6 +99,8 @@ export const config = {
     "/register/:path*",
     "/tee-times/:path*",
     "/players/:path*",
+    "/caddies/:path*",
+    "/audit/:path*",
     "/import/:path*",
     "/draw/:path*",
     "/scores/:path*",

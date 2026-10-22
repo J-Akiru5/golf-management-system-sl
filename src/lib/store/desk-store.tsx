@@ -34,6 +34,7 @@ import {
 import { loadDeskState } from "@/lib/data/supabase/load-desk-state";
 import { createSupabaseScoringRepository } from "@/lib/data/supabase/scoring";
 import type {
+  Caddie,
   Club,
   DeferredMatch,
   DeskRegistration,
@@ -88,6 +89,8 @@ interface Desk {
   playerById: Map<string, PlayerRecord>;
   /** Registrations in the active tournament. */
   entries: RegistrationEntry[];
+  /** Club caddie profiles. */
+  caddies: Caddie[];
   registrations: DeskRegistration[];
   regById: Map<string, DeskRegistration>;
   entryByPlayer: Map<string, RegistrationEntry>;
@@ -516,6 +519,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       players: state.players,
       playerById: new Map(state.players.map((p) => [p.id, p])),
       entries,
+      caddies: state.caddies,
       registrations,
       regById: new Map(registrations.map((r) => [r.playerId, r])),
       entryByPlayer: new Map(entries.map((e) => [e.playerId, e])),

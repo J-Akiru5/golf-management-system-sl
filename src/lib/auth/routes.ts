@@ -19,6 +19,8 @@ export const STAFF_PREFIXES = [
   "/register",
   "/tee-times",
   "/players",
+  "/caddies",
+  "/audit",
   "/import",
   "/draw",
   "/scores",

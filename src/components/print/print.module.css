@@ -176,9 +176,19 @@
 }
 
 .playerName {
+  flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
   font-weight: 600;
+}
+
+.playerPhoto {
+  width: 6mm;
+  height: 6mm;
+  flex: none;
+  margin-right: 1.5mm;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .playerFacts {

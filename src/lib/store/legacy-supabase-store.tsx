@@ -49,6 +49,8 @@ export interface PublishedGroup {
   time: string;
   flight: string;
   players: string[];
+  /** Parallel to `players` after 20261039000000. */
+  playerIds?: string[];
 }
 export interface Published {
   at: string;
@@ -156,6 +158,7 @@ export function buildPublished(
         time: group.time,
         flight: flightNameById.get(group.flightId) ?? "—",
         players: group.playerIds.map((id) => nameById.get(id) ?? ""),
+        playerIds: group.playerIds.filter((id) => nameById.has(id)),
       })),
   };
 }

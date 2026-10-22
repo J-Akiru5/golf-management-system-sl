@@ -21,7 +21,7 @@ The Club's event rules also apply.
 
 TeeLine Golf is a web application for running a golf tournament. It holds player records, event setup, handicap imports, the draw, published pairings, print sheets, and a read-only player area.
 
-The public pages include the home page, the published pairings page, the entry form, and the sign-in page. The player area is \`/my\`. The desk is for Club staff.
+The public pages include the home page, the published pairings page, the public leaderboard, the entry form, and the sign-in page. The player area is \`/my\`. The desk is for Club staff.
 
 The software is not:
 
@@ -110,7 +110,7 @@ The course handicap and playing handicap are worked out from the event's tee rat
 
 Each event sets its own maximum index and other rules. If your index is above the maximum, or the software cannot find a category, tee, or flight for you, your entry is marked **Ineligible** or **Needs review**. The player area may say "Cannot be placed in a group" or "Entry received, being checked by the club." The software does not give you a default category, tee, flight, or start. The Club decides.
 
-Check your entry and start in \`/my\`, and check the published pairings page. The page shows the current published version and the time it was published. If your name is missing or your time looks wrong, contact the Club before you play.
+Check your entry and start in \`/my\`, and check the published pairings page and the public leaderboard. The pairings page shows the current published version and the time it was published. If your name is missing or your time looks wrong, contact the Club before you play.
 
 ## 7. Acceptable use
 

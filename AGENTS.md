@@ -36,7 +36,7 @@ Next.js 16 App Router, React 19, strict TypeScript (`noUncheckedIndexedAccess`),
 - `src/lib/routing` and `src/lib/draw` are pure functions. No I/O there. Add tests with every change.
 - Never guess data. A player who cannot be routed is `needs_review`, not given a default.
 - Players only see the frozen `Published` snapshot, never the live board.
-- Photos only where consent is recorded. Never on public pages.
+- Photos only where internal consent is recorded. Public pages get a separate public copy only with the player's separate public-display consent; the private path is never served publicly.
 - Tee numbers in the demo and tests are placeholders. Do not present them as IGCC's real ratings.
 - Fonts and assets are bundled; no external font or script calls.
 - Do not weaken or delete a test to make it pass.

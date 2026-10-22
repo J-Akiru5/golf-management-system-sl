@@ -43,8 +43,9 @@ If you are a player, start with the Club for access, correction, erasure, or a c
 
 ### Photos
 
-- A photo, only when you have given consent. The player record can store the file path and the date and time consent was recorded.
-- Where a photo file is stored, it is kept in a private storage bucket, not in the player table.
+- A photo, only when you have given consent. The player record can store the file path and the date and time internal consent was recorded.
+- A separate opt-in is required before a copy of the photo may appear on public pages. If you give that opt-in, the player record also stores a public copy path and the date and time public consent was recorded.
+- The original file stays in a private storage bucket, not in the player table. Only the public copy, and only with the separate opt-in, is served from the public bucket.
 
 ### Staff accounts
 
@@ -66,15 +67,20 @@ If you are a player, start with the Club for access, correction, erasure, or a c
 - the event name, date, start format, and first tee time;
 - the published version number and the time it was published;
 - for each group: the group number, wave when the event uses waves, starting hole, tee time, and flight name;
-- the name of each player in the group.
+- the name of each player in the group;
+- a small player photo, only where the player gave the separate public-display consent.
 
-For a player, the only player data on the page is the name, flight, hole, and tee time. The page does not show contact details, birthdate, handicap index, playing handicap, category, payment status, photo, or staff account. It also does not show the gender field, home course, or NGAP number.
+For a player, the only player data on the page is the name, flight, hole, tee time and, where separately consented, a public photo. The page does not show contact details, birthdate, handicap index, playing handicap, category, payment status, the private photo path, or staff account. It also does not show the gender field, home course, or NGAP number.
 
 A flight name can itself say "Ladies", "Senior", or "Super Senior". That is the Club's label for the flight, and it is public as part of the flight name.
 
 Before the Club publishes, the page may show the nearest event's name, date, start format, and first tee time with an empty state. It does not show player names or group details until a draw is published.
 
-The page can be printed, and it may be indexed by search engines. Treat a published name as public.
+The page can be printed, and it may be indexed by search engines. Treat a published name, and a photo you chose to make public, as public.
+
+### The public leaderboard
+
+\`/leaderboard\` is open to anyone. It shows published gross and net results for a round, including the event name, day, version, player names, flight names, points and hole counts. It shows a small player photo only where the player gave the separate public-display consent. It does not show contact details, birthdate, handicap index, category, payment status or the private photo path.
 
 ### The landing page
 
@@ -96,7 +102,7 @@ The answers you submit are sent to the Club. They are not published.
 - handicap index and playing handicap;
 - category;
 - payment status;
-- photo;
+- the private photo path, and any photo without the separate public-display consent;
 - the staff account that handled the entry.
 
 The public pairings page does show player names. If the Club unpublishes a draw, the page is hidden, but the published version is kept in the Club's version history. That history still contains the names that were published. See section 7.
@@ -140,7 +146,7 @@ The Club holds the data to:
 - publish the draw and print the sheets the desk uses on the day;
 - identify players at the desk and answer questions about an entry;
 - keep a record of who registered, changed, or published an entry, so decisions can be checked and disputes resolved;
-- keep the player profile, including a photo where consent was given, and produce tournament posters;
+- keep the player profile, including a photo where internal consent was given, and produce tournament posters; a separate public-display consent is required before a copy appears on public pages;
 - give staff accounts the access they need to do the above.
 
 The software is not used for marketing. It does not send newsletters or promotional email. The only email it sends is account confirmation and password reset from the sign-in service.
@@ -185,13 +191,13 @@ What the Club must decide:
 
 A photo is optional. The public entry form does not ask for one. Photos are added by Club staff on the player profile.
 
-A staff member must tick a box confirming that the player agreed before the app will save a photo. The consent text says the photo may be used for check-in, the player profile, and tournament posters.
+There are two separate consents. The first lets the Club keep the photo on file and use it for check-in, the player profile and tournament posters. A staff member must tick that box before the app will save a photo.
 
-Where a photo file is stored, it is kept in a private storage bucket. Staff screens load it through a temporary signed link. It is not on the public pairings page.
+The second consent is optional and separate. It lets the Club show a small copy of the photo beside the player's name on public pairings, the public leaderboard and printed start sheets. Ticking the first box does not tick the second, and an existing internal-only consent is not treated as public consent. The app keeps the original in a private bucket and writes a copy to a public bucket only when the second box is ticked.
 
-A poster or printout the Club makes is outside the software. Once a photo has been printed or shared, it cannot be recalled.
+A poster, printout, public web page or image someone saved is outside the software once it has been shared. Withdrawal removes the public copy and stops future public display, but it cannot recall a printed sheet or a copy someone else has saved. The hosting provider may also keep a cached copy briefly after the public file is removed.
 
-To withdraw consent, contact the Club. The Club removes the photo from the player record and updates the consent record. Where a photo file was stored, the Club deletes it. Future use stops. There is no withdrawal button in the player area; the Club does it for you.
+To withdraw either consent, contact the Club. The Club removes the relevant photo, updates the consent record and, for public consent, deletes the public copy. Future use stops. There is no withdrawal button in the player area; the Club does it for you.
 
 Withdrawal does not affect use that already happened, and it cannot recall a printed poster or a copy someone else has saved.
 

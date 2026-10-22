@@ -1,3 +1,17 @@
+/**
+ * Public URL for a photo the player explicitly allowed on public pages. The database only returns
+ * paths from the public bucket after checking `photo_public_consent_at`; this helper only turns that
+ * path into a URL. No private bucket path belongs here.
+ */
+export function publicPhotoUrl(path: string | null | undefined): string | undefined {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/+$/, "");
+  if (!path || !base) return undefined;
+  return `${base}/storage/v1/object/public/player-photos-public/${path
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}`;
+}
+
 /** Shrinks a photo so the desk never holds multi-megabyte images. 900px is enough for a poster. */
 export async function shrinkPhoto(file: File): Promise<string> {
   const url = URL.createObjectURL(file);

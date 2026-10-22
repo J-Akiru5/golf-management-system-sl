@@ -156,13 +156,20 @@ function parsePhotoDataUrl(dataUrl: string): {
   };
 }
 
-/** Uploads only an explicitly consented image; the bucket remains private. */
+/** Uploads only an explicitly consented image; the private bucket always stays private. */
 export async function saveConsentedPhoto(
   client: SupabaseClient<Database>,
   clubId: string,
   playerId: string,
   photoDataUrl: string,
-): Promise<{ path: string; signedUrl: string; consentAt: string }> {
+  publicConsent = false,
+): Promise<{
+  path: string;
+  signedUrl: string;
+  consentAt: string;
+  publicPath: string | null;
+  publicConsentAt: string | null;
+}> {
   const { blob, extension, contentType } = parsePhotoDataUrl(photoDataUrl);
   const path = `${clubId}/${playerId}/${crypto.randomUUID()}.${extension}`;
   const { error: uploadError } = await client.storage.from("player-photos").upload(path, blob, {
@@ -180,7 +187,29 @@ export async function saveConsentedPhoto(
     throw new Error(`Could not create a private photo URL: ${signError.message}`);
   }
 
-  return { path, signedUrl: signed.signedUrl, consentAt: new Date().toISOString() };
+  let publicPath: string | null = null;
+  let publicConsentAt: string | null = null;
+  if (publicConsent) {
+    // Stable path: the public URL does not change when the player replaces the photo. The object
+    // is still only written when the separate public consent is on.
+    publicPath = `${clubId}/${playerId}.jpg`;
+    const { error: publicError } = await client.storage
+      .from("player-photos-public")
+      .upload(publicPath, blob, { contentType, upsert: true });
+    if (publicError) {
+      await client.storage.from("player-photos").remove([path]);
+      throw new Error(`Could not publish the consented player photo: ${publicError.message}`);
+    }
+    publicConsentAt = new Date().toISOString();
+  }
+
+  return {
+    path,
+    signedUrl: signed.signedUrl,
+    consentAt: new Date().toISOString(),
+    publicPath,
+    publicConsentAt,
+  };
 }
 
 export async function removeStoredPhoto(
@@ -201,10 +230,17 @@ export async function setPlayerPhotoConsent(
   playerId: string,
   photoPath: string | null,
   consentAt: string | null,
+  publicPath: string | null = null,
+  publicConsentAt: string | null = null,
 ): Promise<void> {
   const { data, error } = await client
     .from("players")
-    .update({ photo_path: photoPath, photo_consent_at: consentAt })
+    .update({
+      photo_path: photoPath,
+      photo_consent_at: consentAt,
+      photo_public_path: publicPath,
+      photo_public_consent_at: publicConsentAt,
+    })
     .eq("club_id", clubId)
     .eq("id", playerId)
     .select("id")

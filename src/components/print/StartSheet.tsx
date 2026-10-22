@@ -70,6 +70,9 @@ export function StartSheet({
                 <ol className={styles.playerList}>
                   {group.players.map((player) => (
                     <li key={player.id}>
+                      {player.photo && (
+                        <img className={styles.playerPhoto} src={player.photo} alt="" />
+                      )}
                       <span className={styles.playerName}>{player.name}</span>
                       <span className={styles.playerFacts}>
                         {player.teeName && <span>{player.teeName}</span>}

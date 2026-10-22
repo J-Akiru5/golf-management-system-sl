@@ -1,10 +1,11 @@
-import type { PublicPairingGroup, PublicPairings } from "./types";
+import type { PublicPairingGroup, PublicPairingPlayer, PublicPairings } from "./types";
 
 /**
  * The public view is built through this allow-list. Components that face players receive a
- * `PublicPairings` object and nothing else, so a player or registration object (birthdate,
- * contact, photo, raw handicap history, payment, notes) can never leak into a public page by
- * accident.
+ * `PublicPairings` object and nothing else. The only player fields are the frozen name, the stable
+ * id used to look up a public photo, and a public-bucket path that the database has already gated on
+ * separate public consent. Birthdate, contact, private photo path, handicap history, payment and
+ * notes can never leak into a public page by accident.
  */
 
 /** The shape the publisher stores. Kept structural so this module does not import the store. */
@@ -16,6 +17,7 @@ export interface PublishedLike {
     time: string;
     flight: string;
     players: string[];
+    playerIds?: string[];
   }[];
 }
 
@@ -25,6 +27,8 @@ export interface PublicPairingsInput {
   dateLabel: string;
   startFormat: "shotgun" | "two_tee";
   firstTeeTime: string;
+  /** Public photo paths by player id, only for players whose public consent is recorded. */
+  photoByPlayerId?: Record<string, string>;
 }
 
 const onlyName = (name: string) => name.trim();
@@ -35,15 +39,29 @@ export function toPublicPairings({
   dateLabel,
   startFormat,
   firstTeeTime,
+  photoByPlayerId = {},
 }: PublicPairingsInput): PublicPairings {
-  const groups: PublicPairingGroup[] = published.groups.map((g) => ({
-    number: g.number,
-    startHole: g.startHole,
-    wave: g.wave,
-    time: g.time,
-    flight: g.flight,
-    // Player name only. Everything else about a player stays out of the public view.
-    players: g.players.map(onlyName).filter((n) => n !== ""),
-  }));
+  const groups: PublicPairingGroup[] = published.groups.map((g) => {
+    const ids = g.playerIds ?? [];
+    const players: PublicPairingPlayer[] = g.players
+      .map((name, index) => {
+        const rawId = ids[index];
+        const id = rawId && rawId !== "" ? rawId : null;
+        return {
+          id,
+          name: onlyName(name),
+          photoPath: id ? (photoByPlayerId[id] ?? null) : null,
+        };
+      })
+      .filter((player) => player.name !== "");
+    return {
+      number: g.number,
+      startHole: g.startHole,
+      wave: g.wave,
+      time: g.time,
+      flight: g.flight,
+      players,
+    };
+  });
   return { tournamentName, dateLabel, startFormat, firstTeeTime, groups };
 }

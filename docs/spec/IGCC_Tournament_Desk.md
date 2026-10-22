@@ -105,7 +105,7 @@ These change how the router behaves. Each one has a default so building can star
 3. **Which tees do Regular, Senior and Ladies play?** Only Super Senior = Silver is confirmed. Do Ladies have a senior split?
 4. **What happens when a flight does not divide by 4?** Example: 14 players in Flight B. Options: three groups of 4 and one of 2, or two groups of 4 and two of 3. Default: avoid groups smaller than 3.
 5. **How are players ordered inside a flight?** Random, by handicap, or by organizer choice. Default: by handicap, so similar players play together.
-6. **Where should player photos appear?** Default: registration desk and organizer screens only, for checking identity. Not on the public pairings page.
+6. **Where should player photos appear?** Answered by the owner on 22 Oct 2026: a small photo may appear beside the player's name on the flight schedule/start sheet, public pairings and the public leaderboard. Internal consent covers desk use. A separate public-display consent is required before any photo is copied to the public bucket; existing internal consent does not become public consent automatically.
 7. **What results does the organizer need?** Gross and net winners per flight, and the tie-break rule (e.g. back 9, back 6, back 3, last hole). Needed only for Phase 2.
 
 ## Data model
@@ -118,7 +118,7 @@ Every table carries `club_id` with row-level security from day one. Adding it no
 | courses | Course name, number of holes |
 | tees | Marker name/colour, Course Rating, Slope, Par, gender |
 | holes | Hole number, par, stroke index (for printing handicap dots on cards) |
-| players | Name, birthdate, gender, NGAP ID, contact, photo, photo consent date |
+| players | Name, birthdate, gender, NGAP ID, contact, photo, internal photo consent date, separate public-display consent date and public copy path |
 | handicap_records | Player, index, effective date, source (NGAP export upload or manual fix) |
 | tournaments | Date, course, cut-off date, start format, interval, first tee time, wave gap, max handicap, allowance |
 | categories | Tournament, name, gender, age range, tee |
@@ -182,7 +182,7 @@ Every table carries `club_id` with row-level security from day one. Adding it no
 
 - **Data.** The router is only as correct as the tee data. IGCC's Course Rating, Slope, Par and stroke index for every tee must be entered and checked against the club scorecard before the first event.
 - **Process.** The NGAP export is confirmed, but each upload is only as fresh as the file. Someone must upload a new export before every tournament cut-off, or players register on old indexes.
-- **Privacy.** Photos, birthdates and contact details are personal data under the Data Privacy Act of 2012. The desk needs a short consent line before taking a photo, photos stay in private storage, and the public pairings page shows names only.
+- **Privacy.** Photos, birthdates and contact details are personal data under the Data Privacy Act of 2012. The desk records internal photo consent before taking a photo. A second, separate public-display consent is required before a copy goes to the public bucket or appears on public pairings, the leaderboard or printed start sheets. The private original stays in private storage. Withdrawal removes the public copy.
 - **Scope.** Auto-routing proposes, the organizer approves. Tournament-day changes (late withdrawals, sponsor groups) will always happen, so overrides are a core feature, not an extra.
 
 ---

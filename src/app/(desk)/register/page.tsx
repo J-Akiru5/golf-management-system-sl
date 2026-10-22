@@ -67,6 +67,7 @@ interface Draft {
   ngapId: string;
   photo: string | undefined;
   consent: boolean;
+  publicConsent: boolean;
   role: "member" | "guest";
   sponsor: "yes" | "no" | "";
   memberShirt: string;
@@ -93,6 +94,7 @@ const emptyDraft = (): Draft => ({
   ngapId: "",
   photo: undefined,
   consent: false,
+  publicConsent: false,
   role: "member",
   sponsor: "",
   memberShirt: "",
@@ -252,6 +254,7 @@ function RegisterDesk() {
         ngapId: draft.ngapId,
         photo: draft.photo,
         photoConsent: draft.photo ? draft.consent : undefined,
+        photoPublicConsent: draft.photo && draft.consent ? draft.publicConsent : undefined,
       });
     }
 
@@ -626,9 +629,18 @@ function RegisterDesk() {
                         onChange={async (e) => {
                           const f = e.target.files?.[0];
                           setPhotoError("");
-                          if (!f) return set({ photo: undefined });
+                          if (!f)
+                            return set({
+                              photo: undefined,
+                              consent: false,
+                              publicConsent: false,
+                            });
                           try {
-                            set({ photo: await shrinkPhoto(f) });
+                            set({
+                              photo: await shrinkPhoto(f),
+                              consent: false,
+                              publicConsent: false,
+                            });
                           } catch (err) {
                             setPhotoError((err as Error).message);
                           }
@@ -641,17 +653,36 @@ function RegisterDesk() {
                       </p>
                     )}
                     {draft.photo && (
-                      <label className="check text-[13px]">
-                        <input
-                          type="checkbox"
-                          checked={draft.consent}
-                          onChange={(e) => set({ consent: e.target.checked })}
-                        />
-                        <span>
-                          The player agrees to have their photo kept on file and used for check-in
-                          and their player profile. Photos stay off public pages.
-                        </span>
-                      </label>
+                      <>
+                        <label className="check text-[13px]">
+                          <input
+                            type="checkbox"
+                            checked={draft.consent}
+                            onChange={(e) =>
+                              set({
+                                consent: e.target.checked,
+                                ...(e.target.checked ? {} : { publicConsent: false }),
+                              })
+                            }
+                          />
+                          <span>
+                            The player agrees to have their photo kept on file and used for
+                            check-in, their player profile and tournament posters.
+                          </span>
+                        </label>
+                        <label className="check text-[13px]">
+                          <input
+                            type="checkbox"
+                            checked={draft.publicConsent}
+                            disabled={!draft.consent}
+                            onChange={(e) => set({ publicConsent: e.target.checked })}
+                          />
+                          <span>
+                            Separately, the player agrees this photo may appear on public pairings,
+                            the public leaderboard and printed start sheets. Optional.
+                          </span>
+                        </label>
+                      </>
                     )}
                   </div>
                 </fieldset>
