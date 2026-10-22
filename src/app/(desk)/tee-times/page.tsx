@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
 import { teeAssignmentProblem } from "@/lib/data/tee-time";
 import type {
+  Caddie,
   DayTeeAssignment,
   PlayerRecord,
   RegistrationEntry,
@@ -22,7 +23,7 @@ import { useDesk } from "@/lib/store/desk-store";
  * selected. The database function checks the course's hole count and the day's start time.
  */
 export default function TeeTimesPage() {
-  const { tournament, days, entries, players, adapters, status } = useDesk();
+  const { tournament, days, entries, players, caddies, adapters, status } = useDesk();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const day = days.find((d) => d.dayNumber === selectedDay) ?? days[0] ?? null;
 
@@ -137,6 +138,7 @@ export default function TeeTimesPage() {
                         <th>Membership</th>
                         <th>Tee time</th>
                         <th>Start hole</th>
+                        <th>Caddie</th>
                         <th>Confirmed</th>
                         <th />
                       </tr>
@@ -148,9 +150,13 @@ export default function TeeTimesPage() {
                           entry={entry}
                           player={player}
                           day={day}
+                          caddies={caddies.filter((caddie) => caddie.active)}
                           courseHoles={tournament.config.holes}
                           onSave={(assignment) =>
                             adapters.registrations.assignDayTee(entry.id, day.dayNumber, assignment)
+                          }
+                          onAssignCaddie={(caddieId) =>
+                            adapters.caddies.assign(entry.id, day.dayNumber, caddieId)
                           }
                         />
                       ))}
@@ -170,20 +176,26 @@ function TeeRow({
   entry,
   player,
   day,
+  caddies,
   courseHoles,
   onSave,
+  onAssignCaddie,
 }: {
   entry: RegistrationEntry;
   player: PlayerRecord;
   day: TournamentDay;
+  caddies: Caddie[];
   courseHoles: number;
   onSave: (assignment: DayTeeAssignment) => Promise<void>;
+  onAssignCaddie: (caddieId: string | null) => Promise<void>;
 }) {
   const saved = entry.dayTee?.[day.dayNumber];
   const [teeTime, setTeeTime] = useState(saved?.teeTime ?? "");
   const [startHole, setStartHole] = useState(saved?.startHole ? String(saved.startHole) : "");
   const [confirmed, setConfirmed] = useState(saved?.confirmed ?? false);
+  const [caddieId, setCaddieId] = useState(entry.caddieByDay?.[day.dayNumber]?.caddieId ?? "");
   const [saving, setSaving] = useState(false);
+  const [caddieSaving, setCaddieSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
 
   async function save(next?: DayTeeAssignment) {
@@ -269,6 +281,39 @@ function TeeRow({
             setMessage(null);
           }}
         />
+      </td>
+      <td>
+        <select
+          value={caddieId}
+          disabled={caddieSaving}
+          aria-label={`Caddie for ${player.name} on ${day.label}`}
+          onChange={async (e) => {
+            const next = e.target.value;
+            setCaddieId(next);
+            setCaddieSaving(true);
+            setMessage(null);
+            try {
+              await onAssignCaddie(next || null);
+              setMessage({ tone: "ok", text: next ? "Caddie assigned." : "Caddie cleared." });
+            } catch (error) {
+              setCaddieId(entry.caddieByDay?.[day.dayNumber]?.caddieId ?? "");
+              setMessage({
+                tone: "bad",
+                text: error instanceof Error ? error.message : "Could not assign the caddie.",
+              });
+            } finally {
+              setCaddieSaving(false);
+            }
+          }}
+        >
+          <option value="">No caddie</option>
+          {caddies.map((caddie) => (
+            <option key={caddie.id} value={caddie.id}>
+              {caddie.fullName}
+              {caddie.nickname ? ` (${caddie.nickname})` : ""}
+            </option>
+          ))}
+        </select>
       </td>
       <td>
         <input

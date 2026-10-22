@@ -97,7 +97,11 @@ const PREVIEW_PAIRINGS: PublicPairings = {
     wave: group.wave,
     time: group.time,
     flight: group.flight,
-    players: group.players.map((player) => player.name),
+    players: group.players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      photoPath: null,
+    })),
   })),
 };
 

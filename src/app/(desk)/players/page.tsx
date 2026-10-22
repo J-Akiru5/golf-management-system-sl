@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
+import { RoleGate } from "@/components/desk";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
 import { Pager } from "@/components/paging/Pager";
@@ -49,6 +50,7 @@ function Players() {
     names,
     adapters,
     pendingRefreeze,
+    member,
   } = useDesk();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -73,6 +75,7 @@ function Players() {
   const [ngapId, setNgapId] = useState("");
   const [photo, setPhoto] = useState<string | undefined>();
   const [consent, setConsent] = useState(false);
+  const [publicConsent, setPublicConsent] = useState(false);
   const [photoError, setPhotoError] = useState("");
 
   const homeCourses = useMemo(
@@ -138,6 +141,7 @@ function Players() {
     setNgapId("");
     setPhoto(undefined);
     setConsent(false);
+    setPublicConsent(false);
     setPhotoError("");
   }
 
@@ -161,6 +165,7 @@ function Players() {
       ngapId,
       photo,
       photoConsent: photo ? consent : undefined,
+      photoPublicConsent: photo && consent ? publicConsent : undefined,
     });
     onOpenChange(false);
   }
@@ -372,17 +377,27 @@ function Players() {
                           <ChevronRight aria-hidden="true" />
                         </Link>
                       </Button>
-                      <Tip label="Remove from the club directory" side="left">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Remove ${p.name}`}
-                          className="text-ink-muted hover:text-danger"
-                          onClick={() => adapters.players.remove(p.id)}
-                        >
-                          <Trash2 aria-hidden="true" />
-                        </Button>
-                      </Tip>
+                      <RoleGate role={member?.role} allow={["owner", "organizer"]} mode="hide">
+                        <Tip label="Remove from the club directory" side="left">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Remove ${p.name}`}
+                            className="text-ink-muted hover:text-danger"
+                            onClick={() => {
+                              if (
+                                !window.confirm(
+                                  `Remove ${p.name} from the club directory? This is recorded in the audit log.`,
+                                )
+                              )
+                                return;
+                              adapters.players.remove(p.id);
+                            }}
+                          >
+                            <Trash2 aria-hidden="true" />
+                          </Button>
+                        </Tip>
+                      </RoleGate>
                     </span>
                   </td>
                 </tr>
@@ -566,6 +581,8 @@ function Players() {
                   onChange={async (e) => {
                     const f = e.target.files?.[0];
                     setPhotoError("");
+                    setConsent(false);
+                    setPublicConsent(false);
                     if (!f) return setPhoto(undefined);
                     try {
                       setPhoto(await shrinkPhoto(f));
@@ -591,11 +608,26 @@ function Players() {
                     <input
                       type="checkbox"
                       checked={consent}
-                      onChange={(e) => setConsent(e.target.checked)}
+                      onChange={(e) => {
+                        setConsent(e.target.checked);
+                        if (!e.target.checked) setPublicConsent(false);
+                      }}
                     />
                     <span>
                       The player agrees to have their photo kept on file and used for check-in,
                       their player profile and tournament posters.
+                    </span>
+                  </label>
+                  <label className="check text-[13px]">
+                    <input
+                      type="checkbox"
+                      checked={publicConsent}
+                      disabled={!consent}
+                      onChange={(e) => setPublicConsent(e.target.checked)}
+                    />
+                    <span>
+                      Separately, the player agrees this photo may appear on public pairings, the
+                      public leaderboard and printed start sheets. Optional.
                     </span>
                   </label>
                 </>

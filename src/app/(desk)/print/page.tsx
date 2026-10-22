@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
 import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
+import { photoOf } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
 
@@ -65,6 +66,7 @@ export default function PrintCenter() {
         handicapIndex: registration?.frozenIndex ?? null,
         playingHandicap: registration?.playingHandicap ?? null,
         teeName: registration?.teeId ? names.tee(registration.teeId) : null,
+        photo: player ? photoOf(player) : undefined,
       };
     }),
   }));

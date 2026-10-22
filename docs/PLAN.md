@@ -46,6 +46,7 @@ Anything not marked is a plan, not a fact.
 | Scoring engine (`src/lib/scoring`) | **Built, pure and tested** (21 Oct 2026): gross and net Stableford, the WHS handicap snapshot, stroke allocation, card validation for all three capture paths, multi-card reconciliation with desk resolutions, provisional boards and the finalization gate. The connected `/scores` workflow reads and writes through the applied RPCs (0.23.0) | 91 unit tests in 6 files; `pnpm typecheck` clean; design and applied schema in [`docs/spec/SCORING_IMPLEMENTATION.md`](spec/SCORING_IMPLEMENTATION.md) |
 | Scores, results | **Engine, applied migrations, an end-to-end rollback test, and the connected desk.** The scoring schema and workflow are **applied to the live project** (21 Oct 2026), and the real RPCs were exercised against a disposable event: 18 verified holes, 2 approved cards, 1 desk resolution, 2 publications, 3 final results, 25 audit rows, and a final public snapshot with 3 gross rows. The test raised at the end and rolled every test row back. `/scores` now uses `desk.scoring`, which is connected when Supabase is configured and in-memory in the demo; there is no OCR yet | `supabase/migrations/20261035000000_scoring_schema.sql`, `20261036000000_scoring_workflow.sql`; `src/lib/data/scoring.ts`, `src/lib/data/supabase/scoring.ts`, `src/app/(desk)/scores/page.tsx`; the live database has the scoring tables and `groups.round_id` |
 | Production integrity review (21 Oct 2026) | **Diagnosis and fix in `feat/production-integrity`**: the two production import batches claimed 17 and 42 records while the database has 0 handicap records and 0 registrations; the cause is a client-only success message plus an apply path that never created players. The branch adds the awaited handicap import, the registration workbook import, the canonical player/membership/day model, audit logging, the explicit public day picker, a per-day Tee times screen and auth error mapping. Migration `20261037000000` and `20261038000000` are **applied to production and recorded**; the two-day rule is active for the 24th Bamboo Tee. No production credential was reset and no deployment to `main` was made | [`docs/production-integrity-2026-10-21.md`](production-integrity-2026-10-21.md), [`docs/STAFF_ACCESS.md`](STAFF_ACCESS.md), [`docs/IMPORT_RUNBOOK.md`](IMPORT_RUNBOOK.md) |
+| Caddie profiles and public photos (22 Oct 2026) | **Built on `feat/caddie-profiles-public-photos`**: caddie directory and per-player-day assignment, separate public-display photo consent and public bucket, admin player editing, audit reader and public leaderboard. Migration `20261039000000` is **written, not applied**; the owner applies it before the code goes live | [`docs/tasks/2026-10-22-caddie-profiles-public-photos.md`](tasks/2026-10-22-caddie-profiles-public-photos.md) |
 
 Whole suite: 76 test files, 776 tests passing (`pnpm test`) on the merged `develop` tree; the scoring
 engine adds 6 files and 91 of those tests, and the demo scoring repository adds 7 more. Separately, `pnpm verify:ui` drives a real browser against a
@@ -89,7 +90,7 @@ Full table is in the spec. The ones that drive the code:
 | Shotgun | 18 holes × max 4 per hole = 72 per wave. Wave 2 starts at wave 1 + gap (default 300 min). A flight is never split across waves unless it exceeds the holes in a wave, and then it is flagged. |
 | Two-tee ("barrel") | Holes 1 and 10, one pair of groups per interval (default 12 min). |
 | Scoring | Paper cards. No live scoring. |
-| Photos | Taken or uploaded with recorded consent; kept off the public pairings page. |
+| Photos | Taken or uploaded with recorded internal consent. A separate public-display consent is required for a copy to appear on public pairings, the leaderboard or printed start sheets. |
 | Tenancy | IGCC only for now; data model is multi-club ready. |
 
 ### Defaults chosen while organizer answers are pending
@@ -99,7 +100,7 @@ Full table is in the spec. The ones that drive the code:
 | Flights on index or course handicap | Index | `TournamentConfig.flightBasis` |
 | Flight not divisible by 4 | Even split (14 → 4, 4, 3, 3); minimum group 3 | `src/lib/routing/groups.ts` |
 | Order inside a flight | By handicap | routing engine |
-| Photos on public page | Never | `PairingsView`, `photoOf` |
+| Photos on public page | Only with the separate public-display consent; initials otherwise | `public_pairings`, `public_player_photos`, `PairingsView` |
 
 ---
 
@@ -168,7 +169,7 @@ docs/              this plan, the spec and the handoffs
   until the organizer publishes again.
 - Publishing is **blocked** by blocking issues (duplicate player, over capacity, ready player with no
   group, ineligible player in a group). Warnings need acknowledgement.
-- Photos are used only where consent is recorded (`photoOf`). Private bucket, never on public pairings.
+- Photos are used only where internal consent is recorded (`photoOf`), in the private bucket. A separate public-display consent is required before a copy is written to the public bucket or returned by a public projection.
 - Colors are tokens on `:root` with dark redefinitions; contrast is guarded by `src/styles/contrast.test.ts`.
 - No external font or script calls (fonts are bundled via `@fontsource`).
 
@@ -178,8 +179,9 @@ Verified in `supabase/migrations`, and **applied to the `golf-management-system`
 
 - `club_id` on every table; row-level security through `public.is_club_member(club_id)`.
 - Composite foreign keys `(id, club_id)` so a row in one club cannot reference another club's data.
-- `public.public_pairings(tournament_id)`: security-definer function returning names, flight, hole and time only. No login needed.
-- Private `player-photos` bucket, paths under `{club_id}/`.
+- `public.public_pairings(tournament_id)`: security-definer function returning names, flight, hole, time, the published player id and a public photo path only where public consent is recorded. No login needed.
+- Private `player-photos` bucket for originals; a separate public `player-photos-public` bucket for consented derivatives only.
+- `caddies` profiles and `caddie_assignments` anchored to a player's selected day, so a draw re-run cannot destroy an assignment.
 - `btree_gist` exclusion constraint prevents overlapping flight ranges within a category.
 - Registrations store `frozen_index` so a later NGAP upload cannot change a published draw.
 - Clubs and memberships are created with the service role during onboarding, not from the app.

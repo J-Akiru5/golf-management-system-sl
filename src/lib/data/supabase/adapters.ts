@@ -22,6 +22,7 @@ import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { setupPayload } from "@/lib/data/setup-payload";
 import { starterSetup } from "@/lib/data/starter";
 import type {
+  Caddie,
   HandicapRecord,
   Hole,
   PlayerRecord,
@@ -38,6 +39,12 @@ import {
 } from "@/lib/store/state";
 import type { Database, Json } from "@/lib/supabase/types";
 import { toPlayerInsert, toRegistrationAnswers, toRegistrationInsert } from "./domain";
+import {
+  isPhotoDataUrl,
+  removeStoredPhoto,
+  saveConsentedPhoto,
+  setPlayerPhotoConsent,
+} from "./players";
 
 /**
  * The draw revision this browser last saw, per tournament.
@@ -163,6 +170,9 @@ export function createSupabaseAdapters(
       return list[0] ?? null;
     },
     add: (input: NewPlayerInput) => {
+      if (input.photo && !input.photoConsent) {
+        throw new Error("A player photo cannot be saved without recorded consent.");
+      }
       const first = input.firstName.trim();
       const last = input.lastName.trim();
       const player: PlayerRecord = {
@@ -178,14 +188,62 @@ export function createSupabaseAdapters(
         contactNumber: input.contactNumber?.trim() || null,
         email: input.email?.trim() || null,
         ngapId: input.ngapId?.trim() || null,
+        whsId: input.whsId?.trim() || null,
         photo: input.photo,
         photoConsent: input.photo ? (input.photoConsent ?? false) : undefined,
+        photoPublicConsent:
+          input.photo && input.photoConsent ? (input.photoPublicConsent ?? false) : undefined,
         createdAt: new Date().toISOString(),
       };
       dispatch({ type: "addPlayer", player });
       enqueue(async () => {
         const { error } = await client.from("players").insert(toPlayerInsert(player));
-        fail("Could not add the player", error);
+        if (error) {
+          dispatch({ type: "removePlayer", id: player.id });
+          throw new Error(`Could not add the player: ${error.message}`);
+        }
+        if (!player.photo || !player.photoConsent) return;
+        if (!isPhotoDataUrl(player.photo)) {
+          throw new Error("A new player photo must be an uploaded image.");
+        }
+        let saved: Awaited<ReturnType<typeof saveConsentedPhoto>> | null = null;
+        try {
+          saved = await saveConsentedPhoto(
+            client,
+            clubId,
+            player.id,
+            player.photo,
+            Boolean(player.photoPublicConsent),
+          );
+          await setPlayerPhotoConsent(
+            client,
+            clubId,
+            player.id,
+            saved.path,
+            saved.consentAt,
+            saved.publicPath,
+            saved.publicConsentAt,
+          );
+          dispatch({
+            type: "updatePlayer",
+            id: player.id,
+            patch: {
+              photoConsent: true,
+              photoPublicConsent: Boolean(saved.publicPath),
+              photoPublicPath: saved.publicPath,
+            },
+          });
+        } catch (error) {
+          if (saved) {
+            await removeStoredPhoto(client, clubId, saved.path).catch(() => undefined);
+            if (saved.publicPath) {
+              await client.storage.from("player-photos-public").remove([saved.publicPath]);
+            }
+          }
+          await client.from("players").delete().eq("club_id", clubId).eq("id", player.id);
+          dispatch({ type: "removePlayer", id: player.id });
+          throw error;
+        }
       });
       return player;
     },
@@ -200,6 +258,7 @@ export function createSupabaseAdapters(
             birthdate: next.birthdate,
             gender: next.gender,
             ngap_id: next.ngapId,
+            whs_id: next.whsId ?? null,
             phone: next.contactNumber,
             first_name: next.firstName,
             last_name: next.lastName,
@@ -211,6 +270,182 @@ export function createSupabaseAdapters(
           .eq("id", id);
         fail("Could not save the player", error);
       });
+    },
+    setPhoto: async (id, photoDataUrl, consent) => {
+      if (!consent.internal) throw new Error("A player photo needs recorded internal consent.");
+      if (!isPhotoDataUrl(photoDataUrl)) throw new Error("The photo must be an uploaded image.");
+      const stale = await client
+        .from("players")
+        .select("photo_path, photo_public_path")
+        .eq("club_id", clubId)
+        .eq("id", id)
+        .maybeSingle();
+      if (stale.error)
+        throw new Error(`Could not read the old player photo: ${stale.error.message}`);
+      const saved = await saveConsentedPhoto(client, clubId, id, photoDataUrl, consent.public);
+      try {
+        await setPlayerPhotoConsent(
+          client,
+          clubId,
+          id,
+          saved.path,
+          saved.consentAt,
+          saved.publicPath,
+          saved.publicConsentAt,
+        );
+      } catch (error) {
+        await removeStoredPhoto(client, clubId, saved.path).catch(() => undefined);
+        if (saved.publicPath) {
+          await client.storage.from("player-photos-public").remove([saved.publicPath]);
+        }
+        throw error;
+      }
+      const stalePrivate = stale.data?.photo_path ?? state.photoPaths[id];
+      const stalePublic = stale.data?.photo_public_path ?? null;
+      if (stalePrivate && stalePrivate !== saved.path) {
+        await removeStoredPhoto(client, clubId, stalePrivate).catch(() => undefined);
+      }
+      if (stalePublic && stalePublic !== saved.publicPath) {
+        await client.storage
+          .from("player-photos-public")
+          .remove([stalePublic])
+          .catch(() => undefined);
+      }
+      dispatch({
+        type: "updatePlayer",
+        id,
+        patch: {
+          photo: photoDataUrl,
+          photoConsent: true,
+          photoPublicConsent: Boolean(saved.publicPath),
+          photoPublicPath: saved.publicPath,
+        },
+      });
+      options.onSaved();
+    },
+    removePhoto: async (id) => {
+      const { data: row, error: readError } = await client
+        .from("players")
+        .select("photo_path, photo_public_path")
+        .eq("club_id", clubId)
+        .eq("id", id)
+        .maybeSingle();
+      if (readError) throw new Error(`Could not read the player photo: ${readError.message}`);
+      const privatePath = row?.photo_path ?? state.photoPaths[id] ?? null;
+      const publicPath =
+        row?.photo_public_path ?? state.players.find((p) => p.id === id)?.photoPublicPath ?? null;
+      await setPlayerPhotoConsent(client, clubId, id, null, null, null, null);
+      if (privatePath) await removeStoredPhoto(client, clubId, privatePath);
+      if (publicPath) await client.storage.from("player-photos-public").remove([publicPath]);
+      dispatch({
+        type: "updatePlayer",
+        id,
+        patch: {
+          photo: undefined,
+          photoConsent: false,
+          photoPublicConsent: false,
+          photoPublicPath: null,
+        },
+      });
+      options.onSaved();
+    },
+    setPhotoPublicConsent: async (id, consent) => {
+      const { data: row, error } = await client
+        .from("players")
+        .select("photo_path, photo_consent_at, photo_public_path")
+        .eq("club_id", clubId)
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw new Error(`Could not read the player photo: ${error.message}`);
+      if (!row) throw new Error("The player was not found.");
+      if (!consent) {
+        if (row.photo_public_path) {
+          await client.storage.from("player-photos-public").remove([row.photo_public_path]);
+        }
+        await setPlayerPhotoConsent(
+          client,
+          clubId,
+          id,
+          row.photo_path,
+          row.photo_consent_at,
+          null,
+          null,
+        );
+        dispatch({
+          type: "updatePlayer",
+          id,
+          patch: { photoPublicConsent: false, photoPublicPath: null },
+        });
+        options.onSaved();
+        return;
+      }
+      if (!row.photo_path) throw new Error("Save a consented photo before making it public.");
+      let publicPath = row.photo_public_path;
+      let uploaded = false;
+      if (!publicPath) {
+        const { data: file, error: downloadError } = await client.storage
+          .from("player-photos")
+          .download(row.photo_path);
+        if (downloadError || !file) {
+          throw new Error(`Could not read the private photo: ${downloadError?.message ?? ""}`);
+        }
+        publicPath = `${clubId}/${id}.jpg`;
+        const { error: uploadError } = await client.storage
+          .from("player-photos-public")
+          .upload(publicPath, file, { contentType: file.type || "image/jpeg", upsert: true });
+        if (uploadError) throw new Error(`Could not publish the photo: ${uploadError.message}`);
+        uploaded = true;
+      }
+      try {
+        await setPlayerPhotoConsent(
+          client,
+          clubId,
+          id,
+          row.photo_path,
+          row.photo_consent_at,
+          publicPath,
+          new Date().toISOString(),
+        );
+      } catch (error) {
+        if (uploaded) {
+          await client.storage
+            .from("player-photos-public")
+            .remove([publicPath])
+            .catch(() => undefined);
+        }
+        throw error;
+      }
+      dispatch({
+        type: "updatePlayer",
+        id,
+        patch: { photoPublicConsent: true, photoPublicPath: publicPath },
+      });
+      options.onSaved();
+    },
+    setMembership: async (id, type, memberNumber) => {
+      const { data, error } = await client.rpc("set_player_membership", {
+        p_player: id,
+        p_type: type,
+        p_member_number: memberNumber ?? null,
+      });
+      if (error) {
+        throw new Error(
+          /function .* does not exist/i.test(error.message)
+            ? "Membership editing needs migration 20261039000000. Nothing was saved."
+            : `Could not save the membership: ${error.message}`,
+        );
+      }
+      const result = data as unknown as { ok?: boolean; message?: string } | null;
+      if (!result?.ok) throw new Error(result?.message ?? "The membership was refused.");
+      dispatch({
+        type: "updatePlayer",
+        id,
+        patch: {
+          membershipType: type,
+          memberNumber: type === "member" ? memberNumber?.trim() || null : null,
+        },
+      });
+      options.onSaved();
     },
     remove: (id) => {
       dispatch({ type: "removePlayer", id });
@@ -475,7 +710,16 @@ export function createSupabaseAdapters(
       }
       const result = data as unknown as { ok?: boolean; message?: string } | null;
       if (!result?.ok) throw new Error(result?.message ?? "The playing days were refused.");
-      dispatch({ type: "updateEntry", id: entryId, patch: { selectedDays: days } });
+      const entry = state.entries.find((item) => item.id === entryId);
+      const caddieByDay = { ...(entry?.caddieByDay ?? {}) };
+      for (const key of Object.keys(caddieByDay)) {
+        if (!days.includes(Number(key))) delete caddieByDay[Number(key)];
+      }
+      dispatch({
+        type: "updateEntry",
+        id: entryId,
+        patch: { selectedDays: days, caddieByDay },
+      });
     },
     assignDayTee: async (entryId, dayNumber, assignment) => {
       const { data, error } = await client.rpc("assign_registration_day_tee", {
@@ -681,5 +925,110 @@ export function createSupabaseAdapters(
     },
   };
 
-  return { players, tournaments, registrations, imports, router, setup };
+  const caddies: Adapters["caddies"] = {
+    list: () => state.caddies,
+    add: (input) => {
+      const now = new Date().toISOString();
+      const caddie: Caddie = {
+        id: crypto.randomUUID(),
+        clubId,
+        fullName: input.fullName.trim(),
+        nickname: input.nickname?.trim() || null,
+        phone: input.phone?.trim() || null,
+        email: input.email?.trim() || null,
+        active: true,
+        notes: input.notes?.trim() || null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      if (!caddie.fullName) throw new Error("A caddie needs a name.");
+      dispatch({ type: "addCaddie", caddie });
+      enqueue(async () => {
+        const { error } = await client.from("caddies").insert({
+          id: caddie.id,
+          club_id: clubId,
+          full_name: caddie.fullName,
+          nickname: caddie.nickname,
+          phone: caddie.phone,
+          email: caddie.email,
+          active: true,
+          notes: caddie.notes,
+        });
+        fail("Could not add the caddie", error);
+      });
+      return caddie;
+    },
+    update: (id, patch) => {
+      if (patch.active === false) {
+        const assigned = state.entries.some((entry) =>
+          Object.values(entry.caddieByDay ?? {}).some((assignment) => assignment.caddieId === id),
+        );
+        if (assigned) {
+          throw new Error(
+            "This caddie still has an active assignment. Clear or reassign it first.",
+          );
+        }
+      }
+      dispatch({ type: "updateCaddie", id, patch });
+      const next = { ...(state.caddies.find((c) => c.id === id) as Caddie), ...patch, id };
+      enqueue(async () => {
+        const { error } = await client
+          .from("caddies")
+          .update({
+            full_name: next.fullName,
+            nickname: next.nickname,
+            phone: next.phone,
+            email: next.email,
+            active: next.active,
+            notes: next.notes,
+          })
+          .eq("club_id", clubId)
+          .eq("id", id);
+        fail("Could not save the caddie", error);
+      });
+    },
+    remove: (id) => {
+      dispatch({ type: "removeCaddie", id });
+      enqueue(async () => {
+        const { error } = await client.from("caddies").delete().eq("club_id", clubId).eq("id", id);
+        fail("Could not remove the caddie", error);
+      });
+    },
+    assign: async (entryId, dayNumber, caddieId) => {
+      const { data, error } = await client.rpc("assign_caddie", {
+        p_registration: entryId,
+        p_day: dayNumber,
+        p_caddie: caddieId,
+      });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "Caddie assignment needs migration 20261039000000. Nothing was saved."
+            : `Could not save the caddie assignment: ${error.message}`,
+        );
+      }
+      const result = data as unknown as {
+        ok?: boolean;
+        message?: string;
+        caddieName?: string | null;
+      } | null;
+      if (!result?.ok) throw new Error(result?.message ?? "The caddie assignment was refused.");
+      const entry = state.entries.find((item) => item.id === entryId);
+      const next = { ...(entry?.caddieByDay ?? {}) };
+      if (!caddieId) {
+        delete next[dayNumber];
+      } else {
+        next[dayNumber] = {
+          caddieId,
+          caddieName: result.caddieName ?? "Caddie",
+          status: "assigned",
+        };
+      }
+      dispatch({ type: "updateEntry", id: entryId, patch: { caddieByDay: next } });
+    },
+  };
+
+  return { players, tournaments, registrations, caddies, imports, router, setup };
 }

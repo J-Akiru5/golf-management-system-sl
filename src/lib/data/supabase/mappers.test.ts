@@ -236,7 +236,9 @@ describe("database row mappers", () => {
         start_hole: 1,
         tee_time: "07:00:00",
         flight_name: "Ladies A",
+        player_id: "player-1",
         player_name: "Carmela Reyes",
+        photo_path: "club-1/player-1.jpg",
       },
       {
         tournament_id: "tournament-1",
@@ -251,7 +253,9 @@ describe("database row mappers", () => {
         start_hole: 1,
         tee_time: "07:00:00",
         flight_name: "Ladies A",
+        player_id: "player-2",
         player_name: "Elena Tan",
+        photo_path: null,
       },
     ];
     expect(mapPublicPairingRows(rows)).toMatchObject({
@@ -259,7 +263,11 @@ describe("database row mappers", () => {
       date: "2026-10-31",
       startFormat: "shotgun",
       firstTeeTime: "07:00",
-      published: { version: 3, groups: [{ players: ["Carmela Reyes", "Elena Tan"] }] },
+      published: {
+        version: 3,
+        groups: [{ players: ["Carmela Reyes", "Elena Tan"], playerIds: ["player-1", "player-2"] }],
+      },
+      photoByPlayerId: { "player-1": "club-1/player-1.jpg" },
     });
   });
 

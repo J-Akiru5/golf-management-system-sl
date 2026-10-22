@@ -41,7 +41,7 @@ export function PairingsSheet({ pairings, title = "Pairings" }: PairingsSheetPro
                 </th>
                 <td>{fmtTime(group.time)}</td>
                 <td>{group.flight}</td>
-                <td>{group.players.join(" · ")}</td>
+                <td>{group.players.map((player) => player.name).join(" · ")}</td>
               </tr>
             ))}
           </tbody>

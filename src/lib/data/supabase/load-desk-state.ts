@@ -7,12 +7,19 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
-import type { DayTeeAssignment, Hole, ManualOverride, TournamentDay } from "@/lib/data/types";
+import type {
+  DayTeeAssignment,
+  Hole,
+  ManualOverride,
+  RegistrationEntry,
+  TournamentDay,
+} from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
 import type { Tee } from "@/lib/routing";
 import type { BoardState, DeskState, Published } from "@/lib/store/state";
 import type { Database, Json, TableRow } from "@/lib/supabase/types";
 import {
+  toCaddie,
   toCategoryRule,
   toDeferredMatch,
   toFlightRule,
@@ -198,6 +205,21 @@ export async function loadDeskState(
   );
 
   // Signed URLs only where consent exists, and only for this club's objects.
+  const membershipRows = await client
+    .from("player_memberships")
+    .select("player_id, membership_type, member_number")
+    .eq("club_id", clubId)
+    .eq("status", "active");
+  if (membershipRows.error && !missingObject(membershipRows.error)) {
+    throw new Error(`Could not load player memberships: ${membershipRows.error.message}`);
+  }
+  const membershipByPlayer = new Map(
+    asArray(membershipRows.data).map((row) => [
+      row.player_id,
+      { type: row.membership_type, number: row.member_number },
+    ]),
+  );
+  const photoPaths: Record<string, string | null> = {};
   const players = await Promise.all(
     asArray(playerRows.data).map(async (row) => {
       let photoUrl: string | undefined;
@@ -207,9 +229,25 @@ export async function loadDeskState(
           .createSignedUrl(row.photo_path, PHOTO_URL_SECONDS);
         photoUrl = signed?.signedUrl;
       }
-      return toPlayerRecord(row, photoUrl);
+      photoPaths[row.id] = row.photo_path;
+      const membership = membershipByPlayer.get(row.id);
+      return {
+        ...toPlayerRecord(row, photoUrl),
+        membershipType: membership?.type ?? null,
+        memberNumber: membership?.number ?? null,
+      };
     }),
   );
+
+  const caddieRows = await client
+    .from("caddies")
+    .select("*")
+    .eq("club_id", clubId)
+    .order("full_name");
+  if (caddieRows.error && !missingObject(caddieRows.error)) {
+    throw new Error(`Could not load caddies: ${caddieRows.error.message}`);
+  }
+  const caddies = asArray(caddieRows.data).map(toCaddie);
 
   // Boards are rebuilt from the stored groups so a saved draw survives a refresh.
   const tournamentIds = tournaments.map((t) => t.id);
@@ -278,9 +316,10 @@ export async function loadDeskState(
   );
   const selectedByRegistration = new Map<string, number[]>();
   const teeByRegistration = new Map<string, Record<number, DayTeeAssignment>>();
+  const registrationDayNumber = new Map<string, { registrationId: string; dayNumber: number }>();
   const registrationDayRows = await client
     .from("registration_days")
-    .select("registration_id, tournament_day_id, selected, tee_time, start_hole, tee_confirmed")
+    .select("id, registration_id, tournament_day_id, selected, tee_time, start_hole, tee_confirmed")
     .eq("club_id", clubId)
     .eq("selected", true);
   if (registrationDayRows.error && !missingObject(registrationDayRows.error)) {
@@ -290,6 +329,10 @@ export async function loadDeskState(
     for (const row of asArray(registrationDayRows.data)) {
       const day = dayNumberById.get(row.tournament_day_id);
       if (!day) continue;
+      registrationDayNumber.set(row.id, {
+        registrationId: row.registration_id,
+        dayNumber: day.dayNumber,
+      });
       const list = selectedByRegistration.get(row.registration_id) ?? [];
       list.push(day.dayNumber);
       selectedByRegistration.set(row.registration_id, list);
@@ -304,14 +347,45 @@ export async function loadDeskState(
       }
     }
   }
+
+  const caddieAssignmentsByRegistration = new Map<
+    string,
+    NonNullable<RegistrationEntry["caddieByDay"]>
+  >();
+  const assignmentRows = await client
+    .from("caddie_assignments")
+    .select("registration_day_id, caddie_id, status")
+    .eq("club_id", clubId)
+    .in("status", ["assigned", "confirmed"]);
+  if (assignmentRows.error && !missingObject(assignmentRows.error)) {
+    throw new Error(`Could not load caddie assignments: ${assignmentRows.error.message}`);
+  }
+  if (!assignmentRows.error) {
+    const caddieById = new Map(caddies.map((caddie) => [caddie.id, caddie]));
+    for (const row of asArray(assignmentRows.data)) {
+      const day = registrationDayNumber.get(row.registration_day_id);
+      if (!day) continue;
+      const caddie = caddieById.get(row.caddie_id);
+      if (!caddie) continue;
+      const map = caddieAssignmentsByRegistration.get(day.registrationId) ?? {};
+      map[day.dayNumber] = {
+        caddieId: row.caddie_id,
+        caddieName: caddie.fullName,
+        status: row.status,
+      };
+      caddieAssignmentsByRegistration.set(day.registrationId, map);
+    }
+  }
   const withDays = entries.map((entry) => {
     const stored = selectedByRegistration.get(entry.id);
     const dayTee = teeByRegistration.get(entry.id) ?? {};
+    const caddieByDay = caddieAssignmentsByRegistration.get(entry.id) ?? {};
     if (stored?.length) {
       return {
         ...entry,
         selectedDays: [...stored].sort((a, b) => a - b),
         dayTee,
+        caddieByDay,
       };
     }
     const tournamentDays = daysByTournament[entry.tournamentId] ?? [];
@@ -319,6 +393,7 @@ export async function loadDeskState(
       ...entry,
       selectedDays: selectedDaysOf(entry, tournamentDays),
       dayTee,
+      caddieByDay,
     };
   });
   const preferred = options.preferTournamentId
@@ -377,6 +452,8 @@ export async function loadDeskState(
       players,
       records: asArray(recordRows.data).map(toHandicapRecord),
       entries: withDays,
+      caddies,
+      photoPaths,
       batches: asArray(batchRows.data).map(toImportBatch),
       deferred: asArray(deferredRows.data).map(toDeferredMatch),
       boards,

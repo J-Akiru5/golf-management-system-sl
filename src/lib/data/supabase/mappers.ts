@@ -190,6 +190,8 @@ export interface PublicPairingsData {
   startFormat: TournamentConfig["startFormat"];
   firstTeeTime: string;
   published: Published | null;
+  /** Public photo paths for the player ids in the published snapshot. */
+  photoByPlayerId: Record<string, string>;
 }
 
 export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData | null {
@@ -200,6 +202,7 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
   }
 
   const groups = new Map<number, PublishedGroup>();
+  const photoByPlayerId: Record<string, string> = {};
   for (const row of rows) {
     if (
       row.tournament_id !== first.tournament_id ||
@@ -238,6 +241,7 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
       time: row.tee_time.slice(0, 5),
       flight: row.flight_name,
       players: [],
+      playerIds: [],
     };
     if (
       group.startHole !== row.start_hole ||
@@ -248,6 +252,9 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
       throw new Error(`Public pairings group ${row.group_number} has inconsistent rows.`);
     }
     group.players.push(row.player_name);
+    // Keep the ids aligned with the names even when an old snapshot has no id for this row.
+    group.playerIds?.push(row.player_id ?? "");
+    if (row.player_id && row.photo_path) photoByPlayerId[row.player_id] = row.photo_path;
     groups.set(row.group_number, group);
   }
 
@@ -271,5 +278,6 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
     startFormat: first.start_format,
     firstTeeTime: first.first_tee_time.slice(0, 5),
     published,
+    photoByPlayerId,
   };
 }

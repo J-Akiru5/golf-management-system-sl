@@ -2,6 +2,7 @@ import { daysOfTournament } from "@/lib/data/dates";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { registrationFor } from "@/lib/data/registrations";
 import type {
+  Caddie,
   Club,
   DeferredMatch,
   DeskRegistration,
@@ -39,6 +40,8 @@ export interface PublishedGroup {
   time: string;
   flight: string;
   players: string[];
+  /** Parallel to `players` for snapshots published after 20261039000000. */
+  playerIds?: string[];
 }
 
 export interface Published {
@@ -84,6 +87,9 @@ export interface DeskState {
   players: PlayerRecord[];
   records: HandicapRecord[];
   entries: RegistrationEntry[];
+  caddies: Caddie[];
+  /** Private storage path per player, used only so a replacement can remove the old object. */
+  photoPaths: Record<string, string | null>;
   batches: HandicapImportBatch[];
   /** Import rows the organizer deferred, kept for a later decision. */
   deferred: DeferredMatch[];
@@ -115,6 +121,9 @@ export type Action =
   | { type: "addEntry"; entry: RegistrationEntry }
   | { type: "updateEntry"; id: string; patch: Partial<RegistrationEntry> }
   | { type: "removeEntry"; id: string }
+  | { type: "addCaddie"; caddie: Caddie }
+  | { type: "updateCaddie"; id: string; patch: Partial<Caddie> }
+  | { type: "removeCaddie"; id: string }
   | { type: "refreeze"; tournamentId: string; entryIds?: string[] }
   | { type: "applyImport"; payload: ApplyImportPayload }
   | { type: "resolveDeferred"; id: string; decision: "link" | "create" | "drop" }
@@ -141,6 +150,8 @@ export const emptyState = (): DeskState => ({
   players: [],
   records: [],
   entries: [],
+  caddies: [],
+  photoPaths: {},
   batches: [],
   deferred: [],
   boards: {},
@@ -163,6 +174,33 @@ export const initialState = (): DeskState => {
     players: seed.players,
     records: seed.records,
     entries: seed.entries,
+    caddies: [
+      {
+        id: "caddie-nilo",
+        clubId: DEMO_CLUB.id,
+        fullName: "Nilo Cadiao",
+        nickname: "Nilo",
+        phone: null,
+        email: null,
+        active: true,
+        notes: "Demo caddie",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        id: "caddie-ramon",
+        clubId: DEMO_CLUB.id,
+        fullName: "Ramon Dela Cruz",
+        nickname: "Mon",
+        phone: null,
+        email: null,
+        active: true,
+        notes: "Demo caddie",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+    photoPaths: {},
     batches: [],
     deferred: [],
     // AVP THROWAWAY BRANCH ONLY: start with a populated board when the recording flag is set, so
@@ -267,6 +305,7 @@ export function buildPublished(
         time: g.time,
         flight: flightName(g.flightId),
         players: g.playerIds.map((id) => nameById.get(id) ?? "").filter((n) => n !== ""),
+        playerIds: g.playerIds.filter((id) => nameById.has(id)),
       })),
   };
 }
@@ -392,9 +431,24 @@ export function reducer(state: DeskState, a: Action): DeskState {
         players: state.players.filter((p) => p.id !== a.id),
         records: state.records.filter((r) => r.playerId !== a.id),
         entries: state.entries.filter((e) => e.playerId !== a.id),
+        photoPaths: Object.fromEntries(
+          Object.entries(state.photoPaths).filter(([id]) => id !== a.id),
+        ),
         boards,
       };
     }
+
+    case "addCaddie":
+      return { ...state, caddies: [...state.caddies, a.caddie], seq: state.seq + 1 };
+
+    case "updateCaddie":
+      return {
+        ...state,
+        caddies: state.caddies.map((c) => (c.id === a.id ? { ...c, ...a.patch, id: c.id } : c)),
+      };
+
+    case "removeCaddie":
+      return { ...state, caddies: state.caddies.filter((c) => c.id !== a.id) };
 
     case "addEntry":
       return { ...state, entries: [...state.entries, a.entry] };

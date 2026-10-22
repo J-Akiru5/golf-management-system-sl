@@ -48,8 +48,8 @@ export const snapshotKey = (kind: SnapshotKind, userId: string): string =>
  * must not sit in a cache this app does not control. The URL is dropped here, before storage.
  */
 export function stripPlayerPhoto(player: PlayerRecord): PlayerRecord {
-  if (!player.photo) return player;
-  const { photo: _photo, ...rest } = player;
+  if (!player.photo && !player.photoPublicPath) return player;
+  const { photo: _photo, photoPublicPath: _public, ...rest } = player;
   return rest;
 }
 

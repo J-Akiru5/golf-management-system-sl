@@ -94,6 +94,9 @@ export type PlayerRow = {
   phone: string | null;
   photo_path: string | null;
   photo_consent_at: string | null;
+  /** Added by 20261039000000. Optional so the desk still loads before that migration is applied. */
+  photo_public_path?: string | null;
+  photo_public_consent_at?: string | null;
   created_at: string;
   first_name: string | null;
   last_name: string | null;
@@ -119,6 +122,35 @@ export type PlayerMembershipRow = {
   valid_to: string | null;
   note: string | null;
   created_at: string;
+  updated_at: string;
+};
+
+/** A club caddie profile. Added by 20261039000000. */
+export type CaddieRow = {
+  id: string;
+  club_id: string;
+  full_name: string;
+  nickname: string | null;
+  phone: string | null;
+  email: string | null;
+  active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** One caddie assignment on one player-day. Added by 20261039000000. */
+export type CaddieAssignmentRow = {
+  id: string;
+  club_id: string;
+  tournament_id: string;
+  tournament_day_id: string;
+  registration_day_id: string;
+  caddie_id: string;
+  status: "assigned" | "confirmed" | "cancelled";
+  note: string | null;
+  assigned_by: string | null;
+  assigned_at: string;
   updated_at: string;
 };
 export type HandicapRecordRow = {
@@ -387,7 +419,9 @@ type PublicPairingRow = {
   start_hole: number | null;
   tee_time: string | null;
   flight_name: string | null;
+  player_id?: string | null;
   player_name: string | null;
+  photo_path?: string | null;
 };
 
 export interface Database {
@@ -433,6 +467,8 @@ export interface Database {
           phone?: string | null;
           photo_path?: string | null;
           photo_consent_at?: string | null;
+          photo_public_path?: string | null;
+          photo_public_consent_at?: string | null;
           created_at?: string;
           first_name?: string | null;
           last_name?: string | null;
@@ -457,6 +493,8 @@ export interface Database {
           updated_at?: string;
           photo_path?: string | null;
           photo_consent_at?: string | null;
+          photo_public_path?: string | null;
+          photo_public_consent_at?: string | null;
         }
       >;
       player_memberships: Table<
@@ -471,6 +509,33 @@ export interface Database {
           valid_from?: string | null;
           valid_to?: string | null;
           note?: string | null;
+        }
+      >;
+      caddies: Table<
+        CaddieRow,
+        {
+          id?: string;
+          club_id: string;
+          full_name: string;
+          nickname?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          active?: boolean;
+          notes?: string | null;
+        }
+      >;
+      caddie_assignments: Table<
+        CaddieAssignmentRow,
+        {
+          id?: string;
+          club_id: string;
+          tournament_id: string;
+          tournament_day_id: string;
+          registration_day_id: string;
+          caddie_id: string;
+          status?: CaddieAssignmentRow["status"];
+          note?: string | null;
+          assigned_by?: string | null;
         }
       >;
       handicap_import_batches: Table<
@@ -781,6 +846,26 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       is_club_member: { Args: { p_club: string }; Returns: boolean };
+      /** Added by 20261039000000. */
+      set_player_membership: {
+        Args: { p_player: string; p_type: string; p_member_number?: string | null };
+        Returns: Json;
+      };
+      assign_caddie: {
+        Args: { p_registration: string; p_day: number; p_caddie: string | null };
+        Returns: Json;
+      };
+      public_published_rounds: { Args: Record<string, never>; Returns: Json };
+      public_round_results: {
+        Args: { p_round: string };
+        Returns: {
+          version: number;
+          state: string;
+          published_at: string;
+          snapshot: Json;
+        }[];
+      };
+      public_player_photos: { Args: { p_ids: string[] }; Returns: Json };
       /** Added by 20261037000000; all return JSON and are granted to authenticated only. */
       save_day_rule: {
         Args: { p_tournament: string; p_required: number | null; p_max: number | null };

@@ -224,7 +224,7 @@ Rules for the type:
 
 - **Height:** `min-height: 680px` on desktop, `620px` on mobile. Not `min(900px, 100svh)`. The current hero is at least 720px tall and often a full screen before any event data.
 - **Nav:** solid `#073D2E`, 64px tall, 1px bottom border `rgba(247,245,238,.18)`. Links 12px Geist 600 uppercase, `0.08em`. Logo 180px wide. "Enter" button 40px tall, 4px radius, gold background, dark text. On mobile: logo and Enter only.
-- **Image:** the existing course artwork, treated as a high-contrast duotone poster, or a course photograph with no identifiable people if the owner confirms it is allowed. Crop tight on a green, bunker or treeline; do not show the whole panorama. Do not use player faces on the public page. The project rule is photos only with consent and never on public pages. If neither asset is allowed, use a solid forest field with a single 1px contour line, not a soft landscape.
+- **Image:** the existing course artwork, treated as a high-contrast duotone poster, or a course photograph with no identifiable people if the owner confirms it is allowed. Crop tight on a green, bunker or treeline; do not show the whole panorama. The landing page should not show player faces. The project rule is two-consent: internal consent covers desk use, and a separate public-display consent covers player photos on pairings, the leaderboard and printed start sheets. If neither asset is allowed, use a solid forest field with a single 1px contour line, not a soft landscape.
 - **Image treatment:** `object-position: 62% 38%`, `filter: saturate(.75) contrast(1.12) brightness(.82)`. No parallax. A one-time 1.02 scale on load, 500ms, then stop.
 - **Scrim:** `linear-gradient(90deg, rgba(7,24,18,.94) 0%, rgba(7,24,18,.74) 42%, rgba(7,24,18,.18) 72%, rgba(7,24,18,.5) 100%)` plus `linear-gradient(0deg, rgba(7,24,18,.92) 0%, transparent 34%)` for the data strip. The scrim is directional, not an even wash.
 - **Status line:** a 6px square plus "OPEN FOR ENTRY" in Geist 700 11px uppercase `0.14em`, gold. States: OPEN, CLOSES IN 3 DAYS (red), FIELD FULL (muted), NEXT EVENT (gold). No glowing dot unless something is actually live.
@@ -296,7 +296,7 @@ Place it after the open events. Full-width forest band `#073D2E`, 72px vertical 
 - **Table:** header row 10px Geist 600 uppercase `0.12em`, muted. Five rows. Row height 56px. 1px bottom border `rgba(247,245,238,.14)`.
 - **Columns:** POS 56px, PLAYER 1fr, CLUB 180px, R1 56px, R2 56px, TOTAL 80px, right-aligned. Use only the rounds the event actually has; do not invent an R2 for a one-round event.
 - **Position:** Geist 700 16px tabular. The winner gets a 3px gold left border and a "WINNER" badge in 9px gold.
-- **Player:** Geist 600 16px, ivory. No photo. If the app has consented images, still do not use them on the public page; use initials in a 32px square with a 1px border if an avatar is needed.
+- **Player:** Geist 600 16px, ivory. No photo on the landing page. Public pairings and the leaderboard may use a photographed player only with the separate public-display consent; elsewhere use initials in a 32px square with a 1px border.
 - **Score:** Geist 700 22px tabular. Under par `#FF8A7A`; even or over `#F7F5EE`. Do not use red on a light background for small text; use `#C8352B` if the table is on ivory.
 - **Mobile:** POS, PLAYER, TOTAL only. Hide club and rounds.
 - **Empty state:** "No result published yet. First event: 24–26 October." Do not invent scores.

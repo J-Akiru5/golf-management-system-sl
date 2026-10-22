@@ -5,6 +5,7 @@ import { explainRegistration, type RoutingExplanation } from "@/lib/data/explain
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import type { SetupSection } from "@/lib/data/setup-payload";
 import type {
+  Caddie,
   DayTeeAssignment,
   HandicapRecord,
   Hole,
@@ -55,8 +56,12 @@ export interface NewPlayerInput {
   contactNumber?: string | null;
   email?: string | null;
   ngapId?: string | null;
+  whsId?: string | null;
   photo?: string;
+  /** Internal-use consent for the photo. */
   photoConsent?: boolean;
+  /** Separate consent to show the same photo on public pairings and results. */
+  photoPublicConsent?: boolean;
 }
 
 export interface NewEntryInput {
@@ -82,6 +87,17 @@ export interface PlayerRepository {
   latestRecord(playerId: string): HandicapRecord | null;
   add(input: NewPlayerInput): PlayerRecord;
   update(id: string, patch: Partial<PlayerRecord>): void;
+  /** Uploads a consented photo and resolves only after both the private and public copies are settled. */
+  setPhoto(
+    id: string,
+    photoDataUrl: string,
+    consent: { internal: boolean; public: boolean },
+  ): Promise<void>;
+  /** Removes the private original and the public derivative, then clears both consents. */
+  removePhoto(id: string): Promise<void>;
+  /** Copies an existing private photo to the public bucket, or removes the public copy. */
+  setPhotoPublicConsent(id: string, consent: boolean): Promise<void>;
+  setMembership(id: string, type: "member" | "guest", memberNumber?: string | null): Promise<void>;
   remove(id: string): void;
 }
 
@@ -138,6 +154,21 @@ export interface RegistrationRepository {
   assignDayTee(entryId: string, dayNumber: number, assignment: DayTeeAssignment): Promise<void>;
 }
 
+export interface CaddieRepository {
+  list(): Caddie[];
+  add(input: {
+    fullName: string;
+    nickname?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    notes?: string | null;
+  }): Caddie;
+  update(id: string, patch: Partial<Caddie>): void;
+  remove(id: string): void;
+  /** Assigns one caddie to a player's selected day, or clears it with null. */
+  assign(entryId: string, dayNumber: number, caddieId: string | null): Promise<void>;
+}
+
 export interface ImportCommitResult {
   ok: boolean;
   partial?: boolean;
@@ -173,6 +204,7 @@ export interface Adapters {
   players: PlayerRepository;
   tournaments: TournamentRepository;
   registrations: RegistrationRepository;
+  caddies: CaddieRepository;
   imports: HandicapImportAdapter;
   router: PairingsRouter;
   setup: SetupRepository;
@@ -206,6 +238,9 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       return list[0] ?? null;
     },
     add: (input) => {
+      if (input.photo && !input.photoConsent) {
+        throw new Error("A player photo cannot be saved without recorded consent.");
+      }
       const first = input.firstName.trim();
       const last = input.lastName.trim();
       const player: PlayerRecord = {
@@ -221,14 +256,55 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         contactNumber: input.contactNumber?.trim() || null,
         email: input.email?.trim() || null,
         ngapId: input.ngapId?.trim() || null,
+        whsId: input.whsId?.trim() || null,
         photo: input.photo,
         photoConsent: input.photo ? (input.photoConsent ?? false) : undefined,
+        photoPublicConsent:
+          input.photo && input.photoConsent ? (input.photoPublicConsent ?? false) : undefined,
         createdAt: new Date().toISOString(),
       };
       dispatch({ type: "addPlayer", player });
       return player;
     },
     update: (id, patch) => dispatch({ type: "updatePlayer", id, patch }),
+    setPhoto: async (id, photoDataUrl, consent) => {
+      if (!consent.internal) throw new Error("A player photo needs recorded internal consent.");
+      dispatch({
+        type: "updatePlayer",
+        id,
+        patch: {
+          photo: photoDataUrl,
+          photoConsent: true,
+          photoPublicConsent: consent.public,
+        },
+      });
+    },
+    removePhoto: async (id) => {
+      dispatch({
+        type: "updatePlayer",
+        id,
+        patch: { photo: undefined, photoConsent: false, photoPublicConsent: false },
+      });
+    },
+    setPhotoPublicConsent: async (id, consent) => {
+      const player = state.players.find((item) => item.id === id);
+      if (consent && !player?.photoConsent) throw new Error("Save a consented photo first.");
+      dispatch({
+        type: "updatePlayer",
+        id,
+        patch: { photoPublicConsent: consent },
+      });
+    },
+    setMembership: async (id, type, memberNumber) => {
+      dispatch({
+        type: "updatePlayer",
+        id,
+        patch: {
+          membershipType: type,
+          memberNumber: type === "member" ? memberNumber?.trim() || null : null,
+        },
+      });
+    },
     remove: (id) => dispatch({ type: "removePlayer", id }),
   };
 
@@ -293,7 +369,17 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     remove: (id) => dispatch({ type: "removeEntry", id }),
     refreeze: (tournamentId, entryIds) => dispatch({ type: "refreeze", tournamentId, entryIds }),
     setDays: async (entryId, days) => {
-      dispatch({ type: "updateEntry", id: entryId, patch: { selectedDays: days } });
+      const entry = state.entries.find((item) => item.id === entryId);
+      if (!entry) throw new Error("That registration was not found.");
+      const caddieByDay = { ...(entry.caddieByDay ?? {}) };
+      for (const key of Object.keys(caddieByDay)) {
+        if (!days.includes(Number(key))) delete caddieByDay[Number(key)];
+      }
+      dispatch({
+        type: "updateEntry",
+        id: entryId,
+        patch: { selectedDays: days, caddieByDay },
+      });
     },
     assignDayTee: async (entryId, dayNumber, assignment) => {
       const entry = state.entries.find((item) => item.id === entryId);
@@ -374,6 +460,72 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
 
   // Demo mode keeps the setup in the session only. The connected adapter writes all five tables in
   // one transaction.
+  const caddies: CaddieRepository = {
+    list: () => state.caddies,
+    add: (input) => {
+      const now = new Date().toISOString();
+      const caddie: Caddie = {
+        id: nextId("c"),
+        clubId: state.clubId,
+        fullName: input.fullName.trim(),
+        nickname: input.nickname?.trim() || null,
+        phone: input.phone?.trim() || null,
+        email: input.email?.trim() || null,
+        active: true,
+        notes: input.notes?.trim() || null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      dispatch({ type: "addCaddie", caddie });
+      return caddie;
+    },
+    update: (id, patch) => {
+      if (patch.active === false) {
+        const assigned = state.entries.some((entry) =>
+          Object.values(entry.caddieByDay ?? {}).some((assignment) => assignment.caddieId === id),
+        );
+        if (assigned) {
+          throw new Error(
+            "This caddie still has an active assignment. Clear or reassign it first.",
+          );
+        }
+      }
+      dispatch({
+        type: "updateCaddie",
+        id,
+        patch: { ...patch, updatedAt: new Date().toISOString() },
+      });
+    },
+    remove: (id) => {
+      dispatch({ type: "removeCaddie", id });
+      for (const entry of state.entries) {
+        if (!entry.caddieByDay) continue;
+        const next = { ...entry.caddieByDay };
+        for (const [day, assignment] of Object.entries(next)) {
+          if (assignment.caddieId === id) delete next[Number(day)];
+        }
+        dispatch({ type: "updateEntry", id: entry.id, patch: { caddieByDay: next } });
+      }
+    },
+    assign: async (entryId, dayNumber, caddieId) => {
+      const entry = state.entries.find((item) => item.id === entryId);
+      if (!entry) throw new Error("That player entry was not found.");
+      const next = { ...(entry.caddieByDay ?? {}) };
+      if (!caddieId) {
+        delete next[dayNumber];
+      } else {
+        const caddie = state.caddies.find((item) => item.id === caddieId && item.active);
+        if (!caddie) throw new Error("That caddie is not active.");
+        next[dayNumber] = {
+          caddieId,
+          caddieName: caddie.fullName,
+          status: "assigned",
+        };
+      }
+      dispatch({ type: "updateEntry", id: entryId, patch: { caddieByDay: next } });
+    },
+  };
+
   const setup: SetupRepository = {
     save: ({ tournament, tees, holes }) => {
       // Changing a rating or a hole after the card was confirmed withdraws the confirmation: what is
@@ -401,7 +553,7 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     },
   };
 
-  return { players, tournaments, registrations, imports, router, setup };
+  return { players, tournaments, registrations, caddies, imports, router, setup };
 }
 
 const cutOffOf = (s: DeskState, tournamentId: string) =>

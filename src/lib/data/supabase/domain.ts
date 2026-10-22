@@ -7,6 +7,7 @@
  * guessed (AGENTS.md: never guess data).
  */
 import type {
+  Caddie,
   DeferredMatch,
   HandicapImportBatch,
   HandicapRecord,
@@ -17,6 +18,7 @@ import type {
 } from "@/lib/data/types";
 import type { CategoryRule, FlightRule, TournamentConfig } from "@/lib/routing";
 import type {
+  CaddieRow,
   CategoryRow,
   DeferredMatchRow,
   FlightRow,
@@ -55,10 +57,28 @@ export function toPlayerRecord(row: PlayerRow, photoUrl?: string): PlayerRecord 
     contactNumber: row.phone,
     email: row.email,
     ngapId: row.ngap_id,
-    // A photo is only ever exposed where consent was recorded.
+    whsId: row.whs_id ?? null,
+    // A photo is only ever exposed where internal consent was recorded.
     photo: row.photo_consent_at ? photoUrl : undefined,
     photoConsent: Boolean(row.photo_consent_at),
+    photoPublicConsent: Boolean(row.photo_public_consent_at),
+    photoPublicPath: row.photo_public_path ?? null,
     createdAt: row.created_at,
+  };
+}
+
+export function toCaddie(row: CaddieRow): Caddie {
+  return {
+    id: row.id,
+    clubId: row.club_id,
+    fullName: row.full_name,
+    nickname: row.nickname,
+    phone: row.phone,
+    email: row.email,
+    active: row.active,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -291,8 +311,8 @@ export function toPlayerInsert(player: PlayerRecord) {
     birthdate: player.birthdate,
     gender: player.gender,
     ngap_id: player.ngapId,
+    whs_id: player.whsId ?? null,
     phone: player.contactNumber,
-    photo_consent_at: player.photoConsent ? new Date().toISOString() : null,
     first_name: player.firstName,
     last_name: player.lastName,
     nickname: player.nickname,
