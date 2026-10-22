@@ -7,24 +7,60 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { OfflineRuntime } from "@/components/OfflineRuntime";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
+import {
+  COMPANY,
+  openGraphFor,
+  organizationSchema,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TAGLINE,
+  SITE_URL,
+  twitterFor,
+  websiteSchema,
+} from "@/lib/seo";
 import { DeskProvider } from "@/lib/store/desk-store";
 import { RAIL_INIT_SCRIPT } from "@/lib/ui/rail";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "TeeLine Golf | Every round, beautifully organized",
-    template: "%s | TeeLine Golf",
+    default: `${SITE_NAME} | ${SITE_TAGLINE}`,
+    template: `%s | ${SITE_NAME}`,
   },
-  description:
-    "A clearer way to manage golf tournaments, player registrations, and the moments that bring the club together.",
-  applicationName: "TeeLine Golf",
-  openGraph: {
-    type: "website",
-    siteName: "TeeLine Golf",
-    title: "TeeLine Golf | Every round, beautifully organized",
-    description:
-      "A clearer way to manage golf tournaments, player registrations, and the moments that bring the club together.",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  category: "Sports",
+  keywords: [
+    "golf tournament management",
+    "golf tournament software",
+    "golf club software Philippines",
+    "tournament pairings",
+    "golf handicaps",
+  ],
+  authors: [{ name: COMPANY.name, url: COMPANY.url }],
+  creator: COMPANY.name,
+  publisher: COMPANY.name,
+  openGraph: openGraphFor({
+    title: `${SITE_NAME} | ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    path: "/",
+  }),
+  twitter: twitterFor({
+    title: `${SITE_NAME} | ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+  }),
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
   icons: {
     icon: [
@@ -56,6 +92,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: RAIL_INIT_SCRIPT }} />
       </head>
       <body>
+        <JsonLd data={[organizationSchema(), websiteSchema()]} />
         <OfflineRuntime />
         <DeskProvider>{children}</DeskProvider>
       </body>
