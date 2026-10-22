@@ -147,3 +147,15 @@ public bucket or setting it private turns public photos off immediately; do not 
 - No deployment to `main` is part of this task.
 - Connected browser checks need a staff account and a non-protected environment.
 
+## Remote state at handoff
+
+- Branch `feat/caddie-profiles-public-photos` was pushed to `origin` at commit `58e74ab` (this record
+  then adds one docs commit; use the branch head).
+- No pull request was opened and nothing was merged into `develop` or `main`.
+- No tag was created. The owner creates and pushes `v0.24.0` only after review and merge.
+- No Vercel deployment was triggered. The branch is deployment-ineligible under `vercel.json`.
+- `VERSION` and `package.json` are both `0.24.0`; `CHANGELOG.md` has the 0.24.0 section.
+- `node scripts/release-check.mjs --tag v0.24.0` could not run because this repository does not
+  contain that script. Do not tag until the owner's release check is satisfied.
+
+
