@@ -988,6 +988,12 @@ export function createSupabaseAdapters(
       });
     },
     remove: (id) => {
+      const assigned = state.entries.some((entry) =>
+        Object.values(entry.caddieByDay ?? {}).some((assignment) => assignment.caddieId === id),
+      );
+      if (assigned) {
+        throw new Error("This caddie still has an active assignment. Clear or reassign it first.");
+      }
       dispatch({ type: "removeCaddie", id });
       enqueue(async () => {
         const { error } = await client.from("caddies").delete().eq("club_id", clubId).eq("id", id);

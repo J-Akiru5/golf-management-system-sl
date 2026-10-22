@@ -497,15 +497,13 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       });
     },
     remove: (id) => {
-      dispatch({ type: "removeCaddie", id });
-      for (const entry of state.entries) {
-        if (!entry.caddieByDay) continue;
-        const next = { ...entry.caddieByDay };
-        for (const [day, assignment] of Object.entries(next)) {
-          if (assignment.caddieId === id) delete next[Number(day)];
-        }
-        dispatch({ type: "updateEntry", id: entry.id, patch: { caddieByDay: next } });
+      const assigned = state.entries.some((entry) =>
+        Object.values(entry.caddieByDay ?? {}).some((assignment) => assignment.caddieId === id),
+      );
+      if (assigned) {
+        throw new Error("This caddie still has an active assignment. Clear or reassign it first.");
       }
+      dispatch({ type: "removeCaddie", id });
     },
     assign: async (entryId, dayNumber, caddieId) => {
       const entry = state.entries.find((item) => item.id === entryId);
