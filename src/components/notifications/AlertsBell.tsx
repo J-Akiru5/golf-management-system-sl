@@ -2,6 +2,7 @@
 
 import { Bell, Check, RefreshCw, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AlertCheckState,
@@ -39,6 +40,7 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     useDesk();
   const connected = isSupabaseConfigured();
   const tournamentId = tournament?.id ?? null;
+  const pathname = usePathname();
   // No stored check until the desk has loaded: before that the working event is the demo one.
   const ready = shouldCheckAlerts(connected, status);
 
@@ -123,8 +125,9 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
   }, [check, signature, ready]);
 
   // A public entry can arrive while the desk is open and nothing on this screen changes. Poll one
-  // count a minute, and again when the tab regains focus; only when the number rises does the store
-  // reload, so the per-entry alerts appear. No timer touches a form: reload happens on new data only.
+  // count a minute, and again when the tab regains focus, and refresh the stored alerts everywhere.
+  // The desk itself reloads only on the registration screen: no timer throws away an open form on
+  // Setup, the Draw or the scorecard.
   const lastPending = useRef<number | null>(null);
   useEffect(() => {
     if (!connected || !tournamentId || !ready) return;
@@ -138,7 +141,9 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
         return;
       }
       if (!alive || count === null) return;
-      if (lastPending.current !== null && count > lastPending.current) reload();
+      if (lastPending.current !== null && count > lastPending.current && pathname === "/register") {
+        reload();
+      }
       lastPending.current = count;
       await check(true);
     };
@@ -153,7 +158,7 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
-  }, [check, connected, ready, reload, tournamentId]);
+  }, [check, connected, pathname, ready, reload, tournamentId]);
 
   // A desk that failed to load cannot have its alerts checked; say so rather than "Checking…".
   useEffect(() => {
