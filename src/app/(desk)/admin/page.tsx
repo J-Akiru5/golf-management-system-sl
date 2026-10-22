@@ -148,11 +148,7 @@ function ControlRoomInner({
                     onClick={() => setSelected(isSel ? null : h.hole)}
                   />
                 </PopoverAnchor>
-                <PopoverContent
-                  side="right"
-                  align="start"
-                  className="scheme-dark bg-[rgba(16,26,21,.9)]"
-                >
+                <PopoverContent side="right" align="start">
                   <HoleCard b={b} slot={slot} />
                 </PopoverContent>
               </Popover>
@@ -216,7 +212,7 @@ function ControlRoomInner({
                     />
                   </PopoverTrigger>
                 </PopoverAnchor>
-                <PopoverContent side="bottom" className="scheme-dark bg-[rgba(16,26,21,.94)]">
+                <PopoverContent side="bottom">
                   <HoleCard b={b} slot={slot} />
                 </PopoverContent>
               </Popover>

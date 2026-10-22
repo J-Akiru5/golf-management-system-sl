@@ -173,6 +173,69 @@ check(
   (await page.locator('input[type="time"]').count()) > 0,
 );
 
+// --------------------------------------------------------------- control room cards
+// Issue #96: the hole card forced a dark background but kept the light theme's text tokens, so the
+// heading and "Open slot" rows were dark-on-dark. The card must follow the theme like every other
+// card, and every text sample inside it must clear 4.5:1 against the card surface.
+section("control room hole card contrast");
+const themeContext = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+await themeContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+  } catch {
+    // Storage off: the welcome may cover the card, and the check will say so.
+  }
+});
+const themePage = await themeContext.newPage();
+watch(themePage);
+const rgb = (value) => (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+const luminance = ([r, g, b]) => {
+  const channel = (v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+};
+const contrast = (a, b) => {
+  const [hi, lo] = [luminance(rgb(a)), luminance(rgb(b))].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+for (const theme of ["light", "dark"]) {
+  await themePage.addInitScript((choice) => {
+    window.localStorage.setItem("starter-theme", choice);
+  }, theme);
+  await themePage.goto(`${BASE}/admin`, { waitUntil: "networkidle", timeout: 120000 });
+  await themePage.evaluate((choice) => {
+    document.documentElement.dataset.theme = choice;
+  }, theme);
+  const pin = themePage.locator('button[aria-label^="Hole"]').first();
+  await pin.click();
+  const cardText = themePage.locator(
+    "[data-radix-popper-content-wrapper] h4, [data-radix-popper-content-wrapper] p, [data-radix-popper-content-wrapper] li",
+  );
+  await expect(cardText.first()).toBeVisible({ timeout: 15000 });
+  const surface = await themePage
+    .locator("[data-radix-popper-content-wrapper] h4")
+    .first()
+    .evaluate((node) => {
+      const card = node.closest(".glass");
+      return card ? getComputedStyle(card).backgroundColor : "";
+    });
+  let worst = Infinity;
+  for (const text of await cardText.allTextContents()) {
+    if (!text.trim()) continue;
+    const el = cardText.filter({ hasText: text }).first();
+    const color = await el.evaluate((node) => getComputedStyle(node).color);
+    worst = Math.min(worst, contrast(color, surface));
+  }
+  check(`${theme} hole card text clears 4.5:1`, worst >= 4.5, `(${worst.toFixed(2)}:1)`);
+  await themePage.keyboard.press("Escape");
+}
+await themeContext.close();
+
 // --------------------------------------------------------------- alerts bell
 section("alerts bell");
 await go("/players");
