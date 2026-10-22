@@ -15,9 +15,10 @@ Nothing yet.
 
 Caddie profiles, consented public player photos, admin player editing and an audit reader.
 
-**Migration:** `20261039000000_caddies_public_photos.sql`. **NOT APPLIED** to the live project as of
-this entry; the owner applies it separately. The migration is additive: two player columns, the public
-photo bucket, the caddie tables, the guarded membership/caddie functions and the public projections.
+**Migration:** `20261039000000_caddies_public_photos.sql`. **Applied to the live project on 22 Oct 2026**
+and recorded in `supabase_migrations.schema_migrations` as `20261039000000 / caddies_public_photos`. The
+migration is additive: two player columns, the public photo bucket, the caddie tables, the guarded
+membership/caddie functions and the public projections.
 
 ### Added
 - **Caddie profiles**: `/caddies` lists, adds, edits and retires club caddies. A caddie is a person,
@@ -48,7 +49,7 @@ photo bucket, the caddie tables, the guarded membership/caddie functions and the
 - Project rules, the spec, the plan and the privacy policy now describe the two-consent model.
 
 ### Database
-- `20261039000000_caddies_public_photos.sql` (not applied).
+- `20261039000000_caddies_public_photos.sql` (applied and recorded 22 Oct 2026).
 
 ## [0.23.1] - 2026-10-22
 

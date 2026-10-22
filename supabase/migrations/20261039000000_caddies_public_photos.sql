@@ -1,6 +1,7 @@
 -- Caddie profiles, consented public player photos, player membership editing and public results.
 --
--- STATUS: written for review on 22 Oct 2026. NOT APPLIED. Every statement is additive.
+-- STATUS: applied to the live project on 22 Oct 2026 and recorded as
+-- 20261039000000 / caddies_public_photos. Every statement is additive.
 --
 -- The owner has asked for player photos on public pairings, the flight schedule and a leaderboard.
 -- The project's previous rule was "photos only where consent is recorded; never on public pages".
