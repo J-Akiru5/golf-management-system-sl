@@ -1,12 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { NGAP_FAQ, NGAP_FAQ_CURRENT, NGAP_FAQ_SOURCE } from "@/lib/public/ngap-faq";
+import { faqPageSchema, openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "NGAP WHS FAQ",
   description:
     "Frequently asked questions about the NGAP World Handicap System, in the NGAP's words, with the 2024 fees and dates it published.",
+  alternates: { canonical: "/faq" },
+  openGraph: openGraphFor({
+    title: `NGAP WHS FAQ | ${SITE_NAME}`,
+    description:
+      "The NGAP's answers about the World Handicap System, in its own words, with the 2024 fees and dates it published.",
+    path: "/faq",
+  }),
+  twitter: twitterFor({
+    title: `NGAP WHS FAQ | ${SITE_NAME}`,
+    description: "The NGAP's answers about the World Handicap System, in its own words.",
+  }),
 };
 
 /**
@@ -19,6 +32,7 @@ export const metadata: Metadata = {
 export default function NgapFaqPage() {
   return (
     <div className="public">
+      <JsonLd data={faqPageSchema(NGAP_FAQ)} />
       <header className="public-head">
         <div className="flex flex-wrap items-center gap-3">
           <TeeLineLogo variant="reverse" width={172} />

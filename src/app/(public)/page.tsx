@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { MotionLayer } from "@/components/public/MotionLayer";
 import { TournamentCarousel } from "@/components/public/TournamentCarousel";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { loadPublicOpenEvents } from "@/lib/data/supabase/public-events";
 import { demoOpenEvents } from "@/lib/public/demo-events";
@@ -15,6 +16,13 @@ import {
   formatLabel,
   type PublicEvent,
 } from "@/lib/public/highlights";
+import {
+  openGraphFor,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  softwareApplicationSchema,
+  twitterFor,
+} from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { APP_VERSION_LABEL } from "@/lib/version";
@@ -89,14 +97,18 @@ function ScheduleStrip({ event }: { event: PublicEvent }) {
 }
 
 export const metadata: Metadata = {
-  title: "Every round, beautifully organized",
-  description:
-    "A clearer way to manage golf tournaments, player registrations, and the moments that bring the club together.",
-  openGraph: {
-    title: "TeeLine Golf | Every round, beautifully organized",
-    description:
-      "A clearer way to manage golf tournaments, player registrations, and the moments that bring the club together.",
-  },
+  title: "Golf tournament management for clubs in the Philippines",
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: openGraphFor({
+    title: `Golf tournament management for clubs in the Philippines | ${SITE_NAME}`,
+    description: SITE_DESCRIPTION,
+    path: "/",
+  }),
+  twitter: twitterFor({
+    title: `Golf tournament management for clubs in the Philippines | ${SITE_NAME}`,
+    description: SITE_DESCRIPTION,
+  }),
 };
 
 const capabilities = [
@@ -154,6 +166,7 @@ export default async function HomePage() {
 
   return (
     <main className="teeline-site">
+      <JsonLd data={softwareApplicationSchema()} />
       <MotionLayer />
       <section
         className={`teeline-hero${events.length > 0 ? " with-strip" : ""}`}
@@ -288,6 +301,20 @@ export default async function HomePage() {
 
       {events.length > 0 && <TournamentCarousel events={events} today={today} />}
       {featured && <ScheduleStrip event={featured} />}
+
+      <section id="what-is-teeline" className="experience-section">
+        <div className="section-intro" data-motion="reveal">
+          <p className="section-kicker">Golf tournament software</p>
+          <h2>Tournament management for golf clubs in the Philippines.</h2>
+          <p>
+            TeeLine Golf runs a tournament from the first entry to the printed sheet: player
+            registration, handicap-based categories and flights, the draw with its start waves,
+            published pairings that players can open without an account, and the start sheets and
+            scorecards the desk prints. It works on a phone at the course and on a laptop in the
+            office.
+          </p>
+        </div>
+      </section>
 
       <section id="experience" className="experience-section">
         <div className="section-intro" data-motion="reveal">
