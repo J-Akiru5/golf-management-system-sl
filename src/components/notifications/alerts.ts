@@ -60,6 +60,7 @@ const toSeverity = (severity: Severity): AlertSeverity =>
 export const FIX_HREF: Record<string, string> = {
   unplaced: "/draw",
   needs_review: "/players?status=needs_review",
+  registration_new: "/register",
   group_over_capacity: "/draw",
   group_under_minimum: "/draw",
   cutoff_soon: "/setup#rules",
@@ -100,10 +101,17 @@ export function alertsFromIssues(issues: Issue[]): Alert[] {
 }
 
 /** The stored notifications as alerts, minus any the live issues already cover. */
-export function alertsFromStored(stored: StoredNotification[], issues: Issue[]): Alert[] {
+export function alertsFromStored(
+  stored: StoredNotification[],
+  issues: Issue[],
+  suppressAggregateNeedsReview = false,
+): Alert[] {
   const duplicated = duplicatedKinds(issues);
   return stored
     .filter((notification) => !duplicated.has(notification.kind))
+    .filter(
+      (notification) => !(suppressAggregateNeedsReview && notification.kind === "needs_review"),
+    )
     .map((notification) => ({
       id: `stored:${notification.id}`,
       severity: notification.severity,
@@ -114,11 +122,47 @@ export function alertsFromStored(stored: StoredNotification[], issues: Issue[]):
     }));
 }
 
-/** Both sources as one list, blocking first so the worst is at the top. */
-export function buildAlerts(stored: StoredNotification[], issues: Issue[]): Alert[] {
-  return [...alertsFromIssues(issues), ...alertsFromStored(stored, issues)].sort(
-    (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
-  );
+/** The minimum a pending entry needs for its alert; satisfied by `DeskRegistration`. */
+export interface PendingEntry {
+  entryId: string;
+  playerId: string;
+  status: string;
+}
+
+/**
+ * One alert per entry waiting at the desk, derived from the registrations already loaded. It is not
+ * stored: confirming or rejecting the entry removes it, which is exactly the state the desk cares
+ * about. The stored `needs_review` aggregate is suppressed while these exist, so the badge counts
+ * players, not "players plus a summary".
+ */
+export function registrationAlerts(
+  entries: readonly PendingEntry[],
+  nameOf: (playerId: string) => string | null,
+): Alert[] {
+  return entries
+    .filter((entry) => entry.status === "needs_review")
+    .map((entry) => ({
+      id: `registration_new:${entry.entryId}`,
+      severity: "warning" as const,
+      title: `New entry: ${nameOf(entry.playerId) ?? "a player"}`,
+      detail: "Submitted through the public form. Confirm or reject it at the registration desk.",
+      href: "/register",
+      read: false,
+    }));
+}
+
+/** Every source as one list, blocking first so the worst is at the top. */
+export function buildAlerts(
+  stored: StoredNotification[],
+  issues: Issue[],
+  extra: Alert[] = [],
+): Alert[] {
+  const perEntry = extra.some((alert) => alert.id.startsWith("registration_new:"));
+  return [
+    ...extra,
+    ...alertsFromIssues(issues),
+    ...alertsFromStored(stored, issues, perEntry),
+  ].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 }
 
 /**
