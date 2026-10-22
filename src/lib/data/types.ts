@@ -59,10 +59,48 @@ export interface PlayerRecord {
   contactNumber: string | null;
   email: string | null;
   ngapId: string | null;
-  /** Data URL of a shrunk photo; present only with recorded consent. */
+  /** The WHS/Golf ID when it is different from the NGAP id. */
+  whsId?: string | null;
+  /** Data URL of a shrunk photo; present only with recorded internal consent. */
   photo?: string;
+  /** Internal-use consent: check-in, desk profile and posters. */
   photoConsent?: boolean;
+  /** Separate consent to show the photo on public pairings and results. */
+  photoPublicConsent?: boolean;
+  /** The public-bucket path, when a public copy exists. Never a private path. */
+  photoPublicPath?: string | null;
+  /** Club membership classification, when an active membership row exists. */
+  membershipType?: "member" | "guest" | null;
+  memberNumber?: string | null;
   createdAt: string;
+}
+
+/** A caddie profile. Caddies are club people, not login accounts and not players. */
+export interface Caddie {
+  id: string;
+  clubId: string;
+  fullName: string;
+  nickname: string | null;
+  phone: string | null;
+  email: string | null;
+  active: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One caddie carrying one player on one tournament day. */
+export interface CaddieAssignment {
+  id: string;
+  clubId: string;
+  tournamentId: string;
+  tournamentDayId: string;
+  registrationDayId: string;
+  caddieId: string;
+  caddieName?: string;
+  status: "assigned" | "confirmed" | "cancelled";
+  note: string | null;
+  assignedAt: string;
 }
 
 /** One imported (or manually corrected) handicap index. The official index comes from NGAP. */
@@ -243,6 +281,8 @@ export interface RegistrationEntry {
   selectedDays?: number[];
   /** Confirmed tee-time assignments, keyed by tournament day number. */
   dayTee?: Record<number, DayTeeAssignment>;
+  /** Active caddie assignment per tournament day, when one exists. */
+  caddieByDay?: Record<number, { caddieId: string; caddieName: string; status: string }>;
   /** Given by the participant on the form; informational, not used for eligibility. */
   declaredWshId: string | null;
   declaredWshHandicap: string | null;
@@ -288,6 +328,14 @@ export interface DeskRegistration extends Registration {
   teePreferences: Record<string, string | null>;
 }
 
+export interface PublicPairingPlayer {
+  /** Stable id when the snapshot was published with one; null for old snapshots. */
+  id: string | null;
+  name: string;
+  /** A path in the public photo bucket, or null when public consent is absent. */
+  photoPath: string | null;
+}
+
 /** What the public pairing preview is allowed to show. Built by an allow-list, never by passing a
  * player or registration object through. */
 export interface PublicPairingGroup {
@@ -296,7 +344,7 @@ export interface PublicPairingGroup {
   wave: string | null;
   time: string;
   flight: string;
-  players: string[];
+  players: PublicPairingPlayer[];
 }
 
 export interface PublicPairings {

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Avatar } from "@/components/bits";
 import type { PublicPairings } from "@/lib/data/types";
 import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
+import { publicPhotoUrl } from "@/lib/photo";
 
 /**
  * Player-facing pairings: names, flight, hole and time only. Built from an allow-listed
@@ -34,7 +36,7 @@ export function PairingsView({
   const groups = pairings.groups.filter(
     (g) =>
       (!flight || g.flight === flight) &&
-      (!q || g.players.some((name) => name.toLowerCase().includes(q))),
+      (!q || g.players.some((player) => player.name.toLowerCase().includes(q))),
   );
   const shotgun = pairings.startFormat === "shotgun";
 
@@ -90,11 +92,18 @@ export function PairingsView({
               <b>{groupLabel(g.startHole, g.wave)}</b>
               <span className="mono">{fmtTime(g.time)}</span>
             </div>
-            {g.players.map((name) => {
-              const hit = q && name.toLowerCase().includes(q);
+            {g.players.map((player) => {
+              const hit = q && player.name.toLowerCase().includes(q);
+              const photo = publicPhotoUrl(player.photoPath);
               return (
-                <div key={`${g.number}-${name}`} className={`slot${hit ? " hit" : ""}`}>
-                  {name}
+                <div
+                  key={`${g.number}-${player.id ?? player.name}`}
+                  className={`slot${hit ? " hit" : ""}`}
+                >
+                  <span className="who">
+                    <Avatar name={player.name} photo={photo} />
+                    <span>{player.name}</span>
+                  </span>
                 </div>
               );
             })}

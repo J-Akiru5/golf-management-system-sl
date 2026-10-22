@@ -392,6 +392,7 @@ export default async function HomePage() {
           <nav className="footer-col" aria-label="Product">
             <h2>Product</h2>
             <Link href="/pairings">Published pairings</Link>
+            <Link href="/leaderboard">Public leaderboard</Link>
             <Link href="/login">Sign in to the desk</Link>
           </nav>
 

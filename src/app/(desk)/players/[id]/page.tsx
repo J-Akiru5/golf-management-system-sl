@@ -8,6 +8,7 @@ import {
   History,
   ImageIcon,
   Lock,
+  Pencil,
   ScrollText,
   Trophy,
   UserX,
@@ -15,10 +16,12 @@ import {
 import Link from "next/link";
 import { use, useState } from "react";
 import { Avatar } from "@/components/bits";
+import { RoleGate } from "@/components/desk";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { SectionCard } from "@/components/PageHeader";
 import { PlayerCard } from "@/components/PlayerCard";
 import { type PosterFactOption, PosterStudio } from "@/components/PosterStudio";
+import { PlayerDetailsForm } from "@/components/player/PlayerDetailsForm";
 import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
 import { PAYMENT_LABEL } from "@/lib/data/types";
@@ -46,13 +49,16 @@ function BackLink() {
 
 export default function PlayerProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { tournament, playerById, regById, entryByPlayer, draw, names, adapters, tees } = useDesk();
+  const { tournament, playerById, regById, entryByPlayer, draw, names, adapters, tees, member } =
+    useDesk();
   const player = playerById.get(id);
   const reg = regById.get(id);
   const entry = entryByPlayer.get(id);
   const [consent, setConsent] = useState(false);
+  const [publicConsent, setPublicConsent] = useState(false);
   const [pending, setPending] = useState<string | undefined>();
   const [photoError, setPhotoError] = useState("");
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   if (!tournament) return <NeedsTournament what="The player profile" />;
 
@@ -309,7 +315,7 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
             id="photo-h"
             icon={<Camera />}
             title="Photo"
-            subtitle="Kept only with the player's agreement. Never shown on public pages."
+            subtitle="Kept only with the player's agreement. Public display needs a separate opt-in."
           >
             {photo ? (
               <img
@@ -336,6 +342,7 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
                   const f = e.target.files?.[0];
                   setPhotoError("");
                   setConsent(false);
+                  setPublicConsent(false);
                   if (!f) return setPending(undefined);
                   try {
                     setPending(await shrinkPhoto(f));
@@ -356,25 +363,54 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
                   <input
                     type="checkbox"
                     checked={consent}
-                    onChange={(e) => setConsent(e.target.checked)}
+                    onChange={(e) => {
+                      setConsent(e.target.checked);
+                      if (!e.target.checked) setPublicConsent(false);
+                    }}
                   />
                   <span>
                     The player agrees to have their photo kept on file and used for check-in, their
                     player profile and tournament posters.
                   </span>
                 </label>
+                <label className="check text-[13px]">
+                  <input
+                    type="checkbox"
+                    checked={publicConsent}
+                    disabled={!consent}
+                    onChange={(e) => setPublicConsent(e.target.checked)}
+                  />
+                  <span>
+                    Separately, the player agrees this photo may appear on public pairings, the
+                    public leaderboard and printed start sheets. This is optional.
+                  </span>
+                </label>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="primary"
                     size="sm"
-                    disabled={!consent}
-                    onClick={() => {
-                      adapters.players.update(player.id, { photo: pending, photoConsent: true });
-                      setPending(undefined);
-                      setConsent(false);
+                    disabled={!consent || photoBusy}
+                    onClick={async () => {
+                      setPhotoError("");
+                      setPhotoBusy(true);
+                      try {
+                        await adapters.players.setPhoto(player.id, pending, {
+                          internal: consent,
+                          public: publicConsent,
+                        });
+                        setPending(undefined);
+                        setConsent(false);
+                        setPublicConsent(false);
+                      } catch (err) {
+                        setPhotoError(
+                          err instanceof Error ? err.message : "Could not save the photo.",
+                        );
+                      } finally {
+                        setPhotoBusy(false);
+                      }
                     }}
                   >
-                    Save photo
+                    {photoBusy ? "Saving…" : "Save photo"}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setPending(undefined)}>
                     Cancel
@@ -383,16 +419,55 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
               </div>
             )}
             {photo && !pending && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="justify-self-start"
-                onClick={() =>
-                  adapters.players.update(player.id, { photo: undefined, photoConsent: undefined })
-                }
-              >
-                Remove photo
-              </Button>
+              <div className="grid gap-3">
+                <label className="check text-[13px]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(player.photoPublicConsent)}
+                    disabled={photoBusy}
+                    onChange={async (e) => {
+                      setPhotoError("");
+                      setPhotoBusy(true);
+                      try {
+                        await adapters.players.setPhotoPublicConsent(player.id, e.target.checked);
+                      } catch (err) {
+                        setPhotoError(
+                          err instanceof Error
+                            ? err.message
+                            : "Could not change the public photo consent.",
+                        );
+                      } finally {
+                        setPhotoBusy(false);
+                      }
+                    }}
+                  />
+                  <span>
+                    Allow this photo on public pairings, the public leaderboard and printed start
+                    sheets. Internal consent alone does not do this.
+                  </span>
+                </label>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="justify-self-start"
+                  disabled={photoBusy}
+                  onClick={async () => {
+                    setPhotoError("");
+                    setPhotoBusy(true);
+                    try {
+                      await adapters.players.removePhoto(player.id);
+                    } catch (err) {
+                      setPhotoError(
+                        err instanceof Error ? err.message : "Could not remove the photo.",
+                      );
+                    } finally {
+                      setPhotoBusy(false);
+                    }
+                  }}
+                >
+                  Remove photo
+                </Button>
+              </div>
             )}
           </SectionCard>
 
@@ -422,17 +497,47 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
               <div className="flex justify-between gap-3">
                 <dt className="text-ink-muted">Photo consent</dt>
                 <dd className="m-0 font-semibold">
-                  {player.photoConsent ? "Recorded" : "Not recorded"}
+                  {player.photoConsent ? "Internal use recorded" : "Not recorded"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-muted">Public photo consent</dt>
+                <dd className="m-0 font-semibold">
+                  {player.photoPublicConsent ? "Public display allowed" : "Not allowed"}
                 </dd>
               </div>
             </dl>
             <p className="hint">
-              Birthdates, contact details and photos are personal data under the Data Privacy Act of
-              2012. The desk keeps them for organizer use only and never shows them on public pages.
+              Birthdates, contact details and private photo paths are personal data under the Data
+              Privacy Act of 2012. Public pages only receive a photo path from the public bucket
+              when the separate public consent is recorded. Withdrawal removes the public copy.
             </p>
           </SectionCard>
         </div>
       </div>
+
+      <RoleGate role={member?.role} allow={["owner", "organizer"]} mode="hide">
+        <SectionCard
+          id="details-h"
+          icon={<Pencil />}
+          title="Player details"
+          subtitle="Corrections are saved to the club directory and recorded in the audit log."
+        >
+          <PlayerDetailsForm
+            player={player}
+            canEdit={!member || member.role === "owner" || member.role === "organizer"}
+            onSave={(patch) =>
+              adapters.players.update(player.id, {
+                ...patch,
+                name: `${patch.firstName} ${patch.lastName}`.trim(),
+              })
+            }
+            onSaveMembership={(type, memberNumber) =>
+              adapters.players.setMembership(player.id, type, memberNumber)
+            }
+          />
+        </SectionCard>
+      </RoleGate>
 
       <section aria-labelledby="poster-h" className="grid gap-4">
         <div className="wave-head">

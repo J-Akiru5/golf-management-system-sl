@@ -11,6 +11,46 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.24.0] - 2026-10-22
+
+Caddie profiles, consented public player photos, admin player editing and an audit reader.
+
+**Migration:** `20261039000000_caddies_public_photos.sql`. **Applied to the live project on 22 Oct 2026**
+and recorded in `supabase_migrations.schema_migrations` as `20261039000000 / caddies_public_photos`. The
+migration is additive: two player columns, the public photo bucket, the caddie tables, the guarded
+membership/caddie functions and the public projections.
+
+### Added
+- **Caddie profiles**: `/caddies` lists, adds, edits and retires club caddies. A caddie is a person,
+  not a login account.
+- **Caddie assignment per player-day** on `/tee-times`. Assignments are anchored to
+  `registration_days`, not groups, so a draw re-run cannot destroy them. One active caddie per player
+  day and one active player per caddie per tournament day are enforced in the database.
+- **Separate public-display photo consent**: `photo_public_consent_at` and a public
+  `player-photos-public` bucket. Internal consent still governs check-in, profiles and posters. Only a
+  separately consented copy reaches public pages; withdrawal removes the public copy. Existing
+  internal consent is not promoted automatically.
+- **Photos on the start sheet and public pairings**, and a new public `/leaderboard` page for published
+  gross and net results. The public projections return only the frozen name, the published player id
+  and a public-bucket path that the database has already gated on consent. Published snapshots created
+  before this release have no player id, so they stay names-only until the organizer publishes again.
+- **Admin player editing**: owner/organizer can correct identity, contact, NGAP/WHS ids and club
+  membership from the player profile. Player delete is owner/organizer only and asks for confirmation.
+- **Audit reader** at `/audit` for owner/organizer. Caddie profiles and assignments now have audit
+  triggers alongside players, memberships and the existing registration/import records.
+- **Photo persistence fix**: the live adapter now uploads the photo and writes `photo_path` and the
+  consent timestamps. Before this, a photo chosen on the desk was session-only and vanished on reload.
+
+### Changed
+- `players.update` no longer touches photo columns; photo changes go through the guarded
+  `setPhoto`, `removePhoto` and `setPhotoPublicConsent` methods.
+- `build_round_snapshot` includes `playerId` in gross and net rows so the leaderboard can fetch a
+  current public photo without exposing contact or handicap data.
+- Project rules, the spec, the plan and the privacy policy now describe the two-consent model.
+
+### Database
+- `20261039000000_caddies_public_photos.sql` (applied and recorded 22 Oct 2026).
+
 ## [0.23.1] - 2026-10-22
 
 ### Fixed

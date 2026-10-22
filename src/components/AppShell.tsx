@@ -6,6 +6,7 @@ import {
   CircleUserRound,
   ClipboardCheck,
   ClipboardList,
+  Contact,
   Download,
   Flag,
   LayoutGrid,
@@ -15,6 +16,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Printer,
+  ScrollText,
   Search,
   SlidersHorizontal,
   Smartphone,
@@ -112,6 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { href: "/admin", label: "Control room", icon: LayoutGrid, group: "main" },
     { href: "/tournaments", label: "Tournaments", icon: Trophy, group: "main" },
     { href: "/players", label: "Players", icon: Users, alert: review > 0, group: "main" },
+    { href: "/caddies", label: "Caddies", icon: Contact, group: "main" },
     {
       href: "/register",
       label: "Registration desk",
@@ -133,6 +136,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { href: "/setup", label: "Settings", icon: SlidersHorizontal, group: "main" },
     { href: "/course", label: "Course & holes", icon: MapIcon, group: "more" },
     { href: "/spotlight", label: "Clubhouse display", icon: MonitorPlay, group: "more" },
+    { href: "/audit", label: "Audit log", icon: ScrollText, group: "more" },
     { href: "/pairings", label: "Player view", icon: Smartphone, group: "more" },
   ];
 

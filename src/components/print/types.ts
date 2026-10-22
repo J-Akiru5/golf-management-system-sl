@@ -11,6 +11,8 @@ export interface PrintPlayer {
   handicapIndex: number | null;
   playingHandicap: number | null;
   teeName: string | null;
+  /** A signed or data URL only when internal photo consent is recorded. */
+  photo?: string;
 }
 
 export interface PrintHole {

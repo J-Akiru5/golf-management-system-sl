@@ -49,6 +49,7 @@ export default async function PublicPairingsPage() {
           dateLabel: fmtDateLabel([data.date]),
           startFormat: data.startFormat,
           firstTeeTime: data.firstTeeTime,
+          photoByPlayerId: data.photoByPlayerId,
         })
       : null;
 
@@ -104,7 +105,8 @@ export default async function PublicPairingsPage() {
       )}
 
       <p className="hint no-print">
-        {t("pairings.footer")} <Link href="/">{t("pairings.home")}</Link>
+        {t("pairings.footer")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
+        <Link href="/leaderboard">Leaderboard</Link>
       </p>
       <PlayerBottomBar />
     </div>

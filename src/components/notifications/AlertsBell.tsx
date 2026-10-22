@@ -10,6 +10,7 @@ import {
   buildAlerts,
   dismissableCount,
   groupAlerts,
+  registrationAlerts,
   type StoredNotification,
   shouldCheckAlerts,
   showsAllClear,
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import {
   loadNotifications,
   markNotificationsRead,
+  pendingRegistrationCount,
   syncNotifications,
 } from "@/lib/data/notifications";
 import { validateDraw } from "@/lib/draw/validate";
@@ -33,7 +35,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
  * notifications and de-duplicates the overlap, so the badge and the Issues panel cannot disagree.
  */
 export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
-  const { state, registrations, names, tournament, draw, published, status } = useDesk();
+  const { state, registrations, names, tournament, draw, published, status, players, reload } =
+    useDesk();
   const connected = isSupabaseConfigured();
   const tournamentId = tournament?.id ?? null;
   // No stored check until the desk has loaded: before that the working event is the demo one.
@@ -62,7 +65,16 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     [draw, registrations, tournament, names, state.boards, state.activeTournamentId],
   );
 
-  const alerts = useMemo(() => buildAlerts(stored, issues), [stored, issues]);
+  const alerts = useMemo(() => {
+    // One alert per entry waiting at the desk, named after the player. Derived from the loaded
+    // registrations, so it clears itself the moment the entry is confirmed; no migration, no
+    // stored row to go stale. Demo mode has no public form, so it keeps the bell it had.
+    const playerNames = new Map(players.map((player) => [player.id, player.name]));
+    const pending = connected
+      ? registrationAlerts(registrations, (playerId) => playerNames.get(playerId) ?? null)
+      : [];
+    return buildAlerts(stored, issues, pending);
+  }, [stored, issues, players, registrations, connected]);
   const count = badgeCount(alerts);
   const groups = groupAlerts(alerts);
   const dismissable = dismissableCount(alerts);
@@ -81,30 +93,67 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     [registrations, draw, published],
   );
 
-  const check = useCallback(async () => {
-    if (!connected || !tournamentId) {
-      // Demo mode: the bell works from the live issues alone.
-      setSync("idle");
-      return;
-    }
-    if (!ready) return;
-    setSync("checking");
-    try {
-      const client = createSupabaseBrowserClient();
-      await syncNotifications(client, tournamentId);
-      setStored(await loadNotifications(client, tournamentId));
-      setSync("ready");
-    } catch {
-      // Keep the last good list rather than showing a false "all clear".
-      setSync("error");
-    }
-  }, [connected, tournamentId, ready]);
+  const check = useCallback(
+    async (silent = false) => {
+      if (!connected || !tournamentId) {
+        // Demo mode: the bell works from the live issues alone.
+        setSync("idle");
+        return;
+      }
+      if (!ready) return;
+      // A background refresh must not flash "Checking…" over a panel the desk is reading.
+      if (!silent) setSync("checking");
+      try {
+        const client = createSupabaseBrowserClient();
+        await syncNotifications(client, tournamentId);
+        setStored(await loadNotifications(client, tournamentId));
+        setSync("ready");
+      } catch {
+        // Keep the last good list rather than showing a false "all clear".
+        setSync("error");
+      }
+    },
+    [connected, tournamentId, ready],
+  );
 
   useEffect(() => {
     if (!ready) return;
     const timer = setTimeout(() => void check(), 400);
     return () => clearTimeout(timer);
   }, [check, signature, ready]);
+
+  // A public entry can arrive while the desk is open and nothing on this screen changes. Poll one
+  // count a minute, and again when the tab regains focus; only when the number rises does the store
+  // reload, so the per-entry alerts appear. No timer touches a form: reload happens on new data only.
+  const lastPending = useRef<number | null>(null);
+  useEffect(() => {
+    if (!connected || !tournamentId || !ready) return;
+    let alive = true;
+    const poll = async () => {
+      let count: number | null = null;
+      try {
+        count = await pendingRegistrationCount(createSupabaseBrowserClient(), tournamentId);
+      } catch {
+        // A failed count says nothing about the entries; keep the last known bell state.
+        return;
+      }
+      if (!alive || count === null) return;
+      if (lastPending.current !== null && count > lastPending.current) reload();
+      lastPending.current = count;
+      await check(true);
+    };
+    const onFocus = () => void poll();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void poll();
+    }, 60_000);
+    window.addEventListener("focus", onFocus);
+    void poll();
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [check, connected, ready, reload, tournamentId]);
 
   // A desk that failed to load cannot have its alerts checked; say so rather than "Checking…".
   useEffect(() => {

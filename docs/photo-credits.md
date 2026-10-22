@@ -65,3 +65,19 @@ Downloaded on 20 October 2026. No image is hotlinked; the app serves the committ
 - No watermarks, stock-agency overlays, or legible brand logos are present in the delivered files.
 - Tee numbers and course details visible in any image are not IGCC's real ratings or scorecard.
   The scorecard is a generic stock image and must not be presented as an IGCC card.
+
+## Sign-in page photography
+
+The sign-in panel uses its own photograph, separate from the landing set above. It is also a real
+photograph from Pexels and carries the same licence.
+
+### `auth-panel.webp`
+
+- **Page:** https://www.pexels.com/photo/misty-golf-course-with-lush-greenery-31508581/
+- **Photographer:** Carlos Ramón Bonilla Miranda
+- **Licence:** Pexels License (https://www.pexels.com/license/)
+- **Shows:** A frost-covered fairway rising to a green in morning mist, bare trees behind and a
+  single red flag at the upper right. No people, text or logos.
+- **Original:** 2856 x 4272 px, portrait. **Delivered:** 720 x 1200 px.
+- **Changes:** Cropped to 3:5, resized to 1200 px tall, converted to WebP at quality 82.
+- **Downloaded:** 22 October 2026.

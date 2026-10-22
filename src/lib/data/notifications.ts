@@ -62,3 +62,19 @@ export async function markNotificationsRead(
   if (error) throw new Error(`Could not dismiss notices: ${error.message}`);
   return typeof data === "number" ? data : 0;
 }
+
+/**
+ * How many entries are waiting at the desk right now. The bell polls this so a new public entry
+ * reaches the desk without a manual reload; it reads one count and nothing else.
+ */
+export async function pendingRegistrationCount(
+  client: SupabaseClient<Database>,
+  tournamentId: string,
+): Promise<number | null> {
+  const { count, error } = await client
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId)
+    .eq("status", "needs_review");
+  return error ? null : (count ?? 0);
+}
