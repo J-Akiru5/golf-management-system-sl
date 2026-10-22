@@ -105,18 +105,38 @@ export async function resendConfirmation(formData: FormData): Promise<void> {
  * until it links a member record, which the claim step on /my does.
  */
 export async function signUpWithPassword(formData: FormData): Promise<void> {
-  if (!isSupabaseConfigured()) redirect("/login?error=supabase_not_configured");
+  if (!isSupabaseConfigured()) redirect("/signup?error=supabase_not_configured");
 
+  const displayName = formData.get("displayName");
   const email = formData.get("email");
   const password = formData.get("password");
-  if (typeof email !== "string" || typeof password !== "string" || !email.trim()) {
-    redirect("/login?error=sign_up_credentials_required");
+  const confirm = formData.get("confirmPassword");
+
+  if (typeof displayName !== "string" || !displayName.trim()) {
+    redirect("/signup?error=name_required");
   }
-  if (password.length < 8) redirect("/login?error=sign_up_password_short");
+  if (typeof email !== "string" || !email.trim() || typeof password !== "string") {
+    redirect("/signup?error=credentials_required");
+  }
+
+  // The same rule the reset form uses, enforced here so a request that skips the page is held to it.
+  const problem = passwordProblem(password, typeof confirm === "string" ? confirm : "");
+  if (problem) redirect(`/signup?error=${problem}`);
 
   const client = await createSupabaseServerClient();
-  const { data, error } = await client.auth.signUp({ email: email.trim(), password });
-  if (error) redirect("/login?error=sign_up_failed");
+  const { data, error } = await client.auth.signUp({
+    email: email.trim(),
+    password,
+    options: { data: { display_name: displayName.trim() } },
+  });
+
+  if (error) {
+    // Supabase Auth rate-limits sign-ups itself. Say so rather than blaming the person's details.
+    const limited = /rate|too many|exceeded/i.test(error.message);
+    redirect(
+      `/signup?error=${limited ? "rate_limited" : "sign_up_failed"}&email=${encodeURIComponent(email.trim())}`,
+    );
+  }
 
   // With email confirmation on, the account exists but there is no session yet.
   if (!data.session) redirect("/login?message=check_email");

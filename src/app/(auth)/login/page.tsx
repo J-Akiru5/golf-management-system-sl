@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { PasswordField } from "@/components/auth/PasswordField";
-import { resendConfirmation, signInWithPassword, signUpWithPassword } from "@/lib/auth/actions";
+import { resendConfirmation, signInWithPassword } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const ERRORS: Record<string, string> = {
@@ -124,32 +124,12 @@ export default async function LoginPage({
           </form>
         )}
 
-        <details className="border-t border-line pt-4">
-          <summary className="cursor-pointer text-[14px] font-semibold">
-            New player? Create an account
-          </summary>
-          <form action={signUpWithPassword} className="mt-3 grid gap-3.5">
-            <p className="hint">
-              An account on its own shows nothing: after signing up you link your club record by
-              name and NGAP number. Club staff accounts are created by the club, not here.
-            </p>
-            <label className="field">
-              <span>Email</span>
-              <input name="email" type="email" autoComplete="email" required />
-            </label>
-            <PasswordField
-              id="signup-password"
-              name="password"
-              label="Password"
-              autoComplete="new-password"
-              minLength={8}
-              hint="At least 8 characters."
-            />
-            <button type="submit" className="btn ghost">
-              Create account
-            </button>
-          </form>
-        </details>
+        <p className="border-t border-line pt-4 text-[13px]">
+          New here?{" "}
+          <Link href="/signup" className="font-semibold underline underline-offset-2">
+            Create an account
+          </Link>
+        </p>
       </div>
 
       {!configured && (
