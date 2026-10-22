@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { HelpButton } from "@/components/help";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
@@ -9,9 +10,27 @@ import { toPublicPairings } from "@/lib/data/public";
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
 import { fmtTime } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { DemoPairings } from "./DemoPairings";
+
+export const metadata: Metadata = {
+  title: "Published player pairings",
+  description:
+    "The published pairings for the club's tournament: name, flight, hole or tee and start time. No account needed, and the version number can be checked against a printed copy.",
+  alternates: { canonical: "/pairings" },
+  openGraph: openGraphFor({
+    title: `Published player pairings | ${SITE_NAME}`,
+    description:
+      "Name, flight, hole or tee and start time, from the published version. No account needed.",
+    path: "/pairings",
+  }),
+  twitter: twitterFor({
+    title: `Published player pairings | ${SITE_NAME}`,
+    description: "Name, flight, hole or tee and start time, from the published version.",
+  }),
+};
 
 /**
  * The page players open. Built on the server from the published version in the database, with no
