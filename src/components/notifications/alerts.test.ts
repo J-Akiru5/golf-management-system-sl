@@ -10,6 +10,7 @@ import {
   duplicatedKinds,
   fixHref,
   groupAlerts,
+  registrationAlerts,
   type StoredNotification,
   shouldCheckAlerts,
   showsAllClear,
@@ -213,5 +214,64 @@ describe("when the stored check may run", () => {
 
   it("never runs when the desk failed to load", () => {
     expect(shouldCheckAlerts(true, "error")).toBe(false);
+  });
+});
+
+describe("new entries at the desk", () => {
+  const entry = (entryId: string, playerId: string, status = "needs_review") => ({
+    entryId,
+    playerId,
+    status,
+  });
+  const nameOf = (playerId: string) =>
+    ({ p1: "Ana Cruz", p2: "Ben Reyes" })[playerId as "p1" | "p2"] ?? null;
+
+  it("creates one warning per entry waiting at the desk, named after the player", () => {
+    const alerts = registrationAlerts([entry("r1", "p1"), entry("r2", "p2")], nameOf);
+    expect(alerts.map((alert) => alert.title)).toEqual([
+      "New entry: Ana Cruz",
+      "New entry: Ben Reyes",
+    ]);
+    expect(alerts.every((alert) => alert.severity === "warning")).toBe(true);
+    expect(alerts.every((alert) => alert.href === "/register")).toBe(true);
+  });
+
+  it("clears itself when the entry leaves review, because confirming is the acknowledgement", () => {
+    expect(registrationAlerts([entry("r1", "p1", "confirmed")], nameOf)).toHaveLength(0);
+    expect(registrationAlerts([entry("r1", "p1", "rejected")], nameOf)).toHaveLength(0);
+  });
+
+  it("counts each entry in the badge, so two new players read as two", () => {
+    const alerts = buildAlerts(
+      [],
+      [],
+      registrationAlerts([entry("r1", "p1"), entry("r2", "p2")], nameOf),
+    );
+    expect(badgeCount(alerts)).toBe(2);
+  });
+
+  it("still names the entry when the player record is missing, rather than hiding it", () => {
+    expect(registrationAlerts([entry("r1", "ghost")], nameOf)[0]?.title).toBe(
+      "New entry: a player",
+    );
+  });
+
+  it("replaces the stored needs_review summary with the individual entries", () => {
+    const alerts = buildAlerts(
+      [stored("needs_review", "warning")],
+      [],
+      registrationAlerts([entry("r1", "p1")], nameOf),
+    );
+    expect(alerts.map((alert) => alert.id)).toEqual(["registration_new:r1"]);
+  });
+
+  it("keeps the stored summary when no per-entry alert can be built", () => {
+    expect(buildAlerts([stored("needs_review", "warning")], []).map((a) => a.id)).toEqual([
+      "stored:needs_review",
+    ]);
+  });
+
+  it("routes a stored registration alert to the desk as well", () => {
+    expect(fixHref("registration_new")).toBe("/register");
   });
 });
