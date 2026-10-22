@@ -11,6 +11,156 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.23.1] - 2026-10-22
+
+### Fixed
+- **Registration workbook day columns**: workbooks that mark each playing day in its own column
+  (`DAY 1` … `DAY N`, or an export such as `day_1` … `day_4`) are now read correctly. A TRUE, 1 or YES
+  cell selects that day; blank cells are not treated as FALSE. The event's playing-day rule is applied
+  exactly as it is for a single `GAME DATES` cell, and a row that does not meet it is rejected and
+  recorded with its reason instead of being guessed. No migration.
+- **Verified against the real 24th Bamboo Tee workbook**: the preview read 144 rows, the commit wrote
+  100 registrations and read back 200 day selections, and 44 rows with blank day assignments were
+  recorded as rejected for the desk to complete.
+
+## [0.23.0] - 2026-10-21
+
+The scorecard workflow now writes through the guarded database functions.
+
+### Added
+- **Connected scoring repository** (`src/lib/data/supabase/scoring.ts`): reads the persisted round,
+  cards, resolutions and snapshots, derives the view with the same pure engine, and writes through
+  the guarded RPCs. `/scores` now uses `desk.scoring`, which is live when Supabase is configured and
+  in-memory in the demo.
+- **Proposed scoring defaults** (`src/lib/scoring/defaults.ts`): two independent cards, single-card
+  provisional display, a proposed back-9 tie-break that stays **unconfirmed**, organizer finalization
+  authority, verified-holes provisional publication, a reciprocal scorer cycle, 100% allowance, WHS
+  rounding, independent days, 0.85 OCR confidence and a 1–20 stroke range. They are starting values
+  stored per round, not hard-coded rules; finalization still blocks until the tie-break is confirmed.
+- **Generated database types** in `src/lib/supabase/generated-types.ts`, used by the scoring adapter.
+  The app’s existing hand-written types remain in place until the wider type migration is scheduled.
+
+## [0.22.0] - 2026-10-21
+
+Production integrity: imports that persist, the registration workbook, structured playing days, tee
+times, and a clearer sign-in. The scoring engine shipped in 0.21.0.
+
+### Added
+- **Registration workbook import** (`/import`): CSV and XLSX, worksheet selection, deterministic
+  column mapping, an optional schema-validated AI proposal that sees only headers and value shapes,
+  a per-row preview, human approval, a single-transaction commit and an independent read-back. Member
+  and guest rows become separate players; a guest does not inherit the member's birthdate, contact,
+  payment or shirt.
+- **Canonical player, membership and event-day model**: club-scoped `player_memberships`,
+  `tournament_days`, `registration_days`, explicit registration facts, import batches and per-row
+  outcomes, and an append-only audit log. Birthdate and gender are nullable so an incomplete guest
+  profile is saved as Needs review instead of invented.
+- **Structured public day selection**: the entry form shows each playing day's date and start time,
+  sends a `days` array, and the server revalidates it against the event's required and maximum rule.
+  The 24th Bamboo Tee is set to exactly two days.
+- **Tee times screen** (`/tee-times`): one tab per playing day, the players who selected it, and a
+  time, start hole and confirmation saved through `assign_registration_day_tee`. Day selection stays
+  a separate write.
+- **Sign-in diagnosis**: provider errors now distinguish an unconfirmed email from a wrong password,
+  with a resend-confirmation flow and same-browser reset guidance.
+- **NGAP WHS FAQ reference** (`docs/ngap/wsh-faq.md`), reproduced from the 2024 NGAP FAQ with its two
+  source gaps recorded.
+
+### Fixed
+- **The handicap import reported success before any write and could not create players.** It now
+  awaits a guarded transaction, refuses rows without a matching player, records each row's outcome,
+  and reloads the desk from the database before showing the result. The two production batches that
+  claimed 17 and 42 records are left as evidence, not treated as state.
+- **Registration day and tee-time writes were not structured or checked.** They now go through
+  `set_registration_days` and `assign_registration_day_tee`, with duplicate, tournament, hole-range and
+  day-start validation.
+
+### Changed
+- **`/pairings` has a desktop layout.** `.public` caps every public page at 56rem, which is right for a
+  phone but left the pairings page as a narrow column in the middle of a wide screen. The page now
+  takes 80rem from 1024px up, with a taller header band and a larger event name, and the empty state
+  is a centred dashed panel rather than a bar of text. Nothing below 1024px changes, and the class is
+  scoped to the pairings container so `/my` keeps its phone-first width.
+
+### Database
+- **Applied 21 Oct 2026** to the live project: `20261037000000_player_registration_model.sql` and
+  `20261038000000_public_day_selection.sql`, recorded in `supabase_migrations`.
+- `20261035000000_scoring_schema.sql` and `20261036000000_scoring_workflow.sql` were applied on
+  21 Oct 2026 with the scoring work (0.21.0).
+- The registration migration was renumbered from `20261035000000` to `20261037000000` because the
+  scoring pair already owns those two versions. Existing players, registrations, payments and
+  schedules were preserved: one player and zero registrations before and after.
+
+### Notes
+- **0.20.0 and 0.21.0 were develop-only version numbers.** They were never tagged or promoted to
+  `main`. `v0.22.0` is the next release after the production tag `v0.19.0`.
+- The public form on production `main` is still the old form until this release is promoted. It can
+  satisfy the active two-day rule only by choosing two day preferences; the new explicit picker is in
+  this release.
+- The draw remains a single-day board. The Tee times screen assigns per-day times; it does not generate
+  a multi-day draw.
+- The connected `/tee-times` click-through was not run with a staff account. The RPC, loader, build,
+  unit tests and demo browser check are green.
+
+## [0.21.0] - 2026-10-21
+
+The scoring engine, its database, and a sample scorecard workflow.
+
+### Added
+- **Deterministic scoring engine** (`src/lib/scoring`): gross and net Stableford, the WHS Course and
+  Playing Handicap pipeline, stroke allocation, card validation for webcam, upload and manual entry,
+  multi-card reconciliation with desk resolutions, provisional boards and the finalization gate.
+  Ninety-one unit tests. The sample workflow reads it; nothing writes to the database yet.
+- **Sample scorecard workflow**: `/scores` with manual entry, card approval and rejection, conflict
+  resolution, gross and net boards, provisional publication and the finalization gate. It runs on an
+  in-memory repository (`src/lib/data/scoring.ts`) and is explicitly labelled as a sample.
+- **Scoring schema and workflow**: 15 tables for daily rounds, per-day entries, scorer rotation,
+  handicap snapshots, cards, images, extraction attempts, entries, append-only resolutions and
+  canonical scores, results, immutable publications and a scoring audit; plus guarded functions for
+  submission, approval, rejection, resolution, publication and finalization.
+- **`public_round_results()`**, the anonymous read of the latest published results snapshot.
+
+### Database
+- **Applied 21 Oct 2026** to the live project: `20261035000000_scoring_schema.sql` and
+  `20261036000000_scoring_workflow.sql`. `groups` gained `round_id`; it had zero rows, so the
+  backfill changed nothing. `20261034000000_course_maps.sql` was already applied on 20 Oct.
+- The live schema is ahead of `develop` until this branch merges.
+
+### Notes
+- **The main workflow path was verified on 21 Oct 2026.** A temporary `DO` block in the SQL editor
+  created a disposable event and called the real RPCs: 18 verified holes, 2 approved cards, 1 desk
+  resolution, 2 publications, 3 final results, 25 audit rows, and a final public snapshot with 3
+  gross rows. It raised at the end, so every test row rolled back.
+- Not yet covered: concurrent approvals, the image-hash idempotency path, an anonymous read of the
+  published function, a 95% allowance against the engine, and the negative finalization gates.
+- The `/scores` screen is a sample. It does not write to the database, and the Supabase scoring
+  adapter is the next step. No OCR, connected publication or official results exist. The tie-break
+  procedure is not implemented; finalization only checks that a confirmed policy exists.
+
+## [0.20.0] - 2026-10-20
+
+A real footer, and the legal pages the site was missing.
+
+### Added
+- **Photographic capability cards.** Each of the three cards now leads with a real photograph,
+  treated down to a duotone in the club's green and scrimmed where the text sits, so it reads as
+  atmosphere rather than stock imagery. The image scales on hover; nothing else moves. Sourced from
+  Pexels under its free licence, no faces identifiable, no watermarks, and the sources are recorded in
+  `docs/photo-credits.md`. The landscape shot of the fairway at dawn is committed alongside them for
+  later use.
+- **`/privacy` and `/terms`**, written from the data model rather than invented: what is collected,
+  what the public pairings page is allowed to show, that photographs need recorded consent, and the
+  rights under RA 10173. Both are marked **draft** at the top, because the club has not reviewed them,
+  and the two answers only the club can give — the retention period and the privacy contact — are left
+  as visible placeholders rather than guessed.
+- **A four-column footer** with the club, product and legal links, a copyright bar carrying the
+  version, and a photography credit. The old footer was a logo, one line and a sign-in link, which is
+  why the page looked like it stopped rather than ended.
+
+### Notes
+- The legal copy lives as markdown and is generated into `src/content/legal` by
+  `scripts/gen-legal.mjs`, so the club's adviser can correct it without touching JSX.
+
 ## [0.19.0] - 2026-10-20
 
 Real scroll motion, and the content below the hero treated as a designed page rather than a leaflet.

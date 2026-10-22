@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowRight, CalendarDays, Layers3, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { MotionLayer } from "@/components/public/MotionLayer";
 import { TournamentCarousel } from "@/components/public/TournamentCarousel";
@@ -105,6 +106,7 @@ const capabilities = [
     title: "Tournament operations",
     description:
       "Keep event settings, registration details, categories, and start arrangements together in one clear workspace.",
+    image: "/photos/tee-box.webp",
     href: "/login",
     link: "Sign in to the desk",
   },
@@ -114,6 +116,7 @@ const capabilities = [
     title: "A considered player record",
     description:
       "Review player details and imported handicap indexes, with eligibility and routing questions surfaced for the organizer.",
+    image: "/photos/scorecard.webp",
     href: "/login",
     link: "Sign in to the desk",
   },
@@ -123,6 +126,7 @@ const capabilities = [
     title: "Pairings, ready to share",
     description:
       "Review the proposed groups, resolve draw issues, and publish a player view that keeps private profile details private.",
+    image: "/photos/players-fairway.webp",
     href: "/login",
     link: "Sign in to the desk",
   },
@@ -205,6 +209,7 @@ export default async function HomePage() {
             <a href="#experience">The experience</a>
             <a href="#workflow">How it works</a>
             <Link href="/pairings">Player pairings</Link>
+            <Link href="/faq">NGAP FAQ</Link>
           </nav>
           <Link className="site-nav-action" href="/login">
             Sign in <ArrowRight aria-hidden="true" />
@@ -296,17 +301,29 @@ export default async function HomePage() {
         </div>
 
         <div className="capability-list" aria-label="TeeLine capabilities" data-motion="group">
-          {capabilities.map(({ number, icon: Icon, title, description, href, link }) => (
+          {capabilities.map(({ number, icon: Icon, title, description, image, href, link }) => (
             <article className="capability" key={number} data-motion="item">
-              <div className="capability-topline">
-                <span>{number}</span>
-                <Icon aria-hidden="true" />
+              {/* Decorative: the card's meaning is in the words, so the photo carries no alt text. */}
+              <div className="capability-media">
+                <Image
+                  src={image}
+                  alt=""
+                  fill
+                  sizes="(max-width: 900px) 100vw, 33vw"
+                  className="capability-photo"
+                />
               </div>
-              <h3>{title}</h3>
-              <p>{description}</p>
-              <Link href={href}>
-                {link} <ArrowRight aria-hidden="true" />
-              </Link>
+              <div className="capability-body">
+                <div className="capability-topline">
+                  <span>{number}</span>
+                  <Icon aria-hidden="true" />
+                </div>
+                <h3>{title}</h3>
+                <p>{description}</p>
+                <Link href={href}>
+                  {link} <ArrowRight aria-hidden="true" />
+                </Link>
+              </div>
             </article>
           ))}
         </div>
@@ -361,13 +378,48 @@ export default async function HomePage() {
       </section>
 
       <footer className="site-footer">
-        <Link href="/">
-          <TeeLineLogo variant="reverse" width={190} />
-        </Link>
-        <p>
-          Developed by Syntaxure Labs · <span className="select-all">{APP_VERSION_LABEL}</span>
+        <div className="footer-grid">
+          <div className="footer-brand">
+            <Link href="/" aria-label="TeeLine Golf home">
+              <TeeLineLogo variant="reverse" width={190} />
+            </Link>
+            <p>
+              The tournament desk for Iloilo Golf and Country Club. Entries, the draw and the
+              published pairings, in one place.
+            </p>
+          </div>
+
+          <nav className="footer-col" aria-label="Product">
+            <h2>Product</h2>
+            <Link href="/pairings">Published pairings</Link>
+            <Link href="/login">Sign in to the desk</Link>
+          </nav>
+
+          <div className="footer-col">
+            <h2>Club</h2>
+            <p>Iloilo Golf and Country Club</p>
+            <p className="footer-placeholder">[Contact address to be confirmed by the club]</p>
+          </div>
+
+          <nav className="footer-col" aria-label="Legal">
+            <h2>Legal</h2>
+            <Link href="/privacy">Privacy policy</Link>
+            <Link href="/terms">Terms of service</Link>
+          </nav>
+        </div>
+
+        <div className="footer-bar">
+          <p>© {new Date().getFullYear()} Iloilo Golf and Country Club</p>
+          <p>
+            Developed by Syntaxure Labs · <span className="select-all">{APP_VERSION_LABEL}</span>
+          </p>
+          <Link href="/login">Sign in</Link>
+        </div>
+
+        <p className="footer-credit">
+          Photographs from Unsplash and Pexels, used under their free licences. Sources are recorded
+          in the repository.
         </p>
-        <Link href="/login">Sign in</Link>
       </footer>
 
       <aside className="preview-note" role="note">

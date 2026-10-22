@@ -85,6 +85,9 @@ export type PlayerRow = {
   id: string;
   club_id: string;
   full_name: string;
+  // The hand-written row type keeps the historical non-null shape for the legacy mapper. The
+  // database relaxes both columns in 20261037000000, and the current desk maps them through
+  // `toPlayerRecord`, which allows null. The import writes through an RPC, not this insert type.
   birthdate: string;
   gender: "M" | "F";
   ngap_id: string | null;
@@ -99,6 +102,24 @@ export type PlayerRow = {
   email: string | null;
   /** The account that claimed this record. Null until claimed; one account per entry. */
   user_id: string | null;
+  /** Added by 20261037000000. Optional so code still loads on a database without it. */
+  whs_id?: string | null;
+  updated_at?: string;
+};
+
+/** Club-scoped member/guest classification. Added by 20261037000000. */
+export type PlayerMembershipRow = {
+  id: string;
+  club_id: string;
+  player_id: string;
+  membership_type: "member" | "guest";
+  member_number: string | null;
+  status: "active" | "inactive";
+  valid_from: string | null;
+  valid_to: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
 };
 export type HandicapRecordRow = {
   id: string;
@@ -137,8 +158,40 @@ export type TournamentRow = {
   course_data_confirmed?: boolean;
   stale_index_days: number;
   registration: Json | null;
+  // Added by 20261037000000. Optional so the desk still loads before that migration is applied.
+  required_days?: number | null;
+  max_days?: number | null;
   board_overrides: Json | null;
   draw_revision: number;
+};
+
+/** One stable day of an event. Added by 20261037000000. */
+export type TournamentDayRow = {
+  id: string;
+  club_id: string;
+  tournament_id: string;
+  day_number: number;
+  play_date: string;
+  label: string;
+  start_time: string | null;
+  notes: string | null;
+  is_playing_day: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/** A player's selected day and, separately, the assigned tee time. Added by 20261037000000. */
+export type RegistrationDayRow = {
+  id: string;
+  club_id: string;
+  registration_id: string;
+  tournament_day_id: string;
+  selected: boolean;
+  tee_time: string | null;
+  start_hole: number | null;
+  tee_confirmed: boolean;
+  created_at: string;
+  updated_at: string;
 };
 export type CategoryRow = {
   id: string;
@@ -191,6 +244,69 @@ export type RegistrationRow = {
   frozen_record_id: string | null;
   frozen_effective_date: string | null;
   frozen_at: string | null;
+  // Added by 20261037000000. Optional so an older database still types.
+  membership_type?: "member" | "guest" | null;
+  shirt_size?: string | null;
+  payment_amount?: number | null;
+  payment_reference?: string | null;
+  paid_at?: string | null;
+  payment_note?: string | null;
+  sponsor?: boolean | null;
+  sponsor_details?: string | null;
+  source?: "desk" | "public_form" | "import" | "demo";
+  import_batch_id?: string | null;
+};
+
+export type ImportBatchRow = {
+  id: string;
+  club_id: string;
+  tournament_id: string | null;
+  kind: "registration" | "handicap";
+  file_name: string;
+  worksheet: string | null;
+  file_sha256: string;
+  storage_path: string | null;
+  mapping: Json;
+  status: "pending" | "committed" | "partial" | "failed";
+  row_count: number;
+  inserted_count: number;
+  updated_count: number;
+  skipped_count: number;
+  rejected_count: number;
+  idempotency_key: string;
+  uploaded_by: string | null;
+  created_at: string;
+  committed_at: string | null;
+  error: string | null;
+};
+
+export type ImportRowRow = {
+  id: number;
+  batch_id: string;
+  club_id: string;
+  row_number: number;
+  raw: Json | null;
+  normalized: Json | null;
+  action: "insert" | "update" | "skip" | "reject";
+  status: "committed" | "skipped" | "rejected";
+  error: string | null;
+  player_id: string | null;
+  registration_id: string | null;
+  created_at: string;
+};
+
+export type AuditLogRow = {
+  id: number;
+  club_id: string;
+  actor_id: string | null;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  batch_id: string | null;
+  changed_columns: string[] | null;
+  result: "ok" | "refused" | "failed";
+  detail: Json | null;
+  created_at: string;
 };
 export type HandicapImportBatchRow = {
   id: string;
@@ -323,6 +439,38 @@ export interface Database {
           nickname?: string | null;
           home_course?: string | null;
           email?: string | null;
+          whs_id?: string | null;
+          updated_at?: string;
+        },
+        {
+          full_name?: string;
+          birthdate?: string | null;
+          gender?: PlayerRow["gender"] | null;
+          ngap_id?: string | null;
+          phone?: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          nickname?: string | null;
+          home_course?: string | null;
+          email?: string | null;
+          whs_id?: string | null;
+          updated_at?: string;
+          photo_path?: string | null;
+          photo_consent_at?: string | null;
+        }
+      >;
+      player_memberships: Table<
+        PlayerMembershipRow,
+        {
+          id?: string;
+          club_id: string;
+          player_id: string;
+          membership_type: "member" | "guest";
+          member_number?: string | null;
+          status?: "active" | "inactive";
+          valid_from?: string | null;
+          valid_to?: string | null;
+          note?: string | null;
         }
       >;
       handicap_import_batches: Table<
@@ -396,6 +544,90 @@ export interface Database {
           registration?: Json | null;
           board_overrides?: Json | null;
           draw_revision?: number;
+          required_days?: number | null;
+          max_days?: number | null;
+        }
+      >;
+      tournament_days: Table<
+        TournamentDayRow,
+        {
+          id?: string;
+          club_id: string;
+          tournament_id: string;
+          day_number: number;
+          play_date: string;
+          label: string;
+          start_time?: string | null;
+          notes?: string | null;
+          is_playing_day?: boolean;
+        }
+      >;
+      registration_days: Table<
+        RegistrationDayRow,
+        {
+          id?: string;
+          club_id: string;
+          registration_id: string;
+          tournament_day_id: string;
+          selected?: boolean;
+          tee_time?: string | null;
+          start_hole?: number | null;
+          tee_confirmed?: boolean;
+        }
+      >;
+      import_batches: Table<
+        ImportBatchRow,
+        {
+          id?: string;
+          club_id: string;
+          tournament_id?: string | null;
+          kind: ImportBatchRow["kind"];
+          file_name: string;
+          worksheet?: string | null;
+          file_sha256: string;
+          storage_path?: string | null;
+          mapping?: Json;
+          status?: ImportBatchRow["status"];
+          row_count?: number;
+          inserted_count?: number;
+          updated_count?: number;
+          skipped_count?: number;
+          rejected_count?: number;
+          idempotency_key: string;
+          uploaded_by?: string | null;
+          committed_at?: string | null;
+          error?: string | null;
+        }
+      >;
+      import_rows: Table<
+        ImportRowRow,
+        {
+          id?: number;
+          batch_id: string;
+          club_id: string;
+          row_number: number;
+          raw?: Json | null;
+          normalized?: Json | null;
+          action: ImportRowRow["action"];
+          status: ImportRowRow["status"];
+          error?: string | null;
+          player_id?: string | null;
+          registration_id?: string | null;
+        }
+      >;
+      audit_log: Table<
+        AuditLogRow,
+        {
+          id?: number;
+          club_id: string;
+          actor_id?: string | null;
+          action: string;
+          entity: string;
+          entity_id?: string | null;
+          batch_id?: string | null;
+          changed_columns?: string[] | null;
+          result?: AuditLogRow["result"];
+          detail?: Json | null;
         }
       >;
       categories: Table<
@@ -456,6 +688,16 @@ export interface Database {
           frozen_record_id?: string | null;
           frozen_effective_date?: string | null;
           frozen_at?: string | null;
+          membership_type?: "member" | "guest" | null;
+          shirt_size?: string | null;
+          payment_amount?: number | null;
+          payment_reference?: string | null;
+          paid_at?: string | null;
+          payment_note?: string | null;
+          sponsor?: boolean | null;
+          sponsor_details?: string | null;
+          source?: RegistrationRow["source"];
+          import_batch_id?: string | null;
         }
       >;
       groups: Table<
@@ -539,6 +781,48 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       is_club_member: { Args: { p_club: string }; Returns: boolean };
+      /** Added by 20261037000000; all return JSON and are granted to authenticated only. */
+      save_day_rule: {
+        Args: { p_tournament: string; p_required: number | null; p_max: number | null };
+        Returns: Json;
+      };
+      set_registration_days: {
+        Args: { p_registration: string; p_days: number[] };
+        Returns: Json;
+      };
+      assign_registration_day_tee: {
+        Args: {
+          p_registration: string;
+          p_day: number;
+          p_tee_time: string | null;
+          p_start_hole: number | null;
+          p_confirmed: boolean | null;
+        };
+        Returns: Json;
+      };
+      commit_registration_import: {
+        Args: {
+          p_tournament: string;
+          p_file_name: string;
+          p_worksheet: string | null;
+          p_file_sha256: string;
+          p_storage_path: string | null;
+          p_mapping: Json;
+          p_rows: Json;
+          p_idempotency_key: string;
+        };
+        Returns: Json;
+      };
+      commit_handicap_import: {
+        Args: {
+          p_file_name: string;
+          p_file_sha256: string;
+          p_rows: Json;
+          p_deferred: Json;
+          p_idempotency_key: string;
+        };
+        Returns: Json;
+      };
       create_course_map: { Args: { p_course: string; p_note?: string | null }; Returns: string };
       save_course_map_holes: { Args: { p_map: string; p_holes: Json }; Returns: number };
       record_course_map_review: {

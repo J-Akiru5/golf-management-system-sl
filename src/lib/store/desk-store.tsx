@@ -17,7 +17,9 @@ import {
 import type { DeskAccessProblem } from "@/lib/auth/access-problem";
 import { DeskAccessError, getDeskMember } from "@/lib/auth/member";
 import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
+import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
 import { registrationFor } from "@/lib/data/registrations";
+import { createDemoScoringRepository, type ScoringRepository } from "@/lib/data/scoring";
 import {
   createQueue,
   createSupabaseAdapters,
@@ -30,6 +32,7 @@ import {
   unpublishPairings,
 } from "@/lib/data/supabase/draw-sync";
 import { loadDeskState } from "@/lib/data/supabase/load-desk-state";
+import { createSupabaseScoringRepository } from "@/lib/data/supabase/scoring";
 import type {
   Club,
   DeferredMatch,
@@ -39,7 +42,9 @@ import type {
   PlayerRecord,
   RegistrationEntry,
   Tournament,
+  TournamentDay,
 } from "@/lib/data/types";
+import { buildDemoScoringSeed } from "@/lib/demo/scoring";
 import type { DrawGroup } from "@/lib/draw/validate";
 import { NO_DESK_SNAPSHOT_NOTICE, OFFLINE_WRITE_NOTICE, toDeskSnapshot } from "@/lib/offline/cache";
 import { lastDeskUserId, loadDeskSnapshot, saveDeskSnapshot } from "@/lib/offline/store";
@@ -76,6 +81,8 @@ interface Desk {
   tournament: Tournament | null;
   tees: Tee[];
   holes: Hole[];
+  /** The active event's structured days. Empty when no event is selected. */
+  days: TournamentDay[];
   /** Every player in the club directory. */
   players: PlayerRecord[];
   playerById: Map<string, PlayerRecord>;
@@ -102,6 +109,8 @@ interface Desk {
   pendingRefreeze: DeskRegistration[];
   flags: { playerId: string; message: string }[];
   adapters: Adapters;
+  /** Scorecard workflow. Connected when Supabase is configured, in-memory in the demo. */
+  scoring: ScoringRepository;
   dispatch: Dispatch<Action>;
   /** Preview used by the add-player form: where a draft player would land. */
   classifyDraft: (draft: DraftPlayer) => DeskRegistration | null;
@@ -432,11 +441,20 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     });
   }, [state, connected, client, dispatch, onEventCreated, revisionStore]);
 
+  const scoring = useMemo<ScoringRepository>(() => {
+    if (!connected || !client) return createDemoScoringRepository(buildDemoScoringSeed());
+    return createSupabaseScoringRepository({ client });
+  }, [connected, client]);
+
   const value = useMemo<Desk>(() => {
     const tournament = activeTournament(state);
     const board = boardOf(state);
     const registrations = buildRegistrations(state);
-    const entries = tournament ? entriesFor(state, tournament.id) : [];
+    const days = tournament ? (state.days[tournament.id] ?? daysOfTournament(tournament)) : [];
+    const entries = (tournament ? entriesFor(state, tournament.id) : []).map((entry) => ({
+      ...entry,
+      selectedDays: selectedDaysOf(entry, days),
+    }));
     const draw = board.draw;
     const signature = draw?.map((g) => `${g.number}:${g.playerIds.join(",")}`).join("|") ?? "";
     const inDraw = new Set(draw?.flatMap((g) => g.playerIds) ?? []);
@@ -494,6 +512,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       tournament,
       tees: state.tees,
       holes: state.holes,
+      days,
       players: state.players,
       playerById: new Map(state.players.map((p) => [p.id, p])),
       entries,
@@ -526,6 +545,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       accessProblem,
       saving,
       member: connected ? member : undefined,
+      scoring,
       lastSavedAt,
       offline: connected && (!networkOnline || cachedAt !== null),
       cachedAt,
@@ -534,6 +554,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   }, [
     state,
     adapters,
+    scoring,
     dispatch,
     status,
     error,

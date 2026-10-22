@@ -85,6 +85,21 @@ their `package.json` bump.
 | v0.6.0 | `1fd2b76960f8528c39fa70072121df31e2e15e0b` | Alerts bell, paged lists, import review tabs |
 | v0.6.1 | `54683ff2521936dd45802d88563512485008814b` | Browser check and the two bugs it found |
 | v0.7.0 | `45dce3c10115e702c97501a4d6c29cbda341ecad` | Settings that save, deployed entry link, Add a day |
+| v0.19.0 | `7143f20480268a78526f2a947bce294d6946200b` | Landing motion, footer and legal pages; production baseline before 0.22.0 |
+| v0.22.0 | `e5716376032f4ea9c29f69e94ddf4d51e79e6c0e` | Production integrity, registration workbook import, structured playing days, public day picker, Tee times screen, scoring reconciliation |
+| v0.23.0 | release merge commit (see the tag) | Connected scorecard workflow: `/scores` reads and writes through the guarded scoring RPCs, with proposed defaults |
+| v0.23.1 | release merge commit (see the tag) | Registration workbook day-column import fix; no migration |
+
+**0.20.0 and 0.21.0 were develop-only version numbers.** They were never tagged or promoted to `main`.
+`v0.22.0` was the next release after `v0.19.0`; `v0.23.0` adds the connected scorecard workflow.
+
+After the release pull request is merged, tag its merge commit:
+
+```bash
+git checkout develop && git pull
+git tag -a v0.23.1 -m "TeeLine Golf 0.23.1"
+git push origin v0.23.1
+```
 
 ```bash
 git tag -a v0.1.0 2fdebe6040b2e6d4b60115eda0641dc2a37608fd -m "TeeLine Golf 0.1.0"

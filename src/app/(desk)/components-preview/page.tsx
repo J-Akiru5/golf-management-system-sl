@@ -546,6 +546,12 @@ const FAKE_FORM: RegistrationFormConfig = {
   cutOffDate: "2026-11-08",
   isOpen: true,
   shirtSizes: ["S", "M", "L", "XL"],
+  days: [
+    { dayNumber: 1, playDate: "2026-11-12", label: "Day 1", startTime: "06:00" },
+    { dayNumber: 2, playDate: "2026-11-13", label: "Day 2", startTime: null },
+  ],
+  requiredDays: null,
+  maxDays: null,
   teeTimes: [
     {
       day: 1,
