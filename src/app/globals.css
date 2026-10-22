@@ -634,8 +634,20 @@
   /* ---------- Auth ---------- */
   .auth-brand {
     background:
-      radial-gradient(900px 560px at 18% 0%, rgba(224, 188, 101, 0.18), transparent 60%),
+      linear-gradient(
+        180deg,
+        rgb(8 33 22 / 86%) 0%,
+        rgb(8 33 22 / 62%) 42%,
+        rgb(8 33 22 / 90%) 100%
+      ),
+      url("/photos/auth-panel.webp") center / cover no-repeat,
       linear-gradient(155deg, #082116 0%, #123c29 55%, #082116 100%);
+    color: #f7f5ee;
+  }
+  /* Headings inside the brand panel were inheriting the light-surface ink token, which is near-black,
+     so the headline rendered dark on dark and was effectively invisible. Set it here rather than on
+     the one heading that happened to be noticed. */
+  .auth-brand :is(h1, h2, h3, h4) {
     color: #f7f5ee;
   }
   .password-field {
