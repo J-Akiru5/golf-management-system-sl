@@ -29,6 +29,7 @@ import {
   toRegistrationEntry,
   toTournament,
 } from "./domain";
+import { signedEventLogo } from "./event-logo";
 
 const PHOTO_URL_SECONDS = 30 * 60;
 
@@ -194,12 +195,19 @@ export async function loadDeskState(
     }
     daysByTournament = Object.fromEntries(grouped);
   }
-  const tournaments = baseTournaments.map((tournament) => ({
-    ...tournament,
-    days: daysByTournament[tournament.id]?.length
-      ? daysByTournament[tournament.id]
-      : daysOfTournament(tournament),
-  }));
+  const tournaments = await Promise.all(
+    baseTournaments.map(async (tournament) => {
+      const row = asArray(tournamentRows.data).find((t) => t.id === tournament.id);
+      const logoUrl = row?.logo_path ? await signedEventLogo(client, row.logo_path) : undefined;
+      return {
+        ...tournament,
+        logoUrl,
+        days: daysByTournament[tournament.id]?.length
+          ? daysByTournament[tournament.id]
+          : daysOfTournament(tournament),
+      };
+    }),
+  );
   daysByTournament = Object.fromEntries(
     tournaments.map((tournament) => [tournament.id, tournament.days ?? []]),
   );

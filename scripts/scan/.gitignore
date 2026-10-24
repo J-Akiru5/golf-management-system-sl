@@ -1,0 +1,13 @@
+# Ignore local Python state and model binaries. Never commit a card photo or a key.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+models/*.onnx
+models/*.ort
+models/*.tflite
+models/*.pt
+models/*.pth
+models/*.engine
+*.zip
+.ruff_cache/

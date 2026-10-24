@@ -110,6 +110,28 @@ export type PlayerRow = {
   updated_at?: string;
 };
 
+/** One queued or provider-confirmed email. Added by 20261040000000. */
+export type EmailOutboxRow = {
+  id: string;
+  club_id: string;
+  tournament_id: string;
+  registration_id: string | null;
+  recipient_email: string;
+  recipient_name: string;
+  kind: "confirmation" | "reminder" | "custom";
+  subject: string;
+  body: string;
+  status: "queued" | "sending" | "sent" | "failed" | "skipped";
+  scheduled_for: string | null;
+  sent_at: string | null;
+  provider_message_id: string | null;
+  error: string | null;
+  dedupe_key: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /** Club-scoped member/guest classification. Added by 20261037000000. */
 export type PlayerMembershipRow = {
   id: string;
@@ -168,6 +190,9 @@ export type TournamentRow = {
   club_id: string;
   course_id: string;
   name: string;
+  /** Added by 20261040000000. Optional so a database before that migration still loads. */
+  host_name?: string | null;
+  logo_path?: string | null;
   play_date: string;
   cutoff_date: string;
   start_format: "shotgun" | "two_tee";
@@ -538,6 +563,27 @@ export interface Database {
           assigned_by?: string | null;
         }
       >;
+      email_outbox: Table<
+        EmailOutboxRow,
+        {
+          id?: string;
+          club_id: string;
+          tournament_id: string;
+          registration_id?: string | null;
+          recipient_email: string;
+          recipient_name: string;
+          kind: EmailOutboxRow["kind"];
+          subject: string;
+          body: string;
+          status?: EmailOutboxRow["status"];
+          scheduled_for?: string | null;
+          sent_at?: string | null;
+          provider_message_id?: string | null;
+          error?: string | null;
+          dedupe_key: string;
+          created_by?: string | null;
+        }
+      >;
       handicap_import_batches: Table<
         HandicapImportBatchRow,
         {
@@ -586,6 +632,8 @@ export interface Database {
           club_id: string;
           course_id: string;
           name: string;
+          host_name?: string | null;
+          logo_path?: string | null;
           play_date: string;
           cutoff_date: string;
           start_format: TournamentRow["start_format"];

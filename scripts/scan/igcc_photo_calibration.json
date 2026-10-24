@@ -1,0 +1,15 @@
+{
+  "schema": "igcc.scorecard.calibration/1",
+  "source": "golf score Sheet.jpg",
+  "sourceSha256": "5c3e673b59df0d179c583d17f24057b673d7e38f50af64d9e63a77e2345fa646",
+  "sourceSize": [1152, 2048],
+  "rotationDegrees": 90,
+  "rotatedSize": [2048, 1152],
+  "corners": [
+    [282, 22],
+    [2010, 112],
+    [1950, 1070],
+    [190, 940]
+  ],
+  "note": "Measured by hand on the one available filled card after rotating the photo 90 degrees counter-clockwise. Corners are TL, TR, BR, BL in the rotated frame. They are not template truth and do not apply to a different photo. The hand and the blurred background obscure the card outline, so automatic detection is not reliable on this image."
+}

@@ -96,6 +96,7 @@ export const config = {
     "/my/:path*",
     "/admin/:path*",
     "/tournaments/:path*",
+    "/calendar/:path*",
     "/register/:path*",
     "/tee-times/:path*",
     "/players/:path*",

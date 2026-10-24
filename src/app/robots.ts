@@ -17,8 +17,12 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         disallow: [
           "/admin",
+          "/calendar",
           "/players",
+          "/caddies",
+          "/audit",
           "/register",
+          "/tee-times",
           "/import",
           "/draw",
           "/print",
