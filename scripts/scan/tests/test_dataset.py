@@ -40,10 +40,10 @@ def test_prepare_dataset_from_one_synthetic_card(tmp_path):
     )
     assert manifest["datasetKind"] == "bootstrap-single-card"
     assert manifest["trainable"] is False
-    assert manifest["counts"]["cells"] == 54
-    assert manifest["counts"]["crops"] == 54
-    assert manifest["counts"]["augmentations"] == 54
-    assert manifest["counts"]["missing"] == 54
+    assert manifest["counts"]["cells"] == 72
+    assert manifest["counts"]["crops"] == 72
+    assert manifest["counts"]["augmentations"] == 72
+    assert manifest["counts"]["missing"] == 72
     assert manifest["counts"]["roboflowImages"] == 0
     assert (out / "card_rectified.png").is_file()
     assert (out / "card_cells_overlay.png").is_file()
@@ -56,7 +56,7 @@ def test_prepare_dataset_from_one_synthetic_card(tmp_path):
         json.loads(line)
         for line in (out / "manifest.jsonl").read_text(encoding="utf-8").splitlines()
     ]
-    assert len(records) == 54 + 54
+    assert len(records) == 72 + 72
     assert all(record["labelStatus"] == "missing" for record in records)
     assert all(record["label"] is None for record in records)
     assert all(record["sourceSha256"] == calibration.source_sha256 for record in records)
@@ -74,7 +74,7 @@ def test_human_labels_create_a_classification_folder(tmp_path):
         json.dumps(
             {
                 "sourceSha256": calibration.source_sha256,
-                "rows": {"1": {"1": 8, "2": 5}, "2": {"1": "blank"}},
+                "rows": {"1": {"1": 8, "2": 5}, "2": {"1": "blank"}, "3": {"1": 6}},
             }
         ),
         encoding="utf-8",
@@ -88,9 +88,9 @@ def test_human_labels_create_a_classification_folder(tmp_path):
         augment_count=0,
     )
     assert manifest["labels"]["supplied"] is True
-    assert manifest["counts"]["labelled"] == 2
+    assert manifest["counts"]["labelled"] == 3
     assert manifest["counts"]["blank"] == 1
-    assert manifest["counts"]["roboflowImages"] == 3
+    assert manifest["counts"]["roboflowImages"] == 4
     assert (out / "roboflow" / "train" / "8").is_dir()
     assert (out / "roboflow" / "train" / "5").is_dir()
     assert (out / "roboflow" / "train" / "blank").is_dir()
@@ -153,4 +153,4 @@ def test_source_hash_mismatch_is_refused_unless_allowed(tmp_path):
         augment_count=0,
         allow_source_mismatch=True,
     )
-    assert manifest["counts"]["cells"] == 54
+    assert manifest["counts"]["cells"] == 72

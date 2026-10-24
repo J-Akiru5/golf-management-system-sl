@@ -95,10 +95,10 @@ def test_pipeline_with_a_fake_classifier_returns_the_contract():
     )
     payload = result.to_dict()
     assert normalize_payload(payload) is not None
-    assert len(payload["players"]) == 3
+    assert len(payload["players"]) == 4
     assert all(len(player["holes"]) == 18 for player in payload["players"])
     assert all(hole["strokes"] is None for player in payload["players"] for hole in player["holes"])
-    assert classifier.calls == 54
+    assert classifier.calls == 72
     assert payload["raw"]["template"] == "igcc-paper"
     assert payload["raw"]["card"]["orientation"] == 0
 

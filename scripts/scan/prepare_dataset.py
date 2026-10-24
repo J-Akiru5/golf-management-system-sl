@@ -54,6 +54,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--seed", type=int, default=20261024)
     parser.add_argument(
+        "--mask-dots",
+        action="store_true",
+        help=(
+            "Enable the printed-dot mask. Off for the IGCC card, which prints "
+            "stroke indexes in a separate row."
+        ),
+    )
+    parser.add_argument(
         "--zip",
         action="store_true",
         help="Also write bootstrap_crops.zip and, when labelled, roboflow_bootstrap.zip.",
@@ -79,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
             seed=args.seed,
             make_zip=args.zip,
             allow_source_mismatch=args.allow_source_mismatch,
+            mask_dots=args.mask_dots,
         )
     except Exception as exc:  # noqa: BLE001 - CLI boundary
         print(f"error: {exc}", file=sys.stderr)

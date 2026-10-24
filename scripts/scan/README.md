@@ -1,13 +1,14 @@
 # Local scorecard scan service
 
-Python scaffold for the optional card reader used by the Next.js app. It implements
+Python service for the optional card reader used by the Next.js app. It implements
 `POST /scan` with the contract in `docs/SCORECARD_SCAN.md`, crops the printed IGCC
-paper card into 54 score cells, masks the printed handicap dots, and classifies each
-cell with a Roboflow model.
+paper card into 72 score cells (four player rows), and classifies each cell with a
+Roboflow model.
 
-**No model is trained or included.** With no model configured the service returns
-HTTP 503 and a clear JSON body. It never invents scores. The only filled card
-available produced 54 crops for testing; one card is not a training set.
+**No model is trained or included; no model binary is committed.** With no model
+configured the service returns HTTP 503 and a clear JSON body. It never invents
+scores. The only filled card available produced 72 crops for testing; one card is
+not a training set.
 
 ## Quick start (no model)
 
@@ -82,7 +83,7 @@ uvicorn igcc_scan.app:app --host 127.0.0.1 --port 8000
 
 This adapter follows the documented `serverless.roboflow.com/{model_id}` multipart
 API. It has not been exercised against a live project because no key was available.
-It sends one request per cell, so 54 requests per card and 54 inference credits.
+It sends one request per cell, so 72 requests per card and 72 inference credits.
 Prefer the local export for a real deployment.
 
 ## Environment variables
@@ -108,6 +109,7 @@ Prefer the local export for a real deployment.
 | `SCAN_CARD_MODE` | `auto` | `auto` detects the card; `prewarped` accepts an 1800x1000 card |
 | `SCAN_CARD_CORNERS` | unset | `x,y x,y x,y x,y` or JSON, TL TR BR BL |
 | `SCAN_CARD_ROTATION` | unset | Force 0/90/180/270 after rectification |
+| `SCAN_MASK_DOTS` | `0` | Enable the optional printed-dot mask |
 | `SCAN_MAX_UPLOAD_BYTES` | `15728640` | Request image limit |
 | `SCAN_DEBUG_DIR` | unset | Write `card_rectified.png` for troubleshooting |
 
@@ -149,24 +151,31 @@ The template is the printed IGCC card from `golf score Sheet.jpg`, rectified to
   |  | row0 |      |     |        |    |       |     |     |  |  |
   |  | row1 |      |     |        |    |       |     |     |  |  |
   |  | row2 |      |     |        |    |       |     |     |  |  |
+  |  | row3 |      |     |        |    |       |     |     |  |  |
   |  +--------------------------------------------------------+  |
   |  LADIES PAR / HANDICAP rows, date, signatures                 |
   +--------------------------------------------------------------+
 ```
 
-- Table: x 115..1733, y 240..678.
+- Table: x 115..1733, y 240..725. The table includes the LADIES PAR and
+  HANDICAP rows. The table is levelled from its printed border after the card
+  warp, which removes the residual skew that used to clip the right side of rows.
 - Hole cells: 18 columns, x from 383 to 1492, separated by the OUT column.
 - Name column: x 115..383.
-- Player rows: y `435..486` (row 0, empty on this card), `486..531` (row 1,
-  handwritten), `531..582` (row 2, handwritten).
+- Player rows: `435..486`, `486..531`, `531..582`, `582..627`.
+  On the available card rows 0 and 2 are empty; rows 1 and 3 carry the two
+  handwritten scores. There are four printed player rows, not five: the
+  `627..678` row is LADIES PAR.
 - Total column: x 1549..1608.
 - Cell crops are inset by 5 px. The printed grid can still appear at the bottom
   edge of a crop; training must use the same crop convention.
-- Printed handicap dots: the service searches a small top-left window in every
-  cell and removes isolated round blobs before classification. The window is
-  `CardTemplate.dot_search_region` and can be changed without touching the model.
-  On the available card the mask found small blobs in 12 cells; check
-  `card_cells_overlay.png` on a fresh card before trusting it.
+- Printed handicap dots: this card prints the stroke indexes in the separate
+  HANDICAP row and has no printed dots in the score cells. `CardTemplate` keeps
+  `mask_printed_dots=False` so the mask cannot eat the top of a handwritten digit.
+  The mask implementation and tests are kept for a future print run that really
+  prints dots; enable it with `prepare_dataset.py --mask-dots` or
+  `SCAN_MASK_DOTS=1`. On this card the mask produced false positives on pen
+  strokes, so it is off by default.
 
 Automatic card detection is conservative: it accepts a quadrilateral with the
 card's 1.8 aspect ratio. On the only real photo the hand and background hide the
@@ -187,14 +196,18 @@ output contains:
 
 - `card_rectified.png`
 - `card_cells_overlay.png` (check this first)
-- `crops/` raw cells, `masked/` dot-masked cells, `augmented/` synthetic variants
+- `crops/` raw cells, `masked/` cells after the optional dot mask (a copy when
+  the mask is off, as on this card), `augmented/` synthetic variants
 - `manifest.json`, `manifest.jsonl` (source SHA-256, boxes, labels, augmentation params)
 - `labels.template.json` (all null; fill in only what a human can read)
 - `roboflow/` classification layout, populated only when labels exist
 
-The manifest always says `trainable: false`. One card, even with 108 synthetic
+The manifest always says `trainable: false`. One card, even with 144 synthetic
 variants, is bootstrap data. Do not report accuracy from it and do not create a
 validation split from the same card.
+
+The dot mask is off for this card. Add `--mask-dots` only for a print run that
+really prints handicap dots inside the score cells; otherwise it can eat pen strokes.
 
 To label:
 

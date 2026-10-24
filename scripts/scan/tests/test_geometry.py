@@ -5,26 +5,26 @@ import pytest
 from igcc_scan.geometry import IGCC_PAPER, Box, get_template
 
 
-def test_igcc_template_has_eighteen_holes_and_three_rows():
+def test_igcc_template_has_eighteen_holes_and_four_rows():
     template = get_template("igcc-paper")
     assert template is IGCC_PAPER
     assert len(template.hole_columns) == 18
-    assert len(template.player_rows) == 3
+    assert len(template.player_rows) == 4
 
 
 def test_every_cell_is_inside_the_table_and_does_not_overlap():
     template = IGCC_PAPER
     cells = [
         template.search_cell_box(row, hole)
-        for row in range(3)
+        for row in range(4)
         for hole in range(1, 19)
     ]
-    assert len(cells) == 54
+    assert len(cells) == 72
     for cell in cells:
         assert template.table.contains(cell)
         assert cell.width > 30
         assert cell.height > 20
-    for row in range(3):
+    for row in range(4):
         row_cells = [template.search_cell_box(row, hole) for hole in range(1, 19)]
         for left, right in itertools.pairwise(row_cells):
             assert left.x1 <= right.x0
@@ -32,7 +32,7 @@ def test_every_cell_is_inside_the_table_and_does_not_overlap():
 
 def test_dot_region_is_inside_its_cell():
     template = IGCC_PAPER
-    for row in range(3):
+    for row in range(4):
         for hole in range(1, 19):
             cell = template.search_cell_box(row, hole)
             dot = template.dot_region_box(row, hole)
@@ -43,7 +43,7 @@ def test_dot_region_is_inside_its_cell():
 
 def test_out_of_range_cells_raise():
     with pytest.raises(ValueError):
-        IGCC_PAPER.cell_box(3, 1)
+        IGCC_PAPER.cell_box(4, 1)
     with pytest.raises(ValueError):
         IGCC_PAPER.cell_box(0, 0)
     with pytest.raises(ValueError):

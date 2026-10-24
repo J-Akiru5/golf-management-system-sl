@@ -9,7 +9,7 @@ from igcc_scan.geometry import IGCC_PAPER, CardTemplate
 
 DIGITS = {
     1: [8, 5, 7, 8, 4, 4, 7, 5, 8, 5, 7, 5, 5, 8, 8, 3, 7, 6],
-    2: [6, 8, 8, 8, 5, 7, 6, 6, 8, 6, 7, 6, 5, 7, 7, 5, 6, 6],
+    3: [6, 8, 8, 8, 5, 7, 6, 6, 8, 6, 7, 6, 5, 7, 7, 5, 6, 6],
 }
 
 
@@ -76,7 +76,7 @@ def make_card(template: CardTemplate = IGCC_PAPER, *, with_dots: bool = True) ->
             2,
         )
 
-    names = ["", "Jon Bernardo", "Arnel Camel"]
+    names = ["", "Jon Bernardo", "", "Arnel Camel"]
     for row_index, name in enumerate(names):
         if name:
             name_box = template.name_box(row_index)

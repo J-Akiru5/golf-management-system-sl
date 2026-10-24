@@ -1,10 +1,10 @@
 """Build a bootstrap dataset from the one available filled card.
 
-This script does **not** create a trainable dataset. One physical card yields 54
-cells across three printed rows; two rows contain handwriting. Synthetic variants
-are correlated copies of those same cells. The output is for checking the crop
-geometry, the masking, the Roboflow upload format and later local inference. Accuracy
-measured on it would be meaningless.
+This script does **not** create a trainable dataset. One physical card yields 72
+cells across four printed player rows; two rows contain handwriting. Synthetic
+variants are correlated copies of those same cells. The output is for checking the
+crop geometry, the masking, the Roboflow upload format and later local inference.
+Accuracy measured on it would be meaningless.
 
 Human labels are optional. Without them every manifest record says
 `labelStatus: "missing"` and no Roboflow classification folders are written. The
@@ -133,7 +133,7 @@ def load_labels(path: Path, source_sha256: str) -> dict[tuple[int, int], tuple[s
     else:
         raise TypeError("The labels file needs a 'rows' object or a 'cells' list.")
     for row_index, hole in labels:
-        if not 0 <= row_index <= 2 or not 1 <= hole <= 18:
+        if not 0 <= row_index < len(IGCC_PAPER.player_rows) or not 1 <= hole <= 18:
             raise ValueError(f"Label cell ({row_index}, {hole}) is outside the template.")
     return labels
 
@@ -224,6 +224,7 @@ def prepare_dataset(
     seed: int = 20261024,
     make_zip: bool = False,
     allow_source_mismatch: bool = False,
+    mask_dots: bool = False,
 ) -> dict[str, Any]:
     if augment_count < 0 or augment_count > 20:
         raise ValueError("augment_count must be between 0 and 20.")
@@ -303,7 +304,7 @@ def prepare_dataset(
     class_counts: dict[str, int] = {}
     rng = random.Random(seed)
 
-    for cell in crop_cells(rectified.image, template):
+    for cell in crop_cells(rectified.image, template, mask_dots=mask_dots):
         counts["cells"] += 1
         base = f"row{cell.row_index}_hole{cell.hole:02d}"
         crop_relative = f"crops/{base}.png"
@@ -438,6 +439,7 @@ def prepare_dataset(
             "playerRows": [list(row) for row in template.player_rows],
             "holeColumns": [list(column) for column in template.hole_columns],
             "dotSearchRegion": list(template.dot_search_region),
+            "dotMaskEnabled": mask_dots,
         },
         "labels": {
             "supplied": labels_supplied,
@@ -448,7 +450,7 @@ def prepare_dataset(
         "warnings": warnings,
         "recordsFile": "manifest.jsonl",
         "note": (
-            "One filled IGCC card (three printed score rows, two handwritten). "
+            "One filled IGCC card (four printed player rows, two handwritten). "
             "This is bootstrap data, not a trainable dataset."
         ),
     }
@@ -503,7 +505,8 @@ copies, so they cannot stand in for more cards.
 - `card_rectified.png` - the card after perspective correction.
 - `card_cells_overlay.png` - every score cell and printed-dot window.
 - `crops/` - raw cell crops.
-- `masked/` - crops after printed-dot masking; use these for training.
+- `masked/` - crops after the optional printed-dot mask. On this card the mask is
+  off, so this folder is a copy of `crops/`; use it for training either way.
 - `augmented/` - synthetic variants; bootstrap only.
 - `manifest.json` / `manifest.jsonl` - source hash, boxes, labels, augmentation parameters.
 - `labels.template.json` - fill in readable digits, `blank` or `unreadable`, then rerun

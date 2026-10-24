@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import cv2
 import numpy as np
 import pytest
@@ -11,26 +13,30 @@ from igcc_scan.cells import (
 )
 from igcc_scan.geometry import IGCC_PAPER
 
+# The live card has no printed dots. The masking code is kept for a future print
+# run, so the tests exercise it through an explicit template variant.
+DOTTED = replace(IGCC_PAPER, mask_printed_dots=True)
+
 
 def test_crop_every_cell_from_a_synthetic_card():
     card = make_card()
     cells = crop_cells(card, IGCC_PAPER)
-    assert len(cells) == 54
+    assert len(cells) == 72
     assert {(cell.row_index, cell.hole) for cell in cells} == {
-        (row, hole) for row in range(3) for hole in range(1, 19)
+        (row, hole) for row in range(4) for hole in range(1, 19)
     }
     for cell in cells:
         assert cell.image.shape[0] > 20
         assert cell.image.shape[1] > 30
         assert cell.masked.shape == cell.image.shape
-        assert cell.removed_dots >= 1
+        assert cell.removed_dots == 0
 
 
-def test_printed_dots_are_removed_and_digit_is_kept():
+def test_printed_dots_are_removed_when_the_mask_is_enabled():
     card = make_card()
-    cells = crop_cells(card, IGCC_PAPER)
+    cells = crop_cells(card, DOTTED)
     cell = next(item for item in cells if item.row_index == 1 and item.hole == 1)
-    dot_box = IGCC_PAPER.dot_region_box(1, 1)
+    dot_box = DOTTED.dot_region_box(1, 1)
     relative_x = dot_box.x0 - cell.box.x0
     relative_y = dot_box.y0 - cell.box.y0
     before = cell.image[
@@ -53,7 +59,7 @@ def test_printed_dots_are_removed_and_digit_is_kept():
 
 def test_blank_card_has_no_dots_to_remove():
     card = make_card(with_dots=False)
-    cells = crop_cells(card, IGCC_PAPER)
+    cells = crop_cells(card, DOTTED)
     row_zero = [cell for cell in cells if cell.row_index == 0]
     assert all(cell.removed_dots == 0 for cell in row_zero)
 

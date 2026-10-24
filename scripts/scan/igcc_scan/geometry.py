@@ -86,9 +86,14 @@ _TOTAL_COLUMNS: dict[str, tuple[int, int]] = {
     "handicap": (1608, 1668),
     "net": (1668, 1733),
 }
-# Three printed score lines. The first is empty on the available card; the two
-# handwritten rows are rows 1 and 2. Row indices in the scan contract are 0-based.
-_PLAYER_ROWS: tuple[tuple[int, int], ...] = ((435, 486), (486, 531), (531, 582))
+# Four printed player rows. Rows 0 and 2 are empty on the available card; rows 1
+# and 3 carry the two handwritten scores. Row indices in the scan contract are 0-based.
+_PLAYER_ROWS: tuple[tuple[int, int], ...] = (
+    (435, 486),
+    (486, 531),
+    (531, 582),
+    (582, 627),
+)
 
 
 @dataclass(frozen=True)
@@ -116,8 +121,13 @@ class CardTemplate:
         582,
         627,
         678,
+        725,
     )
     cell_inset: int = 5
+    # The IGCC "Preferred Lies" card has no printed handicap dots inside the score
+    # cells; the stroke indexes are printed in a separate row. Masking is off by
+    # default so a stray dot remover cannot eat the top of a handwritten digit.
+    mask_printed_dots: bool = False
     # Fractional search window inside each score cell where the card's small
     # printed handicap dots sit. The window is relative to the cell box.
     dot_search_region: tuple[float, float, float, float] = (0.03, 0.02, 0.40, 0.30)
@@ -129,8 +139,8 @@ class CardTemplate:
     def __post_init__(self) -> None:
         if len(self.hole_columns) != 18:
             raise ValueError("The IGCC template must define exactly 18 hole columns.")
-        if len(self.player_rows) != 3:
-            raise ValueError("The IGCC template must define exactly 3 player rows.")
+        if len(self.player_rows) != 4:
+            raise ValueError("The IGCC template must define exactly 4 player rows.")
         for column in self.hole_columns:
             if not (self.table.x0 <= column[0] < column[1] <= self.table.x1):
                 raise ValueError("A hole column falls outside the table.")
@@ -211,7 +221,7 @@ IGCC_PAPER = CardTemplate(
     version="2026-10",
     width=1800,
     height=1000,
-    table=Box(115, 240, 1733, 678),
+    table=Box(115, 240, 1733, 725),
     name_column=_NAME_COLUMN,
     hole_columns=_HOLE_COLUMNS,
     player_rows=_PLAYER_ROWS,

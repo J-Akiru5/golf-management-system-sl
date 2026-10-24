@@ -403,7 +403,7 @@ def level_table(card: np.ndarray, template: CardTemplate) -> TableLevel:
     )
     source = np.asarray(quad, dtype=np.float32)
     area = abs(cv2.contourArea(source))
-    if area < 0.5 * template.width * template.height:
+    if area < 0.25 * template.width * template.height:
         return TableLevel(card, False, None, ["Table leveling skipped: table area is implausible."])
     if np.any(source[:, 0] < 0) or np.any(source[:, 0] >= template.width):
         return TableLevel(card, False, None, ["Table leveling skipped: table leaves the card."])
@@ -426,15 +426,6 @@ def level_table(card: np.ndarray, template: CardTemplate) -> TableLevel:
         flags=cv2.INTER_CUBIC,
         borderMode=cv2.BORDER_REPLICATE,
     )
-    before = grid_alignment_score(card, template)
-    after = grid_alignment_score(levelled, template)
-    if after + 0.02 < before:
-        return TableLevel(
-            card,
-            False,
-            None,
-            ["Table leveling skipped: the detected borders did not improve alignment."],
-        )
     return TableLevel(
         image=levelled,
         applied=True,

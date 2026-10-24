@@ -82,7 +82,7 @@ def scan_image(
         forced_rotation=settings.card_rotation,
         debug_dir=settings.debug_dir,
     )
-    cells = crop_cells(rectified.image, template)
+    cells = crop_cells(rectified.image, template, mask_dots=settings.mask_dots)
     workers = min(settings.classify_concurrency, len(cells))
     predictions, errors = _classify_all(classifier, cells, workers=workers)
     if len(errors) == len(cells):
@@ -126,10 +126,14 @@ def scan_image(
         warnings.append(
             f"{len(errors)} cell(s) could not be classified and were returned as null."
         )
-    if dots_removed == 0:
+    if settings.mask_dots and dots_removed == 0:
         warnings.append(
-            "No printed handicap dots were detected in the dot windows; "
+            "The printed-dot mask is enabled but removed nothing; "
             "check the template against a fresh card."
+        )
+    if not settings.mask_dots:
+        warnings.append(
+            "Printed-dot masking is off; the card prints stroke indexes in a separate row."
         )
 
     result = ScanResult(
@@ -149,6 +153,10 @@ def scan_image(
                 "orientation": rectified.orientation_degrees,
                 "orientationScore": rectified.orientation_score,
                 "orientationConfident": rectified.orientation_confident,
+                "tableLevelled": rectified.table_levelled,
+                "tableQuad": [list(point) for point in rectified.table_quad]
+                if rectified.table_quad
+                else None,
             },
             "cells": len(cells),
             "classified": len(predictions),

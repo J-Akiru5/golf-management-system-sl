@@ -6,7 +6,7 @@ Two backends are supported:
   with ONNX Runtime. This is the intended production path: no per-cell network
   calls, no image leaves the host.
 * `roboflow_hosted` - the Roboflow Serverless Cloud API. Useful for a quick check
-  before downloading weights, but it costs one inference credit per cell (54 per
+  before downloading weights, but it costs one inference credit per cell (72 per
   card) and the app's timeout is 60 seconds.
 
 Both adapters return `strokes=None` for blank, unreadable or low-confidence

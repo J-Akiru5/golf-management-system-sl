@@ -13,8 +13,8 @@ The app-facing contract stays unchanged. See `docs/SCORECARD_SCAN.md` and
 - `scripts/scan/` FastAPI service implementing `POST /scan` with multipart `image`,
   `mode` (`individual`/`group`) and `template` (`igcc-paper`).
 - A local ONNX classification adapter and a Roboflow Serverless adapter.
-- The IGCC paper template: 18 holes x 3 printed score rows on a 1800x1000 rectified
-  card, with cell boxes and printed-dot masking.
+- The IGCC paper template: 18 holes x 4 printed player rows on a 1800x1000 rectified
+  card, with cell boxes and optional printed-dot masking.
 - Bootstrap crop tooling for the one filled card, a manifest and a Roboflow
   classification folder format. It is marked `trainable: false`.
 - Tests for the contract, geometry, crops, masking, rectification, no-model 503,
@@ -22,7 +22,7 @@ The app-facing contract stays unchanged. See `docs/SCORECARD_SCAN.md` and
 
 ## Why one card is not a model
 
-The only filled card has three printed score rows; two contain handwriting. That is
+The only filled card has four printed player rows; two contain handwriting. That is
 36 handwritten cells, from two players, one handwriting style each, one lighting,
 one camera angle. A classifier trained on those cells would memorize the card.
 
@@ -55,8 +55,9 @@ The work is blocked on these, not on code:
 4. **Human cell labels.** No labels were supplied. The script writes
    `.tmp/scan-dataset/labels.template.json` with nulls; do not auto-fill it.
 5. **Print-run confirmation.** The template was measured on the one photo. Confirm
-   the current card print, especially the printed handicap dots. They are not
-   clearly visible in the photo, so the dot mask is conservative and configurable.
+   the current card print, especially whether the score cells carry printed handicap
+   dots. This card prints stroke indexes in a separate HANDICAP row and has no dots
+   in the score cells, so the mask is off by default.
 6. **Camera/photo procedure.** The service can use manual corners or a prewarped
    card; automatic detection is not reliable on the one photo. A fixed framing
    guide or a better detector is still needed for production.
@@ -71,7 +72,7 @@ Browser
      -> R2 signed GET of the photo
      -> POST SCAN_INFERENCE_URL (this service), multipart image/mode/template
         -> decode + rectify to 1800x1000
-        -> crop 54 cells, mask printed dots
+        -> crop 72 cells, optionally mask printed dots
         -> classify each cell
         -> JSON contract: engine, engineVersion, players[].holes[18]
      <- normalizeScanResult() in the app
@@ -117,8 +118,8 @@ Roboflow uses folder names as class labels for classification datasets. Upload w
 if it were a training set; it has one card and no validation split.
 
 Recommended augmentation: small rotation, brightness, contrast, blur and perspective.
-Keep the cell crop convention identical to inference (masked, 5 px inset, square
-padding, same normalisation). Augmentation must not create a fake digit from a
+Keep the cell crop convention identical to inference (5 px inset, square padding,
+same normalisation, dot mask on only if the print run really has printed dots). Augmentation must not create a fake digit from a
 printed handicap dot.
 
 ### 3. Train on Roboflow
@@ -160,18 +161,20 @@ $env:ROBOFLOW_API_KEY="<process environment only>"
 $env:ROBOFLOW_MODEL_ID="<workspace>/<project>/<version>"
 ```
 
-This sends 54 cell images per card and uses 54 credits. The app's timeout is 60
+This sends 72 cell images per card and uses 72 credits. The app's timeout is 60
 seconds; the adapter runs cells concurrently (`SCAN_CLASSIFY_CONCURRENCY`). It is
 implemented against the documented serverless API but has not been run against a
 live project.
 
 ## Card template
 
-The rectified card is 1800x1000. Measured geometry:
+The rectified card is 1800x1000. The card warp is followed by a table-leveling
+homography fitted to the printed table border; without it a small corner error
+leaves the rows sloping and clips the right side of a score row. Measured geometry:
 
 | Item | Pixels |
 | --- | --- |
-| Table | x 115..1733, y 240..678 |
+| Table | x 115..1733, y 240..725 |
 | Name column | x 115..383 |
 | Hole 1..9 | x 383..906, nine cells |
 | OUT | x 906..964 |
@@ -180,16 +183,21 @@ The rectified card is 1800x1000. Measured geometry:
 | TOTAL | x 1549..1608 |
 | Player row 0 (empty here) | y 435..486 |
 | Player row 1 (handwritten) | y 486..531 |
-| Player row 2 (handwritten) | y 531..582 |
+| Player row 2 (empty here) | y 531..582 |
+| Player row 3 (handwritten) | y 582..627 |
+| LADIES PAR | y 627..678 |
+| HANDICAP | y 678..725 |
 
 The photo is rotated 90 degrees; `scripts/scan/igcc_photo_calibration.json` records
 the measured corners and source SHA-256. This is calibration for one photo, not a
 claim about every print run. If the card is reprinted, measure again.
 
-The printed handicap dots are small marks in each score cell. The service removes
-isolated round blobs in a top-left window before classification. The window is
-configurable and the real photo does not show the dots clearly, so verify the mask
-on a fresh card. The desk still sees the original photo and can correct a cell.
+The printed handicap information on this card is the separate HANDICAP row at
+y 678..725, not dots in the score cells. The service therefore leaves the dot mask
+off by default. `CardTemplate.mask_printed_dots`, `SCAN_MASK_DOTS=1` and
+`prepare_dataset.py --mask-dots` remain for a future print run that adds dots;
+enabling it is an explicit choice. The desk still sees the original photo and can
+correct a cell.
 
 ## Failure behaviour
 

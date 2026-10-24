@@ -1,7 +1,7 @@
 """FastAPI service implementing `POST /scan`.
 
 The service is intentionally boring: it validates configuration, decodes the
-image, rectifies the card, classifies 54 cells and returns the contract the
+image, rectifies the card, classifies 72 cells and returns the contract the
 Next.js app already normalizes. When no model is configured it returns 503 and
 says so. It never returns made-up scores.
 """

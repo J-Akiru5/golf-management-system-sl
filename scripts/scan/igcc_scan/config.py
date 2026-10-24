@@ -43,6 +43,17 @@ def _env_float(env: Mapping[str, str], name: str, default: float, low: float, hi
     return value
 
 
+def _env_bool(env: Mapping[str, str], name: str, default: bool = False) -> bool:
+    raw = _env(env, name).lower()
+    if not raw:
+        return default
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    raise ConfigError(f"{name} must be 0/1, true/false, yes/no or on/off.")
+
+
 def parse_corners(raw: str) -> tuple[tuple[float, float], ...] | None:
     """Parse `x,y x,y x,y x,y` or a JSON list of four points."""
     if not raw.strip():
@@ -87,6 +98,7 @@ class Settings:
     card_mode: str = "auto"
     card_corners: tuple[tuple[float, float], ...] | None = None
     card_rotation: int | None = None
+    mask_dots: bool = False
     max_upload_bytes: int = 15 * 1024 * 1024
     debug_dir: Path | None = None
 
@@ -158,6 +170,7 @@ class Settings:
             card_mode=card_mode,
             card_corners=parse_corners(_env(env, "SCAN_CARD_CORNERS")),
             card_rotation=rotation,
+            mask_dots=_env_bool(env, "SCAN_MASK_DOTS", False),
             max_upload_bytes=_env_int(
                 env, "SCAN_MAX_UPLOAD_BYTES", 15 * 1024 * 1024, 1024, 50 * 1024 * 1024
             ),
@@ -184,6 +197,7 @@ class Settings:
             "cardMode": self.card_mode,
             "cardCornersConfigured": self.card_corners is not None,
             "cardRotation": self.card_rotation,
+            "maskDots": self.mask_dots,
             "authRequired": self.auth_required,
             "modelFileConfigured": self.model_path is not None,
             "roboflowModelConfigured": bool(

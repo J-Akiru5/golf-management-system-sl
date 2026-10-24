@@ -111,21 +111,38 @@ def mask_printed_dots(
     return DotMaskResult(masked, len(removed_regions), removed_regions)
 
 
-def crop_cells(card: np.ndarray, template: CardTemplate) -> list[CellCrop]:
+def crop_cells(
+    card: np.ndarray,
+    template: CardTemplate,
+    *,
+    mask_dots: bool | None = None,
+) -> list[CellCrop]:
+    """Crop every printed player row and hole.
+
+    `mask_dots=None` follows the template default. Pass `True` only for a print
+    run that actually puts printed dots inside the score cells.
+    """
+    enabled = template.mask_printed_dots if mask_dots is None else mask_dots
     crops: list[CellCrop] = []
     for row_index in range(len(template.player_rows)):
         for hole in range(1, 19):
             box = template.search_cell_box(row_index, hole)
             image = crop_box(card, box)
-            dots = mask_printed_dots(image, template, row_index, hole)
+            if enabled:
+                dots = mask_printed_dots(image, template, row_index, hole)
+                masked = dots.image
+                removed = dots.removed
+            else:
+                masked = image.copy()
+                removed = 0
             crops.append(
                 CellCrop(
                     row_index=row_index,
                     hole=hole,
                     box=box,
                     image=image,
-                    masked=dots.image,
-                    removed_dots=dots.removed,
+                    masked=masked,
+                    removed_dots=removed,
                 )
             )
     return crops

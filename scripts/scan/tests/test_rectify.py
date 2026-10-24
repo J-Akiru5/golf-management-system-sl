@@ -33,6 +33,7 @@ def test_detect_and_rectify_a_synthetic_photo():
     assert rectified.auto_detected is True
     assert rectified.orientation_degrees == 0
     assert rectified.orientation_confident is True
+    assert rectified.table_levelled is True
     assert rectified.corners is not None
     for actual, expected in zip(np.asarray(rectified.corners).reshape(-1), np.asarray(corners).reshape(-1)):
         assert abs(float(actual) - float(expected)) < 8
@@ -68,6 +69,25 @@ def test_prewarped_mode_resizes_without_detection():
     rectified = rectify_card(small, IGCC_PAPER, mode="prewarped")
     assert rectified.image.shape == (IGCC_PAPER.height, IGCC_PAPER.width, 3)
     assert rectified.orientation_degrees == 0
+
+
+def test_table_leveling_corrects_a_small_rotation():
+    card = make_card()
+    matrix = cv2.getRotationMatrix2D((900, 500), 1.0, 1.0)
+    skewed = cv2.warpAffine(
+        card,
+        matrix,
+        (IGCC_PAPER.width, IGCC_PAPER.height),
+        flags=cv2.INTER_CUBIC,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(255, 255, 255),
+    )
+    before = grid_alignment_score(skewed, IGCC_PAPER)
+    rectified = rectify_card(skewed, IGCC_PAPER, mode="prewarped")
+    after = grid_alignment_score(rectified.image, IGCC_PAPER)
+    assert rectified.table_levelled is True
+    assert after > before
+    assert rectified.table_quad is not None
 
 
 def test_no_card_returns_a_clear_error():

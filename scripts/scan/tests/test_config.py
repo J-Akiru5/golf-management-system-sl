@@ -75,3 +75,11 @@ def test_upload_limit_and_concurrency_bounds():
         Settings.from_env({"SCAN_CLASSIFY_CONCURRENCY": "0"})
     with pytest.raises(ConfigError):
         Settings.from_env({"SCAN_CLASSIFY_CONCURRENCY": "99"})
+
+
+def test_dot_mask_is_opt_in():
+    assert Settings.from_env({}).mask_dots is False
+    assert Settings.from_env({"SCAN_MASK_DOTS": "1"}).mask_dots is True
+    assert Settings.from_env({"SCAN_MASK_DOTS": "off"}).mask_dots is False
+    with pytest.raises(ConfigError):
+        Settings.from_env({"SCAN_MASK_DOTS": "maybe"})
