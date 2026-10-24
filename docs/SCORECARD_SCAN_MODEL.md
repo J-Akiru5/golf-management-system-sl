@@ -1,9 +1,12 @@
 # Scorecard scan model
 
-Status: 2026-10-24, branch `feat/scorecard-ai-reader`. The local service scaffold,
-card template, bootstrap dataset tooling and tests exist. **No model is trained or
-included, and no Roboflow key is available.** With no model the service returns 503
-and the app keeps the photo for manual entry.
+Status: 2026-10-25, branch `feat/scorecard-table-detect`. The local service, card
+template, table fallback, bootstrap dataset tooling and tests exist. A **bootstrap**
+Roboflow classification model (`igcc-scorecard-digits-v2/1`) was trained on the one
+filled card and reads 31 of 36 used cells with 0 wrong on that same card. That is
+training-set behaviour, not independent accuracy. No model binary or key is
+committed. With no model configured the service returns 503 and the app keeps the
+photo for manual entry.
 
 The app-facing contract stays unchanged. See `docs/SCORECARD_SCAN.md` and
 `src/app/api/scoring/scan/extract/route.ts`.
@@ -46,14 +49,14 @@ point, not a promise. Add cards until per-digit errors are understood.
 
 The work is blocked on these, not on code:
 
-1. **Roboflow API key.** No key was provided. The upload script refuses without it
-   and the hosted adapter is untested.
-2. **Workspace and project.** The workspace slug, classification project id and the
-   version to deploy are not known. The project type should be single-label
-   classification.
+1. **Roboflow API key.** The key exists only in an ignored local environment file.
+   It is not committed and must be rotated after it was shared in chat.
+2. **Workspace and project.** Private workspace
+   `lou-vincent-j-baroro-s-workspace`, project `igcc-scorecard-digits-v2`, version 1.
+   The project is single-label classification.
 3. **More filled cards.** Only `golf score Sheet.jpg` exists. It is one card.
-4. **Human cell labels.** No labels were supplied. The script writes
-   `.tmp/scan-dataset/labels.template.json` with nulls; do not auto-fill it.
+4. **Human cell labels.** The two used rows on the one card were labelled by hand.
+   More cards need labels; `.tmp/scan-dataset/labels.template.json` is not truth.
 5. **Print-run confirmation.** The template was measured on the one photo. Confirm
    the current card print, especially whether the score cells carry printed handicap
    dots. This card prints stroke indexes in a separate HANDICAP row and has no dots

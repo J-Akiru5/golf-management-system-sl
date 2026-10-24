@@ -5,10 +5,11 @@ Python service for the optional card reader used by the Next.js app. It implemen
 paper card into 72 score cells (four player rows), and classifies each cell with a
 Roboflow model.
 
-**No model is trained or included; no model binary is committed.** With no model
-configured the service returns HTTP 503 and a clear JSON body. It never invents
-scores. The only filled card available produced 72 crops for testing; one card is
-not a training set.
+**No model binary is committed.** A bootstrap Roboflow classification model was
+trained on the one filled card and is served through the hosted adapter. It is not
+a validated reader. With no model configured the service returns HTTP 503 and a
+clear JSON body. It never invents scores. The only filled card available produced
+72 crops for testing; one card is not a training set.
 
 ## Quick start (no model)
 
@@ -273,8 +274,8 @@ scripts/scan/
 
 ## Limits and safety
 
-- No model is included and none was trained. A Roboflow key, workspace/project and
-  more filled cards are still missing.
+- No model binary is committed. The bootstrap Roboflow model was trained on one
+  card; more filled cards are still missing.
 - The card reader never approves a card. The desk reviews every cell.
 - One card only; the two handwritten rows are the only real handwriting examples.
 - Names are personal data. Do not commit card photos, crops containing names, or
