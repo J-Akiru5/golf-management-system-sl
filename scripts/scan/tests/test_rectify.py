@@ -31,12 +31,60 @@ def test_detect_and_rectify_a_synthetic_photo():
     rectified = rectify_card(photo, IGCC_PAPER)
     assert rectified.image.shape == (IGCC_PAPER.height, IGCC_PAPER.width, 3)
     assert rectified.auto_detected is True
+    assert rectified.detected_by == "card"
     assert rectified.orientation_degrees == 0
     assert rectified.orientation_confident is True
     assert rectified.table_levelled is True
     assert rectified.corners is not None
     for actual, expected in zip(np.asarray(rectified.corners).reshape(-1), np.asarray(corners).reshape(-1)):
         assert abs(float(actual) - float(expected)) < 8
+
+
+def test_table_detection_when_the_card_outline_is_absent():
+    card = make_card()
+    table = IGCC_PAPER.table
+    # Keep only the printed table: the card outline is gone, so card detection
+    # must fail and the table fallback must carry the rectification. Build the
+    # photo by hand so the table keeps its true aspect ratio.
+    cropped = card[table.y0 : table.y1, table.x0 : table.x1]
+    height, width = cropped.shape[:2]
+    photo = np.full((height + 200, width + 200, 3), 118, dtype=np.uint8)
+    source = np.array(
+        [[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]],
+        dtype=np.float32,
+    )
+    destination = np.array(
+        [[100, 100], [width + 80, 120], [width + 60, height + 80], [80, height + 90]],
+        dtype=np.float32,
+    )
+    matrix = cv2.getPerspectiveTransform(source, destination)
+    warped = cv2.warpPerspective(
+        cropped,
+        matrix,
+        (photo.shape[1], photo.shape[0]),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(118, 118, 118),
+    )
+    mask = cv2.warpPerspective(
+        np.full((height, width), 255, dtype=np.uint8),
+        matrix,
+        (photo.shape[1], photo.shape[0]),
+        flags=cv2.INTER_NEAREST,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0,
+    )
+    photo[mask > 0] = warped[mask > 0]
+    assert detect_card_quad(photo) is None
+    rectified = rectify_card(photo, IGCC_PAPER)
+    assert rectified.auto_detected is True
+    assert rectified.detected_by == "table"
+    assert rectified.table_levelled is True
+    assert rectified.table_quad is not None
+    gray = cv2.cvtColor(rectified.image, cv2.COLOR_BGR2GRAY)
+    for x in (table.x0 + 200, table.x0 + 800, table.x0 + 1400):
+        assert gray[table.y0 - 3 : table.y0 + 4, x].min() < 200
+        assert gray[table.y1 - 4 : table.y1 + 3, x].min() < 210
 
 
 def test_manual_corners_are_honoured():

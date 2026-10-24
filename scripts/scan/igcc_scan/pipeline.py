@@ -153,6 +153,7 @@ def scan_image(
                 "orientation": rectified.orientation_degrees,
                 "orientationScore": rectified.orientation_score,
                 "orientationConfident": rectified.orientation_confident,
+                "detectedBy": rectified.detected_by,
                 "tableLevelled": rectified.table_levelled,
                 "tableQuad": [list(point) for point in rectified.table_quad]
                 if rectified.table_quad

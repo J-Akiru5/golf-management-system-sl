@@ -122,6 +122,7 @@ class CardTemplate:
         627,
         678,
         725,
+        770,
     )
     cell_inset: int = 5
     # The IGCC "Preferred Lies" card has no printed handicap dots inside the score
@@ -221,7 +222,7 @@ IGCC_PAPER = CardTemplate(
     version="2026-10",
     width=1800,
     height=1000,
-    table=Box(115, 240, 1733, 725),
+    table=Box(115, 240, 1733, 770),
     name_column=_NAME_COLUMN,
     hole_columns=_HOLE_COLUMNS,
     player_rows=_PLAYER_ROWS,
