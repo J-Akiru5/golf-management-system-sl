@@ -83,6 +83,9 @@ export default function TournamentsPage() {
                     src={t.logoUrl}
                     alt=""
                     className="size-10 shrink-0 rounded-[10px] bg-white object-contain p-1"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
                   />
                 ) : (
                   <span

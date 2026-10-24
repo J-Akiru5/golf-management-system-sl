@@ -63,7 +63,18 @@ export async function POST(request: Request) {
   const rows = (data ?? []) as EmailOutboxRow[];
   let sent = 0;
   let failed = 0;
+  let stopMessage: string | undefined;
   for (const row of rows) {
+    // Claim the row atomically. Two tabs or a retry cannot send the same draft twice.
+    const { data: claimed } = await client
+      .from("email_outbox")
+      .update({ status: "sending" })
+      .eq("id", row.id)
+      .eq("status", "queued")
+      .select("id")
+      .maybeSingle();
+    if (!claimed) continue;
+
     try {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -77,8 +88,19 @@ export async function POST(request: Request) {
           subject: row.subject,
           text: row.body,
         }),
+        signal: AbortSignal.timeout(15_000),
       });
       const result = (await response.json().catch(() => null)) as ResendResponse | null;
+      if (response.status === 401 || response.status === 403 || response.status === 429) {
+        // Configuration/quota failures affect the whole batch. Leave these rows queued so the
+        // organizer can fix the key or domain and retry; do not burn them as failed.
+        await client
+          .from("email_outbox")
+          .update({ status: "queued", error: null })
+          .eq("id", row.id);
+        stopMessage = result?.message ?? `The email provider returned ${response.status}.`;
+        break;
+      }
       if (!response.ok || !result?.id) {
         throw new Error(result?.message ?? `The email provider returned ${response.status}.`);
       }
@@ -102,5 +124,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ configured: true, sent, failed });
+  return NextResponse.json({ configured: true, sent, failed, message: stopMessage });
 }

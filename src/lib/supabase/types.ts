@@ -122,7 +122,7 @@ export type EmailOutboxRow = {
   kind: "confirmation" | "reminder" | "custom";
   subject: string;
   body: string;
-  status: "queued" | "sent" | "failed" | "skipped";
+  status: "queued" | "sending" | "sent" | "failed" | "skipped";
   scheduled_for: string | null;
   sent_at: string | null;
   provider_message_id: string | null;

@@ -39,6 +39,8 @@ interface EventDraft {
   hostName: string;
   startDate: string;
   endDate: string;
+  /** The real selected dates. A gap is preserved unless the range fields are edited. */
+  dates: string[];
   state: Tournament["state"];
 }
 
@@ -57,7 +59,15 @@ function datesBetween(start: string, end: string): string[] {
 }
 
 function emptyDraft(date = today()): EventDraft {
-  return { id: null, name: "", hostName: "", startDate: date, endDate: date, state: "draft" };
+  return {
+    id: null,
+    name: "",
+    hostName: "",
+    startDate: date,
+    endDate: date,
+    dates: [date],
+    state: "draft",
+  };
 }
 
 function draftFrom(tournament: Tournament): EventDraft {
@@ -68,6 +78,7 @@ function draftFrom(tournament: Tournament): EventDraft {
     hostName: tournament.hostName ?? "",
     startDate: dates[0] ?? today(),
     endDate: dates.at(-1) ?? dates[0] ?? today(),
+    dates,
     state: tournament.state,
   };
 }
@@ -79,7 +90,7 @@ const STATUS_LABEL: Record<Tournament["state"], string> = {
 };
 
 export default function CalendarPage() {
-  const { tournaments, adapters, member } = useDesk();
+  const { tournaments, tournament: activeTournament, tees, holes, adapters, member } = useDesk();
   const [view, setView] = useState<"month" | "list">("month");
   const [cursor, setCursor] = useState(() => monthOf(today()));
   const [draft, setDraft] = useState<EventDraft | null>(null);
@@ -152,19 +163,25 @@ export default function CalendarPage() {
 
   const prospective = (): ReturnType<typeof calendarEvent> | null => {
     if (!draft) return null;
-    const dates = datesBetween(draft.startDate, draft.endDate);
+    const dates = draft.dates;
     if (!draft.name.trim() || dates.length === 0) return null;
     const existing = editing;
     return {
       id: draft.id ?? "new-event",
       name: draft.name.trim(),
       hostName: draft.hostName.trim() || null,
-      courseId: existing?.courseId ?? tournaments[0]?.courseId ?? "",
+      courseId: existing?.courseId ?? activeTournament?.courseId ?? tournaments[0]?.courseId ?? "",
       status: draft.state,
       dates,
       days: dates.map((date, index) => ({
         playDate: date,
-        startTime: index === 0 ? (existing?.config.firstTeeTime ?? "06:30") : null,
+        startTime:
+          index === 0
+            ? (existing?.days?.[0]?.startTime ??
+              existing?.config.firstTeeTime ??
+              activeTournament?.config.firstTeeTime ??
+              null)
+            : null,
         label: `Day ${index + 1}`,
       })),
       logoUrl: logoPreview,
@@ -182,7 +199,7 @@ export default function CalendarPage() {
 
   const save = async () => {
     if (!draft || !canManage) return;
-    const dates = datesBetween(draft.startDate, draft.endDate);
+    const dates = draft.dates;
     if (!draft.name.trim()) return setError("Give the event a name.");
     if (!dates.length) return setError("Choose a start and end date.");
     const exact = draftConflicts.filter((conflict) => conflict.kind === "exact");
@@ -205,13 +222,17 @@ export default function CalendarPage() {
         );
         adapters.tournaments.save({ ...created, state: draft.state });
       } else {
-        adapters.tournaments.save({
-          ...editing,
-          name: draft.name.trim(),
-          hostName: draft.hostName.trim() || null,
-          dates,
-          config: { ...editing.config, date: dates[0] as string },
-          state: draft.state,
+        adapters.setup.save({
+          tournament: {
+            ...editing,
+            name: draft.name.trim(),
+            hostName: draft.hostName.trim() || null,
+            dates,
+            config: { ...editing.config, date: dates[0] as string },
+            state: draft.state,
+          },
+          tees,
+          holes,
         });
         if (logoPreview?.startsWith("data:")) {
           await adapters.tournaments.setLogo(editing.id, logoPreview);
@@ -289,6 +310,21 @@ export default function CalendarPage() {
       setEmails(await adapters.email.list(editing.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send emails.");
+    } finally {
+      setEmailBusy(false);
+    }
+  };
+
+  const retryEmails = async () => {
+    if (!editing) return;
+    setEmailBusy(true);
+    setNotice("");
+    try {
+      const count = await adapters.email.retryFailed(editing.id);
+      setNotice(`${count} failed email${count === 1 ? "" : "s"} moved back to queued.`);
+      setEmails(await adapters.email.list(editing.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not requeue failed emails.");
     } finally {
       setEmailBusy(false);
     }
@@ -415,6 +451,9 @@ export default function CalendarPage() {
                             src={event.logoUrl}
                             alt=""
                             className="size-5 shrink-0 rounded object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
                           />
                         ) : (
                           <CalendarDays
@@ -444,7 +483,14 @@ export default function CalendarPage() {
               <article key={event.id} className="card grid gap-3">
                 <div className="flex items-start gap-3">
                   {event.logoUrl ? (
-                    <img src={event.logoUrl} alt="" className="size-12 rounded-lg object-contain" />
+                    <img
+                      src={event.logoUrl}
+                      alt=""
+                      className="size-12 rounded-lg object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
                   ) : (
                     <span className="grid size-12 place-items-center rounded-lg bg-fairway-soft text-fairway">
                       <CalendarDays aria-hidden="true" />
@@ -514,10 +560,12 @@ export default function CalendarPage() {
                     value={draft.startDate}
                     onChange={(e) => {
                       const startDate = e.target.value;
+                      const endDate = draft.endDate < startDate ? startDate : draft.endDate;
                       setDraft({
                         ...draft,
                         startDate,
-                        endDate: draft.endDate < startDate ? startDate : draft.endDate,
+                        endDate,
+                        dates: datesBetween(startDate, endDate),
                       });
                     }}
                   />
@@ -528,10 +576,21 @@ export default function CalendarPage() {
                     type="date"
                     min={draft.startDate}
                     value={draft.endDate}
-                    onChange={(e) => setDraft({ ...draft, endDate: e.target.value })}
+                    onChange={(e) => {
+                      const endDate = e.target.value;
+                      setDraft({
+                        ...draft,
+                        endDate,
+                        dates: datesBetween(draft.startDate, endDate),
+                      });
+                    }}
                   />
                 </label>
               </div>
+              <p className="hint">
+                Playing days: {draft.dates.join(", ")}. Changing either date replaces the list with
+                a continuous range.
+              </p>
               <label className="field">
                 <span>Status</span>
                 <select
@@ -650,6 +709,16 @@ export default function CalendarPage() {
                     >
                       <Send aria-hidden="true" /> Send queued
                     </Button>
+                    {emails.some((email) => email.status === "failed") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={emailBusy}
+                        onClick={() => void retryEmails()}
+                      >
+                        Retry failed
+                      </Button>
+                    )}
                   </div>
                   {emails.length > 0 && (
                     <div className="max-h-40 overflow-auto rounded-lg border border-line">

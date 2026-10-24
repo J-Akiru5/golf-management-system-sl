@@ -71,6 +71,15 @@ begin
     return new;
   end if;
 
+  -- Serialize the same course/date/slot across concurrent event saves. The trigger is a check-then-
+  -- insert; without this lock two transactions could both see no conflict.
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      new.club_id::text || ':' || v_course::text || ':' || new.play_date::text || ':' || new.start_time::text,
+      0
+    )
+  );
+
   if exists (
     select 1
     from public.tournament_days d
@@ -102,6 +111,59 @@ create index if not exists tournament_days_booking_lookup
   on public.tournament_days (club_id, play_date, start_time)
   where is_playing_day and start_time is not null;
 
+-- A course change on the event is not a tournament_days update, so check the existing days directly.
+create or replace function public.check_tournament_course_move()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_day record;
+begin
+  if new.course_id is not distinct from old.course_id then
+    return new;
+  end if;
+
+  for v_day in
+    select play_date, start_time
+    from public.tournament_days
+    where tournament_id = new.id and club_id = new.club_id
+      and is_playing_day and start_time is not null
+  loop
+    perform pg_advisory_xact_lock(
+      hashtextextended(
+        new.club_id::text || ':' || new.course_id::text || ':' || v_day.play_date::text || ':' || v_day.start_time::text,
+        0
+      )
+    );
+    if exists (
+      select 1
+      from public.tournament_days d
+      join public.tournaments t on t.id = d.tournament_id and t.club_id = d.club_id
+      where d.club_id = new.club_id
+        and d.is_playing_day
+        and d.play_date = v_day.play_date
+        and d.start_time = v_day.start_time
+        and d.tournament_id <> new.id
+        and t.course_id = new.course_id
+    ) then
+      raise exception 'That course is already booked at % on %.', v_day.start_time, v_day.play_date
+        using errcode = '23P01';
+    end if;
+  end loop;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.check_tournament_course_move() from public;
+
+drop trigger if exists tournaments_course_booking_guard on public.tournaments;
+create trigger tournaments_course_booking_guard
+  before update of course_id on public.tournaments
+  for each row execute function public.check_tournament_course_move();
+
 -- 3. Event audit ----------------------------------------------------------------------------------
 -- Tournaments had no audit trigger. Branding edits, date changes and deletes are now recorded.
 
@@ -125,7 +187,7 @@ create table if not exists public.email_outbox (
   subject text not null,
   body text not null,
   status text not null default 'queued'
-    check (status in ('queued', 'sent', 'failed', 'skipped')),
+    check (status in ('queued', 'sending', 'sent', 'failed', 'skipped')),
   scheduled_for timestamptz,
   sent_at timestamptz,
   provider_message_id text,

@@ -9,7 +9,7 @@ export interface EmailOutboxMessage {
   kind: "confirmation" | "reminder" | "custom";
   subject: string;
   body: string;
-  status: "queued" | "sent" | "failed" | "skipped";
+  status: "queued" | "sending" | "sent" | "failed" | "skipped";
   scheduledFor: string | null;
   sentAt: string | null;
   error: string | null;
@@ -35,6 +35,8 @@ export interface EmailRepository {
   queue(tournamentId: string, kind: "confirmation" | "reminder"): Promise<EmailQueueResult>;
   /** Sends queued drafts through the configured provider. */
   sendQueued(tournamentId: string): Promise<EmailSendResult>;
+  /** Moves failed rows back to queued after the organizer fixes the provider. */
+  retryFailed(tournamentId: string): Promise<number>;
 }
 
 export function toEmailOutboxMessage(row: EmailOutboxRow): EmailOutboxMessage {

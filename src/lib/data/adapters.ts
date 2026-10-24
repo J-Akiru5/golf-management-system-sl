@@ -347,8 +347,10 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       const tournament = state.tournaments.find((t) => t.id === id);
       if (!tournament) throw new Error("That event was not found.");
       dispatch({
-        type: "saveTournament",
-        tournament: { ...tournament, logoUrl: logoDataUrl, logoPath: null },
+        type: "setTournamentLogo",
+        id,
+        logoPath: null,
+        logoUrl: logoDataUrl,
       });
       return logoDataUrl;
     },
@@ -356,8 +358,10 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       const tournament = state.tournaments.find((t) => t.id === id);
       if (!tournament) return;
       dispatch({
-        type: "saveTournament",
-        tournament: { ...tournament, logoUrl: undefined, logoPath: null },
+        type: "setTournamentLogo",
+        id,
+        logoPath: null,
+        logoUrl: undefined,
       });
     },
     days: (tournamentId) => {
@@ -604,6 +608,7 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       failed: 0,
       message: "Email reminders are available when the desk is connected to Supabase.",
     }),
+    retryFailed: async () => 0,
   };
 
   return { players, tournaments, registrations, caddies, email, imports, router, setup };

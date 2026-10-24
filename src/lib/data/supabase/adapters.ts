@@ -584,8 +584,10 @@ export function createSupabaseAdapters(
         if (branding?.logo) {
           const saved = await saveEventLogo(client, clubId, created.id, branding.logo, null);
           dispatch({
-            type: "saveTournament",
-            tournament: { ...created, logoPath: saved.path, logoUrl: saved.url },
+            type: "setTournamentLogo",
+            id: created.id,
+            logoPath: saved.path,
+            logoUrl: saved.url,
           });
         }
         options.onEventCreated?.(created.id);
@@ -597,8 +599,10 @@ export function createSupabaseAdapters(
       if (!tournament) throw new Error("That event was not found.");
       const saved = await saveEventLogo(client, clubId, id, logoDataUrl, tournament.logoPath);
       dispatch({
-        type: "saveTournament",
-        tournament: { ...tournament, logoPath: saved.path, logoUrl: saved.url },
+        type: "setTournamentLogo",
+        id,
+        logoPath: saved.path,
+        logoUrl: saved.url,
       });
       options.onSaved();
       return saved.url;
@@ -608,8 +612,10 @@ export function createSupabaseAdapters(
       if (!tournament) throw new Error("That event was not found.");
       await deleteEventLogo(client, clubId, id, tournament.logoPath);
       dispatch({
-        type: "saveTournament",
-        tournament: { ...tournament, logoPath: null, logoUrl: undefined },
+        type: "setTournamentLogo",
+        id,
+        logoPath: null,
+        logoUrl: undefined,
       });
       options.onSaved();
     },

@@ -104,5 +104,17 @@ export function createSupabaseEmailRepository(
     );
   };
 
-  return { list, queue, sendQueued };
+  const retryFailed = async (tournamentId: string): Promise<number> => {
+    const { data, error } = await client
+      .from("email_outbox")
+      .update({ status: "queued", error: null })
+      .eq("club_id", clubId)
+      .eq("tournament_id", tournamentId)
+      .eq("status", "failed")
+      .select("id");
+    if (error) throw new Error(`Could not requeue failed emails: ${error.message}`);
+    return data?.length ?? 0;
+  };
+
+  return { list, queue, sendQueued, retryFailed };
 }

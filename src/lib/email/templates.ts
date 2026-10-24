@@ -23,10 +23,10 @@ export function confirmationEmail(
   siteUrl: string,
 ): EmailDraft {
   return {
-    subject: `Registration confirmed: ${tournament.name}`,
+    subject: `Registration received: ${tournament.name}`,
     body: `Hello ${playerName},
 
-Your registration for ${tournament.name} is recorded.
+We received your registration for ${tournament.name}. The club will confirm your entry and eligibility if anything needs review.
 
 Date: ${eventDate(tournament)}
 ${hostLine(tournament)}${siteUrl ? `Event page: ${siteUrl}\n` : ""}

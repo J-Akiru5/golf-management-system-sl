@@ -68,7 +68,16 @@ export function Scorecard({
       <div className={styles.scorecardContent}>
         <header className={styles.scorecardHeader}>
           <div className={styles.scorecardBrand}>
-            {eventLogoUrl && <img className={styles.eventLogo} src={eventLogoUrl} alt="" />}
+            {eventLogoUrl && (
+              <img
+                className={styles.eventLogo}
+                src={eventLogoUrl}
+                alt=""
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
             <div>
               <h2>{eventTitle}</h2>
               {eventHost && <p className={styles.eventHost}>{eventHost}</p>}
