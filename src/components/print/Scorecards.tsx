@@ -7,6 +7,8 @@ import type { CourseDataStatus, PrintGroup, PrintHole, PrintStartFormat } from "
 export interface ScorecardsProps {
   title: string;
   subtitle: string;
+  hostName?: string | null;
+  logoUrl?: string;
   groups: readonly PrintGroup[];
   holes: readonly PrintHole[];
   startFormat: PrintStartFormat;
@@ -18,6 +20,8 @@ export interface ScorecardsProps {
 export function Scorecards({
   title,
   subtitle,
+  hostName,
+  logoUrl,
   groups,
   holes,
   startFormat,
@@ -33,6 +37,8 @@ export function Scorecards({
           key={`${group.wave ?? "two-tee"}-${group.number}`}
           eventTitle={title}
           eventSubtitle={subtitle}
+          eventHost={hostName}
+          eventLogoUrl={logoUrl}
           courseName={courseName}
           group={group}
           players={players}

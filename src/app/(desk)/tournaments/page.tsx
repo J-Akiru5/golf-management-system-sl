@@ -78,17 +78,26 @@ export default function TournamentsPage() {
               className={cn("card grid gap-4", active && "border-fairway shadow-lift")}
             >
               <div className="flex items-start gap-3">
-                <span
-                  className={cn(
-                    "grid size-10 shrink-0 place-items-center rounded-[10px]",
-                    active ? "bg-gold text-on-gold" : "bg-fairway-soft text-fairway",
-                  )}
-                >
-                  <Trophy className="size-5" aria-hidden="true" />
-                </span>
+                {t.logoUrl ? (
+                  <img
+                    src={t.logoUrl}
+                    alt=""
+                    className="size-10 shrink-0 rounded-[10px] bg-white object-contain p-1"
+                  />
+                ) : (
+                  <span
+                    className={cn(
+                      "grid size-10 shrink-0 place-items-center rounded-[10px]",
+                      active ? "bg-gold text-on-gold" : "bg-fairway-soft text-fairway",
+                    )}
+                  >
+                    <Trophy className="size-5" aria-hidden="true" />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <h2 className="text-[19px] leading-6">{t.name}</h2>
                   <p className="hint mt-0.5 flex flex-wrap items-center gap-x-2">
+                    {t.hostName ? `${t.hostName} · ` : ""}
                     <CalendarRange className="size-3.5" aria-hidden="true" />
                     {fmtRange(t.dates)} ·{" "}
                     {t.config.startFormat === "shotgun" ? "Shotgun" : "Two-tee"} ·{" "}

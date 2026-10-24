@@ -713,6 +713,7 @@ export function tournamentTemplate(s: DeskState, name: string, date: string): To
     id: `t-${s.seq + 1}-${Date.now().toString(36)}`,
     clubId: s.clubId,
     name,
+    hostName: null,
     nameNeedsConfirmation: true,
     courseId: base?.courseId ?? "igcc-main",
     dates: [date],
