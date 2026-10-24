@@ -14,6 +14,8 @@ import type {
 export interface ScorecardProps {
   eventTitle: string;
   eventSubtitle: string;
+  eventHost?: string | null;
+  eventLogoUrl?: string;
   courseName?: string | null;
   group: ScorecardGroup;
   players: readonly PrintPlayer[];
@@ -28,6 +30,8 @@ const HOLE_COUNT = 18;
 export function Scorecard({
   eventTitle,
   eventSubtitle,
+  eventHost,
+  eventLogoUrl,
   courseName,
   group,
   players,
@@ -63,10 +67,23 @@ export function Scorecard({
       )}
       <div className={styles.scorecardContent}>
         <header className={styles.scorecardHeader}>
-          <div>
-            <h2>{eventTitle}</h2>
-            <p>{eventSubtitle}</p>
-            {courseName && <p>{courseName}</p>}
+          <div className={styles.scorecardBrand}>
+            {eventLogoUrl && (
+              <img
+                className={styles.eventLogo}
+                src={eventLogoUrl}
+                alt=""
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
+            <div>
+              <h2>{eventTitle}</h2>
+              {eventHost && <p className={styles.eventHost}>{eventHost}</p>}
+              <p>{eventSubtitle}</p>
+              {courseName && <p>{courseName}</p>}
+            </div>
           </div>
           <div className={styles.groupSummary}>
             <b>Group {group.number}</b>

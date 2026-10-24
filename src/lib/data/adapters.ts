@@ -1,6 +1,7 @@
 import type { Dispatch } from "react";
 import { courseNumbersChanged } from "@/lib/data/course-data";
 import { daysOfTournament } from "@/lib/data/dates";
+import type { EmailRepository } from "@/lib/data/email";
 import { explainRegistration, type RoutingExplanation } from "@/lib/data/explain";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import type { SetupSection } from "@/lib/data/setup-payload";
@@ -107,7 +108,19 @@ export interface TournamentRepository {
   active(): Tournament | null;
   select(id: string | null): void;
   save(tournament: Tournament): void;
-  createFromTemplate(name: string, date: string): Tournament;
+  createFromTemplate(
+    name: string,
+    date: string,
+    options?: {
+      hostName?: string | null;
+      dates?: string[];
+      /** A PNG/JPEG/WebP data URL, uploaded by the connected adapter after the event is saved. */
+      logo?: string;
+    },
+  ): Tournament;
+  /** Uploads or replaces the event logo and returns a signed staff URL. */
+  setLogo(id: string, logoDataUrl: string): Promise<string | null>;
+  removeLogo(id: string): Promise<void>;
   /** The structured days of one event. Demo derives them from the old date list. */
   days(tournamentId: string): TournamentDay[];
   /** Owner/organizer only; the database function enforces it. */
@@ -205,6 +218,7 @@ export interface Adapters {
   tournaments: TournamentRepository;
   registrations: RegistrationRepository;
   caddies: CaddieRepository;
+  email: EmailRepository;
   imports: HandicapImportAdapter;
   router: PairingsRouter;
   setup: SetupRepository;
@@ -314,11 +328,41 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     active: () => activeTournament(state),
     select: (id) => dispatch({ type: "selectTournament", id }),
     save: (tournament) => dispatch({ type: "saveTournament", tournament }),
-    createFromTemplate: (name, date) => {
+    createFromTemplate: (name, date, options) => {
       const t = tournamentTemplate(state, name, date);
-      dispatch({ type: "saveTournament", tournament: t });
-      dispatch({ type: "selectTournament", id: t.id });
-      return t;
+      const dates = options?.dates?.length ? options.dates : t.dates;
+      const created: Tournament = {
+        ...t,
+        name,
+        hostName: options?.hostName?.trim() || null,
+        logoUrl: options?.logo,
+        dates,
+        config: { ...t.config, date: dates[0] ?? date },
+      };
+      dispatch({ type: "saveTournament", tournament: created });
+      dispatch({ type: "selectTournament", id: created.id });
+      return created;
+    },
+    setLogo: async (id, logoDataUrl) => {
+      const tournament = state.tournaments.find((t) => t.id === id);
+      if (!tournament) throw new Error("That event was not found.");
+      dispatch({
+        type: "setTournamentLogo",
+        id,
+        logoPath: null,
+        logoUrl: logoDataUrl,
+      });
+      return logoDataUrl;
+    },
+    removeLogo: async (id) => {
+      const tournament = state.tournaments.find((t) => t.id === id);
+      if (!tournament) return;
+      dispatch({
+        type: "setTournamentLogo",
+        id,
+        logoPath: null,
+        logoUrl: undefined,
+      });
     },
     days: (tournamentId) => {
       const existing = state.days[tournamentId];
@@ -551,7 +595,23 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     },
   };
 
-  return { players, tournaments, registrations, caddies, imports, router, setup };
+  const email: EmailRepository = {
+    list: async () => [],
+    queue: async () => ({
+      queued: 0,
+      skipped: 0,
+      message: "Email reminders are available when the desk is connected to Supabase.",
+    }),
+    sendQueued: async () => ({
+      configured: false,
+      sent: 0,
+      failed: 0,
+      message: "Email reminders are available when the desk is connected to Supabase.",
+    }),
+    retryFailed: async () => 0,
+  };
+
+  return { players, tournaments, registrations, caddies, email, imports, router, setup };
 }
 
 const cutOffOf = (s: DeskState, tournamentId: string) =>

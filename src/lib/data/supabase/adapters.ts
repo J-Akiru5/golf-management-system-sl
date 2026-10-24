@@ -39,6 +39,8 @@ import {
 } from "@/lib/store/state";
 import type { Database, Json } from "@/lib/supabase/types";
 import { toPlayerInsert, toRegistrationAnswers, toRegistrationInsert } from "./domain";
+import { createSupabaseEmailRepository } from "./email";
+import { deleteEventLogo, saveEventLogo } from "./event-logo";
 import {
   isPhotoDataUrl,
   removeStoredPhoto,
@@ -468,6 +470,7 @@ export function createSupabaseAdapters(
           club_id: clubId,
           course_id: tournament.courseId,
           name: tournament.name,
+          host_name: tournament.hostName?.trim() || null,
           play_date: tournament.config.date,
           cutoff_date: tournament.cutOffDate,
           start_format: tournament.config.startFormat,
@@ -532,7 +535,7 @@ export function createSupabaseAdapters(
         });
       }
     },
-    createFromTemplate: (name, date) => {
+    createFromTemplate: (name, date, branding) => {
       // A club with no event yet has no tees or categories to copy, so it starts from the starter
       // setup. Either way the new event gets its own categories and flights (they belong to one
       // event), so ids are left off and the database assigns them; the desk reloads to read them.
@@ -541,10 +544,15 @@ export function createSupabaseAdapters(
       const starter = starterSetup();
       const tees = useStarter ? starter.tees : state.tees;
       const courseId = base?.courseId ?? uuid();
+      const dates = branding?.dates?.length ? branding.dates : [date];
       const created: Tournament = {
         ...tournamentTemplate(state, name, date),
         id: uuid(),
         courseId,
+        hostName: branding?.hostName?.trim() || null,
+        logoUrl: branding?.logo,
+        dates,
+        config: { ...tournamentTemplate(state, name, date).config, date: dates[0] ?? date },
         categories: useStarter ? starter.categories : (base?.categories ?? []),
         flights: useStarter ? starter.flights : (base?.flights ?? []),
       };
@@ -573,9 +581,43 @@ export function createSupabaseAdapters(
         fail("Could not set up the event", setupError);
         const revision = (setupData as unknown as { revision?: number } | null)?.revision;
         if (typeof revision === "number") options.revisions.set(created.id, revision);
+        if (branding?.logo) {
+          const saved = await saveEventLogo(client, clubId, created.id, branding.logo, null);
+          dispatch({
+            type: "setTournamentLogo",
+            id: created.id,
+            logoPath: saved.path,
+            logoUrl: saved.url,
+          });
+        }
         options.onEventCreated?.(created.id);
       });
       return created;
+    },
+    setLogo: async (id, logoDataUrl) => {
+      const tournament = state.tournaments.find((t) => t.id === id);
+      if (!tournament) throw new Error("That event was not found.");
+      const saved = await saveEventLogo(client, clubId, id, logoDataUrl, tournament.logoPath);
+      dispatch({
+        type: "setTournamentLogo",
+        id,
+        logoPath: saved.path,
+        logoUrl: saved.url,
+      });
+      options.onSaved();
+      return saved.url;
+    },
+    removeLogo: async (id) => {
+      const tournament = state.tournaments.find((t) => t.id === id);
+      if (!tournament) throw new Error("That event was not found.");
+      await deleteEventLogo(client, clubId, id, tournament.logoPath);
+      dispatch({
+        type: "setTournamentLogo",
+        id,
+        logoPath: null,
+        logoUrl: undefined,
+      });
+      options.onSaved();
     },
   };
 
@@ -1036,5 +1078,7 @@ export function createSupabaseAdapters(
     },
   };
 
-  return { players, tournaments, registrations, caddies, imports, router, setup };
+  const email = createSupabaseEmailRepository(client, state, clubId);
+
+  return { players, tournaments, registrations, caddies, email, imports, router, setup };
 }

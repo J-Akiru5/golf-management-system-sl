@@ -734,6 +734,49 @@ check(
 await auth.screenshot({ path: `${SHOTS}/login-mobile.png` });
 await auth.close();
 
+// --------------------------------------------------------------- event calendar and branding
+section("event calendar and branding");
+const calendarContext = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+await calendarContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+  } catch {
+    // Storage off: the welcome may cover the page, and the check will say so.
+  }
+});
+const calendarPage = await calendarContext.newPage();
+watch(calendarPage);
+await calendarPage.goto(`${BASE}/calendar`, { waitUntil: "networkidle", timeout: 120000 });
+check("the calendar opens", await calendarPage.getByRole("heading", { name: "Calendar" }).isVisible());
+await calendarPage.getByRole("button", { name: "New event" }).click();
+await calendarPage.getByLabel("Event title").fill("Calendar Test Invitational");
+await calendarPage.getByLabel("Host or sponsor").fill("Tesla");
+await calendarPage.getByLabel("Start date").fill("2026-12-20");
+await calendarPage.getByLabel("End date").fill("2026-12-21");
+await calendarPage.getByLabel("Upload logo").setInputFiles("public/brand/igcc-crest.png");
+await calendarPage.getByRole("button", { name: "Save event" }).click();
+await expect(
+  calendarPage.getByRole("heading", { name: /December 2026/ }),
+).toBeVisible({ timeout: 15000 });
+check(
+  "an event with a logo appears on its month",
+  (await calendarPage.getByText("Calendar Test Invitational").count()) > 0 &&
+    (await calendarPage.locator("section[aria-label='Event month'] img").count()) > 0,
+);
+await calendarPage.getByRole("button", { name: "New event" }).click();
+await calendarPage.getByLabel("Event title").fill("Conflicting Event");
+await calendarPage.getByLabel("Start date").fill("2026-12-20");
+await calendarPage.getByLabel("End date").fill("2026-12-20");
+await calendarPage.getByRole("button", { name: "Save event" }).click();
+check(
+  "the exact course/time overlap is refused",
+  (await calendarPage.getByText(/both start at|already booked|Double booking/).count()) > 0,
+);
+await calendarContext.close();
+
 console.log(`\nconsole errors: ${errors.length}`);
 for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 200));
 console.log(`screenshots in ${SHOTS}`);

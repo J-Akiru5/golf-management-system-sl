@@ -83,6 +83,9 @@ export default function PrintCenter() {
   } · first tee ${tournament.config.firstTeeTime}${
     groups[0] ? ` · ${groups.length} groups` : " · no draw yet"
   }`;
+  const scorecardSubtitle = `${fmtDateLabel(tournament.dates)} · ${
+    shotgun ? "Shotgun start" : "Two-tee start"
+  } · first tee ${tournament.config.firstTeeTime}`;
 
   return (
     <div className="grid gap-6">
@@ -193,7 +196,9 @@ export default function PrintCenter() {
         ) : (
           <Scorecards
             title={tournament.name}
-            subtitle={subtitle}
+            subtitle={scorecardSubtitle}
+            hostName={tournament.hostName}
+            logoUrl={tournament.logoUrl}
             groups={printGroups}
             holes={holes}
             startFormat={tournament.config.startFormat}

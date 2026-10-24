@@ -113,6 +113,8 @@ export type Action =
   | { type: "hydrate"; state: DeskState }
   | { type: "selectTournament"; id: string | null }
   | { type: "saveTournament"; tournament: Tournament }
+  /** A logo upload completes after a branding save; merge only the logo fields. */
+  | { type: "setTournamentLogo"; id: string; logoPath: string | null; logoUrl?: string }
   /** One setup edit: the event row together with the tees and holes it is routed against. */
   | { type: "saveSetup"; tournament: Tournament; tees: Tee[]; holes: Hole[] }
   | { type: "addPlayer"; player: PlayerRecord }
@@ -383,6 +385,14 @@ export function reducer(state: DeskState, a: Action): DeskState {
           : state.days,
       };
     }
+
+    case "setTournamentLogo":
+      return {
+        ...state,
+        tournaments: state.tournaments.map((t) =>
+          t.id === a.id ? { ...t, logoPath: a.logoPath, logoUrl: a.logoUrl } : t,
+        ),
+      };
 
     case "saveSetup": {
       const exists = state.tournaments.some((t) => t.id === a.tournament.id);
@@ -713,6 +723,7 @@ export function tournamentTemplate(s: DeskState, name: string, date: string): To
     id: `t-${s.seq + 1}-${Date.now().toString(36)}`,
     clubId: s.clubId,
     name,
+    hostName: null,
     nameNeedsConfirmation: true,
     courseId: base?.courseId ?? "igcc-main",
     dates: [date],

@@ -9,7 +9,49 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **Event host and logo** on a tournament: an optional host or sponsor name, and an optional logo
+  stored in a new **private** `event-logos` bucket (2 MiB, PNG/JPEG/WebP). Club members can read a
+  logo; owner and organizer can upload, replace or remove one. The desk signs a staff URL for screens
+  and printing. It is not a public asset.
+- **`/calendar`** in the desk shell, with month and list views. The month is a Sunday-first six-week
+  grid built in UTC. Events can be created or edited from the calendar, including by clicking a day.
+- **Conflict rules.** The same course, playing date and tee time on two events is refused in the
+  editor, and the migration adds a database trigger for the same rule. Two events on the same course
+  and day at different times are allowed and shown as a warning. A day with no start time is not
+  treated as a slot. Changing an event's course is checked against its existing days too.
+- **Calendar export.** `/calendar` downloads every event as one `.ics` file. Non-contiguous playing
+  days become separate calendar events; an event being edited also offers an "Add to Google Calendar"
+  link for its first date range.
+- **Branded scorecards.** Printed scorecards carry the event logo and host name in the header. The
+  print center passes the signed logo URL and prints the start format and first tee time in the
+  scorecard subtitle.
+- **Queued email reminders.** A new `email_outbox` holds one draft per recipient for confirmations,
+  reminders or custom mail. The calendar queues drafts for registered players who have an email
+  address, and shows queued, sent and failed counts. Re-queueing the same kind for the same
+  registration does not duplicate a draft. Failed drafts can be moved back to queued.
+- **Optional Resend delivery.** `POST /api/email/send` claims queued drafts atomically, sends up to 50
+  for one event, and marks each one sent or failed after the provider answers. It needs
+  **`RESEND_API_KEY` and `EMAIL_FROM`**; without them the route reports that delivery is not configured
+  and the drafts stay queued. Both are listed in `.env.example`.
+
+### Changed
+- `/tournaments` shows the event logo and host when they are set.
+- The print center gives scorecards their own subtitle (dates, start format, first tee time) instead
+  of reusing the start sheet's subtitle.
+- A tournament now carries optional `hostName`, `logoPath` and a signed `logoUrl`. The calendar
+  preserves non-contiguous playing days unless the date range is explicitly edited.
+- Event branding edits use the guarded setup write, and logo completion merges only the logo fields.
+
+### Database
+- `20261040000000_event_calendar_branding.sql`: **applied to the live project on 24 Oct 2026.** Adds `tournaments.host_name`
+  and `tournaments.logo_path`, the private `event-logos` bucket and its policies, the
+  `tournament_days_booking_guard` and course-move triggers, a `tournaments` audit trigger and the
+  `email_outbox` table with RLS. It relies on `is_club_member`, `has_club_role`, `audit_row_change`
+  and `stamp_updated_at` from earlier migrations.
+- No other migration ships with this work. The previous migration, `20261039000000`, is recorded as
+  applied on 22 Oct 2026.
+
 
 ## [0.25.0] - 2026-10-24
 

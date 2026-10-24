@@ -16,6 +16,7 @@ export type Area = "public" | "player" | "staff";
 export const STAFF_PREFIXES = [
   "/admin",
   "/tournaments",
+  "/calendar",
   "/register",
   "/tee-times",
   "/players",

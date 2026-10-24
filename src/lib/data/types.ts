@@ -206,6 +206,12 @@ export interface Tournament {
   id: string;
   clubId: string;
   name: string;
+  /** The sponsor or host named on the printed card, when one was entered. */
+  hostName?: string | null;
+  /** Private event-logo object path. The signed URL is loaded separately. */
+  logoPath?: string | null;
+  /** Short-lived signed URL for staff screens and printing. */
+  logoUrl?: string;
   /** The supplied event name is a demo title until the club confirms it. */
   nameNeedsConfirmation: boolean;
   courseId: string;
