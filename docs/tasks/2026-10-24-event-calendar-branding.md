@@ -4,8 +4,8 @@
 **Feature branch:** `feat/event-branding-calendar`, rebased onto `origin/develop`
 **Docs branch:** `docs/event-calendar`
 **Base:** `origin/develop` `e0e04b1`
-**Status:** Implementation complete on the feature branch. Migration written, **not applied**. Not
-merged and not deployed.
+**Status:** Implementation complete on the feature branch. Migration `20261040000000` **applied to the live
+project on 24 Oct 2026**. The code branch is not merged and not deployed.
 
 ## Objective
 
@@ -97,8 +97,7 @@ This docs task owns only `docs/PLAN.md`, `CHANGELOG.md` and this file.
 ## Database migration
 
 **Name:** `20261040000000_event_calendar_branding.sql`
-**Applied:** **No.** The feature commit records it as written but not applied. This docs task did not
-query a database or an environment.
+**Applied:** **Yes, 24 Oct 2026.** The owner applied it and the API read-back returned HTTP 200 for the new tournament columns and email_outbox table. The migration history row was not queried in this session.
 
 The migration is additive and ends with a self-check that raises if a required object is missing:
 
@@ -129,14 +128,13 @@ not compare tee times across different courses; the calendar warning is the same
 | `pnpm test` | 89 files / 858 tests passed after rebase |
 | `pnpm build` | Passed, including `/calendar` and `/api/email/send` |
 | Browser check: "event calendar and branding" in `scripts/verify-ui.mjs` | 95/95 passed, including creating an event with a logo and refusing an exact overlap |
-| Migration execution | Not attempted. No database was touched. |
+| Migration execution | Applied by the owner on 24 Oct 2026; REST read-back for host_name/logo_path and email_outbox returned HTTP 200. |
 | Connected staff click-through | Not attempted. |
 | Deployment | None. The branch is not merged. |
 
 ## Remaining owner decisions
 
-1. **Apply the migration.** Development first, through the verified development target, then read back
-   the columns, bucket, trigger and table. Production is a separate decision.
+1. **Migration:** applied to the live project on 24 Oct 2026; the code branch can now be reviewed and merged.
 2. **Email provider.** Create or confirm the Resend account and the verified sending domain, then set
    `RESEND_API_KEY` and `EMAIL_FROM` in the server environment. Until both are set, the queue is
    usable as drafts only.

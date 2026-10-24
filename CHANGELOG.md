@@ -9,15 +9,7 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
-
-## [0.25.0] - 2026-10-24
-
 ### Added
-- **Scorecard photo scan**: the Scores screen can attach a photo of a paper card, store it privately in
-  Cloudflare R2, and use an optional card-reader service to propose scores with per-hole confidence.
-  The desk reviews every value before submitting; no card is auto-approved. With no reader configured,
-  the photo stays attached and scores are entered by hand. See `docs/SCORECARD_SCAN.md`. No migration.
 - **Event host and logo** on a tournament: an optional host or sponsor name, and an optional logo
   stored in a new **private** `event-logos` bucket (2 MiB, PNG/JPEG/WebP). Club members can read a
   logo; owner and organizer can upload, replace or remove one. The desk signs a staff URL for screens
@@ -52,13 +44,22 @@ Nothing yet.
 - Event branding edits use the guarded setup write, and logo completion merges only the logo fields.
 
 ### Database
-- `20261040000000_event_calendar_branding.sql`: **written, NOT applied.** Adds `tournaments.host_name`
+- `20261040000000_event_calendar_branding.sql`: **applied to the live project on 24 Oct 2026.** Adds `tournaments.host_name`
   and `tournaments.logo_path`, the private `event-logos` bucket and its policies, the
   `tournament_days_booking_guard` and course-move triggers, a `tournaments` audit trigger and the
   `email_outbox` table with RLS. It relies on `is_club_member`, `has_club_role`, `audit_row_change`
   and `stamp_updated_at` from earlier migrations.
 - No other migration ships with this work. The previous migration, `20261039000000`, is recorded as
   applied on 22 Oct 2026.
+
+
+## [0.25.0] - 2026-10-24
+
+### Added
+- **Scorecard photo scan**: the Scores screen can attach a photo of a paper card, store it privately in
+  Cloudflare R2, and use an optional card-reader service to propose scores with per-hole confidence.
+  The desk reviews every value before submitting; no card is auto-approved. With no reader configured,
+  the photo stays attached and scores are entered by hand. See `docs/SCORECARD_SCAN.md`. No migration.
 
 ## [0.24.0] - 2026-10-22
 
