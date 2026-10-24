@@ -8,7 +8,11 @@ export interface IcsEvent {
 }
 
 const escape = (value: string): string =>
-  value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+  value
+    .replace(/\\/g, "\\\\")
+    .replace(/\r\n|\r|\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
 
 const compact = (date: string): string => date.replaceAll("-", "");
 
@@ -30,14 +34,15 @@ function dateRuns(dates: readonly string[]): { start: string; end: string }[] {
 }
 
 function fold(line: string): string {
-  if (line.length <= 75) return line;
+  const chars = Array.from(line);
+  if (chars.length <= 75) return line;
   const parts: string[] = [];
-  let rest = line;
+  let rest = chars;
   while (rest.length > 75) {
-    parts.push(rest.slice(0, 74));
-    rest = ` ${rest.slice(74)}`;
+    parts.push(rest.slice(0, 74).join(""));
+    rest = [" ", ...rest.slice(74)];
   }
-  parts.push(rest);
+  parts.push(rest.join(""));
   return parts.join("\r\n");
 }
 

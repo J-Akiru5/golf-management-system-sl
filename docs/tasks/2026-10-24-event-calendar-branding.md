@@ -1,9 +1,9 @@
 # Task: event branding, calendar and queued email reminders
 
 **Task ID:** `2026-10-24-event-calendar-branding`
-**Feature branch:** `feat/event-branding-calendar`, commit `7716632`
+**Feature branch:** `feat/event-branding-calendar`, rebased onto `origin/develop`
 **Docs branch:** `docs/event-calendar`
-**Base:** `origin/develop` `69c1f35`
+**Base:** `origin/develop` `e0e04b1`
 **Status:** Implementation complete on the feature branch. Migration written, **not applied**. Not
 merged and not deployed.
 
@@ -20,7 +20,7 @@ with optional delivery through Resend.
    - A private `event-logos` storage bucket, 2 MiB limit, PNG/JPEG/WebP, path
      `{club_id}/{tournament_id}/{uuid}.{ext}`.
    - Club members may read an event logo. Owner and organizer may upload, replace or remove one.
-   - The desk signs a short-lived URL for staff screens and printing. The logo is never a public
+   - The desk signs a staff URL for screens and printing. The logo is never a public
      asset in this release.
    - The event sheet on `/calendar` sets the title, host or sponsor, start and end date, status and
      logo. `/tournaments` shows the logo and host when set.
@@ -69,8 +69,8 @@ with optional delivery through Resend.
 - **No OCR or QR capture.** Scoring capture and card reading are unchanged.
 - **No multi-club onboarding.** `club_id` remains on every new table, but there is no club-creation or
   onboarding flow.
-- **No delivery scheduler.** Sending is a staff action from the calendar. There is no cron, retry or
-  backoff.
+- **No delivery scheduler.** Sending is a staff action from the calendar. There is no cron or
+  background sender. Failed drafts can be requeued by hand and are claimed atomically before sending.
 - **No production claim.** The migration is not applied and the branch is not merged.
 
 ## Files owned
@@ -115,17 +115,20 @@ It relies on helpers that earlier migrations already created: `public.is_club_me
 `public.has_club_role`, `public.audit_row_change` and `public.stamp_updated_at`. Apply it after
 `20261039000000` and before deploying code that expects the new columns or the outbox.
 
-The trigger checks the booking rule at write time; it does not re-check existing rows when an event's
-course changes, and it does not compare tee times across different courses. The calendar warning is
-the only same-day check.
+The trigger checks the booking rule at write time and takes a transaction advisory lock for the
+same course/date/slot. A separate trigger checks existing days when an event's course changes. It does
+not compare tee times across different courses; the calendar warning is the same-day check.
 
 ## Verification evidence available
 
 | Check | Status |
 | --- | --- |
-| New unit tests: `src/lib/calendar/calendar.test.ts` (5), `src/lib/calendar/ics.test.ts` (2), `src/lib/email/templates.test.ts` (2) | Written on the feature branch. Not run by this docs task. |
-| Browser check: a new "event calendar and branding" section in `scripts/verify-ui.mjs` creates an event with a logo, checks it appears in the month, and checks the exact overlap is refused | Written on the feature branch. Not run by this docs task. |
-| `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` | Not run by this docs task; no result is claimed here. |
+| New unit tests: calendar, ICS, email templates, email outbox and event logo | Passed as part of the full suite |
+| `pnpm typecheck` | Passed |
+| `pnpm lint` | Passed |
+| `pnpm test` | 89 files / 858 tests passed after rebase |
+| `pnpm build` | Passed, including `/calendar` and `/api/email/send` |
+| Browser check: "event calendar and branding" in `scripts/verify-ui.mjs` | 95/95 passed, including creating an event with a logo and refusing an exact overlap |
 | Migration execution | Not attempted. No database was touched. |
 | Connected staff click-through | Not attempted. |
 | Deployment | None. The branch is not merged. |
@@ -149,7 +152,7 @@ applied, the extra objects are unused and the new tournament columns stay nullab
 
 ## Handoff
 
-- Feature commit: `7716632` on `feat/event-branding-calendar`.
+- Feature branch head after rebase: see `feat/event-branding-calendar`; the implementation includes the review fixes and adapter tests.
 - This record is committed on `docs/event-calendar`.
 - No merge, no push to `develop` or `main`, no migration, no deployment and no tag.
 - The feature branch carries no version bump. `package.json` and `VERSION` were not changed here.

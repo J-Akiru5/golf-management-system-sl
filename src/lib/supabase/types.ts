@@ -110,7 +110,6 @@ export type PlayerRow = {
   updated_at?: string;
 };
 
-/** Club-scoped member/guest classification. Added by 20261037000000. */
 /** One queued or provider-confirmed email. Added by 20261040000000. */
 export type EmailOutboxRow = {
   id: string;
@@ -133,6 +132,7 @@ export type EmailOutboxRow = {
   updated_at: string;
 };
 
+/** Club-scoped member/guest classification. Added by 20261037000000. */
 export type PlayerMembershipRow = {
   id: string;
   club_id: string;

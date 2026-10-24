@@ -44,7 +44,8 @@ interface EventDraft {
   state: Tournament["state"];
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
 
 function datesBetween(start: string, end: string): string[] {
   if (!start || !end || end < start) return start ? [start] : [];
@@ -222,18 +223,21 @@ export default function CalendarPage() {
         );
         adapters.tournaments.save({ ...created, state: draft.state });
       } else {
-        adapters.setup.save({
-          tournament: {
-            ...editing,
-            name: draft.name.trim(),
-            hostName: draft.hostName.trim() || null,
-            dates,
-            config: { ...editing.config, date: dates[0] as string },
-            state: draft.state,
-          },
-          tees,
-          holes,
-        });
+        const next = {
+          ...editing,
+          name: draft.name.trim(),
+          hostName: draft.hostName.trim() || null,
+          dates,
+          config: { ...editing.config, date: dates[0] as string },
+          state: draft.state,
+        };
+        if (activeTournament?.id === editing.id) {
+          adapters.setup.save({ tournament: next, tees, holes });
+        } else {
+          // The setup adapter's tees/holes belong to the active event; never write those onto a
+          // different event being edited from the calendar.
+          adapters.tournaments.save(next);
+        }
         if (logoPreview?.startsWith("data:")) {
           await adapters.tournaments.setLogo(editing.id, logoPreview);
         } else if (!logoPreview && editing.logoUrl) {
