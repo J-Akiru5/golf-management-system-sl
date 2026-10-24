@@ -108,9 +108,12 @@ Suggested order:
 6. Measure per-cell accuracy and false accepts. Keep confidence low for uncertain cells and always
    review. Do not auto-approve cards.
 
-The current paper card has two player rows and printed handicap dots. The service must mask the
-printed dots before classifying handwriting. It should return one `players[]` entry per row and let
-the desk choose the player/row.
+See `docs/SCORECARD_SCAN_MODEL.md` for the training/export path, the local service, the missing
+inputs and the exact commands.
+
+The current paper card has three printed score rows (two handwritten) and printed handicap dots. The
+service must mask the printed dots before classifying handwriting. It should return one `players[]`
+entry per row and let the desk choose the player/row.
 
 ## Current limits
 
