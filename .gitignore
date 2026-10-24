@@ -21,3 +21,4 @@ demo-video/capture/raw/
 demo-video/capture/timing.json
 demo-video/build/work/
 demo-video/out/
+.tmp-*

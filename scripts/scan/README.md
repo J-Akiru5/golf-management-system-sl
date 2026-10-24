@@ -157,15 +157,16 @@ The template is the printed IGCC card from `golf score Sheet.jpg`, rectified to
   +--------------------------------------------------------------+
 ```
 
-- Table: x 115..1733, y 240..725. The table includes the LADIES PAR and
-  HANDICAP rows. The table is levelled from its printed border after the card
-  warp, which removes the residual skew that used to clip the right side of rows.
+- Table: x 115..1733, y 240..770. The table includes LADIES PAR (`678..725`) and
+  HANDICAP (`725..770`). The table is levelled from its printed border after the
+  card warp, which removes the residual skew that used to clip the right side of
+  rows.
 - Hole cells: 18 columns, x from 383 to 1492, separated by the OUT column.
 - Name column: x 115..383.
 - Player rows: `435..486`, `486..531`, `531..582`, `582..627`.
   On the available card rows 0 and 2 are empty; rows 1 and 3 carry the two
-  handwritten scores. There are four printed player rows, not five: the
-  `627..678` row is LADIES PAR.
+  handwritten scores. The card has a fifth printed score line at `627..678`; the
+  template reads the four rows a normal group uses.
 - Total column: x 1549..1608.
 - Cell crops are inset by 5 px. The printed grid can still appear at the bottom
   edge of a crop; training must use the same crop convention.
@@ -177,11 +178,14 @@ The template is the printed IGCC card from `golf score Sheet.jpg`, rectified to
   `SCAN_MASK_DOTS=1`. On this card the mask produced false positives on pen
   strokes, so it is off by default.
 
-Automatic card detection is conservative: it accepts a quadrilateral with the
-card's 1.8 aspect ratio. On the only real photo the hand and background hide the
-card edge, so detection returns `card_not_detected` rather than guessing. For a
-fixed camera, set `SCAN_CARD_CORNERS`; for an already-cropped image, set
-`SCAN_CARD_MODE=prewarped`. The dataset script uses the measured calibration.
+Automatic detection tries the card outline first: it accepts a quadrilateral with
+the card's 1.8 aspect ratio. If the hand or background hides the edge, it falls
+back to the printed table (about 3.05 aspect), maps that rectangle onto the
+template table and keeps the card frame. That fallback was tested on the one real
+photo, where the card outline is not detectable. If neither shape is found, the
+service returns `card_not_detected` rather than guessing. For a fixed camera, set
+`SCAN_CARD_CORNERS`; for an already-cropped image, set `SCAN_CARD_MODE=prewarped`.
+The dataset script uses the measured calibration.
 
 ## Bootstrap dataset
 

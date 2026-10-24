@@ -58,9 +58,10 @@ The work is blocked on these, not on code:
    the current card print, especially whether the score cells carry printed handicap
    dots. This card prints stroke indexes in a separate HANDICAP row and has no dots
    in the score cells, so the mask is off by default.
-6. **Camera/photo procedure.** The service can use manual corners or a prewarped
-   card; automatic detection is not reliable on the one photo. A fixed framing
-   guide or a better detector is still needed for production.
+6. **Camera/photo procedure.** The service now falls back to the printed table
+   when the card outline is hidden, and that fallback works on the one real
+   photo. More photos are still needed to check the detector across angles and
+   lighting; a fixed framing guide remains the safest production setup.
 
 No secret, key, photo, crop or model binary should be committed.
 
@@ -174,7 +175,7 @@ leaves the rows sloping and clips the right side of a score row. Measured geomet
 
 | Item | Pixels |
 | --- | --- |
-| Table | x 115..1733, y 240..725 |
+| Table | x 115..1733, y 240..770 |
 | Name column | x 115..383 |
 | Hole 1..9 | x 383..906, nine cells |
 | OUT | x 906..964 |
@@ -185,15 +186,31 @@ leaves the rows sloping and clips the right side of a score row. Measured geomet
 | Player row 1 (handwritten) | y 486..531 |
 | Player row 2 (empty here) | y 531..582 |
 | Player row 3 (handwritten) | y 582..627 |
-| LADIES PAR | y 627..678 |
-| HANDICAP | y 678..725 |
+| Printed fifth score line (not read) | y 627..678 |
+| LADIES PAR | y 678..725 |
+| HANDICAP | y 725..770 |
 
 The photo is rotated 90 degrees; `scripts/scan/igcc_photo_calibration.json` records
 the measured corners and source SHA-256. This is calibration for one photo, not a
 claim about every print run. If the card is reprinted, measure again.
 
+### Rectification without the card outline
+
+The real photo has a hand on one corner and a busy background, so the card outline
+is not detectable. The service now tries the printed table instead: it finds a
+quadrilateral with the table's aspect ratio (about 3.05), maps it onto the template
+table rectangle and keeps the card frame. The four right-angle rotations are tried
+and landscape candidates are preferred, so a sideways phone photo is not warped
+into a portrait card. `raw.card.detectedBy` reports `card`, `table`, `corners` or
+`prewarped`.
+
+On the one real photo, this path produced a clean 1800x1000 card and the bootstrap
+model read 31 of 36 used cells with **0 wrong** and 5 abstentions. That is
+training-set behaviour from one card, not independent accuracy. The desk still
+reviews every cell.
+
 The printed handicap information on this card is the separate HANDICAP row at
-y 678..725, not dots in the score cells. The service therefore leaves the dot mask
+y 725..770, not dots in the score cells. The service therefore leaves the dot mask
 off by default. `CardTemplate.mask_printed_dots`, `SCAN_MASK_DOTS=1` and
 `prepare_dataset.py --mask-dots` remain for a future print run that adds dots;
 enabling it is an explicit choice. The desk still sees the original photo and can
@@ -203,7 +220,7 @@ correct a cell.
 
 - No model: HTTP 503 `model_not_configured`, no scores.
 - Bad model path/classes: HTTP 503 `model_config_error`, no scores.
-- Card not found: HTTP 422 `card_not_detected`, no cells guessed.
+- Card and table not found: HTTP 422 `card_not_detected`, no cells guessed.
 - Model fails on every cell or most cells: HTTP 502, no mostly-empty card.
 - A few cells fail: those cells are null with confidence 0 and a warning in `raw`.
 - The app rejects malformed output with its existing normalize step.

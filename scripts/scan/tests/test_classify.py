@@ -50,8 +50,10 @@ def test_parse_hosted_predictions_list_and_dict():
     assert (label, confidence) == ("blank", 0.7)
 
 
+def test_parse_hosted_empty_predictions_are_unreadable():
+    assert _parse_hosted_prediction({"predictions": []}) == ("unreadable", 0.0)
+
+
 def test_parse_hosted_unexpected_shape_is_an_error():
-    with pytest.raises(InferenceError):
-        _parse_hosted_prediction({"predictions": []})
     with pytest.raises(InferenceError):
         _parse_hosted_prediction("nope")

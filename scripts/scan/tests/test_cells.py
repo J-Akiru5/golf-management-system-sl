@@ -3,7 +3,6 @@ from dataclasses import replace
 import cv2
 import numpy as np
 import pytest
-from dataclasses import replace
 from synthetic import make_card
 
 from igcc_scan.cells import (

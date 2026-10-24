@@ -319,7 +319,10 @@ def _parse_hosted_prediction(data: object) -> tuple[str, float | None]:
             ):
                 best = (candidate, float(score))
     if best is None:
-        raise InferenceError("Roboflow returned no classification prediction.")
+        # A valid response with no prediction is an unreadable cell, not a
+        # transport failure. Returning null lets the desk correct that one cell
+        # instead of failing the whole card.
+        return "unreadable", 0.0
     return best
 
 
