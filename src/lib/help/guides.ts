@@ -45,6 +45,12 @@ export const DESK_GUIDES: HelpGuide[] = [
     steps: [
       {
         text: literal(
+          "Take a photo of the paper card. A reader can propose scores, but the desk checks every value before submitting.",
+        ),
+        anchor: "scores-scan",
+      },
+      {
+        text: literal(
           "This is a sample scoring round. It uses placeholder pars and stroke indexes and does not write to the database.",
         ),
         anchor: "scores-entry",

@@ -79,6 +79,19 @@ export interface SubmitCardInput {
   entries: Scorecard["entries"];
   writtenTotal: number | null;
   captureKey: string;
+  /** Optional original photo stored in R2. */
+  image?: {
+    path: string;
+    sha256: string;
+    mime: string;
+    bytes: number;
+  };
+  /** Optional raw extraction from the card reader. */
+  extraction?: {
+    engine: string;
+    engineVersion: string;
+    raw: unknown;
+  };
 }
 
 export interface ResolveHoleInput {

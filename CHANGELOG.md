@@ -9,7 +9,11 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **Scorecard photo scan**: the Scores screen can attach a photo of a paper card, store it privately in
+  Cloudflare R2, and use an optional card-reader service to propose scores with per-hole confidence.
+  The desk reviews every value before submitting; no card is auto-approved. With no reader configured,
+  the photo stays attached and scores are entered by hand. See `docs/SCORECARD_SCAN.md`. No migration.
 
 ## [0.23.1] - 2026-10-22
 
