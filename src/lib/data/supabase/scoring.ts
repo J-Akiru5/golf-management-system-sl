@@ -358,6 +358,13 @@ export function createSupabaseScoringRepository(
           manually_confirmed: entry.manuallyConfirmed,
         })) as unknown as Json,
         p_written_total: input.writtenTotal ?? undefined,
+        p_image_path: input.image?.path,
+        p_image_sha256: input.image?.sha256,
+        p_image_mime: input.image?.mime,
+        p_image_bytes: input.image?.bytes,
+        p_engine: input.extraction?.engine,
+        p_engine_version: input.extraction?.engineVersion,
+        p_extraction: input.extraction?.raw as Json | undefined,
       });
       if (error) throw new Error(`Could not submit the card: ${error.message}`);
       return refresh(tournamentId);

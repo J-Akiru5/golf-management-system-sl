@@ -1,11 +1,20 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, ClipboardList, Flag, RotateCcw, Trophy } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardList,
+  Flag,
+  RotateCcw,
+  ScanLine,
+  Trophy,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
+import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
 import type { ScoringRoundView } from "@/lib/data/scoring";
 import {
@@ -17,6 +26,7 @@ import {
   type StandingsRow,
   validateScorecard,
 } from "@/lib/scoring";
+import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import { useDesk } from "@/lib/store/desk-store";
 
 const DEMO_NOTICE =
@@ -46,6 +56,9 @@ export default function ScoresPage() {
   const [resolutionDrafts, setResolutionDrafts] = useState<
     Record<string, { strokes: string; reason: string }>
   >({});
+  const [scanImage, setScanImage] = useState<ScorecardScanImage | null>(null);
+  const [scanExtraction, setScanExtraction] = useState<ScorecardScanApply["extraction"]>(null);
+  const [scanCaptureKey, setScanCaptureKey] = useState("");
 
   const players = view?.players ?? [];
   const holes = view?.course.holes ?? [];
@@ -117,6 +130,26 @@ export default function ScoresPage() {
     }
   }
 
+  function applyScan(apply: ScorecardScanApply) {
+    const nextPlayer = apply.playerId;
+    setPlayerId(nextPlayer);
+    if (Object.keys(apply.strokes).length > 0) {
+      setStrokes((current) => ({ ...current, ...apply.strokes }));
+    }
+    if (nextPlayer === scorerId) {
+      const rotation = reciprocalRotation(players.map((player) => player.playerId));
+      setScorerId(
+        rotation.find((assignment) => assignment.playerId === nextPlayer)?.scorerId ??
+          players.find((player) => player.playerId !== nextPlayer)?.playerId ??
+          "",
+      );
+    }
+    setScanImage(apply.image);
+    setScanExtraction(apply.extraction);
+    setScanCaptureKey(apply.captureKey);
+    setError(null);
+  }
+
   function submitCard() {
     if (playerId === scorerId) {
       setError("A player cannot mark their own card.");
@@ -132,16 +165,30 @@ export default function ScoresPage() {
       setError("Every hole needs a whole-number score.");
       return;
     }
-    void run(() =>
-      scoring.submitCard(tournamentId, {
+    const captureKey = scanCaptureKey || globalThis.crypto.randomUUID();
+    void run(async () => {
+      const next = await scoring.submitCard(tournamentId, {
         playerId,
         scorerId,
-        source: "manual",
+        source: scanImage ? "upload" : "manual",
         entries,
         writtenTotal,
-        captureKey: globalThis.crypto.randomUUID(),
-      }),
-    );
+        captureKey,
+        image: scanImage
+          ? {
+              path: scanImage.path,
+              sha256: scanImage.sha256,
+              mime: scanImage.mime,
+              bytes: scanImage.bytes,
+            }
+          : undefined,
+        extraction: scanExtraction ?? undefined,
+      });
+      setScanImage(null);
+      setScanExtraction(null);
+      setScanCaptureKey("");
+      return next;
+    });
   }
 
   function resolve(playerIdToResolve: string, hole: number) {
@@ -256,6 +303,32 @@ export default function ScoresPage() {
             </div>
           </section>
 
+          <SectionCard
+            id="score-scan"
+            icon={<ScanLine />}
+            title="Scan a card"
+            subtitle="Take a photo of the paper card. The reader can draft the scores; the desk still checks every value before submitting."
+            dataHelp="scores-scan"
+          >
+            <RoleGate
+              role={member?.role}
+              allow={["owner", "organizer", "desk"]}
+              mode="disable"
+              disabledReason="Only club staff can scan a card."
+            >
+              <ScorecardScan
+                tournamentId={tournamentId}
+                players={players.map((player) => ({
+                  playerId: player.playerId,
+                  playerName: player.playerName,
+                }))}
+                holes={holes}
+                disabled={busy}
+                onApply={applyScan}
+              />
+            </RoleGate>
+          </SectionCard>
+
           <div className="grid items-start gap-6 xl:grid-cols-2">
             <RoleGate
               role={member?.role}
@@ -270,6 +343,12 @@ export default function ScoresPage() {
                 subtitle="Manual entry first. The same validation will run behind webcam and upload later."
                 dataHelp="scores-entry"
               >
+                {scanImage && (
+                  <div className="notice info" role="status">
+                    <b>Photo attached. </b>This card will be saved with the upload. Submit only
+                    after every hole is checked.
+                  </div>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="field">
                     <span>Player</span>
