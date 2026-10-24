@@ -11,6 +11,14 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.25.0] - 2026-10-24
+
+### Added
+- **Scorecard photo scan**: the Scores screen can attach a photo of a paper card, store it privately in
+  Cloudflare R2, and use an optional card-reader service to propose scores with per-hole confidence.
+  The desk reviews every value before submitting; no card is auto-approved. With no reader configured,
+  the photo stays attached and scores are entered by hand. See `docs/SCORECARD_SCAN.md`. No migration.
+
 ## [0.24.0] - 2026-10-22
 
 Caddie profiles, consented public player photos, admin player editing and an audit reader.

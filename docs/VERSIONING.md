@@ -90,6 +90,7 @@ their `package.json` bump.
 | v0.23.0 | release merge commit (see the tag) | Connected scorecard workflow: `/scores` reads and writes through the guarded scoring RPCs, with proposed defaults |
 | v0.23.1 | release merge commit (see the tag) | Registration workbook day-column import fix; no migration |
 | v0.24.0 | release merge commit (see the tag) | Caddie profiles and assignment, two-consent public player photos, public leaderboard, admin player editing and audit reader; migration `20261039000000` applied and recorded 22 Oct 2026 |
+| v0.25.0 | release merge commit (see the tag) | Scorecard photo scan with private R2 storage and an optional reviewed card reader; no migration |
 
 **0.20.0 and 0.21.0 were develop-only version numbers.** They were never tagged or promoted to `main`.
 `v0.22.0` was the next release after `v0.19.0`; `v0.23.0` adds the connected scorecard workflow.
@@ -98,8 +99,8 @@ After the release pull request is merged, tag its merge commit:
 
 ```bash
 git checkout develop && git pull
-git tag -a v0.23.1 -m "TeeLine Golf 0.23.1"
-git push origin v0.23.1
+git tag -a v0.25.0 -m "TeeLine Golf 0.25.0"
+git push origin v0.25.0
 ```
 
 ```bash
