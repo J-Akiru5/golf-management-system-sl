@@ -266,6 +266,28 @@
   border-bottom: 1.5px solid #000;
 }
 
+.scorecardBrand {
+  display: flex;
+  align-items: flex-start;
+  gap: 3mm;
+  min-width: 0;
+}
+
+.eventLogo {
+  width: 20mm;
+  max-height: 16mm;
+  object-fit: contain;
+  flex: none;
+}
+
+.scorecardBrand h2 {
+  margin: 0;
+}
+
+.eventHost {
+  font-weight: 700;
+}
+
 .groupSummary {
   display: grid;
   flex: none;
