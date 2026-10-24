@@ -14,6 +14,12 @@ Supabase project, because the code and the database are released separately.
   Cloudflare R2, and use an optional card-reader service to propose scores with per-hole confidence.
   The desk reviews every value before submitting; no card is auto-approved. With no reader configured,
   the photo stays attached and scores are entered by hand. See `docs/SCORECARD_SCAN.md`. No migration.
+- **Local scorecard reader service** (`scripts/scan/`): a FastAPI `POST /scan` service that rectifies
+  the card, crops the score cells and classifies them. It falls back to the printed table when the card
+  edge is hidden, keeps uncertain cells null, and never approves a card. A bootstrap Roboflow model is
+  connected through the hosted adapter; a local ONNX path is scaffolded. Render deployment files and
+  the hosting guide are in `docs/SCORECARD_SCAN_HOSTING.md`. The service is optional: the app keeps the
+  photo + manual path until `SCAN_INFERENCE_URL` is set. No migration.
 
 ## [0.23.1] - 2026-10-22
 
