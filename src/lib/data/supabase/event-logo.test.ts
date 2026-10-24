@@ -36,9 +36,15 @@ function fakeLogoClient(
   );
 
   const filters: [string, string][] = [];
-  const secondEq = vi.fn(async (column: string, value: string) => {
+  const maybeSingle = vi.fn(async () =>
+    options.update
+      ? { data: null, error: options.update.error }
+      : { data: { id: TOURNAMENT_ID }, error: null },
+  );
+  const select = vi.fn((_columns: string) => ({ maybeSingle }));
+  const secondEq = vi.fn((column: string, value: string) => {
     filters.push([column, value]);
-    return options.update ?? { error: null };
+    return { select };
   });
   const firstEq = vi.fn((column: string, value: string) => {
     filters.push([column, value]);
@@ -90,7 +96,7 @@ describe("saveEventLogo", () => {
       ["club_id", CLUB],
       ["id", TOURNAMENT_ID],
     ]);
-    expect(createSignedUrl).toHaveBeenCalledWith(saved.path, 30 * 60);
+    expect(createSignedUrl).toHaveBeenCalledWith(saved.path, 7 * 24 * 60 * 60);
   });
 
   it.each([

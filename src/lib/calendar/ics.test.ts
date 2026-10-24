@@ -23,6 +23,21 @@ describe("calendar export", () => {
     expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
   });
 
+  it("splits a non-contiguous date list into separate calendar events", () => {
+    const ics = buildIcs([
+      {
+        id: "event-1",
+        name: "Split Event",
+        dates: ["2026-11-12", "2026-11-14"],
+      },
+    ]);
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+    expect(ics).toContain("UID:event-1@teeline.golf");
+    expect(ics).toContain("UID:event-1-2@teeline.golf");
+    expect(ics).toContain("DTEND;VALUE=DATE:20261113");
+    expect(ics).toContain("DTEND;VALUE=DATE:20261115");
+  });
+
   it("creates a Google Calendar template link", () => {
     const link = googleCalendarUrl({
       id: "event-1",
