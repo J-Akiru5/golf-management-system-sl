@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.26.0] - 2026-10-25
+
+Event branding, calendar and queued email, plus the optional scorecard reader service.
+
 ### Added
 - **Event host and logo** on a tournament: an optional host or sponsor name, and an optional logo
   stored in a new **private** `event-logos` bucket (2 MiB, PNG/JPEG/WebP). Club members can read a
@@ -34,6 +40,12 @@ Supabase project, because the code and the database are released separately.
   for one event, and marks each one sent or failed after the provider answers. It needs
   **`RESEND_API_KEY` and `EMAIL_FROM`**; without them the route reports that delivery is not configured
   and the drafts stay queued. Both are listed in `.env.example`.
+- **Local scorecard reader service** (`scripts/scan/`): a FastAPI `POST /scan` service that rectifies
+  the card, crops the score cells and classifies them. It falls back to the printed table when the card
+  edge is hidden, keeps uncertain cells null, and never approves a card. A bootstrap Roboflow model is
+  connected through the hosted adapter; a local ONNX path is scaffolded. Render deployment files and
+  the hosting guide are in `docs/SCORECARD_SCAN_HOSTING.md`. The service is optional: the app keeps the
+  photo + manual path until `SCAN_INFERENCE_URL` is set. No migration.
 
 ### Changed
 - `/tournaments` shows the event logo and host when they are set.
@@ -60,12 +72,6 @@ Supabase project, because the code and the database are released separately.
   Cloudflare R2, and use an optional card-reader service to propose scores with per-hole confidence.
   The desk reviews every value before submitting; no card is auto-approved. With no reader configured,
   the photo stays attached and scores are entered by hand. See `docs/SCORECARD_SCAN.md`. No migration.
-- **Local scorecard reader service** (`scripts/scan/`): a FastAPI `POST /scan` service that rectifies
-  the card, crops the score cells and classifies them. It falls back to the printed table when the card
-  edge is hidden, keeps uncertain cells null, and never approves a card. A bootstrap Roboflow model is
-  connected through the hosted adapter; a local ONNX path is scaffolded. Render deployment files and
-  the hosting guide are in `docs/SCORECARD_SCAN_HOSTING.md`. The service is optional: the app keeps the
-  photo + manual path until `SCAN_INFERENCE_URL` is set. No migration.
 
 ## [0.24.0] - 2026-10-22
 
