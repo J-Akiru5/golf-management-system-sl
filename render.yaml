@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: igcc-scorecard-reader
+    runtime: docker
+    plan: starter
+    region: singapore
+    branch: develop
+    autoDeploy: true
+    dockerfilePath: ./scripts/scan/Dockerfile
+    dockerContext: ./scripts/scan
+    healthCheckPath: /health
+    envVars:
+      - key: SCAN_MODEL_BACKEND
+        value: roboflow_hosted
+      - key: ROBOFLOW_MODEL_ID
+        value: igcc-scorecard-digits-v2/1
+      - key: SCAN_CARD_MODE
+        value: auto
+      - key: SCAN_CONFIDENCE_THRESHOLD
+        value: "0.60"
+      - key: SCAN_CLASSIFY_CONCURRENCY
+        value: "3"
+      - key: SCAN_MAX_UPLOAD_BYTES
+        value: "15728640"
+      # Render generates the bearer token. Copy the same value to Vercel as
+      # SCAN_INFERENCE_TOKEN after the first deploy.
+      - key: SCAN_INFERENCE_TOKEN
+        generateValue: true
+      # Never commit the key. Set it in the Render dashboard after rotation.
+      - key: ROBOFLOW_API_KEY
+        sync: false

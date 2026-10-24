@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+tests/
+models/*.onnx
+models/*.ort
+models/*.tflite
+models/*.pt
+models/*.pth
+models/*.engine
+*.zip
+*.log
