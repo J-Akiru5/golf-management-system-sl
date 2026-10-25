@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { CourseCanvas, useCover } from "@/components/control-room/CourseCanvas";
 import { HoleCard, HolePin } from "@/components/control-room/HolePin";
 import {
@@ -47,18 +47,9 @@ function ControlRoomInner({
   const cover = useCover(mapRef);
   const shotgun = config.startFormat === "shotgun";
   const [wave, setWave] = useState<string>("A");
+  // Nothing is open on landing. The first hole card used to open itself when a draw existed,
+  // which covered the map before anyone had asked for it.
   const [selected, setSelected] = useState<number | null>(null);
-
-  // Open the first hole that needs work, as the mockup shows, once a draw exists.
-  const opened = useRef(false);
-  useEffect(() => {
-    if (!draw || opened.current) return;
-    opened.current = true;
-    const first = MAP_HOLES.map((h) => b.slot(h.hole, shotgun ? "A" : null)).find(
-      (s) => s.status === "blocking" || s.status === "short",
-    );
-    if (first) setSelected(first.hole);
-  }, [draw, b, shotgun]);
 
   const waveGroups = draw?.filter((g) => !shotgun || g.wave === wave) ?? [];
   const date = new Date(`${config.date}T00:00:00`).toLocaleDateString("en-PH", {
@@ -83,7 +74,7 @@ function ControlRoomInner({
         ref={mapRef}
         aria-label="Course map"
         data-help="control-map"
-        className="relative h-[460px] overflow-hidden sm:h-[max(640px,100dvh)] xl:h-[max(100dvh,900px)]"
+        className="relative h-[460px] overflow-hidden sm:h-[max(640px,100dvh)] xl:h-dvh"
       >
         <CourseCanvas cover={cover} />
 

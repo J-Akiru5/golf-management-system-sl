@@ -197,7 +197,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className={cn("min-h-dvh", overlay && "scheme-dark bg-surface")}>
+      <div
+        className={cn(
+          "min-h-dvh",
+          // The overview is a fixed desktop canvas. Its right rail scrolls inside the map, so the
+          // page itself must not scroll and the footer below it must not appear. Smaller screens
+          // keep the normal document flow.
+          overlay && "scheme-dark bg-surface xl:h-dvh xl:overflow-hidden",
+        )}
+      >
         <a
           href="#main"
           className="sr focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-gold focus:px-3 focus:py-2 focus:text-on-gold"
@@ -290,7 +298,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           aria-label="Main"
           className={cn(
             "shell-chrome fixed left-6 z-30 hidden max-h-[calc(100dvh-140px)] w-[var(--rail-width)] flex-col gap-2 overflow-y-auto rounded-[30px] p-2 lg:flex [scrollbar-width:none]",
-            overlay ? "glass-forest top-[150px]" : "band top-[108px] shadow-lift",
+            overlay ? "glass-forest top-[108px]" : "band top-[108px] shadow-lift",
           )}
         >
           {nav.map((n) => {
