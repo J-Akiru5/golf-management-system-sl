@@ -25,7 +25,15 @@ const claimNotice = (t: Translate, code: string): { tone: "ok" | "bad"; text: st
   return message ? { tone: "bad", text: message } : null;
 };
 
-function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
+function ClaimCard({
+  t,
+  notice,
+  defaultName,
+}: {
+  t: Translate;
+  notice: string | null;
+  defaultName: string;
+}) {
   return (
     <section className="card grid gap-4" aria-labelledby="claim-h" data-help="my-claim">
       <div className="grid gap-1">
@@ -44,7 +52,7 @@ function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
       <form action={claimPlayerRecord} className="grid gap-3.5 sm:max-w-[26rem]">
         <label className="field">
           <span>{t("player.claim.name")}</span>
-          <input name="name" type="text" autoComplete="name" />
+          <input name="name" type="text" autoComplete="name" defaultValue={defaultName} />
         </label>
         <label className="field">
           <span>{t("player.claim.ngapId")}</span>
@@ -64,17 +72,19 @@ function PortalBody({
   state,
   notice,
   linkedMessage,
+  defaultName,
 }: {
   t: Translate;
   state: PortalState;
   notice: string | null;
   linkedMessage: string | null;
+  defaultName: string;
 }) {
   if (!state.linked || !state.player) {
     return (
       <div className="grid gap-4" data-help="my-entry">
         <PlayerOfflineNotice />
-        <ClaimCard t={t} notice={notice} />
+        <ClaimCard t={t} notice={notice} defaultName={defaultName} />
       </div>
     );
   }
@@ -131,5 +141,18 @@ export default async function MyGolfPage({
     );
   }
 
-  return <PortalBody t={t} state={state} notice={notice} linkedMessage={linkedMessage} />;
+  const displayName =
+    typeof user.user.user_metadata?.display_name === "string"
+      ? user.user.user_metadata.display_name
+      : "";
+
+  return (
+    <PortalBody
+      t={t}
+      state={state}
+      notice={notice}
+      linkedMessage={linkedMessage}
+      defaultName={displayName}
+    />
+  );
 }

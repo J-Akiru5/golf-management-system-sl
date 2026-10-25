@@ -37,8 +37,8 @@ export default async function SignUpPage({
       title="Create an account"
       intro={
         <>
-          One account, for your own entry and your tee time. After signing up you link your club
-          record by name and NGAP number, and from then on the account is yours.
+          One account, for your own entry and your tee time. We match your name to your club record
+          automatically; if we cannot, the desk can link it for you.
         </>
       }
     >
@@ -92,8 +92,8 @@ export default async function SignUpPage({
             </button>
 
             <p className="hint m-0">
-              Club staff accounts are created by the club, not here. An account with no linked
-              record can sign in, but it will not show any entry until the record is claimed.
+              Club staff accounts are created by the club, not here. An account with no matched
+              record can still sign in; the desk can link it to your entry.
             </p>
           </form>
         ) : (
