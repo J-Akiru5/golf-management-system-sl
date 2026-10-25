@@ -24,9 +24,11 @@ Supabase project, because the code and the database are released separately.
   sees their own frozen card: hole, par, stroke index, gross score, handicap strokes, net score,
   gross and net Stableford points, with front-nine, back-nine and total subtotals. The card comes
   from the private publication snapshot, so it never reads the live board; the public leaderboard
-  keeps its summary-only payload. Migration `20261042000000_player_scorecard_snapshot.sql`
-  **is not applied to the live project yet**. The screen handles old publications and shows a short
-  note until the migration is applied and a round is published again.
+  keeps its summary-only payload. Migration `20261042000000_player_scorecard_snapshot.sql` is
+  **applied to the live project on 25 Oct 2026**. The live `build_round_snapshot` returned the
+  existing 18-hole result with a `cards` array. No round has been published since the migration, so
+  the screen shows its short note until the organizer publishes one; old publications also stay
+  summary-only.
 
 - **Mark ready override for an incomplete profile (issue #114).** A `needs_review` entry gets a
   **Mark ready** action for the owner or organizer. The dialog requires the handicap index and the
