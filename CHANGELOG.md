@@ -43,6 +43,14 @@ Supabase project, because the code and the database are released separately.
   withdraws the scorecard confirmation. A partial or invalid card is not saved over the stored one.
   No migration.
 
+- **The handicap is visible on `Scores`**: the **Enter a card** panel shows the round's handicap
+  snapshot - NGAP index, course handicap and playing handicap, with the index source and effective
+  date, the tee rating/slope/par, the allowance and the arithmetic. The **Cards** table shows the
+  index and playing handicap on each card, and **Net Stableford** has a PH column. The registration's
+  frozen index sits beside the snapshot, with a warning when the two differ or the snapshot was
+  calculated on another tee. It is display-only: corrections belong on the player record, so the
+  frozen index and its audit trail are not changed from a scorecard. No migration.
+
 ### Changed
 - **Player names are shown in capitals (issue #115).** Desk lists, the draw, scores, registration,
   print, public pairings, the public leaderboard, the programme and the player portal all use the
@@ -67,6 +75,7 @@ Supabase project, because the code and the database are released separately.
   player lands on their entry instead of a second identity form. The claim card is a fallback for an
   ambiguous or missing name and is pre-filled with the account name. Supabase email confirmation
   still controls whether a new account gets a session immediately. No migration.
+
 
 
 ## [0.26.0] - 2026-10-25

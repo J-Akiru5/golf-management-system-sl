@@ -60,13 +60,19 @@ interface DemoPlayer {
   id: string;
   name: string;
   index: number;
+  /**
+   * The registration's frozen index. It matches the snapshot except for Sample Player C, where the
+   * difference is deliberate so the review warning is visible in the demo. The snapshot remains the
+   * value net scoring uses.
+   */
+  frozenIndex: number;
 }
 
 const DEMO_PLAYERS: DemoPlayer[] = [
-  { id: "demo-p1", name: "Sample Player A", index: 8.4 },
-  { id: "demo-p2", name: "Sample Player B", index: 14.2 },
-  { id: "demo-p3", name: "Sample Player C", index: 18.0 },
-  { id: "demo-p4", name: "Sample Player D", index: 6.7 },
+  { id: "demo-p1", name: "Sample Player A", index: 8.4, frozenIndex: 8.4 },
+  { id: "demo-p2", name: "Sample Player B", index: 14.2, frozenIndex: 14.2 },
+  { id: "demo-p3", name: "Sample Player C", index: 18.0, frozenIndex: 17.4 },
+  { id: "demo-p4", name: "Sample Player D", index: 6.7, frozenIndex: 6.7 },
 ];
 
 export function buildDemoScoringSeed(): ScoringRoundSeed {
@@ -86,6 +92,7 @@ export function buildDemoScoringSeed(): ScoringRoundSeed {
       playerName: displayName(player.name),
       flightId: "demo-flight",
       handicap: calculated.ok ? calculated.snapshot : null,
+      frozenIndex: player.frozenIndex,
     };
   });
 

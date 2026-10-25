@@ -14,11 +14,14 @@ import { useEffect, useMemo, useState } from "react";
 import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
+import { HandicapSummary } from "@/components/scoring/HandicapSummary";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
 import type { ScoringRoundView } from "@/lib/data/scoring";
+import { fmtHcp, fmtIndex } from "@/lib/format";
 import {
   type CardIssue,
+  checkHandicapSnapshot,
   type HoleDefinition,
   reciprocalRotation,
   type Scorecard,
@@ -63,6 +66,7 @@ export default function ScoresPage() {
   const players = view?.players ?? [];
   const holes = view?.course.holes ?? [];
   const totalPar = holes.reduce((sum, hole) => sum + hole.par, 0);
+  const selectedPlayer = players.find((player) => player.playerId === playerId) ?? null;
   const courseKey = view
     ? `${view.roundId}:${holes.map((hole) => `${hole.number}:${hole.par}:${hole.strokeIndex}`).join("|")}`
     : "";
@@ -410,6 +414,16 @@ export default function ScoresPage() {
                   </p>
                 )}
 
+                {selectedPlayer && (
+                  <HandicapSummary
+                    playerId={selectedPlayer.playerId}
+                    playerName={selectedPlayer.playerName}
+                    handicap={selectedPlayer.handicap}
+                    frozenIndex={selectedPlayer.frozenIndex}
+                    course={view.course}
+                  />
+                )}
+
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                   {holes.map((hole) => (
                     <label key={hole.number} className="field">
@@ -607,10 +621,10 @@ export default function ScoresPage() {
               id="score-net"
               icon={<Trophy />}
               title="Net Stableford"
-              subtitle="Uses each player's Playing Handicap snapshot. A player without a snapshot is left out, not estimated."
+              subtitle="Uses each player's Playing Handicap snapshot. The PH column is that snapshot; a player without one is left out, not estimated."
               dataHelp="scores-net"
             >
-              <StandingsTable board={view.standings.net} />
+              <StandingsTable board={view.standings.net} players={view.players} />
             </SectionCard>
           </div>
 
@@ -730,10 +744,15 @@ function CardRow({
   onApprove: () => void;
   onReject: () => void;
 }) {
-  const playerName =
-    view.players.find((player) => player.playerId === card.playerId)?.playerName ?? card.playerId;
+  const player = view.players.find((candidate) => candidate.playerId === card.playerId) ?? null;
+  const playerName = player?.playerName ?? card.playerId;
   const scorerName =
     view.players.find((player) => player.playerId === card.scorerId)?.playerName ?? card.scorerId;
+  const handicapCheck = checkHandicapSnapshot({
+    handicap: player?.handicap ?? null,
+    frozenIndex: player?.frozenIndex,
+    roundTeeId: view.course.tee.id,
+  });
   const validation = validateScorecard(card, {
     course: view.course,
     minOcrConfidence: view.policy.minOcrConfidence,
@@ -745,6 +764,30 @@ function CardRow({
       <td>
         <b>{playerName}</b>
         <span className="hint block">Revision {card.revision}</span>
+        {player?.handicap ? (
+          <span className="hint block">
+            Index {fmtIndex(player.handicap.index)} · PH {fmtHcp(player.handicap.playingHandicap)}
+          </span>
+        ) : (
+          <span className="hint block">No handicap snapshot</span>
+        )}
+        {(handicapCheck.indexDiffers || handicapCheck.teeDiffers) && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            {handicapCheck.indexDiffers && (
+              <span
+                className="pill warn"
+                title="The round snapshot and the registration freeze disagree"
+              >
+                Frozen {fmtIndex(handicapCheck.frozenIndex)}
+              </span>
+            )}
+            {handicapCheck.teeDiffers && (
+              <span className="pill warn" title="This snapshot uses a different tee from the round">
+                Different tee
+              </span>
+            )}
+          </span>
+        )}
       </td>
       <td>{scorerName}</td>
       <td>
@@ -791,10 +834,20 @@ function CardRow({
   );
 }
 
-function StandingsTable({ board }: { board: StandingsBoard }) {
+function StandingsTable({
+  board,
+  players = [],
+}: {
+  board: StandingsBoard;
+  players?: ScoringRoundView["players"];
+}) {
   if (board.rows.length === 0) {
     return <p className="muted">No player has a verified or provisional hole yet.</p>;
   }
+  const showHandicap = board.kind === "net";
+  const handicapByPlayer = new Map(
+    players.map((player) => [player.playerId, player.handicap?.playingHandicap ?? null]),
+  );
   return (
     <div className="table-wrap">
       <table>
@@ -802,6 +855,11 @@ function StandingsTable({ board }: { board: StandingsBoard }) {
           <tr>
             <th>Pos</th>
             <th>Player</th>
+            {showHandicap && (
+              <th className="num" title="Playing handicap snapshot used for net scoring">
+                PH
+              </th>
+            )}
             <th className="num">Pts</th>
             <th className="num">Strokes</th>
             <th className="num">Holes</th>
@@ -819,6 +877,9 @@ function StandingsTable({ board }: { board: StandingsBoard }) {
                 <b>{row.playerName}</b>
                 <span className="hint block">{row.flightId ?? "No flight"}</span>
               </td>
+              {showHandicap && (
+                <td className="num mono">{fmtHcp(handicapByPlayer.get(row.playerId) ?? null)}</td>
+              )}
               <td className="num mono">
                 {row[board.kind === "gross" ? "grossPoints" : "netPoints"]}
               </td>
