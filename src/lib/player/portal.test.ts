@@ -33,7 +33,7 @@ describe("mapPortalState", () => {
   it("maps a linked player and their entry", () => {
     const state = mapPortalState(raw);
     expect(state.linked).toBe(true);
-    expect(state.player).toEqual({ id: "p1", name: "Ana Reyes", ngapId: "10023" });
+    expect(state.player).toEqual({ id: "p1", name: "ANA REYES", ngapId: "10023" });
     expect(state.entries).toHaveLength(1);
     expect(state.entries[0]).toMatchObject({
       eventName: "Bamboo Tee",

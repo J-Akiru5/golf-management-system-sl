@@ -8,6 +8,7 @@ import type {
   ScoringRoundView,
   SubmitCardInput,
 } from "@/lib/data/scoring";
+import { displayName } from "@/lib/format";
 import {
   buildStandings,
   type CanonicalHole,
@@ -232,7 +233,7 @@ export function createSupabaseScoringRepository(
           registrationId: registration.id,
           roundEntryId: entry.id,
           playerId: registration.player_id,
-          playerName: player?.full_name ?? "Unknown player",
+          playerName: player ? displayName(player.full_name) : "Unknown player",
           flightId: entry.flight_id,
           handicap,
           canonical: deriveCanonicalHoleScores({

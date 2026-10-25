@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { displayName } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
 import type { Database } from "@/lib/supabase/types";
 
@@ -84,6 +85,7 @@ export function mapPortalState(raw: unknown): PortalState {
   const root = asRecord(raw);
   const player = asRecord(root.player);
   const playerId = asString(player.id);
+  const playerName = asString(player.name);
 
   const entries = asArray(root.entries).map((item): PortalEntry => {
     const entry = asRecord(item);
@@ -124,7 +126,11 @@ export function mapPortalState(raw: unknown): PortalState {
   return {
     linked: root.linked === true && playerId !== null,
     player: playerId
-      ? { id: playerId, name: asString(player.name) ?? "Member", ngapId: asString(player.ngapId) }
+      ? {
+          id: playerId,
+          name: playerName ? displayName(playerName) : "Member",
+          ngapId: asString(player.ngapId),
+        }
       : null,
     entries,
   };

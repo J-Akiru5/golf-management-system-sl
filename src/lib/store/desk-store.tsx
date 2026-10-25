@@ -47,6 +47,7 @@ import type {
 } from "@/lib/data/types";
 import { buildDemoScoringSeed } from "@/lib/demo/scoring";
 import type { DrawGroup } from "@/lib/draw/validate";
+import { displayName } from "@/lib/format";
 import { NO_DESK_SNAPSHOT_NOTICE, OFFLINE_WRITE_NOTICE, toDeskSnapshot } from "@/lib/offline/cache";
 import { lastDeskUserId, loadDeskSnapshot, saveDeskSnapshot } from "@/lib/offline/store";
 import type { Tee } from "@/lib/routing";
@@ -474,7 +475,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         firstName: draft.name.split(" ")[0] ?? draft.name,
         lastName: draft.name.split(" ").slice(1).join(" "),
         nickname: null,
-        name: draft.name,
+        name: displayName(draft.name),
+        fullName: draft.name,
         birthdate: draft.birthdate,
         gender: draft.gender,
         homeCourse: null,

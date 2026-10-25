@@ -33,6 +33,13 @@ Supabase project, because the code and the database are released separately.
   withdraws the scorecard confirmation. A partial or invalid card is not saved over the stored one.
   No migration.
 
+### Changed
+- **Player names are shown in capitals (issue #115).** Desk lists, the draw, scores, registration,
+  print, public pairings, the public leaderboard, the programme and the player portal all use the
+  capitalised display name. The database keeps the spelling that was entered: a new `fullName` field
+  carries the raw value back on insert or update, and the edit forms still show the original casing.
+  No migration.
+
 ### Fixed
 - **The control room fits a desktop viewport (issue #111).** At 1280px and wider the course map is
   exactly one viewport tall, the page does not scroll, and only the right-hand rail scrolls inside
@@ -43,7 +50,6 @@ Supabase project, because the code and the database are released separately.
 - **Draw group cards wrap instead of clipping (issue #105).** The Lock and Move controls and the
   card header wrap to a new line when the card is narrow, and the groups use one column on a phone.
   No card content is cut off at 1346px or at 390px. No migration.
-
 ## [0.26.1] - 2026-10-25
 
 ### Changed

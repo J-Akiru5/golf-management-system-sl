@@ -50,8 +50,10 @@ export interface PlayerRecord {
   firstName: string;
   lastName: string;
   nickname: string | null;
-  /** Display name used on sheets and lists. */
+  /** Display name used on sheets and lists, in capitals. */
   name: string;
+  /** The name as stored, before the display capitalisation. Used when writing back. */
+  fullName?: string;
   /** ISO date, or null when the club has not recorded it. */
   birthdate: string | null;
   gender: Gender | null;
