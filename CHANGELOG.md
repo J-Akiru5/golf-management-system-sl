@@ -21,6 +21,14 @@ Supabase project, because the code and the database are released separately.
   CLI on this machine is signed in to an account that cannot see the golf project, so the page falls
   back to the pairings-only view until it is applied.
 
+## [0.26.1] - 2026-10-25
+
+### Changed
+- **Player sign-up** now links the club record by the account's display name automatically, so a
+  player lands on their entry instead of a second identity form. The claim card is a fallback for an
+  ambiguous or missing name and is pre-filled with the account name. Supabase email confirmation
+  still controls whether a new account gets a session immediately. No migration.
+
 ## [0.26.0] - 2026-10-25
 
 Event branding, calendar and queued email, plus the optional scorecard reader service.

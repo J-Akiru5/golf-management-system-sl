@@ -59,13 +59,13 @@ export const en = {
     noEntries:
       "No entries on file for you yet. Enter through the event link the club sent you, or ask the club to add you to the event.",
     claim: {
-      heading: "Link your club record",
-      body: "This account is not linked to a member record yet, so there is nothing to show. Link it once: the club matches what you enter against the member list, exactly as the entry form does.",
+      heading: "Can't see your entry?",
+      body: "We match your account to your club record by name. If your entry is missing, enter the full name the club has on file, or your NGAP number.",
       name: "Full name, as the club has it",
       ngapId: "NGAP number (if you know it)",
       help: "A name that matches more than one member is refused rather than guessed, so the NGAP number settles it.",
-      submit: "Link my record",
-      linked: "Your member record is now linked to this account.",
+      submit: "Find my entry",
+      linked: "Your club record is linked. Your entries are below.",
       notReady:
         "The player area is not switched on for this project yet. The club has to apply the player portal migration first.",
       failed: "Your record could not be linked just now. Try again in a moment.",
@@ -73,8 +73,7 @@ export const en = {
       tooLong: "That is longer than the club's records hold. Check it and try again.",
       ambiguous:
         "More than one member record matches that. Add your NGAP number so the club can tell them apart.",
-      noMatch:
-        "No member record matches those details. Ask the club to add you, or enter through the event link.",
+      noMatch: "No club record matches those details yet. Ask the desk to link your entry.",
       taken: "That member record is already linked to another account. Ask the club to check it.",
       signedOut: "Your session has ended. Sign in again.",
       alreadyLinked: "Your member record is already linked to this account.",
