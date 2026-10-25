@@ -236,6 +236,10 @@ export function createSupabaseScoringRepository(
           playerName: player ? displayName(player.full_name) : "Unknown player",
           flightId: entry.flight_id,
           handicap,
+          // Loaded beside the snapshot so the screen can show whether the two agree. The
+          // registration column is nullable; null means no index was frozen, not zero.
+          frozenIndex:
+            registration.frozen_index === null ? null : Number(registration.frozen_index),
           canonical: deriveCanonicalHoleScores({
             roundId: round.id,
             playerId: registration.player_id,

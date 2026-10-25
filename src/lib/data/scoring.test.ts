@@ -77,6 +77,18 @@ async function submitAndApprove(
 }
 
 describe("demo scoring repository", () => {
+  it("carries the registration freeze beside the snapshot for the desk to compare", async () => {
+    const first = seed().players[0];
+    if (!first) throw new Error("The test seed needs a player.");
+    const repo = repository({ players: [{ ...first, frozenIndex: 13.1 }] });
+
+    const view = await repo.loadRound("tournament-1");
+
+    expect(view?.players[0]?.frozenIndex).toBe(13.1);
+    // The snapshot is untouched: it is still the value net scoring uses.
+    expect(view?.players[0]?.handicap?.index).toBe(18);
+  });
+
   it("starts with no eligible holes and a blocked finalization", async () => {
     const repo = repository();
     const view = await repo.loadRound("tournament-1");

@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { handicapDots } from "../../print/handicap-dots";
-import { allocateHandicapStrokes, calculateHandicap, handicapStrokesForHole } from "../handicap";
+import {
+  allocateHandicapStrokes,
+  calculateHandicap,
+  checkHandicapSnapshot,
+  handicapStrokesForHole,
+} from "../handicap";
 import type { HandicapInput, TeeRatings } from "../types";
-import { TEST_HOLES, TEST_TEE } from "./fixtures";
+import { makeSnapshotFor, TEST_HOLES, TEST_TEE } from "./fixtures";
 
 const baseInput: HandicapInput = {
   index: 14.2,
@@ -118,6 +123,66 @@ describe("WHS handicap pipeline", () => {
         expect(result.problems.some((problem) => problem.code === "invalid_allowance")).toBe(true);
       }
     }
+  });
+});
+
+describe("handicap snapshot check", () => {
+  const snapshot = makeSnapshotFor(14.2);
+
+  it("reports agreement without inventing a mismatch", () => {
+    expect(
+      checkHandicapSnapshot({
+        handicap: snapshot,
+        frozenIndex: 14.2,
+        roundTeeId: snapshot.teeId,
+      }),
+    ).toEqual({
+      snapshotIndex: 14.2,
+      frozenIndex: 14.2,
+      indexDiffers: false,
+      teeDiffers: false,
+    });
+  });
+
+  it("flags a frozen index that differs from the round snapshot", () => {
+    const check = checkHandicapSnapshot({
+      handicap: snapshot,
+      frozenIndex: 13.1,
+      roundTeeId: snapshot.teeId,
+    });
+    expect(check.indexDiffers).toBe(true);
+    expect(check.frozenIndex).toBe(13.1);
+    expect(check.snapshotIndex).toBe(14.2);
+  });
+
+  it("stays silent when the freeze was not loaded, rather than guessing", () => {
+    const check = checkHandicapSnapshot({
+      handicap: snapshot,
+      frozenIndex: undefined,
+      roundTeeId: snapshot.teeId,
+    });
+    expect(check.frozenIndex).toBeNull();
+    expect(check.indexDiffers).toBe(false);
+  });
+
+  it("flags a snapshot taken from another tee", () => {
+    const check = checkHandicapSnapshot({
+      handicap: snapshot,
+      frozenIndex: 14.2,
+      roundTeeId: "another-tee",
+    });
+    expect(check.teeDiffers).toBe(true);
+  });
+
+  it("has nothing to compare when the player has no snapshot", () => {
+    expect(
+      checkHandicapSnapshot({ handicap: null, frozenIndex: 14.2, roundTeeId: TEST_TEE.id }),
+    ).toEqual({
+      snapshotIndex: null,
+      frozenIndex: 14.2,
+      indexDiffers: false,
+      teeDiffers: false,
+    });
   });
 });
 

@@ -3815,3 +3815,48 @@
 .teeline-site .strip-head h2 {
   color: var(--ink);
 }
+
+/* --------------------------------------------------------------- scoring: the handicap a round uses */
+
+/* The entry panel now carries the snapshot and the registration freeze side by side. It sits on the
+   sunken surface so it reads as a fact box, not as another form field. */
+.handicap-summary {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-sunken);
+  padding: 12px;
+}
+
+.handicap-summary .tiles {
+  gap: 8px;
+}
+
+.handicap-summary .tile {
+  padding: 8px 10px;
+}
+
+.handicap-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.handicap-facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.handicap-facts dt {
+  color: var(--ink-muted);
+}
+
+.handicap-facts dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
