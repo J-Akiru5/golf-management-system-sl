@@ -5,9 +5,15 @@ import { HelpButton } from "@/components/help";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
+import {
+  PlayerDirectory,
+  ProgrammeNav,
+  RulesOfPlay,
+  TeeTimesBoard,
+} from "@/components/public/ProgrammeView";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
-import { fmtDateLabel } from "@/lib/data/labels";
-import { toPublicPairings } from "@/lib/data/public";
+import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
+import { toPublicPairings, toPublicProgramme } from "@/lib/data/public";
 import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { useDesk } from "@/lib/store/desk-store";
@@ -16,25 +22,42 @@ import { useDesk } from "@/lib/store/desk-store";
  * The demo build of the player page (no Supabase URL). It reads the frozen published copy in the
  * browser session through the public allow-list projection. With Supabase configured, page.tsx
  * serves the published version from the database instead.
+ *
+ * The free-text rules live on the tournament, so they show the moment the demo event has some.
  */
 export function DemoPairings() {
   const { t } = useI18n();
-  const { published, tournament } = useDesk();
+  const { published, tournament, days, entries, registrations, players } = useDesk();
 
   if (!tournament) return <NeedsTournament what="The player view" />;
 
+  const programme = published
+    ? toPublicProgramme({
+        days,
+        entries,
+        registrations,
+        players,
+        categories: tournament.categories,
+        flights: tournament.flights,
+        rulesOfPlay: tournament.rulesOfPlay,
+      })
+    : null;
+  const dates = programme?.days.length
+    ? programme.days.map((day) => day.playDate)
+    : tournament.dates;
+  const dateLabel = dates.length > 1 ? fmtRange(dates) : fmtDateLabel(dates);
   const pairings = published
     ? toPublicPairings({
         published,
         tournamentName: tournament.name,
-        dateLabel: fmtDateLabel(tournament.dates),
+        dateLabel,
         startFormat: tournament.config.startFormat,
         firstTeeTime: tournament.config.firstTeeTime,
       })
     : null;
 
   return (
-    <div className="public mobile-bar-space">
+    <div className="public public-pairings mobile-bar-space">
       <header className="public-head">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -55,7 +78,7 @@ export function DemoPairings() {
         <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
           {tournament.name}
         </h1>
-        <p className="text-on-forest-muted">{fmtDateLabel(tournament.dates)}</p>
+        <p className="text-on-forest-muted">{dateLabel}</p>
       </header>
 
       {!pairings ? (
@@ -63,7 +86,22 @@ export function DemoPairings() {
           <b>{t("pairings.notOutTitle")}</b> {t("pairings.notOutBody")}
         </div>
       ) : (
-        <PairingsView pairings={pairings} headingLevel="section" />
+        <>
+          {programme && (
+            <>
+              <ProgrammeNav programme={programme} hasPairings />
+              <TeeTimesBoard programme={programme} />
+              <PlayerDirectory programme={programme} />
+            </>
+          )}
+
+          <section className="grid gap-3" id="pairings">
+            <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
+            <PairingsView pairings={pairings} headingLevel="section" />
+          </section>
+
+          {programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
+        </>
       )}
 
       <p className="hint no-print">

@@ -2,6 +2,7 @@ import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import type {
   Club,
   Course,
+  DayTeeAssignment,
   HandicapRecord,
   Hole,
   PlayerRecord,
@@ -105,6 +106,9 @@ export function makeDemoTournaments(): Tournament[] {
     cutOffDate: "2026-11-01",
     scheduleNeedsConfirmation: true,
     courseDataConfirmed: false,
+    // Sample text for the demo shell. The real event stays null until the organizers supply theirs.
+    rulesOfPlay:
+      "Sample rules for the demo only. Replace them in Settings.\n\n1. Play is under the Rules of Golf as adopted by the club.\n2. Lift, clean and place in your own fairway.\n3. Sign and return your card at the scorer's table.",
     // Age and the cut-off read the first day of the event; the legacy DEMO_CONFIG date is not used.
     config: { ...DEMO_CONFIG, date: "2026-11-12" },
     categories: DEMO_CATEGORIES,
@@ -474,26 +478,51 @@ export function makeDemoSeed(cutOffDate = "2026-11-01"): DemoSeed {
   const frozenAt = "2026-10-20T09:00:00+08:00";
   const recordOf = (playerId: string) => records.filter((x) => x.playerId === playerId);
   const guestIds = new Set(guests.map((g) => g.id));
+  // Sample confirmed starts for the demo only: pairs go off holes 1 and 10 every eight minutes.
+  const demoTime = (slot: number) => {
+    const total = 6 * 60 + 30 + (Math.floor(slot / 2) % 24) * 8;
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  };
 
   for (const p of players) {
     if (p.birthdate === null || p.gender === null) continue; // the stub has no entry yet
     const selection = selectIndexForCutOff(recordOf(p.id), cutOffDate);
+    const slot = entries.length;
+    const sponsor = r() < 0.12;
+    const dayOnePreference = r() < 0.6 ? "6:30 AM" : "12:30 PM";
+    const dayTwoPreference = r() < 0.5 ? null : "6:30 AM";
+    const paymentStatus = r() < 0.45 ? "pending" : r() < 0.5 ? "recorded_paid" : "not_recorded";
+    const dayTee: Record<number, DayTeeAssignment> = {
+      1: {
+        teeTime: demoTime(slot),
+        startHole: slot % 2 === 0 ? 1 : 10,
+        confirmed: true,
+      },
+    };
+    if (dayTwoPreference) {
+      dayTee[2] = {
+        teeTime: demoTime(slot),
+        startHole: slot % 2 === 0 ? 1 : 10,
+        confirmed: true,
+      };
+    }
     entries.push({
       id: `e-${entries.length + 1}`,
       clubId: DEMO_CLUB.id,
       tournamentId: "bamboo-tee-2026",
       playerId: p.id,
       role: guestIds.has(p.id) ? "guest" : "member",
-      sponsor: r() < 0.12,
+      sponsor,
       shirt: pick(SHIRT_SIZES),
       teePreferences: {
-        "2026-11-12": r() < 0.6 ? "6:30 AM" : "12:30 PM",
-        "2026-11-13": r() < 0.5 ? null : "6:30 AM",
+        "2026-11-12": dayOnePreference,
+        "2026-11-13": dayTwoPreference,
       },
+      dayTee,
       declaredWshId: p.ngapId,
       declaredWshHandicap: null,
       extra: {},
-      paymentStatus: r() < 0.45 ? "pending" : r() < 0.5 ? "recorded_paid" : "not_recorded",
+      paymentStatus,
       frozen: freezeIndex(selection, frozenAt),
       createdAt: frozenAt,
       source: "demo_seed",

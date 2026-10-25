@@ -192,4 +192,5 @@ or Charcoal and is remembered per browser.
 Drawn on a canvas from the player's record, so the preview and the PNG are the same pixels. Two
 layouts (Championship 1080x1350, Player card 1080x1080), dark and light looks, up to three facts,
 photo zoom and position. Only facts that exist are offered. A photo is used only if the player's
-consent was recorded. Public player profiles are not built; posters are shared by the organizer.
+consent was recorded. A public player list is now part of the `/pairings` programme (name, home club,
+frozen index, category and flight); it never carries contact details, birthdate, gender or a photo.

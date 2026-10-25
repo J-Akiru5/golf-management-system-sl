@@ -54,7 +54,9 @@ export function PublishDialog({
       <div className="dialog-body">
         <h2 id="pub-title">{isPublished ? "Publish changes" : "Publish pairings"}</h2>
         <p className="muted">
-          Players will see the list below on the player view. It shows names, hole and time only.
+          Players will see the published pairings below. The public page also shows the confirmed
+          tee times for each playing day, the player list and the organizers&apos; rules of play. A
+          tee time is not shown to players until it is ticked as confirmed on the Tee times screen.
           Nothing goes out until you press the button at the bottom.
         </p>
 

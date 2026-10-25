@@ -63,6 +63,7 @@ describe("setupPayload", () => {
       dates: ["2026-11-12", "2026-11-13"],
       state: "open",
       nameNeedsConfirmation: false,
+      rulesOfPlay: "",
     });
     expect(payload.p_rules?.cutoffDate).toBe("2026-11-01");
     expect(payload.p_rules?.flightBasis).toBe("course_handicap");
@@ -85,6 +86,17 @@ describe("setupPayload", () => {
     expect(payload.p_tees).toBeNull();
     expect(payload.p_categories).toBeNull();
     expect(payload.p_flights).toBeNull();
+  });
+
+  it("carries the rules of play with the playbook section, and only with it", () => {
+    const withRules = { ...tournament, rulesOfPlay: "Play the ball as it lies." };
+    const playbook = setupPayload(withRules, tees, holes, ["playbook"]);
+    expect(playbook.p_basics?.rulesOfPlay).toBe("Play the ball as it lies.");
+    expect(playbook.p_rules).toBeNull();
+    expect(playbook.p_start).toBeNull();
+
+    const start = setupPayload(withRules, tees, holes, ["start"]);
+    expect(start.p_basics).toBeNull();
   });
 
   it("carries the hole count with Start, because that is where config.holes is stored", () => {

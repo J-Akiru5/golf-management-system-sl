@@ -254,6 +254,7 @@ export function toTournament(
     name: row.name,
     hostName: row.host_name ?? null,
     logoPath: row.logo_path ?? null,
+    rulesOfPlay: row.rules_of_play ?? null,
     nameNeedsConfirmation: row.name_needs_confirmation,
     courseId: row.course_id,
     dates: row.dates?.length ? row.dates : [row.play_date],
