@@ -149,6 +149,14 @@ export function toRegistrationEntry(row: RegistrationRow): RegistrationEntry {
       effectiveDate: row.frozen_effective_date,
       frozenAt: row.frozen_at ?? row.created_at,
     },
+    status: row.status,
+    reasons: row.reasons,
+    categoryId: row.category_id,
+    teeId: row.tee_id,
+    flightId: row.flight_id,
+    playingHandicap: row.playing_handicap,
+    overridden: row.overridden,
+    overrideReason: str(answers.overrideReason),
     createdAt: row.created_at,
     source: "desk",
   };
@@ -334,6 +342,7 @@ export function toRegistrationAnswers(entry: RegistrationEntry) {
     declaredWshId: entry.declaredWshId,
     declaredWshHandicap: entry.declaredWshHandicap,
     extra: entry.extra,
+    overrideReason: entry.overrideReason ?? null,
   };
 }
 

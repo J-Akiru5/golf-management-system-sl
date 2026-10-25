@@ -20,6 +20,11 @@ Supabase project, because the code and the database are released separately.
   `20261041000000_public_programme_rules.sql`. **Not applied to the live project yet**: the Supabase
   CLI on this machine is signed in to an account that cannot see the golf project, so the page falls
   back to the pairings-only view until it is applied.
+- **Mark ready override for an incomplete profile (issue #114).** A `needs_review` entry gets a
+  **Mark ready** action for the owner or organizer. The dialog requires the handicap index and the
+  birthdate, then records the category, tee, flight and playing handicap by hand, with a reason.
+  The entry is routed into the draw with those facts, while the missing profile details stay visible
+  as pending notes and the row shows an **Overridden** badge. No migration.
 
 - **One course card, editable from Settings and Course & holes.** The same 18-hole editor now shows
   the par and stroke index for every hole, the card's total par, and a warning when a tee's stored

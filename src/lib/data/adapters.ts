@@ -154,10 +154,26 @@ export interface SetupRepository {
   confirmCourse(tournamentId: string, confirmed: boolean): void;
 }
 
+/** The minimum facts the organizer must supply to place a player whose profile is incomplete. */
+export interface OverrideReadyInput {
+  index: number;
+  effectiveDate: string;
+  birthdate: string;
+  categoryId: string;
+  teeId: string;
+  flightId: string;
+  playingHandicap: number;
+  reason: string;
+  /** Details that are still missing and stay visible as pending notes. */
+  pending: string[];
+}
+
 export interface RegistrationRepository {
   list(tournamentId: string): RegistrationEntry[];
   add(tournamentId: string, input: NewEntryInput): RegistrationEntry;
   update(id: string, patch: Partial<RegistrationEntry>): void;
+  /** Marks a needs-review entry ready with the organizer's manual routing facts. */
+  overrideReady(entryId: string, input: OverrideReadyInput): void;
   remove(id: string): void;
   /** Copies the latest index on or before the cut-off onto the entries again. */
   refreeze(tournamentId: string, entryIds?: string[]): void;
@@ -410,6 +426,35 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       return entry;
     },
     update: (id, patch) => dispatch({ type: "updateEntry", id, patch }),
+    overrideReady: (entryId, input) => {
+      const entry = state.entries.find((item) => item.id === entryId);
+      if (!entry) throw new Error("That registration was not found.");
+      dispatch({
+        type: "updatePlayer",
+        id: entry.playerId,
+        patch: { birthdate: input.birthdate },
+      });
+      dispatch({
+        type: "updateEntry",
+        id: entryId,
+        patch: {
+          status: "ok",
+          reasons: input.pending,
+          frozen: {
+            index: input.index,
+            recordId: null,
+            effectiveDate: input.effectiveDate,
+            frozenAt: new Date().toISOString(),
+          },
+          categoryId: input.categoryId,
+          teeId: input.teeId,
+          flightId: input.flightId,
+          playingHandicap: input.playingHandicap,
+          overridden: true,
+          overrideReason: input.reason,
+        },
+      });
+    },
     remove: (id) => dispatch({ type: "removeEntry", id }),
     refreeze: (tournamentId, entryIds) => dispatch({ type: "refreeze", tournamentId, entryIds }),
     setDays: async (entryId, days) => {
