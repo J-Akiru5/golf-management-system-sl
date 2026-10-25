@@ -190,6 +190,35 @@ describe("toRegistrationEntry", () => {
       frozenAt: "2026-10-17T00:00:00Z",
     });
   });
+
+  it("reads an organizer override back from the row and its answers", () => {
+    const entry = toRegistrationEntry(
+      registrationRow({
+        status: "ok",
+        reasons: ["Gender is still missing; the category was chosen by the organizer."],
+        category_id: "regular",
+        tee_id: "white",
+        flight_id: "r-a",
+        playing_handicap: 14,
+        overridden: true,
+        answers: { overrideReason: "Organizer confirmed the category." },
+      }),
+    );
+
+    expect(entry).toMatchObject({
+      status: "ok",
+      reasons: ["Gender is still missing; the category was chosen by the organizer."],
+      categoryId: "regular",
+      teeId: "white",
+      flightId: "r-a",
+      playingHandicap: 14,
+      overridden: true,
+      overrideReason: "Organizer confirmed the category.",
+    });
+    expect(toRegistrationAnswers(entry)).toMatchObject({
+      overrideReason: "Organizer confirmed the category.",
+    });
+  });
 });
 
 describe("toRegistrationAnswers", () => {
