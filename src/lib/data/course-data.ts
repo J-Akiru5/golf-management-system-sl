@@ -15,7 +15,41 @@ import type { Hole } from "./types";
  */
 export type CourseDataStatus = "official" | "placeholder" | "missing";
 
-const HOLES_ON_A_CARD = 18;
+export const HOLES_ON_A_CARD = 18;
+
+/** 18 empty rows, so a card can be typed in from nothing without inventing a par. */
+export function blankHoles(courseId: string): Hole[] {
+  return Array.from({ length: HOLES_ON_A_CARD }, (_, i) => ({
+    id: `${courseId}-${i + 1}`,
+    courseId,
+    number: i + 1,
+    par: null,
+    strokeIndex: null,
+  }));
+}
+
+/** The par of the holes that have one. A blank card reads 0 until a par is entered. */
+export function cardPar(holes: readonly Hole[]): number {
+  return holes.reduce((sum, hole) => sum + (hole.par ?? 0), 0);
+}
+
+/** A par outside 3 to 6 is not a hole; the database check refuses it too. */
+export function parProblem(holes: readonly Hole[]): string | null {
+  for (const hole of holes) {
+    if (hole.par !== null && (hole.par < 3 || hole.par > 6)) {
+      return `Hole ${hole.number} has par ${hole.par}; a hole is par 3 to 6.`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Tees whose stored par differs from the card's total. The Course Handicap formula subtracts the
+ * tee's par, so a tee that disagrees with the card produces a different handicap from the same card.
+ */
+export function teeParMismatches(tees: readonly Tee[], par: number): Tee[] {
+  return tees.filter((tee) => tee.par !== par);
+}
 
 /** Whether every hole of an 18-hole card has both a par and a stroke index. */
 export function holesComplete(holes: readonly Hole[]): boolean {

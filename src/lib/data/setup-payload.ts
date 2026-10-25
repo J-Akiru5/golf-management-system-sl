@@ -9,7 +9,7 @@
  */
 
 import type { StartFormat, Tee } from "@/lib/routing";
-import { holesComplete, strokeIndexProblem } from "./course-data";
+import { holesComplete, parProblem, strokeIndexProblem } from "./course-data";
 import type { Hole, Tournament, TournamentRegistration } from "./types";
 
 export type SetupSection =
@@ -116,12 +116,16 @@ export function setupPayload(
 
   return {
     p_course: want("course") || want("start") ? { holes: tournament.config.holes } : null,
-    // A hole card goes only as a whole, valid card: all 18 holes with a par and a stroke index, and
-    // no stroke index used twice. The column requires both numbers, so an unfinished card used to be
-    // written with par 4 and the hole's own number as its stroke index — numbers nobody had entered,
-    // which made a blank card look entered. Null means "leave the stored card alone".
+    // A hole card goes only as a whole, valid card: all 18 holes with a par the database accepts and
+    // a stroke index, and no stroke index used twice. The column requires both numbers, so an
+    // unfinished card used to be written with par 4 and the hole's own number as its stroke index —
+    // numbers nobody had entered, which made a blank card look entered. Null means "leave the
+    // stored card alone".
     p_holes:
-      want("course") && holesComplete(holes) && strokeIndexProblem(holes) === null
+      want("course") &&
+      holesComplete(holes) &&
+      strokeIndexProblem(holes) === null &&
+      parProblem(holes) === null
         ? holes.filter(hasCard).map((hole) => ({
             number: hole.number,
             par: hole.par,

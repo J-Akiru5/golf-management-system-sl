@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  blankHoles,
+  cardPar,
   courseDataStatus,
   courseNumbersChanged,
   holesComplete,
+  parProblem,
   strokeIndexProblem,
+  teeParMismatches,
 } from "./course-data";
 import type { Hole } from "./types";
 
@@ -17,6 +21,50 @@ const card = (fill = true): Hole[] =>
     par: fill ? 4 : null,
     strokeIndex: fill ? i + 1 : null,
   }));
+
+describe("blankHoles", () => {
+  it("builds 18 numbered rows with no par or stroke index invented", () => {
+    const holes = blankHoles("course-1");
+    expect(holes).toHaveLength(18);
+    expect(holes.map((hole) => hole.number)).toEqual(Array.from({ length: 18 }, (_, i) => i + 1));
+    expect(holes.every((hole) => hole.par === null && hole.strokeIndex === null)).toBe(true);
+    expect(holes.every((hole) => hole.courseId === "course-1")).toBe(true);
+  });
+});
+
+describe("cardPar", () => {
+  it("adds the pars that are on the card and ignores blanks", () => {
+    expect(cardPar(card())).toBe(72);
+    const holes = card();
+    holes[3] = { ...holes[3]!, par: 5 };
+    expect(cardPar(holes)).toBe(73);
+    expect(cardPar(card(false))).toBe(0);
+  });
+});
+
+describe("parProblem", () => {
+  it("accepts par 3 to 6 and blanks", () => {
+    expect(parProblem(card())).toBeNull();
+    expect(parProblem(card(false))).toBeNull();
+  });
+
+  it("names a par outside the range the database accepts", () => {
+    const holes = card();
+    holes[0] = { ...holes[0]!, par: 2 };
+    expect(parProblem(holes)).toMatch(/Hole 1 has par 2/);
+    holes[0] = { ...holes[0]!, par: 7 };
+    expect(parProblem(holes)).toMatch(/Hole 1 has par 7/);
+  });
+});
+
+describe("teeParMismatches", () => {
+  it("finds only the tees whose par differs from the card", () => {
+    const mixed = [...tees, { id: "r", name: "Red", courseRating: 70, slope: 120, par: 70 }];
+    expect(teeParMismatches(mixed, 70).map((tee) => tee.name)).toEqual(["White"]);
+    expect(teeParMismatches(mixed, 72).map((tee) => tee.name)).toEqual(["Red"]);
+    expect(teeParMismatches([], 70)).toEqual([]);
+  });
+});
 
 describe("holesComplete", () => {
   it("needs all 18 holes with a par and a stroke index", () => {
