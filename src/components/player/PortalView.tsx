@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
 import { fmtHcp, fmtIndex, fmtTime } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
 import {
@@ -56,6 +57,16 @@ export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
           </div>
         ))}
       </dl>
+
+      {entry.scorecards.length > 0 ? (
+        <div className="grid gap-4">
+          {entry.scorecards.map((card) => (
+            <ScorecardBreakdown key={card.roundId} card={card} t={t} />
+          ))}
+        </div>
+      ) : (
+        <p className="hint">{t("player.scorecard.empty")}</p>
+      )}
 
       <p className="hint">
         {entry.published ? t("player.published.yes") : t("player.published.no")}{" "}

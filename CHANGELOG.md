@@ -20,6 +20,14 @@ Supabase project, because the code and the database are released separately.
   `20261041000000_public_programme_rules.sql`. **Not applied to the live project yet**: the Supabase
   CLI on this machine is signed in to an account that cannot see the golf project, so the page falls
   back to the pairings-only view until it is applied.
+- **The player's full scorecard on `/my`**: once a daily round is published, the signed-in player
+  sees their own frozen card: hole, par, stroke index, gross score, handicap strokes, net score,
+  gross and net Stableford points, with front-nine, back-nine and total subtotals. The card comes
+  from the private publication snapshot, so it never reads the live board; the public leaderboard
+  keeps its summary-only payload. Migration `20261042000000_player_scorecard_snapshot.sql`
+  **is not applied to the live project yet**. The screen handles old publications and shows a short
+  note until the migration is applied and a round is published again.
+
 - **Mark ready override for an incomplete profile (issue #114).** A `needs_review` entry gets a
   **Mark ready** action for the owner or organizer. The dialog requires the handicap index and the
   birthdate, then records the category, tee, flight and playing handicap by hand, with a reason.
@@ -57,6 +65,7 @@ Supabase project, because the code and the database are released separately.
   player lands on their entry instead of a second identity form. The claim card is a fallback for an
   ambiguous or missing name and is pre-filled with the account name. Supabase email confirmation
   still controls whether a new account gets a session immediately. No migration.
+
 
 ## [0.26.0] - 2026-10-25
 
