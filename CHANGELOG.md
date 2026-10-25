@@ -30,6 +30,15 @@ Supabase project, because the code and the database are released separately.
   the screen shows its short note until the organizer publishes one; old publications also stay
   summary-only.
 
+
+- **Scorecard corrections (issue #113).** A submitted or approved card has an **Edit** action for
+  an owner or organizer. Saving writes a new revision, keeps the old revision in the record, and
+  puts the new revision back in the approval queue. The correction reason is required and is
+  written to `scoring_audit` by the new `record_scorecard_correction` function. The latest revision
+  is the only one that can be edited. Migration
+  `20261043000000_scorecard_correction.sql`; **not applied to the live project yet** for the same
+  Supabase CLI reason.
+
 - **Mark ready override for an incomplete profile (issue #114).** A `needs_review` entry gets a
   **Mark ready** action for the owner or organizer. The dialog requires the handicap index and the
   birthdate, then records the category, tee, flight and playing handicap by hand, with a reason.

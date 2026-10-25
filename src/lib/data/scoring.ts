@@ -85,6 +85,8 @@ export interface SubmitCardInput {
   entries: Scorecard["entries"];
   writtenTotal: number | null;
   captureKey: string;
+  /** A correction's reason. It is written to the scoring audit with the new revision. */
+  reason?: string;
   /** Optional original photo stored in R2. */
   image?: {
     path: string;
