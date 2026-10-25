@@ -16,6 +16,8 @@ import {
  * page knows the reader's language, and the offline page has no server to ask.
  */
 export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
+  // A snapshot saved on the phone before scorecards existed has no array at all.
+  const scorecards = entry.scorecards ?? [];
   const facts: { label: string; value: string }[] = [
     { label: t("player.fact.start"), value: startLabel(entry, t, fmtTime) },
     { label: t("player.fact.flight"), value: entry.flight ?? t("player.value.notPlacedYet") },
@@ -58,9 +60,9 @@ export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
         ))}
       </dl>
 
-      {entry.scorecards.length > 0 ? (
+      {scorecards.length > 0 ? (
         <div className="grid gap-4">
-          {entry.scorecards.map((card) => (
+          {scorecards.map((card) => (
             <ScorecardBreakdown key={card.roundId} card={card} t={t} />
           ))}
         </div>
