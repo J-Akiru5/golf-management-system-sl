@@ -69,6 +69,7 @@ const portal = (): PortalState => ({
       paymentStatus: "paid",
       published: true,
       start: { hole: 10, wave: "A", time: "07:48" },
+      scorecards: [],
     },
   ],
 });

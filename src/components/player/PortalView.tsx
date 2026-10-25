@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
 import { fmtHcp, fmtIndex, fmtTime } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
 import {
@@ -15,6 +16,8 @@ import {
  * page knows the reader's language, and the offline page has no server to ask.
  */
 export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
+  // A snapshot saved on the phone before scorecards existed has no array at all.
+  const scorecards = entry.scorecards ?? [];
   const facts: { label: string; value: string }[] = [
     { label: t("player.fact.start"), value: startLabel(entry, t, fmtTime) },
     { label: t("player.fact.flight"), value: entry.flight ?? t("player.value.notPlacedYet") },
@@ -56,6 +59,16 @@ export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
           </div>
         ))}
       </dl>
+
+      {scorecards.length > 0 ? (
+        <div className="grid gap-4">
+          {scorecards.map((card) => (
+            <ScorecardBreakdown key={card.roundId} card={card} t={t} />
+          ))}
+        </div>
+      ) : (
+        <p className="hint">{t("player.scorecard.empty")}</p>
+      )}
 
       <p className="hint">
         {entry.published ? t("player.published.yes") : t("player.published.no")}{" "}

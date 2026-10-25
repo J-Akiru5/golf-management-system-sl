@@ -148,6 +148,16 @@ describe("handicap stroke allocation", () => {
     expect(allocation(36).every((strokes) => strokes === 2)).toBe(true);
   });
 
+  it("gives a third stroke to the hardest holes above 36", () => {
+    const values = allocation(40);
+    expect(atStrokeIndex(values, 1)).toBe(3);
+    expect(atStrokeIndex(values, 2)).toBe(3);
+    expect(atStrokeIndex(values, 3)).toBe(3);
+    expect(atStrokeIndex(values, 4)).toBe(3);
+    expect(atStrokeIndex(values, 5)).toBe(2);
+    expect(values.filter((strokes) => strokes === 3)).toHaveLength(4);
+  });
+
   it("gives plus handicaps back from the easiest holes", () => {
     const minusTwo = allocation(-2);
     expect(atStrokeIndex(minusTwo, 17)).toBe(-1);

@@ -22,6 +22,38 @@ export interface PortalStart {
   time: string | null;
 }
 
+/** One hole on the player's frozen published card. */
+export interface PortalScorecardHole {
+  hole: number;
+  par: number;
+  strokeIndex: number;
+  grossStrokes: number;
+  /** Null when the round had no handicap snapshot. Negative for a plus handicap. */
+  handicapStrokes: number | null;
+  netStrokes: number | null;
+  grossPoints: number;
+  netPoints: number | null;
+}
+
+/** A daily round's frozen card, as stored in the publication snapshot. */
+export interface PortalScorecard {
+  roundId: string;
+  dayNumber: number;
+  playDate: string | null;
+  state: "provisional" | "final";
+  version: number;
+  publishedAt: string | null;
+  playingHandicap: number | null;
+  courseHandicap: number | null;
+  grossStrokes: number;
+  netStrokes: number | null;
+  grossPoints: number;
+  netPoints: number | null;
+  holesCounted: number;
+  holesTotal: number;
+  holes: PortalScorecardHole[];
+}
+
 export interface PortalEntry {
   tournamentId: string;
   eventName: string;
@@ -40,6 +72,8 @@ export interface PortalEntry {
   paymentStatus: PortalPayment;
   published: boolean;
   start: PortalStart | null;
+  /** The player's own published cards. Empty until the organizer publishes results. */
+  scorecards: PortalScorecard[];
 }
 
 export interface PortalPlayer {
@@ -73,6 +107,111 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     : {};
 
 const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
+const asWholeNumber = (value: unknown): number | null => {
+  const number = asNumber(value);
+  return number !== null && Number.isInteger(number) ? number : null;
+};
+
+const hasOwn = (value: Record<string, unknown>, key: string): boolean =>
+  Object.prototype.hasOwnProperty.call(value, key);
+
+/** Sums a complete list; one missing value makes the total unknown, not zero. */
+const sumIfComplete = (values: readonly (number | null)[]): number | null =>
+  values.some((value) => value === null)
+    ? null
+    : values.reduce<number>((total, value) => total + (value ?? 0), 0);
+
+function mapScorecardHole(value: unknown): PortalScorecardHole | null {
+  const raw = asRecord(value);
+  const hole = asWholeNumber(raw.hole);
+  const par = asWholeNumber(raw.par);
+  const strokeIndex = asWholeNumber(raw.strokeIndex);
+  const grossStrokes = asWholeNumber(raw.grossStrokes);
+  const grossPoints = asWholeNumber(raw.grossPoints);
+
+  if (
+    hole === null ||
+    par === null ||
+    strokeIndex === null ||
+    grossStrokes === null ||
+    grossPoints === null ||
+    hole < 1 ||
+    par < 1 ||
+    strokeIndex < 1 ||
+    grossStrokes < 1 ||
+    grossPoints < 0
+  ) {
+    return null;
+  }
+
+  const handicapStrokes = asWholeNumber(raw.handicapStrokes);
+  const netStrokes = asWholeNumber(raw.netStrokes);
+  const netPoints = asWholeNumber(raw.netPoints);
+
+  return {
+    hole,
+    par,
+    strokeIndex,
+    grossStrokes,
+    handicapStrokes,
+    netStrokes,
+    netPoints: netPoints !== null && netPoints >= 0 ? netPoints : null,
+    grossPoints,
+  };
+}
+
+function mapScorecard(value: unknown): PortalScorecard | null {
+  const raw = asRecord(value);
+  const roundId = asString(raw.roundId);
+  if (!roundId) return null;
+
+  const seen = new Set<number>();
+  const holes = asArray(raw.holes)
+    .map(mapScorecardHole)
+    .filter((hole): hole is PortalScorecardHole => hole !== null)
+    .filter((hole) => {
+      if (seen.has(hole.hole)) return false;
+      seen.add(hole.hole);
+      return true;
+    })
+    .sort((a, b) => a.hole - b.hole);
+
+  if (holes.length === 0) return null;
+
+  const rawHolesTotal = asWholeNumber(raw.holesTotal) ?? 0;
+  const highestHole = holes[holes.length - 1]?.hole ?? 0;
+  const holesTotal = Math.max(1, rawHolesTotal, highestHole);
+
+  const grossStrokes =
+    asWholeNumber(raw.grossStrokes) ?? holes.reduce((total, hole) => total + hole.grossStrokes, 0);
+  const grossPoints =
+    asWholeNumber(raw.grossPoints) ?? holes.reduce((total, hole) => total + hole.grossPoints, 0);
+  const netStrokes = hasOwn(raw, "netStrokes")
+    ? asWholeNumber(raw.netStrokes)
+    : sumIfComplete(holes.map((hole) => hole.netStrokes));
+  const netPoints = hasOwn(raw, "netPoints")
+    ? asWholeNumber(raw.netPoints)
+    : sumIfComplete(holes.map((hole) => hole.netPoints));
+
+  return {
+    roundId,
+    dayNumber: asWholeNumber(raw.dayNumber) ?? 1,
+    playDate: asString(raw.playDate),
+    state: raw.state === "final" ? "final" : "provisional",
+    version: asWholeNumber(raw.version) ?? 0,
+    publishedAt: asString(raw.publishedAt),
+    playingHandicap: asWholeNumber(raw.playingHandicap),
+    courseHandicap: asWholeNumber(raw.courseHandicap),
+    grossStrokes,
+    netStrokes,
+    grossPoints,
+    netPoints,
+    holesCounted: Math.min(asWholeNumber(raw.holesCounted) ?? holes.length, holesTotal),
+    holesTotal,
+    holes,
+  };
+}
 
 const asStatus = (value: unknown): PortalStatus =>
   value === "ineligible" || value === "needs_review" ? value : "ok";
@@ -120,6 +259,9 @@ export function mapPortalState(raw: unknown): PortalState {
             time: asString(start.time),
           }
         : null,
+      scorecards: asArray(entry.scorecards)
+        .map(mapScorecard)
+        .filter((card): card is PortalScorecard => card !== null),
     };
   });
 
