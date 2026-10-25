@@ -2609,6 +2609,10 @@ export type Database = {
           wave: string;
         }[];
       };
+      public_programme: {
+        Args: { p_tournament?: string };
+        Returns: Json;
+      };
       public_registration_form: {
         Args: { p_tournament: string };
         Returns: Json;

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { type PublishedLike, toPublicPairings } from "./public";
+import {
+  mapPublicProgramme,
+  type PublishedLike,
+  toPublicPairings,
+  toPublicProgramme,
+} from "./public";
+import type { DeskRegistration, PlayerRecord, RegistrationEntry, TournamentDay } from "./types";
 
 describe("toPublicPairings", () => {
   it("keeps only the allowed fields, however rich the source object is", () => {
@@ -103,5 +109,229 @@ describe("toPublicPairings", () => {
     });
     expect(out.groups[0]?.players).toEqual([{ id: null, name: "Ramon Aguilar", photoPath: null }]);
     expect(out.startFormat).toBe("two_tee");
+  });
+});
+
+describe("toPublicProgramme", () => {
+  const days: TournamentDay[] = [
+    {
+      id: "d1",
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      label: "Day 1",
+      startTime: "06:30",
+      isPlayingDay: true,
+    },
+    {
+      id: "d2",
+      dayNumber: 2,
+      playDate: "2026-11-13",
+      label: "Day 2",
+      startTime: null,
+      isPlayingDay: true,
+    },
+    {
+      id: "d3",
+      dayNumber: 3,
+      playDate: "2026-11-14",
+      label: "Day 3",
+      startTime: null,
+      isPlayingDay: false,
+    },
+  ];
+
+  const player = {
+    id: "p1",
+    clubId: "c1",
+    firstName: "Antonio",
+    lastName: "Alcantara",
+    nickname: null,
+    name: "Antonio Alcantara",
+    birthdate: "1972-05-04",
+    gender: "M",
+    homeCourse: "IGCC",
+    contactNumber: "+63 917 000 0000",
+    email: "antonio@example.com",
+    ngapId: "1001",
+    createdAt: "2026-10-01T00:00:00Z",
+  } as PlayerRecord;
+
+  const entry = {
+    id: "e1",
+    clubId: "c1",
+    tournamentId: "t1",
+    playerId: "p1",
+    role: "member",
+    sponsor: false,
+    shirt: "L",
+    teePreferences: {},
+    selectedDays: [1, 2],
+    dayTee: {
+      1: { teeTime: "06:30", startHole: 1, confirmed: true },
+      2: { teeTime: "12:30", startHole: 10, confirmed: false },
+    },
+    declaredWshId: null,
+    declaredWshHandicap: null,
+    extra: {},
+    paymentStatus: "pending",
+    frozen: {
+      index: 12.4,
+      recordId: null,
+      effectiveDate: null,
+      frozenAt: "2026-11-01T00:00:00Z",
+    },
+    createdAt: "2026-11-01T00:00:00Z",
+    source: "demo_seed",
+  } as RegistrationEntry;
+
+  const registration = {
+    playerId: "p1",
+    playerName: "Antonio Alcantara",
+    status: "ok",
+    reasons: [],
+    index: 12.4,
+    age: 54,
+    categoryId: "cat-regular",
+    teeId: "tee-white",
+    playingHandicap: 14,
+    flightId: "flt-a",
+    entryId: "e1",
+    role: "member",
+    ageKnown: true,
+    frozenIndex: 12.4,
+    frozenRecordId: null,
+    frozenEffectiveDate: null,
+    newerRecord: null,
+    frozenOutdated: false,
+    staleIndex: false,
+    flags: [],
+    paymentStatus: "pending",
+    sponsor: false,
+    teePreferences: {},
+  } as DeskRegistration;
+
+  it("lists only confirmed times and never a contact field or a birthdate", () => {
+    const out = toPublicProgramme({
+      days,
+      entries: [entry],
+      registrations: [registration],
+      players: [player],
+      categories: [
+        {
+          id: "cat-regular",
+          name: "Regular",
+          gender: "any",
+          minAge: 0,
+          maxAge: null,
+          teeId: "tee-white",
+        },
+      ],
+      flights: [{ id: "flt-a", categoryId: "cat-regular", name: "Regular A", min: 0, max: 18 }],
+      rulesOfPlay: "  Play the ball as it lies.\r\n\r\nSign your card.  ",
+    });
+
+    // Day 3 is not a playing day, so it is not shown.
+    expect(out.days.map((day) => day.dayNumber)).toEqual([1, 2]);
+    expect(out.days[0]?.players).toEqual([
+      { name: "Antonio Alcantara", teeTime: "06:30", startHole: 1, confirmed: true },
+    ]);
+    // A time that the desk has not confirmed is withheld, but the player stays on the day.
+    expect(out.days[1]?.players).toEqual([
+      { name: "Antonio Alcantara", teeTime: null, startHole: null, confirmed: false },
+    ]);
+    expect(out.players).toEqual([
+      {
+        name: "Antonio Alcantara",
+        homeCourse: "IGCC",
+        index: 12.4,
+        category: "Regular",
+        flight: "Regular A",
+      },
+    ]);
+    expect(out.rulesOfPlay).toBe("Play the ball as it lies.\n\nSign your card.");
+
+    const serialised = JSON.stringify(out);
+    for (const privateFact of ["1972-05-04", "antonio@example.com", "+63 917", "photo"]) {
+      expect(serialised).not.toContain(privateFact);
+    }
+  });
+
+  it("leaves out an ineligible entry and keeps a player with no index as NH", () => {
+    const out = toPublicProgramme({
+      days,
+      entries: [{ ...entry, id: "e2", playerId: "p2" }],
+      registrations: [
+        {
+          ...registration,
+          entryId: "e2",
+          playerId: "p2",
+          playerName: "Maria Santos",
+          status: "ineligible",
+        },
+      ],
+      players: [{ ...player, id: "p2", name: "Maria Santos", homeCourse: null }],
+      categories: [],
+      flights: [],
+      rulesOfPlay: "   ",
+    });
+    expect(out.players).toEqual([]);
+    expect(out.rulesOfPlay).toBeNull();
+  });
+});
+
+describe("mapPublicProgramme", () => {
+  it("accepts the database projection and normalises its times", () => {
+    const out = mapPublicProgramme({
+      days: [
+        {
+          dayNumber: 2,
+          label: "Day 2",
+          playDate: "2026-11-13",
+          startTime: "07:00:00",
+          players: [
+            { name: "  Maria Santos ", teeTime: "12:30:00", startHole: 10, confirmed: true },
+            { name: "Antonio Alcantara", teeTime: "06:30:00", startHole: 1, confirmed: false },
+          ],
+        },
+      ],
+      players: [
+        {
+          name: "Maria Santos",
+          homeCourse: "IGCC",
+          index: "8.2",
+          category: "Ladies",
+          flight: "Ladies A",
+        },
+        { name: "Antonio Alcantara", homeCourse: null, index: null, category: null, flight: null },
+      ],
+      rulesOfPlay: "  Local rules apply.  ",
+    });
+
+    expect(out?.days[0]?.startTime).toBe("07:00");
+    // The unconfirmed row keeps the player but loses the tentative time.
+    expect(out?.days[0]?.players).toEqual([
+      { name: "Maria Santos", teeTime: "12:30", startHole: 10, confirmed: true },
+      { name: "Antonio Alcantara", teeTime: null, startHole: null, confirmed: false },
+    ]);
+    expect(out?.players[0]).toEqual({
+      name: "Antonio Alcantara",
+      homeCourse: null,
+      index: null,
+      category: null,
+      flight: null,
+    });
+    expect(out?.players[1]?.index).toBe(8.2);
+    expect(out?.rulesOfPlay).toBe("Local rules apply.");
+  });
+
+  it("returns null for a malformed or missing response", () => {
+    expect(mapPublicProgramme(null)).toBeNull();
+    expect(mapPublicProgramme({ days: [], players: "nope" })).toBeNull();
+    expect(mapPublicProgramme({ days: [{ dayNumber: 1 }], players: [] })).toBeNull();
+    expect(mapPublicProgramme({ days: [], players: [] })).toEqual({
+      days: [],
+      players: [],
+      rulesOfPlay: null,
+    });
   });
 });

@@ -193,6 +193,8 @@ export type TournamentRow = {
   /** Added by 20261040000000. Optional so a database before that migration still loads. */
   host_name?: string | null;
   logo_path?: string | null;
+  /** Added by 20261041000000. Optional so a database before that migration still loads. */
+  rules_of_play?: string | null;
   play_date: string;
   cutoff_date: string;
   start_format: "shotgun" | "two_tee";
@@ -634,6 +636,7 @@ export interface Database {
           name: string;
           host_name?: string | null;
           logo_path?: string | null;
+          rules_of_play?: string | null;
           play_date: string;
           cutoff_date: string;
           start_format: TournamentRow["start_format"];
@@ -1002,6 +1005,11 @@ export interface Database {
       public_pairings: {
         Args: { p_tournament?: string | null };
         Returns: PublicPairingRow[];
+      };
+      /** The day schedule, public player cards and rules of play. Added by 20261041000000. */
+      public_programme: {
+        Args: { p_tournament?: string | null };
+        Returns: Json;
       };
       current_player_id: { Args: Record<string, never>; Returns: string | null };
       claim_player_record: {

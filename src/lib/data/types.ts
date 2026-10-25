@@ -212,6 +212,8 @@ export interface Tournament {
   logoPath?: string | null;
   /** Short-lived signed URL for staff screens and printing. */
   logoUrl?: string;
+  /** The organizers' rules of play, shown on the public page. Null until they provide them. */
+  rulesOfPlay?: string | null;
   /** The supplied event name is a demo title until the club confirms it. */
   nameNeedsConfirmation: boolean;
   courseId: string;
@@ -359,4 +361,49 @@ export interface PublicPairings {
   startFormat: TournamentConfig["startFormat"];
   firstTeeTime: string;
   groups: PublicPairingGroup[];
+}
+
+/**
+ * One player's start on one playing day, as the public page may show it. A time that the desk has
+ * not confirmed is deliberately withheld: `teeTime` is null even when a row exists, so a partly
+ * entered schedule can never read as a confirmed start to a player.
+ */
+export interface PublicTeeTimePlayer {
+  name: string;
+  /** "HH:MM" when confirmed, otherwise null. */
+  teeTime: string | null;
+  startHole: number | null;
+  confirmed: boolean;
+}
+
+/** One scheduled day of the event. */
+export interface PublicTeeTimeDay {
+  dayNumber: number;
+  label: string;
+  /** ISO date. */
+  playDate: string;
+  /** "HH:MM", or null when the day's start is not set. */
+  startTime: string | null;
+  players: PublicTeeTimePlayer[];
+}
+
+/**
+ * The public player card. It is built by an allow-list, never by passing a player or registration
+ * row through. Contact details, birthdate, gender, notes and photos are deliberately absent.
+ */
+export interface PublicPlayerProfile {
+  name: string;
+  homeCourse: string | null;
+  /** The index frozen at the cut-off, which is the one the draw used. Null means no index on file. */
+  index: number | null;
+  category: string | null;
+  flight: string | null;
+}
+
+/** The day schedule, the player list and the organizers' rules of play. */
+export interface PublicProgramme {
+  days: PublicTeeTimeDay[];
+  players: PublicPlayerProfile[];
+  /** Trimmed organizer text, or null when nothing has been entered. */
+  rulesOfPlay: string | null;
 }

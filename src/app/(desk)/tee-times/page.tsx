@@ -64,7 +64,7 @@ export default function TeeTimesPage() {
       >
         Choose a playing day, then set the confirmed tee time and starting hole for the players who
         selected that day. This is separate from the day selection and from the player&apos;s
-        preference.
+        preference. A time appears on the public page only after it is ticked as confirmed.
       </PageHeader>
 
       {days.length === 0 ? (
