@@ -285,9 +285,9 @@ plan quotes it; it does not redefine it.
 | Sign in | One page for players and staff, with account creation for players; an account's area follows what it is (a club_members row or a linked player record). Demo builds skip it entirely |
 | My golf (player area) | `/my`: link your member record by name and NGAP number, then read your own entries and published start. Applied; needs a test account and one player row to claim |
 | Public pairings | The public programme: searchable name, large text and print. It shows the confirmed tee times by playing day, a player list with home club, frozen index, category and flight, the published pairings, and the organizers' rules of play. Built through the public allow-list projections (the pairings from the frozen snapshot, the rest from `public_programme()`); no contact details, birthdate, gender or photos |
-| Course & holes | Hole 1 overview and green view with shot line and yardage markers drawn from anchor files. **Pictures are an illustration, not IGCC's real hole** |
+| Course & holes | Hole 1 overview and green view with shot line and yardage markers drawn from anchor files, plus the shared **course card** editor (par, stroke index, total par, tee-par mismatch warning). **Pictures are an illustration, not IGCC's real hole** |
 | Clubhouse display (spotlight) | 16:9 player card for the clubhouse TV, single player or rotation. Shows recorded data only |
-| Real course and tee entry | **Pending**: course rating, slope, par and stroke index are editable in Settings, but the values on file are placeholders until the club supplies the scorecard |
+| Real course and tee entry | **Pending**: course rating, slope, par and stroke index are editable in Settings, and the same course-wide card is on Course & holes; the values on file are placeholders until the club supplies the scorecard |
 | Score encoding and results | **Phase 2, engine and applied schema.** The pure scoring engine and the database schema are in place; no screen, OCR or publication UI exists |
 
 ---

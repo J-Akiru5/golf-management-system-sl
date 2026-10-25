@@ -21,6 +21,13 @@ Supabase project, because the code and the database are released separately.
   CLI on this machine is signed in to an account that cannot see the golf project, so the page falls
   back to the pairings-only view until it is applied.
 
+- **One course card, editable from Settings and Course & holes.** The same 18-hole editor now shows
+  the par and stroke index for every hole, the card's total par, and a warning when a tee's stored
+  par disagrees with the card. It is one component in both places, so the two screens cannot drift.
+  The card belongs to the course: a saved change applies to every event on it, and changing a number
+  withdraws the scorecard confirmation. A partial or invalid card is not saved over the stored one.
+  No migration.
+
 ### Fixed
 - **The control room fits a desktop viewport (issue #111).** At 1280px and wider the course map is
   exactly one viewport tall, the page does not scroll, and only the right-hand rail scrolls inside

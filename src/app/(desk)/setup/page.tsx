@@ -18,13 +18,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { CourseCardEditor } from "@/components/course/CourseCardEditor";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
 import { Button } from "@/components/ui/button";
 import { ResizableTextarea } from "@/components/ui/resizable-textarea";
 import { checkTournament } from "@/lib/data/config-checks";
-import { courseDataStatus, holesComplete, strokeIndexProblem } from "@/lib/data/course-data";
+import {
+  blankHoles,
+  courseDataStatus,
+  holesComplete,
+  parProblem,
+  strokeIndexProblem,
+} from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
 import { SETUP_SECTIONS, type SetupSection } from "@/lib/data/setup-payload";
 import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
@@ -54,19 +61,6 @@ const SECTION_TITLE: Record<SetupSection, string> = {
   categories: "Categories",
   flights: "Flights",
 };
-
-/**
- * 18 empty rows, so a card can be typed in from nothing. A blank is saved as nothing: the payload
- * leaves the stored card alone rather than writing a par and a stroke index nobody entered.
- */
-const blankHoles = (courseId: string): Hole[] =>
-  Array.from({ length: 18 }, (_, i) => ({
-    id: `${courseId}-${i + 1}`,
-    courseId,
-    number: i + 1,
-    par: null,
-    strokeIndex: null,
-  }));
 
 export default function SetupPage() {
   const { tournament, tees, holes, adapters, status, member, saving, error } = useDesk();
@@ -173,8 +167,8 @@ function SetupWizard({
     setDraftTees((current) => current.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     mark("course");
   };
-  const updateHole = (number: number, patch: Partial<Hole>) => {
-    setDraftHoles((current) => current.map((h) => (h.number === number ? { ...h, ...patch } : h)));
+  const replaceHoles = (next: Hole[]) => {
+    setDraftHoles(next);
     mark("course");
   };
 
@@ -216,7 +210,7 @@ function SetupWizard({
 
   // Where the course numbers on a sheet come from, derived rather than typed in. A blank hole or a
   // repeated stroke index means the card cannot be called official even if it was confirmed once.
-  const cardProblem = strokeIndexProblem(draftHoles);
+  const cardProblem = strokeIndexProblem(draftHoles) ?? parProblem(draftHoles);
   const cardComplete = holesComplete(draftHoles) && cardProblem === null;
   const courseStatus = courseDataStatus({
     confirmed: draft.courseDataConfirmed,
@@ -263,7 +257,9 @@ function SetupWizard({
     if (!pending.current || saving) return;
     if (!error) clear(pending.current);
     pending.current = null;
-  }, [saving, error, tournament]);
+    // `holes` and `tees` are the optimistic echo of a save. The demo adapter has no queue and never
+    // flips `saving`, so without them a demo section stayed marked dirty after it had been written.
+  }, [saving, error, tournament, holes, tees]);
   const discard = () => {
     setDraft(tournament);
     setDraftTees(tees);
@@ -634,64 +630,14 @@ function SetupWizard({
                   </tbody>
                 </table>
               </div>
-              <p className="hint">
-                {draftHoles.length} holes on file. Par and stroke index per hole:{" "}
-                {draftHoles.every((h) => h.par !== null && h.strokeIndex !== null)
-                  ? "entered"
-                  : "not entered yet. Scorecards print placeholders and say so."}
-              </p>
-              {draftHoles.length > 0 && (
-                <div className="table-wrap !shadow-none">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th className="num">Hole</th>
-                        <th className="num">Par</th>
-                        <th className="num">Stroke index</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {draftHoles.map((h) => (
-                        <tr key={h.number}>
-                          <td className="num mono">{h.number}</td>
-                          <td className="num">
-                            <input
-                              type="number"
-                              min="3"
-                              max="6"
-                              aria-label={`Hole ${h.number} par`}
-                              value={h.par ?? ""}
-                              onChange={(e) => {
-                                const n = num(e.target.value);
-                                if (n !== null) updateHole(h.number, { par: n });
-                              }}
-                            />
-                          </td>
-                          <td className="num">
-                            <input
-                              type="number"
-                              min="1"
-                              max={draftHoles.length}
-                              aria-label={`Hole ${h.number} stroke index`}
-                              value={h.strokeIndex ?? ""}
-                              onChange={(e) => {
-                                const n = num(e.target.value);
-                                if (n !== null) updateHole(h.number, { strokeIndex: n });
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {cardProblem && (
-                <p className="notice bad text-[13px]" role="alert">
-                  {cardProblem}
-                </p>
-              )}
+              <CourseCardEditor
+                holes={draftHoles}
+                tees={draftTees}
+                onChange={replaceHoles}
+                onTeeParChange={(id, par) => updateTee(id, { par })}
+                disabled={!canEdit}
+                idPrefix="setup"
+              />
 
               {/* The one thing that cannot be derived: a person saying the numbers were checked. */}
               <div className="well grid gap-2 p-3.5">

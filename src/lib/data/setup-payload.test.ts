@@ -142,6 +142,18 @@ describe("setupPayload", () => {
     expect(setupPayload(tournament, tees, card, ["course"]).p_holes).toBeNull();
   });
 
+  it("refuses a par the database would reject, rather than failing the whole write", () => {
+    const card: Hole[] = Array.from({ length: 18 }, (_, i) => ({
+      id: `h${i + 1}`,
+      courseId: "course",
+      number: i + 1,
+      par: 4,
+      strokeIndex: i + 1,
+    }));
+    card[2] = { ...card[2]!, par: 7 };
+    expect(setupPayload(tournament, tees, card, ["course"]).p_holes).toBeNull();
+  });
+
   it("does not mutate the domain objects it reads", () => {
     const before = JSON.stringify(tournament);
     setupPayload(tournament, tees, holes, "all");

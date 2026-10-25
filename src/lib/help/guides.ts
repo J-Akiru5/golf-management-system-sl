@@ -215,6 +215,24 @@ export const DESK_GUIDES: HelpGuide[] = [
     ],
   },
   {
+    id: "desk.course",
+    title: literal("Course & holes"),
+    summary: literal("The hole pictures and the course card."),
+    routes: ["/course"],
+    steps: [
+      {
+        text: literal("Pick a hole to see its illustration and the groups starting there."),
+        anchor: "course-holes",
+      },
+      {
+        text: literal(
+          "The course card holds the par and stroke index for every hole. It belongs to the course, so a saved change applies to every event, and an edit withdraws the scorecard confirmation.",
+        ),
+        anchor: "course-card",
+      },
+    ],
+  },
+  {
     id: "desk.setup",
     title: literal("Settings"),
     summary: literal("The event's rules and the course setup."),
@@ -222,7 +240,7 @@ export const DESK_GUIDES: HelpGuide[] = [
     steps: [
       {
         text: literal(
-          "Set the course, holes, tees, categories and flights here. Course-side changes save as you go; the session bar shows the state.",
+          "Set the course, holes, tees, categories and flights here. Course-side changes use the section Save; the session bar shows the state.",
         ),
         anchor: "setup-course",
       },
