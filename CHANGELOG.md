@@ -21,6 +21,17 @@ Supabase project, because the code and the database are released separately.
   CLI on this machine is signed in to an account that cannot see the golf project, so the page falls
   back to the pairings-only view until it is applied.
 
+### Fixed
+- **The control room fits a desktop viewport (issue #111).** At 1280px and wider the course map is
+  exactly one viewport tall, the page does not scroll, and only the right-hand rail scrolls inside
+  the map. The footer no longer adds a scrollbar. Tablet and phone keep the existing scrolling
+  layout. The left rail now starts at the same height as every other desk page.
+- **No hole card opens by itself on the control room (issue #111).** The first hole that needed work
+  used to open over the map as soon as a draw existed. A hole now opens only after a click.
+- **Draw group cards wrap instead of clipping (issue #105).** The Lock and Move controls and the
+  card header wrap to a new line when the card is narrow, and the groups use one column on a phone.
+  No card content is cut off at 1346px or at 390px. No migration.
+
 ## [0.26.1] - 2026-10-25
 
 ### Changed

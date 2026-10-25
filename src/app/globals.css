@@ -1150,8 +1150,15 @@
   }
   .groups {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    /* The card carries a hole badge, a Lock control and a Move control per player. Below about
+       250px those controls were clipped by the card's own overflow rule. */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
     gap: 16px;
+  }
+  @media (max-width: 639px) {
+    .groups {
+      grid-template-columns: 1fr;
+    }
   }
   .group {
     background: var(--surface-raised);
@@ -1160,6 +1167,8 @@
     overflow: hidden;
     display: grid;
     align-content: start;
+    min-width: 0;
+    overflow-wrap: anywhere;
     box-shadow: var(--shadow-card);
     transition:
       border-color 140ms,
@@ -1191,11 +1200,15 @@
   }
   .group-head {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     gap: 8px;
     align-items: center;
     padding: 10px 12px;
     border-bottom: 1px solid var(--line);
+  }
+  .group-head .who {
+    flex: 1 1 11rem;
   }
   .group-head .hole {
     width: 32px;
@@ -1210,11 +1223,15 @@
   }
   .slot {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     align-items: center;
     justify-content: space-between;
     padding: 6px 12px;
     min-height: 44px;
+  }
+  .slot .who {
+    flex: 1 1 9rem;
   }
   .slot + .slot {
     border-top: 1px solid var(--line);
@@ -1224,6 +1241,7 @@
     gap: 10px;
     align-items: center;
     flex: none;
+    margin-left: auto;
   }
   .slot.picked {
     background: var(--gold-soft);
