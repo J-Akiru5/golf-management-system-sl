@@ -4,10 +4,17 @@ import { HelpButton } from "@/components/help";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { PairingsView } from "@/components/PairingsView";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
+import {
+  PlayerDirectory,
+  ProgrammeNav,
+  RulesOfPlay,
+  TeeTimesBoard,
+} from "@/components/public/ProgrammeView";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
-import { fmtDateLabel } from "@/lib/data/labels";
+import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
+import { loadPublicProgramme } from "@/lib/data/supabase/public-programme";
 import { fmtTime } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
@@ -16,19 +23,20 @@ import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { DemoPairings } from "./DemoPairings";
 
 export const metadata: Metadata = {
-  title: "Published player pairings",
+  title: "Tee times, players and pairings",
   description:
-    "The published pairings for the club's tournament: name, flight, hole or tee and start time. No account needed, and the version number can be checked against a printed copy.",
+    "The published programme for the club's tournament: the confirmed tee times for each playing day, the player list and the pairings, plus the organizers' rules of play. No account needed.",
   alternates: { canonical: "/pairings" },
   openGraph: openGraphFor({
-    title: `Published player pairings | ${SITE_NAME}`,
+    title: `Tee times, players and pairings | ${SITE_NAME}`,
     description:
-      "Name, flight, hole or tee and start time, from the published version. No account needed.",
+      "Confirmed tee times by day, the player list, the published pairings and the rules of play. No account needed.",
     path: "/pairings",
   }),
   twitter: twitterFor({
-    title: `Published player pairings | ${SITE_NAME}`,
-    description: "Name, flight, hole or tee and start time, from the published version.",
+    title: `Tee times, players and pairings | ${SITE_NAME}`,
+    description:
+      "Confirmed tee times by day, the player list, the published pairings and the rules.",
   }),
 };
 
@@ -40,6 +48,10 @@ export const metadata: Metadata = {
  * a minute. That is deliberate: showing a Hiligaynon reader an English page (or the other way
  * round) is worse than a database round trip at this club's size. The organizer's publish action
  * still refreshes whatever is cached around the pairings.
+ *
+ * The pairings come from the frozen published snapshot. The day schedule, the player cards and the
+ * rules are reference data read through `public_programme()`, which only answers while the event is
+ * published; a time that the desk has not confirmed is never part of that projection.
  */
 const manila = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "medium",
@@ -51,26 +63,39 @@ export default async function PublicPairingsPage() {
   const { t } = await getI18n();
   if (!isSupabaseConfigured()) return <DemoPairings />;
 
+  const client = createSupabasePublicClient();
   let data: Awaited<ReturnType<typeof loadPublicPairings>> = null;
+  let programme: Awaited<ReturnType<typeof loadPublicProgramme>> = null;
   let failed = false;
-  try {
-    data = await loadPublicPairings(createSupabasePublicClient());
-  } catch {
-    failed = true;
-  }
+  // The programme is additive: a database that has not applied its migration yet still serves the
+  // pairings, because the failed read only costs the extra sections.
+  const [pairingsResult, programmeResult] = await Promise.allSettled([
+    loadPublicPairings(client),
+    loadPublicProgramme(client),
+  ]);
+  if (pairingsResult.status === "fulfilled") data = pairingsResult.value;
+  else failed = true;
+  if (programmeResult.status === "fulfilled") programme = programmeResult.value;
 
   const published = data?.published ?? null;
+  const dates = programme?.days.length
+    ? programme.days.map((day) => day.playDate)
+    : data
+      ? [data.date]
+      : [];
+  const dateLabel = dates.length > 1 ? fmtRange(dates) : fmtDateLabel(dates);
   const pairings =
     data && published
       ? toPublicPairings({
           published,
           tournamentName: data.name,
-          dateLabel: fmtDateLabel([data.date]),
+          dateLabel,
           startFormat: data.startFormat,
           firstTeeTime: data.firstTeeTime,
           photoByPlayerId: data.photoByPlayerId,
         })
       : null;
+  const showProgramme = Boolean(pairings && published && programme);
 
   return (
     <div className="public public-pairings mobile-bar-space">
@@ -95,7 +120,7 @@ export default async function PublicPairingsPage() {
             <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px] lg:text-[56px] lg:leading-[60px]">
               {data.name}
             </h1>
-            <p className="text-on-forest-muted">{fmtDateLabel([data.date])}</p>
+            <p className="text-on-forest-muted">{dateLabel}</p>
           </>
         )}
       </header>
@@ -111,15 +136,32 @@ export default async function PublicPairingsPage() {
         </section>
       ) : (
         <>
-          <p className="hint no-print" data-testid="pairings-version">
-            {published.version
-              ? t("pairings.version", {
-                  version: published.version,
-                  when: manila.format(new Date(published.at)),
-                })
-              : t("pairings.versionNoNumber", { when: manila.format(new Date(published.at)) })}
-          </p>
-          <PairingsView pairings={pairings} headingLevel="section" flightFilter />
+          {showProgramme && programme && (
+            <>
+              <ProgrammeNav programme={programme} hasPairings />
+              <TeeTimesBoard programme={programme} />
+              <PlayerDirectory programme={programme} />
+            </>
+          )}
+
+          <section className="grid gap-3" id="pairings">
+            <div>
+              <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
+              <p className="hint no-print" data-testid="pairings-version">
+                {published.version
+                  ? t("pairings.version", {
+                      version: published.version,
+                      when: manila.format(new Date(published.at)),
+                    })
+                  : t("pairings.versionNoNumber", {
+                      when: manila.format(new Date(published.at)),
+                    })}
+              </p>
+            </div>
+            <PairingsView pairings={pairings} headingLevel="section" flightFilter />
+          </section>
+
+          {showProgramme && programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
         </>
       )}
 

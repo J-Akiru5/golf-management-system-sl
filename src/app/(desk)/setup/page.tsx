@@ -34,6 +34,7 @@ import { cn } from "@/lib/ui/cn";
 
 const SECTIONS = [
   ["basics", "Basics"],
+  ["playbook", "Rules of play"],
   ["course", "Course & tees"],
   ["rules", "Cut-off & handicap"],
   ["categories", "Categories"],
@@ -45,6 +46,7 @@ const SECTIONS = [
 
 const SECTION_TITLE: Record<SetupSection, string> = {
   basics: "Basics",
+  playbook: "Rules of play",
   rules: "Cut-off & handicap",
   start: "Start & groups",
   fields: "Registration fields",
@@ -495,6 +497,31 @@ function SetupWizard({
                   caution note until this is unticked.
                 </span>
               </label>
+            </SectionCard>
+
+            <SectionCard
+              id="playbook"
+              icon={<ClipboardList />}
+              title="Rules of play"
+              subtitle="The organizers' rules, shown on the public page while this event is published."
+              action={sectionAction("playbook")}
+            >
+              <label className="field">
+                <span>Rules of play</span>
+                <ResizableTextarea
+                  id="rules-of-play"
+                  resizeLabel="Rules of play"
+                  rows={8}
+                  disabled={!canEdit}
+                  value={draft.rulesOfPlay ?? ""}
+                  onChange={(e) => update({ rulesOfPlay: e.target.value }, "playbook")}
+                />
+              </label>
+              <p className="hint">
+                One rule per line works best; blank lines separate paragraphs. The text is shown to
+                players exactly as written, without contact details or photos. Leave it empty until
+                the organizers provide their rules, and the section stays off the public page.
+              </p>
             </SectionCard>
 
             <SectionCard

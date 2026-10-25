@@ -6,6 +6,7 @@ import { REMEMBER_COOKIE, rememberCookieOptions } from "@/lib/auth/cookies";
 import { passwordProblem } from "@/lib/auth/password";
 import { landingFor } from "@/lib/auth/routes";
 import { signInErrorCode } from "@/lib/auth/sign-in-error";
+import { claimSucceeded } from "@/lib/player/claim";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDeskMember } from "./member";
@@ -140,6 +141,15 @@ export async function signUpWithPassword(formData: FormData): Promise<void> {
 
   // With email confirmation on, the account exists but there is no session yet.
   if (!data.session) redirect("/login?message=check_email");
+
+  // Link the club record by the name the player just gave us. Most players have
+  // one exact record, so they land on their entry instead of a second identity
+  // form. Ambiguous or missing names still fall back to the claim card.
+  const { data: claim } = await client.rpc("claim_player_record", {
+    p_name: displayName.trim(),
+    p_ngap_id: null,
+  });
+  if (claimSucceeded(claim)) redirect("/my?claim=linked");
   redirect("/my?claim=start");
 }
 

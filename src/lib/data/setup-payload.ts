@@ -14,6 +14,7 @@ import type { Hole, Tournament, TournamentRegistration } from "./types";
 
 export type SetupSection =
   | "basics"
+  | "playbook"
   | "rules"
   | "start"
   | "fields"
@@ -23,6 +24,7 @@ export type SetupSection =
 
 export const SETUP_SECTIONS: SetupSection[] = [
   "basics",
+  "playbook",
   "rules",
   "start",
   "fields",
@@ -59,6 +61,8 @@ export interface SetupPayload {
     dates: string[];
     state: Tournament["state"];
     nameNeedsConfirmation: boolean;
+    /** Organizer-written public rules. An empty string clears the stored text. */
+    rulesOfPlay: string;
   } | null;
   p_rules: {
     cutoffDate: string;
@@ -151,14 +155,16 @@ export function setupPayload(
           max: flight.max,
         }))
       : null,
-    p_basics: want("basics")
-      ? {
-          name: tournament.name,
-          dates: tournament.dates,
-          state: tournament.state,
-          nameNeedsConfirmation: tournament.nameNeedsConfirmation,
-        }
-      : null,
+    p_basics:
+      want("basics") || want("playbook")
+        ? {
+            name: tournament.name,
+            dates: tournament.dates,
+            state: tournament.state,
+            nameNeedsConfirmation: tournament.nameNeedsConfirmation,
+            rulesOfPlay: tournament.rulesOfPlay ?? "",
+          }
+        : null,
     p_rules: want("rules")
       ? {
           cutoffDate: tournament.cutOffDate,

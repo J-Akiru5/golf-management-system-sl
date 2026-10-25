@@ -9,7 +9,25 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **The public programme on `/pairings`**: the page now shows the confirmed tee times for each
+  playing day (Day 1, Day 2, …), a public player list (name, home club, frozen index, category and
+  flight) and the organizers' rules of play, before the published pairings. A tee time is withheld
+  until the desk ticks it confirmed, so a partly entered schedule cannot read as a confirmed start.
+  The rules are written in **Settings → Rules of play** and stored on `tournaments.rules_of_play`.
+  The anonymous read is `public_programme()`, which returns null unless the event is published; the
+  pairings themselves still come from the frozen published snapshot. Migration
+  `20261041000000_public_programme_rules.sql`. **Not applied to the live project yet**: the Supabase
+  CLI on this machine is signed in to an account that cannot see the golf project, so the page falls
+  back to the pairings-only view until it is applied.
+
+## [0.26.1] - 2026-10-25
+
+### Changed
+- **Player sign-up** now links the club record by the account's display name automatically, so a
+  player lands on their entry instead of a second identity form. The claim card is a fallback for an
+  ambiguous or missing name and is pre-filled with the account name. Supabase email confirmation
+  still controls whether a new account gets a session immediately. No migration.
 
 ## [0.26.0] - 2026-10-25
 
