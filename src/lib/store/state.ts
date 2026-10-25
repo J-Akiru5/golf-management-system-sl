@@ -24,6 +24,7 @@ import {
   makeDemoTournaments,
 } from "@/lib/demo/data";
 import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
+import { displayName } from "@/lib/format";
 import type { MergeRow, ResolvedImportRow } from "@/lib/ngap";
 import { type RoutingInput, route, type Tee } from "@/lib/routing";
 // AVP THROWAWAY BRANCH ONLY: the frozen draw for the recorded demo. It loads only when the recording
@@ -336,13 +337,15 @@ const stubPlayer = (
   ngapId: string | null,
 ): PlayerRecord => {
   const { firstName, lastName } = splitName(name);
+  const fullName = `${firstName} ${lastName}`.trim();
   return {
     id: `p-${seq}`,
     clubId: s.clubId,
     firstName,
     lastName,
     nickname: null,
-    name: `${firstName} ${lastName}`.trim(),
+    name: displayName(fullName),
+    fullName,
     birthdate: null,
     gender: null,
     homeCourse: null,

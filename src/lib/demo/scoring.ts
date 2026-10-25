@@ -1,4 +1,5 @@
 import type { ScoringPlayerSeed, ScoringRoundSeed } from "@/lib/data/scoring";
+import { displayName } from "@/lib/format";
 import {
   calculateHandicap,
   type HoleDefinition,
@@ -82,7 +83,7 @@ export function buildDemoScoringSeed(): ScoringRoundSeed {
     return {
       registrationId: `demo-reg-${player.id}`,
       playerId: player.id,
-      playerName: player.name,
+      playerName: displayName(player.name),
       flightId: "demo-flight",
       handicap: calculated.ok ? calculated.snapshot : null,
     };

@@ -49,10 +49,10 @@ describe("toPublicPairings", () => {
       "time",
       "wave",
     ]);
-    // Names are trimmed; nothing else about a player survives.
+    // Names are trimmed and shown in capitals; nothing else about a player survives.
     expect(group.players).toEqual([
-      { id: null, name: "Antonio Alcantara", photoPath: null },
-      { id: null, name: "Maria Santos", photoPath: null },
+      { id: null, name: "ANTONIO ALCANTARA", photoPath: null },
+      { id: null, name: "MARIA SANTOS", photoPath: null },
     ]);
     expect(JSON.stringify(out)).not.toContain("Organizer only");
     expect(JSON.stringify(out)).not.toContain("1972-05-04");
@@ -82,8 +82,8 @@ describe("toPublicPairings", () => {
     });
 
     expect(out.groups[0]?.players).toEqual([
-      { id: "p1", name: "Antonio Alcantara", photoPath: "club/p1.jpg" },
-      { id: "p2", name: "Maria Santos", photoPath: null },
+      { id: "p1", name: "ANTONIO ALCANTARA", photoPath: "club/p1.jpg" },
+      { id: "p2", name: "MARIA SANTOS", photoPath: null },
     ]);
     expect(JSON.stringify(out)).not.toContain("photo_consent_at");
   });
@@ -107,7 +107,7 @@ describe("toPublicPairings", () => {
       startFormat: "two_tee",
       firstTeeTime: "06:30",
     });
-    expect(out.groups[0]?.players).toEqual([{ id: null, name: "Ramon Aguilar", photoPath: null }]);
+    expect(out.groups[0]?.players).toEqual([{ id: null, name: "RAMON AGUILAR", photoPath: null }]);
     expect(out.startFormat).toBe("two_tee");
   });
 });
@@ -233,15 +233,15 @@ describe("toPublicProgramme", () => {
     // Day 3 is not a playing day, so it is not shown.
     expect(out.days.map((day) => day.dayNumber)).toEqual([1, 2]);
     expect(out.days[0]?.players).toEqual([
-      { name: "Antonio Alcantara", teeTime: "06:30", startHole: 1, confirmed: true },
+      { name: "ANTONIO ALCANTARA", teeTime: "06:30", startHole: 1, confirmed: true },
     ]);
     // A time that the desk has not confirmed is withheld, but the player stays on the day.
     expect(out.days[1]?.players).toEqual([
-      { name: "Antonio Alcantara", teeTime: null, startHole: null, confirmed: false },
+      { name: "ANTONIO ALCANTARA", teeTime: null, startHole: null, confirmed: false },
     ]);
     expect(out.players).toEqual([
       {
-        name: "Antonio Alcantara",
+        name: "ANTONIO ALCANTARA",
         homeCourse: "IGCC",
         index: 12.4,
         category: "Regular",
@@ -310,11 +310,11 @@ describe("mapPublicProgramme", () => {
     expect(out?.days[0]?.startTime).toBe("07:00");
     // The unconfirmed row keeps the player but loses the tentative time.
     expect(out?.days[0]?.players).toEqual([
-      { name: "Maria Santos", teeTime: "12:30", startHole: 10, confirmed: true },
-      { name: "Antonio Alcantara", teeTime: null, startHole: null, confirmed: false },
+      { name: "MARIA SANTOS", teeTime: "12:30", startHole: 10, confirmed: true },
+      { name: "ANTONIO ALCANTARA", teeTime: null, startHole: null, confirmed: false },
     ]);
     expect(out?.players[0]).toEqual({
-      name: "Antonio Alcantara",
+      name: "ANTONIO ALCANTARA",
       homeCourse: null,
       index: null,
       category: null,

@@ -17,6 +17,7 @@ import type {
   TournamentDay,
 } from "@/lib/data/types";
 import { SAMPLE_NGAP_CSV } from "@/lib/demo/data";
+import { displayName } from "@/lib/format";
 import {
   buildMergeQueue,
   type ColumnMapping,
@@ -257,13 +258,15 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       }
       const first = input.firstName.trim();
       const last = input.lastName.trim();
+      const fullName = nameOf(`${first} ${last}`, "Unnamed player");
       const player: PlayerRecord = {
         id: nextId("p"),
         clubId: state.clubId,
         firstName: first,
         lastName: last,
         nickname: input.nickname?.trim() || null,
-        name: nameOf(`${first} ${last}`, "Unnamed player"),
+        name: displayName(fullName),
+        fullName,
         birthdate: input.birthdate ?? null,
         gender: input.gender ?? null,
         homeCourse: input.homeCourse?.trim() || null,

@@ -16,6 +16,7 @@ import type {
   Tournament,
   TournamentRegistration,
 } from "@/lib/data/types";
+import { displayName } from "@/lib/format";
 import type { CategoryRule, FlightRule, TournamentConfig } from "@/lib/routing";
 import type {
   CaddieRow,
@@ -50,7 +51,8 @@ export function toPlayerRecord(row: PlayerRow, photoUrl?: string): PlayerRecord 
     firstName: row.first_name ?? parts.firstName,
     lastName: row.last_name ?? parts.lastName,
     nickname: row.nickname,
-    name: row.full_name,
+    name: displayName(row.full_name),
+    fullName: row.full_name,
     birthdate: row.birthdate,
     gender: row.gender,
     homeCourse: row.home_course,
@@ -310,7 +312,7 @@ export function toPlayerInsert(player: PlayerRecord) {
   return {
     id: player.id,
     club_id: player.clubId,
-    full_name: player.name,
+    full_name: player.fullName ?? player.name,
     birthdate: player.birthdate,
     gender: player.gender,
     ngap_id: player.ngapId,

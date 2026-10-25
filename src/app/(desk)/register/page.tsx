@@ -40,7 +40,7 @@ import {
   type PlayerRecord,
   type RegistrationEntry,
 } from "@/lib/data/types";
-import { fmtIndex, photoOf } from "@/lib/format";
+import { displayName, fmtIndex, photoOf } from "@/lib/format";
 import { shrinkPhoto } from "@/lib/photo";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
@@ -994,7 +994,10 @@ function RegisterDesk() {
                     firstName: draft.firstName,
                     lastName: draft.lastName,
                     nickname: draft.nickname || null,
-                    name: `${draft.firstName} ${draft.lastName}`.trim() || "New player",
+                    name: displayName(
+                      `${draft.firstName} ${draft.lastName}`.trim() || "New player",
+                    ),
+                    fullName: `${draft.firstName} ${draft.lastName}`.trim() || "New player",
                     birthdate: draft.birthdate || null,
                     gender: draft.gender,
                     homeCourse: draft.homeCourse || null,

@@ -1,3 +1,4 @@
+import { displayName } from "@/lib/format";
 import type { CategoryRule, FlightRule } from "@/lib/routing";
 import { selectedDaysOf } from "./dates";
 import type {
@@ -49,7 +50,7 @@ export interface PublicPairingsInput {
   photoByPlayerId?: Record<string, string>;
 }
 
-const onlyName = (name: string) => name.trim();
+const onlyName = (name: string) => displayName(name);
 
 export function toPublicPairings({
   published,
@@ -155,7 +156,7 @@ export function toPublicProgramme({
       if (!registration) continue;
       if (!selectedDaysOf(entry, playingDays).includes(day.dayNumber)) continue;
       const tee = publicTee(entry.dayTee, day.dayNumber);
-      playersOnDay.push({ name: registration.playerName.trim(), ...tee });
+      playersOnDay.push({ name: displayName(registration.playerName), ...tee });
     }
 
     playersOnDay.sort((a, b) => {
@@ -177,7 +178,7 @@ export function toPublicProgramme({
   const publicPlayers: PublicPlayerProfile[] = registrations
     .filter((registration) => registration.status !== "ineligible")
     .map((registration) => ({
-      name: registration.playerName.trim(),
+      name: displayName(registration.playerName),
       homeCourse: homeCourseByPlayer.get(registration.playerId)?.trim() || null,
       index: registration.frozenIndex,
       category: registration.categoryId
@@ -254,7 +255,7 @@ export function mapPublicProgramme(value: unknown): PublicProgramme | null {
           ? rawPlayer.startHole
           : null;
       players.push({
-        name,
+        name: displayName(name),
         teeTime: confirmed ? time : null,
         startHole: confirmed ? hole : null,
         confirmed,
@@ -283,7 +284,7 @@ export function mapPublicProgramme(value: unknown): PublicProgramme | null {
     const name = typeof rawPlayer.name === "string" ? rawPlayer.name.trim() : "";
     if (name === "") return null;
     players.push({
-      name,
+      name: displayName(name),
       homeCourse: textOrNull(rawPlayer.homeCourse),
       index: indexOrNull(rawPlayer.index),
       category: textOrNull(rawPlayer.category),

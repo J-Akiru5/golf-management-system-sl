@@ -53,8 +53,9 @@ describe("toPlayerRecord", () => {
     const record = toPlayerRecord(playerRow({ first_name: "Carmela", last_name: "Reyes" }));
     expect(record.firstName).toBe("Carmela");
     expect(record.lastName).toBe("Reyes");
-    // full_name stays the display name used on sheets.
-    expect(record.name).toBe("Carmela Dela Cruz Reyes");
+    // The sheet name is displayed in capitals; the stored spelling is kept for writing back.
+    expect(record.name).toBe("CARMELA DELA CRUZ REYES");
+    expect(record.fullName).toBe("Carmela Dela Cruz Reyes");
   });
 
   it("falls back to splitting the display name when parts are absent", () => {

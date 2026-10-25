@@ -44,7 +44,7 @@ describe("parsePublicLeaderboard", () => {
     expect(board.gross).toEqual([
       {
         playerId: "p1",
-        playerName: "Antonio Alcantara",
+        playerName: "ANTONIO ALCANTARA",
         flightName: "Regular A",
         points: 36,
         strokes: 72,
@@ -54,7 +54,7 @@ describe("parsePublicLeaderboard", () => {
       },
       {
         playerId: "p2",
-        playerName: "Maria Santos",
+        playerName: "MARIA SANTOS",
         flightName: "Ladies",
         points: 34,
         strokes: 74,
@@ -71,7 +71,7 @@ describe("parsePublicLeaderboard", () => {
     const board = parsePublicLeaderboard(round, {
       gross: [{ playerName: "Ramon Aguilar", points: 30, holesCounted: 18, holesTotal: 18 }],
     });
-    expect(board.gross[0]).toMatchObject({ playerId: null, playerName: "Ramon Aguilar" });
+    expect(board.gross[0]).toMatchObject({ playerId: null, playerName: "RAMON AGUILAR" });
     expect(board.net).toEqual([]);
   });
 

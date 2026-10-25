@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { displayName } from "@/lib/format";
 import type { Database, Json } from "@/lib/supabase/types";
 
 export interface PublicRoundSummary {
@@ -51,7 +52,7 @@ function resultRows(value: unknown): PublicResultRow[] {
     return [
       {
         playerId: text(row.playerId),
-        playerName,
+        playerName: displayName(playerName),
         flightName: text(row.flightName),
         points: count(row.points),
         strokes: typeof row.strokes === "number" ? row.strokes : null,

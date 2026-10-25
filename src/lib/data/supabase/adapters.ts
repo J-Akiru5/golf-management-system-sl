@@ -29,6 +29,7 @@ import type {
   RegistrationEntry,
   Tournament,
 } from "@/lib/data/types";
+import { displayName } from "@/lib/format";
 import { OFFLINE_WRITE_NOTICE } from "@/lib/offline/cache";
 import type { Tee } from "@/lib/routing";
 import {
@@ -177,13 +178,15 @@ export function createSupabaseAdapters(
       }
       const first = input.firstName.trim();
       const last = input.lastName.trim();
+      const fullName = `${first} ${last}`.trim() || "Unnamed player";
       const player: PlayerRecord = {
         id: uuid(),
         clubId,
         firstName: first,
         lastName: last,
         nickname: input.nickname?.trim() || null,
-        name: `${first} ${last}`.trim() || "Unnamed player",
+        name: displayName(fullName),
+        fullName,
         birthdate: input.birthdate ?? null,
         gender: input.gender ?? null,
         homeCourse: input.homeCourse?.trim() || null,
@@ -256,7 +259,7 @@ export function createSupabaseAdapters(
         const { error } = await client
           .from("players")
           .update({
-            full_name: next.name,
+            full_name: next.fullName ?? next.name,
             birthdate: next.birthdate,
             gender: next.gender,
             ngap_id: next.ngapId,
