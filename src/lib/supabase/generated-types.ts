@@ -2655,6 +2655,10 @@ export type Database = {
         };
         Returns: string;
       };
+      record_scorecard_correction: {
+        Args: { p_card: string; p_reason: string };
+        Returns: undefined;
+      };
       reject_scorecard: {
         Args: { p_card: string; p_reason: string };
         Returns: undefined;

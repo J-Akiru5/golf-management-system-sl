@@ -351,7 +351,7 @@ export function createSupabaseScoringRepository(
       const player = view.players.find((candidate) => candidate.playerId === input.playerId);
       if (!player?.roundEntryId) throw new Error("The player has no round entry.");
 
-      const { error } = await db.rpc("submit_scorecard", {
+      const { data: cardId, error } = await db.rpc("submit_scorecard", {
         p_round_entry: player.roundEntryId,
         p_scorer_id: input.scorerId,
         p_source: input.source,
@@ -372,6 +372,20 @@ export function createSupabaseScoringRepository(
         p_extraction: input.extraction?.raw as Json | undefined,
       });
       if (error) throw new Error(`Could not submit the card: ${error.message}`);
+
+      // The revision is already stored at this point. The reason is a separate audit row so a
+      // missing audit function cannot roll back a card that the desk has already checked.
+      if (input.reason) {
+        const { error: reasonError } = await db.rpc("record_scorecard_correction", {
+          p_card: cardId,
+          p_reason: input.reason,
+        });
+        if (reasonError) {
+          throw new Error(
+            `The card revision was saved, but its correction reason could not be recorded: ${reasonError.message}`,
+          );
+        }
+      }
       return refresh(tournamentId);
     },
 
