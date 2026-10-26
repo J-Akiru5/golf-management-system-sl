@@ -4,8 +4,8 @@
 **Feature branch:** `feat/event-branding-calendar`, rebased onto `origin/develop`
 **Docs branch:** `docs/event-calendar`
 **Base:** `origin/develop` `e0e04b1`
-**Status:** Implementation complete on the feature branch. Migration `20261040000000` **applied to the live
-project on 24 Oct 2026**. The code branch is not merged and not deployed.
+**Status:** Merged into `develop`. Migration `20261040000000` **applied to the live project on
+24 Oct 2026**, with its migration-history row recorded on 26 Oct 2026. Not deployed to `main`.
 
 ## Objective
 
@@ -71,7 +71,8 @@ with optional delivery through Resend.
   onboarding flow.
 - **No delivery scheduler.** Sending is a staff action from the calendar. There is no cron or
   background sender. Failed drafts can be requeued by hand and are claimed atomically before sending.
-- **No production claim.** The migration is not applied and the branch is not merged.
+- **No production claim.** The migration is applied to the live project and the code is merged into
+  `develop`, but neither is a `main` deployment.
 
 ## Files owned
 
