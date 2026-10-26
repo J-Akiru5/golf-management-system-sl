@@ -17,9 +17,9 @@ Supabase project, because the code and the database are released separately.
   The rules are written in **Settings → Rules of play** and stored on `tournaments.rules_of_play`.
   The anonymous read is `public_programme()`, which returns null unless the event is published; the
   pairings themselves still come from the frozen published snapshot. Migration
-  `20261041000000_public_programme_rules.sql`. **Not applied to the live project yet**: the Supabase
-  CLI on this machine is signed in to an account that cannot see the golf project, so the page falls
-  back to the pairings-only view until it is applied.
+  `20261041000000_public_programme_rules.sql` is **applied to the live project on 26 Oct 2026**.
+  The page keeps its pairings-only view until an event is published, because `public_programme()`
+  returns null unless the event is published.
 - **The player's full scorecard on `/my`**: once a daily round is published, the signed-in player
   sees their own frozen card: hole, par, stroke index, gross score, handicap strokes, net score,
   gross and net Stableford points, with front-nine, back-nine and total subtotals. The card comes
@@ -36,8 +36,7 @@ Supabase project, because the code and the database are released separately.
   puts the new revision back in the approval queue. The correction reason is required and is
   written to `scoring_audit` by the new `record_scorecard_correction` function. The latest revision
   is the only one that can be edited. Migration
-  `20261043000000_scorecard_correction.sql`; **not applied to the live project yet** for the same
-  Supabase CLI reason.
+  `20261043000000_scorecard_correction.sql` is **applied to the live project on 26 Oct 2026**.
 
 - **Mark ready override for an incomplete profile (issue #114).** A `needs_review` entry gets a
   **Mark ready** action for the owner or organizer. The dialog requires the handicap index and the

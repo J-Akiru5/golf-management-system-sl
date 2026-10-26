@@ -1,7 +1,6 @@
 -- The public programme: the day's tee times, the public player cards and the organizers' rules of play.
 --
--- Status: ready for review on 25 Oct 2026. NOT APPLIED to the live project: the Supabase CLI on this
--- machine is signed in to an account that cannot see the golf project (403 on the management API).
+-- Status: applied to the live project on 26 Oct 2026. The code is merged into `develop`.
 -- Additive only; no row is deleted or rewritten.
 --
 -- Why this migration exists
