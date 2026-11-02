@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.27.1] - 2026-11-02
+
+The club's traced logo becomes the app logo.
+
 ### Added
 - **The club's logo, traced into vectors.** `public/brand/teeline-*` now holds the stacked lockup
   (primary, reverse, mono), the horizontal version, the symbol, two app icons and the TL monogram,
@@ -18,9 +24,9 @@ Supabase project, because the code and the database are released separately.
 
 ### Changed
 - **The club's logo is now the app logo.** The header and auth screens render the traced wordmark
-  through `TeeLineLogo`, the app icons are rendered from the traced symbol, and the social image is
-  rebuilt from the traced reverse wordmark. The old side-by-side lockup files are removed. No
-  migration.
+  through `TeeLineLogo`, the app icons are rendered from the traced symbol, the social image is
+  rebuilt from the traced reverse wordmark, and the service worker caches the new files. The old
+  side-by-side lockup files are removed. No migration.
 
 ## [0.27.0] - 2026-11-02
 
