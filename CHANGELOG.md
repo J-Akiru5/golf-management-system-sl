@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.27.0] - 2026-11-02
+
+Player mobile/PWA pass, public programme, player scorecard and scorecard corrections.
+
 ### Added
 - **Player install prompt and mobile shell**: the player pages now offer a dismissible Add to Home
   Screen prompt (the platform prompt on Chromium, Share steps on iOS), the manifest opens at `/my`
