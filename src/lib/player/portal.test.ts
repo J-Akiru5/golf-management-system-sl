@@ -33,7 +33,7 @@ describe("mapPortalState", () => {
   it("maps a linked player and their entry", () => {
     const state = mapPortalState(raw);
     expect(state.linked).toBe(true);
-    expect(state.player).toEqual({ id: "p1", name: "Ana Reyes", ngapId: "10023" });
+    expect(state.player).toEqual({ id: "p1", name: "ANA REYES", ngapId: "10023" });
     expect(state.entries).toHaveLength(1);
     expect(state.entries[0]).toMatchObject({
       eventName: "Bamboo Tee",
@@ -86,6 +86,95 @@ describe("mapPortalState", () => {
     expect(state.entries[0]?.playingHandicap).toBe(10);
     expect(state.entries[0]?.reasons).toEqual(["Index above the maximum"]);
     expect(state.entries[0]?.dates).toEqual(["2026-11-12"]);
+  });
+
+  it("maps the player's published scorecard hole by hole", () => {
+    const state = mapPortalState({
+      linked: true,
+      player: { id: "p1", name: "Ana" },
+      entries: [
+        {
+          tournamentId: "t1",
+          scorecards: [
+            {
+              roundId: "r1",
+              dayNumber: 2,
+              playDate: "2026-11-13",
+              state: "final",
+              version: 4,
+              publishedAt: "2026-11-13T10:00:00.000Z",
+              playingHandicap: 14,
+              courseHandicap: 14,
+              grossStrokes: 9,
+              netStrokes: 7,
+              grossPoints: 2,
+              netPoints: 4,
+              holesCounted: 2,
+              holesTotal: 18,
+              holes: [
+                {
+                  hole: 1,
+                  par: 4,
+                  strokeIndex: 5,
+                  grossStrokes: 5,
+                  handicapStrokes: 1,
+                  netStrokes: 4,
+                  grossPoints: 1,
+                  netPoints: 2,
+                },
+                {
+                  hole: 2,
+                  par: 4,
+                  strokeIndex: 3,
+                  grossStrokes: 4,
+                  handicapStrokes: 1,
+                  netStrokes: 3,
+                  grossPoints: 2,
+                  netPoints: 3,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const scorecard = state.entries[0]?.scorecards[0];
+    expect(scorecard).toMatchObject({
+      roundId: "r1",
+      dayNumber: 2,
+      state: "final",
+      playingHandicap: 14,
+      holesCounted: 2,
+      holesTotal: 18,
+    });
+    expect(scorecard?.holes.map((hole) => hole.hole)).toEqual([1, 2]);
+    expect(scorecard?.holes[0]).toMatchObject({
+      grossStrokes: 5,
+      handicapStrokes: 1,
+      netStrokes: 4,
+      grossPoints: 1,
+      netPoints: 2,
+    });
+  });
+
+  it("drops a malformed card and keeps the rest of the entry", () => {
+    const state = mapPortalState({
+      linked: true,
+      player: { id: "p1", name: "Ana" },
+      entries: [
+        {
+          tournamentId: "t1",
+          scorecards: [
+            {},
+            { roundId: "r2", holes: [] },
+            { roundId: "r3", holes: [{ hole: 1, par: 4, strokeIndex: 1, grossStrokes: 4 }] },
+          ],
+        },
+      ],
+    });
+
+    expect(state.entries[0]?.scorecards).toEqual([]);
   });
 });
 

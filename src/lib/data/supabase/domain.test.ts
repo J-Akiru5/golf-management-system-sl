@@ -53,8 +53,9 @@ describe("toPlayerRecord", () => {
     const record = toPlayerRecord(playerRow({ first_name: "Carmela", last_name: "Reyes" }));
     expect(record.firstName).toBe("Carmela");
     expect(record.lastName).toBe("Reyes");
-    // full_name stays the display name used on sheets.
-    expect(record.name).toBe("Carmela Dela Cruz Reyes");
+    // The sheet name is displayed in capitals; the stored spelling is kept for writing back.
+    expect(record.name).toBe("CARMELA DELA CRUZ REYES");
+    expect(record.fullName).toBe("Carmela Dela Cruz Reyes");
   });
 
   it("falls back to splitting the display name when parts are absent", () => {
@@ -188,6 +189,35 @@ describe("toRegistrationEntry", () => {
       recordId: "rec-1",
       effectiveDate: "2026-10-01",
       frozenAt: "2026-10-17T00:00:00Z",
+    });
+  });
+
+  it("reads an organizer override back from the row and its answers", () => {
+    const entry = toRegistrationEntry(
+      registrationRow({
+        status: "ok",
+        reasons: ["Gender is still missing; the category was chosen by the organizer."],
+        category_id: "regular",
+        tee_id: "white",
+        flight_id: "r-a",
+        playing_handicap: 14,
+        overridden: true,
+        answers: { overrideReason: "Organizer confirmed the category." },
+      }),
+    );
+
+    expect(entry).toMatchObject({
+      status: "ok",
+      reasons: ["Gender is still missing; the category was chosen by the organizer."],
+      categoryId: "regular",
+      teeId: "white",
+      flightId: "r-a",
+      playingHandicap: 14,
+      overridden: true,
+      overrideReason: "Organizer confirmed the category.",
+    });
+    expect(toRegistrationAnswers(entry)).toMatchObject({
+      overrideReason: "Organizer confirmed the category.",
     });
   });
 });

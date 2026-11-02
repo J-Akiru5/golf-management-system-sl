@@ -50,8 +50,10 @@ export interface PlayerRecord {
   firstName: string;
   lastName: string;
   nickname: string | null;
-  /** Display name used on sheets and lists. */
+  /** Display name used on sheets and lists, in capitals. */
   name: string;
+  /** The name as stored, before the display capitalisation. Used when writing back. */
+  fullName?: string;
   /** ISO date, or null when the club has not recorded it. */
   birthdate: string | null;
   gender: Gender | null;
@@ -298,6 +300,17 @@ export interface RegistrationEntry {
   extra: Record<string, string>;
   paymentStatus: PaymentStatus;
   frozen: FrozenIndex;
+  /** The stored status. It is derived again unless the organizer overrode this entry. */
+  status?: "ok" | "ineligible" | "needs_review";
+  /** Stored notes, including the details still pending after an override. */
+  reasons?: string[];
+  /** Manual routing facts stored with an organizer override. */
+  categoryId?: string | null;
+  teeId?: string | null;
+  flightId?: string | null;
+  playingHandicap?: number | null;
+  overridden?: boolean;
+  overrideReason?: string | null;
   createdAt: string;
   source: "desk" | "demo_seed";
 }

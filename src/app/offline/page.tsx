@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "No connection" };
  */
 export default function OfflinePage() {
   return (
-    <div className="public">
+    <main className="public">
       <header className="band flex items-center justify-between gap-4 rounded-[20px] px-4 py-3">
         <Link href="/" className="flex items-center no-underline">
           <TeeLineLogo variant="reverse" width={172} />
@@ -46,6 +46,6 @@ export default function OfflinePage() {
         </h2>
         <OfflinePlayerView />
       </section>
-    </div>
+    </main>
   );
 }

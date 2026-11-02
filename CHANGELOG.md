@@ -9,7 +9,17 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.27.0] - 2026-11-02
+
+Player mobile/PWA pass, public programme, player scorecard and scorecard corrections.
+
 ### Added
+- **Player install prompt and mobile shell**: the player pages now offer a dismissible Add to Home
+  Screen prompt (the platform prompt on Chromium, Share steps on iOS), the manifest opens at `/my`
+  with player shortcuts, and the player bar appears on the public home, pairings, leaderboard, entry
+  and FAQ. The leaderboard gets a phone card list instead of a six-column table. No migration.
 - **The public programme on `/pairings`**: the page now shows the confirmed tee times for each
   playing day (Day 1, Day 2, …), a public player list (name, home club, frozen index, category and
   flight) and the organizers' rules of play, before the published pairings. A tee time is withheld
@@ -17,10 +27,70 @@ Supabase project, because the code and the database are released separately.
   The rules are written in **Settings → Rules of play** and stored on `tournaments.rules_of_play`.
   The anonymous read is `public_programme()`, which returns null unless the event is published; the
   pairings themselves still come from the frozen published snapshot. Migration
-  `20261041000000_public_programme_rules.sql`. **Not applied to the live project yet**: the Supabase
-  CLI on this machine is signed in to an account that cannot see the golf project, so the page falls
-  back to the pairings-only view until it is applied.
+  `20261041000000_public_programme_rules.sql` is **applied to the live project on 26 Oct 2026**.
+  The page keeps its pairings-only view until an event is published, because `public_programme()`
+  returns null unless the event is published.
+- **The player's full scorecard on `/my`**: once a daily round is published, the signed-in player
+  sees their own frozen card: hole, par, stroke index, gross score, handicap strokes, net score,
+  gross and net Stableford points, with front-nine, back-nine and total subtotals. The card comes
+  from the private publication snapshot, so it never reads the live board; the public leaderboard
+  keeps its summary-only payload. Migration `20261042000000_player_scorecard_snapshot.sql` is
+  **applied to the live project on 25 Oct 2026**. The live `build_round_snapshot` returned the
+  existing 18-hole result with a `cards` array. No round has been published since the migration, so
+  the screen shows its short note until the organizer publishes one; old publications also stay
+  summary-only.
 
+
+- **Scorecard corrections (issue #113).** A submitted or approved card has an **Edit** action for
+  an owner or organizer. Saving writes a new revision, keeps the old revision in the record, and
+  puts the new revision back in the approval queue. The correction reason is required and is
+  written to `scoring_audit` by the new `record_scorecard_correction` function. The latest revision
+  is the only one that can be edited. Migration
+  `20261043000000_scorecard_correction.sql` is **applied to the live project on 26 Oct 2026**.
+
+- **Mark ready override for an incomplete profile (issue #114).** A `needs_review` entry gets a
+  **Mark ready** action for the owner or organizer. The dialog requires the handicap index and the
+  birthdate, then records the category, tee, flight and playing handicap by hand, with a reason.
+  The entry is routed into the draw with those facts, while the missing profile details stay visible
+  as pending notes and the row shows an **Overridden** badge. No migration.
+
+- **One course card, editable from Settings and Course & holes.** The same 18-hole editor now shows
+  the par and stroke index for every hole, the card's total par, and a warning when a tee's stored
+  par disagrees with the card. It is one component in both places, so the two screens cannot drift.
+  The card belongs to the course: a saved change applies to every event on it, and changing a number
+  withdraws the scorecard confirmation. A partial or invalid card is not saved over the stored one.
+  No migration.
+
+- **The handicap is visible on `Scores`**: the **Enter a card** panel shows the round's handicap
+  snapshot - NGAP index, course handicap and playing handicap, with the index source and effective
+  date, the tee rating/slope/par, the allowance and the arithmetic. The **Cards** table shows the
+  index and playing handicap on each card, and **Net Stableford** has a PH column. The registration's
+  frozen index sits beside the snapshot, with a warning when the two differ or the snapshot was
+  calculated on another tee. It is display-only: corrections belong on the player record, so the
+  frozen index and its audit trail are not changed from a scorecard. No migration.
+
+### Changed
+- **Player mobile quality pass**: fixed the landing navigation running together, added
+  `viewport-fit=cover` and a translucent iOS status bar, added `<main>` landmarks and per-page
+  titles, raised buttons and inputs to 44px (16px inputs on mobile), fixed the active tab contrast,
+  versioned the service worker by build so stale pages expire, and removed autofocus from the auth
+  fields. No migration.
+- **Player names are shown in capitals (issue #115).** Desk lists, the draw, scores, registration,
+  print, public pairings, the public leaderboard, the programme and the player portal all use the
+  capitalised display name. The database keeps the spelling that was entered: a new `fullName` field
+  carries the raw value back on insert or update, and the edit forms still show the original casing.
+  No migration.
+
+### Fixed
+- **The control room fits a desktop viewport (issue #111).** At 1280px and wider the course map is
+  exactly one viewport tall, the page does not scroll, and only the right-hand rail scrolls inside
+  the map. The footer no longer adds a scrollbar. Tablet and phone keep the existing scrolling
+  layout. The left rail now starts at the same height as every other desk page.
+- **No hole card opens by itself on the control room (issue #111).** The first hole that needed work
+  used to open over the map as soon as a draw existed. A hole now opens only after a click.
+- **Draw group cards wrap instead of clipping (issue #105).** The Lock and Move controls and the
+  card header wrap to a new line when the card is narrow, and the groups use one column on a phone.
+  No card content is cut off at 1346px or at 390px. No migration.
 ## [0.26.1] - 2026-10-25
 
 ### Changed
@@ -28,6 +98,8 @@ Supabase project, because the code and the database are released separately.
   player lands on their entry instead of a second identity form. The claim card is a fallback for an
   ambiguous or missing name and is pre-filled with the account name. Supabase email confirmation
   still controls whether a new account gets a session immediately. No migration.
+
+
 
 ## [0.26.0] - 2026-10-25
 

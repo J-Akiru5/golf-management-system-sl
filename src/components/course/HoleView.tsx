@@ -4,6 +4,7 @@ import { ImageOff, Info } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { CourseCardPanel } from "@/components/course/CourseCardPanel";
 import { Button } from "@/components/ui/button";
 import { type Anchor, HOLE_ART, type HoleView as View } from "@/lib/course/layout";
 import { fmtHcp, fmtIndex, fmtTime, initials } from "@/lib/format";
@@ -138,7 +139,7 @@ export function HoleView({ hole: initial }: { hole: number }) {
               : "No course picture for this hole yet"}
           </p>
         </div>
-        <nav aria-label="Holes" className="flex flex-wrap gap-1.5">
+        <nav aria-label="Holes" data-help="course-holes" className="flex flex-wrap gap-1.5">
           {Array.from({ length: 18 }, (_, i) => i + 1).map((n) => {
             const has = (draw ?? []).some((g) => g.startHole === n);
             return (
@@ -293,6 +294,8 @@ export function HoleView({ hole: initial }: { hole: number }) {
           </section>
         </aside>
       </div>
+
+      <CourseCardPanel />
     </div>
   );
 }

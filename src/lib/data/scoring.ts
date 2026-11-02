@@ -26,6 +26,12 @@ export interface ScoringPlayerSeed {
   playerName: string;
   flightId: string | null;
   handicap: HandicapSnapshot | null;
+  /**
+   * The registration's frozen index, loaded beside the round snapshot so the desk can compare the
+   * two. Optional: a view that has not loaded it leaves the mismatch check silent rather than
+   * claiming a difference.
+   */
+  frozenIndex?: number | null;
 }
 
 export interface ScoringPlayer extends ScoringPlayerSeed {
@@ -79,6 +85,8 @@ export interface SubmitCardInput {
   entries: Scorecard["entries"];
   writtenTotal: number | null;
   captureKey: string;
+  /** A correction's reason. It is written to the scoring audit with the new revision. */
+  reason?: string;
   /** Optional original photo stored in R2. */
   image?: {
     path: string;

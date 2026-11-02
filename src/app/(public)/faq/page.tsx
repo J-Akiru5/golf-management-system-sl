@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { NGAP_FAQ, NGAP_FAQ_CURRENT, NGAP_FAQ_SOURCE } from "@/lib/public/ngap-faq";
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
  */
 export default function NgapFaqPage() {
   return (
-    <div className="public">
+    <main className="public mobile-bar-space">
       <JsonLd data={faqPageSchema(NGAP_FAQ)} />
       <header className="public-head">
         <div className="flex flex-wrap items-center gap-3">
@@ -97,6 +98,7 @@ export default function NgapFaqPage() {
         {" · "}
         <Link href="/pairings">Player pairings</Link>
       </p>
-    </div>
+      <PlayerBottomBar />
+    </main>
   );
 }

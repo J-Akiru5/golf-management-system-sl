@@ -25,7 +25,7 @@ import { PlayerDetailsForm } from "@/components/player/PlayerDetailsForm";
 import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
 import { PAYMENT_LABEL } from "@/lib/data/types";
-import { fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
+import { displayName, fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
 import { shrinkPhoto } from "@/lib/photo";
 import { rawCourseHandicap } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -526,12 +526,14 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
           <PlayerDetailsForm
             player={player}
             canEdit={!member || member.role === "owner" || member.role === "organizer"}
-            onSave={(patch) =>
+            onSave={(patch) => {
+              const fullName = `${patch.firstName} ${patch.lastName}`.trim();
               adapters.players.update(player.id, {
                 ...patch,
-                name: `${patch.firstName} ${patch.lastName}`.trim(),
-              })
-            }
+                name: displayName(fullName),
+                fullName,
+              });
+            }}
             onSaveMembership={(type, memberNumber) =>
               adapters.players.setMembership(player.id, type, memberNumber)
             }

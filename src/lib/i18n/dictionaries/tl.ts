@@ -11,6 +11,14 @@ export const tl: Dictionary = {
     print: "I-print",
     close: "Isara",
   },
+  install: {
+    title: "I-install ang TeeLine",
+    body: "Ilagay ang entry at pairings nang isang tap lang. Basahin pa rin ang huling screen kahit walang signal.",
+    action: "I-install",
+    ios: "I-tap ang Share, pagkatapos ang Add to Home Screen.",
+    dismiss: "Mamaya na",
+    close: "Isara ang install prompt",
+  },
   player: {
     title: "Ang golf ko",
     nav: {
@@ -47,6 +55,31 @@ export const tl: Dictionary = {
       tee: "Tee {hole}",
       notPublished: "Wala pa ang pairings.",
       notListed: "Wala ang grupo mo sa nailathalang listahan. Tanungin ang club.",
+    },
+    scorecard: {
+      heading: "Scorecard",
+      day: "Araw {day}",
+      final: "Final",
+      provisional: "Pansamantala",
+      published: "Nailathala {when}",
+      hole: "Hole",
+      par: "Par",
+      strokeIndex: "SI",
+      score: "Score",
+      gross: "Gross",
+      hcp: "Hcp",
+      net: "Net",
+      grossPoints: "Gross pts",
+      netPoints: "Net pts",
+      out: "Out",
+      in: "In",
+      total: "Kabuuan",
+      partial: "{count} sa {total} hole ang binilang",
+      noHandicap:
+        "Walang nakatalang handicap para sa round na ito, kaya hindi ipinapakita ang net points.",
+      help: "Ang Hcp ay ang stroke na natanggap sa hole. Ang Net ay score na binawasan ng Hcp. Points: 2 para sa net par, 3 para sa net birdie, 1 para sa net bogey.",
+      empty:
+        "Lalabas dito ang hole-by-hole scorecard mo pagkatapos ilathala ng organizer ang resulta ng araw.",
     },
     published: {
       yes: "Ito ang nailathalang pairings.",

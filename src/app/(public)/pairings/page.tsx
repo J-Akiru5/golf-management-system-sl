@@ -98,7 +98,7 @@ export default async function PublicPairingsPage() {
   const showProgramme = Boolean(pairings && published && programme);
 
   return (
-    <div className="public public-pairings mobile-bar-space">
+    <main className="public public-pairings mobile-bar-space">
       <PlayerOfflineNotice path="/pairings" />
       <header className="public-head">
         <div className="flex items-start justify-between gap-3">
@@ -170,6 +170,6 @@ export default async function PublicPairingsPage() {
         <Link href="/leaderboard">Leaderboard</Link>
       </p>
       <PlayerBottomBar />
-    </div>
+    </main>
   );
 }

@@ -8,6 +8,7 @@ import type {
   ScoringRoundView,
   SubmitCardInput,
 } from "@/lib/data/scoring";
+import { displayName } from "@/lib/format";
 import {
   buildStandings,
   type CanonicalHole,
@@ -232,9 +233,13 @@ export function createSupabaseScoringRepository(
           registrationId: registration.id,
           roundEntryId: entry.id,
           playerId: registration.player_id,
-          playerName: player?.full_name ?? "Unknown player",
+          playerName: player ? displayName(player.full_name) : "Unknown player",
           flightId: entry.flight_id,
           handicap,
+          // Loaded beside the snapshot so the screen can show whether the two agree. The
+          // registration column is nullable; null means no index was frozen, not zero.
+          frozenIndex:
+            registration.frozen_index === null ? null : Number(registration.frozen_index),
           canonical: deriveCanonicalHoleScores({
             roundId: round.id,
             playerId: registration.player_id,
@@ -346,7 +351,7 @@ export function createSupabaseScoringRepository(
       const player = view.players.find((candidate) => candidate.playerId === input.playerId);
       if (!player?.roundEntryId) throw new Error("The player has no round entry.");
 
-      const { error } = await db.rpc("submit_scorecard", {
+      const { data: cardId, error } = await db.rpc("submit_scorecard", {
         p_round_entry: player.roundEntryId,
         p_scorer_id: input.scorerId,
         p_source: input.source,
@@ -367,6 +372,20 @@ export function createSupabaseScoringRepository(
         p_extraction: input.extraction?.raw as Json | undefined,
       });
       if (error) throw new Error(`Could not submit the card: ${error.message}`);
+
+      // The revision is already stored at this point. The reason is a separate audit row so a
+      // missing audit function cannot roll back a card that the desk has already checked.
+      if (input.reason) {
+        const { error: reasonError } = await db.rpc("record_scorecard_correction", {
+          p_card: cardId,
+          p_reason: input.reason,
+        });
+        if (reasonError) {
+          throw new Error(
+            `The card revision was saved, but its correction reason could not be recorded: ${reasonError.message}`,
+          );
+        }
+      }
       return refresh(tournamentId);
     },
 

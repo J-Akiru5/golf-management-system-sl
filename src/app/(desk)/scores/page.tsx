@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Flag,
+  Pencil,
   RotateCcw,
   ScanLine,
   Trophy,
@@ -14,11 +15,14 @@ import { useEffect, useMemo, useState } from "react";
 import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
+import { HandicapSummary } from "@/components/scoring/HandicapSummary";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
 import type { ScoringRoundView } from "@/lib/data/scoring";
+import { fmtHcp, fmtIndex } from "@/lib/format";
 import {
   type CardIssue,
+  checkHandicapSnapshot,
   type HoleDefinition,
   reciprocalRotation,
   type Scorecard,
@@ -59,10 +63,21 @@ export default function ScoresPage() {
   const [scanImage, setScanImage] = useState<ScorecardScanImage | null>(null);
   const [scanExtraction, setScanExtraction] = useState<ScorecardScanApply["extraction"]>(null);
   const [scanCaptureKey, setScanCaptureKey] = useState("");
+  /** The card being corrected. A correction is a new revision, never an edit of the old row. */
+  const [editingCard, setEditingCard] = useState<Scorecard | null>(null);
+  const [correctionReason, setCorrectionReason] = useState("");
+  /** Reused across retries, so a failed reason write cannot create a second revision. */
+  const [editCaptureKey, setEditCaptureKey] = useState("");
 
   const players = view?.players ?? [];
   const holes = view?.course.holes ?? [];
+  const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
   const totalPar = holes.reduce((sum, hole) => sum + hole.par, 0);
+  const selectedPlayer = players.find((player) => player.playerId === playerId) ?? null;
+  const editingPlayerName = editingCard
+    ? (players.find((player) => player.playerId === editingCard.playerId)?.playerName ??
+      editingCard.playerId)
+    : "";
   const courseKey = view
     ? `${view.roundId}:${holes.map((hole) => `${hole.number}:${hole.par}:${hole.strokeIndex}`).join("|")}`
     : "";
@@ -92,6 +107,9 @@ export default function ScoresPage() {
   useEffect(() => {
     if (!view) return;
     setStrokes(strokesFor(view.course.holes));
+    setEditingCard(null);
+    setCorrectionReason("");
+    setEditCaptureKey("");
     const first = view.players[0]?.playerId ?? "";
     const rotation = reciprocalRotation(view.players.map((player) => player.playerId));
     setPlayerId(first);
@@ -150,9 +168,51 @@ export default function ScoresPage() {
     setError(null);
   }
 
+  function editCard(card: Scorecard) {
+    setEditingCard(card);
+    setCorrectionReason("");
+    setEditCaptureKey(globalThis.crypto.randomUUID());
+    setPlayerId(card.playerId);
+    setScorerId(card.scorerId);
+    setStrokes(
+      Object.fromEntries(card.entries.map((entry) => [entry.hole, String(entry.strokes)])),
+    );
+    setScanImage(null);
+    setScanExtraction(null);
+    setScanCaptureKey("");
+    setError(null);
+    document.getElementById("score-entry")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelEdit() {
+    setEditingCard(null);
+    setCorrectionReason("");
+    setEditCaptureKey("");
+    setScanImage(null);
+    setScanExtraction(null);
+    setScanCaptureKey("");
+    setError(null);
+    if (!view) return;
+    setStrokes(strokesFor(view.course.holes));
+    const first = view.players[0]?.playerId ?? "";
+    const rotation = reciprocalRotation(view.players.map((player) => player.playerId));
+    setPlayerId(first);
+    setScorerId(
+      rotation.find((assignment) => assignment.playerId === first)?.scorerId ??
+        view.players[1]?.playerId ??
+        "",
+    );
+  }
+
   function submitCard() {
-    if (playerId === scorerId) {
+    const targetPlayerId = editingCard?.playerId ?? playerId;
+    const targetScorerId = editingCard?.scorerId ?? scorerId;
+    if (targetPlayerId === targetScorerId) {
       setError("A player cannot mark their own card.");
+      return;
+    }
+    if (editingCard && correctionReason.trim().length < 3) {
+      setError("A correction needs a reason of at least 3 characters.");
       return;
     }
     const entries = holes.map((hole) => ({
@@ -165,15 +225,20 @@ export default function ScoresPage() {
       setError("Every hole needs a whole-number score.");
       return;
     }
-    const captureKey = scanCaptureKey || globalThis.crypto.randomUUID();
+    // A correction is a new card revision, so it gets its own capture key. Keeping that key across
+    // retries makes the database treat a repeated request as the same revision, not a new one.
+    const captureKey = editingCard
+      ? editCaptureKey || globalThis.crypto.randomUUID()
+      : scanCaptureKey || globalThis.crypto.randomUUID();
     void run(async () => {
       const next = await scoring.submitCard(tournamentId, {
-        playerId,
-        scorerId,
+        playerId: targetPlayerId,
+        scorerId: targetScorerId,
         source: scanImage ? "upload" : "manual",
         entries,
         writtenTotal,
         captureKey,
+        reason: editingCard ? correctionReason.trim() : undefined,
         image: scanImage
           ? {
               path: scanImage.path,
@@ -184,6 +249,9 @@ export default function ScoresPage() {
           : undefined,
         extraction: scanExtraction ?? undefined,
       });
+      setEditingCard(null);
+      setCorrectionReason("");
+      setEditCaptureKey("");
       setScanImage(null);
       setScanExtraction(null);
       setScanCaptureKey("");
@@ -323,7 +391,7 @@ export default function ScoresPage() {
                   playerName: player.playerName,
                 }))}
                 holes={holes}
-                disabled={busy}
+                disabled={busy || Boolean(editingCard)}
                 onApply={applyScan}
               />
             </RoleGate>
@@ -339,10 +407,36 @@ export default function ScoresPage() {
               <SectionCard
                 id="score-entry"
                 icon={<ClipboardList />}
-                title="Enter a card"
-                subtitle="Manual entry first. The same validation will run behind webcam and upload later."
+                title={editingCard ? "Correct a card" : "Enter a card"}
+                subtitle={
+                  editingCard
+                    ? "Saving adds a new revision. The old revision stays in the record and the new one needs approval."
+                    : "Manual entry first. The same validation will run behind webcam and upload later."
+                }
                 dataHelp="scores-entry"
               >
+                {editingCard && (
+                  <div className="notice info grid gap-2" role="note">
+                    <p className="m-0 text-[13px]">
+                      <b>
+                        Correcting revision {editingCard.revision} for {editingPlayerName}.
+                      </b>{" "}
+                      The new revision needs approval before it counts, and the old revision stays
+                      in the audit.
+                    </p>
+                    <label className="field">
+                      <span>Correction reason (required)</span>
+                      <input
+                        type="text"
+                        value={correctionReason}
+                        onChange={(event) => setCorrectionReason(event.target.value)}
+                        placeholder="What is being corrected?"
+                        aria-label="Correction reason"
+                        disabled={busy}
+                      />
+                    </label>
+                  </div>
+                )}
                 {scanImage && (
                   <div className="notice info" role="status">
                     <b>Photo attached. </b>This card will be saved with the upload. Submit only
@@ -371,7 +465,7 @@ export default function ScoresPage() {
                           );
                         }
                       }}
-                      disabled={busy || players.length < 2}
+                      disabled={busy || players.length < 2 || Boolean(editingCard)}
                     >
                       {players.map((player) => (
                         <option key={player.playerId} value={player.playerId}>
@@ -385,7 +479,7 @@ export default function ScoresPage() {
                     <select
                       value={scorerId}
                       onChange={(event) => setScorerId(event.target.value)}
-                      disabled={busy || players.length < 2}
+                      disabled={busy || players.length < 2 || Boolean(editingCard)}
                     >
                       {players
                         .filter((player) => player.playerId !== playerId)
@@ -398,16 +492,28 @@ export default function ScoresPage() {
                   </label>
                 </div>
 
-                <p className="hint">
-                  Proposed rotation: each player marks the next, and the last marks the first.
-                  Change the marker if the desk assigned a different one.
-                </p>
+                {!editingCard && (
+                  <p className="hint">
+                    Proposed rotation: each player marks the next, and the last marks the first.
+                    Change the marker if the desk assigned a different one.
+                  </p>
+                )}
 
                 {players.length < 2 && (
                   <p className="notice warn" role="status">
                     At least two active players are needed before a card can be entered: one player
                     and one marker.
                   </p>
+                )}
+
+                {selectedPlayer && (
+                  <HandicapSummary
+                    playerId={selectedPlayer.playerId}
+                    playerName={selectedPlayer.playerName}
+                    handicap={selectedPlayer.handicap}
+                    frozenIndex={selectedPlayer.frozenIndex}
+                    course={view.course}
+                  />
                 )}
 
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -439,7 +545,12 @@ export default function ScoresPage() {
                     Written total <b className="mono">{writtenTotal}</b> · par{" "}
                     <b className="mono">{totalPar}</b>
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {editingCard && (
+                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={busy}>
+                        Cancel correction
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -455,7 +566,7 @@ export default function ScoresPage() {
                       disabled={busy || players.length < 2}
                       data-help="scores-submit"
                     >
-                      Submit card
+                      {editingCard ? "Submit correction" : "Submit card"}
                     </Button>
                   </div>
                 </div>
@@ -507,6 +618,8 @@ export default function ScoresPage() {
                             }
                             void run(() => scoring.rejectCard(tournamentId, card.id, reason));
                           }}
+                          canEdit={canEdit}
+                          onEdit={() => editCard(card)}
                         />
                       ))}
                     </tbody>
@@ -607,10 +720,10 @@ export default function ScoresPage() {
               id="score-net"
               icon={<Trophy />}
               title="Net Stableford"
-              subtitle="Uses each player's Playing Handicap snapshot. A player without a snapshot is left out, not estimated."
+              subtitle="Uses each player's Playing Handicap snapshot. The PH column is that snapshot; a player without one is left out, not estimated."
               dataHelp="scores-net"
             >
-              <StandingsTable board={view.standings.net} />
+              <StandingsTable board={view.standings.net} players={view.players} />
             </SectionCard>
           </div>
 
@@ -721,6 +834,8 @@ function CardRow({
   onRejectReason,
   onApprove,
   onReject,
+  canEdit,
+  onEdit,
 }: {
   card: Scorecard;
   view: ScoringRoundView;
@@ -729,22 +844,66 @@ function CardRow({
   onRejectReason: (value: string) => void;
   onApprove: () => void;
   onReject: () => void;
+  canEdit: boolean;
+  onEdit: () => void;
 }) {
-  const playerName =
-    view.players.find((player) => player.playerId === card.playerId)?.playerName ?? card.playerId;
+  const player = view.players.find((candidate) => candidate.playerId === card.playerId) ?? null;
+  const playerName = player?.playerName ?? card.playerId;
   const scorerName =
     view.players.find((player) => player.playerId === card.scorerId)?.playerName ?? card.scorerId;
+  const handicapCheck = checkHandicapSnapshot({
+    handicap: player?.handicap ?? null,
+    frozenIndex: player?.frozenIndex,
+    roundTeeId: view.course.tee.id,
+  });
   const validation = validateScorecard(card, {
     course: view.course,
     minOcrConfidence: view.policy.minOcrConfidence,
   });
   const decided = card.status === "approved" || card.status === "rejected";
+  // Only the newest revision is the card the desk is working on. Editing an older one after a
+  // correction would create a third revision out of order.
+  const latestRevision = Math.max(
+    ...view.cards
+      .filter(
+        (candidate) => candidate.playerId === card.playerId && candidate.scorerId === card.scorerId,
+      )
+      .map((candidate) => candidate.revision),
+  );
+  const cardEditable =
+    canEdit &&
+    card.revision === latestRevision &&
+    (card.status === "submitted" || card.status === "in_review" || card.status === "approved");
 
   return (
     <tr>
       <td>
         <b>{playerName}</b>
         <span className="hint block">Revision {card.revision}</span>
+        {player?.handicap ? (
+          <span className="hint block">
+            Index {fmtIndex(player.handicap.index)} · PH {fmtHcp(player.handicap.playingHandicap)}
+          </span>
+        ) : (
+          <span className="hint block">No handicap snapshot</span>
+        )}
+        {(handicapCheck.indexDiffers || handicapCheck.teeDiffers) && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            {handicapCheck.indexDiffers && (
+              <span
+                className="pill warn"
+                title="The round snapshot and the registration freeze disagree"
+              >
+                Frozen {fmtIndex(handicapCheck.frozenIndex)}
+              </span>
+            )}
+            {handicapCheck.teeDiffers && (
+              <span className="pill warn" title="This snapshot uses a different tee from the round">
+                Different tee
+              </span>
+            )}
+          </span>
+        )}
       </td>
       <td>{scorerName}</td>
       <td>
@@ -768,33 +927,57 @@ function CardRow({
         )}
       </td>
       <td>
-        {!decided && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Button variant="primary" size="sm" onClick={onApprove} disabled={busy}>
-              Approve
-            </Button>
-            <input
-              value={rejectReason}
-              onChange={(event) => onRejectReason(event.target.value)}
-              placeholder="Reason"
-              aria-label={`Rejection reason for ${playerName}'s card`}
-              className="h-8 w-28"
+        <div className="flex flex-wrap items-center gap-1.5">
+          {!decided && (
+            <>
+              <Button variant="primary" size="sm" onClick={onApprove} disabled={busy}>
+                Approve
+              </Button>
+              <input
+                value={rejectReason}
+                onChange={(event) => onRejectReason(event.target.value)}
+                placeholder="Reason"
+                aria-label={`Rejection reason for ${playerName}'s card`}
+                className="h-8 w-28"
+                disabled={busy}
+              />
+              <Button variant="danger" size="sm" onClick={onReject} disabled={busy}>
+                Reject
+              </Button>
+            </>
+          )}
+          {cardEditable && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onEdit}
               disabled={busy}
-            />
-            <Button variant="danger" size="sm" onClick={onReject} disabled={busy}>
-              Reject
+              aria-label={`Edit ${playerName}'s card`}
+            >
+              <Pencil aria-hidden="true" />
+              Edit
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </td>
     </tr>
   );
 }
 
-function StandingsTable({ board }: { board: StandingsBoard }) {
+function StandingsTable({
+  board,
+  players = [],
+}: {
+  board: StandingsBoard;
+  players?: ScoringRoundView["players"];
+}) {
   if (board.rows.length === 0) {
     return <p className="muted">No player has a verified or provisional hole yet.</p>;
   }
+  const showHandicap = board.kind === "net";
+  const handicapByPlayer = new Map(
+    players.map((player) => [player.playerId, player.handicap?.playingHandicap ?? null]),
+  );
   return (
     <div className="table-wrap">
       <table>
@@ -802,6 +985,11 @@ function StandingsTable({ board }: { board: StandingsBoard }) {
           <tr>
             <th>Pos</th>
             <th>Player</th>
+            {showHandicap && (
+              <th className="num" title="Playing handicap snapshot used for net scoring">
+                PH
+              </th>
+            )}
             <th className="num">Pts</th>
             <th className="num">Strokes</th>
             <th className="num">Holes</th>
@@ -819,6 +1007,9 @@ function StandingsTable({ board }: { board: StandingsBoard }) {
                 <b>{row.playerName}</b>
                 <span className="hint block">{row.flightId ?? "No flight"}</span>
               </td>
+              {showHandicap && (
+                <td className="num mono">{fmtHcp(handicapByPlayer.get(row.playerId) ?? null)}</td>
+              )}
               <td className="num mono">
                 {row[board.kind === "gross" ? "grossPoints" : "netPoints"]}
               </td>

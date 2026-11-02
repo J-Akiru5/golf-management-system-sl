@@ -29,6 +29,7 @@ import type {
   RegistrationEntry,
   Tournament,
 } from "@/lib/data/types";
+import { displayName } from "@/lib/format";
 import { OFFLINE_WRITE_NOTICE } from "@/lib/offline/cache";
 import type { Tee } from "@/lib/routing";
 import {
@@ -177,13 +178,15 @@ export function createSupabaseAdapters(
       }
       const first = input.firstName.trim();
       const last = input.lastName.trim();
+      const fullName = `${first} ${last}`.trim() || "Unnamed player";
       const player: PlayerRecord = {
         id: uuid(),
         clubId,
         firstName: first,
         lastName: last,
         nickname: input.nickname?.trim() || null,
-        name: `${first} ${last}`.trim() || "Unnamed player",
+        name: displayName(fullName),
+        fullName,
         birthdate: input.birthdate ?? null,
         gender: input.gender ?? null,
         homeCourse: input.homeCourse?.trim() || null,
@@ -256,7 +259,7 @@ export function createSupabaseAdapters(
         const { error } = await client
           .from("players")
           .update({
-            full_name: next.name,
+            full_name: next.fullName ?? next.name,
             birthdate: next.birthdate,
             gender: next.gender,
             ngap_id: next.ngapId,
@@ -696,6 +699,59 @@ export function createSupabaseAdapters(
           .eq("club_id", clubId)
           .eq("id", id);
         fail("Could not save the registration", error);
+      });
+    },
+    overrideReady: (entryId, input) => {
+      const entry = state.entries.find((item) => item.id === entryId);
+      if (!entry) throw new Error("That registration was not found.");
+      const frozenAt = new Date().toISOString();
+      const next: RegistrationEntry = {
+        ...entry,
+        status: "ok",
+        reasons: input.pending,
+        frozen: {
+          index: input.index,
+          recordId: null,
+          effectiveDate: input.effectiveDate,
+          frozenAt,
+        },
+        categoryId: input.categoryId,
+        teeId: input.teeId,
+        flightId: input.flightId,
+        playingHandicap: input.playingHandicap,
+        overridden: true,
+        overrideReason: input.reason,
+      };
+      dispatch({ type: "updatePlayer", id: entry.playerId, patch: { birthdate: input.birthdate } });
+      dispatch({ type: "updateEntry", id: entryId, patch: next });
+      enqueue(async () => {
+        const { error: playerError } = await client
+          .from("players")
+          .update({ birthdate: input.birthdate })
+          .eq("club_id", clubId)
+          .eq("id", entry.playerId);
+        if (playerError) {
+          throw new Error(`Could not save the player's birthdate: ${playerError.message}`);
+        }
+        const { error } = await client
+          .from("registrations")
+          .update({
+            status: "ok",
+            reasons: input.pending,
+            frozen_index: input.index,
+            frozen_record_id: null,
+            frozen_effective_date: input.effectiveDate,
+            frozen_at: frozenAt,
+            category_id: input.categoryId,
+            tee_id: input.teeId,
+            playing_handicap: input.playingHandicap,
+            flight_id: input.flightId,
+            overridden: true,
+            answers: toRegistrationAnswers(next) as Json,
+          })
+          .eq("club_id", clubId)
+          .eq("id", entryId);
+        fail("Could not mark the player ready", error);
       });
     },
     remove: (id) => {

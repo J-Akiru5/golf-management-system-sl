@@ -1,4 +1,4 @@
-import { classifyPlayer, type Registration, type Tee } from "@/lib/routing";
+import { ageOn, classifyPlayer, type Registration, type Tee } from "@/lib/routing";
 import { frozenOutdated, isStale, selectIndexForCutOff } from "./frozen";
 import type {
   DeskRegistration,
@@ -44,6 +44,46 @@ export function registrationFor({
     flags.push(
       `The frozen index dates from ${selection.record.effectiveDate}, more than ${tournament.staleIndexDays} days before the cut-off (${tournament.cutOffDate}). Import a fresh NGAP file.`,
     );
+  }
+
+  // An organizer override stores the routing facts the draw needs (category, tee, flight and
+  // playing handicap) on the registration. It is the only path that can place a player whose
+  // profile is still incomplete. The missing details stay in `entry.reasons` as pending notes.
+  if (
+    entry.overridden &&
+    entry.categoryId &&
+    entry.teeId &&
+    entry.flightId &&
+    entry.playingHandicap !== null &&
+    entry.playingHandicap !== undefined &&
+    entry.frozen.index !== null
+  ) {
+    const age = player.birthdate ? ageOn(player.birthdate, tournament.config.date) : 0;
+    return {
+      playerId: player.id,
+      playerName: player.name,
+      status: "ok",
+      reasons: entry.reasons ?? [],
+      index: entry.frozen.index,
+      age,
+      categoryId: entry.categoryId,
+      teeId: entry.teeId,
+      playingHandicap: entry.playingHandicap,
+      flightId: entry.flightId,
+      ageKnown: player.birthdate !== null,
+      flags: [],
+      entryId: entry.id,
+      role: entry.role,
+      frozenIndex: entry.frozen.index,
+      frozenRecordId: entry.frozen.recordId,
+      frozenEffectiveDate: entry.frozen.effectiveDate,
+      newerRecord: null,
+      frozenOutdated: false,
+      staleIndex: false,
+      paymentStatus: entry.paymentStatus,
+      sponsor: entry.sponsor,
+      teePreferences: entry.teePreferences,
+    };
   }
 
   const missing: string[] = [];

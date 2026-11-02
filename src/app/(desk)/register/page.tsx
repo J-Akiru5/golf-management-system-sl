@@ -27,6 +27,7 @@ import {
   RegistrationRow,
   SaveTruth,
 } from "@/components/desk";
+import { ReadyOverrideDialog } from "@/components/desk/ReadyOverrideDialog";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Pager } from "@/components/paging/Pager";
@@ -35,12 +36,13 @@ import { Button } from "@/components/ui/button";
 import { instructionText } from "@/lib/data/instructions";
 import { fmtIso } from "@/lib/data/labels";
 import {
+  type DeskRegistration,
   PAYMENT_LABEL,
   type PaymentStatus,
   type PlayerRecord,
   type RegistrationEntry,
 } from "@/lib/data/types";
-import { fmtIndex, photoOf } from "@/lib/format";
+import { displayName, fmtIndex, photoOf } from "@/lib/format";
 import { shrinkPhoto } from "@/lib/photo";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
@@ -108,8 +110,26 @@ const emptyDraft = (): Draft => ({
 });
 
 function RegisterDesk() {
-  const { tournament, players, entries, regById, adapters, dispatch, status, names, days } =
-    useDesk();
+  const {
+    tournament,
+    players,
+    entries,
+    regById,
+    adapters,
+    dispatch,
+    status,
+    names,
+    days,
+    tees,
+    member,
+  } = useDesk();
+  const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
+  /** The entry whose incomplete profile the organizer is overriding. */
+  const [override, setOverride] = useState<{
+    player: PlayerRecord;
+    entry: RegistrationEntry;
+    registration: DeskRegistration;
+  } | null>(null);
   const params = useSearchParams();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [query, setQuery] = useState("");
@@ -148,6 +168,7 @@ function RegisterDesk() {
   const savedReg = savedId ? regById.get(savedId) : null;
   const savedEntry = savedId ? entries.find((e) => e.playerId === savedId) : null;
   const savedPlayer = savedId ? players.find((p) => p.id === savedId) : null;
+  const overrideLatest = override ? adapters.players.latestRecord(override.player.id) : null;
 
   const listRows = useMemo(() => {
     const q = listQuery.trim().toLowerCase();
@@ -994,7 +1015,10 @@ function RegisterDesk() {
                     firstName: draft.firstName,
                     lastName: draft.lastName,
                     nickname: draft.nickname || null,
-                    name: `${draft.firstName} ${draft.lastName}`.trim() || "New player",
+                    name: displayName(
+                      `${draft.firstName} ${draft.lastName}`.trim() || "New player",
+                    ),
+                    fullName: `${draft.firstName} ${draft.lastName}`.trim() || "New player",
                     birthdate: draft.birthdate || null,
                     gender: draft.gender,
                     homeCourse: draft.homeCourse || null,
@@ -1160,8 +1184,22 @@ function RegisterDesk() {
                     preferred.length ? `prefers ${preferred.join(", ")}` : "no tee preference given"
                   }
                   profileHref={`/players/${p.id}`}
+                  audit={{
+                    overridden: e.overridden,
+                    overrideReason: e.overrideReason,
+                  }}
                   actions={
                     <>
+                      {canEdit && r?.status === "needs_review" && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setOverride({ player: p, entry: e, registration: r })}
+                        >
+                          <BadgeCheck aria-hidden="true" />
+                          Mark ready
+                        </Button>
+                      )}
                       <RegistrationDaysEditor
                         entry={e}
                         days={days}
@@ -1209,6 +1247,28 @@ function RegisterDesk() {
           <Pager page={page} onPage={setPage} />
         </SectionCard>
       </div>
+
+      {override && (
+        <ReadyOverrideDialog
+          key={override.player.id}
+          open
+          onOpenChange={(open) => {
+            if (!open) setOverride(null);
+          }}
+          player={override.player}
+          entry={override.entry}
+          registration={override.registration}
+          tournament={tournament}
+          tees={tees}
+          latestIndex={overrideLatest?.index ?? null}
+          latestIndexDate={overrideLatest?.effectiveDate ?? null}
+          onSave={(input) => {
+            adapters.players.update(override.player.id, { birthdate: input.birthdate });
+            adapters.registrations.overrideReady(override.entry.id, input);
+            setOverride(null);
+          }}
+        />
+      )}
     </div>
   );
 }

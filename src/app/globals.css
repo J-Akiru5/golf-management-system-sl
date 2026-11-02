@@ -425,7 +425,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    height: 40px;
+    height: 44px;
     padding: 0 16px;
     border-radius: 10px;
     border: 1px solid transparent;
@@ -534,7 +534,7 @@
   input[type="tel"],
   select,
   textarea {
-    height: 40px;
+    height: 44px;
     padding: 0 12px;
     border: 1px solid var(--line-strong);
     border-radius: 10px;
@@ -542,6 +542,23 @@
     color: var(--ink);
     font: inherit;
     width: 100%;
+  }
+  /* iOS zooms a focused field below 16px. The player form is the main place
+     this matters; the desk gets the larger target too. */
+  @media (max-width: 1023px) {
+    input:not([type]),
+    input[type="text"],
+    input[type="date"],
+    input[type="time"],
+    input[type="number"],
+    input[type="search"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    select,
+    textarea {
+      font-size: 16px;
+    }
   }
   /* A textarea shows its whole value by default: it sizes to the content instead of keeping the
      two-row height and scrolling the rest out of sight. Long unbroken words wrap rather than being
@@ -661,7 +678,8 @@
     position: absolute;
     top: 50%;
     right: 4px;
-    height: 32px;
+    height: 44px;
+    min-width: 44px;
     padding: 0 10px;
     transform: translateY(-50%);
     border-radius: 8px;
@@ -1150,8 +1168,15 @@
   }
   .groups {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    /* The card carries a hole badge, a Lock control and a Move control per player. Below about
+       250px those controls were clipped by the card's own overflow rule. */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
     gap: 16px;
+  }
+  @media (max-width: 639px) {
+    .groups {
+      grid-template-columns: 1fr;
+    }
   }
   .group {
     background: var(--surface-raised);
@@ -1160,6 +1185,8 @@
     overflow: hidden;
     display: grid;
     align-content: start;
+    min-width: 0;
+    overflow-wrap: anywhere;
     box-shadow: var(--shadow-card);
     transition:
       border-color 140ms,
@@ -1191,11 +1218,15 @@
   }
   .group-head {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     gap: 8px;
     align-items: center;
     padding: 10px 12px;
     border-bottom: 1px solid var(--line);
+  }
+  .group-head .who {
+    flex: 1 1 11rem;
   }
   .group-head .hole {
     width: 32px;
@@ -1210,11 +1241,15 @@
   }
   .slot {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     align-items: center;
     justify-content: space-between;
     padding: 6px 12px;
     min-height: 44px;
+  }
+  .slot .who {
+    flex: 1 1 9rem;
   }
   .slot + .slot {
     border-top: 1px solid var(--line);
@@ -1224,6 +1259,7 @@
     gap: 10px;
     align-items: center;
     flex: none;
+    margin-left: auto;
   }
   .slot.picked {
     background: var(--gold-soft);
@@ -1540,7 +1576,8 @@
     -webkit-tap-highlight-color: transparent;
   }
   .mobile-tabbar-item.is-current {
-    color: var(--gold);
+    /* #d7b568 on forest is 7.73:1; the old --gold was 4.34:1 at 11px and failed AA. */
+    color: #d7b568;
   }
   .mobile-tabbar-icon {
     display: grid;
@@ -1565,6 +1602,82 @@
   .mobile-tabbar-item:focus-visible {
     outline: 2px solid var(--gold);
     outline-offset: -2px;
+  }
+  /* A small install card above the player bar. It is fixed so it never shifts
+     the page, and it is hidden on desktop where the tab bar is hidden. */
+  .install-prompt {
+    position: fixed;
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    left: max(12px, env(safe-area-inset-left, 0px));
+    z-index: 45;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    background: var(--surface-raised);
+    color: var(--ink);
+    box-shadow: var(--shadow-lift);
+  }
+  .install-prompt-icon {
+    display: grid;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--gold-soft);
+    color: var(--gold-ink);
+  }
+  .install-prompt-body {
+    display: grid;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 2px;
+  }
+  .install-prompt-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .install-prompt-copy {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .install-prompt-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .install-prompt .btn {
+    height: 40px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+  .install-prompt-dismiss {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 8px;
+    border: 0;
+    background: transparent;
+    color: var(--ink-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .install-prompt-dismiss:hover {
+    color: var(--ink);
+  }
+  @media (min-width: 1024px) {
+    .install-prompt {
+      display: none;
+    }
   }
   @media (min-width: 1024px) {
     .mobile-tabbar {
@@ -2474,12 +2587,16 @@
     grid-column: 2;
     grid-row: 2;
     justify-self: end;
-    gap: 0;
+    /* A zero gap ran "Player pairings" into "NGAP FAQ" at every phone width. */
+    gap: 14px;
   }
   .site-nav-links a:nth-child(-n + 2) {
     display: none;
   }
   .site-nav-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     font-size: 11px;
   }
   .site-brand {
@@ -2547,7 +2664,7 @@
   }
   .hero-eyebrow {
     max-width: 320px;
-    font-size: 9px;
+    font-size: 11px;
     letter-spacing: 0.12em;
   }
   .hero-content h1 {
@@ -3452,11 +3569,24 @@
   font-size: 13px;
 }
 
+@media (max-width: 1023px) {
+  .site-footer a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .site-nav-action {
+    min-width: 44px;
+  }
+}
+
 .footer-col h2 {
   margin: 0;
   color: #e5c77a;
   font-family: var(--f-sans);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.16em;
   line-height: 1.4;
@@ -3796,4 +3926,49 @@
    needs. */
 .teeline-site .strip-head h2 {
   color: var(--ink);
+}
+
+/* --------------------------------------------------------------- scoring: the handicap a round uses */
+
+/* The entry panel now carries the snapshot and the registration freeze side by side. It sits on the
+   sunken surface so it reads as a fact box, not as another form field. */
+.handicap-summary {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-sunken);
+  padding: 12px;
+}
+
+.handicap-summary .tiles {
+  gap: 8px;
+}
+
+.handicap-summary .tile {
+  padding: 8px 10px;
+}
+
+.handicap-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.handicap-facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.handicap-facts dt {
+  color: var(--ink-muted);
+}
+
+.handicap-facts dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }

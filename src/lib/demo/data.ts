@@ -9,6 +9,7 @@ import type {
   RegistrationEntry,
   Tournament,
 } from "@/lib/data/types";
+import { displayName } from "@/lib/format";
 import { nameKey } from "@/lib/ngap";
 import type { CategoryRule, FlightRule, Player, Tee, TournamentConfig } from "@/lib/routing";
 
@@ -392,7 +393,8 @@ export function makeDemoSeed(cutOffDate = "2026-11-01"): DemoSeed {
       firstName: first,
       lastName: last,
       nickname: opts.nickname ?? null,
-      name: full,
+      name: displayName(full),
+      fullName: full,
       birthdate: opts.stub ? null : iso(day, month, year),
       gender: opts.stub ? null : gender,
       homeCourse,
@@ -441,7 +443,8 @@ export function makeDemoSeed(cutOffDate = "2026-11-01"): DemoSeed {
   ).entries()) {
     const p = players[i];
     if (p) {
-      p.name = expected;
+      p.name = displayName(expected);
+      p.fullName = expected;
       p.ngapId = String(1001 + i);
     }
   }

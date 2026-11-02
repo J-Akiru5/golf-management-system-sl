@@ -16,6 +16,7 @@ import type {
   Tournament,
   TournamentRegistration,
 } from "@/lib/data/types";
+import { displayName } from "@/lib/format";
 import type { CategoryRule, FlightRule, TournamentConfig } from "@/lib/routing";
 import type {
   CaddieRow,
@@ -50,7 +51,8 @@ export function toPlayerRecord(row: PlayerRow, photoUrl?: string): PlayerRecord 
     firstName: row.first_name ?? parts.firstName,
     lastName: row.last_name ?? parts.lastName,
     nickname: row.nickname,
-    name: row.full_name,
+    name: displayName(row.full_name),
+    fullName: row.full_name,
     birthdate: row.birthdate,
     gender: row.gender,
     homeCourse: row.home_course,
@@ -149,6 +151,14 @@ export function toRegistrationEntry(row: RegistrationRow): RegistrationEntry {
       effectiveDate: row.frozen_effective_date,
       frozenAt: row.frozen_at ?? row.created_at,
     },
+    status: row.status,
+    reasons: row.reasons,
+    categoryId: row.category_id,
+    teeId: row.tee_id,
+    flightId: row.flight_id,
+    playingHandicap: row.playing_handicap,
+    overridden: row.overridden,
+    overrideReason: str(answers.overrideReason),
     createdAt: row.created_at,
     source: "desk",
   };
@@ -310,7 +320,7 @@ export function toPlayerInsert(player: PlayerRecord) {
   return {
     id: player.id,
     club_id: player.clubId,
-    full_name: player.name,
+    full_name: player.fullName ?? player.name,
     birthdate: player.birthdate,
     gender: player.gender,
     ngap_id: player.ngapId,
@@ -334,6 +344,7 @@ export function toRegistrationAnswers(entry: RegistrationEntry) {
     declaredWshId: entry.declaredWshId,
     declaredWshHandicap: entry.declaredWshHandicap,
     extra: entry.extra,
+    overrideReason: entry.overrideReason ?? null,
   };
 }
 

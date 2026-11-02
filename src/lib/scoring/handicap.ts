@@ -110,6 +110,40 @@ export function calculateHandicap(input: HandicapInput): HandicapCalculation {
   return { ok: true, snapshot };
 }
 
+export interface HandicapSnapshotCheck {
+  /** The index stored in the round snapshot, or null when the player has no snapshot. */
+  snapshotIndex: number | null;
+  /** The registration's frozen index, or null when it is not loaded or no index was frozen. */
+  frozenIndex: number | null;
+  /** True when both indices are known and differ by at least a tenth. */
+  indexDiffers: boolean;
+  /** True when the snapshot names a tee other than the round's tee. */
+  teeDiffers: boolean;
+}
+
+/**
+ * Compares the round's handicap snapshot with the registration freeze and the round tee.
+ *
+ * The snapshot is what net scoring uses; this helper only answers "do these two facts agree?"
+ * so the desk can check it. A difference is never corrected or hidden here. An index is stored to
+ * one decimal, so a real difference is at least 0.1; the small threshold keeps floating-point
+ * noise from flagging an identical value.
+ */
+export function checkHandicapSnapshot(input: {
+  handicap: Pick<HandicapSnapshot, "index" | "teeId"> | null;
+  frozenIndex: number | null | undefined;
+  roundTeeId: string | null | undefined;
+}): HandicapSnapshotCheck {
+  const snapshotIndex = input.handicap?.index ?? null;
+  const frozenIndex = input.frozenIndex ?? null;
+  const indexDiffers =
+    snapshotIndex !== null && frozenIndex !== null && Math.abs(snapshotIndex - frozenIndex) >= 0.05;
+  const teeDiffers = Boolean(
+    input.handicap && input.roundTeeId && input.handicap.teeId !== input.roundTeeId,
+  );
+  return { snapshotIndex, frozenIndex, indexDiffers, teeDiffers };
+}
+
 /**
  * Strokes received on one hole.
  *

@@ -77,6 +77,18 @@ async function submitAndApprove(
 }
 
 describe("demo scoring repository", () => {
+  it("carries the registration freeze beside the snapshot for the desk to compare", async () => {
+    const first = seed().players[0];
+    if (!first) throw new Error("The test seed needs a player.");
+    const repo = repository({ players: [{ ...first, frozenIndex: 13.1 }] });
+
+    const view = await repo.loadRound("tournament-1");
+
+    expect(view?.players[0]?.frozenIndex).toBe(13.1);
+    // The snapshot is untouched: it is still the value net scoring uses.
+    expect(view?.players[0]?.handicap?.index).toBe(18);
+  });
+
   it("starts with no eligible holes and a blocked finalization", async () => {
     const repo = repository();
     const view = await repo.loadRound("tournament-1");
@@ -169,6 +181,30 @@ describe("demo scoring repository", () => {
 
     expect(first.cards).toHaveLength(1);
     expect(second.cards).toHaveLength(1);
+  });
+
+  it("stores a correction as a new revision and keeps the earlier card", async () => {
+    const repo = repository();
+    await submitAndApprove(repo, "p1", "s2", "original-card");
+
+    const corrected = await repo.submitCard("tournament-1", {
+      playerId: "p1",
+      scorerId: "s2",
+      source: "manual",
+      entries: parEntries().map((entry) => (entry.hole === 4 ? { ...entry, strokes: 5 } : entry)),
+      writtenTotal: 73,
+      captureKey: "correction-card",
+      reason: "Hole 4 was written as 4; the card says 5.",
+    });
+
+    const revisions = corrected.cards
+      .filter((card) => card.playerId === "p1" && card.scorerId === "s2")
+      .map((card) => ({ revision: card.revision, status: card.status }));
+
+    expect(revisions).toEqual([
+      { revision: 1, status: "approved" },
+      { revision: 2, status: "submitted" },
+    ]);
   });
 
   it("refuses to approve a low-confidence value that nobody confirmed", async () => {

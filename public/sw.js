@@ -15,7 +15,9 @@
  * Offline writes are not queued. The worker only replays cached reads.
  */
 
-const VERSION = "v1";
+// The registration URL carries the build id (`/sw.js?v=<version>-<commit>`), so a
+// new deploy installs a new worker and the old page cache cannot survive forever.
+const VERSION = new URL(self.location.href).searchParams.get("v") || "v1";
 const SHELL_CACHE = `teeline-shell-${VERSION}`;
 const PAGE_CACHE = `teeline-pages-${VERSION}`;
 const KEEP = new Set([SHELL_CACHE, PAGE_CACHE]);

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { type DeskMember, getDeskMember } from "@/lib/auth/member";
+import { displayName } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import type { ExistingPlayerRef, ExistingRegistrationRef, TournamentDayRef } from "./types";
@@ -185,7 +186,7 @@ export async function loadTournamentImportContext(
       schemaProblems,
       existingPlayers: (players ?? []).map((row) => ({
         id: row.id,
-        name: row.full_name,
+        name: displayName(row.full_name),
         ngapId: row.ngap_id,
         birthdate: row.birthdate,
         gender: row.gender,
