@@ -179,12 +179,12 @@ leaves the rows sloping and clips the right side of a score row. Measured geomet
 | Item | Pixels |
 | --- | --- |
 | Table | x 115..1733, y 240..770 |
-| Name column | x 115..383 |
-| Hole 1..9 | x 383..906, nine cells |
-| OUT | x 906..964 |
-| Hole 10..18 | x 964..1492, nine cells |
-| IN | x 1492..1549 |
-| TOTAL | x 1549..1608 |
+| Name column | x 115..389 |
+| Hole 1..9 | x 389..909, nine cells |
+| OUT | x 909..965 |
+| Hole 10..18 | x 965..1493, nine cells |
+| IN | x 1493..1551 |
+| TOTAL | x 1551..1610 |
 | Player row 0 (empty here) | y 435..486 |
 | Player row 1 (handwritten) | y 486..531 |
 | Player row 2 (empty here) | y 531..582 |
@@ -193,9 +193,10 @@ leaves the rows sloping and clips the right side of a score row. Measured geomet
 | LADIES PAR | y 678..725 |
 | HANDICAP | y 725..770 |
 
-The photo is rotated 90 degrees; `scripts/scan/igcc_photo_calibration.json` records
-the measured corners and source SHA-256. This is calibration for one photo, not a
-claim about every print run. If the card is reprinted, measure again.
+The column edges were re-measured from 111 rectified cards on 2026-11-02. The
+original hand measurement was 5 to 6 px left for holes 1 to 8; the rest were
+within 2 px. The row edges still come from the first photo. This is still a
+template, not a detector; if the card is reprinted, measure again.
 
 ### Rectification without the card outline
 

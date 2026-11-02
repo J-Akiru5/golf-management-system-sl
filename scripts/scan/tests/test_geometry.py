@@ -1,8 +1,12 @@
 import itertools
+import json
+from pathlib import Path
 
 import pytest
 
 from igcc_scan.geometry import IGCC_PAPER, Box, get_template
+
+MEASURED_GRID = Path(__file__).parent / "fixtures" / "igcc_grid_measured.json"
 
 
 def test_igcc_template_has_eighteen_holes_and_four_rows():
@@ -73,3 +77,16 @@ def test_table_edges_are_sorted_and_unique():
     assert x_edges[-1] == IGCC_PAPER.table.x1
     assert y_edges[0] == IGCC_PAPER.table.y0
     assert y_edges[-1] == IGCC_PAPER.table.y1
+
+
+def test_template_columns_match_the_measured_grid():
+    measured = json.loads(MEASURED_GRID.read_text(encoding="utf-8"))["measured_x_lines"]
+    template = IGCC_PAPER
+    edges = [template.name_column[1]]
+    edges += [column[1] for column in template.hole_columns[:9]]
+    edges.append(template.total_columns["out"][1])
+    edges += [column[1] for column in template.hole_columns[9:]]
+    edges += [template.total_columns[name][1] for name in ("in", "total", "handicap")]
+    assert len(edges) == len(measured) == 23
+    for edge, expected in zip(edges, measured, strict=True):
+        assert abs(edge - expected) <= 1.0, (edge, expected)

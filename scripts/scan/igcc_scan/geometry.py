@@ -55,35 +55,36 @@ class Box:
         )
 
 
-# Column edges measured on the rectified 1800 x 1000 card. The name column runs
-# from 115 to 383; the nine front-nine hole cells and the nine back-nine cells
-# are separated by the printed OUT column.
-_NAME_COLUMN = (115, 383)
+# Column edges re-measured from 111 rectified 1800 x 1000 cards on 2026-11-02.
+# The first eight hole columns were 5-6 px left in the original hand measurement;
+# the rest were within 2 px. The name column runs from 115 to 389; the nine
+# front-nine hole cells and the nine back-nine cells are separated by OUT.
+_NAME_COLUMN = (115, 389)
 _HOLE_COLUMNS: tuple[tuple[int, int], ...] = (
-    (383, 442),
-    (442, 500),
-    (500, 556),
-    (556, 615),
-    (615, 672),
-    (672, 731),
-    (731, 789),
-    (789, 848),
-    (848, 906),
-    (964, 1024),
-    (1024, 1082),
-    (1082, 1143),
-    (1143, 1200),
-    (1200, 1259),
-    (1259, 1319),
-    (1319, 1375),
-    (1375, 1431),
-    (1431, 1492),
+    (389, 448),
+    (448, 505),
+    (505, 562),
+    (562, 621),
+    (621, 678),
+    (678, 737),
+    (737, 794),
+    (794, 852),
+    (852, 909),
+    (965, 1024),
+    (1024, 1080),
+    (1080, 1142),
+    (1142, 1199),
+    (1199, 1258),
+    (1258, 1318),
+    (1318, 1374),
+    (1374, 1431),
+    (1431, 1493),
 )
 _TOTAL_COLUMNS: dict[str, tuple[int, int]] = {
-    "out": (906, 964),
-    "in": (1492, 1549),
-    "total": (1549, 1608),
-    "handicap": (1608, 1668),
+    "out": (909, 965),
+    "in": (1493, 1551),
+    "total": (1551, 1610),
+    "handicap": (1610, 1668),
     "net": (1668, 1733),
 }
 # Four printed player rows. Rows 0 and 2 are empty on the available card; rows 1
@@ -219,7 +220,7 @@ class CardTemplate:
 
 IGCC_PAPER = CardTemplate(
     template_id="igcc-paper",
-    version="2026-10",
+    version="2026-11",
     width=1800,
     height=1000,
     table=Box(115, 240, 1733, 770),
