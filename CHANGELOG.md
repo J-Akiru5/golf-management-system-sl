@@ -10,10 +10,11 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
-- **A stacked TeeLine logo pack** in `docs/brand`: the symbol above the wordmark, with GOLF between
-  two rules. SVG masters and transparent PNG renders for the stacked lockup, the horizontal version,
-  two app icons and a TL monogram, plus a sheet, a zip and the palette. Every file is outlined, so no
-  font is needed. No migration.
+- **The club's logo, traced into vectors.** `public/brand/teeline-*` now holds the stacked lockup
+  (primary, reverse, mono), the horizontal version, the symbol, two app icons and the TL monogram,
+  traced from `public/photos/TeeLine Golf Brand Identity Board.png` so the letterforms and curves are
+  the board's rather than a font approximation. Transparent PNG renders, a sheet and a zip are in
+  `docs/brand`. No font is needed to open any file. No migration.
 
 ### Changed
 - **The brand wordmarks are outlined.** `public/brand/teeline-logo*.svg` no longer draw "TeeLine" and

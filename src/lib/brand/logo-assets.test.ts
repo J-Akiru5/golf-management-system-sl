@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const BRAND = join(process.cwd(), "public", "brand");
-const PACK = join(process.cwd(), "docs", "brand", "svg");
+const PACK = join(process.cwd(), "public", "brand");
 const wordmarks = ["teeline-logo.svg", "teeline-logo-reverse.svg", "teeline-logo-mono.svg"];
 
 /**
@@ -31,8 +31,15 @@ describe("the brand wordmarks", () => {
 describe("the stacked logo pack", () => {
   const files = readdirSync(PACK).filter((name) => name.endsWith(".svg"));
 
-  it("ships every lockup as a vector", () => {
-    expect(files.sort()).toEqual(
+  const traced = files.filter(
+    (name) =>
+      !name.startsWith("teeline-logo") &&
+      name !== "teeline-symbol-light.svg" &&
+      name !== "teeline-app-icon.svg",
+  );
+
+  it("ships every traced lockup as a vector", () => {
+    expect(traced.sort()).toEqual(
       [
         "teeline-app-icon-forest.svg",
         "teeline-app-icon-ivory.svg",
@@ -49,11 +56,11 @@ describe("the stacked logo pack", () => {
     );
   });
 
-  it.each(files)("%s is outlined and has a viewBox", (file) => {
+  it.each(traced)("%s is outlined and has a viewBox", (file) => {
     const svg = readFileSync(join(PACK, file), "utf8");
     expect(svg).not.toContain("<text");
     expect(svg).not.toContain("font-family");
-    expect(svg).toMatch(/viewBox="0 0 [\d.]+ [\d.]+"/);
+    expect(svg).toMatch(/viewBox="[-\d.]+ [-\d.]+ [\d.]+ [\d.]+"/);
     expect(svg).toContain("<title");
   });
 });

@@ -1,17 +1,13 @@
 # TeeLine Golf logo
 
 The stacked lockup: the course-and-flag symbol above the wordmark, with **GOLF** between two rules.
+Every file here is traced from the club's brand board, `public/photos/TeeLine Golf Brand Identity
+Board.png`, so the letterforms and curves are the board's, not a font approximation.
 
 ## Files
 
-| Folder | What is in it |
-| --- | --- |
-| `svg/` | The vector masters. Every lockup is outlined, so no font is needed to open or print it. |
-| `png/` | Transparent renders: 2400 px for the lockups, 1600 px for the symbol, 1024 px for the icons. |
-| `teeline-logo-pack.zip` | The whole `svg/` folder in one download. |
-| `logo-sheet.png` | Every variant on its intended background, plus the palette. |
-
-## Which file to use
+All masters live in `public/brand`, so they are served from the site as well as stored with the
+project.
 
 | File | Use it on |
 | --- | --- |
@@ -24,13 +20,17 @@ The stacked lockup: the course-and-flag symbol above the wordmark, with **GOLF**
 | `teeline-symbol-reverse.svg` | Ivory symbol, for a forest background. |
 | `teeline-app-icon-ivory.svg` | Home screen, avatar, favicon. |
 | `teeline-app-icon-forest.svg` | The same, reversed. |
-| `teeline-monogram.svg` | A square or circular space too small for the wordmark. |
+| `teeline-monogram.svg` | A square space too small for the wordmark. |
+
+Raster copies are in `docs/brand/png` (2400 px lockups, 1600 px symbol, 1024 px icons), the whole
+vector set is in `docs/brand/teeline-logo-pack.zip`, and `docs/brand/logo-sheet.png` shows every
+variant on its background.
 
 ## Colours
 
 | Name | Hex | Where |
 | --- | --- | --- |
-| Forest | `#073D2E` | Primary ribbon, wordmark, background. |
+| Forest | `#073D2E` | Wordmark, upper ribbon, background. |
 | Gold | `#B89550` | Middle ribbon, flag, rules on light. |
 | Gold light | `#D4B46F` | Gold on forest. |
 | Ivory | `#F7F5EE` | Reverse wordmark, light background. |
@@ -43,10 +43,10 @@ The stacked lockup: the course-and-flag symbol above the wordmark, with **GOLF**
 - Minimum width: 120 px for the stacked lockup, 90 px for the horizontal, 24 px for the symbol.
 - Do not stretch, outline, add shadows or recolour outside the palette.
 - Do not put the light lockup on a dark background. Use the reverse file.
-- Do not rebuild the lockup from separate pieces.
+- Do not rebuild the lockup from separate pieces. Use the files above.
 
 ## Relationship to the running app
 
-The site still renders the earlier side-by-side lockup from `src/components/TeeLineLogo.tsx`, and
-`public/brand/` still holds the matching files. This folder is the stacked mark, ready to adopt.
-Adopting it means updating that component, the app icons and `public/brand/`.
+The app still renders the earlier side-by-side lockup from `src/components/TeeLineLogo.tsx` and the
+older files `public/brand/teeline-logo*.svg`. The traced stacked set above is ready to adopt; doing
+so means changing that component, the manifest icons and the social image.
