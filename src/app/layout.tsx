@@ -64,7 +64,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/brand/teeline-app-icon.svg", type: "image/svg+xml" },
+      { url: "/brand/teeline-app-icon-forest.svg", type: "image/svg+xml" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
