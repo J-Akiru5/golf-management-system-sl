@@ -1,8 +1,9 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const BRAND = join(process.cwd(), "public", "brand");
+const PACK = join(process.cwd(), "docs", "brand", "svg");
 const wordmarks = ["teeline-logo.svg", "teeline-logo-reverse.svg", "teeline-logo-mono.svg"];
 
 /**
@@ -24,5 +25,35 @@ describe("the brand wordmarks", () => {
     const reverse = readFileSync(join(BRAND, "teeline-logo-reverse.svg"), "utf8");
     const paths = (svg: string) => svg.match(/<path d="/g)?.length ?? 0;
     expect(paths(light)).toBe(paths(reverse));
+  });
+});
+
+describe("the stacked logo pack", () => {
+  const files = readdirSync(PACK).filter((name) => name.endsWith(".svg"));
+
+  it("ships every lockup as a vector", () => {
+    expect(files.sort()).toEqual(
+      [
+        "teeline-app-icon-forest.svg",
+        "teeline-app-icon-ivory.svg",
+        "teeline-horizontal-primary.svg",
+        "teeline-horizontal-reverse.svg",
+        "teeline-lockup-mono.svg",
+        "teeline-lockup-primary.svg",
+        "teeline-lockup-reverse.svg",
+        "teeline-monogram.svg",
+        "teeline-symbol-mono.svg",
+        "teeline-symbol-primary.svg",
+        "teeline-symbol-reverse.svg",
+      ].sort(),
+    );
+  });
+
+  it.each(files)("%s is outlined and has a viewBox", (file) => {
+    const svg = readFileSync(join(PACK, file), "utf8");
+    expect(svg).not.toContain("<text");
+    expect(svg).not.toContain("font-family");
+    expect(svg).toMatch(/viewBox="0 0 [\d.]+ [\d.]+"/);
+    expect(svg).toContain("<title");
   });
 });

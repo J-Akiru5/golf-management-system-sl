@@ -9,11 +9,16 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **A stacked TeeLine logo pack** in `docs/brand`: the symbol above the wordmark, with GOLF between
+  two rules. SVG masters and transparent PNG renders for the stacked lockup, the horizontal version,
+  two app icons and a TL monogram, plus a sheet, a zip and the palette. Every file is outlined, so no
+  font is needed. No migration.
+
 ### Changed
 - **The brand wordmarks are outlined.** `public/brand/teeline-logo*.svg` no longer draw "TeeLine" and
   "GOLF" with a `<text>` element, so they render the same on a machine without Manrope. The light
-  descriptor now uses `#755719`, matching the React component. High-resolution PNG exports and a
-  usage sheet are in `docs/brand`. No visual change on the site and no migration.
+  descriptor now uses `#755719`, matching the React component. No visual change on the site.
 
 ## [0.27.0] - 2026-11-02
 
