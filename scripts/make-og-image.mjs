@@ -25,7 +25,7 @@ const read = (path) => readFileSync(join(ROOT, path));
 const dataUri = (path, mime) => `data:${mime};base64,${read(path).toString("base64")}`;
 
 const photo = dataUri("public/photos/fairway-dawn.webp", "image/webp");
-const logo = readFileSync(join(ROOT, "public/brand/teeline-logo-reverse.svg"), "utf8");
+const logo = readFileSync(join(ROOT, "public/brand/teeline-horizontal-reverse.svg"), "utf8");
 const cormorant = dataUri(
   "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2",
   "font/woff2",

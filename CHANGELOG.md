@@ -17,9 +17,10 @@ Supabase project, because the code and the database are released separately.
   `docs/brand`. No font is needed to open any file. No migration.
 
 ### Changed
-- **The brand wordmarks are outlined.** `public/brand/teeline-logo*.svg` no longer draw "TeeLine" and
-  "GOLF" with a `<text>` element, so they render the same on a machine without Manrope. The light
-  descriptor now uses `#755719`, matching the React component. No visual change on the site.
+- **The club's logo is now the app logo.** The header and auth screens render the traced wordmark
+  through `TeeLineLogo`, the app icons are rendered from the traced symbol, and the social image is
+  rebuilt from the traced reverse wordmark. The old side-by-side lockup files are removed. No
+  migration.
 
 ## [0.27.0] - 2026-11-02
 

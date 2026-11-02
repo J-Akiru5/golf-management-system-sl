@@ -3,46 +3,19 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const BRAND = join(process.cwd(), "public", "brand");
-const PACK = join(process.cwd(), "public", "brand");
-const wordmarks = ["teeline-logo.svg", "teeline-logo-reverse.svg", "teeline-logo-mono.svg"];
+const files = readdirSync(BRAND).filter((name) => name.endsWith(".svg"));
 
 /**
- * The wordmark files used to draw "TeeLine" and "GOLF" with <text> in Manrope. Anyone who opened
- * them without that font installed saw Arial, which is not the logo. They are outlined now, and
- * this test keeps them that way.
+ * The marks are traced from the club's brand board, so no file may fall back to a live <text>
+ * element: a machine without Manrope installed would draw Arial instead of the logo.
  */
-describe("the brand wordmarks", () => {
-  it.each(wordmarks)("%s is outlined, so it does not depend on an installed font", (file) => {
-    const svg = readFileSync(join(BRAND, file), "utf8");
-    expect(svg).not.toContain("<text");
-    expect(svg).not.toContain("font-family");
-    expect(svg).toContain('viewBox="0 0 440 128"');
-    expect(svg).toContain("<title");
-  });
-
-  it("keeps the primary and reverse lockups the same size", () => {
-    const light = readFileSync(join(BRAND, "teeline-logo.svg"), "utf8");
-    const reverse = readFileSync(join(BRAND, "teeline-logo-reverse.svg"), "utf8");
-    const paths = (svg: string) => svg.match(/<path d="/g)?.length ?? 0;
-    expect(paths(light)).toBe(paths(reverse));
-  });
-});
-
-describe("the stacked logo pack", () => {
-  const files = readdirSync(PACK).filter((name) => name.endsWith(".svg"));
-
-  const traced = files.filter(
-    (name) =>
-      !name.startsWith("teeline-logo") &&
-      name !== "teeline-symbol-light.svg" &&
-      name !== "teeline-app-icon.svg",
-  );
-
-  it("ships every traced lockup as a vector", () => {
-    expect(traced.sort()).toEqual(
+describe("the TeeLine brand files", () => {
+  it("ships the traced lockups, symbols and icons", () => {
+    expect(files.sort()).toEqual(
       [
         "teeline-app-icon-forest.svg",
         "teeline-app-icon-ivory.svg",
+        "teeline-horizontal-mono.svg",
         "teeline-horizontal-primary.svg",
         "teeline-horizontal-reverse.svg",
         "teeline-lockup-mono.svg",
@@ -56,11 +29,18 @@ describe("the stacked logo pack", () => {
     );
   });
 
-  it.each(traced)("%s is outlined and has a viewBox", (file) => {
-    const svg = readFileSync(join(PACK, file), "utf8");
+  it.each(files)("%s is outlined and has a viewBox", (file) => {
+    const svg = readFileSync(join(BRAND, file), "utf8");
     expect(svg).not.toContain("<text");
     expect(svg).not.toContain("font-family");
     expect(svg).toMatch(/viewBox="[-\d.]+ [-\d.]+ [\d.]+ [\d.]+"/);
     expect(svg).toContain("<title");
+  });
+
+  it("keeps the three lockup variants the same size", () => {
+    const box = (file: string) =>
+      readFileSync(join(BRAND, file), "utf8").match(/viewBox="([^"]+)"/)?.[1];
+    expect(box("teeline-lockup-reverse.svg")).toBe(box("teeline-lockup-primary.svg"));
+    expect(box("teeline-lockup-mono.svg")).toBe(box("teeline-lockup-primary.svg"));
   });
 });

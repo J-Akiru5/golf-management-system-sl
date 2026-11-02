@@ -45,8 +45,12 @@ variant on its background.
 - Do not put the light lockup on a dark background. Use the reverse file.
 - Do not rebuild the lockup from separate pieces. Use the files above.
 
-## Relationship to the running app
+## Where the app uses it
 
-The app still renders the earlier side-by-side lockup from `src/components/TeeLineLogo.tsx` and the
-older files `public/brand/teeline-logo*.svg`. The traced stacked set above is ready to adopt; doing
-so means changing that component, the manifest icons and the social image.
+- `src/components/TeeLineLogo.tsx` carries the traced wordmark paths for the headers and auth
+  screens, in the light, reverse and mono palettes.
+- The app icons in `public/icons` are rendered from `teeline-app-icon-forest.svg`, and the manifest
+  and Apple touch icon point at them.
+- The social image in `public/og` is built by `scripts/make-og-image.mjs` from
+  `teeline-horizontal-reverse.svg`.
+- The stacked lockup is the primary mark for anything that has the room: hero panels, print, decks.
