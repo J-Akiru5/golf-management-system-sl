@@ -9,7 +9,18 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **The club's logo, traced into vectors.** `public/brand/teeline-*` now holds the stacked lockup
+  (primary, reverse, mono), the horizontal version, the symbol, two app icons and the TL monogram,
+  traced from `public/photos/TeeLine Golf Brand Identity Board.png` so the letterforms and curves are
+  the board's rather than a font approximation. Transparent PNG renders, a sheet and a zip are in
+  `docs/brand`. No font is needed to open any file. No migration.
+
+### Changed
+- **The club's logo is now the app logo.** The header and auth screens render the traced wordmark
+  through `TeeLineLogo`, the app icons are rendered from the traced symbol, and the social image is
+  rebuilt from the traced reverse wordmark. The old side-by-side lockup files are removed. No
+  migration.
 
 ## [0.27.0] - 2026-11-02
 

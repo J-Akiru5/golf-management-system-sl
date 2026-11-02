@@ -30,8 +30,8 @@ const SHELL_ASSETS = [
   "/icons/icon-512.png",
   "/icons/maskable-512.png",
   "/icons/apple-touch-icon.png",
-  "/brand/teeline-logo-reverse.svg",
-  "/brand/teeline-app-icon.svg",
+  "/brand/teeline-horizontal-reverse.svg",
+  "/brand/teeline-app-icon-forest.svg",
 ];
 
 self.addEventListener("install", (event) => {
