@@ -10,6 +10,10 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **Player install prompt and mobile shell**: the player pages now offer a dismissible Add to Home
+  Screen prompt (the platform prompt on Chromium, Share steps on iOS), the manifest opens at `/my`
+  with player shortcuts, and the player bar appears on the public home, pairings, leaderboard, entry
+  and FAQ. The leaderboard gets a phone card list instead of a six-column table. No migration.
 - **The public programme on `/pairings`**: the page now shows the confirmed tee times for each
   playing day (Day 1, Day 2, …), a public player list (name, home club, frozen index, category and
   flight) and the organizers' rules of play, before the published pairings. A tee time is withheld
@@ -60,6 +64,11 @@ Supabase project, because the code and the database are released separately.
   frozen index and its audit trail are not changed from a scorecard. No migration.
 
 ### Changed
+- **Player mobile quality pass**: fixed the landing navigation running together, added
+  `viewport-fit=cover` and a translucent iOS status bar, added `<main>` landmarks and per-page
+  titles, raised buttons and inputs to 44px (16px inputs on mobile), fixed the active tab contrast,
+  versioned the service worker by build so stale pages expire, and removed autofocus from the auth
+  fields. No migration.
 - **Player names are shown in capitals (issue #115).** Desk lists, the draw, scores, registration,
   print, public pairings, the public leaderboard, the programme and the player portal all use the
   capitalised display name. The database keeps the spelling that was entered: a new `fullName` field

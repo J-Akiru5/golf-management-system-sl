@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { resendConfirmation, signInWithPassword } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+export const metadata: Metadata = { title: "Sign in" };
 
 const ERRORS: Record<string, string> = {
   credentials_required: "Enter your email and password.",
@@ -66,14 +69,7 @@ export default async function LoginPage({
           <input type="hidden" name="next" value={next} />
           <label className="field">
             <span>Email</span>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="username"
-              required
-              autoFocus
-            />
+            <input id="email" name="email" type="email" autoComplete="username" required />
           </label>
           <PasswordField
             id="password"

@@ -14,6 +14,14 @@ export const en = {
     print: "Print",
     close: "Close",
   },
+  install: {
+    title: "Install TeeLine",
+    body: "Keep your entry and pairings one tap away. The last screen you open stays readable offline.",
+    action: "Install",
+    ios: "Tap Share, then Add to Home Screen.",
+    dismiss: "Not now",
+    close: "Dismiss install prompt",
+  },
   player: {
     title: "My golf",
     nav: {

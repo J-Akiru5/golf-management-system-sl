@@ -14,9 +14,11 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "TeeLine Golf · IGCC",
     short_name: "TeeLine",
     description:
-      "Iloilo Golf & Country Club tournament desk and player pairings. The last screen you opened stays readable with no signal.",
+      "Your entry, tee time, pairings and club programme for Iloilo Golf & Country Club. The last screen you opened stays readable with no signal.",
     id: "/",
-    start_url: "/",
+    // A player installs this app for their own entry and tee time. The public
+    // home stays one tap away in the player bar.
+    start_url: "/my",
     scope: "/",
     display: "standalone",
     background_color: "#f7f5ee",
@@ -44,22 +46,22 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
-        name: "Live draw",
-        short_name: "Draw",
-        description: "The working draw and the published pairings.",
-        url: "/draw",
-      },
-      {
-        name: "Registration desk",
-        short_name: "Register",
-        description: "Add or find a player on the day.",
-        url: "/register",
-      },
-      {
-        name: "My tee time",
+        name: "My golf",
         short_name: "My golf",
         description: "Your entry and your published start.",
         url: "/my",
+      },
+      {
+        name: "Pairings",
+        short_name: "Pairings",
+        description: "The published tee times and pairings.",
+        url: "/pairings",
+      },
+      {
+        name: "Leaderboard",
+        short_name: "Results",
+        description: "The published gross and net results.",
+        url: "/leaderboard",
       },
     ],
   };

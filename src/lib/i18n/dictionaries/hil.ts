@@ -11,6 +11,14 @@ export const hil: Dictionary = {
     print: "I-print",
     close: "Sirado",
   },
+  install: {
+    title: "I-install ang TeeLine",
+    body: "Ibutang ang entry kag pairings sa isa ka tap. Mabasa pa ang katapusan nga screen bisan wala signal.",
+    action: "I-install",
+    ios: "I-tap ang Share, dayon ang Add to Home Screen.",
+    dismiss: "Sa liwat",
+    close: "Sirad-i ang install prompt",
+  },
   player: {
     title: "Ang akon golf",
     nav: {

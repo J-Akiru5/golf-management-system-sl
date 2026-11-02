@@ -57,7 +57,7 @@ export function DemoPairings() {
     : null;
 
   return (
-    <div className="public public-pairings mobile-bar-space">
+    <main className="public public-pairings mobile-bar-space">
       <header className="public-head">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -108,6 +108,6 @@ export function DemoPairings() {
         {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link>
       </p>
       <PlayerBottomBar />
-    </div>
+    </main>
   );
 }

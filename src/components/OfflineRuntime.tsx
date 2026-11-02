@@ -24,9 +24,15 @@ export function OfflineRuntime() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
-    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {
-      // An install failure leaves the app online-only; it must not break the page.
-    });
+    const build = [process.env.NEXT_PUBLIC_APP_VERSION, process.env.NEXT_PUBLIC_APP_COMMIT]
+      .filter(Boolean)
+      .join("-");
+    const version = build || "v1";
+    void navigator.serviceWorker
+      .register(`/sw.js?v=${encodeURIComponent(version)}`, { scope: "/" })
+      .catch(() => {
+        // An install failure leaves the app online-only; it must not break the page.
+      });
   }, []);
 
   useEffect(() => {

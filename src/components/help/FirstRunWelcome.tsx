@@ -81,7 +81,8 @@ export function FirstRunWelcome({
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
+              size="icon"
+              className="size-11"
               aria-label={t("common.close")}
               onClick={done}
             >
@@ -98,7 +99,7 @@ export function FirstRunWelcome({
             ))}
           </ul>
           <div className="mt-1 flex justify-end">
-            <Button type="button" variant="primary" onClick={done}>
+            <Button type="button" variant="primary" className="h-11" onClick={done}>
               {helpText(panel.button, t)}
             </Button>
           </div>

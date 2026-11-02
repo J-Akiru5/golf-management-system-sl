@@ -72,12 +72,17 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "TeeLine",
-    statusBarStyle: "default",
+    // The player header is forest; a translucent status bar blends it into the app
+    // instead of leaving a white strip above a dark header.
+    statusBarStyle: "black-translucent",
   },
 };
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Without this, env(safe-area-inset-*) is always zero and the bottom bar
+  // cannot fill the home-indicator area on an installed iPhone app.
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#073d2e" },
     { media: "(prefers-color-scheme: dark)", color: "#171c19" },
