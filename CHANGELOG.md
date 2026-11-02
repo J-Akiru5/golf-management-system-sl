@@ -9,7 +9,11 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+- **The brand wordmarks are outlined.** `public/brand/teeline-logo*.svg` no longer draw "TeeLine" and
+  "GOLF" with a `<text>` element, so they render the same on a machine without Manrope. The light
+  descriptor now uses `#755719`, matching the React component. High-resolution PNG exports and a
+  usage sheet are in `docs/brand`. No visual change on the site and no migration.
 
 ## [0.27.0] - 2026-11-02
 
