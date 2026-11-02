@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { PasswordStrengthField } from "@/components/auth/PasswordStrengthField";
 import { signUpWithPassword } from "@/lib/auth/actions";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password-strength";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+export const metadata: Metadata = { title: "Create an account" };
 
 const ERRORS: Record<string, string> = {
   name_required: "Enter the name you want on the account.",
@@ -52,7 +55,6 @@ export default async function SignUpPage({
                 type="text"
                 autoComplete="name"
                 required
-                autoFocus
                 defaultValue={params.email ? undefined : undefined}
               />
             </label>

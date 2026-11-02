@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { I18nProvider } from "@/lib/i18n/context";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -16,7 +17,10 @@ export default async function PublicLayout({ children }: { children: ReactNode }
   const { locale } = await getI18n();
   return (
     <div lang={locale}>
-      <I18nProvider locale={locale}>{children}</I18nProvider>
+      <I18nProvider locale={locale}>
+        {children}
+        <InstallPrompt />
+      </I18nProvider>
     </div>
   );
 }

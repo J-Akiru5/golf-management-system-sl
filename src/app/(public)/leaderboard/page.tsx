@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { Avatar } from "@/components/bits";
 import { HelpButton } from "@/components/help";
+import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { ResultTable } from "@/components/public/LeaderboardResults";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import {
   loadPublicPhotos,
@@ -8,59 +10,14 @@ import {
   loadRoundResults,
   PublicResultRow,
 } from "@/lib/data/public-results";
-import { publicPhotoUrl } from "@/lib/photo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 
+export const metadata: Metadata = { title: "Leaderboard" };
 export const dynamic = "force-dynamic";
 
 const dateLabel = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-PH", { dateStyle: "long" });
-
-function ResultTable({ title, rows }: { title: string; rows: PublicResultRow[] }) {
-  return (
-    <section className="card grid gap-3">
-      <h2 className="text-[18px] leading-6">{title}</h2>
-      {rows.length === 0 ? (
-        <p className="muted text-[14px]">No published {title.toLowerCase()} results yet.</p>
-      ) : (
-        <div className="table-wrap !shadow-none">
-          <table>
-            <thead>
-              <tr>
-                <th className="num">#</th>
-                <th>Player</th>
-                <th>Flight</th>
-                <th className="num">Points</th>
-                <th className="num">Strokes</th>
-                <th className="num">Holes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr key={`${row.playerId ?? row.playerName}-${index}`}>
-                  <td className="num">{index + 1}</td>
-                  <td>
-                    <span className="who">
-                      <Avatar name={row.playerName} photo={publicPhotoUrl(row.photoPath)} />
-                      <span>{row.playerName}</span>
-                    </span>
-                  </td>
-                  <td>{row.flightName ?? "—"}</td>
-                  <td className="num">{row.points}</td>
-                  <td className="num">{row.strokes ?? "—"}</td>
-                  <td className="num">
-                    {row.holesCounted}/{row.holesTotal || "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
 
 export default async function LeaderboardPage({
   searchParams,
@@ -70,7 +27,7 @@ export default async function LeaderboardPage({
   const params = await searchParams;
   if (!isSupabaseConfigured()) {
     return (
-      <div className="public public-pairings mobile-bar-space">
+      <main className="public public-pairings mobile-bar-space">
         <header className="public-head">
           <TeeLineLogo variant="reverse" width={172} />
           <h1 className="mt-4 font-serif text-[34px] leading-10 font-semibold !text-on-forest">
@@ -80,7 +37,8 @@ export default async function LeaderboardPage({
         <div className="notice" role="status">
           The public leaderboard is available when the club is connected to its event database.
         </div>
-      </div>
+        <PlayerBottomBar />
+      </main>
     );
   }
 
@@ -111,7 +69,7 @@ export default async function LeaderboardPage({
   }
 
   return (
-    <div className="public public-pairings mobile-bar-space">
+    <main className="public public-pairings mobile-bar-space">
       <header className="public-head">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -124,17 +82,14 @@ export default async function LeaderboardPage({
           <HelpButton audience="player" screen="pairings" />
         </div>
         {board && (
-          <>
-            <p className="overline mt-3 !text-gold">
-              {board.round.state === "final" ? "Final" : "Provisional"} · Day{" "}
-              {board.round.dayNumber}
-            </p>
-            <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-              {board.round.eventName}
-            </h1>
-            <p className="text-on-forest-muted">{dateLabel(board.round.playDate)}</p>
-          </>
+          <p className="overline mt-3 !text-gold">
+            {board.round.state === "final" ? "Final" : "Provisional"} · Day {board.round.dayNumber}
+          </p>
         )}
+        <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
+          {board ? board.round.eventName : "Leaderboard"}
+        </h1>
+        {board && <p className="text-on-forest-muted">{dateLabel(board.round.playDate)}</p>}
       </header>
 
       {failure ? (
@@ -176,6 +131,7 @@ export default async function LeaderboardPage({
           )}
         </div>
       )}
-    </div>
+      <PlayerBottomBar />
+    </main>
   );
 }

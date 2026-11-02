@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { FirstRunWelcome, HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { SignOutForm } from "@/components/SignOutForm";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { I18nProvider } from "@/lib/i18n/context";
@@ -49,6 +50,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
         <main className="public mobile-bar-space">{children}</main>
         <FirstRunWelcome audience="player" />
         <PlayerBottomBar />
+        <InstallPrompt />
       </div>
     </I18nProvider>
   );

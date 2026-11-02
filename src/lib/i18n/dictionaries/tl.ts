@@ -11,6 +11,14 @@ export const tl: Dictionary = {
     print: "I-print",
     close: "Isara",
   },
+  install: {
+    title: "I-install ang TeeLine",
+    body: "Ilagay ang entry at pairings nang isang tap lang. Basahin pa rin ang huling screen kahit walang signal.",
+    action: "I-install",
+    ios: "I-tap ang Share, pagkatapos ang Add to Home Screen.",
+    dismiss: "Mamaya na",
+    close: "Isara ang install prompt",
+  },
   player: {
     title: "Ang golf ko",
     nav: {
