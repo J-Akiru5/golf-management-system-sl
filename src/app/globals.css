@@ -1868,6 +1868,12 @@
   display: block;
   height: auto;
 }
+/* The lockup now carries the symbol beside the wordmark, so it is wider for the same type size. */
+@media (min-width: 900px) {
+  .site-brand svg {
+    width: 268px;
+  }
+}
 .site-nav-links {
   display: flex;
   align-items: center;
