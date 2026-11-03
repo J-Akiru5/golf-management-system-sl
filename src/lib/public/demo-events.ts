@@ -25,5 +25,6 @@ export function demoOpenEvents(today: string): PublicEvent[] {
       firstTeeTime: t.config.firstTeeTime,
       cutOffDate: t.cutOffDate,
       entered: entries.filter((e) => e.tournamentId === t.id).length,
+      entriesOpen: true,
     }));
 }

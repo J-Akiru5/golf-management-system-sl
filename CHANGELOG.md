@@ -9,7 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **The landing page keeps showing an event after its entries close.** `public_events()` lists the
+  events the club has announced, including ones whose entries have closed, and says whether the entry
+  form still applies. The carousel shows "Entries closed" and a pairings link instead of an entry
+  button, and the hero drops "Open for entry now". An event stays listed until a week after its last
+  playing day. Migration `20261103000000_public_events_entries_closed.sql` is **not applied to the
+  live project yet**; until it is, the page falls back to `public_open_events()` and behaves as before.
+  No data change.
 
 ## [0.27.1] - 2026-11-02
 

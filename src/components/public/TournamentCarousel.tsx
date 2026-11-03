@@ -92,9 +92,13 @@ export function TournamentCarousel({ events, today }: { events: PublicEvent[]; t
       <div className="strip-head">
         <h2 id="tournament-strip-title">
           <span aria-hidden="true" />
-          {events.length === 1
-            ? "1 event open for entry"
-            : `${events.length} events open for entry`}
+          {events.every((e) => e.entriesOpen)
+            ? events.length === 1
+              ? "1 event open for entry"
+              : `${events.length} events open for entry`
+            : events.length === 1
+              ? "1 event"
+              : `${events.length} events`}
         </h2>
         {slides.length > 1 && (
           <div className="strip-controls">
@@ -171,10 +175,17 @@ export function TournamentCarousel({ events, today }: { events: PublicEvent[]; t
                   <UsersRound aria-hidden="true" />
                   <span>{enteredLabel(event.entered)}</span>
                 </p>
-                <p className={`strip-cutoff${urgent ? " urgent" : ""}`}>{cutOffLabel(days)}</p>
+                {event.entriesOpen ? (
+                  <p className={`strip-cutoff${urgent ? " urgent" : ""}`}>{cutOffLabel(days)}</p>
+                ) : (
+                  <p className="strip-cutoff">Entries closed</p>
+                )}
               </div>
-              <Link className="strip-cta" href={`/enter/${event.tournamentId}`}>
-                Enter <ArrowRight aria-hidden="true" />
+              <Link
+                className="strip-cta"
+                href={event.entriesOpen ? `/enter/${event.tournamentId}` : "/pairings"}
+              >
+                {event.entriesOpen ? "Enter" : "Pairings"} <ArrowRight aria-hidden="true" />
               </Link>
             </>
           ) : (
