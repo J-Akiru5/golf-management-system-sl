@@ -7,7 +7,7 @@ import { MotionLayer } from "@/components/public/MotionLayer";
 import { TournamentCarousel } from "@/components/public/TournamentCarousel";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
-import { loadPublicOpenEvents } from "@/lib/data/supabase/public-events";
+import { loadPublicEvents } from "@/lib/data/supabase/public-events";
 import { demoOpenEvents } from "@/lib/public/demo-events";
 import {
   cutOffLabel,
@@ -50,7 +50,7 @@ function todayInManila(): string {
 async function openEvents(today: string): Promise<PublicEvent[]> {
   if (!isSupabaseConfigured()) return demoOpenEvents(today);
   try {
-    return (await loadPublicOpenEvents(createSupabasePublicClient())) ?? [];
+    return (await loadPublicEvents(createSupabasePublicClient())) ?? [];
   } catch {
     return [];
   }
@@ -233,7 +233,11 @@ export default async function HomePage() {
         <div className="hero-content">
           <p className="hero-eyebrow">
             <span aria-hidden="true" />{" "}
-            {featured ? "Open for entry now" : "A calmer way to run tournament day"}
+            {featured
+              ? featured.entriesOpen
+                ? "Open for entry now"
+                : "Entries closed"
+              : "A calmer way to run tournament day"}
           </p>
           {featured ? (
             <>
@@ -262,12 +266,15 @@ export default async function HomePage() {
             </>
           )}
           <div className="hero-actions">
-            {featured && (
+            {featured && featured.entriesOpen && (
               <Link className="button-light" href={`/enter/${featured.tournamentId}`}>
                 Enter this event <ArrowRight aria-hidden="true" />
               </Link>
             )}
-            <Link className={featured ? "button-quiet" : "button-light"} href="/pairings">
+            <Link
+              className={featured?.entriesOpen ? "button-quiet" : "button-light"}
+              href="/pairings"
+            >
               View published pairings <ArrowRight aria-hidden="true" />
             </Link>
             <a className="button-quiet" href="#experience">

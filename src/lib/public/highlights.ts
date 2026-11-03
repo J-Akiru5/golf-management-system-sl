@@ -19,6 +19,12 @@ export interface PublicEvent {
   cutOffDate: string;
   /** Confirmed entries only. */
   entered: number;
+  /**
+   * True while the club still takes entries. An event stays visible after its entries close, so the
+   * landing page can show the tournament during the week it is played; this flag is what stops the
+   * page offering an entry link that no longer works.
+   */
+  entriesOpen: boolean;
 }
 
 const MONTHS = [

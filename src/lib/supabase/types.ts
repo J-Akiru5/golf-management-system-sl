@@ -993,6 +993,12 @@ export interface Database {
       };
       public_registration_form: { Args: { p_tournament: string }; Returns: Json };
       /**
+       * Everything a signed-out visitor may see about an event, including events whose entries have
+       * closed. `entriesOpen` says whether the entry form still applies. Added by hand with
+       * 20261103000000_public_events_entries_closed.sql.
+       */
+      public_events: { Args: Record<string, never>; Returns: Json };
+      /**
        * The events a signed-out visitor may see: open, cut-off not passed. Added by hand with
        * 20261033000000_public_open_events.sql, which is not applied to the live project yet, so
        * `supabase gen types typescript` cannot produce it. Remove this comment when it can.

@@ -12,6 +12,7 @@ const good = {
   firstTeeTime: "06:30",
   cutOffDate: "2026-11-01",
   entered: 87,
+  entriesOpen: false,
 };
 
 describe("toPublicEvent", () => {
@@ -44,6 +45,7 @@ describe("toPublicEvent", () => {
       firstTeeTime: "",
       cutOffDate: "",
       entered: 0,
+      entriesOpen: true,
     });
   });
 
@@ -52,6 +54,16 @@ describe("toPublicEvent", () => {
     expect(toPublicEvent({ ...good, entered: 12.7 })?.entered).toBe(12);
     expect(toPublicEvent({ ...good, entered: "19" })?.entered).toBe(19);
     expect(toPublicEvent({ ...good, entered: "many" })?.entered).toBe(0);
+  });
+
+  it("keeps a closed event, so the page can still show it during tournament week", () => {
+    expect(toPublicEvent({ ...good, entriesOpen: false })?.entriesOpen).toBe(false);
+    expect(toPublicEvent({ ...good, entriesOpen: true })?.entriesOpen).toBe(true);
+  });
+
+  it("treats a payload without the flag as open, which is what the older function meant", () => {
+    const { entriesOpen: _dropped, ...legacy } = good;
+    expect(toPublicEvent(legacy)?.entriesOpen).toBe(true);
   });
 
   it("filters a dates list down to strings", () => {
@@ -72,6 +84,7 @@ describe("toPublicEvent", () => {
       "cutOffDate",
       "dates",
       "entered",
+      "entriesOpen",
       "firstTeeTime",
       "name",
       "startFormat",
