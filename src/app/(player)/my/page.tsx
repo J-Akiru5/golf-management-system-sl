@@ -25,15 +25,7 @@ const claimNotice = (t: Translate, code: string): { tone: "ok" | "bad"; text: st
   return message ? { tone: "bad", text: message } : null;
 };
 
-function ClaimCard({
-  t,
-  notice,
-  defaultName,
-}: {
-  t: Translate;
-  notice: string | null;
-  defaultName: string;
-}) {
+function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
   return (
     <section className="card grid gap-4" aria-labelledby="claim-h" data-help="my-claim">
       <div className="grid gap-1">
@@ -51,12 +43,12 @@ function ClaimCard({
 
       <form action={claimPlayerRecord} className="grid gap-3.5 sm:max-w-[26rem]">
         <label className="field">
-          <span>{t("player.claim.name")}</span>
-          <input name="name" type="text" autoComplete="name" defaultValue={defaultName} />
+          <span>{t("player.claim.ngapId")}</span>
+          <input name="ngapId" type="text" inputMode="numeric" autoComplete="off" />
         </label>
         <label className="field">
-          <span>{t("player.claim.ngapId")}</span>
-          <input name="ngapId" type="text" inputMode="numeric" />
+          <span>{t("player.claim.birthdate")}</span>
+          <input name="birthdate" type="date" autoComplete="bday" />
         </label>
         <p className="hint">{t("player.claim.help")}</p>
         <button type="submit" className="btn justify-self-start">
@@ -72,19 +64,17 @@ function PortalBody({
   state,
   notice,
   linkedMessage,
-  defaultName,
 }: {
   t: Translate;
   state: PortalState;
   notice: string | null;
   linkedMessage: string | null;
-  defaultName: string;
 }) {
   if (!state.linked || !state.player) {
     return (
       <div className="grid gap-4" data-help="my-entry">
         <PlayerOfflineNotice />
-        <ClaimCard t={t} notice={notice} defaultName={defaultName} />
+        <ClaimCard t={t} notice={notice} />
       </div>
     );
   }
@@ -141,18 +131,5 @@ export default async function MyGolfPage({
     );
   }
 
-  const displayName =
-    typeof user.user.user_metadata?.display_name === "string"
-      ? user.user.user_metadata.display_name
-      : "";
-
-  return (
-    <PortalBody
-      t={t}
-      state={state}
-      notice={notice}
-      linkedMessage={linkedMessage}
-      defaultName={displayName}
-    />
-  );
+  return <PortalBody t={t} state={state} notice={notice} linkedMessage={linkedMessage} />;
 }

@@ -40,8 +40,9 @@ export default async function SignUpPage({
       title="Create an account"
       intro={
         <>
-          One account, for your own entry and your tee time. We match your name to your club record
-          automatically; if we cannot, the desk can link it for you.
+          One account, for your own entry and your tee time. After you sign in, link your club
+          record with your NGAP number and birthdate. If that does not work, the desk can link it
+          for you.
         </>
       }
     >

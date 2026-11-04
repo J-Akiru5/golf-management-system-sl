@@ -89,22 +89,23 @@ export const hil: Dictionary = {
     noEntries:
       "Wala pa sang entry nga nakarekord para sa imo. Mag-entry paagi sa link nga ginpadala sang club, ukon pamangkuta ang club nga idugang ka sa event.",
     claim: {
-      heading: "I-link ang imo record sa club",
-      body: "Ini nga account wala pa naka-link sa isa ka member record, gani wala pa sang maipakita. I-link ini isa ka beses: i-compare sang club ang imo ginbutang sa listahan sang mga miyembro, pareho sang ginahimo sang entry form.",
-      name: "Bug-os nga ngalan, suno sa record sang club",
-      ngapId: "NGAP number (kon alam mo)",
-      help: "Ang ngalan nga naga-match sa kapin sa isa ka miyembro ginadumili, indi ginahulaan, gani ang NGAP number ang nagasolbar.",
-      submit: "I-link ang akon record",
-      linked: "Naka-link na ang imo member record sa sini nga account.",
+      heading: "Indi mo makita ang entry mo?",
+      body: "Gina-link lang namon ang record kon makumpirmar nga imo ini. Isulat ang NGAP number kag birthdate nga ara sa record sang club. Kon ang email sang account nga ini amo ang ara sa imo record, bayai nga blangko ang duha ka field kag pinduta ang Pangitaa ang akon entry.",
+      ngapId: "NGAP number",
+      birthdate: "Birthdate sa record sang club",
+      help: "Kinahanglan ang duha ka field agod mag-match. Ang ngalan lang hay pampubliko kag indi na ini mag-link sang record. Kon wala sang mag-match sa duha, ipasugot sa desk nga i-link ang imo entry.",
+      submit: "Pangitaa ang akon entry",
+      linked: "Naka-link na ang imo member record. Ara sa idalom ang imo mga entry.",
       notReady:
         "Wala pa bukas ang player area para sa sini nga project. Kinahanglan nga i-apply anay sang club ang player portal migration.",
       failed: "Wala ma-link ang imo record subong. Tilawi liwat sa madali.",
-      invalid: "Isulat ang bug-os nga ngalan, ukon ang NGAP number mo.",
+      invalid:
+        "Isulat nga dungan ang NGAP number kag birthdate, ukon bayai nga blangko ang duha agod mag-match sa email sang account nga ini.",
       tooLong: "Lawig pa ini sa record sang club. Susiha kag tilawi liwat.",
       ambiguous:
-        "Kapin sa isa ka member record ang naga-match. Idugang ang NGAP number mo agod maipahayag sang club ang kinalain.",
+        "Kapin sa isa ka member record ang naga-match. Gamita ang NGAP number kag birthdate mo agod maipahayag sang club ang kinalain.",
       noMatch:
-        "Wala sang member record nga naga-match sa amo nga detalye. Ipasugot sa club nga idugang ka, ukon mag-entry paagi sa link sang event.",
+        "Wala namon makumpirmar ang imo identity sa amo nga detalye. Ipasugot sa desk nga i-link ang imo entry.",
       taken: "Naka-link na ang amo nga member record sa iban nga account. Ipasusi ini sa club.",
       signedOut: "Tapos na ang imo session. Mag-sign in liwat.",
       alreadyLinked: "Naka-link na ang imo member record sa sini nga account.",
@@ -257,7 +258,7 @@ export const hil: Dictionary = {
         notListed:
           "Kon wala pa ang imo grupo sa ginpahayag nga listahan, ginapahayag ini sa card. Ang club ang nagapili kon san-o ilab-ot ang pairing.",
         claim:
-          "Wala sing sulod? I-link ang imo record sa club paagi sa bug-os nga ngalan ukon ang NGAP number mo.",
+          "Wala sing sulod? I-link ang imo record sa club paagi sa NGAP number kag birthdate mo. Kon indi ini mag-obra, sarang ma-link sang desk para sa imo.",
         link: "Isa lang ka tap ang bug-os nga listahan sang mga player sa pairings page.",
       },
       pairings: {

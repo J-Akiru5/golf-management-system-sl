@@ -89,22 +89,23 @@ export const tl: Dictionary = {
     noEntries:
       "Wala ka pang entry sa talaan. Mag-entry gamit ang link na ipinadala ng club, o pakiusapan ang club na idagdag ka sa event.",
     claim: {
-      heading: "I-link ang record mo sa club",
-      body: "Hindi pa naka-link ang account na ito sa isang member record, kaya wala pang maipapakita. I-link ito nang isang beses: itutugma ng club ang ilalagay mo sa listahan ng miyembro, tulad ng ginagawa ng entry form.",
-      name: "Buong pangalan, ayon sa record ng club",
-      ngapId: "NGAP number (kung alam mo)",
-      help: "Ang pangalang tumutugma sa mahigit isang miyembro ay tinatanggihan, hindi hinuhulaan, kaya ang NGAP number ang nagpapasya.",
-      submit: "I-link ang record ko",
-      linked: "Naka-link na ang member record mo sa account na ito.",
+      heading: "Hindi mo makita ang entry mo?",
+      body: "Nili-link lang namin ang record kapag nakumpirma na ito ay sa iyo. Ilagay ang NGAP number at birthdate na nasa record ng club. Kung nakatala na sa record mo ang email ng account na ito, iwanang blangko ang dalawang field at pindutin ang Hanapin ang entry ko.",
+      ngapId: "NGAP number",
+      birthdate: "Birthdate sa record ng club",
+      help: "Kailangan ang dalawang field para tumugma. Ang pangalan lang ay pampubliko at hindi na nagli-link ng record. Kung wala sa dalawa ang tumugma, pakiusapan ang desk na i-link ang entry mo.",
+      submit: "Hanapin ang entry ko",
+      linked: "Naka-link na ang member record mo. Nasa ibaba ang mga entry mo.",
       notReady:
         "Hindi pa bukas ang player area para sa project na ito. Kailangan munang i-apply ng club ang player portal migration.",
       failed: "Hindi na-link ang record mo ngayon. Subukan muli mamaya.",
-      invalid: "Ilagay ang buong pangalan, o ang NGAP number mo.",
+      invalid:
+        "Ilagay nang sabay ang NGAP number at birthdate, o iwanang blangko ang dalawa para tumugma sa email ng account na ito.",
       tooLong: "Mas mahaba iyon kaysa sa talaan ng club. Suriin at subukan muli.",
       ambiguous:
-        "Mahigit isang member record ang tumutugma. Idagdag ang NGAP number mo para maipaliwanag ng club ang pagkakaiba.",
+        "Mahigit isang member record ang tumutugma. Gamitin ang NGAP number at birthdate mo para maipaliwanag ng club ang pagkakaiba.",
       noMatch:
-        "Walang member record na tumutugma sa mga detalyeng iyon. Ipagawa sa club na idagdag ka, o mag-entry gamit ang link ng event.",
+        "Hindi namin makumpirma ang pagkakakilanlan mo sa mga detalyeng iyon. Pakiusapan ang desk na i-link ang entry mo.",
       taken: "Naka-link na ang member record na iyon sa ibang account. Ipasuri ito sa club.",
       signedOut: "Nag-expire ang session mo. Mag-sign in muli.",
       alreadyLinked: "Naka-link na ang member record mo sa account na ito.",
@@ -257,7 +258,7 @@ export const tl: Dictionary = {
         notListed:
           "Kung wala pa ang grupo mo sa nailathalang listahan, nakasaad iyon sa card. Ang club ang nagtatakda kung kailan ilalabas ang pairings.",
         claim:
-          "Walang laman? I-link ang record mo sa club gamit ang buong pangalan o ang NGAP number mo.",
+          "Walang laman? I-link ang record mo sa club gamit ang NGAP number at birthdate mo. Kung hindi umubra, maaaring i-link ito ng desk para sa iyo.",
         link: "Isang tap lang ang buong listahan ng players sa pairings page.",
       },
       pairings: {
