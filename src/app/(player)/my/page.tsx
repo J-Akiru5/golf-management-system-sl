@@ -34,7 +34,7 @@ function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
         <h2 id="claim-h" className="text-[18px]">
           {t("player.claim.heading")}
         </h2>
-        <p className="hint">{t("player.claim.body")}</p>
+        <p className="hint">{t("player.claim.notLinked")}</p>
       </div>
 
       {notice && (
@@ -43,20 +43,33 @@ function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
         </p>
       )}
 
-      <form action={claimPlayerRecord} className="grid gap-3.5 sm:max-w-[26rem]">
-        <label className="field">
-          <span>{t("player.claim.ngapId")}</span>
-          <input name="ngapId" type="text" inputMode="numeric" autoComplete="off" />
-        </label>
-        <label className="field">
-          <span>{t("player.claim.birthdate")}</span>
-          <input name="birthdate" type="date" autoComplete="bday" />
-        </label>
-        <p className="hint">{t("player.claim.help")}</p>
+      {/* The account's own verified email is the first proof: no NGAP number needed when the club
+          already holds that address on the record. The database does the match and refuses a shared
+          address rather than guessing. */}
+      <form action={claimPlayerRecord} className="grid gap-2 sm:max-w-[26rem]">
         <button type="submit" className="btn justify-self-start">
-          {t("player.claim.submit")}
+          {t("player.claim.emailSubmit")}
         </button>
+        <p className="hint">{t("player.claim.emailBody")}</p>
       </form>
+
+      <div className="grid gap-3.5 border-t border-line pt-4 sm:max-w-[26rem]">
+        <p className="overline">{t("player.claim.orNgap")}</p>
+        <form action={claimPlayerRecord} className="grid gap-3.5">
+          <label className="field">
+            <span>{t("player.claim.ngapId")}</span>
+            <input name="ngapId" type="text" inputMode="numeric" autoComplete="off" />
+          </label>
+          <label className="field">
+            <span>{t("player.claim.birthdate")}</span>
+            <input name="birthdate" type="date" autoComplete="bday" />
+          </label>
+          <p className="hint">{t("player.claim.help")}</p>
+          <button type="submit" className="btn justify-self-start">
+            {t("player.claim.submit")}
+          </button>
+        </form>
+      </div>
     </section>
   );
 }
@@ -75,9 +88,13 @@ function PortalBody({
   today: string;
 }) {
   if (!state.linked || !state.player) {
+    // Not linked is not a locked door. The player pages stay open and say what is missing; only
+    // the entries wait for the club to link the record.
     return (
       <div className="grid gap-4" data-help="my-entry">
         <PlayerOfflineNotice />
+        <PortalEntries state={state} t={t} linkedMessage={linkedMessage} />
+        <AppTiles t={t} />
         <ClaimCard t={t} notice={notice} />
       </div>
     );

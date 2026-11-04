@@ -148,6 +148,12 @@ export const tl: Dictionary = {
       birthdate: "Birthdate sa record ng club",
       help: "Kailangan ang dalawang field para tumugma. Ang pangalan lang ay pampubliko at hindi na nagli-link ng record. Kung wala sa dalawa ang tumugma, pakiusapan ang desk na i-link ang entry mo.",
       submit: "Hanapin ang entry ko",
+      notLinked:
+        "Naka-sign in ka na. Hindi pa naka-link ang club record mo, kaya wala pang entry na lumalabas dito. Bukas pa rin sa iyo ang app.",
+      emailSubmit: "I-link gamit ang email ng account na ito",
+      emailBody:
+        "Isang tap lang. Kung ang email ng account na ito ang nasa record mo, mai-link ito at lalabas ang mga entry mo sa ibaba.",
+      orNgap: "O patunayan gamit ang NGAP number at birthdate",
       linked: "Naka-link na ang member record mo. Nasa ibaba ang mga entry mo.",
       notReady:
         "Hindi pa bukas ang player area para sa project na ito. Kailangan munang i-apply ng club ang player portal migration.",

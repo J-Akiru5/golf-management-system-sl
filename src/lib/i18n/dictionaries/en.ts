@@ -150,6 +150,12 @@ export const en = {
       birthdate: "Birthdate on the club record",
       help: "Both fields are needed for a match. A name alone is public and no longer links a record. If neither check matches, ask the desk to link your entry.",
       submit: "Find my entry",
+      notLinked:
+        "You're signed in. Your club record is not linked yet, so your entries do not show here. The rest of the app is open to you.",
+      emailSubmit: "Link with this account's email",
+      emailBody:
+        "One tap. If the club has this account's email on your record, the link is made and your entries appear below.",
+      orNgap: "Or prove it with your NGAP number and birthdate",
       linked: "Your club record is linked. Your entries are below.",
       notReady:
         "The player area is not switched on for this project yet. The club has to apply the player portal migration first.",

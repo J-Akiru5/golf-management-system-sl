@@ -148,6 +148,12 @@ export const hil: Dictionary = {
       birthdate: "Birthdate sa record sang club",
       help: "Kinahanglan ang duha ka field agod mag-match. Ang ngalan lang hay pampubliko kag indi na ini mag-link sang record. Kon wala sang mag-match sa duha, ipasugot sa desk nga i-link ang imo entry.",
       submit: "Pangitaa ang akon entry",
+      notLinked:
+        "Naka-sign in ka na. Wala pa naka-link ang imo club record, gani wala pa entry nga makita diri. Bukas gihapon sa imo ang app.",
+      emailSubmit: "I-link gamit ang email sang account nga ini",
+      emailBody:
+        "Isa ka tap lang. Kon ang email sang account nga ini ang ara sa imo record, ma-link ini kag makita ang imo mga entry sa idalom.",
+      orNgap: "Ukon pamatud-i gamit ang NGAP number kag birthdate",
       linked: "Naka-link na ang imo member record. Ara sa idalom ang imo mga entry.",
       notReady:
         "Wala pa bukas ang player area para sa sini nga project. Kinahanglan nga i-apply anay sang club ang player portal migration.",
