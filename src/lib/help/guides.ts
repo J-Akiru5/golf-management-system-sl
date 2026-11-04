@@ -172,6 +172,12 @@ export const DESK_GUIDES: HelpGuide[] = [
     steps: [
       {
         text: literal(
+          "Choose the day of the event to see the players who chose it and the groups they sit in. The draw is made once for the event, so the day narrows the view rather than making a second draw.",
+        ),
+        anchor: "draw-day",
+      },
+      {
+        text: literal(
           "Make the draw when the entries are in. Re-running later keeps every locked group exactly where it is.",
         ),
         anchor: "draw-run",

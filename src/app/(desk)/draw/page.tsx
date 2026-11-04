@@ -9,6 +9,7 @@ import { PublishDialog } from "@/components/draw/PublishDialog";
 
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
 import { NeedsTournament } from "@/components/NeedsTournament";
+import { fmtIso } from "@/lib/data/labels";
 import { dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
@@ -39,6 +40,8 @@ export default function DrawPage() {
     overrides,
     adapters,
     member,
+    entries,
+    days,
   } = desk;
   const draw = desk.draw;
   const config = tournament?.config ?? null;
@@ -54,7 +57,39 @@ export default function DrawPage() {
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const shotgun = config?.startFormat === "shotgun";
+  // The draw is built once for the event, but an event can run over several playing days. The day
+  // selector decides which side of that one draw this screen shows.
+  const playingDays = useMemo(() => days.filter((d) => d.isPlayingDay), [days]);
+  const [day, setDay] = useState<number | null>(null);
+  const dayByPlayer = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const e of entries) m.set(e.playerId, e.selectedDays ?? []);
+    return m;
+  }, [entries]);
+  // A player with no day recorded is never hidden by the filter: only a player who chose other days
+  // is left out, so a missing value cannot make someone disappear from the board.
+  const onDay = useCallback(
+    (playerId: string) => {
+      if (day === null) return true;
+      const chosenDays = dayByPlayer.get(playerId);
+      if (!chosenDays || chosenDays.length === 0) return true;
+      return chosenDays.includes(day);
+    },
+    [day, dayByPlayer],
+  );
+  const chosenDay = playingDays.find((d) => d.dayNumber === day) ?? null;
+  const visibleDraw = draw
+    ? day === null
+      ? draw
+      : draw.filter((g) => g.playerIds.some(onDay))
+    : null;
+  const mixedGroups =
+    day === null ? [] : (visibleDraw ?? []).filter((g) => g.playerIds.some((id) => !onDay(id)));
   const ready = registrations.filter((r) => r.status === "ok").length;
+  const readyOnDay =
+    day === null
+      ? ready
+      : registrations.filter((r) => r.status === "ok" && onDay(r.playerId)).length;
   const provisional = registrations.filter((r) => r.provisional);
   const provisionalCount = provisional.length;
   const onBoard = new Set(draw?.flatMap((g) => g.playerIds) ?? []);
@@ -64,7 +99,7 @@ export default function DrawPage() {
     .filter((item) => item.n > 0)
     .map((item) => `${item.n} without ${item.fact}`)
     .join(", ");
-  const placed = draw?.reduce((n, g) => n + g.playerIds.length, 0) ?? 0;
+  const placed = visibleDraw?.reduce((n, g) => n + g.playerIds.filter(onDay).length, 0) ?? 0;
 
   const issues = useMemo(
     () =>
@@ -204,7 +239,7 @@ export default function DrawPage() {
   // Cards under one heading per wave (shotgun) or per start time (two-tee). Confirmed provisional
   // players get one clearly labelled heading of their own instead of a made-up flight.
   const sections = new Map<string, NonNullable<typeof draw>>();
-  for (const g of draw ?? []) {
+  for (const g of visibleDraw ?? []) {
     const key = isUnclassifiedGroup(g.playerIds, regById)
       ? UNCLASSIFIED_LABEL
       : shotgun
@@ -214,8 +249,10 @@ export default function DrawPage() {
   }
 
   const activeName = active ? playerById.get(active.id)?.name : null;
-  const openSpots = draw ? draw.length * (config?.groupSize ?? 4) - placed : 0;
-  const lockedCount = draw?.filter((g) => g.locked).length ?? 0;
+  const groupSize = config?.groupSize ?? 4;
+  const openSpots =
+    visibleDraw?.reduce((n, g) => n + Math.max(groupSize - g.playerIds.length, 0), 0) ?? 0;
+  const lockedCount = visibleDraw?.filter((g) => g.locked).length ?? 0;
   const manualOverrideIds = new Set(
     overrides.filter((o) => o.kind === "move" && o.playerId).map((o) => o.playerId),
   );
@@ -240,8 +277,13 @@ export default function DrawPage() {
           <p className="overline">Draw &amp; pairings</p>
           <h1>{shotgun ? "Shotgun draw" : "Two-tee draw"}</h1>
           <p className="muted">
-            {tournament.name} ·{" "}
-            {new Date(`${config.date}T00:00:00`).toLocaleDateString("en-PH", { dateStyle: "long" })}{" "}
+            {tournament.name} · {chosenDay ? `${chosenDay.label} · ` : ""}
+            {new Date(`${chosenDay?.playDate ?? config.date}T00:00:00`).toLocaleDateString(
+              "en-PH",
+              {
+                dateStyle: "long",
+              },
+            )}{" "}
             · {shotgun ? "Shotgun start" : "Two-tee start"}
           </p>
           <div className="row" aria-live="polite">
@@ -332,6 +374,24 @@ export default function DrawPage() {
               ))}
             </select>
           </label>
+          {playingDays.length > 0 && (
+            <label className="field !gap-1">
+              <span className="overline !text-[10px]">Day of the event</span>
+              <select
+                value={day ?? ""}
+                onChange={(e) => setDay(e.target.value === "" ? null : Number(e.target.value))}
+                className="!w-auto"
+                data-help="draw-day"
+              >
+                <option value="">All playing days</option>
+                {playingDays.map((d) => (
+                  <option key={d.id} value={d.dayNumber}>
+                    {d.label} · {fmtIso(d.playDate)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             className="btn ghost"
@@ -344,6 +404,16 @@ export default function DrawPage() {
             A re-run keeps every locked group exactly where it is and re-proposes the rest. It does
             not take the published list down.
           </span>
+          {day !== null && (
+            <p className="hint w-full">
+              Showing {chosenDay?.label ?? "one day"} only: {visibleDraw?.length ?? 0} group
+              {(visibleDraw?.length ?? 0) === 1 ? "" : "s"}, {readyOnDay} ready player
+              {readyOnDay === 1 ? "" : "s"}. The draw is made once for the event, so this narrows
+              the view rather than making a second draw.
+              {mixedGroups.length > 0 &&
+                ` ${mixedGroups.length} group${mixedGroups.length === 1 ? "" : "s"} also hold players from another day.`}
+            </p>
+          )}
         </div>
       )}
 
@@ -421,12 +491,12 @@ export default function DrawPage() {
           <section className="tiles" aria-label="Draw readiness">
             <div className="tile">
               <b className="mono">
-                {placed}/{ready}
+                {placed}/{readyOnDay}
               </b>
               <span>Ready players in a group</span>
             </div>
             <div className="tile">
-              <b className="mono">{draw.length}</b>
+              <b className="mono">{visibleDraw?.length ?? 0}</b>
               <span>Groups{lockedCount ? ` (${lockedCount} locked)` : ""}</span>
             </div>
             {provisionalCount > 0 && (
@@ -464,6 +534,13 @@ export default function DrawPage() {
           <button type="button" className="btn small" onClick={() => setActive(null)}>
             Cancel
           </button>
+        </div>
+      )}
+
+      {draw && day !== null && (visibleDraw?.length ?? 0) === 0 && (
+        <div className="notice" role="status">
+          No group holds a player who chose {chosenDay?.label ?? "this day"} yet. Choose another
+          day, or “All playing days” to see the whole draw.
         </div>
       )}
 
@@ -542,8 +619,8 @@ export default function DrawPage() {
             <SidePanel
               tab={tab}
               onTab={setTab}
-              draw={draw}
-              unplaced={unplaced}
+              draw={visibleDraw ?? []}
+              unplaced={unplaced.filter((r) => onDay(r.playerId))}
               players={playerById}
               regs={regById}
               names={names}
