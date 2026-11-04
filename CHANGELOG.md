@@ -32,6 +32,9 @@ Supabase project, because the code and the database are released separately.
   past 2.5× would only blur it.
 
 ### Fixed
+- **A phone can sign out again.** The account chip that holds the sign-out button is hidden below
+  768px, and the menu it is replaced by had no account or sign-out at all. The menu now ends with
+  the signed-in name, their role and Sign out, or a sign-in link when the session failed.
 - **The registration desk no longer runs off the right edge.** A card's single column took the
   width of its widest row, so the two-column page pushed the registrations list past the viewport.
   Cards and the list now use a column that can shrink, and a row wraps its actions instead of
