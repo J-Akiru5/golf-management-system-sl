@@ -47,3 +47,12 @@ project's own class folders: `1`..`9`, `blank`, `unreadable` and `x`.
 Set `SCAN_MODEL_INPUT_SIZE`, `SCAN_MODEL_INPUT_CHANNELS`,
 `SCAN_MODEL_INPUT_LAYOUT` and `SCAN_MODEL_INPUT_NORMALIZE` to match the export.
 The service validates a static input shape and refuses a mismatched model.
+
+## Card detection template
+
+`igcc-card-template.npz` is the reference used by feature-based card detection. It
+holds SIFT keypoints and descriptors plus the reference size, not an image, so no
+photograph of a filled card is committed. Rebuild it from a rectified card with
+`python build_card_template.py --card <rectified card>`; a clean blank card is
+preferred, because handwriting adds features that will not match another card.
+Set `SCAN_CARD_TEMPLATE` to point at a different file.

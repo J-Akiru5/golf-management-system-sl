@@ -10,6 +10,17 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **The card is found by matching the printed card, not by guessing a rectangle.** The photo is
+  matched against one stored reference card with SIFT and a RANSAC homography, and the result is
+  validated against the printed table before any cell is cropped. On the 111 raw photos the old
+  detector missed 14 and misaligned all 97 that it found; the new one finds 111 with a median
+  corner error of 7.8 px (98 within 20 px, 109 within 40 px). A detection that cannot be aligned to
+  the table is refused as `card_not_detected` with the reason, so a wrong quadrilateral can no
+  longer produce digits from the wrong ink. The scan response now carries `confidence`, `decision`,
+  `alignment`, `featureInliers`, `reasons` and `quality`, and `detectedBy` can be
+  `template_features`. The reference is stored as keypoints, not as a photo, and is rebuilt with
+  `scripts/scan/build_card_template.py`. Raw-photo digit accuracy is still not production ready:
+  the model's 4/5/6 drift remains, so the desk review step stays.
 - **Waves follow the field, and each player can be put in one.** The tee-times screen used to offer
   exactly three wave times. It now lists every wave the day actually has: the field size gives the
   floor (one group on every hole fills a wave), the draw adds any extra wave it used to keep a

@@ -291,3 +291,105 @@ correct a cell.
    known card.
 5. Only then set `SCAN_INFERENCE_URL` in the app environment. Keep the desk review
    and the ordinary approval step.
+
+## Card detection and rectification (November 2026)
+
+The detector was replaced. The old one took the largest contour that happened to
+approximate a 1.8 quad and never checked whether the warp lined up with the printed
+table. On the 111 raw photos it could not find the card on 14, fell back to the
+printed table on 66, and every one of the 97 comparable warps was misaligned: the
+median grid alignment score was 0.29 against 0.84 for the reference warps, so the
+cropped cells held the wrong ink.
+
+Detection is now three steps, and each one is measurable on its own:
+
+1. **Template features** (`igcc_scan/features.py`). The card is a fixed printed
+   object, so the photo is matched against one stored reference card with SIFT and a
+   RANSAC homography. The reference is stored as keypoints and descriptors
+   (`models/igcc-card-template.npz`), not as an image, so no filled card photo is
+   committed. Regenerate it with `python build_card_template.py --card <rectified
+   card>`; point `SCAN_CARD_TEMPLATE` at another file to use a different card.
+2. **Geometric fallback** (`igcc_scan/detect.py`). Without a template, every
+   card-shaped and table-shaped quadrilateral from several edge maps is proposed,
+   and the printed-table proposals are projected back to the card frame.
+3. **Validation** (`igcc_scan/align.py`, `igcc_scan/quads.py`). Candidates are ranked
+   by a projection alignment score: the printed ink is projected onto the row and
+   column axes and correlated with the template's line positions, smoothed so the
+   score degrades with misalignment instead of saturating. Geometry (convexity,
+   corner angles, aspect, area), edge support, sharpness and glare are checked too.
+
+The score thresholds are calibrated on the raw photo set: reference warps score
+0.41-0.53, a warp onto the wrong rectangle scores -0.06 to 0.13.
+
+| Outcome | Meaning | Service behaviour |
+| --- | --- | --- |
+| `accept` | alignment >= 0.36, clean geometry | reads the card; `raw.card.confidence = high` |
+| `confirm` | alignment 0.24-0.36, or a quality warning | reads the card, asks the desk to confirm the corners |
+| `retake` | alignment 0.16-0.24 | HTTP 422 `card_not_detected` with the reasons |
+| `reject` | alignment < 0.16 or implausible geometry | HTTP 422 `card_not_detected` with the reasons |
+
+The scan response gains `raw.card.confidence`, `decision`, `alignment`,
+`alignmentMargin`, `featureInliers`, `reasons` and `quality` (sharpness, glare,
+brightness). `detectedBy` is now one of `template_features`, `card`, `table`,
+`prewarped` or `corners`. `card_not_detected` now names the reason instead of saying
+only that nothing was found.
+
+### Measured on the 111 raw photos
+
+`python eval_detection.py --photos ../../.tmp/scorecard-samples/raw --reference
+../../.tmp/card-gt.json` compares against independent corners matched from the
+reference warps:
+
+- matched: 111/111 (before: 97/111, 14 not found)
+- decisions: 108 accept, 2 confirm, 1 reject; none accepted with a corner error
+  above 80 px
+- corner error: median 7.8 px, 98/111 within 20 px, 109/111 within 40 px,
+  111/111 within 80 px
+- alignment score: median 0.489 (reference warps: 0.31-0.48)
+- 0.2-0.3 s per photo
+
+### End-to-end digits are not production ready yet
+
+`python eval_end_to_end.py --photos ../../.tmp/scorecard-samples/raw --reference
+../../.tmp/scorecard-samples/prepared/rectified_v2 --limit 30` reads the raw photo
+and its reference warp with the same model and compares all 72 cells. All 30 photos
+passed detection (0 rejected), but only 0.236 of cells matched on the median card
+(worst 0.125, best 0.931) and no card matched on every cell. The rectification is
+not the cause: the raw warp's printed table sits within a few pixels of the template
+(`tableLevelled` true, `tableQuad` within ~6 px) and scores higher than the reference
+warp. The readings differ because the model drifts on these photos: it reads 3 where
+the card says 4 or 5, and it reports low digits on empty cells. That is the same
+4/5/6 confusion noted above.
+
+So: raw-photo **detection and rectification** are usable, and the reader now refuses
+a card it cannot align instead of returning digits from the wrong ink. Raw-photo
+**digit accuracy** still needs a better model (a training set of the real card under
+real phone conditions) before this is claimed as production ready. The desk review
+step stays.
+
+### Learned detector (YOLOv8 segmentation): workflow, not trained
+
+A learned detector is the right answer only if the geometric path is not enough on
+new photos. It is **not trained here**: there are no annotated full scorecard photos,
+and the digit-cell crops are a different task and must not be reused. No YOLO metrics
+are reported because there is no held-out annotated set to measure them on.
+
+The workflow to prepare one:
+
+1. Collect raw photos, one directory per physical photograph. Consent rules apply;
+   keep the private original and the public copy separate, as for every other photo.
+2. Annotate each photo with one polygon per card (YOLOv8 segmentation, four points in
+   TL, TR, BR, BL order, single class `scorecard`). Export as
+   `labels/<stem>.txt` with `class x1 y1 x2 y2 ...` normalised to the image size.
+3. Split by photograph, never by crop or augmented copy; augmentation happens only
+   inside the training split.
+4. `yolo segment train model=yolov8n-seg.pt data=igcc-cards.yaml imgsz=1024 epochs=100`
+   then `yolo export model=runs/segment/train/weights/best.pt format=onnx`.
+5. Score it with the same tools as the geometric detector:
+   `python eval_detection.py --photos <dir> --reference <corners.json>`, and compare
+   recall, false positives, corner error and the rectification rate against the
+   template matcher on the same held-out photos before changing the default.
+
+A detector is only worth switching to if it beats the template matcher on unseen
+photos where the printed card is partly covered or the reference card does not match
+the print run.
