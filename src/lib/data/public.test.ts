@@ -167,8 +167,8 @@ describe("toPublicProgramme", () => {
     teePreferences: {},
     selectedDays: [1, 2],
     dayTee: {
-      1: { teeTime: "06:30", startHole: 1, confirmed: true },
-      2: { teeTime: "12:30", startHole: 10, confirmed: false },
+      1: { teeTime: "06:30", startHole: 1, wave: "A", confirmed: true },
+      2: { teeTime: "12:30", startHole: 10, wave: null, confirmed: false },
     },
     declaredWshId: null,
     declaredWshHandicap: null,

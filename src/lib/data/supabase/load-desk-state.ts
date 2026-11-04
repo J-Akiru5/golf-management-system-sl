@@ -327,7 +327,9 @@ export async function loadDeskState(
   const registrationDayNumber = new Map<string, { registrationId: string; dayNumber: number }>();
   const registrationDayRows = await client
     .from("registration_days")
-    .select("id, registration_id, tournament_day_id, selected, tee_time, start_hole, tee_confirmed")
+    .select(
+      "id, registration_id, tournament_day_id, selected, tee_time, start_hole, tee_confirmed, wave",
+    )
     .eq("club_id", clubId)
     .eq("selected", true);
   if (registrationDayRows.error && !missingObject(registrationDayRows.error)) {
@@ -344,11 +346,17 @@ export async function loadDeskState(
       const list = selectedByRegistration.get(row.registration_id) ?? [];
       list.push(day.dayNumber);
       selectedByRegistration.set(row.registration_id, list);
-      if (row.tee_time !== null || row.start_hole !== null || row.tee_confirmed) {
+      if (
+        row.tee_time !== null ||
+        row.start_hole !== null ||
+        row.wave !== null ||
+        row.tee_confirmed
+      ) {
         const assignments = teeByRegistration.get(row.registration_id) ?? {};
         assignments[day.dayNumber] = {
           teeTime: row.tee_time ? row.tee_time.slice(0, 5) : null,
           startHole: row.start_hole,
+          wave: row.wave,
           confirmed: row.tee_confirmed,
         };
         teeByRegistration.set(row.registration_id, assignments);

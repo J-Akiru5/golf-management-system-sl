@@ -1007,13 +1007,14 @@ export function createSupabaseAdapters(
         p_tee_time: assignment.teeTime,
         p_start_hole: assignment.startHole,
         p_confirmed: assignment.confirmed,
+        p_wave: assignment.wave,
       });
       if (error) {
         const missing =
           error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
         throw new Error(
           missing
-            ? "The tee-time assignment needs migration 20261037000000. Nothing was saved."
+            ? "The tee-time assignment needs migration 20261037000000 and its wave column needs 20261104001100. Nothing was saved."
             : `Could not save the tee time: ${error.message}`,
         );
       }

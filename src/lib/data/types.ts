@@ -269,6 +269,8 @@ export interface DayTeeAssignment {
   teeTime: string | null;
   /** Starting hole, or null. */
   startHole: number | null;
+  /** Shotgun wave letter A, B, ... or null when the desk has not put this player in one. */
+  wave: string | null;
   confirmed: boolean;
 }
 

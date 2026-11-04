@@ -10,6 +10,14 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **Waves follow the field, and each player can be put in one.** The tee-times screen used to offer
+  exactly three wave times. It now lists every wave the day actually has: the field size gives the
+  floor (one group on every hole fills a wave), the draw adds any extra wave it used to keep a
+  flight whole, and a wave already written on a player is kept. The batch buttons set the time and
+  the wave together, and each row has its own wave field for the exceptions. The wave is stored on
+  the day assignment, so it survives a reload; it stays internal, because the public page still
+  shows only a confirmed time and hole. The column ships in migration `20261104001100`, which is
+  **not applied** yet.
 - **The reader states its accuracy.** Settings carries a card reader note with the measured figures
   and what they do not mean, and the scan section on `/scores` shows the same two figures in one
   line. The numbers live in one place, so retraining the model updates both screens.

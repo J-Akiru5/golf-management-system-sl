@@ -249,6 +249,7 @@ export type RegistrationDayRow = {
   tee_time: string | null;
   start_hole: number | null;
   tee_confirmed: boolean;
+  wave: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -35,7 +35,6 @@ import {
 } from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
 import { SETUP_SECTIONS, type SetupSection } from "@/lib/data/setup-payload";
-import { waveStartTimes } from "@/lib/data/tee-time";
 import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
 import type { CategoryRule, FlightRule, StartFormat, Tee, TournamentConfig } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -1205,11 +1204,11 @@ function SetupWizard({
                 </div>
                 {draft.config.startFormat === "shotgun" && (
                   <p className="hint">
-                    Waves start at{" "}
-                    {waveStartTimes(draft.config.firstTeeTime, draft.config.waveGapMinutes, 3)
-                      .map((wave) => wave.time)
-                      .join(", ")}
-                    . The tee-times screen uses these times to fill a whole day in one press.
+                    Wave A starts at {draft.config.firstTeeTime}; each later wave starts{" "}
+                    {draft.config.waveGapMinutes} minutes after the one before. The field decides
+                    how many waves a day needs (one group on every hole fills a wave), the draw can
+                    add more to keep a flight whole, and the tee-times screen lists every wave with
+                    a letter to assign.
                   </p>
                 )}
                 <p className="hint">
