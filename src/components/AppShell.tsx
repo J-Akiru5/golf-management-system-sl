@@ -34,7 +34,7 @@ import { AlertsBell } from "@/components/notifications/AlertsBell";
 import { SignOutForm } from "@/components/SignOutForm";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { TournamentSelect } from "@/components/TournamentSelect";
+import { TournamentPicker, TournamentSelect } from "@/components/TournamentSelect";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tip, TooltipProvider } from "@/components/ui/tooltip";
 import { validateDraw } from "@/lib/draw/validate";
@@ -242,6 +242,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Menu className="size-5" />
             </SheetTrigger>
             <SheetContent side="left" title="Menu" description="TeeLine Golf tournament office">
+              <div className="grid gap-1 border-b border-line pb-2">
+                <p className="overline px-1">Event</p>
+                <TournamentPicker onPicked={() => setMenuOpen(false)} />
+              </div>
               <nav aria-label="Main" className="grid gap-1">
                 {nav.filter((n) => n.group !== "more").map((n) => renderNavLink(n, true))}
                 <div className="my-2 border-t border-line" role="presentation" />

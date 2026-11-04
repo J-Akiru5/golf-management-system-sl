@@ -9,13 +9,85 @@ import { cn } from "@/lib/ui/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 /**
+ * The event list on its own, so the header picker and the phone drawer show the same rows and the
+ * same switch. `onPicked` lets a caller close whatever holds the list.
+ */
+export function TournamentPicker({ onPicked }: { onPicked?: () => void }) {
+  const { tournaments, tournament, entries, adapters, status } = useDesk();
+  const demo = status === "demo";
+
+  return (
+    <>
+      <ul className="grid max-h-[50vh] overflow-y-auto p-2" aria-label="Tournaments">
+        {tournaments.map((t) => {
+          const on = t.id === tournament?.id;
+          const count = t.id === tournament?.id ? entries.length : undefined;
+          return (
+            <li key={t.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  adapters.tournaments.select(t.id);
+                  onPicked?.();
+                }}
+                aria-pressed={on}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-[10px] px-3 py-2.5 text-left",
+                  on ? "bg-fairway-soft" : "hover:bg-surface-sunken",
+                )}
+              >
+                <Trophy
+                  className={cn("mt-0.5 size-4 shrink-0", on ? "text-fairway" : "text-ink-muted")}
+                  aria-hidden="true"
+                />
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-[14px]">{t.name}</b>
+                  <span className="hint flex items-center gap-1.5">
+                    <CalendarRange className="size-3.5" aria-hidden="true" />
+                    {fmtRange(t.dates)}
+                    {count !== undefined ? ` · ${count} registration${count === 1 ? "" : "s"}` : ""}
+                  </span>
+                  {t.nameNeedsConfirmation && (
+                    <span className="hint block !text-warning">Name not confirmed yet</span>
+                  )}
+                </span>
+                {on && <Check className="mt-1 size-4 shrink-0 text-fairway" aria-hidden="true" />}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-3 py-2">
+        {demo ? (
+          <button
+            type="button"
+            className="btn small ghost"
+            onClick={() => {
+              adapters.tournaments.select(null);
+              onPicked?.();
+            }}
+            disabled={tournament === null}
+          >
+            Clear selection
+          </button>
+        ) : (
+          <span />
+        )}
+        <Link href="/tournaments" className="btn small ghost">
+          Manage tournaments
+        </Link>
+      </div>
+    </>
+  );
+}
+
+/**
  * The current-tournament selector in the top bar. It switches between the club's events (demo
  * events in the demo build), and in the demo it can clear the selection so the no-tournament empty
  * state is reachable.
  */
 export function TournamentSelect({ overlay }: { overlay: boolean }) {
-  const { tournaments, tournament, entries, adapters, status } = useDesk();
-  const demo = status === "demo";
+  const { tournament } = useDesk();
   const startLabel = tournament
     ? tournament.config.startFormat === "shotgun"
       ? `Shotgun · ${fmtTime(tournament.config.firstTeeTime)}`
@@ -47,66 +119,12 @@ export function TournamentSelect({ overlay }: { overlay: boolean }) {
           <p className="overline">Current tournament</p>
           <p className="hint mt-0.5">
             Switching events switches the board.{" "}
-            {demo
-              ? "Nothing is saved; this demo lives in the browser session only."
-              : "Each event keeps its own registrations and draw."}
+            {tournament
+              ? "Each event keeps its own registrations and draw."
+              : "Pick the event you are working on."}
           </p>
         </div>
-        <ul className="grid max-h-[50vh] overflow-y-auto p-2">
-          {tournaments.map((t) => {
-            const on = t.id === tournament?.id;
-            const count = t.id === tournament?.id ? entries.length : undefined;
-            return (
-              <li key={t.id}>
-                <button
-                  type="button"
-                  onClick={() => adapters.tournaments.select(t.id)}
-                  aria-pressed={on}
-                  className={cn(
-                    "flex w-full items-start gap-3 rounded-[10px] px-3 py-2.5 text-left",
-                    on ? "bg-fairway-soft" : "hover:bg-surface-sunken",
-                  )}
-                >
-                  <Trophy
-                    className={cn("mt-0.5 size-4 shrink-0", on ? "text-fairway" : "text-ink-muted")}
-                    aria-hidden="true"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[14px]">{t.name}</b>
-                    <span className="hint flex items-center gap-1.5">
-                      <CalendarRange className="size-3.5" aria-hidden="true" />
-                      {fmtRange(t.dates)}
-                      {count !== undefined
-                        ? ` · ${count} registration${count === 1 ? "" : "s"}`
-                        : ""}
-                    </span>
-                    {t.nameNeedsConfirmation && (
-                      <span className="hint block !text-warning">Name not confirmed yet</span>
-                    )}
-                  </span>
-                  {on && <Check className="mt-1 size-4 shrink-0 text-fairway" aria-hidden="true" />}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-3 py-2">
-          {demo ? (
-            <button
-              type="button"
-              className="btn small ghost"
-              onClick={() => adapters.tournaments.select(null)}
-              disabled={tournament === null}
-            >
-              Clear selection
-            </button>
-          ) : (
-            <span />
-          )}
-          <Link href="/tournaments" className="btn small ghost">
-            Manage tournaments
-          </Link>
-        </div>
+        <TournamentPicker />
       </PopoverContent>
     </Popover>
   );

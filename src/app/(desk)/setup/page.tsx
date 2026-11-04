@@ -367,7 +367,7 @@ function SetupWizard({
         id="setup-tabs"
         role="tablist"
         aria-label="Setup sections"
-        className="flex scroll-mt-24 flex-wrap gap-2"
+        className="sticky top-[92px] z-20 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px] border border-line bg-surface-raised px-2 py-2 shadow-card"
       >
         {SECTIONS.map(([id, label]) => {
           const active = tab === id;
