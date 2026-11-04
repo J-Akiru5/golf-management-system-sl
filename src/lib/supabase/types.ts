@@ -1018,8 +1018,9 @@ export interface Database {
         Returns: Json;
       };
       current_player_id: { Args: Record<string, never>; Returns: string | null };
+      /** Two factors: NGAP plus birthdate, or the account email when the record holds it. */
       claim_player_record: {
-        Args: { p_name: string | null; p_ngap_id: string | null };
+        Args: { p_ngap_id: string | null; p_birthdate: string | null };
         Returns: Json;
       };
       player_portal_entries: { Args: Record<string, never>; Returns: Json };
