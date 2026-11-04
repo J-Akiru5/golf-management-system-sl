@@ -13,9 +13,11 @@
  *                Tournaments stay reachable without a second menu of their own
  *
  * Player (someone checking their own round):
- *   My golf      their entry and published start
+ *   Home         their entry and published start
+ *   Board        the live leaderboard, with their own row marked
+ *   Card         the scorecards the club has published
  *   Pairings     the full published list
- *   Club home    the way back to the club's page
+ *   Profile      the record the club holds for them
  *
  * Test ids are part of the contract with the "Show me" feature: it navigates to a page and rings
  * one of these controls, so they must not be renamed casually. Labels stay visible; an icon-only
@@ -31,7 +33,8 @@ export type MobileIcon =
   | "menu"
   | "player"
   | "list"
-  | "home";
+  | "home"
+  | "trophy";
 
 interface MobileItemBase {
   label: string;
@@ -45,6 +48,11 @@ export interface MobileLinkItem extends MobileItemBase {
   href: string;
   /** The raised centre action, drawn differently because it starts a task rather than a place. */
   action?: boolean;
+  /**
+   * Matches this path only, not its children. Home needs it: /my is the parent of every player
+   * screen, so without it Home and whichever destination the player opened would both be current.
+   */
+  exact?: boolean;
 }
 
 export interface MobileMoreItem extends MobileItemBase {
@@ -79,17 +87,32 @@ export const DESK_MOBILE_ITEMS: readonly MobileNavItem[] = [
 ] as const;
 
 /**
- * My golf and Pairings are the benchmark's first two. The third is Club home, not Account: there
- * is no account screen today. Signing out sits in the player header and the claim step sits on
- * /my, so an Account tab would either duplicate My golf or open a page that does not exist.
+ * The player app's five destinations: the dashboard, the live board, the cards, the pairings and
+ * the player's own record. Club home moves into the header (the wordmark already goes there) to
+ * make room: five is what the bar holds without shrinking the labels below a readable size.
  */
 export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
   {
     kind: "link",
     href: "/my",
-    label: "My golf",
-    icon: "player",
-    testId: "player-bar-my-golf",
+    label: "Home",
+    icon: "home",
+    testId: "player-bar-home",
+    exact: true,
+  },
+  {
+    kind: "link",
+    href: "/my/board",
+    label: "Board",
+    icon: "trophy",
+    testId: "player-bar-board",
+  },
+  {
+    kind: "link",
+    href: "/my/card",
+    label: "Card",
+    icon: "clipboard",
+    testId: "player-bar-card",
   },
   {
     kind: "link",
@@ -98,7 +121,13 @@ export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
     icon: "list",
     testId: "player-bar-pairings",
   },
-  { kind: "link", href: "/", label: "Club home", icon: "home", testId: "player-bar-home" },
+  {
+    kind: "link",
+    href: "/my/profile",
+    label: "Profile",
+    icon: "player",
+    testId: "player-bar-profile",
+  },
 ] as const;
 
 /** The current page, including a detail page such as /players/abc. */

@@ -48,13 +48,27 @@ describe("desk bottom bar", () => {
 });
 
 describe("player bottom bar", () => {
-  it("is small on purpose: entry, tee time, way home", () => {
-    expect(links(PLAYER_MOBILE_ITEMS).map((item) => item.href)).toEqual(["/my", "/pairings", "/"]);
-    expect(PLAYER_MOBILE_ITEMS.map((item) => item.label)).toEqual([
-      "My golf",
-      "Pairings",
-      "Club home",
+  it("carries the player app's five destinations", () => {
+    expect(links(PLAYER_MOBILE_ITEMS).map((item) => item.href)).toEqual([
+      "/my",
+      "/my/board",
+      "/my/card",
+      "/pairings",
+      "/my/profile",
     ]);
+    expect(PLAYER_MOBILE_ITEMS.map((item) => item.label)).toEqual([
+      "Home",
+      "Board",
+      "Card",
+      "Pairings",
+      "Profile",
+    ]);
+  });
+
+  it("marks Home only on the dashboard, never on a screen it parents", () => {
+    const home = PLAYER_MOBILE_ITEMS[0];
+    expect(home).toMatchObject({ href: "/my", exact: true });
+    expect(links(PLAYER_MOBILE_ITEMS).filter((item) => item.exact)).toHaveLength(1);
   });
 });
 

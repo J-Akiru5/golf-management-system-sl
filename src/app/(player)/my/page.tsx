@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AppTiles, DashboardHero } from "@/components/player/DashboardHero";
 import { PlayerOfflineNotice, RememberPortal } from "@/components/player/OfflinePortal";
 import { PortalEntries } from "@/components/player/PortalView";
 import { getI18n } from "@/lib/i18n/server";
 import type { Translate } from "@/lib/i18n/t";
 import { claimPlayerRecord } from "@/lib/player/actions";
 import { claimMessage } from "@/lib/player/claim";
+import { manilaToday, nextUp } from "@/lib/player/dashboard";
 import { loadPortal, type PortalState, portalErrorMessage } from "@/lib/player/portal";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -64,11 +66,13 @@ function PortalBody({
   state,
   notice,
   linkedMessage,
+  today,
 }: {
   t: Translate;
   state: PortalState;
   notice: string | null;
   linkedMessage: string | null;
+  today: string;
 }) {
   if (!state.linked || !state.player) {
     return (
@@ -79,10 +83,14 @@ function PortalBody({
     );
   }
 
+  const next = nextUp(state.entries, today);
+
   return (
     <div className="grid gap-4" data-help="my-entry">
       <PlayerOfflineNotice />
       <RememberPortal state={state} />
+      {next && <DashboardHero next={next} t={t} />}
+      <AppTiles t={t} />
       <PortalEntries state={state} t={t} linkedMessage={linkedMessage} />
     </div>
   );
@@ -131,5 +139,13 @@ export default async function MyGolfPage({
     );
   }
 
-  return <PortalBody t={t} state={state} notice={notice} linkedMessage={linkedMessage} />;
+  return (
+    <PortalBody
+      t={t}
+      state={state}
+      notice={notice}
+      linkedMessage={linkedMessage}
+      today={manilaToday()}
+    />
+  );
 }
