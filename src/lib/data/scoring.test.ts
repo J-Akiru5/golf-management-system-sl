@@ -260,4 +260,58 @@ describe("demo scoring repository", () => {
     expect(view?.finalization.ready).toBe(false);
     await expect(repo.finalizeRound("tournament-1")).rejects.toThrow(/tie-break/i);
   });
+
+  it("revokes an approved card so its holes stop counting", async () => {
+    const repo = repository();
+    const approved = await submitAndApprove(repo, "p1", "s2", "revoke-me");
+    const card = approved.cards.find(
+      (candidate) => candidate.playerId === "p1" && candidate.scorerId === "s2",
+    );
+    if (!card) throw new Error("Card not found.");
+    expect(approved.players[0]?.canonical.counts.provisional).toBe(18);
+
+    const revoked = await repo.revokeCard(
+      "tournament-1",
+      card.id,
+      "The marker signed the wrong player's card.",
+    );
+
+    expect(revoked.cards.find((candidate) => candidate.id === card.id)?.status).toBe("revoked");
+    expect(revoked.players[0]?.canonical.counts.provisional).toBe(0);
+    expect(revoked.players[0]?.canonical.counts.verified).toBe(0);
+    expect(revoked.standings.gross.rows).toHaveLength(0);
+  });
+
+  it("refuses a revocation without a reason, for a submitted card, or after the round is final", async () => {
+    const repo = repository();
+    const approved = await submitAndApprove(repo, "p1", "s2", "p1-1");
+    const card = approved.cards[0];
+    if (!card) throw new Error("Card not found.");
+
+    await expect(repo.revokeCard("tournament-1", card.id, "  ")).rejects.toThrow(/reason/i);
+
+    const submitted = await repo.submitCard("tournament-1", {
+      playerId: "p2",
+      scorerId: "s2",
+      source: "manual",
+      entries: parEntries(),
+      writtenTotal: 72,
+      captureKey: "p2-1",
+    });
+    const draft = submitted.cards.find((candidate) => candidate.playerId === "p2");
+    if (!draft) throw new Error("Card not found.");
+    await expect(repo.revokeCard("tournament-1", draft.id, "Not approved yet.")).rejects.toThrow(
+      /approved/i,
+    );
+
+    await repo.approveCard("tournament-1", draft.id);
+    await submitAndApprove(repo, "p1", "s3", "p1-2");
+    await submitAndApprove(repo, "p2", "s3", "p2-2");
+    await repo.publishRound("tournament-1");
+    await repo.finalizeRound("tournament-1");
+
+    await expect(repo.revokeCard("tournament-1", card.id, "Late change.")).rejects.toThrow(
+      /final/i,
+    );
+  });
 });

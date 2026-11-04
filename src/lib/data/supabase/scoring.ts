@@ -425,6 +425,39 @@ export function createSupabaseScoringRepository(
       return refresh(tournamentId);
     },
 
+    async revokeCard(tournamentId, cardId, reason) {
+      const view = await refresh(tournamentId);
+      const card = view.cards.find((candidate) => candidate.id === cardId);
+      if (!card) throw new Error("Scorecard not found.");
+      if (card.status !== "approved") {
+        throw new Error("Only an approved card can be revoked.");
+      }
+
+      // The revocation removes the card from the evidence, so the canonical rows have to be rebuilt
+      // without it. The database checks the proposal against the remaining cards and resolutions.
+      const afterRevoke = view.cards.map((candidate) =>
+        candidate.id === cardId ? { ...candidate, status: "revoked" as const } : candidate,
+      );
+      const canonical = deriveCanonicalHoleScores({
+        roundId: view.roundId,
+        playerId: card.playerId,
+        course: view.course,
+        cards: afterRevoke,
+        resolutions: view.resolutions,
+        policy: view.policy,
+      });
+      const existing = view.players.find((candidate) => candidate.playerId === card.playerId);
+      if (!existing) throw new Error("The card's player is not in this round.");
+
+      const { error } = await db.rpc("revoke_scorecard", {
+        p_card: cardId,
+        p_canonical: proposalRows({ ...existing, canonical }) as unknown as Json,
+        p_reason: reason,
+      });
+      if (error) throw new Error(`Could not revoke the card: ${error.message}`);
+      return refresh(tournamentId);
+    },
+
     async resolveHole(tournamentId, input: ResolveHoleInput) {
       const view = await refresh(tournamentId);
       const player = view.players.find((candidate) => candidate.playerId === input.playerId);

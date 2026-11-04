@@ -9,7 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **Revoke an approved scorecard** on `/scores` (issue #160). A card that should not count (wrong
+  marker, duplicate entry, a score ruled unofficial) is withdrawn with a reason, and the standings
+  are rebuilt from the cards and resolutions that remain. The card, its entries and its audit row are
+  kept, and a finalized round stays locked. A correction is still a new revision, not a revocation.
+  The function ships in migration `20261104001000`, which is **not applied** yet.
+- **Scoring activity on `/audit`**: `scoring_audit` rows (approvals, rejections, corrections,
+  revocations, resolutions and publications) are now readable beside the general `audit_log`.
 
 ## [0.27.4] - 2026-11-04
 

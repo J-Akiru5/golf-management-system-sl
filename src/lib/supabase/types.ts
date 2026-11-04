@@ -367,6 +367,19 @@ export type AuditLogRow = {
   detail: Json | null;
   created_at: string;
 };
+export type ScoringAuditRow = {
+  id: string;
+  club_id: string;
+  round_id: string | null;
+  entity: string;
+  entity_id: string | null;
+  action: string;
+  actor_id: string | null;
+  at: string;
+  reason: string | null;
+  before: Json | null;
+  after: Json | null;
+};
 export type HandicapImportBatchRow = {
   id: string;
   club_id: string;
@@ -744,6 +757,22 @@ export interface Database {
           changed_columns?: string[] | null;
           result?: AuditLogRow["result"];
           detail?: Json | null;
+        }
+      >;
+      scoring_audit: Table<
+        ScoringAuditRow,
+        {
+          id?: string;
+          club_id: string;
+          round_id?: string | null;
+          entity: string;
+          entity_id?: string | null;
+          action: string;
+          actor_id?: string | null;
+          at?: string;
+          reason?: string | null;
+          before?: Json | null;
+          after?: Json | null;
         }
       >;
       categories: Table<

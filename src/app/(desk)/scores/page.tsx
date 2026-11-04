@@ -620,6 +620,19 @@ export default function ScoresPage() {
                           }}
                           canEdit={canEdit}
                           onEdit={() => editCard(card)}
+                          roundLocked={view.roundStatus === "final"}
+                          onRevoke={() => {
+                            const reason = (rejectReasons[card.id] ?? "").trim();
+                            if (reason.length < 3) {
+                              setError("A revocation needs a reason of at least 3 characters.");
+                              return;
+                            }
+                            void run(async () => {
+                              const next = await scoring.revokeCard(tournamentId, card.id, reason);
+                              setRejectReasons((current) => ({ ...current, [card.id]: "" }));
+                              return next;
+                            });
+                          }}
                         />
                       ))}
                     </tbody>
@@ -819,6 +832,10 @@ export default function ScoresPage() {
                 ? "The sample uses a proposed tie-break that is deliberately unconfirmed, so finalization stays blocked. The organizer's written rule is still required."
                 : "Finalization stays blocked until the organizer's card count, net results, tie-break rule and final approval authority are all recorded."}
             </p>
+            <p className="hint">
+              A correction or a revocation after publication changes the standings, but the live
+              board keeps the last published version until you publish again.
+            </p>
           </SectionCard>
         </>
       )}
@@ -836,6 +853,8 @@ function CardRow({
   onReject,
   canEdit,
   onEdit,
+  roundLocked,
+  onRevoke,
 }: {
   card: Scorecard;
   view: ScoringRoundView;
@@ -846,6 +865,8 @@ function CardRow({
   onReject: () => void;
   canEdit: boolean;
   onEdit: () => void;
+  roundLocked: boolean;
+  onRevoke: () => void;
 }) {
   const player = view.players.find((candidate) => candidate.playerId === card.playerId) ?? null;
   const playerName = player?.playerName ?? card.playerId;
@@ -860,7 +881,8 @@ function CardRow({
     course: view.course,
     minOcrConfidence: view.policy.minOcrConfidence,
   });
-  const decided = card.status === "approved" || card.status === "rejected";
+  const decided =
+    card.status === "approved" || card.status === "rejected" || card.status === "revoked";
   // Only the newest revision is the card the desk is working on. Editing an older one after a
   // correction would create a third revision out of order.
   const latestRevision = Math.max(
@@ -909,7 +931,11 @@ function CardRow({
       <td>
         <span
           className={`pill ${
-            card.status === "approved" ? "ok" : card.status === "rejected" ? "bad" : "warn"
+            card.status === "approved"
+              ? "ok"
+              : card.status === "rejected" || card.status === "revoked"
+                ? "bad"
+                : "warn"
           }`}
         >
           {card.status}
@@ -920,6 +946,8 @@ function CardRow({
           <span className="muted">Approved.</span>
         ) : card.status === "rejected" ? (
           <span className="muted">Rejected.</span>
+        ) : card.status === "revoked" ? (
+          <span className="muted">Revoked. It no longer counts.</span>
         ) : validation.approvable ? (
           <span className="muted">Ready for approval.</span>
         ) : (
@@ -943,6 +971,31 @@ function CardRow({
               />
               <Button variant="danger" size="sm" onClick={onReject} disabled={busy}>
                 Reject
+              </Button>
+            </>
+          )}
+          {card.status === "approved" && (
+            <>
+              <input
+                value={rejectReason}
+                onChange={(event) => onRejectReason(event.target.value)}
+                placeholder="Revoke reason"
+                aria-label={`Revocation reason for ${playerName}'s card`}
+                className="h-8 w-28"
+                disabled={busy || roundLocked}
+              />
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={onRevoke}
+                disabled={busy || roundLocked}
+                title={
+                  roundLocked
+                    ? "A finalized round is locked; this score cannot change."
+                    : "Withdraw this card from the scores. The card and its audit row are kept."
+                }
+              >
+                Revoke
               </Button>
             </>
           )}

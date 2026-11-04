@@ -2663,6 +2663,10 @@ export type Database = {
         Args: { p_card: string; p_reason: string };
         Returns: undefined;
       };
+      revoke_scorecard: {
+        Args: { p_canonical: Json; p_card: string; p_reason: string };
+        Returns: undefined;
+      };
       resolve_hole: {
         Args: {
           p_canonical: Json;

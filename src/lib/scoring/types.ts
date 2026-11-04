@@ -142,7 +142,13 @@ export type RoundScoringResult =
   | { ok: false; problems: ScoringProblem[] };
 
 export type CardSource = "manual" | "upload" | "webcam";
-export type CardStatus = "submitted" | "in_review" | "approved" | "rejected" | "superseded";
+export type CardStatus =
+  | "submitted"
+  | "in_review"
+  | "approved"
+  | "rejected"
+  | "superseded"
+  | "revoked";
 
 export interface CardEntry {
   hole: number;
