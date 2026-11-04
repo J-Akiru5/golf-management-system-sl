@@ -20,19 +20,44 @@ export function PublishDialog({
   issues: Issue[];
   onClose: () => void;
 }) {
-  const { draw, players, tournament, dispatch, isPublished, changedSincePublish } = useDesk();
+  const {
+    draw,
+    players,
+    tournament,
+    dispatch,
+    isPublished,
+    changedSincePublish,
+    publishState,
+    publishError,
+    status,
+  } = useDesk();
   const ref = useRef<HTMLDialogElement>(null);
   const [ack, setAck] = useState(false);
+  // True from the moment the desk asks to publish until the database answers. The dialog stays
+  // open while it waits: closing early is what let a refused publish look like a success.
+  const [sent, setSent] = useState(false);
+  const busy = publishState === "working";
 
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
     if (open && !d.open) {
       setAck(false);
+      setSent(false);
       d.showModal();
     }
     if (!open && d.open) d.close();
   }, [open]);
+
+  // Close only after the write confirms. A failed publish keeps the dialog open with the error, and
+  // the button below becomes the retry. Nothing on screen claims Published before this point.
+  useEffect(() => {
+    if (!open || !sent || publishState === "working") return;
+    if (publishState === "idle") {
+      setSent(false);
+      onClose();
+    }
+  }, [open, sent, publishState, onClose]);
 
   const blocking = issues.filter((i) => i.severity === "blocking");
   const warnings = issues.filter((i) => i.severity === "warning");
@@ -94,24 +119,45 @@ export function PublishDialog({
           </div>
         )}
 
+        {sent && publishState === "failed" && (
+          <div className="notice bad" role="alert">
+            <b>Not published.</b>{" "}
+            {publishError ?? "The pairings were not saved. Nothing went out to players."} The list
+            shown to players is unchanged.
+          </div>
+        )}
+
         <section aria-label="What players will see" className="preview-box">
           {preview && <PairingsView pairings={preview} searchable={false} />}
         </section>
 
         <div className="row between">
-          <button type="button" className="btn ghost" onClick={onClose}>
+          <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
             Not yet
           </button>
           <button
             type="button"
             className="btn gold"
-            disabled={!canPublish || nothingNew}
+            disabled={!canPublish || nothingNew || busy}
             onClick={() => {
+              if (busy) return;
+              if (status === "demo") {
+                // No database to wait for: the session reducer is the whole write.
+                dispatch({ type: "publish" });
+                onClose();
+                return;
+              }
+              setSent(true);
               dispatch({ type: "publish" });
-              onClose();
             }}
           >
-            {preview ? `Publish ${preview.groups.length} groups` : "Publish"}
+            {busy
+              ? "Publishing…"
+              : sent && publishState === "failed"
+                ? "Try again"
+                : preview
+                  ? `Publish ${preview.groups.length} groups`
+                  : "Publish"}
           </button>
         </div>
         {!canPublish && !nothingNew && (

@@ -39,7 +39,7 @@ import {
   tournamentTemplate,
 } from "@/lib/store/state";
 import type { Database, Json } from "@/lib/supabase/types";
-import { toPlayerInsert, toRegistrationAnswers, toRegistrationInsert } from "./domain";
+import { toPlayerInsert, toRegistrationAnswers } from "./domain";
 import { createSupabaseEmailRepository } from "./email";
 import { deleteEventLogo, saveEventLogo } from "./event-logo";
 import {
@@ -136,6 +136,31 @@ function fail(context: string, error: { message: string } | null): never | void 
   if (error) throw new Error(`${context}: ${error.message}`);
 }
 
+/** A response from a function the generated types do not describe yet. */
+interface UnlistedRpcResult {
+  data: unknown;
+  error: { message: string; code?: string } | null;
+}
+
+/**
+ * Calls a database function that `src/lib/supabase/types.ts` does not list yet.
+ *
+ * `create_registration` arrives in migration 20261104000000, and the types are generated from a
+ * project that has the migration applied, so they cannot be updated before it runs. Keeping the one
+ * cast here means the rest of the adapter stays typed; the arguments are named at the call site.
+ */
+function callUnlisted(
+  client: SupabaseClient<Database>,
+  name: string,
+  args: Record<string, unknown>,
+): PromiseLike<UnlistedRpcResult> {
+  const rpc = client.rpc.bind(client) as unknown as (
+    name: string,
+    args: Record<string, unknown>,
+  ) => PromiseLike<UnlistedRpcResult>;
+  return rpc(name, args);
+}
+
 export function createSupabaseAdapters(
   state: DeskState,
   dispatch: Dispatch<Action>,
@@ -146,6 +171,43 @@ export function createSupabaseAdapters(
   // The pure parts (CSV parsing, the merge queue, the routing explanation) read the same hydrated
   // state, so they reuse the mock implementation rather than duplicating it.
   const mock = createMockAdapters(state, dispatch);
+
+  /**
+   * Queues a write and hands back a promise that settles with it.
+   *
+   * `createQueue` reports a failure through `onError` and then resolves, which suits a background
+   * save but not a screen that must not claim a row was saved. This wraps the same work and keeps
+   * the rejection for the caller. The queue still reports it too, so the session bar and the caller
+   * cannot disagree. A screen that does not wait is unaffected.
+   */
+  function queuedWrite(work: () => Promise<void>): Promise<void> {
+    let resolveWrite!: () => void;
+    let rejectWrite!: (error: unknown) => void;
+    const done = new Promise<void>((resolve, reject) => {
+      resolveWrite = resolve;
+      rejectWrite = reject;
+    });
+    // A caller may ignore the promise. The rejection is still delivered to one that awaits; this
+    // only stops an ignored one from surfacing as an unhandled rejection.
+    void done.catch(() => undefined);
+    // The queue refuses the same way, but it would then never run the work and this promise would
+    // never settle. Refusing before the queue keeps the caller's error immediate and final.
+    if (options.canWrite && !options.canWrite()) {
+      options.onError(OFFLINE_WRITE_NOTICE);
+      rejectWrite(new Error(OFFLINE_WRITE_NOTICE));
+      return done;
+    }
+    enqueue(async () => {
+      try {
+        await work();
+        resolveWrite();
+      } catch (error) {
+        rejectWrite(error);
+        throw error;
+      }
+    });
+    return done;
+  }
 
   /**
 
@@ -628,9 +690,6 @@ export function createSupabaseAdapters(
 
    * Registrations ------------------------------------------------------------------------------ */
 
-  const entryRow = (entry: RegistrationEntry, tournamentId: string) =>
-    toRegistrationInsert(entry, tournamentId);
-
   const registrations: Adapters["registrations"] = {
     list: (tournamentId) => state.entries.filter((e) => e.tournamentId === tournamentId),
     add: (tournamentId, input: NewEntryInput) => {
@@ -657,29 +716,51 @@ export function createSupabaseAdapters(
         source: "desk",
       };
       dispatch({ type: "addEntry", entry });
-      enqueue(async () => {
-        const { error } = await client.from("registrations").insert(entryRow(entry, tournamentId));
-        fail("Could not register the player", error);
-        if (input.selectedDays.length) {
-          const { data, error: dayError } = await client.rpc("set_registration_days", {
-            p_registration: entry.id,
-            p_days: input.selectedDays,
-          });
-          if (dayError) {
-            const missing =
-              dayError.code === "PGRST202" || /function .* does not exist/i.test(dayError.message);
-            throw new Error(
-              missing
-                ? "The registration was written, but the playing days need migration 20261037000000. Edit the entry after it is applied."
-                : `Could not save the playing days: ${dayError.message}`,
-            );
-          }
-          const dayResult = data as unknown as { ok?: boolean; message?: string } | null;
-          if (!dayResult?.ok)
-            throw new Error(dayResult?.message ?? "The playing days were refused.");
+
+      // One function writes the registration and its days (migration 20261104000000). Two requests
+      // meant the deferred day rule could refuse the insert after the screen had already said the
+      // entry was saved. The entry carries the write as `saved`, so the register screen can wait for
+      // the database before it shows the saved state.
+      const saved = queuedWrite(async () => {
+        const { data, error } = await callUnlisted(client, "create_registration", {
+          p_id: entry.id,
+          p_tournament: tournamentId,
+          p_player: entry.playerId,
+          p_answers: toRegistrationAnswers(entry) as Json,
+          p_days: input.selectedDays,
+          p_frozen_index: entry.frozen.index,
+          p_frozen_record_id: entry.frozen.recordId,
+          p_frozen_effective_date: entry.frozen.effectiveDate,
+          p_frozen_at: entry.frozen.frozenAt,
+          p_payment_status:
+            entry.paymentStatus === "recorded_paid"
+              ? "paid"
+              : entry.paymentStatus === "waived"
+                ? "waived"
+                : "unpaid",
+        });
+        if (error) {
+          // Nothing reached the database, so the optimistic entry comes off the screen too.
+          dispatch({ type: "removeEntry", id: entry.id });
+          const missing =
+            error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+          throw new Error(
+            missing
+              ? "The registration needs migration 20261104000000. Nothing was saved."
+              : `Could not register the player: ${error.message}`,
+          );
+        }
+        const result = (data ?? {}) as { ok?: boolean; message?: string };
+        if (!result.ok) {
+          dispatch({ type: "removeEntry", id: entry.id });
+          throw new Error(result.message ?? "The registration was refused. Nothing was saved.");
         }
       });
-      return entry;
+
+      // Typed so the extra `saved` handle survives the repository's `RegistrationEntry` return
+      // type; a screen that only needs the row can ignore it.
+      const created: RegistrationEntry & { saved: Promise<void> } = { ...entry, saved };
+      return created;
     },
     update: (id, patch) => {
       dispatch({ type: "updateEntry", id, patch });
@@ -755,23 +836,31 @@ export function createSupabaseAdapters(
       });
     },
     remove: (id) => {
+      const entry = state.entries.find((e) => e.id === id) ?? null;
       dispatch({ type: "removeEntry", id });
-      enqueue(async () => {
+      // The screen can wait for this: a refused delete puts the row back instead of leaving it
+      // missing from the list while it is still in the database.
+      return queuedWrite(async () => {
         const { error } = await client
           .from("registrations")
           .delete()
           .eq("club_id", clubId)
           .eq("id", id);
-        fail("Could not remove the registration", error);
+        if (error) {
+          if (entry) dispatch({ type: "addEntry", entry });
+          throw new Error(`Could not remove the registration: ${error.message}`);
+        }
       });
     },
     refreeze: (tournamentId, entryIds) => {
-      dispatch({ type: "refreeze", tournamentId, entryIds });
       const tournament = tournaments.get(tournamentId);
       const targets = state.entries.filter(
         (e) => e.tournamentId === tournamentId && (!entryIds || entryIds.includes(e.id)),
       );
-      enqueue(async () => {
+      if (targets.length === 0) return;
+      // The new index is shown only after the row is written. A refused write leaves the old index
+      // on screen, which is the truth: it is still what the event is routing against.
+      return queuedWrite(async () => {
         for (const entry of targets) {
           const selection = selectIndexForCutOff(
             players.recordsFor(entry.playerId),
@@ -789,6 +878,7 @@ export function createSupabaseAdapters(
             .eq("club_id", clubId)
             .eq("id", entry.id);
           fail("Could not re-freeze the index", error);
+          dispatch({ type: "refreeze", tournamentId, entryIds: [entry.id] });
         }
       });
     },
