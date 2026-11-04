@@ -25,6 +25,10 @@ Supabase project, because the code and the database are released separately.
   when that section has unsaved changes.
 
 ### Fixed
+- **The registration desk no longer runs off the right edge.** A card's single column took the
+  width of its widest row, so the two-column page pushed the registrations list past the viewport.
+  Cards and the list now use a column that can shrink, and a row wraps its actions instead of
+  widening the card.
 - **The saved theme and rail width survive a page change.** The pre-paint scripts still keep the
   first load from flashing, and the shell now re-applies the choice to `<html>` after hydration and
   on every route. The theme control and the rail toggle read the applied attribute instead of a
