@@ -1,8 +1,9 @@
 "use client";
 
 import { Check, ChevronDown, Monitor, Moon, Sun } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/ui/cn";
 
@@ -11,6 +12,39 @@ export const THEME_KEY = "starter-theme";
 
 /** Runs before first paint (see layout.tsx) so a saved choice never flashes the wrong theme. */
 export const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem("${THEME_KEY}");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+
+const THEME_EVENT = "teeline:theme";
+
+/** Only an explicit light or dark is a choice; everything else is System. */
+export function parseTheme(value: string | null | undefined): ThemeChoice {
+  return value === "light" || value === "dark" ? value : "auto";
+}
+
+/**
+ * The theme the page is showing. The `<html>` attribute is the truth because the stylesheet reads
+ * it; storage is the fallback for the moment after hydration, before ThemeSync has put it back.
+ */
+export function themeSnapshot(): ThemeChoice {
+  if (typeof document === "undefined") return "auto";
+  const applied = document.documentElement.dataset.theme;
+  if (applied === "light" || applied === "dark") return applied;
+  try {
+    return parseTheme(localStorage.getItem(THEME_KEY));
+  } catch {
+    return "auto";
+  }
+}
+
+/** Keeps every theme control in step, including one in another tab. */
+export function subscribeTheme(listener: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(THEME_EVENT, listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    window.removeEventListener(THEME_EVENT, listener);
+    window.removeEventListener("storage", listener);
+  };
+}
 
 /**
  * The three choices, in the club's words as well as the plain ones: the design tokens are called
@@ -31,6 +65,31 @@ function apply(choice: ThemeChoice) {
   } catch {
     // Private windows can refuse storage. The choice still applies for this visit.
   }
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(THEME_EVENT));
+}
+
+/**
+ * Puts the saved choice back on `<html>` after hydration and on every route change.
+ *
+ * The pre-paint script is what keeps the first load from flashing, but React owns `<html>` and a
+ * hydration pass can drop the attribute the script set. Without this repair the next page load or
+ * route fell back to the operating system's theme with the choice still saved.
+ */
+export function ThemeSync() {
+  const path = usePathname();
+  useEffect(() => {
+    try {
+      const saved = parseTheme(localStorage.getItem(THEME_KEY));
+      if (saved === "auto") {
+        if (document.documentElement.dataset.theme) apply("auto");
+        return;
+      }
+      if (document.documentElement.dataset.theme !== saved) apply(saved);
+    } catch {
+      // Storage refused: the pre-paint script already applied what it could.
+    }
+  }, [path]);
+  return null;
 }
 
 /**
@@ -52,19 +111,9 @@ export function ThemeToggle({
    */
   tone?: "rail" | "sheet" | "nav";
 }) {
-  const [choice, setChoice] = useState<ThemeChoice>("auto");
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(THEME_KEY);
-      if (saved === "light" || saved === "dark") setChoice(saved);
-    } catch {
-      // Storage unavailable: stay on System.
-    }
-  }, []);
+  const choice = useSyncExternalStore(subscribeTheme, themeSnapshot, () => "auto" as ThemeChoice);
 
   const pick = (c: ThemeChoice) => {
-    setChoice(c);
     apply(c);
   };
 

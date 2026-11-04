@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseRail, RAIL_INIT_SCRIPT, RAIL_KEY, RAIL_METRICS } from "./rail";
+import { parseRail, RAIL_INIT_SCRIPT, RAIL_KEY, RAIL_METRICS, railSnapshot } from "./rail";
 
 describe("the rail choice", () => {
   it("is compact unless it was explicitly expanded", () => {
@@ -10,6 +10,11 @@ describe("the rail choice", () => {
     for (const junk of [null, undefined, "", "yes", "EXPANDED", "true"]) {
       expect(parseRail(junk), String(junk)).toBe("compact");
     }
+  });
+
+  it("reads the attribute the stylesheet uses, not a private memory", () => {
+    // No document here: the server snapshot is compact, and the browser reads `<html>` instead.
+    expect(railSnapshot()).toBe("compact");
   });
 
   it("is remembered under a namespaced key that the pre-paint script reads", () => {

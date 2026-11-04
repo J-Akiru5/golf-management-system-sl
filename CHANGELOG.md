@@ -18,6 +18,12 @@ Supabase project, because the code and the database are released separately.
 - **Scoring activity on `/audit`**: `scoring_audit` rows (approvals, rejections, corrections,
   revocations, resolutions and publications) are now readable beside the general `audit_log`.
 
+### Fixed
+- **The saved theme and rail width survive a page change.** The pre-paint scripts still keep the
+  first load from flashing, and the shell now re-applies the choice to `<html>` after hydration and
+  on every route. The theme control and the rail toggle read the applied attribute instead of a
+  private copy, so two controls on one page can no longer disagree about the current state.
+
 ## [0.27.4] - 2026-11-04
 
 Desk completeness and public correctness, after the four audits.

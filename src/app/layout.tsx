@@ -8,7 +8,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { OfflineRuntime } from "@/components/OfflineRuntime";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
+import { THEME_INIT_SCRIPT, ThemeSync } from "@/components/ThemeToggle";
 import { ToastProvider } from "@/components/ui/toast";
 import {
   COMPANY,
@@ -98,6 +98,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: RAIL_INIT_SCRIPT }} />
       </head>
       <body>
+        <ThemeSync />
         <JsonLd data={[organizationSchema(), websiteSchema()]} />
         <OfflineRuntime />
         <ToastProvider>
