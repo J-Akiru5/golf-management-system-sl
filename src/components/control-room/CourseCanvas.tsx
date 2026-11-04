@@ -2,6 +2,7 @@
 
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MAP_H, MAP_HOLES, MAP_W } from "@/lib/course/layout";
+import type { Pan } from "@/lib/ui/map-pan";
 
 export interface Cover {
   /** Scale from map units to CSS pixels. */
@@ -43,10 +44,18 @@ function rng(seed: number) {
 
 const TONES = ["#173a24", "#1d4a2c", "#245632", "#2d6338", "#1a4128", "#33703e"];
 
+/**
+ * Canopy painted around the map, in map units, so a drag can reach holes that sit behind the
+ * bottom row without ever exposing a bare edge.
+ */
+export const MAP_MARGIN = 220;
+
 function paint(ctx: CanvasRenderingContext2D) {
   const rnd = rng(7);
+  const w = MAP_W + 2 * MAP_MARGIN;
+  const h = MAP_H + 2 * MAP_MARGIN;
   ctx.fillStyle = "#1a3a26";
-  ctx.fillRect(0, 0, MAP_W, MAP_H);
+  ctx.fillRect(-MAP_MARGIN, -MAP_MARGIN, w, h);
 
   // Water, top left.
   const lake = new Path2D("M0 0 H260 C300 60 250 130 180 150 C110 170 60 230 0 250 Z");
@@ -56,14 +65,15 @@ function paint(ctx: CanvasRenderingContext2D) {
   ctx.lineWidth = 3;
   ctx.stroke(lake);
 
-  // Tree canopy.
-  for (let i = 0; i < 2600; i++) {
-    const x = rnd() * MAP_W;
-    const y = rnd() * MAP_H;
+  // Tree canopy, over the map and its margin at the same density.
+  const trees = Math.round(2600 * ((w * h) / (MAP_W * MAP_H)));
+  for (let i = 0; i < trees; i++) {
+    const x = -MAP_MARGIN + rnd() * w;
+    const y = -MAP_MARGIN + rnd() * h;
     const r = 5 + rnd() * 11;
     const tone = TONES[Math.floor(rnd() * TONES.length)] ?? "#1d4a2c";
     const alpha = 0.75 + rnd() * 0.25;
-    if (x < 260 && y < 150 - x / 3) continue;
+    if (x >= 0 && x < 260 && y < 150 - x / 3) continue;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = tone;
     ctx.beginPath();
@@ -179,24 +189,46 @@ function paint(ctx: CanvasRenderingContext2D) {
  * The illustrated course drawn on a canvas, covering its parent. A placeholder until the club
  * supplies a drone photo or its hole layout; the darkening vignettes are part of the contract
  * (glass panels need a dark ground to keep text contrast).
+ *
+ * The canvas is painted at the map's own size and then slid by `pan`, which is how the organizer
+ * brings holes that sit behind the bottom row into reach. Painting at viewport size would leave a
+ * bare edge the moment it moved, so the extra paint is what makes the drag possible. The vignettes
+ * stay put: they keep text legible and must line up with the panels, not with the map.
  */
-export function CourseCanvas({ cover }: { cover: Cover | null }) {
+export function CourseCanvas({ cover, pan }: { cover: Cover | null; pan: Pan }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current;
     if (!c || !cover) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    c.width = Math.round(cover.w * dpr);
-    c.height = Math.round(cover.h * dpr);
+    c.width = Math.round((MAP_W + 2 * MAP_MARGIN) * cover.s * dpr);
+    c.height = Math.round((MAP_H + 2 * MAP_MARGIN) * cover.s * dpr);
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    ctx.setTransform(cover.s * dpr, 0, 0, cover.s * dpr, cover.ox * dpr, cover.oy * dpr);
+    const offset = MAP_MARGIN * cover.s * dpr;
+    ctx.setTransform(cover.s * dpr, 0, 0, cover.s * dpr, offset, offset);
     paint(ctx);
   }, [cover]);
 
   return (
     <>
-      <canvas ref={ref} aria-hidden="true" className="absolute inset-0 size-full" />
+      <div
+        aria-hidden="true"
+        data-pan-surface=""
+        className="absolute inset-0 cursor-grab will-change-transform active:cursor-grabbing"
+        style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0)` }}
+      >
+        <canvas
+          ref={ref}
+          className="absolute"
+          style={{
+            left: (cover?.ox ?? 0) - (cover?.s ?? 0) * MAP_MARGIN,
+            top: (cover?.oy ?? 0) - (cover?.s ?? 0) * MAP_MARGIN,
+            width: (cover?.s ?? 0) * MAP_W + 2 * (cover?.s ?? 0) * MAP_MARGIN,
+            height: (cover?.s ?? 0) * MAP_H + 2 * (cover?.s ?? 0) * MAP_MARGIN,
+          }}
+        />
+      </div>
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
