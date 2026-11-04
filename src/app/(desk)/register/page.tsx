@@ -1572,7 +1572,8 @@ function RegisterDesk() {
           latestIndexDate={overrideLatest?.effectiveDate ?? null}
           onSave={(input) => {
             adapters.players.update(override.player.id, { birthdate: input.birthdate });
-            adapters.registrations.overrideReady(override.entry.id, input);
+            // The row changes on screen only when the write lands; a refusal leaves it in review.
+            void adapters.registrations.overrideReady(override.entry.id, input);
             setOverride(null);
           }}
         />

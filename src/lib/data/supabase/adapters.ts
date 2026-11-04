@@ -872,9 +872,9 @@ export function createSupabaseAdapters(
         overridden: true,
         overrideReason: input.reason,
       };
-      dispatch({ type: "updatePlayer", id: entry.playerId, patch: { birthdate: input.birthdate } });
-      dispatch({ type: "updateEntry", id: entryId, patch: next });
-      enqueue(async () => {
+      // Nothing changes on screen until both rows are written. A refused override must not leave
+      // the desk showing a player as ready when the database still says needs review.
+      return queuedWrite(async () => {
         const { error: playerError } = await client
           .from("players")
           .update({ birthdate: input.birthdate })
@@ -902,6 +902,12 @@ export function createSupabaseAdapters(
           .eq("club_id", clubId)
           .eq("id", entryId);
         fail("Could not mark the player ready", error);
+        dispatch({
+          type: "updatePlayer",
+          id: entry.playerId,
+          patch: { birthdate: input.birthdate },
+        });
+        dispatch({ type: "updateEntry", id: entryId, patch: next });
       });
     },
     remove: (id) => {
