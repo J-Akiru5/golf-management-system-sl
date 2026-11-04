@@ -536,10 +536,14 @@ export function createSupabaseAdapters(
       options.onSaved();
     },
     remove: (id) => {
-      dispatch({ type: "removePlayer", id });
-      enqueue(async () => {
+      // Delete first, then take the row off the list. `players` has a before-delete guard that
+      // refuses a player who still has registrations or scoring rows, and the database message is
+      // the only honest answer to "did it work?". Removing the row here first would show the player
+      // as gone while the database still holds them.
+      return queuedWrite(async () => {
         const { error } = await client.from("players").delete().eq("club_id", clubId).eq("id", id);
-        fail("Could not remove the player", error);
+        if (error) throw new Error(`Could not remove the player: ${error.message}`);
+        dispatch({ type: "removePlayer", id });
       });
     },
   };
@@ -581,9 +585,6 @@ export function createSupabaseAdapters(
       fail("Could not save the event", error);
     }
   };
-  const saveTournamentRow = (tournament: Tournament) =>
-    queuedWrite(() => writeTournament(tournament));
-
   const tournaments: Adapters["tournaments"] = {
     list: () => state.tournaments,
     get: (id) => state.tournaments.find((t) => t.id === id) ?? null,
@@ -594,7 +595,34 @@ export function createSupabaseAdapters(
     select: (id) => dispatch({ type: "selectTournament", id }),
     save: (tournament) => {
       dispatch({ type: "saveTournament", tournament });
-      return saveTournamentRow(tournament);
+      return queuedWrite(async () => {
+        // The event-level fields travel through the guarded setup function, not a direct upsert.
+        // That function is the only writer that bumps draw_revision, so changing the days of play
+        // here marks an already-drawn board stale in the same transaction. A direct table write
+        // left the board looking current after the dates had moved.
+        //
+        // Only the Basics block is sent. The calendar is the caller and it edits name, host, days
+        // and state; anything else in the passed event is not this write's business.
+        const payload = setupPayload(tournament, [], [], ["basics"]);
+        const { data, error } = await client.rpc("save_event_setup", {
+          p_tournament: tournament.id,
+          p_expected_revision: options.revisions.get(tournament.id),
+          ...payload,
+          p_registration: payload.p_registration as Json | null,
+        });
+        if (error) throw new Error(`Could not save the event: ${error.message}`);
+        const revision = (data as unknown as { revision?: number } | null)?.revision;
+        if (typeof revision === "number") options.revisions.set(tournament.id, revision);
+
+        // The host is the one calendar field the setup document does not carry. It has no effect
+        // on routing, so it is written to its own column after the guarded write has passed.
+        const { error: hostError } = await client
+          .from("tournaments")
+          .update({ host_name: tournament.hostName?.trim() || null })
+          .eq("club_id", clubId)
+          .eq("id", tournament.id);
+        fail("Could not save the event host", hostError);
+      });
     },
     days: (tournamentId) => state.days[tournamentId] ?? [],
     saveDayRule: async (tournamentId, required, max) => {
@@ -1133,11 +1161,12 @@ export function createSupabaseAdapters(
   const setup: Adapters["setup"] = {
     save: ({ tournament, tees, holes, sections = "all" }) => {
       // Changing a rating or a hole after the card was confirmed withdraws the confirmation: what is
-      // on screen is then no longer what was checked.
-      const changed = courseNumbersChanged(
-        { tees: state.tees, holes: state.holes },
-        { tees, holes },
-      );
+      // on screen is then no longer what was checked. A save that does not carry the course has not
+      // compared anything, so it cannot withdraw the card.
+      const touchesCourse = sections === "all" || sections.includes("course");
+      const changed =
+        touchesCourse &&
+        courseNumbersChanged({ tees: state.tees, holes: state.holes }, { tees, holes });
       const withdraws = changed && tournament.courseDataConfirmed;
       const next = withdraws ? { ...tournament, courseDataConfirmed: false } : tournament;
       // The draft lands in the session state either way, so a failed write still leaves the edit on
@@ -1147,7 +1176,7 @@ export function createSupabaseAdapters(
       // The card is judged inside setupPayload, which sends null rather than inventing a par or a
       // stroke index for a hole nobody has filled in.
       const payload = setupPayload(next, tees, holes, sections);
-      return queuedWrite(async () => {
+      const write = queuedWrite(async () => {
         const { data, error } = await client.rpc("save_event_setup", {
           p_tournament: next.id,
           // Read when the write runs, not when it was queued, so it is the latest known. Null on a
@@ -1167,6 +1196,21 @@ export function createSupabaseAdapters(
         // After the guarded write has passed, so a refused save leaves nothing half-done.
         if (withdraws) await setCourseConfirmed(next.id, false);
       });
+      if (withdraws) {
+        // The dispatch above shows the card as withdrawn before the database has answered. A
+        // refusal changed nothing in the database, so put the confirmation back while keeping the
+        // edited numbers on screen for the retry. A failure of the second, confirmation-only write
+        // is different: the numbers did land, so the card stays shown as unconfirmed.
+        void write.catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : "";
+          if (!message.startsWith("Could not save the event setup:")) return;
+          dispatch({
+            type: "saveTournament",
+            tournament: { ...next, courseDataConfirmed: true },
+          });
+        });
+      }
+      return write;
     },
     confirmCourse: (tournamentId, confirmed) => {
       const t = state.tournaments.find((x) => x.id === tournamentId);

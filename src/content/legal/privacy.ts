@@ -119,7 +119,7 @@ All three roles can read the Club's player, entry, and handicap records. The app
 
 A signed-in player sees only their own record and entries in \`/my\`. That page shows your name, NGAP number, each event, your entry status and reasons, your frozen index, playing handicap, category, tee, flight, payment status, and your published start. It does not show your birthdate, contact details, email, or photo. It does not show another player's contact details, birthdate, email, photo, or handicap.
 
-An account on its own shows nothing. You link a player record with your NGAP number and your birthdate, or by signing in with the email address the Club holds on your record. The match must identify exactly one record and that record must not already be linked to another account. If the details do not match, or match more than one record, or the record is already linked, the page refuses and asks you to contact the Club so the desk can link it for you. Your name is not used to link an account, because names are public on the pairings page.
+An account on its own shows nothing. You link a player record with your NGAP number and your birthdate. The match must identify exactly one record and that record must not already be linked to another account. If the details do not match, or match more than one record, or the record is already linked, the page refuses and asks you to contact the Club so the desk can link it for you. Your name is not used to link an account, because names are public on the pairings page.
 
 This link is a check against the Club's own records, not a formal identity document. The Club may still ask you to confirm your identity in person, and the desk can correct a link.
 

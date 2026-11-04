@@ -7,6 +7,7 @@ import type {
   FlightRule,
   Group,
   Player,
+  ProvisionalPlayer,
   Registration,
   RoutingResult,
   Tee,
@@ -17,12 +18,23 @@ export { ageOn, playingHandicap, rawCourseHandicap } from "./handicap";
 export { addMinutes } from "./schedule";
 export * from "./types";
 
+/**
+ * The heading used for a confirmed player the engine could not classify. It is a label for a
+ * group, not a category or a flight: the player's own category and flight stay empty.
+ */
+export const UNCLASSIFIED_LABEL = "Unclassified";
+
 export interface RoutingInput {
   players: Player[];
   config: TournamentConfig;
   tees: Tee[];
   categories: CategoryRule[];
   flights: FlightRule[];
+  /**
+   * Desk-confirmed players missing a routing fact. They are placed in Unclassified groups so they
+   * can play today; the missing details are corrected later and the draw is re-run.
+   */
+  provisional?: ProvisionalPlayer[];
 }
 
 /** A group the organizer has locked. A re-run keeps it exactly as it is. */
@@ -106,7 +118,26 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
  */
 export function route(input: RoutingInput, options: RouteOptions = {}): RoutingResult {
   const { players, config, categories, flights } = input;
-  const registrations = players.map((p) => classifyPlayer(p, input));
+  const provisional = input.provisional ?? [];
+  // A provisional registration is confirmed but has no category or flight. It exists so the draw
+  // can hold a slot for the player without inventing the facts the desk still has to collect.
+  const provisionalRegistrations: Registration[] = provisional.map((p) => ({
+    playerId: p.id,
+    playerName: p.name,
+    status: "ok",
+    reasons: [`Confirmed as provisional; still missing ${p.missing.join(", ")}.`],
+    index: p.index,
+    age: 0,
+    categoryId: null,
+    teeId: null,
+    playingHandicap: null,
+    flightId: null,
+    provisional: true,
+  }));
+  const registrations = [
+    ...players.map((p) => classifyPlayer(p, input)),
+    ...provisionalRegistrations,
+  ];
   const byId = new Map(registrations.map((r) => [r.playerId, r]));
   const warnings: string[] = [];
 
@@ -118,7 +149,9 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
     const missing = members.some((m) => !m);
     const notOk = members.some((m) => m && m.status !== "ok");
     const flightIds = new Set(members.map((m) => m?.flightId ?? null));
-    const oneFlight = flightIds.size === 1 && !flightIds.has(null);
+    const provisionalOnly = members.length > 0 && members.every((m) => m?.provisional === true);
+    const oneFlight =
+      (flightIds.size === 1 && !flightIds.has(null)) || (provisionalOnly && !missing);
     const overSize = g.playerIds.length > config.groupSize;
     const repeated = g.playerIds.find((id) => lockedIds.has(id));
     if (repeated !== undefined) {
@@ -140,7 +173,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
       );
       continue;
     }
-    kept.push({ ...g, flightId: [...flightIds][0] as string });
+    kept.push({ ...g, flightId: provisionalOnly ? g.flightId : ([...flightIds][0] as string) });
     for (const id of g.playerIds) lockedIds.add(id);
   }
 
@@ -169,6 +202,37 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
       }
     }
     placed.push({ flight, groups: cut.map((g) => g.map((r) => r.playerId)) });
+  }
+
+  // Unclassified placement: confirmed players the engine cannot classify. They keep empty
+  // category, tee and flight; only a group heading and a start slot are supplied. They are listed
+  // after every real flight and sorted by name so a re-run is stable. The group row needs a real
+  // flight id for the database, so the first flight's id is used as a carrier only: the board and
+  // the published snapshot label the group from its provisional members, never from that flight.
+  const loose = provisional
+    .filter((p) => !lockedIds.has(p.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if (loose.length > 0) {
+    const carrierFlightId = orderedFlights[0]?.id ?? "";
+    if (carrierFlightId === "") {
+      warnings.push(
+        `The event has no flights set up, so ${UNCLASSIFIED_LABEL} groups cannot be saved. Set up at least one flight in Settings.`,
+      );
+    }
+    const sizes = groupSizes(loose.length, config.groupSize);
+    const cut = chunk(loose, sizes);
+    for (const g of cut) {
+      if (g.length < config.minGroupSize) {
+        warnings.push(`${UNCLASSIFIED_LABEL}: a group has only ${g.length} player(s).`);
+      }
+    }
+    placed.push({
+      flight: { id: carrierFlightId, name: UNCLASSIFIED_LABEL, categoryId: "", min: 0, max: 0 },
+      groups: cut.map((g) => g.map((r) => r.id)),
+    });
+    warnings.push(
+      `${loose.length} confirmed player(s) are missing a birthdate, gender or handicap index and were placed in ${UNCLASSIFIED_LABEL} groups. Correct the details and re-run the draw.`,
+    );
   }
 
   const newGroupCount = placed.reduce((n, p) => n + p.groups.length, 0);

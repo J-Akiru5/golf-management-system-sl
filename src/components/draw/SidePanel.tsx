@@ -7,6 +7,7 @@ import type { RoutingExplanation } from "@/lib/data/explain";
 import type { DeskRegistration, PlayerRecord } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
 import { fmtHcp, fmtTime, photoOf } from "@/lib/format";
+import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { cn } from "@/lib/ui/cn";
 
 export type Selection = { kind: "player"; id: string } | { kind: "group"; n: number } | null;
@@ -49,6 +50,13 @@ export function SidePanel(props: {
 
   const groupLabel = (g: DrawGroup) =>
     `Group ${g.number} · ${props.shotgun ? "hole" : "tee"} ${g.startHole} · ${fmtTime(g.time)}`;
+
+  // A group whose members are all provisional is labelled from them, not from the carrier flight
+  // id the database row needs.
+  const flightLabel = (g: DrawGroup) =>
+    g.playerIds.length > 0 && g.playerIds.every((id) => regs.get(id)?.provisional === true)
+      ? UNCLASSIFIED_LABEL
+      : names.flight(g.flightId);
 
   return (
     <aside className="panel" aria-label="Player pool and details">
@@ -111,7 +119,13 @@ export function SidePanel(props: {
                         <span>
                           {r.playerName}
                           <br />
-                          <span className="muted">{names.flight(r.flightId)}</span>
+                          <span className="muted">
+                            {r.flightId
+                              ? names.flight(r.flightId)
+                              : r.provisional
+                                ? UNCLASSIFIED_LABEL
+                                : names.flight(null)}
+                          </span>
                         </span>
                       </button>
                       <button
@@ -184,12 +198,19 @@ export function SidePanel(props: {
               return (
                 <>
                   <PlayerCard player={pl} reg={r} names={names} />
+                  {r.provisional && (
+                    <p className="notice warn" role="status">
+                      <b>Provisional.</b> Missing {r.missing.join(", ")}. The player is in an
+                      Unclassified group so they can play today; correct it tomorrow and re-run the
+                      draw.
+                    </p>
+                  )}
                   <div className="card flat">
                     {g ? (
                       <p>
                         <b>{groupLabel(g)}</b>
                         <br />
-                        <span className="muted">{names.flight(g.flightId)}</span>
+                        <span className="muted">{flightLabel(g)}</span>
                         {g.locked && <span className="pill gold gap">Locked</span>}
                       </p>
                     ) : (
@@ -258,7 +279,7 @@ export function SidePanel(props: {
                 <div className="card flat stack tight">
                   <h3>{groupLabel(g)}</h3>
                   <p className="muted">
-                    {names.flight(g.flightId)} · {g.playerIds.length} players
+                    {flightLabel(g)} · {g.playerIds.length} players
                     {g.wave ? ` · Wave ${g.wave}` : ""}
                   </p>
                   <dl className="facts">

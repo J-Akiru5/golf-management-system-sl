@@ -15,7 +15,9 @@ import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-da
 import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { photoOf } from "@/lib/format";
+import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
+import { isUnclassifiedGroup } from "@/lib/store/state";
 import { cn } from "@/lib/ui/cn";
 
 type Tab = "start" | "pairings" | "scorecards" | "howto";
@@ -56,7 +58,9 @@ export default function PrintCenter() {
     startHole: group.startHole,
     wave: group.wave,
     time: group.time,
-    flight: names.flight(group.flightId),
+    flight: isUnclassifiedGroup(group.playerIds, regById)
+      ? UNCLASSIFIED_LABEL
+      : names.flight(group.flightId),
     players: group.playerIds.map((id) => {
       const player = playerById.get(id);
       const registration = regById.get(id);
