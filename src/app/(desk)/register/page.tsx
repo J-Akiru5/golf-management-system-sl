@@ -109,6 +109,13 @@ const emptyDraft = (): Draft => ({
   paymentStatus: "not_recorded",
 });
 
+/**
+ * `RegistrationRepository.add` returns the entry. The connected adapter also attaches the database
+ * write to it as `saved`, so this screen can wait for the row before it says the entry was saved.
+ * Demo mode returns the entry alone, and there is nothing to wait for.
+ */
+type SavingEntry = RegistrationEntry & { saved?: Promise<void> };
+
 function RegisterDesk() {
   const {
     tournament,
@@ -116,12 +123,12 @@ function RegisterDesk() {
     entries,
     regById,
     adapters,
-    dispatch,
     status,
     names,
     days,
     tees,
     member,
+    reload,
   } = useDesk();
   const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
   /** The entry whose incomplete profile the organizer is overriding. */
@@ -138,6 +145,14 @@ function RegisterDesk() {
   const [photoError, setPhotoError] = useState("");
   const [listQuery, setListQuery] = useState("");
   const [step, setStep] = useState<"form" | "review">("form");
+  /** True while the entry write is running, so the review button cannot be pressed twice. */
+  const [savingEntry, setSavingEntry] = useState(false);
+  /** Why the entry was not saved. Shown on the review screen; nothing was written. */
+  const [entryError, setEntryError] = useState("");
+  /** Why a list action failed (re-freeze or remove). The list itself is unchanged by a failure. */
+  const [listError, setListError] = useState("");
+  /** The entry the desk is about to remove, for the confirmation below the list. */
+  const [removeAsk, setRemoveAsk] = useState<{ id: string; name: string } | null>(null);
 
   // ?player=id arrives from the players list ("Register").
   const prefill = params.get("player");
@@ -257,52 +272,123 @@ function RegisterDesk() {
     e.preventDefault();
     const problems = validate();
     setErrors(problems);
-    if (problems.length === 0) setStep("review");
+    if (problems.length === 0) {
+      // A fresh review: an error from the previous attempt belongs to the previous attempt.
+      setEntryError("");
+      setStep("review");
+    }
   }
 
-  function commit() {
-    let player = draft.player;
-    if (!player || draft.isNew) {
-      player = adapters.players.add({
-        firstName: draft.firstName,
-        lastName: draft.lastName,
-        nickname: draft.nickname,
-        birthdate: draft.birthdate || null,
-        gender: draft.gender,
-        homeCourse: draft.homeCourse,
-        contactNumber: draft.contactNumber,
-        email: draft.email,
-        ngapId: draft.ngapId,
-        photo: draft.photo,
-        photoConsent: draft.photo ? draft.consent : undefined,
-        photoPublicConsent: draft.photo && draft.consent ? draft.publicConsent : undefined,
-      });
-    }
-
-    // The database is unique on (event, player), so this would be rejected there. Say it plainly
-    // here instead of letting the desk read a constraint error.
-    if (entries.some((e) => e.playerId === player.id)) {
-      setErrors([`${player.name} is already entered in this event.`]);
+  async function commit() {
+    if (savingEntry) return;
+    // While the desk is loading or has failed, the provider hands out the session adapters, which
+    // would keep the entry on this screen only. Refuse rather than claim a save that cannot happen.
+    if (status !== "demo" && status !== "ready") {
+      setEntryError("The desk has not finished loading. Wait for it, then save again.");
       return;
     }
-    adapters.registrations.add(tournament?.id as string, {
-      playerId: player.id,
-      role: draft.role,
-      sponsor: draft.sponsor === "yes",
-      shirt: draft.role === "member" ? draft.memberShirt || null : draft.guestShirt || null,
-      teePreferences: Object.fromEntries(
-        (tournament?.registration.teeTimes ?? []).map((d) => [
-          d.date,
-          draft.teePreferences[d.date] || null,
-        ]),
-      ),
-      selectedDays: draft.selectedDays,
-      declaredWshId: draft.declaredWshId.trim() || null,
-      declaredWshHandicap: draft.declaredWshHandicap.trim() || null,
-      extra: draft.extra,
-      paymentStatus: draft.paymentStatus,
-    });
-    setSavedId(player.id);
+    setSavingEntry(true);
+    setEntryError("");
+
+    try {
+      // A new player is added to the directory first. Reuse the record only if it is still there:
+      // a failed player write takes it back out, and a retry must create it again rather than
+      // point at a row that does not exist.
+      const knownPlayer = players.find((p) => p.id === draft.player?.id) ?? null;
+      let player = knownPlayer;
+      if (!player || draft.isNew) {
+        player = adapters.players.add({
+          firstName: draft.firstName,
+          lastName: draft.lastName,
+          nickname: draft.nickname,
+          birthdate: draft.birthdate || null,
+          gender: draft.gender,
+          homeCourse: draft.homeCourse,
+          contactNumber: draft.contactNumber,
+          email: draft.email,
+          ngapId: draft.ngapId,
+          photo: draft.photo,
+          photoConsent: draft.photo ? draft.consent : undefined,
+          photoPublicConsent: draft.photo && draft.consent ? draft.publicConsent : undefined,
+        });
+        // Keep the new record on the draft, so a retry after a failed save reuses it instead of
+        // creating a second player.
+        const newPlayer = player;
+        setDraft((d) => ({ ...d, player: newPlayer, isNew: false }));
+      }
+
+      // The database is unique on (event, player), so this would be rejected there. Say it plainly
+      // here instead of letting the desk read a constraint error.
+      if (entries.some((e) => e.playerId === player.id)) {
+        setErrors([`${player.name} is already entered in this event.`]);
+        return;
+      }
+
+      const created = adapters.registrations.add(tournament?.id as string, {
+        playerId: player.id,
+        role: draft.role,
+        sponsor: draft.sponsor === "yes",
+        shirt: draft.role === "member" ? draft.memberShirt || null : draft.guestShirt || null,
+        teePreferences: Object.fromEntries(
+          (tournament?.registration.teeTimes ?? []).map((d) => [
+            d.date,
+            draft.teePreferences[d.date] || null,
+          ]),
+        ),
+        selectedDays: draft.selectedDays,
+        declaredWshId: draft.declaredWshId.trim() || null,
+        declaredWshHandicap: draft.declaredWshHandicap.trim() || null,
+        extra: draft.extra,
+        paymentStatus: draft.paymentStatus,
+      });
+
+      // Wait for the database before claiming the entry was recorded. The connected adapter takes
+      // the optimistic entry off the list itself if the write is refused.
+      await (created as SavingEntry).saved;
+
+      setSavedId(player.id);
+      setStep("form");
+    } catch (error) {
+      // The review stays on screen: nothing was written, and the old index or entry is untouched.
+      setEntryError(error instanceof Error ? error.message : "The entry was not saved. Try again.");
+    } finally {
+      setSavingEntry(false);
+    }
+  }
+
+  /**
+   * Re-freezes one entry or every outdated one. The connected adapter writes the row first and
+   * updates the screen afterwards, so a refused write leaves the old index visible.
+   */
+  async function refreeze(entryIds: string[]) {
+    setListError("");
+    try {
+      // The connected adapter returns its write promise even though the repository type says void,
+      // so this screen waits for the rows instead of assuming they were saved.
+      await adapters.registrations.refreeze(tournament?.id as string, entryIds);
+    } catch (error) {
+      setListError(
+        error instanceof Error
+          ? error.message
+          : "Could not re-freeze the index. The old one is still in place.",
+      );
+    }
+  }
+
+  /** Removes an entry after the confirmation. A refused delete puts the row back. */
+  async function removeEntry(target: { id: string; name: string }) {
+    setRemoveAsk(null);
+    setListError("");
+    try {
+      // Same as refreeze: the adapter's promise settles when the database answers.
+      await adapters.registrations.remove(target.id);
+    } catch (error) {
+      setListError(
+        error instanceof Error
+          ? error.message
+          : `${target.name} was not removed. The entry is still in this event.`,
+      );
+    }
   }
 
   function resetForm() {
@@ -311,6 +397,8 @@ function RegisterDesk() {
     setSavedId(null);
     setQuery("");
     setPhotoError("");
+    setEntryError("");
+    setRemoveAsk(null);
     setStep("form");
   }
 
@@ -1103,12 +1191,16 @@ function RegisterDesk() {
                   }
                   saveTarget={status === "demo" ? "session" : "database"}
                   confirmLabel="Confirm and save entry"
-                  onConfirm={() => {
-                    commit();
-                    setStep("form");
-                  }}
+                  saving={savingEntry}
+                  onConfirm={() => void commit()}
                   onCancel={() => setStep("form")}
                 />
+                {entryError && (
+                  <div className="notice bad" role="alert">
+                    <b>Not saved.</b> {entryError} Nothing was written, so the entry is not in the
+                    event. Press save again to retry.
+                  </div>
+                )}
               </SectionCard>
             );
           })()}
@@ -1124,20 +1216,33 @@ function RegisterDesk() {
               : "Everyone entered in this event."
           }
           action={
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={entries.length === 0}
-              onClick={() => {
-                for (const e of entries) {
-                  if (regById.get(e.playerId)?.frozenOutdated) {
-                    dispatch({ type: "refreeze", tournamentId: tournament.id, entryIds: [e.id] });
-                  }
+            <span className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={reload}
+                disabled={status === "demo"}
+                title={
+                  status === "demo"
+                    ? "This build has no database to refresh from"
+                    : "Reload this event from the club database"
                 }
-              }}
-            >
-              <RefreshCw aria-hidden="true" /> Re-freeze outdated
-            </Button>
+              >
+                <RefreshCw aria-hidden="true" /> Refresh entries
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={entries.length === 0}
+                onClick={() =>
+                  void refreeze(
+                    entries.filter((e) => regById.get(e.playerId)?.frozenOutdated).map((e) => e.id),
+                  )
+                }
+              >
+                <RefreshCw aria-hidden="true" /> Re-freeze outdated
+              </Button>
+            </span>
           }
         >
           <label className="field">
@@ -1149,6 +1254,27 @@ function RegisterDesk() {
               placeholder="Filter by name, NGAP ID or role"
             />
           </label>
+          {listError && (
+            <div className="notice bad" role="alert">
+              {listError}
+            </div>
+          )}
+          {removeAsk && (
+            <div className="notice warn" role="alert">
+              <b>Remove {removeAsk.name} from this event?</b>{" "}
+              {status === "demo"
+                ? "The entry is removed from this session only."
+                : "The entry is deleted from the club database. The player record and their handicap history stay."}
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button variant="danger" size="sm" onClick={() => void removeEntry(removeAsk)}>
+                  Yes, remove the entry
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setRemoveAsk(null)}>
+                  Keep it
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="grid gap-2">
             {page.items.map(({ e, r, p }) => {
               if (!p) return null;
@@ -1208,17 +1334,7 @@ function RegisterDesk() {
                         onSave={(next) => saveDays(e, next)}
                       />
                       {r?.frozenOutdated && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() =>
-                            dispatch({
-                              type: "refreeze",
-                              tournamentId: tournament.id,
-                              entryIds: [e.id],
-                            })
-                          }
-                        >
+                        <Button variant="secondary" size="sm" onClick={() => void refreeze([e.id])}>
                           <RefreshCw aria-hidden="true" /> Re-freeze
                         </Button>
                       )}
@@ -1227,7 +1343,7 @@ function RegisterDesk() {
                         size="sm"
                         aria-label={`Remove ${p.name} from this event`}
                         className="text-ink-muted hover:text-danger"
-                        onClick={() => dispatch({ type: "removeEntry", id: e.id })}
+                        onClick={() => setRemoveAsk({ id: e.id, name: p.name })}
                       >
                         <X aria-hidden="true" />
                       </Button>
