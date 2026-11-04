@@ -24,6 +24,13 @@ Supabase project, because the code and the database are released separately.
   desk and alerts still open the right section, the back button walks the tabs, and a tab shows a dot
   when that section has unsaved changes.
 
+### Added
+- **The control room map zooms under the pointer.** Scroll the wheel over the illustrated course, or
+  pinch it on a touch screen, and the map scales between 1× and 2.5× around the point you are
+  looking at. The drag still pans, its travel grows with the zoom so no bare edge can show, and
+  Reset view returns to the whole course. The map is an illustration drawn on a canvas, so zooming
+  past 2.5× would only blur it.
+
 ### Fixed
 - **The registration desk no longer runs off the right edge.** A card's single column took the
   width of its widest row, so the two-column page pushed the registrations list past the viewport.

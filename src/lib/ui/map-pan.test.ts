@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampPan, panBounds } from "./map-pan";
+import { clampPan, clampZoom, MAX_ZOOM, MIN_ZOOM, panBounds, zoomAbout } from "./map-pan";
 
 const view = { width: 1200, height: 800 };
 
@@ -36,6 +36,61 @@ describe("panBounds", () => {
       maxX: 0,
       minY: 0,
       maxY: 0,
+    });
+  });
+
+  it("widens the travel as the map is zoomed", () => {
+    // 1600×800 at zoom 2 is 3200×1600 against a 1200×800 view: 1000 of slack each way across,
+    // 400 up and down.
+    const b = panBounds(view, { width: 1600, height: 800 }, 2);
+    expect(b.minX).toBe(-1000);
+    expect(b.maxX).toBe(1000);
+    expect(b.minY).toBe(-400);
+    expect(b.maxY).toBe(400);
+  });
+});
+
+describe("clampZoom", () => {
+  it("keeps a zoom inside the allowed range", () => {
+    expect(clampZoom(1.6)).toBe(1.6);
+    expect(clampZoom(0.2)).toBe(MIN_ZOOM);
+    expect(clampZoom(99)).toBe(MAX_ZOOM);
+  });
+
+  it("falls back to no zoom for a value that is not a number", () => {
+    expect(clampZoom(Number.NaN)).toBe(MIN_ZOOM);
+    expect(clampZoom(Number.POSITIVE_INFINITY)).toBe(MAX_ZOOM);
+  });
+});
+
+describe("zoomAbout", () => {
+  const centre = { x: 600, y: 400 };
+
+  it("keeps the map point under the cursor in place", () => {
+    const pan = { x: 60, y: -40 };
+    const focus = { x: 900, y: 250 };
+    // The screen offset of the map point under the cursor, then where it lands after zooming.
+    const offset = { x: (focus.x - centre.x - pan.x) / 1, y: (focus.y - centre.y - pan.y) / 1 };
+    const next = zoomAbout(pan, 1, 2, focus, centre);
+    const landed = {
+      x: centre.x + next.x + 2 * offset.x,
+      y: centre.y + next.y + 2 * offset.y,
+    };
+    expect(landed.x).toBeCloseTo(focus.x, 6);
+    expect(landed.y).toBeCloseTo(focus.y, 6);
+  });
+
+  it("leaves the pan alone when the zoom does not change", () => {
+    expect(zoomAbout({ x: 30, y: 10 }, 1.5, 1.5, { x: 0, y: 0 }, centre)).toEqual({
+      x: 30,
+      y: 10,
+    });
+  });
+
+  it("ignores a zoom that is not a positive number", () => {
+    expect(zoomAbout({ x: 12, y: 4 }, 0, 2, { x: 100, y: 100 }, centre)).toEqual({
+      x: 12,
+      y: 4,
     });
   });
 });

@@ -195,7 +195,15 @@ function paint(ctx: CanvasRenderingContext2D) {
  * bare edge the moment it moved, so the extra paint is what makes the drag possible. The vignettes
  * stay put: they keep text legible and must line up with the panels, not with the map.
  */
-export function CourseCanvas({ cover, pan }: { cover: Cover | null; pan: Pan }) {
+export function CourseCanvas({
+  cover,
+  pan,
+  zoom,
+}: {
+  cover: Cover | null;
+  pan: Pan;
+  zoom: number;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current;
@@ -216,7 +224,10 @@ export function CourseCanvas({ cover, pan }: { cover: Cover | null; pan: Pan }) 
         aria-hidden="true"
         data-pan-surface=""
         className="absolute inset-0 cursor-grab will-change-transform active:cursor-grabbing"
-        style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0)` }}
+        style={{
+          transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+          transformOrigin: "center",
+        }}
       >
         <canvas
           ref={ref}

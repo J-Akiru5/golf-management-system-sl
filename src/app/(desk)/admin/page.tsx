@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelRight } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CourseCanvas, MAP_MARGIN, useCover } from "@/components/control-room/CourseCanvas";
 import { HoleCard, HolePin } from "@/components/control-room/HolePin";
 import {
@@ -22,7 +22,7 @@ import type { Tournament } from "@/lib/data/types";
 import { fmtTime } from "@/lib/format";
 import { useBoard } from "@/lib/ui/board";
 import { cn } from "@/lib/ui/cn";
-import { clampPan, type Pan, panBounds } from "@/lib/ui/map-pan";
+import { clampPan, clampZoom, type Pan, panBounds, zoomAbout } from "@/lib/ui/map-pan";
 
 /**
  * Overview: the tournament control room from the approved mockup. The course is the canvas, each
@@ -49,22 +49,30 @@ function ControlRoomInner({
   // The map is drag-pannable so holes that sit behind the bottom row can be reached. The drag is
   // clamped to the map's own overhang, so no bare corner can ever show through the glass.
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ id: number; x: number; y: number; from: Pan; moved: boolean } | null>(null);
   // A drag that moved the map must not also read as a click on the pin it started on.
   const swallowClick = useRef(false);
   const moved = pan.x !== 0 || pan.y !== 0;
-  const bounds = useMemo(
-    () =>
-      panBounds(
-        { width: cover?.w ?? 0, height: cover?.h ?? 0 },
-        {
-          width: (cover?.s ?? 0) * MAP_W + 2 * (cover?.s ?? 0) * MAP_MARGIN,
-          height: (cover?.s ?? 0) * MAP_H + 2 * (cover?.s ?? 0) * MAP_MARGIN,
-        },
-      ),
-    [cover],
-  );
+  // The wheel and pinch listeners are native, so they read the live view from a ref instead of a
+  // closure frozen at the render that installed them.
+  const view = useRef({ pan: { x: 0, y: 0 }, zoom: 1 });
+  const boundsFor = (scale: number) =>
+    panBounds(
+      { width: cover?.w ?? 0, height: cover?.h ?? 0 },
+      {
+        width: (cover?.s ?? 0) * MAP_W + 2 * (cover?.s ?? 0) * MAP_MARGIN,
+        height: (cover?.s ?? 0) * MAP_H + 2 * (cover?.s ?? 0) * MAP_MARGIN,
+      },
+      scale,
+    );
+  const applyView = (nextPan: Pan, nextZoom: number) => {
+    view.current = { pan: nextPan, zoom: nextZoom };
+    setPan(nextPan);
+    setZoom(nextZoom);
+  };
+  const bounds = useMemo(() => boundsFor(zoom), [cover, zoom]);
   const shotgun = config.startFormat === "shotgun";
   const [wave, setWave] = useState<string>("A");
   // Nothing is open on landing. The first hole card used to open itself when a draw existed,
@@ -88,7 +96,13 @@ function ControlRoomInner({
     const target = e.target as HTMLElement;
     if (!target.closest("[data-pan-surface]")) return;
     if (target.closest("button, a, input, select, textarea")) return;
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, from: pan, moved: false };
+    drag.current = {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      from: view.current.pan,
+      moved: false,
+    };
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
@@ -107,7 +121,7 @@ function ControlRoomInner({
       d.moved = true;
       setSelected(null);
     }
-    setPan(clampPan({ x: d.from.x + dx, y: d.from.y + dy }, bounds));
+    applyView(clampPan({ x: d.from.x + dx, y: d.from.y + dy }, bounds), view.current.zoom);
   };
 
   const endPan = (e: React.PointerEvent<HTMLElement>) => {
@@ -131,6 +145,88 @@ function ControlRoomInner({
     e.preventDefault();
     e.stopPropagation();
   };
+
+  // Wheel and pinch zoom the map under the pointer, and the pan is clamped to the scaled map so no
+  // bare corner shows through. One finger still scrolls the page: touch drag never pans the map.
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el || !cover) return;
+
+    const centreOf = () => {
+      const rect = el.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    };
+    const zoomTo = (factor: number, focus: Pan) => {
+      const from = view.current.zoom;
+      const to = clampZoom(from * factor);
+      if (to === from) return;
+      applyView(
+        clampPan(zoomAbout(view.current.pan, from, to, focus, centreOf()), boundsFor(to)),
+        to,
+      );
+    };
+    const onWheel = (event: WheelEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest("[data-pan-surface]")) return;
+      event.preventDefault();
+      zoomTo(Math.exp(-event.deltaY * 0.0016), { x: event.clientX, y: event.clientY });
+    };
+
+    const pair = (touches: TouchList) => {
+      const a = touches.item(0);
+      const b = touches.item(1);
+      if (!a || !b) return null;
+      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      return {
+        distance,
+        focus: { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 },
+      };
+    };
+    let pinch: { distance: number; zoom: number; pan: Pan; focus: Pan } | null = null;
+    const onTouchStart = (event: TouchEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest("[data-pan-surface]")) return;
+      const both = pair(event.touches);
+      pinch =
+        both && both.distance > 0
+          ? {
+              distance: both.distance,
+              zoom: view.current.zoom,
+              pan: view.current.pan,
+              focus: both.focus,
+            }
+          : null;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (!pinch) return;
+      const both = pair(event.touches);
+      if (!both || both.distance === 0) return;
+      event.preventDefault();
+      const from = pinch.zoom;
+      const to = clampZoom(from * (both.distance / pinch.distance));
+      if (to === from) return;
+      applyView(
+        clampPan(zoomAbout(pinch.pan, from, to, pinch.focus, centreOf()), boundsFor(to)),
+        to,
+      );
+    };
+    const onTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length < 2) pinch = null;
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [cover]);
 
   const holes = MAP_HOLES.map((h) => {
     const slot = b.slot(h.hole, shotgun ? wave : null);
@@ -157,7 +253,7 @@ function ControlRoomInner({
         onPointerCancel={endPan}
         onClickCapture={guardClick}
       >
-        <CourseCanvas cover={cover} pan={pan} />
+        <CourseCanvas cover={cover} pan={pan} zoom={zoom} />
 
         <div className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[var(--rail-pad)]">
           <p className="text-[11px] font-bold tracking-[.14em] text-[#e0bc65] uppercase">
@@ -195,7 +291,10 @@ function ControlRoomInner({
 
         <div
           className="pointer-events-none absolute inset-0 will-change-transform [&_button]:pointer-events-auto"
-          style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0)` }}
+          style={{
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+            transformOrigin: "center",
+          }}
         >
           {cover &&
             holes.map(({ h, slot }) => {
@@ -271,10 +370,10 @@ function ControlRoomInner({
           </SheetContent>
         </Sheet>
 
-        {moved && (
+        {(moved || zoom !== 1) && (
           <button
             type="button"
-            onClick={() => setPan({ x: 0, y: 0 })}
+            onClick={() => applyView({ x: 0, y: 0 }, 1)}
             className="absolute bottom-12 left-4 z-10 rounded-full bg-[rgba(14,22,18,.72)] px-3 py-1 text-[11px] text-[#c9d3cc] backdrop-blur-[8px] hover:text-[#eef0ea] sm:left-6 lg:left-[var(--rail-pad)] xl:bottom-[300px]"
           >
             Reset view
