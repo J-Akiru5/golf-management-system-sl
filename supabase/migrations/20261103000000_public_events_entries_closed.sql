@@ -86,14 +86,16 @@ begin
   insert into public.tournaments
     (club_id, course_id, name, play_date, cutoff_date, start_format, first_tee_time, state, dates)
   values
-    (v_club, v_course, 'zz-probe-open', current_date + 10, current_date + 2, 'shotgun', '06:30',
-     'open', array[current_date + 10]),
-    (v_club, v_course, 'zz-probe-closed', current_date + 10, current_date - 1, 'shotgun', '06:30',
-     'closed', array[current_date + 10]),
-    (v_club, v_course, 'zz-probe-draft', current_date + 10, current_date + 2, 'shotgun', '06:30',
-     'draft', array[current_date + 10]),
-    (v_club, v_course, 'zz-probe-finished', current_date - 30, current_date - 40, 'shotgun', '06:30',
-     'closed', array[current_date - 30]);
+    -- A date far out and a tee time nobody plays, so a live booking check cannot collide with a
+    -- real event and abort this migration.
+    (v_club, v_course, 'zz-probe-open', current_date + 400, current_date + 390, 'shotgun', '23:45',
+     'open', array[current_date + 400]),
+    (v_club, v_course, 'zz-probe-closed', current_date + 401, current_date - 1, 'shotgun', '23:45',
+     'closed', array[current_date + 401]),
+    (v_club, v_course, 'zz-probe-draft', current_date + 402, current_date + 390, 'shotgun', '23:45',
+     'draft', array[current_date + 402]),
+    (v_club, v_course, 'zz-probe-finished', current_date - 40, current_date - 50, 'shotgun', '23:45',
+     'closed', array[current_date - 40]);
 
   v_rows := public.public_events();
 
@@ -131,13 +133,7 @@ begin
     raise exception 'The public payload carries unexpected fields: %', v_keys;
   end if;
 
-  -- Raised so this transaction rolls back: the probes must not survive the migration.
-  raise exception 'SELFCHECK-OK: open and closed listed, draft and finished excluded, entriesOpen correct';
-exception
-  when others then
-    if sqlerrm like 'SELFCHECK-OK%' then
-      raise notice '%', sqlerrm;
-    else
-      raise;
-    end if;
+  -- Delete the probes explicitly rather than relying on a rollback: the SQL editor runs a script
+  -- statement by statement, so an inserted row can outlive the block that raised.
+  delete from public.tournaments where name like 'zz-probe-%';
 end $$;
