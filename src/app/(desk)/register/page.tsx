@@ -20,6 +20,7 @@ import { Avatar, StatusPill } from "@/components/bits";
 import {
   eligibilityView,
   missingRequiredFields,
+  PAYMENT_OPTIONS,
   type PlayerPickItem,
   PlayerQuickPick,
   RegisterConfirm,
@@ -131,6 +132,16 @@ function RegisterDesk() {
     reload,
   } = useDesk();
   const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
+  /** Payment is a desk job: the desk role may record it even though it cannot override routing. */
+  const canRecordPayment =
+    status === "demo" ||
+    member?.role === "owner" ||
+    member?.role === "organizer" ||
+    member?.role === "desk";
+  /** Bulk confirmation writes to the database, so it is offered only on the connected desk. */
+  const canConfirmMany =
+    status === "ready" &&
+    (member?.role === "owner" || member?.role === "organizer" || member?.role === "desk");
   /** The entry whose incomplete profile the organizer is overriding. */
   const [override, setOverride] = useState<{
     player: PlayerRecord;
@@ -153,6 +164,11 @@ function RegisterDesk() {
   const [listError, setListError] = useState("");
   /** The entry the desk is about to remove, for the confirmation below the list. */
   const [removeAsk, setRemoveAsk] = useState<{ id: string; name: string } | null>(null);
+  /** The batch the desk is about to confirm, with how many listed rows the desk must leave out. */
+  const [bulkAsk, setBulkAsk] = useState<{ ids: string[]; skipped: number } | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState("");
+  const [bulkNotice, setBulkNotice] = useState("");
 
   // ?player=id arrives from the players list ("Register").
   const prefill = params.get("player");
@@ -211,6 +227,35 @@ function RegisterDesk() {
   );
   const { page, setPage } = usePagedList(orderedRows, listQuery);
 
+  // Bulk confirmation only takes entries the database still holds as needs_review and that the
+  // desk can stand behind. The database flips the status; it cannot supply a missing birthdate, a
+  // handicap index or a unique name, so those stay out and the dialog says how many were left alone.
+  const bulkTargets = useMemo(() => {
+    // Count only the names in this event: a namesake elsewhere in the club is not an ambiguous
+    // entry. Two entered players with the same display name are, and neither is confirmed here.
+    const nameCounts = new Map<string, number>();
+    for (const entry of entries) {
+      const player = players.find((x) => x.id === entry.playerId);
+      if (!player) continue;
+      const key = player.name.trim().toLowerCase();
+      nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+    }
+    return listRows.filter(({ e, p }) => {
+      if (!p) return false;
+      // Already ok, or the desk called it not eligible. Neither is a bulk-confirm candidate.
+      if (e.status !== "needs_review") return false;
+      const r = regById.get(p.id);
+      if (!r || r.status === "ineligible") return false;
+      if (!p.birthdate || !p.gender) return false;
+      if (r.index === null) return false;
+      return (nameCounts.get(p.name.trim().toLowerCase()) ?? 0) <= 1;
+    });
+  }, [entries, listRows, players, regById]);
+  const listedNeedsReview = useMemo(
+    () => listRows.filter(({ e }) => e.status === "needs_review").length,
+    [listRows],
+  );
+
   async function saveDays(entry: RegistrationEntry, next: number[]) {
     if (tournament?.requiredDays !== null && tournament?.requiredDays !== undefined) {
       if (next.length !== tournament.requiredDays) {
@@ -228,6 +273,8 @@ function RegisterDesk() {
   if (!tournament) return <NeedsTournament what="The registration desk" />;
 
   const instructions = instructionText(tournament.registration.instructions);
+  // Captured after the "no tournament" return so the handlers below keep a plain string.
+  const tournamentId = tournament.id;
 
   const fee = tournament.registration.fields.filter(
     (f) => f.appliesTo === "both" || f.appliesTo === draft.role,
@@ -391,6 +438,51 @@ function RegisterDesk() {
     }
   }
 
+  /**
+   * Records a payment status on an existing entry. The connected adapter puts the old value back
+   * when the database refuses it, so the control cannot keep showing a change that was not saved.
+   */
+  async function savePayment(entryId: string, next: PaymentStatus) {
+    setListError("");
+    try {
+      await adapters.registrations.update(entryId, { paymentStatus: next });
+    } catch (error) {
+      setListError(
+        error instanceof Error
+          ? error.message
+          : "Could not change the payment status. The old value is still in place.",
+      );
+    }
+  }
+
+  /** Confirms the batch the desk agreed to, then reloads the list from the database. */
+  async function runBulkConfirm() {
+    if (!bulkAsk || bulkBusy) return;
+    const { ids } = bulkAsk;
+    setBulkBusy(true);
+    setBulkError("");
+    setBulkNotice("");
+    try {
+      const count = await adapters.registrations.confirmMany(tournamentId, ids);
+      setBulkAsk(null);
+      setBulkNotice(
+        count === ids.length
+          ? `${count} registration${count === 1 ? "" : "s"} confirmed.`
+          : `${count} of ${ids.length} confirmed. The rest were already confirmed or are no longer waiting.`,
+      );
+      reload();
+    } catch (error) {
+      // Nothing on this screen was changed before the call, so the list stays as it was.
+      setBulkError(
+        error instanceof Error
+          ? error.message
+          : "The registrations were not confirmed. Nothing was changed.",
+      );
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   function resetForm() {
     setDraft(emptyDraft());
     setErrors([]);
@@ -486,8 +578,8 @@ function RegisterDesk() {
                 <span className="mono">{tournament.registration.payment.accountNumber}</span>
               </p>
               <p className="hint mt-1">
-                <b>Payment status is recorded by hand and starts pending.</b> Nothing is taken,
-                checked, verified or confirmed here.
+                <b>Payment status is recorded by hand and starts as not recorded.</b> Nothing is
+                taken, checked, verified or confirmed here.
               </p>
             </div>
           )}
@@ -1228,8 +1320,28 @@ function RegisterDesk() {
                     : "Reload this event from the club database"
                 }
               >
-                <RefreshCw aria-hidden="true" /> Refresh entries
+                <RefreshCw aria-hidden="true" /> Reload from database
               </Button>
+              {canConfirmMany && listedNeedsReview > 0 && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={bulkBusy || bulkTargets.length === 0}
+                  title={
+                    bulkTargets.length === 0
+                      ? "Every parked entry still needs data the desk cannot invent (birthdate, handicap index, unique name) or is not eligible. Fix or review those rows first."
+                      : "Confirms the entries in the current list filter, not only this page."
+                  }
+                  onClick={() =>
+                    setBulkAsk({
+                      ids: bulkTargets.map(({ e }) => e.id),
+                      skipped: listedNeedsReview - bulkTargets.length,
+                    })
+                  }
+                >
+                  <BadgeCheck aria-hidden="true" /> Confirm {bulkTargets.length} shown
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 size="sm"
@@ -1257,6 +1369,58 @@ function RegisterDesk() {
           {listError && (
             <div className="notice bad" role="alert">
               {listError}
+            </div>
+          )}
+          {canConfirmMany && listedNeedsReview > 0 && bulkTargets.length === 0 && (
+            <div className="notice warn" role="status">
+              <b>{listedNeedsReview} entries are parked as needs review</b>, but none can be
+              confirmed in bulk yet: each is missing a birthdate, a handicap index or a unique name,
+              or it is not eligible. Fix those rows first, then confirm them here.
+            </div>
+          )}
+          {bulkNotice && (
+            <div className="notice ok" role="status">
+              {bulkNotice}
+            </div>
+          )}
+          {bulkError && (
+            <div className="notice bad" role="alert">
+              <b>Not confirmed.</b> {bulkError}
+            </div>
+          )}
+          {bulkAsk && (
+            <div className="notice warn" role="alert">
+              <b>
+                Confirm {bulkAsk.ids.length} registration
+                {bulkAsk.ids.length === 1 ? "" : "s"} as ready?
+              </b>{" "}
+              These are the entries in the current list filter that the desk can stand behind: a
+              birthdate, a handicap index and a unique name.{" "}
+              {bulkAsk.skipped > 0 &&
+                `${bulkAsk.skipped} more listed ${
+                  bulkAsk.skipped === 1 ? "entry is" : "entries are"
+                } left out because the desk cannot stand behind ${bulkAsk.skipped === 1 ? "it" : "them"} yet (missing details or not eligible). `}
+              This writes the status straight to the club database. There is no undo in this screen,
+              so a mistake needs a manual correction.
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={bulkBusy}
+                  onClick={() => void runBulkConfirm()}
+                >
+                  <BadgeCheck aria-hidden="true" />{" "}
+                  {bulkBusy ? "Confirming…" : `Yes, confirm ${bulkAsk.ids.length}`}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={bulkBusy}
+                  onClick={() => setBulkAsk(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           )}
           {removeAsk && (
@@ -1316,6 +1480,12 @@ function RegisterDesk() {
                   }}
                   actions={
                     <>
+                      <PaymentEditor
+                        entry={e}
+                        name={p.name}
+                        disabled={!canRecordPayment}
+                        onSave={(next) => savePayment(e.id, next)}
+                      />
                       {canEdit && r?.status === "needs_review" && (
                         <Button
                           variant="secondary"
@@ -1386,5 +1556,52 @@ function RegisterDesk() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * The payment status on one registration, editable in place. The value comes from the entry, so a
+ * refused write that the adapter has already rolled back appears here without extra work.
+ */
+function PaymentEditor({
+  entry,
+  name,
+  disabled,
+  onSave,
+}: {
+  entry: RegistrationEntry;
+  name: string;
+  disabled: boolean;
+  onSave: (next: PaymentStatus) => Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+  return (
+    <span className="flex items-center gap-1">
+      <select
+        value={entry.paymentStatus}
+        disabled={disabled || saving}
+        aria-label={`Payment status for ${name}`}
+        title={`Payment status for ${name}`}
+        className="h-8 w-auto text-[12px]"
+        onChange={async (e) => {
+          const next = e.target.value as PaymentStatus;
+          setSaving(true);
+          try {
+            await onSave(next);
+          } catch {
+            // The screen owns the message; the adapter has already put the old value back.
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        {PAYMENT_OPTIONS.map((status) => (
+          <option key={status} value={status}>
+            {PAYMENT_LABEL[status]}
+          </option>
+        ))}
+      </select>
+      {saving && <span className="hint">Saving…</span>}
+    </span>
   );
 }

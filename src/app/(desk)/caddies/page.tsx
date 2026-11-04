@@ -73,7 +73,7 @@ export default function CaddiesPage() {
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (!canManage) return;
+    if (!canManage || busy) return;
     if (!draft.fullName.trim()) {
       setError("A caddie needs a name.");
       return;
@@ -82,7 +82,7 @@ export default function CaddiesPage() {
     setError("");
     try {
       if (draft.id) {
-        adapters.caddies.update(draft.id, {
+        await adapters.caddies.update(draft.id, {
           fullName: draft.fullName.trim(),
           nickname: draft.nickname.trim() || null,
           phone: draft.phone.trim() || null,
@@ -91,17 +91,23 @@ export default function CaddiesPage() {
           active: draft.active,
         });
       } else {
-        adapters.caddies.add({
+        const created = adapters.caddies.add({
           fullName: draft.fullName.trim(),
           nickname: draft.nickname.trim() || null,
           phone: draft.phone.trim() || null,
           email: draft.email.trim() || null,
           notes: draft.notes.trim() || null,
         });
+        // Wait for the row: closing on the queued write would claim a save that may still fail.
+        await created.saved;
       }
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the caddie.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not save the caddie. The sheet keeps what you typed.",
+      );
     } finally {
       setBusy(false);
     }
@@ -311,7 +317,7 @@ export default function CaddiesPage() {
                 Cancel
               </Button>
               <Button type="submit" variant="primary" disabled={busy}>
-                {busy ? "Saving…" : "Save caddie"}
+                {busy ? "Saving…" : error ? "Try save again" : "Save caddie"}
               </Button>
             </div>
           </form>

@@ -198,46 +198,91 @@ function TeeRow({
   const [caddieSaving, setCaddieSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
 
-  async function save(next?: DayTeeAssignment) {
-    setMessage(null);
-    const time = next ? (next.teeTime ?? "") : teeTime.trim();
-    const holeText = next ? (next.startHole ? String(next.startHole) : "") : startHole.trim();
-    const isConfirmed = next ? next.confirmed : confirmed;
+  /**
+   * The one place that turns the row's fields into a write. Used by Save, by Clear, and by the
+   * confirmation checkbox, so all three refuse the same invalid combinations with the same words.
+   */
+  function resolveAssignment(
+    timeText: string,
+    holeText: string,
+    isConfirmed: boolean,
+  ): { assignment: DayTeeAssignment } | { error: string } {
     const hole = holeText ? Number(holeText) : null;
     const problem = teeAssignmentProblem({
-      teeTime: time || null,
+      teeTime: timeText || null,
       startHole: hole,
       confirmed: isConfirmed,
       courseHoles,
     });
     if (problem === "both_or_neither") {
-      setMessage({ tone: "bad", text: "Give both a tee time and a start hole, or clear both." });
-      return;
+      return { error: "Give both a tee time and a start hole, or clear both." };
     }
     if (problem === "hole_range") {
-      setMessage({ tone: "bad", text: `The start hole must be between 1 and ${courseHoles}.` });
-      return;
+      return { error: `The start hole must be between 1 and ${courseHoles}.` };
     }
     if (problem === "confirmed_needs_both") {
-      setMessage({ tone: "bad", text: "A confirmed time needs both fields." });
+      return { error: "A confirmed time needs both fields." };
+    }
+    return {
+      assignment: { teeTime: timeText || null, startHole: hole, confirmed: isConfirmed },
+    };
+  }
+
+  async function save(next?: DayTeeAssignment) {
+    setMessage(null);
+    const resolved = next
+      ? { assignment: next }
+      : resolveAssignment(teeTime.trim(), startHole.trim(), confirmed);
+    if ("error" in resolved) {
+      setMessage({ tone: "bad", text: resolved.error });
       return;
     }
+    const { assignment } = resolved;
 
     setSaving(true);
     try {
-      await onSave({
-        teeTime: time || null,
-        startHole: hole,
-        confirmed: isConfirmed,
-      });
-      setTeeTime(time);
-      setStartHole(holeText);
-      setConfirmed(isConfirmed);
-      setMessage({ tone: "ok", text: isConfirmed ? "Confirmed." : "Saved." });
+      await onSave(assignment);
+      setTeeTime(assignment.teeTime ?? "");
+      setStartHole(assignment.startHole ? String(assignment.startHole) : "");
+      setConfirmed(assignment.confirmed);
+      setMessage({ tone: "ok", text: assignment.confirmed ? "Confirmed." : "Saved." });
     } catch (error) {
       setMessage({
         tone: "bad",
         text: error instanceof Error ? error.message : "Could not save the tee time.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /**
+   * Saving on the tick itself. On a phone the per-row Save can be below the fold, so the checkbox
+   * must not look saved while only the browser session holds the change. A refused write puts the
+   * tick back and says why inline.
+   */
+  async function toggleConfirmed(next: boolean) {
+    if (saving) return;
+    const previous = confirmed;
+    const resolved = resolveAssignment(teeTime.trim(), startHole.trim(), next);
+    if ("error" in resolved) {
+      setMessage({ tone: "bad", text: resolved.error });
+      return;
+    }
+    setMessage(null);
+    setConfirmed(next);
+    setSaving(true);
+    try {
+      await onSave(resolved.assignment);
+      setMessage({ tone: "ok", text: next ? "Confirmed." : "Confirmation removed." });
+    } catch (error) {
+      setConfirmed(previous);
+      setMessage({
+        tone: "bad",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Could not change the confirmation. The tick was put back.",
       });
     } finally {
       setSaving(false);
@@ -321,10 +366,7 @@ function TeeRow({
           checked={confirmed}
           disabled={saving}
           aria-label={`Confirm the tee time for ${player.name} on ${day.label}`}
-          onChange={(e) => {
-            setConfirmed(e.target.checked);
-            setMessage(null);
-          }}
+          onChange={(e) => void toggleConfirmed(e.target.checked)}
         />
       </td>
       <td>
@@ -338,12 +380,7 @@ function TeeRow({
               size="sm"
               disabled={saving}
               title="Clear the time and hole for this day"
-              onClick={() => {
-                setTeeTime("");
-                setStartHole("");
-                setConfirmed(false);
-                void save({ teeTime: null, startHole: null, confirmed: false });
-              }}
+              onClick={() => void save({ teeTime: null, startHole: null, confirmed: false })}
             >
               <RotateCcw aria-hidden="true" /> Clear
             </Button>
