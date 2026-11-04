@@ -46,13 +46,18 @@ describe("planDrawJobs", () => {
   });
 
   it("takes the public page down when a fresh proposal drops the published copy", () => {
+    // The board the database already holds is unchanged, so only the unpublish is written.
     const jobs = plan(published(), { type: "generate", preserveLocks: false });
-    expect(jobs.map((j) => j.kind)).toEqual(["save", "unpublish"]);
+    expect(jobs.map((j) => j.kind)).toEqual(["unpublish"]);
+  });
+
+  it("writes nothing when a re-run proposes the board that is already saved", () => {
+    expect(plan(published(), { type: "generate", preserveLocks: true })).toEqual([]);
   });
 
   it("keeps the public page up when locks are preserved", () => {
     const jobs = plan(published(), { type: "generate", preserveLocks: true });
-    expect(jobs.map((j) => j.kind)).toEqual(["save"]);
+    expect(jobs.map((j) => j.kind)).not.toContain("unpublish");
   });
 
   it("unpublishes only when something is published", () => {

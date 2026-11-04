@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { OfflineRuntime } from "@/components/OfflineRuntime";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
+import { ToastProvider } from "@/components/ui/toast";
 import {
   COMPANY,
   openGraphFor,
@@ -99,7 +100,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <JsonLd data={[organizationSchema(), websiteSchema()]} />
         <OfflineRuntime />
-        <DeskProvider>{children}</DeskProvider>
+        <ToastProvider>
+          <DeskProvider>{children}</DeskProvider>
+        </ToastProvider>
       </body>
     </html>
   );

@@ -14,6 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useToast } from "@/components/ui/toast";
 import type { DeskAccessProblem } from "@/lib/auth/access-problem";
 import { DeskAccessError, getDeskMember } from "@/lib/auth/member";
 import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
@@ -62,6 +63,7 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Database } from "@/lib/supabase/types";
+import { actionNotice } from "./action-notice";
 import { type DrawJob, planDrawJobs } from "./draw-persist";
 import { activeTournament, boardOf, emptyState, entriesFor, initialState, reducer } from "./state";
 
@@ -175,6 +177,8 @@ const LOCAL_ONLY_ACTIONS: ReadonlySet<Action["type"]> = new Set([
 
 export function DeskProvider({ children }: { children: ReactNode }) {
   const connected = isSupabaseConfigured();
+  // Every action reports what it did. One listener, so no screen has to invent its own wording.
+  const toast = useToast();
   // A connected desk starts empty and fills from the database. It never starts from the demo, so
   // invented players and the sample event cannot show while loading or after a failed load.
   const [state, rawDispatch] = useReducer(
@@ -376,7 +380,10 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const drawQueue = useRef<ReturnType<typeof createQueue> | null>(null);
   if (!drawQueue.current) {
     drawQueue.current = createQueue({
-      onError: setError,
+      onError: (message) => {
+        setError(message);
+        toast.push({ tone: "bad", title: "Not saved", detail: message });
+      },
       onSaved: () => {
         setError(null);
         setLastSavedAt(new Date().toISOString());
@@ -440,6 +447,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       // cannot show a value that the database never received.
       if (connected && !LOCAL_ONLY_ACTIONS.has(action.type) && !canWriteRef.current) {
         setError(OFFLINE_WRITE_NOTICE);
+        toast.push({ tone: "bad", title: "Not saved", detail: OFFLINE_WRITE_NOTICE });
         if (isPublish) {
           setPublishState("failed");
           setPublishError(OFFLINE_WRITE_NOTICE);
@@ -447,7 +455,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (!client || !DRAW_ACTIONS.has(action.type)) {
+        const before = latest.current;
+        const after = reducer(before, action);
         rawDispatch(action);
+        const notice = actionNotice(action, before, after);
+        if (notice) toast.push(notice);
         return;
       }
       const before = latest.current;
@@ -463,6 +475,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
             setPublishError(
               "The pairings were not published. Check the problems above and try again.",
             );
+            toast.push({
+              tone: "bad",
+              title: "Not published",
+              detail: "Check the problems on the draw, then publish again.",
+            });
           }
           return;
         }
@@ -484,6 +501,16 @@ export function DeskProvider({ children }: { children: ReactNode }) {
                 }
                 // Shown only now, and then stamped with the version the database assigned.
                 applyPublished(job.tournamentId, accepted);
+                toast.push({
+                  tone: "ok",
+                  title: action.type === "unpublish" ? "Pairings taken down" : "Pairings published",
+                  detail:
+                    action.type === "unpublish"
+                      ? "Players see “not out yet” until you publish again."
+                      : result
+                        ? `Version ${result.version} is what players see.`
+                        : "Players can see this list.",
+                });
                 if (result) {
                   apply({
                     type: "publishAck",
@@ -495,6 +522,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
               } else {
                 // Nothing is published any more; the old snapshot goes only after the write lands.
                 applyPublished(job.tournamentId, null);
+                toast.push({
+                  tone: "info",
+                  title: "Pairings taken down",
+                  detail: "Players see “not out yet” until you publish again.",
+                });
               }
               setPublishState("idle");
             } catch (error) {
@@ -502,6 +534,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
               setPublishError(
                 error instanceof Error ? error.message : "Could not save the pairings.",
               );
+              toast.push({
+                tone: "bad",
+                title: "Pairings not saved",
+                detail: error instanceof Error ? error.message : "Could not save the pairings.",
+              });
               // The queue reports it to the session bar as well.
               throw error;
             }
@@ -512,6 +549,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
 
       latest.current = after;
       rawDispatch(action);
+      const notice = actionNotice(action, before, after);
+      if (notice) toast.push(notice);
       for (const job of planDrawJobs(action, before, after)) {
         drawQueue.current?.(() => runDrawJob(job, client));
       }

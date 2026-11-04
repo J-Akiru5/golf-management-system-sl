@@ -12,6 +12,20 @@ export type DrawJob =
   | { kind: "publish"; tournamentId: string; published: Published }
   | { kind: "unpublish"; tournamentId: string };
 
+/**
+ * Everything the database stores for a group. A re-run on unchanged input proposes exactly what is
+ * already saved, and bumping the revision for that is noise in the history and a pointless write.
+ */
+const boardSignature = (draw: DrawGroup[]) =>
+  draw
+    .map(
+      (g) =>
+        `${g.number}:${g.startHole}:${g.wave ?? ""}:${g.time}:${g.locked ? 1 : 0}:${g.playerIds.join(",")}`,
+    )
+    .join("|");
+
+const overrideKey = (overrides: ManualOverride[]) => overrides.map((o) => o.id).join(",");
+
 export function planDrawJobs(action: Action, before: DeskState, after: DeskState): DrawJob[] {
   const tournamentId = after.activeTournamentId;
   if (!tournamentId) return [];
@@ -19,10 +33,17 @@ export function planDrawJobs(action: Action, before: DeskState, after: DeskState
   const now = after.boards[tournamentId];
   if (!now) return [];
 
-  const save = (): DrawJob[] =>
-    now.draw && now.draw !== was?.draw
-      ? [{ kind: "save", tournamentId, draw: now.draw, overrides: now.overrides }]
-      : [];
+  const save = (): DrawJob[] => {
+    if (!now.draw) return [];
+    if (
+      was?.draw &&
+      boardSignature(now.draw) === boardSignature(was.draw) &&
+      overrideKey(now.overrides) === overrideKey(was.overrides)
+    ) {
+      return [];
+    }
+    return [{ kind: "save", tournamentId, draw: now.draw, overrides: now.overrides }];
+  };
 
   switch (action.type) {
     case "generate": {
