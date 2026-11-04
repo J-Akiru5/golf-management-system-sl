@@ -96,8 +96,8 @@ export function EntryLinkCard() {
       <code className="truncate text-[12px] text-ink-muted">{url}</code>
       {entryState !== "open" && (
         <p className="hint">
-          Change the event state or cut-off in{" "}
-          <Link className="underline" href="/setup#basics">
+          Review the event state and cut-off in{" "}
+          <Link className="underline" href="/setup">
             Settings
           </Link>
           .
