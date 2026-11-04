@@ -1,15 +1,15 @@
 -- The public programme must list confirmed players only.
 --
--- `public_programme()` builds the public player cards from the live registrations and filtered them
--- only by `status <> 'ineligible'`. A `needs_review` entry is not ineligible, so its name, home club
--- and frozen index were published before the desk had accepted the entry. That is exactly the state
--- an entry lands in when a rule or a handicap needs a human, so the card could be wrong as well as
--- unconfirmed.
+-- `public_programme()` built both public lists from the live registrations and filtered them only by
+-- `status <> 'ineligible'`. A `needs_review` entry is not ineligible, so its name, home club, frozen
+-- index and tee time were published before the desk had accepted the entry. That is exactly the
+-- state an entry lands in when a rule or a handicap needs a human, so what was shown could be wrong
+-- as well as unconfirmed.
 --
--- This migration recreates the function with one change: the player list keeps `status = 'ok'` only.
--- The day list, the confirmed-time rule, the rules of play, the JSON shape, the security definer
--- setting and the grants are unchanged. The day list is left alone on purpose; see the note at the
--- end of this file.
+-- This migration recreates the function with one rule for both lists: `status = 'ok'` only. A
+-- signed-out visitor sees a name after the desk has accepted the entry, and not before. The
+-- confirmed-time rule, the rules of play, the JSON shape, the security definer setting and the
+-- grants are unchanged.
 
 create or replace function public.public_programme(p_tournament uuid default null)
 returns jsonb
@@ -83,7 +83,9 @@ as $$
                     on p.id = r.player_id and p.club_id = r.club_id
                   where rd.tournament_day_id = d.id
                     and rd.selected
-                    and r.status <> 'ineligible'
+                    -- Same rule as the player list below: a signed-out visitor sees a name only
+                    -- after the desk has accepted the entry.
+                    and r.status = 'ok'
                 ),
                 '[]'::jsonb
               )
@@ -133,17 +135,36 @@ $$;
 revoke all on function public.public_programme(uuid) from public;
 grant execute on function public.public_programme(uuid) to anon, authenticated;
 
--- Self-check: the replacement is in place, still security definer, still callable by anon.
+-- Self-check: both lists are confirmed-only, the function is still security definer, and anon can
+-- still call it.
 do $$
+declare
+  v_body text;
+  v_confirmed integer;
 begin
-  if not exists (
-    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-     where n.nspname = 'public'
-       and p.proname = 'public_programme'
-       and p.prosecdef
-       and p.prosrc like '%r.status = ''ok''%'
-  ) then
-    raise exception 'public_programme was not replaced with the confirmed-only player list';
+  select p.prosrc into v_body
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'public_programme'
+     and p.prosecdef;
+
+  if v_body is null then
+    raise exception 'public_programme was not replaced as a security definer function';
+  end if;
+
+  -- Two lists carry player names: the day list and the player list. Both must filter to confirmed.
+  select count(*) into v_confirmed
+    from regexp_matches(v_body, 'r\.status = ''ok''', 'g');
+
+  if v_confirmed < 2 then
+    raise exception
+      'public_programme filters only % confirmed list(s); the day list and the player list both need it',
+      v_confirmed;
+  end if;
+
+  -- A leftover non-ineligible filter would let needs_review through one of the lists again.
+  if v_body like '%r.status <> ''ineligible''%' then
+    raise exception 'public_programme still keeps a non-ineligible status filter';
   end if;
 
   if exists (
@@ -155,8 +176,3 @@ begin
     raise exception 'public_programme is not executable by anon';
   end if;
 end $$;
-
--- Known limit: the day list above still keeps `status <> 'ineligible'`, unchanged from
--- 20261041000000 as this migration was scoped. An unconfirmed player can therefore still appear by
--- name, with no tee time. Filtering that list to `ok` is the next step if the owner wants the whole
--- page confirmed-only.

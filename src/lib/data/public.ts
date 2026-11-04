@@ -128,7 +128,9 @@ const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompar
  * Builds the programme from the desk's own records for the demo build. The connected page reads the
  * same shape from `public_programme()`, which is the single database projection of these fields.
  *
- * Nothing here reads a contact field, a birthdate, a gender, a note or a photo.
+ * Only confirmed entries appear, in both the day list and the player cards: the same rule as
+ * `public_programme()`, so the demo cannot show a name the live page hides. Nothing here reads a
+ * contact field, a birthdate, a gender, a note or a photo.
  */
 export function toPublicProgramme({
   days,
@@ -154,6 +156,8 @@ export function toPublicProgramme({
     for (const entry of entries) {
       const registration = registrationByEntry.get(entry.id);
       if (!registration) continue;
+      // Confirmed entries only. A needs_review entry is a name the desk has not accepted yet.
+      if (registration.status !== "ok") continue;
       if (!selectedDaysOf(entry, playingDays).includes(day.dayNumber)) continue;
       const tee = publicTee(entry.dayTee, day.dayNumber);
       playersOnDay.push({ name: displayName(registration.playerName), ...tee });
@@ -176,7 +180,7 @@ export function toPublicProgramme({
   });
 
   const publicPlayers: PublicPlayerProfile[] = registrations
-    .filter((registration) => registration.status !== "ineligible")
+    .filter((registration) => registration.status === "ok")
     .map((registration) => ({
       name: displayName(registration.playerName),
       homeCourse: homeCourseByPlayer.get(registration.playerId)?.trim() || null,
