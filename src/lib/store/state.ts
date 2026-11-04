@@ -1,6 +1,6 @@
 import { daysOfTournament } from "@/lib/data/dates";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
-import { registrationFor } from "@/lib/data/registrations";
+import { missingFactsFor, registrationFor } from "@/lib/data/registrations";
 import type {
   Caddie,
   Club,
@@ -26,7 +26,13 @@ import {
 import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
 import { displayName } from "@/lib/format";
 import type { MergeRow, ResolvedImportRow } from "@/lib/ngap";
-import { type RoutingInput, route, type Tee } from "@/lib/routing";
+import {
+  type ProvisionalPlayer,
+  type RoutingInput,
+  route,
+  type Tee,
+  UNCLASSIFIED_LABEL,
+} from "@/lib/routing";
 // AVP THROWAWAY BRANCH ONLY: the frozen draw for the recorded demo. It loads only when the recording
 // flag is set, so the product tests still start from an empty board.
 import drawFixture from "../../../demo-video/fixtures/bamboo-tee-draw.json";
@@ -257,14 +263,26 @@ export function buildRegistrations(s: DeskState): DeskRegistration[] {
   return out;
 }
 
-/** Players the routing engine can classify: identity complete, index taken from the frozen entry. */
+/**
+ * The engine input: players it can classify, plus confirmed provisional players it must place
+ * without a category or flight. Index always comes from the frozen entry, never from a live import.
+ */
 export function routingInputFor(s: DeskState): RoutingInput | null {
   const t = activeTournament(s);
   if (!t) return null;
   const players: RoutingInput["players"] = [];
+  const provisional: ProvisionalPlayer[] = [];
   for (const entry of entriesFor(s, t.id)) {
     const p = s.players.find((x) => x.id === entry.playerId);
-    if (!p || p.birthdate === null || p.gender === null) continue;
+    if (!p) continue;
+    // A confirmed entry missing a routing fact cannot be classified. It is handed to the engine
+    // separately so it can still be placed, without a category or flight being invented for it.
+    const missing = missingFactsFor(p, entry);
+    if (entry.status === "ok" && missing.length > 0) {
+      provisional.push({ id: p.id, name: p.name, index: entry.frozen.index, missing });
+      continue;
+    }
+    if (p.birthdate === null || p.gender === null) continue;
     players.push({
       id: p.id,
       name: p.name,
@@ -279,11 +297,27 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
     tees: s.tees,
     categories: t.categories,
     flights: t.flights,
+    provisional,
   };
 }
 
 const signatureOf = (draw: DrawGroup[]) =>
   draw.map((g) => `${g.number}:${g.playerIds.join(",")}`).join("|");
+
+/** The player ids of the confirmed provisional entries in a set of desk registrations. */
+export const provisionalIdsOf = (regs: DeskRegistration[]): Set<string> =>
+  new Set(regs.filter((r) => r.provisional).map((r) => r.playerId));
+
+/**
+ * True when every player in a group is a confirmed provisional entry. Such a group is labelled
+ * Unclassified from its members; no category or flight is stored on any of them.
+ */
+export function isUnclassifiedGroup(
+  playerIds: string[],
+  regById: ReadonlyMap<string, DeskRegistration>,
+): boolean {
+  return playerIds.length > 0 && playerIds.every((id) => regById.get(id)?.provisional === true);
+}
 
 /** Freezes the board into what players will see. Empty groups are left off the sheet. */
 export function buildPublished(
@@ -291,10 +325,15 @@ export function buildPublished(
   players: PlayerRecord[],
   tournament: Tournament,
   at: string,
+  provisionalIds: ReadonlySet<string> = new Set(),
 ): Published {
   const nameById = new Map(players.map((p) => [p.id, p.name]));
   const flightName = (id: string | null) =>
     tournament.flights.find((f) => f.id === id)?.name ?? "—";
+  const groupLabel = (g: DrawGroup) =>
+    provisionalIds.size > 0 && g.playerIds.every((id) => provisionalIds.has(id))
+      ? UNCLASSIFIED_LABEL
+      : flightName(g.flightId);
   return {
     tournamentId: tournament.id,
     at,
@@ -306,7 +345,7 @@ export function buildPublished(
         startHole: g.startHole,
         wave: g.wave,
         time: g.time,
-        flight: flightName(g.flightId),
+        flight: groupLabel(g),
         players: g.playerIds.map((id) => nameById.get(id) ?? "").filter((n) => n !== ""),
         playerIds: g.playerIds.filter((id) => nameById.has(id)),
       })),
@@ -695,7 +734,13 @@ export function reducer(state: DeskState, a: Action): DeskState {
       if (issues.some((i) => i.severity === "blocking")) return state;
       return withBoard(state, t.id, {
         ...board,
-        published: buildPublished(board.draw, state.players, t, new Date().toISOString()),
+        published: buildPublished(
+          board.draw,
+          state.players,
+          t,
+          new Date().toISOString(),
+          provisionalIdsOf(regs),
+        ),
       });
     }
 

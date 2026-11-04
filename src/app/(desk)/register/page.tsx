@@ -227,9 +227,11 @@ function RegisterDesk() {
   );
   const { page, setPage } = usePagedList(orderedRows, listQuery);
 
-  // Bulk confirmation only takes entries the database still holds as needs_review and that the
-  // desk can stand behind. The database flips the status; it cannot supply a missing birthdate, a
-  // handicap index or a unique name, so those stay out and the dialog says how many were left alone.
+  // Bulk confirmation takes every entry the database still holds as needs_review, except the two
+  // that are about identity or eligibility: a duplicated display name in this event, and an entry
+  // the router already called ineligible. Missing birthdate, gender or handicap index no longer
+  // blocks confirmation: such an entry is confirmed as provisional, plays today and is corrected
+  // tomorrow. The database flips the status; it never invents the missing facts.
   const bulkTargets = useMemo(() => {
     // Count only the names in this event: a namesake elsewhere in the club is not an ambiguous
     // entry. Two entered players with the same display name are, and neither is confirmed here.
@@ -245,9 +247,8 @@ function RegisterDesk() {
       // Already ok, or the desk called it not eligible. Neither is a bulk-confirm candidate.
       if (e.status !== "needs_review") return false;
       const r = regById.get(p.id);
+      // `ineligible` needs a known age, so it can only happen when a birthdate exists.
       if (!r || r.status === "ineligible") return false;
-      if (!p.birthdate || !p.gender) return false;
-      if (r.index === null) return false;
       return (nameCounts.get(p.name.trim().toLowerCase()) ?? 0) <= 1;
     });
   }, [entries, listRows, players, regById]);
@@ -644,6 +645,11 @@ function RegisterDesk() {
             <p className="overline">Eligibility and routing review</p>
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill status={savedReg.status} />
+              {savedReg.provisional && (
+                <span className="pill warn">
+                  Provisional · missing {savedReg.missing.join(", ")}
+                </span>
+              )}
               {savedReg.frozenOutdated && <span className="pill warn">Re-freeze needed</span>}
               {savedReg.staleIndex && <span className="pill warn">Old index</span>}
               <span className="hint">
@@ -1329,8 +1335,8 @@ function RegisterDesk() {
                   disabled={bulkBusy || bulkTargets.length === 0}
                   title={
                     bulkTargets.length === 0
-                      ? "Every parked entry still needs data the desk cannot invent (birthdate, handicap index, unique name) or is not eligible. Fix or review those rows first."
-                      : "Confirms the entries in the current list filter, not only this page."
+                      ? "Every parked entry is either not eligible or shares a name with another entry. Fix or review those rows first."
+                      : "Confirms the entries in the current list filter, not only this page. An entry missing a birthdate, gender or handicap index is confirmed as provisional."
                   }
                   onClick={() =>
                     setBulkAsk({
@@ -1374,8 +1380,8 @@ function RegisterDesk() {
           {canConfirmMany && listedNeedsReview > 0 && bulkTargets.length === 0 && (
             <div className="notice warn" role="status">
               <b>{listedNeedsReview} entries are parked as needs review</b>, but none can be
-              confirmed in bulk yet: each is missing a birthdate, a handicap index or a unique name,
-              or it is not eligible. Fix those rows first, then confirm them here.
+              confirmed in bulk: each one is not eligible or shares a display name with another
+              entry in this event. Fix those rows first, then confirm them here.
             </div>
           )}
           {bulkNotice && (
@@ -1394,12 +1400,14 @@ function RegisterDesk() {
                 Confirm {bulkAsk.ids.length} registration
                 {bulkAsk.ids.length === 1 ? "" : "s"} as ready?
               </b>{" "}
-              These are the entries in the current list filter that the desk can stand behind: a
-              birthdate, a handicap index and a unique name.{" "}
+              These are the entries in the current list filter that the desk can stand behind. An
+              entry missing a birthdate, a gender or a handicap index is confirmed as{" "}
+              <b>provisional</b>: it goes into the draw under “Unclassified” today, and the desk
+              corrects the missing detail tomorrow.{" "}
               {bulkAsk.skipped > 0 &&
                 `${bulkAsk.skipped} more listed ${
                   bulkAsk.skipped === 1 ? "entry is" : "entries are"
-                } left out because the desk cannot stand behind ${bulkAsk.skipped === 1 ? "it" : "them"} yet (missing details or not eligible). `}
+                } left out because ${bulkAsk.skipped === 1 ? "it is" : "they are"} not eligible or share a display name with another entry. `}
               This writes the status straight to the club database. There is no undo in this screen,
               so a mistake needs a manual correction.
               <div className="flex flex-wrap gap-2 pt-2">
@@ -1442,6 +1450,8 @@ function RegisterDesk() {
           <div className="grid gap-2">
             {page.items.map(({ e, r, p }) => {
               if (!p) return null;
+              const provisional = r?.provisional === true;
+              const missing = r?.missing ?? [];
               const selectedDays = e.selectedDays ?? [];
               const preferred = Object.entries(e.teePreferences)
                 .filter(([date, value]) => {
@@ -1462,7 +1472,9 @@ function RegisterDesk() {
                   status={r?.status ?? null}
                   index={r?.frozenIndex ?? null}
                   playingHandicap={r?.playingHandicap ?? null}
-                  flightName={r && r.flightId ? names.flight(r.flightId) : null}
+                  flightName={
+                    r && r.flightId ? names.flight(r.flightId) : provisional ? "Unclassified" : null
+                  }
                   paymentStatus={e.paymentStatus}
                   shirt={e.shirt}
                   daysNote={
@@ -1480,6 +1492,14 @@ function RegisterDesk() {
                   }}
                   actions={
                     <>
+                      {provisional && (
+                        <span
+                          className="pill warn"
+                          title={`Confirmed without ${missing.join(", ")}. Correct it on the player record, then re-freeze or re-run the draw.`}
+                        >
+                          Provisional · missing {missing.join(", ")}
+                        </span>
+                      )}
                       <PaymentEditor
                         entry={e}
                         name={p.name}

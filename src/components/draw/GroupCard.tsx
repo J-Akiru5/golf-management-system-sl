@@ -41,6 +41,7 @@ function GroupCardImpl(p: GroupCardProps) {
   const { g, active, drop } = p;
   const [over, setOver] = useState(false);
   const n = g.playerIds.length;
+  const allProvisional = n > 0 && g.playerIds.every((id) => p.regs.get(id)?.provisional === true);
   const own = active ? g.playerIds.includes(active.id) : false;
   const blocking = p.issues.some((i) => i.severity === "blocking");
   const warning = p.issues.some((i) => i.severity === "warning");
@@ -121,6 +122,13 @@ function GroupCardImpl(p: GroupCardProps) {
         </div>
       )}
 
+      {allProvisional && (
+        <p className="hint">
+          Provisional group: no birthdate, gender or handicap index on file. Correct it tomorrow and
+          re-run the draw.
+        </p>
+      )}
+
       {g.playerIds.map((id) => {
         const pl = p.players.get(id);
         const r = p.regs.get(id);
@@ -154,7 +162,13 @@ function GroupCardImpl(p: GroupCardProps) {
               <span className="flex flex-wrap items-center gap-1.5">
                 {pl.name}
                 {p.manualOverrideIds.has(id) && <span className="pill gold">Manual</span>}
-                {r.flightId !== g.flightId && <span className="pill warn">Other flight</span>}
+                {r.provisional && <span className="pill warn">Provisional</span>}
+                {r.flightId && r.flightId !== g.flightId && (
+                  <span className="pill warn">Other flight</span>
+                )}
+                {r.provisional && r.missing.length > 0 && (
+                  <span className="hint">no {r.missing.join(", no ")}</span>
+                )}
               </span>
             </button>
             <span className="right">

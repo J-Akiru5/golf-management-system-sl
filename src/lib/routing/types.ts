@@ -37,6 +37,18 @@ export interface Player {
   index: number | null;
 }
 
+/**
+ * A player the desk confirmed while a routing fact is still missing. They cannot be classified, so
+ * they are placed in their own "Unclassified" group instead of being given an invented category or
+ * flight. `missing` is the plain list the desk must correct later.
+ */
+export interface ProvisionalPlayer {
+  id: string;
+  name: string;
+  index: number | null;
+  missing: string[];
+}
+
 export type StartFormat = "shotgun" | "two_tee";
 
 export interface TournamentConfig {
@@ -75,6 +87,8 @@ export interface Registration {
   /** Rounded playing handicap after allowance. */
   playingHandicap: number | null;
   flightId: string | null;
+  /** True only for a desk-confirmed entry that is still missing a routing fact. Derived, not stored. */
+  provisional?: boolean;
 }
 
 export interface Group {

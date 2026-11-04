@@ -135,4 +135,58 @@ describe("registrationFor", () => {
     expect(reg.reasons.join(" ")).toContain("Birthdate is missing");
     expect(reg.categoryId).toBeNull();
   });
+
+  it("marks a confirmed entry without a birthdate provisional and keeps it placeable", () => {
+    const reg = registrationFor({
+      tournament,
+      tees,
+      player: player({ birthdate: null }),
+      entry: entry({ status: "ok" }),
+      records: [],
+    });
+
+    expect(reg.status).toBe("ok");
+    expect(reg.provisional).toBe(true);
+    expect(reg.missing).toEqual(["birthdate"]);
+    expect(reg.categoryId).toBeNull();
+    expect(reg.flightId).toBeNull();
+  });
+
+  it("marks a confirmed entry without a handicap index provisional", () => {
+    const reg = registrationFor({
+      tournament,
+      tees,
+      player: player(),
+      entry: entry({
+        status: "ok",
+        frozen: {
+          index: null,
+          recordId: null,
+          effectiveDate: null,
+          frozenAt: "2026-11-01T00:00:00.000Z",
+        },
+      }),
+      records: [],
+    });
+
+    expect(reg.status).toBe("ok");
+    expect(reg.provisional).toBe(true);
+    expect(reg.missing).toEqual(["handicap index"]);
+    expect(reg.playingHandicap).toBeNull();
+  });
+
+  it("does not mark a complete entry provisional", () => {
+    const reg = registrationFor({
+      tournament,
+      tees,
+      player: player(),
+      entry: entry({ status: "ok" }),
+      records: [],
+    });
+
+    expect(reg.status).toBe("ok");
+    expect(reg.provisional).toBe(false);
+    expect(reg.missing).toEqual([]);
+    expect(reg.flightId).toBe("r-a");
+  });
 });

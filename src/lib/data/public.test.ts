@@ -208,6 +208,8 @@ describe("toPublicProgramme", () => {
     paymentStatus: "pending",
     sponsor: false,
     teePreferences: {},
+    provisional: false,
+    missing: [],
   } as DeskRegistration;
 
   it("lists only confirmed times and never a contact field or a birthdate", () => {
