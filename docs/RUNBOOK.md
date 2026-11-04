@@ -32,7 +32,47 @@ a tester can read what they are actually looking at.
    `supabase db push --linked`. Migrations are written to tolerate this order, and the new code can
    then rely on the column being there.
 
+## Backups and restore
+
+The live database is Supabase project `golf-management-system`, ref `egfwfyznbndunqfqzxjx`, in
+organisation `prlnzbfjnvtizzwkjogs`.
+
+**Where the settings are.** Supabase dashboard, project `egfwfyznbndunqfqzxjx`, **Database →
+Backups**. The daily backups and the restore control are on that page. Point in Time Recovery is a
+separate tab and a paid add-on; do not assume it is on.
+
+**Confirm the plan tier first.** Backups are a paid feature. Free has none and pauses after a week
+idle; Pro keeps 7 daily backups; Team keeps 14. The plan is documented as Pro, but the dashboard is
+the only proof: open **Organisation → Billing** and read the tier before the event. If it says Free,
+take a `supabase db dump` before the event and keep the file off this machine, because there will be
+nothing to restore from.
+
+**Restore:**
+
+1. Open **Database → Backups** and choose the closest backup taken before the incident. The closer
+   the backup, the less data is lost.
+2. Read the confirmation dialog. It must name project `egfwfyznbndunqfqzxjx`. The project is
+   unavailable while it restores, so do this before the first tee if you can, not during play.
+3. Wait for the dashboard notification. Do not deploy or run a migration while it is restoring.
+4. Sign in to the desk and check the event, the entries and the published pairings. If the backup is
+   older than the code, redeploy the code that matches it (see Rolling back).
+5. Tell the organizer what was lost. A daily backup can lose up to a day of entries and scores.
+
+**What a database backup does not cover:** Storage objects. The `player-photos` bucket is not in the
+database backup, and a restore does not bring back a photo deleted from Storage.
+
+**Who holds access.** The owning Supabase account and the members of organisation
+`prlnzbfjnvtizzwkjogs`. Check **Organisation → Team** before the event and make sure at least two
+people can open the project, because the person on the desk may not be the person with the login.
+A restore is a dashboard job: check `supabase projects list` before relying on the CLI, which has
+previously been signed into an account that cannot see this project.
+
 ## Rolling back
+
+**Find the last good release.** Every release is tagged. `git tag --sort=-v:refname` lists them
+newest first, and `git show v0.27.2 --no-patch --format="%H %d"` shows the commit a tag points at.
+The app prints the version on the desk, the sign-in page and the landing page, so match that label
+to a deployment before promoting it. Do not reconstruct the good state from memory.
 
 **Code:** in Vercel, open the previous successful deployment and promote it to production. That is
 faster than reverting and rebuilding, and it puts the site on a build that was already known good.
@@ -71,6 +111,48 @@ all live there. So the fallback is paper, and it has to be prepared the day befo
 **Then:** tell the players nothing has changed about their tee time, run the day from the printed
 sheet, and enter the results afterwards if the club wants a digital record. A late withdrawal is
 handled by the group playing short and the organizer noting it.
+
+## Event-week watch list
+
+Check these in the morning, after each round is published, and whenever a player reports a problem.
+The 24th Bamboo Tee is played 12 to 15 November.
+
+| What | Where | Watch | Act now when |
+| --- | --- | --- | --- |
+| The public site | https://golf.syntaxure.dev/ | The event strip shows the 24th Bamboo Tee, not a blank hero | The strip is missing, or the page fails twice in a row |
+| Pairings | https://golf.syntaxure.dev/pairings | The published version and every group for the day | A group is missing, the version does not change after a publish, or the page errors |
+| Leaderboard | https://golf.syntaxure.dev/leaderboard | One row per player with a published card; the day's count rises | A published card is missing, a score is wrong, or the count falls |
+| Player view | https://golf.syntaxure.dev/my | Sign-in, then the player's own start | A player cannot see a start the desk has published |
+| Health check | GitHub → Actions → Health check | Green every 15 minutes | Two runs fail in a row, or no run appears for an hour |
+| Database | Supabase → Reports | API errors, database size, connections, disk | Connections above 80% of the plan's limit, disk above 80%, or 5xx errors in the logs |
+| Hosting | Vercel → project → Logs | 5xx responses and failed functions | Any 5xx on `/pairings` or `/leaderboard` |
+
+The counts that matter: entries on `/` (they should not fall while entries are closed), groups on
+`/pairings` (they should match the draw), and scored cards on `/leaderboard` (they should rise after
+each round). A count that falls during the day means a publish or an import replaced the day's data:
+stop publishing and call.
+
+Run the check by hand with `node scripts/health-check.mjs`; `--json` prints the same result for a
+script. The GitHub workflow reads `HEALTH_SUPABASE_URL` and `HEALTH_SUPABASE_ANON_KEY` from
+repository secrets. With neither set it still checks the site and skips the database line.
+
+## Who to call
+
+In this order. Stop at the first person who answers.
+
+1. **The organizer running the desk.** They decide whether the day continues on paper. The printed
+   start sheet and scorecards are the fallback, prepared the day before.
+2. **The club's account holder for Supabase and Vercel.** They can restore a backup, promote a
+   deployment, or read the project's plan and logs.
+3. **Jeff (Syntaxure Labs).** The application, the database schema and anything the first two cannot
+   explain.
+4. **Supabase support** for the database and auth, or **Vercel support** for hosting, after checking
+   `status.supabase.com` and `www.vercelstatus.com`. Give them the project ref
+   `egfwfyznbndunqfqzxjx` (Supabase) and the time of the first failure.
+
+The phone numbers are deliberately not in this repository. Keep the current list in the club's event
+folder and in the organizer's phone, and check it the day before. A role in this file is not a
+contact.
 
 ## Known failure modes, and what they look like
 
