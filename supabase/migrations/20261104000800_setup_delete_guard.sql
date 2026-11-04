@@ -66,8 +66,11 @@ begin
   end if;
 
   if p_expected_revision is not null and p_expected_revision <> v_revision then
+    -- P0001, not 40001: a serialization failure (40001) hangs for ~25 s through the pooler before it
+    -- reaches the client, which made a stale save look like a dead button. The earlier fix in
+    -- 20261025 used P0001 for this reason; later recreations reintroduced 40001. Keep P0001.
     raise exception 'The setup changed since this screen loaded. Reload and try again.'
-      using errcode = '40001';
+      using errcode = 'P0001';
   end if;
 
   -- Basics: name, days of play, registered state, name confirmation -------------------------------
