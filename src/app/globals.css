@@ -1609,6 +1609,41 @@
     outline: 2px solid var(--gold);
     outline-offset: -2px;
   }
+  /* ---------- Small screens: nothing may push the page sideways ----------
+     Buttons and pills keep their label on one line on a wide screen. On a phone a label such as
+     a publish status is wider than the page, so they wrap instead of stretching it, and the flex
+     and grid children around them are allowed to shrink below their content width. */
+  @media (max-width: 420px) {
+    .btn {
+      max-width: 100%;
+      height: auto;
+      min-height: 44px;
+      padding: 10px 14px;
+      text-align: center;
+      white-space: normal;
+    }
+    .btn.small {
+      min-height: 36px;
+      padding: 7px 12px;
+    }
+    .pill {
+      max-width: 100%;
+      white-space: normal;
+    }
+    .row > *,
+    .stack > *,
+    .draw-layout > *,
+    .groups > * {
+      min-width: 0;
+    }
+    .field select,
+    .field input,
+    .field textarea {
+      max-width: 100%;
+      min-width: 0;
+    }
+  }
+
   /* ---------- Player app: dashboard, live board, course map ---------- */
   .next-up {
     display: grid;
