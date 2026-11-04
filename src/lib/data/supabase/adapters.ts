@@ -263,7 +263,7 @@ export function createSupabaseAdapters(
         createdAt: new Date().toISOString(),
       };
       dispatch({ type: "addPlayer", player });
-      enqueue(async () => {
+      const saved = queuedWrite(async () => {
         const { error } = await client.from("players").insert(toPlayerInsert(player));
         if (error) {
           dispatch({ type: "removePlayer", id: player.id });
@@ -312,7 +312,10 @@ export function createSupabaseAdapters(
           throw error;
         }
       });
-      return player;
+      // A refusal before the work runs (offline) never reaches the cleanup above, so take the
+      // optimistic row off the list for any rejection.
+      void saved.catch(() => dispatch({ type: "removePlayer", id: player.id }));
+      return { ...player, saved };
     },
     update: (id, patch) => {
       dispatch({ type: "updatePlayer", id, patch });
@@ -337,6 +340,24 @@ export function createSupabaseAdapters(
           .eq("id", id);
         fail("Could not save the player", error);
       });
+    },
+    linkAccount: async (id, email) => {
+      const { data, error } = await callUnlisted(client, "link_player_account", {
+        p_player: id,
+        p_email: email.trim(),
+      });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "Linking an account needs migration 20261104000300. Nothing was saved."
+            : `Could not link the account: ${error.message}`,
+        );
+      }
+      const result = data as unknown as { ok?: boolean; message?: string } | null;
+      if (!result?.ok) throw new Error(result?.message ?? "The account was not linked.");
+      options.onSaved();
     },
     setPhoto: async (id, photoDataUrl, consent) => {
       if (!consent.internal) throw new Error("A player photo needs recorded internal consent.");
@@ -560,7 +581,8 @@ export function createSupabaseAdapters(
       fail("Could not save the event", error);
     }
   };
-  const saveTournamentRow = (tournament: Tournament) => enqueue(() => writeTournament(tournament));
+  const saveTournamentRow = (tournament: Tournament) =>
+    queuedWrite(() => writeTournament(tournament));
 
   const tournaments: Adapters["tournaments"] = {
     list: () => state.tournaments,
@@ -572,7 +594,7 @@ export function createSupabaseAdapters(
     select: (id) => dispatch({ type: "selectTournament", id }),
     save: (tournament) => {
       dispatch({ type: "saveTournament", tournament });
-      saveTournamentRow(tournament);
+      return saveTournamentRow(tournament);
     },
     days: (tournamentId) => state.days[tournamentId] ?? [],
     saveDayRule: async (tournamentId, required, max) => {
@@ -623,7 +645,7 @@ export function createSupabaseAdapters(
       };
       dispatch({ type: "saveSetup", tournament: created, tees, holes: state.holes });
       dispatch({ type: "selectTournament", id: created.id });
-      enqueue(async () => {
+      const saved = queuedWrite(async () => {
         if (!base) {
           const { error } = await client.from("courses").insert({
             id: courseId,
@@ -657,7 +679,7 @@ export function createSupabaseAdapters(
         }
         options.onEventCreated?.(created.id);
       });
-      return created;
+      return { ...created, saved };
     },
     setLogo: async (id, logoDataUrl) => {
       const tournament = state.tournaments.find((t) => t.id === id);
@@ -721,6 +743,16 @@ export function createSupabaseAdapters(
       // meant the deferred day rule could refuse the insert after the screen had already said the
       // entry was saved. The entry carries the write as `saved`, so the register screen can wait for
       // the database before it shows the saved state.
+      //
+      // The optimistic row comes off the screen exactly once, whichever way the write fails: the
+      // pre-flight refusal below, the RPC error, or a refusal in the payload. `dropped` makes the
+      // rollback idempotent so the action does not fire twice for one failure.
+      let dropped = false;
+      const drop = () => {
+        if (dropped) return;
+        dropped = true;
+        dispatch({ type: "removeEntry", id: entry.id });
+      };
       const saved = queuedWrite(async () => {
         const { data, error } = await callUnlisted(client, "create_registration", {
           p_id: entry.id,
@@ -741,7 +773,7 @@ export function createSupabaseAdapters(
         });
         if (error) {
           // Nothing reached the database, so the optimistic entry comes off the screen too.
-          dispatch({ type: "removeEntry", id: entry.id });
+          drop();
           const missing =
             error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
           throw new Error(
@@ -752,10 +784,13 @@ export function createSupabaseAdapters(
         }
         const result = (data ?? {}) as { ok?: boolean; message?: string };
         if (!result.ok) {
-          dispatch({ type: "removeEntry", id: entry.id });
+          drop();
           throw new Error(result.message ?? "The registration was refused. Nothing was saved.");
         }
       });
+      // The pre-flight refusal (offline) never runs the work above, so roll the optimistic entry
+      // back for any rejection. `drop` is idempotent, so this cannot remove it twice.
+      void saved.catch(drop);
 
       // Typed so the extra `saved` handle survives the repository's `RegistrationEntry` return
       // type; a screen that only needs the row can ignore it.
@@ -763,9 +798,12 @@ export function createSupabaseAdapters(
       return created;
     },
     update: (id, patch) => {
+      const previous = state.entries.find((e) => e.id === id) ?? null;
       dispatch({ type: "updateEntry", id, patch });
-      const next = { ...(state.entries.find((e) => e.id === id) as RegistrationEntry), ...patch };
-      enqueue(async () => {
+      const next = { ...(previous as RegistrationEntry), ...patch };
+      // The screen can wait for the row. A refused write puts the old values back, so an inline
+      // payment control never keeps showing a change the database rejected.
+      return queuedWrite(async () => {
         const { error } = await client
           .from("registrations")
           .update({
@@ -779,7 +817,10 @@ export function createSupabaseAdapters(
           })
           .eq("club_id", clubId)
           .eq("id", id);
-        fail("Could not save the registration", error);
+        if (error) {
+          if (previous) dispatch({ type: "updateEntry", id, patch: previous });
+          throw new Error(`Could not save the registration: ${error.message}`);
+        }
       });
     },
     overrideReady: (entryId, input) => {
@@ -881,6 +922,28 @@ export function createSupabaseAdapters(
           dispatch({ type: "refreeze", tournamentId, entryIds: [entry.id] });
         }
       });
+    },
+    confirmMany: async (tournamentId, entryIds) => {
+      if (entryIds.length === 0) return 0;
+      const { data, error } = await callUnlisted(client, "confirm_registrations", {
+        p_tournament: tournamentId,
+        p_ids: entryIds,
+      });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "Bulk confirmation needs migration 20261104000600. Nothing was changed."
+            : `Could not confirm the registrations: ${error.message}`,
+        );
+      }
+      // The function returns the number of rows it actually changed. A row that was already ok, or
+      // outside this event, is not counted, so the screen reports the database's answer.
+      const count = typeof data === "number" ? data : Number(data ?? 0);
+      if (!Number.isFinite(count)) throw new Error("The database did not say how many changed.");
+      options.onSaved();
+      return count;
     },
     setDays: async (entryId, days) => {
       const { data, error } = await client.rpc("set_registration_days", {
@@ -1084,7 +1147,7 @@ export function createSupabaseAdapters(
       // The card is judged inside setupPayload, which sends null rather than inventing a par or a
       // stroke index for a hole nobody has filled in.
       const payload = setupPayload(next, tees, holes, sections);
-      enqueue(async () => {
+      return queuedWrite(async () => {
         const { data, error } = await client.rpc("save_event_setup", {
           p_tournament: next.id,
           // Read when the write runs, not when it was queued, so it is the latest known. Null on a
@@ -1131,7 +1194,7 @@ export function createSupabaseAdapters(
       };
       if (!caddie.fullName) throw new Error("A caddie needs a name.");
       dispatch({ type: "addCaddie", caddie });
-      enqueue(async () => {
+      const saved = queuedWrite(async () => {
         const { error } = await client.from("caddies").insert({
           id: caddie.id,
           club_id: clubId,
@@ -1142,9 +1205,14 @@ export function createSupabaseAdapters(
           active: true,
           notes: caddie.notes,
         });
-        fail("Could not add the caddie", error);
+        if (error) {
+          // Nothing reached the database, so the optimistic row comes off the list too.
+          dispatch({ type: "removeCaddie", id: caddie.id });
+          throw new Error(`Could not add the caddie: ${error.message}`);
+        }
       });
-      return caddie;
+      void saved.catch(() => dispatch({ type: "removeCaddie", id: caddie.id }));
+      return { ...caddie, saved };
     },
     update: (id, patch) => {
       if (patch.active === false) {
@@ -1157,9 +1225,10 @@ export function createSupabaseAdapters(
           );
         }
       }
+      const previous = state.caddies.find((c) => c.id === id) ?? null;
       dispatch({ type: "updateCaddie", id, patch });
       const next = { ...(state.caddies.find((c) => c.id === id) as Caddie), ...patch, id };
-      enqueue(async () => {
+      return queuedWrite(async () => {
         const { error } = await client
           .from("caddies")
           .update({
@@ -1172,7 +1241,10 @@ export function createSupabaseAdapters(
           })
           .eq("club_id", clubId)
           .eq("id", id);
-        fail("Could not save the caddie", error);
+        if (error) {
+          if (previous) dispatch({ type: "updateCaddie", id, patch: previous });
+          throw new Error(`Could not save the caddie: ${error.message}`);
+        }
       });
     },
     remove: (id) => {

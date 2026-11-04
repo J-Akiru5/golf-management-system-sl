@@ -91,7 +91,15 @@ const STATUS_LABEL: Record<Tournament["state"], string> = {
 };
 
 export default function CalendarPage() {
-  const { tournaments, tournament: activeTournament, tees, holes, adapters, member } = useDesk();
+  const {
+    tournaments,
+    tournament: activeTournament,
+    tees,
+    holes,
+    adapters,
+    member,
+    reload,
+  } = useDesk();
   const [view, setView] = useState<"month" | "list">("month");
   const [cursor, setCursor] = useState(() => monthOf(today()));
   const [draft, setDraft] = useState<EventDraft | null>(null);
@@ -221,7 +229,11 @@ export default function CalendarPage() {
             logo: logoPreview?.startsWith("data:") ? logoPreview : undefined,
           },
         );
-        adapters.tournaments.save({ ...created, state: draft.state });
+        const { saved: createWrite, ...eventRow } = created;
+        // Wait for the course, the event row and its setup. Closing on the queued write would claim
+        // an event that the database can still refuse.
+        await createWrite;
+        await adapters.tournaments.save({ ...eventRow, state: draft.state });
       } else {
         const next = {
           ...editing,
@@ -232,11 +244,11 @@ export default function CalendarPage() {
           state: draft.state,
         };
         if (activeTournament?.id === editing.id) {
-          adapters.setup.save({ tournament: next, tees, holes });
+          await adapters.setup.save({ tournament: next, tees, holes });
         } else {
           // The setup adapter's tees/holes belong to the active event; never write those onto a
           // different event being edited from the calendar.
-          adapters.tournaments.save(next);
+          await adapters.tournaments.save(next);
         }
         if (logoPreview?.startsWith("data:")) {
           await adapters.tournaments.setLogo(editing.id, logoPreview);
@@ -249,6 +261,9 @@ export default function CalendarPage() {
       setDraft(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the event.");
+      // The adapter already put its draft in the session. Re-read the database so a refused save
+      // does not leave an event on the calendar that was never written.
+      reload();
     } finally {
       setBusy(false);
     }
@@ -770,7 +785,7 @@ export default function CalendarPage() {
                   disabled={busy || !draft.name.trim()}
                   onClick={() => void save()}
                 >
-                  {busy ? "Saving…" : "Save event"}
+                  {busy ? "Saving…" : error ? "Try save again" : "Save event"}
                 </Button>
               </div>
             </div>

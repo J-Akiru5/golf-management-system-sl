@@ -87,8 +87,14 @@ export interface PlayerRepository {
   recordsFor(playerId: string): HandicapRecord[];
   /** Latest record on file, whatever its date. Display only; the event uses the frozen index. */
   latestRecord(playerId: string): HandicapRecord | null;
-  add(input: NewPlayerInput): PlayerRecord;
+  /**
+   * Adds a directory record. The connected adapter also attaches the database write as `saved`, so
+   * a screen can wait for the row before it says the player was added. Demo has nothing to wait for.
+   */
+  add(input: NewPlayerInput): PlayerRecord & { saved?: Promise<void> };
   update(id: string, patch: Partial<PlayerRecord>): void;
+  /** Links the record to an existing sign-in account by that account's email. Never returns the id. */
+  linkAccount(id: string, email: string): Promise<void>;
   /** Uploads a consented photo and resolves only after both the private and public copies are settled. */
   setPhoto(
     id: string,
@@ -108,7 +114,8 @@ export interface TournamentRepository {
   get(id: string): Tournament | null;
   active(): Tournament | null;
   select(id: string | null): void;
-  save(tournament: Tournament): void;
+  /** Resolves after the event row is written; demo resolves as soon as the session changes. */
+  save(tournament: Tournament): void | Promise<void>;
   createFromTemplate(
     name: string,
     date: string,
@@ -118,7 +125,7 @@ export interface TournamentRepository {
       /** A PNG/JPEG/WebP data URL, uploaded by the connected adapter after the event is saved. */
       logo?: string;
     },
-  ): Tournament;
+  ): Tournament & { saved?: Promise<void> };
   /** Uploads or replaces the event logo and returns a signed staff URL. */
   setLogo(id: string, logoDataUrl: string): Promise<string | null>;
   removeLogo(id: string): Promise<void>;
@@ -146,7 +153,7 @@ export interface SetupRepository {
     tees: Tee[];
     holes: Hole[];
     sections?: SetupSection[] | "all";
-  }): void;
+  }): void | Promise<void>;
   /**
    * An owner or organizer vouches that the saved tees and holes match the club scorecard. Printed
    * sheets lose their placeholder watermark only after this, and any later edit to the numbers
@@ -172,9 +179,12 @@ export interface OverrideReadyInput {
 export interface RegistrationRepository {
   list(tournamentId: string): RegistrationEntry[];
   add(tournamentId: string, input: NewEntryInput): RegistrationEntry;
-  update(id: string, patch: Partial<RegistrationEntry>): void;
+  /** Resolves after the row is written; demo returns immediately. */
+  update(id: string, patch: Partial<RegistrationEntry>): void | Promise<void>;
   /** Marks a needs-review entry ready with the organizer's manual routing facts. */
   overrideReady(entryId: string, input: OverrideReadyInput): void;
+  /** Confirms the listed needs-review entries in one call and resolves with how many changed. */
+  confirmMany(tournamentId: string, entryIds: string[]): Promise<number>;
   remove(id: string): void;
   /** Copies the latest index on or before the cut-off onto the entries again. */
   refreeze(tournamentId: string, entryIds?: string[]): void;
@@ -192,8 +202,9 @@ export interface CaddieRepository {
     phone?: string | null;
     email?: string | null;
     notes?: string | null;
-  }): Caddie;
-  update(id: string, patch: Partial<Caddie>): void;
+  }): Caddie & { saved?: Promise<void> };
+  /** Resolves after the row is written; demo returns immediately. */
+  update(id: string, patch: Partial<Caddie>): void | Promise<void>;
   remove(id: string): void;
   /** Assigns one caddie to a player's selected day, or clears it with null. */
   assign(entryId: string, dayNumber: number, caddieId: string | null): Promise<void>;
@@ -300,6 +311,11 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       return player;
     },
     update: (id, patch) => dispatch({ type: "updatePlayer", id, patch }),
+    linkAccount: async () => {
+      throw new Error(
+        "Linking a sign-in account needs the connected club database. Nothing was changed.",
+      );
+    },
     setPhoto: async (id, photoDataUrl, consent) => {
       if (!consent.internal) throw new Error("A player photo needs recorded internal consent.");
       dispatch({
@@ -460,6 +476,11 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     },
     remove: (id) => dispatch({ type: "removeEntry", id }),
     refreeze: (tournamentId, entryIds) => dispatch({ type: "refreeze", tournamentId, entryIds }),
+    confirmMany: async () => {
+      throw new Error(
+        "Confirming registrations in bulk needs the connected club database. Nothing was changed.",
+      );
+    },
     setDays: async (entryId, days) => {
       const entry = state.entries.find((item) => item.id === entryId);
       if (!entry) throw new Error("That registration was not found.");

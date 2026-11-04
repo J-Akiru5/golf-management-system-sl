@@ -11,6 +11,30 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.27.4] - 2026-11-04
+
+Desk completeness and public correctness, after the four audits.
+
+### Added
+- **Bulk entry confirmation** on `/register`: "Confirm N shown" with a count-aware confirmation,
+  backed by `confirm_registrations` (migration `20261104000600`, applied). It skips entries with a
+  blocking reason, so a batch cannot produce a broken draw.
+- **Link an account from the desk**: the player page sets the portal account with
+  `link_player_account` (migration `20261104000300`, applied), so "ask the desk to link your entry"
+  is now something staff can do.
+- **Player delete guard** (migration `20261104000500`, applied): a non-owner delete that would take
+  registrations or scoring rows with it is refused with the counts.
+
+### Changed
+- **The public programme shows confirmed players only** (migration `20261104000400`, applied). Both
+  the player list and the day list exclude `needs_review`.
+- **Tee-time "Confirmed" saves the moment it is ticked**, with a revert and an inline error.
+- **Payment status is editable** on the registration row, and the control room counts
+  `not_recorded` as unpaid.
+- **Add player, add caddie and new event keep their data** when a write fails, and offer a retry.
+- **"Retry" is now "Reload from database"**, so it no longer looks like it repeats a save.
+- **The control room import tile reports the real count.**
+
 ## [0.27.3] - 2026-11-04
 
 Production-grade pass before the club staff adopt the desk.

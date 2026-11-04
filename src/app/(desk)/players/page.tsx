@@ -77,6 +77,9 @@ function Players() {
   const [consent, setConsent] = useState(false);
   const [publicConsent, setPublicConsent] = useState(false);
   const [photoError, setPhotoError] = useState("");
+  /** Why the directory write was refused. The sheet stays open with every value still in it. */
+  const [saveError, setSaveError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const homeCourses = useMemo(
     () => [...new Set(players.map((p) => p.homeCourse).filter((c): c is string => !!c))].sort(),
@@ -143,6 +146,8 @@ function Players() {
     setConsent(false);
     setPublicConsent(false);
     setPhotoError("");
+    setSaveError("");
+    setSaving(false);
   }
 
   function onOpenChange(o: boolean) {
@@ -150,24 +155,39 @@ function Players() {
     if (!o) reset();
   }
 
-  function save(e: React.FormEvent) {
+  async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSave) return;
-    adapters.players.add({
-      firstName,
-      lastName,
-      nickname,
-      birthdate: birthdate || null,
-      gender: genderValue,
-      homeCourse,
-      contactNumber,
-      email,
-      ngapId,
-      photo,
-      photoConsent: photo ? consent : undefined,
-      photoPublicConsent: photo && consent ? publicConsent : undefined,
-    });
-    onOpenChange(false);
+    if (!canSave || saving) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      const created = adapters.players.add({
+        firstName,
+        lastName,
+        nickname,
+        birthdate: birthdate || null,
+        gender: genderValue,
+        homeCourse,
+        contactNumber,
+        email,
+        ngapId,
+        photo,
+        photoConsent: photo ? consent : undefined,
+        photoPublicConsent: photo && consent ? publicConsent : undefined,
+      });
+      // The connected adapter attaches its database write; wait for it before saying "added".
+      await created.saved;
+      onOpenChange(false);
+    } catch (error) {
+      // Nothing else changes: the sheet stays open and every field keeps its value for a retry.
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "The player was not added. The values are still here; try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!tournament) return <NeedsTournament what="The player directory" />;
@@ -647,12 +667,18 @@ function Players() {
               </p>
             </div>
 
+            {saveError && (
+              <p className="hint !text-danger" role="alert">
+                {saveError}
+              </p>
+            )}
+
             <div className="flex items-center justify-end gap-2 border-t border-line pt-4">
               <Button variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={!canSave}>
-                Add to the directory
+              <Button type="submit" variant="primary" disabled={!canSave || saving}>
+                {saving ? "Saving…" : saveError ? "Try save again" : "Add to the directory"}
               </Button>
             </div>
           </form>

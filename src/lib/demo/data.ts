@@ -1,3 +1,4 @@
+import { addIsoDays } from "@/lib/data/dates";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import type {
   Club,
@@ -94,6 +95,19 @@ export const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL
 
 const SEED_NOW = "2026-10-20T09:00:00+08:00";
 
+/**
+ * The sample events keep fixed dates so the demo is the same on every load. The cut-off is different
+ * from a display date: it is a rule measured against the event's own first day. A literal cut-off
+ * drifts into the past while the event is still ahead, and the demo then reads "Closed" for no
+ * reason. Derive it from the first day of play instead, so it stays in the right place relative to
+ * the event.
+ */
+const BAMBOO_TEE_DATES = ["2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"] as const;
+const BAMBOO_TEE_FIRST_DAY = BAMBOO_TEE_DATES[0];
+const BAMBOO_TEE_CUT_OFF = addIsoDays(BAMBOO_TEE_FIRST_DAY, -1);
+const MONTHLY_MEDAL_DATE = "2026-10-24";
+const MONTHLY_MEDAL_CUT_OFF = addIsoDays(MONTHLY_MEDAL_DATE, -7);
+
 /** Two demo events: the multi-day Bamboo Tee sample and an empty monthly medal for empty states. */
 export function makeDemoTournaments(): Tournament[] {
   const bambooTee: Tournament = {
@@ -103,15 +117,15 @@ export function makeDemoTournaments(): Tournament[] {
     // The materials in this repo do not name the November event, so the title is editable and flagged.
     nameNeedsConfirmation: true,
     courseId: DEMO_COURSE.id,
-    dates: ["2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"],
-    cutOffDate: "2026-11-01",
+    dates: [...BAMBOO_TEE_DATES],
+    cutOffDate: BAMBOO_TEE_CUT_OFF,
     scheduleNeedsConfirmation: true,
     courseDataConfirmed: false,
     // Sample text for the demo shell. The real event stays null until the organizers supply theirs.
     rulesOfPlay:
       "Sample rules for the demo only. Replace them in Settings.\n\n1. Play is under the Rules of Golf as adopted by the club.\n2. Lift, clean and place in your own fairway.\n3. Sign and return your card at the scorer's table.",
     // Age and the cut-off read the first day of the event; the legacy DEMO_CONFIG date is not used.
-    config: { ...DEMO_CONFIG, date: "2026-11-12" },
+    config: { ...DEMO_CONFIG, date: BAMBOO_TEE_FIRST_DAY },
     categories: DEMO_CATEGORIES,
     flights: DEMO_FLIGHTS,
     registration: {
@@ -128,28 +142,28 @@ export function makeDemoTournaments(): Tournament[] {
         {
           day: 1,
           label: "Day 1",
-          date: "2026-11-12",
+          date: BAMBOO_TEE_DATES[0],
           options: ["6:30 AM", "12:30 PM"],
           needsConfirmation: false,
         },
         {
           day: 2,
           label: "Day 2",
-          date: "2026-11-13",
+          date: BAMBOO_TEE_DATES[1],
           options: ["6:30 AM", "12:30 PM"],
           needsConfirmation: false,
         },
         {
           day: 3,
           label: "Day 3",
-          date: "2026-11-14",
+          date: BAMBOO_TEE_DATES[2],
           options: ["6:30 AM", "12:30 PM"],
           needsConfirmation: false,
         },
         {
           day: 4,
           label: "Day 4 (as supplied)",
-          date: "2026-11-15",
+          date: BAMBOO_TEE_DATES[3],
           options: ["6:30 AM", "11:30PM Tee Off"],
           needsConfirmation: true,
         },
@@ -181,13 +195,13 @@ export function makeDemoTournaments(): Tournament[] {
     name: "IGCC Monthly Medal (sample)",
     nameNeedsConfirmation: false,
     courseId: DEMO_COURSE.id,
-    dates: ["2026-10-24"],
-    cutOffDate: "2026-10-17",
+    dates: [MONTHLY_MEDAL_DATE],
+    cutOffDate: MONTHLY_MEDAL_CUT_OFF,
     scheduleNeedsConfirmation: false,
     courseDataConfirmed: false,
     config: {
       ...DEMO_CONFIG,
-      date: "2026-10-24",
+      date: MONTHLY_MEDAL_DATE,
       startFormat: "two_tee",
       firstTeeTime: "07:00",
     },
@@ -201,7 +215,7 @@ export function makeDemoTournaments(): Tournament[] {
         {
           day: 1,
           label: "Day 1",
-          date: "2026-10-24",
+          date: MONTHLY_MEDAL_DATE,
           options: ["7:00 AM", "12:00 PM"],
           needsConfirmation: false,
         },
@@ -314,7 +328,7 @@ const iso = (d: number, m: number, y: number) =>
  * an over-limit index, an NH record, a record that only exists after the cut-off, a stale record,
  * two players with the same name, and an incomplete stub from a deferred import decision.
  */
-export function makeDemoSeed(cutOffDate = "2026-11-01"): DemoSeed {
+export function makeDemoSeed(cutOffDate = BAMBOO_TEE_CUT_OFF): DemoSeed {
   const r = rng(2026);
   const pick = <T>(xs: T[]) => xs[Math.floor(r() * xs.length)] as T;
   const players: PlayerRecord[] = [];
@@ -469,7 +483,8 @@ export function makeDemoSeed(cutOffDate = "2026-11-01"): DemoSeed {
   addPlayer("Juan Dela Cruz", "M", 38, home, { ngapId: "7001" });
   addPlayer("Juan Dela Cruz", "M", 57, home, { ngapId: "7002" });
   addPlayer("Noel Yulo", "M", 44, home, {
-    history: [{ index: 12.6, effectiveDate: "2026-11-05" }],
+    // The day after the cut-off: nothing exists on or before it, so nothing can be frozen.
+    history: [{ index: 12.6, effectiveDate: addIsoDays(BAMBOO_TEE_CUT_OFF, 1) }],
   });
   addPlayer("Gregorio Padilla", "M", 66, home, {
     history: [{ index: 21.5, effectiveDate: "2026-02-10" }],
@@ -518,8 +533,8 @@ export function makeDemoSeed(cutOffDate = "2026-11-01"): DemoSeed {
       sponsor,
       shirt: pick(SHIRT_SIZES),
       teePreferences: {
-        "2026-11-12": dayOnePreference,
-        "2026-11-13": dayTwoPreference,
+        [BAMBOO_TEE_DATES[0]]: dayOnePreference,
+        [BAMBOO_TEE_DATES[1]]: dayTwoPreference,
       },
       dayTee,
       declaredWshId: p.ngapId,
