@@ -12,7 +12,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
  *
  * A name is public, so it is no longer a factor. The account has to prove it belongs to the person
  * on the record: the NGAP number together with the birthdate on that record, or the email on this
- * account when the club holds that email. The database owns the match, the club scope and the
+ * account. The database owns the match, the club scope and the
  * free-record check; this action only carries the answer back as a code, so no database message is
  * ever rendered raw.
  */

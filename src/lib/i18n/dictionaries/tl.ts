@@ -90,7 +90,7 @@ export const tl: Dictionary = {
       "Wala ka pang entry sa talaan. Mag-entry gamit ang link na ipinadala ng club, o pakiusapan ang club na idagdag ka sa event.",
     claim: {
       heading: "Hindi mo makita ang entry mo?",
-      body: "Nili-link lang namin ang record kapag nakumpirma na ito ay sa iyo. Ilagay ang NGAP number at birthdate na nasa record ng club. Kung nakatala na sa record mo ang email ng account na ito, iwanang blangko ang dalawang field at pindutin ang Hanapin ang entry ko.",
+      body: "Nili-link lang namin ang record kapag nakumpirma na ito ay sa iyo. Ilagay ang NGAP number at birthdate na nasa record ng club. Kung hindi tugma, maaaring i-link ng desk ang entry mo.",
       ngapId: "NGAP number",
       birthdate: "Birthdate sa record ng club",
       help: "Kailangan ang dalawang field para tumugma. Ang pangalan lang ay pampubliko at hindi na nagli-link ng record. Kung wala sa dalawa ang tumugma, pakiusapan ang desk na i-link ang entry mo.",
@@ -100,7 +100,7 @@ export const tl: Dictionary = {
         "Hindi pa bukas ang player area para sa project na ito. Kailangan munang i-apply ng club ang player portal migration.",
       failed: "Hindi na-link ang record mo ngayon. Subukan muli mamaya.",
       invalid:
-        "Ilagay nang sabay ang NGAP number at birthdate, o iwanang blangko ang dalawa para tumugma sa email ng account na ito.",
+        "Ilagay nang sabay ang NGAP number at birthdate. Kailangan ang dalawa; kung hindi tugma, maaaring i-link ng desk ang entry mo.",
       tooLong: "Mas mahaba iyon kaysa sa talaan ng club. Suriin at subukan muli.",
       ambiguous:
         "Mahigit isang member record ang tumutugma. Gamitin ang NGAP number at birthdate mo para maipaliwanag ng club ang pagkakaiba.",

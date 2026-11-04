@@ -90,7 +90,7 @@ export const hil: Dictionary = {
       "Wala pa sang entry nga nakarekord para sa imo. Mag-entry paagi sa link nga ginpadala sang club, ukon pamangkuta ang club nga idugang ka sa event.",
     claim: {
       heading: "Indi mo makita ang entry mo?",
-      body: "Gina-link lang namon ang record kon makumpirmar nga imo ini. Isulat ang NGAP number kag birthdate nga ara sa record sang club. Kon ang email sang account nga ini amo ang ara sa imo record, bayai nga blangko ang duha ka field kag pinduta ang Pangitaa ang akon entry.",
+      body: "Gina-link lang namon ang record kon makumpirmar nga imo ini. Isulat ang NGAP number kag birthdate nga ara sa record sang club. Kon indi mag-match, sarang ma-link sang desk ang imo entry.",
       ngapId: "NGAP number",
       birthdate: "Birthdate sa record sang club",
       help: "Kinahanglan ang duha ka field agod mag-match. Ang ngalan lang hay pampubliko kag indi na ini mag-link sang record. Kon wala sang mag-match sa duha, ipasugot sa desk nga i-link ang imo entry.",
@@ -100,7 +100,7 @@ export const hil: Dictionary = {
         "Wala pa bukas ang player area para sa sini nga project. Kinahanglan nga i-apply anay sang club ang player portal migration.",
       failed: "Wala ma-link ang imo record subong. Tilawi liwat sa madali.",
       invalid:
-        "Isulat nga dungan ang NGAP number kag birthdate, ukon bayai nga blangko ang duha agod mag-match sa email sang account nga ini.",
+        "Isulat nga dungan ang NGAP number kag birthdate. Kinahanglan ang duha; kon indi mag-match, sarang ma-link sang desk ang imo entry.",
       tooLong: "Lawig pa ini sa record sang club. Susiha kag tilawi liwat.",
       ambiguous:
         "Kapin sa isa ka member record ang naga-match. Gamita ang NGAP number kag birthdate mo agod maipahayag sang club ang kinalain.",
