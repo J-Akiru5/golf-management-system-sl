@@ -91,15 +91,7 @@ const STATUS_LABEL: Record<Tournament["state"], string> = {
 };
 
 export default function CalendarPage() {
-  const {
-    tournaments,
-    tournament: activeTournament,
-    tees,
-    holes,
-    adapters,
-    member,
-    reload,
-  } = useDesk();
+  const { tournaments, tournament: activeTournament, adapters, member, reload, state } = useDesk();
   const [view, setView] = useState<"month" | "list">("month");
   const [cursor, setCursor] = useState(() => monthOf(today()));
   const [draft, setDraft] = useState<EventDraft | null>(null);
@@ -108,6 +100,9 @@ export default function CalendarPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // Set when a save moved the days of play while a board was already drawn. The board was routed
+  // against the old dates, so it has to be run again before anyone prints it.
+  const [drawWentStale, setDrawWentStale] = useState(false);
   const [emails, setEmails] = useState<EmailOutboxMessage[]>([]);
   const [emailBusy, setEmailBusy] = useState(false);
   const canManage = !member || member.role === "owner" || member.role === "organizer";
@@ -151,6 +146,7 @@ export default function CalendarPage() {
     setLogoError("");
     setError("");
     setNotice("");
+    setDrawWentStale(false);
   };
 
   const openEdit = (tournament: Tournament) => {
@@ -159,6 +155,7 @@ export default function CalendarPage() {
     setLogoError("");
     setError("");
     setNotice("");
+    setDrawWentStale(false);
   };
 
   const close = () => {
@@ -218,6 +215,11 @@ export default function CalendarPage() {
     }
     setBusy(true);
     setError("");
+    setNotice("");
+    // An existing board was routed against the old days of play, and the write below is the one
+    // that bumps the event's draw revision. Say so when that is the case.
+    const datesChanged = editing ? editing.dates.join("|") !== dates.join("|") : false;
+    const drawOutOfDate = Boolean(editing && datesChanged && state.boards[editing.id]?.draw);
     try {
       if (!editing) {
         const created = adapters.tournaments.createFromTemplate(
@@ -235,28 +237,29 @@ export default function CalendarPage() {
         await createWrite;
         await adapters.tournaments.save({ ...eventRow, state: draft.state });
       } else {
-        const next = {
+        // The adapter writes the event-level fields through the guarded setup function, which also
+        // bumps draw_revision. A direct tournaments write here used to change the dates and leave
+        // the existing draw looking current.
+        await adapters.tournaments.save({
           ...editing,
           name: draft.name.trim(),
           hostName: draft.hostName.trim() || null,
           dates,
           config: { ...editing.config, date: dates[0] as string },
           state: draft.state,
-        };
-        if (activeTournament?.id === editing.id) {
-          await adapters.setup.save({ tournament: next, tees, holes });
-        } else {
-          // The setup adapter's tees/holes belong to the active event; never write those onto a
-          // different event being edited from the calendar.
-          await adapters.tournaments.save(next);
-        }
+        });
         if (logoPreview?.startsWith("data:")) {
           await adapters.tournaments.setLogo(editing.id, logoPreview);
         } else if (!logoPreview && editing.logoUrl) {
           await adapters.tournaments.removeLogo(editing.id);
         }
       }
-      setNotice("Event saved. The calendar and printed cards use the new details.");
+      setNotice(
+        drawOutOfDate
+          ? "Event saved. The draw is out of date; run it again before printing."
+          : "Event saved. The calendar and printed cards use the new details.",
+      );
+      setDrawWentStale(drawOutOfDate);
       setCursor(monthOf(dates[0] as string));
       setDraft(null);
     } catch (err) {
@@ -389,6 +392,17 @@ export default function CalendarPage() {
       {sameDayConflicts.length > 0 && (
         <div className="notice warn" role="status">
           <b>Same-day events:</b> {sameDayConflicts.map((conflict) => conflict.detail).join(" ")}
+        </div>
+      )}
+
+      {drawWentStale && (
+        <div className="notice warn flex items-start gap-2.5" role="status">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+          <p className="text-[13px]">
+            <b>The draw is out of date.</b> The days of play changed after the board was drawn, and
+            the event&rsquo;s draw revision moved with this save. Run the draw again before printing
+            or publishing.
+          </p>
         </div>
       )}
 

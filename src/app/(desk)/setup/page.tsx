@@ -17,7 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { CourseCardEditor } from "@/components/course/CourseCardEditor";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
@@ -63,7 +63,7 @@ const SECTION_TITLE: Record<SetupSection, string> = {
 };
 
 export default function SetupPage() {
-  const { tournament, tees, holes, adapters, status, member, saving, error } = useDesk();
+  const { tournament, tees, holes, adapters, status, member, state } = useDesk();
   if (!tournament) return <NeedsTournament what="Settings" />;
   // Owner and organizer only, the same rule the database enforces. Demo mode has no roles.
   const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
@@ -74,9 +74,8 @@ export default function SetupPage() {
       holes={holes}
       status={status}
       canEdit={canEdit}
-      saving={saving}
-      error={error}
-      save={(input) => adapters.setup.save(input)}
+      hasDraw={Boolean(state.boards[tournament.id]?.draw)}
+      save={async (input) => adapters.setup.save(input)}
       confirmCourse={(confirmed) => adapters.setup.confirmCourse(tournament.id, confirmed)}
       saveDayRule={(required, max) =>
         adapters.tournaments.saveDayRule(tournament.id, required, max)
@@ -91,8 +90,7 @@ function SetupWizard({
   holes,
   status,
   canEdit,
-  saving,
-  error,
+  hasDraw,
   save,
   confirmCourse,
   saveDayRule,
@@ -102,14 +100,14 @@ function SetupWizard({
   holes: ReturnType<typeof useDesk>["holes"];
   status: ReturnType<typeof useDesk>["status"];
   canEdit: boolean;
-  saving: boolean;
-  error: string | null;
+  /** An existing board was routed against the numbers this screen edits. */
+  hasDraw: boolean;
   save: (input: {
     tournament: Tournament;
     tees: ReturnType<typeof useDesk>["tees"];
     holes: ReturnType<typeof useDesk>["holes"];
     sections: SetupSection[] | "all";
-  }) => void;
+  }) => Promise<void>;
   confirmCourse: (confirmed: boolean) => void;
   saveDayRule: (required: number | null, max: number | null) => Promise<void>;
 }) {
@@ -246,33 +244,61 @@ function SetupWizard({
 
   const idOf = (prefix: string) => `${prefix}-${Date.now().toString(36)}`;
 
-  // The dirty flag is cleared only when the write has actually landed: the queue reports `saving`,
-  // and an error keeps the section marked so the fallback section Save or Save all can retry.
-  const pending = useRef<SetupSection[] | null>(null);
-  const saveSections = (sections: SetupSection[] | "all") => {
-    pending.current = sections === "all" ? SETUP_SECTIONS : sections;
-    save({ tournament: draft, tees: draftTees, holes: draftHoles, sections });
+  // A save is reported only when the database has answered. `savingSections` holds the sections in
+  // flight, `saveError` keeps the failure on screen instead of letting the bar say "no unsaved
+  // changes", and the dirty flag is cleared only after the write resolves.
+  const [savingSections, setSavingSections] = useState<SetupSection[] | null>(null);
+  const [saveError, setSaveError] = useState("");
+  const [retrySections, setRetrySections] = useState<SetupSection[] | "all" | null>(null);
+  const [drawStale, setDrawStale] = useState(false);
+
+  // Sections that can change what the draw routes on. Saving any of them bumps the event's draw
+  // revision in the database, which makes an existing board out of date.
+  const ROUTING_SECTIONS: SetupSection[] = [
+    "basics",
+    "rules",
+    "start",
+    "course",
+    "categories",
+    "flights",
+  ];
+
+  const saveSections = async (sections: SetupSection[] | "all") => {
+    if (!canEdit) return;
+    const list = sections === "all" ? SETUP_SECTIONS : sections;
+    setSavingSections(list);
+    setSaveError("");
+    try {
+      await save({ tournament: draft, tees: draftTees, holes: draftHoles, sections });
+      clear(list);
+      setRetrySections(null);
+      if (hasDraw && list.some((section) => ROUTING_SECTIONS.includes(section))) {
+        setDrawStale(true);
+      }
+    } catch (e) {
+      // The draft stays exactly as it is: the write was refused, not the edit.
+      setSaveError(e instanceof Error ? e.message : "The setup could not be saved.");
+      setRetrySections(sections);
+    } finally {
+      setSavingSections(null);
+    }
   };
-  useEffect(() => {
-    if (!pending.current || saving) return;
-    if (!error) clear(pending.current);
-    pending.current = null;
-    // `holes` and `tees` are the optimistic echo of a save. The demo adapter has no queue and never
-    // flips `saving`, so without them a demo section stayed marked dirty after it had been written.
-  }, [saving, error, tournament, holes, tees]);
+  const saving = savingSections !== null;
   const discard = () => {
     setDraft(tournament);
     setDraftTees(tees);
     setDraftHoles(holes.length > 0 ? holes : blankHoles(tournament.courseId));
     setDirty([]);
+    setSaveError("");
+    setRetrySections(null);
   };
 
   const sectionAction = (section: SetupSection) => (
     <Button
       variant="secondary"
       size="sm"
-      disabled={!canEdit || !dirty.includes(section)}
-      onClick={() => saveSections([section])}
+      disabled={!canEdit || saving || !dirty.includes(section)}
+      onClick={() => void saveSections([section])}
       aria-label={`Save ${SECTION_TITLE[section]}`}
     >
       <Save aria-hidden="true" /> Save
@@ -282,9 +308,11 @@ function SetupWizard({
   const dirtyCount = dirty.length;
   const saveState = !canEdit
     ? "Only the owner or an organizer can change the event setup."
-    : dirtyCount === 0
-      ? "No unsaved changes."
-      : `${dirtyCount} section${dirtyCount === 1 ? "" : "s"} with unsaved changes.`;
+    : saving
+      ? "Saving…"
+      : dirtyCount === 0
+        ? "No unsaved changes."
+        : `${dirtyCount} section${dirtyCount === 1 ? "" : "s"} with unsaved changes.`;
 
   return (
     <div className="grid gap-6">
@@ -331,13 +359,45 @@ function SetupWizard({
           <Button
             variant="primary"
             size="sm"
-            disabled={!canEdit || dirtyCount === 0}
-            onClick={() => saveSections("all")}
+            disabled={!canEdit || saving || dirtyCount === 0}
+            onClick={() => void saveSections("all")}
           >
-            <Save aria-hidden="true" /> Save all changes
+            <Save aria-hidden="true" /> {saving ? "Saving…" : "Save all changes"}
           </Button>
         </span>
       </div>
+
+      {saveError && (
+        <div className="notice bad flex flex-wrap items-start gap-2.5" role="alert">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <p className="m-0 text-[13px]">
+            <b>The setup was not saved.</b> {saveError} The draft is still here, so the save can be
+            tried again.
+          </p>
+          {retrySections && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => void saveSections(retrySections)}
+              className="ml-auto"
+            >
+              <Save aria-hidden="true" /> Retry save
+            </Button>
+          )}
+        </div>
+      )}
+
+      {drawStale && (
+        <div className="notice warn flex items-start gap-2.5" role="status">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+          <p className="text-[13px]">
+            <b>The draw is out of date.</b> This save changed settings the draw was routed against,
+            so the board that is on file no longer matches the setup. Run the draw again before
+            printing or publishing.
+          </p>
+        </div>
+      )}
 
       {!canEdit && (
         <div className="notice warn flex items-start gap-2.5" role="note">
