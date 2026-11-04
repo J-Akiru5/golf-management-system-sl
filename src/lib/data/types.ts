@@ -315,6 +315,9 @@ export interface RegistrationEntry {
   source: "desk" | "demo_seed";
 }
 
+/** A routing fact the desk still has to collect. */
+export type MissingFact = "birthdate" | "gender" | "handicap index";
+
 /** A change the organizer made by hand, with the reason. The router never does this. */
 export interface ManualOverride {
   id: string;
@@ -347,6 +350,13 @@ export interface DeskRegistration extends Registration {
   paymentStatus: PaymentStatus;
   sponsor: boolean | null;
   teePreferences: Record<string, string | null>;
+  /**
+   * Derived, never stored: the desk confirmed this entry while a routing fact is still missing.
+   * A provisional entry is placed in an Unclassified group so it can play today.
+   */
+  provisional: boolean;
+  /** The facts still missing, in plain words, so the desk knows what to correct. */
+  missing: MissingFact[];
 }
 
 export interface PublicPairingPlayer {

@@ -3,6 +3,7 @@ import { frozenOutdated, isStale, selectIndexForCutOff } from "./frozen";
 import type {
   DeskRegistration,
   HandicapRecord,
+  MissingFact,
   PlayerRecord,
   RegistrationEntry,
   Tournament,
@@ -14,6 +15,42 @@ export interface RegistrationArgs {
   player: PlayerRecord;
   entry: RegistrationEntry;
   records: HandicapRecord[];
+}
+
+/**
+ * The routing facts still missing from this entry. These are the facts the desk has to collect;
+ * nothing here invents a default. Order matches the correction path on the register screen.
+ */
+export function missingFactsFor(player: PlayerRecord, entry: RegistrationEntry): MissingFact[] {
+  const missing: MissingFact[] = [];
+  if (player.birthdate === null) missing.push("birthdate");
+  if (player.gender === null) missing.push("gender");
+  if (entry.frozen.index === null) missing.push("handicap index");
+  return missing;
+}
+
+/**
+ * True when the desk confirmed the entry while a routing fact is still missing. Derived from the
+ * stored confirmation and the player record, never persisted as a status of its own.
+ */
+export function isProvisional(player: PlayerRecord, entry: RegistrationEntry): boolean {
+  return entry.status === "ok" && missingFactsFor(player, entry).length > 0;
+}
+
+/**
+ * True when an organizer override stored every routing fact the draw needs. Such an entry is
+ * placed by its stored facts, not by the provisional group.
+ */
+export function hasStoredRouting(entry: RegistrationEntry): boolean {
+  return (
+    entry.overridden === true &&
+    Boolean(entry.categoryId) &&
+    Boolean(entry.teeId) &&
+    Boolean(entry.flightId) &&
+    entry.frozen.index !== null &&
+    entry.playingHandicap !== null &&
+    entry.playingHandicap !== undefined
+  );
 }
 
 /**
@@ -31,6 +68,8 @@ export function registrationFor({
   const selection = selectIndexForCutOff(records, tournament.cutOffDate);
   const stale = isStale(selection, tournament.cutOffDate, tournament.staleIndexDays);
   const outdated = frozenOutdated(entry.frozen, selection);
+  const missing = missingFactsFor(player, entry);
+  const provisional = entry.status === "ok" && missing.length > 0;
 
   const flags: string[] = [];
   if (outdated) {
@@ -49,15 +88,7 @@ export function registrationFor({
   // An organizer override stores the routing facts the draw needs (category, tee, flight and
   // playing handicap) on the registration. It is the only path that can place a player whose
   // profile is still incomplete. The missing details stay in `entry.reasons` as pending notes.
-  if (
-    entry.overridden &&
-    entry.categoryId &&
-    entry.teeId &&
-    entry.flightId &&
-    entry.playingHandicap !== null &&
-    entry.playingHandicap !== undefined &&
-    entry.frozen.index !== null
-  ) {
+  if (hasStoredRouting(entry)) {
     const age = player.birthdate ? ageOn(player.birthdate, tournament.config.date) : 0;
     return {
       playerId: player.id,
@@ -83,28 +114,32 @@ export function registrationFor({
       paymentStatus: entry.paymentStatus,
       sponsor: entry.sponsor,
       teePreferences: entry.teePreferences,
+      provisional,
+      missing,
     };
   }
 
-  const missing: string[] = [];
-  if (player.birthdate === null) missing.push(`Birthdate is missing for ${player.name}.`);
-  if (player.gender === null) missing.push(`Gender is missing for ${player.name}.`);
+  const missingReasons: string[] = [];
+  if (player.birthdate === null) missingReasons.push(`Birthdate is missing for ${player.name}.`);
+  if (player.gender === null) missingReasons.push(`Gender is missing for ${player.name}.`);
 
   let routing: Registration;
   const birthdate = player.birthdate;
   const gender = player.gender;
-  if (missing.length > 0 || birthdate === null || gender === null) {
+  if (missingReasons.length > 0 || birthdate === null || gender === null) {
     routing = {
       playerId: player.id,
       playerName: player.name,
-      status: "needs_review",
-      reasons: missing,
+      // A confirmed entry goes into the draw as provisional. Unconfirmed entries stay parked.
+      status: provisional ? "ok" : "needs_review",
+      reasons: missingReasons,
       index: entry.frozen.index,
       age: 0,
       categoryId: null,
       teeId: null,
       playingHandicap: null,
       flightId: null,
+      provisional,
     };
   } else {
     routing = classifyPlayer(
@@ -128,8 +163,10 @@ export function registrationFor({
       const reason = selection.reason ?? "No NGAP index was frozen onto this registration.";
       routing = {
         ...routing,
-        status: "needs_review",
+        // A confirmed entry is provisional, not parked: it plays today without a playing handicap.
+        status: provisional ? "ok" : "needs_review",
         reasons: [reason, ...routing.reasons.filter((r) => !/No handicap index/i.test(r))],
+        provisional,
       };
     }
   }
@@ -155,5 +192,7 @@ export function registrationFor({
     paymentStatus: entry.paymentStatus,
     sponsor: entry.sponsor,
     teePreferences: entry.teePreferences,
+    provisional,
+    missing,
   };
 }

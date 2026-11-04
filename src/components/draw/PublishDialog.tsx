@@ -6,6 +6,7 @@ import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import type { Issue } from "@/lib/draw/validate";
 import { buildPublished, useDesk } from "@/lib/store/desk-store";
+import { provisionalIdsOf } from "@/lib/store/state";
 
 /**
  * The only way to publish. It shows exactly what players will see, lists what is wrong, and needs
@@ -25,6 +26,7 @@ export function PublishDialog({
     players,
     tournament,
     dispatch,
+    regById,
     isPublished,
     changedSincePublish,
     publishState,
@@ -64,13 +66,19 @@ export function PublishDialog({
   const preview = useMemo(() => {
     if (!open || !draw || !tournament) return null;
     return toPublicPairings({
-      published: buildPublished(draw, players, tournament, new Date().toISOString()),
+      published: buildPublished(
+        draw,
+        players,
+        tournament,
+        new Date().toISOString(),
+        provisionalIdsOf([...regById.values()]),
+      ),
       tournamentName: tournament.name,
       dateLabel: fmtDateLabel(tournament.dates),
       startFormat: tournament.config.startFormat,
       firstTeeTime: tournament.config.firstTeeTime,
     });
-  }, [open, draw, players, tournament]);
+  }, [open, draw, players, tournament, regById]);
   const canPublish = blocking.length === 0 && (warnings.length === 0 || ack);
   const nothingNew = isPublished && !changedSincePublish;
 

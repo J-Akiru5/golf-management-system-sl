@@ -11,7 +11,9 @@ import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
+import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
+import { isUnclassifiedGroup } from "@/lib/store/state";
 
 const REASONS = [
   "Organizer request",
@@ -53,6 +55,15 @@ export default function DrawPage() {
 
   const shotgun = config?.startFormat === "shotgun";
   const ready = registrations.filter((r) => r.status === "ok").length;
+  const provisional = registrations.filter((r) => r.provisional);
+  const provisionalCount = provisional.length;
+  const onBoard = new Set(draw?.flatMap((g) => g.playerIds) ?? []);
+  const provisionalOffBoard = draw ? provisional.filter((r) => !onBoard.has(r.playerId)) : [];
+  const missingSummary = (["birthdate", "gender", "handicap index"] as const)
+    .map((fact) => ({ fact, n: provisional.filter((r) => r.missing.includes(fact)).length }))
+    .filter((item) => item.n > 0)
+    .map((item) => `${item.n} without ${item.fact}`)
+    .join(", ");
   const placed = draw?.reduce((n, g) => n + g.playerIds.length, 0) ?? 0;
 
   const issues = useMemo(
@@ -190,10 +201,15 @@ export default function DrawPage() {
     setSelection(null);
   }
 
-  // Cards under one heading per wave (shotgun) or per start time (two-tee).
+  // Cards under one heading per wave (shotgun) or per start time (two-tee). Confirmed provisional
+  // players get one clearly labelled heading of their own instead of a made-up flight.
   const sections = new Map<string, NonNullable<typeof draw>>();
   for (const g of draw ?? []) {
-    const key = shotgun ? `Wave ${g.wave} · ${fmtTime(g.time)}` : fmtTime(g.time);
+    const key = isUnclassifiedGroup(g.playerIds, regById)
+      ? UNCLASSIFIED_LABEL
+      : shotgun
+        ? `Wave ${g.wave} · ${fmtTime(g.time)}`
+        : fmtTime(g.time);
     sections.set(key, [...(sections.get(key) ?? []), g]);
   }
 
@@ -372,13 +388,36 @@ export default function DrawPage() {
           <p>
             The draw puts each ready player in a flight, groups them by handicap, and gives each
             group a starting hole and time. You can move anyone afterwards. Players marked Needs
-            review or Not eligible are left out, and anyone over the index limit is blocked.
+            review or Not eligible are left out, and anyone over the index limit is blocked. A
+            confirmed player who is still missing a birthdate, gender or handicap index is placed in
+            an “Unclassified” group so they can play today.
           </p>
         </div>
       )}
 
       {draw && (
         <>
+          {provisionalOffBoard.length > 0 && (
+            <div className="notice warn" role="alert">
+              <b>
+                {provisionalOffBoard.length} confirmed provisional player
+                {provisionalOffBoard.length === 1 ? " is" : "s are"} not on the board.
+              </b>{" "}
+              The draw was made before they were confirmed. Re-run the proposal to place them under
+              “Unclassified”; the button is above the board.
+            </div>
+          )}
+          {provisionalCount > 0 && (
+            <div className="notice warn" role="status">
+              <b>
+                {provisionalCount} confirmed player{provisionalCount === 1 ? " is" : "s are"}{" "}
+                provisional.
+              </b>{" "}
+              {missingSummary}. They are grouped under “Unclassified” so they can play today.
+              Correct the player records (and re-freeze an index where needed) tomorrow, then re-run
+              the draw; the label goes away once the data is complete.
+            </div>
+          )}
           <section className="tiles" aria-label="Draw readiness">
             <div className="tile">
               <b className="mono">
@@ -390,6 +429,12 @@ export default function DrawPage() {
               <b className="mono">{draw.length}</b>
               <span>Groups{lockedCount ? ` (${lockedCount} locked)` : ""}</span>
             </div>
+            {provisionalCount > 0 && (
+              <div className="tile warn">
+                <b className="mono">{provisionalCount}</b>
+                <span>Provisional</span>
+              </div>
+            )}
             <div className="tile">
               <b className="mono">{openSpots}</b>
               <span>Open spots</span>
@@ -428,7 +473,15 @@ export default function DrawPage() {
             {[...sections.entries()].map(([heading, groups]) => (
               <section key={heading} className="stack tight">
                 <div className="wave-head">
-                  <h2>{heading}</h2>
+                  <div>
+                    <h2>{heading}</h2>
+                    {heading === UNCLASSIFIED_LABEL && (
+                      <p className="hint">
+                        Confirmed without a birthdate, gender or handicap index. Correct the player
+                        records tomorrow, then re-run the draw.
+                      </p>
+                    )}
+                  </div>
                   <span className="muted">
                     {groups.length} groups · {groups.reduce((n, g) => n + g.playerIds.length, 0)}{" "}
                     players
@@ -442,7 +495,11 @@ export default function DrawPage() {
                       shotgun={Boolean(shotgun)}
                       groupSize={config.groupSize}
                       minGroupSize={config.minGroupSize}
-                      flightName={names.flight(g.flightId)}
+                      flightName={
+                        isUnclassifiedGroup(g.playerIds, regById)
+                          ? UNCLASSIFIED_LABEL
+                          : names.flight(g.flightId)
+                      }
                       players={playerById}
                       regs={regById}
                       manualOverrideIds={manualOverrideIds}
