@@ -50,7 +50,7 @@ The Club may change a role or close an account at any time. Staff must use the a
 
 A player may create an account with an email address and a password. An account on its own shows nothing. To see an entry, the account must link a player record.
 
-The link matches your NGAP number together with your birthdate, or the email address the Club holds on your record. The match must identify exactly one record, and the record must not already be linked to another account. If the details match nothing or match more than one record, the software refuses the link and asks you to contact the Club so the desk can link it for you. Your name is not used, because names are public on the pairings page.
+The link matches your NGAP number together with your birthdate. The match must identify exactly one record, and the record must not already be linked to another account. If the details match nothing or match more than one record, the software refuses the link and asks you to contact the Club so the desk can link it for you. Your name is not used, because names are public on the pairings page.
 
 Only claim your own record. Do not create an account for someone else, use someone else's NGAP number, or claim a record that is not yours.
 

@@ -92,7 +92,7 @@ export const en = {
       "No entries on file for you yet. Enter through the event link the club sent you, or ask the club to add you to the event.",
     claim: {
       heading: "Can't see your entry?",
-      body: "We link a record only when we can confirm it is yours. Enter the NGAP number and birthdate the club has for you. If the club already has this account's email on your record, leave both fields empty and press Find my entry.",
+      body: "We link a record only when we can confirm it is yours. Enter the NGAP number and birthdate the club has for you. If they do not match, the desk can link your entry.",
       ngapId: "NGAP number",
       birthdate: "Birthdate on the club record",
       help: "Both fields are needed for a match. A name alone is public and no longer links a record. If neither check matches, ask the desk to link your entry.",
@@ -102,7 +102,7 @@ export const en = {
         "The player area is not switched on for this project yet. The club has to apply the player portal migration first.",
       failed: "Your record could not be linked just now. Try again in a moment.",
       invalid:
-        "Enter your NGAP number and birthdate together, or leave both empty to match the email on this account.",
+        "Enter your NGAP number and birthdate together. Both are needed; if they do not match, the desk can link your entry.",
       tooLong: "That is longer than the club's records hold. Check it and try again.",
       ambiguous:
         "More than one member record matches. Use your NGAP number and birthdate so the club can tell them apart.",
