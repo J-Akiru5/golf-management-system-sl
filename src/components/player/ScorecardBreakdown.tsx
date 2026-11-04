@@ -21,7 +21,11 @@ const publishedText = (date: string): string => {
   const parsed = new Date(date);
   return Number.isNaN(parsed.getTime())
     ? date
-    : parsed.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+    : parsed.toLocaleString("en-PH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Manila",
+      });
 };
 
 function ScoreRow({ number, hole }: { number: number; hole: PortalScorecardHole | null }) {
