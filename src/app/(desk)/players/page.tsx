@@ -80,6 +80,8 @@ function Players() {
   /** Why the directory write was refused. The sheet stays open with every value still in it. */
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
+  /** The row whose delete is in flight, so the button cannot be pressed twice. */
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const homeCourses = useMemo(
     () => [...new Set(players.map((p) => p.homeCourse).filter((c): c is string => !!c))].sort(),
@@ -402,16 +404,34 @@ function Players() {
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            aria-label={`Remove ${p.name}`}
+                            aria-label={
+                              removingId === p.id ? `Removing ${p.name}` : `Remove ${p.name}`
+                            }
                             className="text-ink-muted hover:text-danger"
-                            onClick={() => {
-                              if (
-                                !window.confirm(
-                                  `Remove ${p.name} from the club directory? This is recorded in the audit log.`,
-                                )
-                              )
-                                return;
-                              adapters.players.remove(p.id);
+                            disabled={removingId === p.id}
+                            onClick={async () => {
+                              const confirmed = window.confirm(
+                                [
+                                  `Remove ${p.name} from the club directory?`,
+                                  "",
+                                  "This deletes the directory record and the handicap history attached to it. It is recorded in the audit log and cannot be undone.",
+                                  "",
+                                  "The database refuses this while the player still has registrations or scoring entries. Remove those first, or ask the club owner.",
+                                ].join("\n"),
+                              );
+                              if (!confirmed) return;
+                              setRemovingId(p.id);
+                              try {
+                                // The connected adapter resolves after the database has decided,
+                                // and only then takes the row off the list. A refused delete leaves
+                                // the row where it is.
+                                await adapters.players.remove(p.id);
+                              } catch {
+                                // The desk's error bar carries the database message, for example
+                                // the delete guard naming what still points at this player.
+                              } finally {
+                                setRemovingId(null);
+                              }
                             }}
                           >
                             <Trash2 aria-hidden="true" />
