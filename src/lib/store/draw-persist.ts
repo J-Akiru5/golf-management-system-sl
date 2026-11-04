@@ -26,6 +26,19 @@ const boardSignature = (draw: DrawGroup[]) =>
 
 const overrideKey = (overrides: ManualOverride[]) => overrides.map((o) => o.id).join(",");
 
+/**
+ * The published copy a screen may show while the planned writes are still in flight. A takedown
+ * that is queued but not written yet must not make the desk claim players can no longer see a list
+ * that is still up: the old snapshot goes only when the write lands.
+ */
+export function publishedWhileWritesPending(
+  jobs: readonly DrawJob[],
+  was: Published | null,
+  now: Published | null,
+): Published | null {
+  return jobs.some((job) => job.kind === "unpublish") ? was : now;
+}
+
 export function planDrawJobs(action: Action, before: DeskState, after: DeskState): DrawJob[] {
   const tournamentId = after.activeTournamentId;
   if (!tournamentId) return [];

@@ -64,7 +64,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Database } from "@/lib/supabase/types";
 import { actionNotice } from "./action-notice";
-import { type DrawJob, planDrawJobs } from "./draw-persist";
+import { type DrawJob, planDrawJobs, publishedWhileWritesPending } from "./draw-persist";
 import { activeTournament, boardOf, emptyState, entriesFor, initialState, reducer } from "./state";
 
 export type { Action, ApplyImportPayload, BoardState, DeskState, Published } from "./state";
@@ -547,12 +547,41 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      latest.current = after;
-      rawDispatch(action);
+      const jobs = planDrawJobs(action, before, after);
+      const takedown = jobs.find((job) => job.kind === "unpublish");
+
+      if (takedown) {
+        // "Start over" takes the published list down as well. The screen keeps showing the old
+        // snapshot until the database confirms the takedown: a refused write must not leave the
+        // desk saying players cannot see a list that is still up.
+        const board = after.boards[takedown.tournamentId];
+        const was = before.boards[takedown.tournamentId]?.published ?? null;
+        latest.current = board
+          ? {
+              ...after,
+              boards: {
+                ...after.boards,
+                [takedown.tournamentId]: {
+                  ...board,
+                  published: publishedWhileWritesPending(jobs, was, board.published),
+                },
+              },
+            }
+          : after;
+        rawDispatch({ type: "hydrate", state: latest.current });
+      } else {
+        latest.current = after;
+        rawDispatch(action);
+      }
+
       const notice = actionNotice(action, before, after);
       if (notice) toast.push(notice);
-      for (const job of planDrawJobs(action, before, after)) {
-        drawQueue.current?.(() => runDrawJob(job, client));
+      for (const job of jobs) {
+        drawQueue.current?.(async () => {
+          await runDrawJob(job, client);
+          // The takedown landed; the old snapshot goes only now.
+          if (job.kind === "unpublish") applyPublished(job.tournamentId, null);
+        });
       }
     },
     [apply, applyPublished, client, connected, runDrawJob],

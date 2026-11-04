@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planDrawJobs } from "./draw-persist";
+import { planDrawJobs, publishedWhileWritesPending } from "./draw-persist";
 import { type Action, type DeskState, initialState, reducer } from "./state";
 
 const run = (state: DeskState, action: Action) => reducer(state, action);
@@ -49,6 +49,19 @@ describe("planDrawJobs", () => {
     // The board the database already holds is unchanged, so only the unpublish is written.
     const jobs = plan(published(), { type: "generate", preserveLocks: false });
     expect(jobs.map((j) => j.kind)).toEqual(["unpublish"]);
+  });
+
+  it("keeps the old published copy on screen until a queued takedown is written", () => {
+    const was = published();
+    const id = was.activeTournamentId ?? "";
+    const after = run(was, { type: "generate", preserveLocks: false });
+    const jobs = planDrawJobs({ type: "generate", preserveLocks: false }, was, after);
+    const before = was.boards[id]?.published ?? null;
+    const now = after.boards[id]?.published ?? null;
+    expect(now).toBeNull();
+    expect(publishedWhileWritesPending(jobs, before, now)).toEqual(before);
+    // Nothing is being taken down, so the screen shows what the reducer produced.
+    expect(publishedWhileWritesPending([], before, now)).toBeNull();
   });
 
   it("writes nothing when a re-run proposes the board that is already saved", () => {
