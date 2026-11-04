@@ -110,3 +110,14 @@ export function monthOf(date: string): { year: number; month: number } {
   const [year, month] = date.split("-").map(Number);
   return { year: year ?? 0, month: (month ?? 1) - 1 };
 }
+
+/**
+ * The desk's today, as an ISO date in Manila time.
+ *
+ * Events and playing days are stored as dates, not instants, and the club is in Manila. Formatting
+ * with `en-CA` gives YYYY-MM-DD directly, so the month grid can compare it with a cell's date
+ * without any local-time conversion. A phone in another timezone still marks the club's today.
+ */
+export function manilaToday(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(now);
+}

@@ -4,6 +4,7 @@ import {
   calendarEvent,
   eventsOnDate,
   findCalendarConflicts,
+  manilaToday,
   monthCells,
   monthLabel,
 } from "./calendar";
@@ -17,6 +18,18 @@ const event = (overrides: Partial<CalendarEvent> = {}): CalendarEvent => ({
   dates: ["2026-11-12"],
   days: [{ playDate: "2026-11-12", startTime: "06:30", label: "Day 1" }],
   ...overrides,
+});
+
+describe("manilaToday", () => {
+  it("rolls over at midnight in Manila, not at midnight UTC", () => {
+    // 23:59 in Manila on 3 November is still 3 November; one minute later is the 4th.
+    expect(manilaToday(new Date("2026-11-03T15:59:00Z"))).toBe("2026-11-03");
+    expect(manilaToday(new Date("2026-11-03T16:00:00Z"))).toBe("2026-11-04");
+  });
+
+  it("returns the ISO date a month cell carries", () => {
+    expect(manilaToday(new Date("2026-11-04T02:30:00Z"))).toBe("2026-11-04");
+  });
 });
 
 describe("event calendar", () => {

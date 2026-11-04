@@ -21,6 +21,7 @@ import {
   calendarEvent,
   eventsOnDate,
   findCalendarConflicts,
+  manilaToday,
   monthCells,
   monthLabel,
   monthOf,
@@ -44,9 +45,6 @@ interface EventDraft {
   state: Tournament["state"];
 }
 
-const today = () =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
-
 function datesBetween(start: string, end: string): string[] {
   if (!start || !end || end < start) return start ? [start] : [];
   const values: string[] = [];
@@ -59,7 +57,7 @@ function datesBetween(start: string, end: string): string[] {
   return values;
 }
 
-function emptyDraft(date = today()): EventDraft {
+function emptyDraft(date = manilaToday()): EventDraft {
   return {
     id: null,
     name: "",
@@ -77,8 +75,8 @@ function draftFrom(tournament: Tournament): EventDraft {
     id: tournament.id,
     name: tournament.name,
     hostName: tournament.hostName ?? "",
-    startDate: dates[0] ?? today(),
-    endDate: dates.at(-1) ?? dates[0] ?? today(),
+    startDate: dates[0] ?? manilaToday(),
+    endDate: dates.at(-1) ?? dates[0] ?? manilaToday(),
     dates,
     state: tournament.state,
   };
@@ -93,7 +91,7 @@ const STATUS_LABEL: Record<Tournament["state"], string> = {
 export default function CalendarPage() {
   const { tournaments, tournament: activeTournament, adapters, member, reload, state } = useDesk();
   const [view, setView] = useState<"month" | "list">("month");
-  const [cursor, setCursor] = useState(() => monthOf(today()));
+  const [cursor, setCursor] = useState(() => monthOf(manilaToday()));
   const [draft, setDraft] = useState<EventDraft | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | undefined>();
   const [logoError, setLogoError] = useState("");
@@ -120,6 +118,9 @@ export default function CalendarPage() {
   const events = useMemo(() => tournaments.map(calendarEvent), [tournaments]);
   const conflicts = useMemo(() => findCalendarConflicts(events), [events]);
   const cells = useMemo(() => monthCells(cursor.year, cursor.month), [cursor]);
+  // Recomputed on every render, so the marker follows the desk's own clock rather than a snapshot
+  // taken when the tab was opened.
+  const todayIso = manilaToday();
 
   useEffect(() => {
     if (!editing) {
@@ -140,7 +141,7 @@ export default function CalendarPage() {
     };
   }, [adapters.email, editing]);
 
-  const openCreate = (date = today()) => {
+  const openCreate = (date = manilaToday()) => {
     setDraft(emptyDraft(date));
     setLogoPreview(undefined);
     setLogoError("");
@@ -374,7 +375,7 @@ export default function CalendarPage() {
         <Button variant="secondary" size="sm" onClick={downloadIcs}>
           <Download aria-hidden="true" /> Export .ics
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => setCursor(monthOf(today()))}>
+        <Button variant="secondary" size="sm" onClick={() => setCursor(monthOf(manilaToday()))}>
           Today
         </Button>
         {canManage && (
@@ -452,22 +453,39 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7">
             {cells.map((cell) => {
               const dayEvents = eventsOnDate(events, cell.date);
+              const isToday = cell.date === todayIso;
               return (
                 <div
                   key={cell.date}
+                  aria-current={isToday ? "date" : undefined}
                   className={cn(
                     "min-h-28 border-r border-b border-line p-1.5 last:border-r-0",
                     cell.inMonth ? "bg-surface" : "bg-surface-sunken/55 text-ink-muted",
+                    isToday && "bg-gold-soft/45 ring-2 ring-gold ring-inset",
                   )}
                 >
-                  <button
-                    type="button"
-                    className="mb-1 grid size-6 place-items-center rounded-full text-[11px] font-bold hover:bg-fairway-soft"
-                    onClick={() => canManage && openCreate(cell.date)}
-                    aria-label={`Create an event on ${cell.date}`}
-                  >
-                    {Number(cell.date.slice(-2))}
-                  </button>
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      className={cn(
+                        "grid size-6 place-items-center rounded-full text-[11px] font-bold hover:bg-fairway-soft",
+                        isToday && "bg-gold text-on-gold hover:bg-gold",
+                      )}
+                      onClick={() => canManage && openCreate(cell.date)}
+                      aria-label={
+                        isToday
+                          ? `Today, ${cell.date}. Create an event`
+                          : `Create an event on ${cell.date}`
+                      }
+                    >
+                      {Number(cell.date.slice(-2))}
+                    </button>
+                    {isToday && (
+                      <span className="text-[9px] font-bold tracking-[.08em] text-gold-ink uppercase">
+                        Today
+                      </span>
+                    )}
+                  </div>
                   <div className="grid gap-1">
                     {dayEvents.slice(0, 3).map((event) => (
                       <button
@@ -536,6 +554,7 @@ export default function CalendarPage() {
                 </div>
                 <p className="hint">
                   {fmtRange(event.dates)} · {STATUS_LABEL[event.status]}
+                  {event.dates.includes(todayIso) && <span className="pill ml-1.5">Today</span>}
                 </p>
                 <div className="flex gap-2">
                   {canManage && (

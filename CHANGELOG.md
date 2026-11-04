@@ -55,6 +55,10 @@ Supabase project, because the code and the database are released separately.
   past 2.5× would only blur it.
 
 ### Fixed
+- **The calendar marks today.** The month grid rings the current day in gold, fills its date circle
+  and labels it Today, so the desk can see where the month actually is without counting cells. The
+  list view also marks an event that is on today. The day is calculated in Manila time, since the
+  events are stored as dates rather than instants.
 - **A phone can sign out again.** The account chip that holds the sign-out button is hidden below
   768px, and the menu it is replaced by had no account or sign-out at all. The menu now ends with
   the signed-in name, their role and Sign out, or a sign-in link when the session failed.
