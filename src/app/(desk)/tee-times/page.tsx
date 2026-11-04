@@ -1,12 +1,13 @@
 "use client";
 
 import { CalendarClock, Check, CircleAlert, Clock, RotateCcw } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
-import { teeAssignmentProblem } from "@/lib/data/tee-time";
+import { teeAssignmentProblem, waveStartTimes } from "@/lib/data/tee-time";
 import type {
   Caddie,
   DayTeeAssignment,
@@ -14,8 +15,9 @@ import type {
   RegistrationEntry,
   TournamentDay,
 } from "@/lib/data/types";
-import { fmtIndex } from "@/lib/format";
+import { fmtIndex, fmtTime } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
+import { cn } from "@/lib/ui/cn";
 
 /**
  * Tee times per playing day. Day selection and tee-time assignment are separate writes: this screen
@@ -25,6 +27,11 @@ import { useDesk } from "@/lib/store/desk-store";
 export default function TeeTimesPage() {
   const { tournament, days, entries, players, caddies, adapters, status } = useDesk();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [batchTime, setBatchTime] = useState("");
+  const [batching, setBatching] = useState<"missing" | "all" | null>(null);
+  const [batchMessage, setBatchMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(
+    null,
+  );
   const day = days.find((d) => d.dayNumber === selectedDay) ?? days[0] ?? null;
 
   const playerById = useMemo(
@@ -54,6 +61,72 @@ export default function TeeTimesPage() {
   const confirmed = rows.filter(
     ({ entry }) => day && entry.dayTee?.[day.dayNumber]?.confirmed,
   ).length;
+  const timed = rows.filter(({ entry }) => day && entry.dayTee?.[day.dayNumber]?.teeTime).length;
+  const untimed = rows.length - timed;
+  const config = tournament.config;
+  const waves =
+    config.startFormat === "shotgun"
+      ? waveStartTimes(config.firstTeeTime, config.waveGapMinutes, 3)
+      : [];
+  const chosenTime = batchTime || config.firstTeeTime;
+
+  /**
+   * Writes one wave time to the day, in small parallel batches.
+   *
+   * "missing" fills only players with no time yet, which is the normal start of a shotgun day.
+   * "all" overwrites every time but keeps each player's start hole and confirmation, so a wave
+   * moved from 06:30 to 12:30 does not lose the work already done on holes.
+   */
+  async function applyBatch(mode: "missing" | "all") {
+    if (!day || batching) return;
+    const time = chosenTime.trim();
+    if (!/^\d{2}:\d{2}$/.test(time)) {
+      setBatchMessage({ tone: "bad", text: "Choose a tee time first." });
+      return;
+    }
+    const targets = rows.filter(
+      ({ entry }) => mode === "all" || !entry.dayTee?.[day.dayNumber]?.teeTime,
+    );
+    if (targets.length === 0) {
+      setBatchMessage({ tone: "ok", text: "Every player on this day already has a time." });
+      return;
+    }
+    setBatching(mode);
+    setBatchMessage(null);
+    let saved = 0;
+    const failed: string[] = [];
+    const queue = [...targets];
+    const workers = Array.from({ length: Math.min(6, queue.length) }, async () => {
+      for (;;) {
+        const row = queue.shift();
+        if (!row) return;
+        const existing = row.entry.dayTee?.[day.dayNumber];
+        try {
+          await adapters.registrations.assignDayTee(row.entry.id, day.dayNumber, {
+            teeTime: time,
+            startHole: existing?.startHole ?? null,
+            confirmed: Boolean(existing?.confirmed && existing.startHole),
+          });
+          saved += 1;
+        } catch {
+          failed.push(row.player.name);
+        }
+      }
+    });
+    await Promise.all(workers);
+    setBatching(null);
+    setBatchMessage(
+      failed.length > 0
+        ? {
+            tone: "bad",
+            text: `Set ${time} for ${saved} player${saved === 1 ? "" : "s"}. ${failed.length} could not be saved: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}.`,
+          }
+        : {
+            tone: "ok",
+            text: `Set ${time} for ${saved} player${saved === 1 ? "" : "s"}. Their start holes come from the draw; a time can be confirmed once its hole is set.`,
+          },
+    );
+  }
 
   return (
     <div className="grid gap-6">
@@ -122,6 +195,77 @@ export default function TeeTimesPage() {
                   <span>Still to assign</span>
                 </div>
               </div>
+
+              {config.startFormat === "shotgun" && rows.length > 0 && (
+                <div className="grid gap-3 rounded-[12px] border border-line bg-surface-sunken p-3">
+                  <div>
+                    <b className="text-[14px]">One tee time for the whole day</b>
+                    <p className="hint mt-0.5">
+                      A shotgun wave sends every player off at once. Wave times come from the event
+                      settings: first tee {fmtTime(config.firstTeeTime)}, then every{" "}
+                      {config.waveGapMinutes} minutes.{" "}
+                      <Link href="/setup#start" className="underline">
+                        Change them in Settings
+                      </Link>
+                      . Start holes stay with the draw, so a batch time is saved unconfirmed.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-2">
+                    {waves.map((wave) => (
+                      <button
+                        key={wave.wave}
+                        type="button"
+                        className={cn("btn small", chosenTime === wave.time ? "gold" : "ghost")}
+                        aria-pressed={chosenTime === wave.time}
+                        onClick={() => {
+                          setBatchTime(wave.time);
+                          setBatchMessage(null);
+                        }}
+                      >
+                        Wave {wave.wave} · {wave.time}
+                      </button>
+                    ))}
+                    <label className="field w-36">
+                      <span>Batch time</span>
+                      <input
+                        type="time"
+                        value={chosenTime}
+                        disabled={batching !== null}
+                        onChange={(event) => {
+                          setBatchTime(event.target.value);
+                          setBatchMessage(null);
+                        }}
+                      />
+                    </label>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={batching !== null || untimed === 0}
+                      onClick={() => void applyBatch("missing")}
+                    >
+                      {batching === "missing"
+                        ? "Setting…"
+                        : `Set ${chosenTime} for ${untimed} without a time`}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={batching !== null}
+                      onClick={() => void applyBatch("all")}
+                    >
+                      {batching === "all" ? "Overwriting…" : `Overwrite all ${rows.length}`}
+                    </Button>
+                  </div>
+                  {batchMessage && (
+                    <p
+                      className={batchMessage.tone === "bad" ? "notice bad" : "notice ok"}
+                      role="status"
+                    >
+                      {batchMessage.text}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {rows.length === 0 ? (
                 <div className="notice" role="status">
@@ -215,13 +359,13 @@ function TeeRow({
       courseHoles,
     });
     if (problem === "both_or_neither") {
-      return { error: "Give both a tee time and a start hole, or clear both." };
+      return { error: "A start hole needs a tee time. Add a time, or clear the hole." };
     }
     if (problem === "hole_range") {
       return { error: `The start hole must be between 1 and ${courseHoles}.` };
     }
     if (problem === "confirmed_needs_both") {
-      return { error: "A confirmed time needs both fields." };
+      return { error: "A confirmed time needs both the tee time and the start hole." };
     }
     return {
       assignment: { teeTime: timeText || null, startHole: hole, confirmed: isConfirmed },

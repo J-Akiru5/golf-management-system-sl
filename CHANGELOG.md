@@ -10,6 +10,13 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **One tee time for a shotgun day.** A shotgun wave starts everyone at once, so `/tee-times` now
+  offers the event's wave times (wave A at the first tee, each later wave one wave gap after, for
+  example 06:30 and 12:30) as a batch. One press fills the time for every player on the day who has
+  none, or overwrites every time while keeping each player's hole and confirmation. The per-row time,
+  hole and confirmation fields stay for the exceptions. A time without a start hole is now accepted
+  while it is unconfirmed, matching the database's own check, because the draw assigns the holes;
+  confirming still needs both.
 - **Revoke an approved scorecard** on `/scores` (issue #160). A card that should not count (wrong
   marker, duplicate entry, a score ruled unofficial) is withdrawn with a reason, and the standings
   are rebuilt from the cards and resolutions that remain. The card, its entries and its audit row are
