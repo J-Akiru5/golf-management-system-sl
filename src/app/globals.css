@@ -2664,9 +2664,15 @@
     width: 14px;
     height: 14px;
   }
+  /* The player bar is fixed to the bottom of the phone, so the hero has to stop short of it. The
+     260px this replaces was padding for a caption and a scroll cue that are no longer in the
+     markup, which is the empty green band this block used to leave under the buttons. */
+  .teeline-site .teeline-hero {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
   .hero-content {
     margin-top: 126px;
-    padding: 18px 24px 260px;
+    padding: 18px 20px 20px;
   }
   .hero-eyebrow {
     max-width: 320px;
@@ -2682,10 +2688,16 @@
     font-size: 14px;
   }
   .hero-actions {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     margin-top: 22px;
+  }
+  /* Full-width targets under the thumb, with the arrow pushed to the far edge. */
+  .hero-actions .button-light,
+  .hero-actions .button-quiet {
+    justify-content: space-between;
+    width: 100%;
   }
   .button-light {
     min-height: 48px;
