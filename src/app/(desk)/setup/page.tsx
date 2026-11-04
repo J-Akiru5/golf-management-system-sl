@@ -35,6 +35,7 @@ import {
 } from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
 import { SETUP_SECTIONS, type SetupSection } from "@/lib/data/setup-payload";
+import { waveCountForField, waveStartTimes } from "@/lib/data/tee-time";
 import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
 import type { CategoryRule, FlightRule, StartFormat, Tee, TournamentConfig } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -76,7 +77,7 @@ const SECTION_TITLE: Record<SetupSection, string> = {
 };
 
 export default function SetupPage() {
-  const { tournament, tees, holes, adapters, status, member, state } = useDesk();
+  const { tournament, tees, holes, entries, adapters, status, member, state } = useDesk();
   if (!tournament) return <NeedsTournament what="Settings" />;
   // Owner and organizer only, the same rule the database enforces. Demo mode has no roles.
   const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
@@ -87,6 +88,7 @@ export default function SetupPage() {
       holes={holes}
       status={status}
       canEdit={canEdit}
+      fieldSize={entries.length}
       hasDraw={Boolean(state.boards[tournament.id]?.draw)}
       save={async (input) => adapters.setup.save(input)}
       confirmCourse={(confirmed) => adapters.setup.confirmCourse(tournament.id, confirmed)}
@@ -103,6 +105,7 @@ function SetupWizard({
   holes,
   status,
   canEdit,
+  fieldSize,
   hasDraw,
   save,
   confirmCourse,
@@ -113,6 +116,8 @@ function SetupWizard({
   holes: ReturnType<typeof useDesk>["holes"];
   status: ReturnType<typeof useDesk>["status"];
   canEdit: boolean;
+  /** Entries for this event. The field size is what decides how many waves a day needs. */
+  fieldSize: number;
   /** An existing board was routed against the numbers this screen edits. */
   hasDraw: boolean;
   save: (input: {
@@ -336,6 +341,14 @@ function SetupWizard({
       <Save aria-hidden="true" /> Save
     </Button>
   );
+
+  // The schedule these settings produce. The Start & groups section shows it, so the club sees what
+  // the first tee time and the gap mean instead of only reading the minutes between them.
+  const waveCount = Math.max(
+    1,
+    waveCountForField(fieldSize, draft.config.holes, draft.config.groupSize),
+  );
+  const waves = waveStartTimes(draft.config.firstTeeTime, draft.config.waveGapMinutes, waveCount);
 
   const dirtyCount = dirty.length;
   const saveState = !canEdit
@@ -1203,13 +1216,28 @@ function SetupWizard({
                   </label>
                 </div>
                 {draft.config.startFormat === "shotgun" && (
-                  <p className="hint">
-                    Wave A starts at {draft.config.firstTeeTime}; each later wave starts{" "}
-                    {draft.config.waveGapMinutes} minutes after the one before. The field decides
-                    how many waves a day needs (one group on every hole fills a wave), the draw can
-                    add more to keep a flight whole, and the tee-times screen lists every wave with
-                    a letter to assign.
-                  </p>
+                  <div className="grid gap-2.5 rounded-[12px] border border-line bg-surface-sunken p-3">
+                    <div>
+                      <b className="text-[14px]">Waves for this field</b>
+                      <p className="hint mt-0.5">
+                        {fieldSize} {fieldSize === 1 ? "player" : "players"} entered, and one group
+                        on every hole fills a wave: {draft.config.holes} holes ×{" "}
+                        {draft.config.groupSize} per hole ={" "}
+                        {draft.config.holes * draft.config.groupSize} players, so this event needs{" "}
+                        {waveCount} {waveCount === 1 ? "wave" : "waves"}. Wave A is the first tee
+                        time and every later wave starts one gap after the one before, so the first
+                        tee time and the gap above are what move a wave. The draw can add another
+                        wave to keep a flight whole, and the tee-times screen assigns the letters.
+                      </p>
+                    </div>
+                    <div className="chips" aria-label="Wave start times">
+                      {waves.map((wave) => (
+                        <span key={wave.wave} className="chip inline-flex items-center">
+                          Wave {wave.wave} · {wave.time}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 <p className="hint">
                   Shotgun: 18 holes × 4 players = 72 in a wave; a flight is never split unless it is
