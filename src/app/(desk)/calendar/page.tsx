@@ -91,14 +91,7 @@ const STATUS_LABEL: Record<Tournament["state"], string> = {
 };
 
 export default function CalendarPage() {
-  const {
-    tournaments,
-    tournament: activeTournament,
-    adapters,
-    member,
-    reload,
-    state,
-  } = useDesk();
+  const { tournaments, tournament: activeTournament, adapters, member, reload, state } = useDesk();
   const [view, setView] = useState<"month" | "list">("month");
   const [cursor, setCursor] = useState(() => monthOf(today()));
   const [draft, setDraft] = useState<EventDraft | null>(null);
