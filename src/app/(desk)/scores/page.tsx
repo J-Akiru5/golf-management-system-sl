@@ -18,6 +18,7 @@ import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { HandicapSummary } from "@/components/scoring/HandicapSummary";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import type { ScoringRoundView } from "@/lib/data/scoring";
 import { fmtHcp, fmtIndex } from "@/lib/format";
 import {
@@ -444,52 +445,42 @@ export default function ScoresPage() {
                   </div>
                 )}
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="field">
-                    <span>Player</span>
-                    <select
-                      value={playerId}
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        setPlayerId(next);
-                        if (next === scorerId) {
-                          const rotation = reciprocalRotation(
-                            players.map((player) => player.playerId),
-                          );
-                          const mapped = rotation.find(
-                            (assignment) => assignment.playerId === next,
-                          )?.scorerId;
-                          setScorerId(
-                            mapped ??
-                              players.find((player) => player.playerId !== next)?.playerId ??
-                              "",
-                          );
-                        }
-                      }}
-                      disabled={busy || players.length < 2 || Boolean(editingCard)}
-                    >
-                      {players.map((player) => (
-                        <option key={player.playerId} value={player.playerId}>
-                          {player.playerName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field">
-                    <span>Marked by</span>
-                    <select
-                      value={scorerId}
-                      onChange={(event) => setScorerId(event.target.value)}
-                      disabled={busy || players.length < 2 || Boolean(editingCard)}
-                    >
-                      {players
-                        .filter((player) => player.playerId !== playerId)
-                        .map((player) => (
-                          <option key={player.playerId} value={player.playerId}>
-                            {player.playerName}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
+                  <Combobox
+                    label="Player"
+                    value={playerId}
+                    options={players.map((player) => ({
+                      id: player.playerId,
+                      label: player.playerName,
+                    }))}
+                    onChange={(next) => {
+                      setPlayerId(next);
+                      if (next === scorerId) {
+                        const rotation = reciprocalRotation(
+                          players.map((player) => player.playerId),
+                        );
+                        const mapped = rotation.find(
+                          (assignment) => assignment.playerId === next,
+                        )?.scorerId;
+                        setScorerId(
+                          mapped ??
+                            players.find((player) => player.playerId !== next)?.playerId ??
+                            "",
+                        );
+                      }
+                    }}
+                    placeholder="Type a player's name"
+                    disabled={busy || players.length < 2 || Boolean(editingCard)}
+                  />
+                  <Combobox
+                    label="Marked by"
+                    value={scorerId}
+                    options={players
+                      .filter((player) => player.playerId !== playerId)
+                      .map((player) => ({ id: player.playerId, label: player.playerName }))}
+                    onChange={setScorerId}
+                    placeholder="Type the marker's name"
+                    disabled={busy || players.length < 2 || Boolean(editingCard)}
+                  />
                 </div>
 
                 {!editingCard && (

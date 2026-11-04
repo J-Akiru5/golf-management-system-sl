@@ -4,6 +4,7 @@ import { Camera, CheckCircle2, ImagePlus, Loader2, ScanLine, Upload } from "luci
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CardCamera } from "@/components/scoring/CardCamera";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import type { HoleDefinition } from "@/lib/scoring";
 import type {
   ScorecardScanApply,
@@ -268,20 +269,17 @@ export function ScorecardScan({
             <option value="group">Group sheet</option>
           </select>
         </label>
-        <label className="field min-w-[16rem] flex-1">
-          <span>Player</span>
-          <select
-            value={playerId}
-            onChange={(event) => setPlayerId(event.target.value)}
-            disabled={busy || disabled || players.length === 0}
-          >
-            {players.map((player) => (
-              <option key={player.playerId} value={player.playerId}>
-                {player.playerName}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* A typed search, not a plain dropdown: an event can carry more than a hundred players. */}
+        <Combobox
+          label="Player"
+          className="min-w-[16rem] flex-1"
+          value={playerId}
+          options={players.map((player) => ({ id: player.playerId, label: player.playerName }))}
+          onChange={setPlayerId}
+          placeholder="Type a player's name"
+          emptyMessage="No player in this round matches that name."
+          disabled={busy || disabled || players.length === 0}
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

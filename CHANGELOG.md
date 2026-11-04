@@ -19,6 +19,11 @@ Supabase project, because the code and the database are released separately.
   revocations, resolutions and publications) are now readable beside the general `audit_log`.
 
 ### Changed
+- **Player fields on the score screen are searchable** (issue #163). An event can carry more than a
+  hundred players, where a plain dropdown is unusable. The player and marker fields on a card, and
+  the player field when scanning, are now type-to-search lists that match names, NGAP ids and home
+  courses, keep the keyboard working (arrows, Enter, Escape) and say how many matches are hidden
+  once the list is capped.
 - **Settings is one section per tab** (issue #161) instead of a nine-section scroll. The tab lives in
   the URL hash, so `/setup#course` and the existing links from the print screen, the registration
   desk and alerts still open the right section, the back button walks the tabs, and a tab shows a dot
