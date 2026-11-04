@@ -96,6 +96,7 @@ export default async function PublicPairingsPage() {
         })
       : null;
   const showProgramme = Boolean(pairings && published && programme);
+  const skippedRows = data?.skippedRows ?? 0;
 
   return (
     <main className="public public-pairings mobile-bar-space">
@@ -158,6 +159,12 @@ export default async function PublicPairingsPage() {
                     })}
               </p>
             </div>
+            {skippedRows > 0 && (
+              <p className="notice warn no-print" role="status" data-testid="pairings-skipped">
+                Part of the published draw could not be read.{" "}
+                {skippedRows === 1 ? "1 row is" : `${skippedRows} rows are`} not shown.
+              </p>
+            )}
             <PairingsView pairings={pairings} headingLevel="section" flightFilter />
           </section>
 

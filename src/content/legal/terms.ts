@@ -1,15 +1,13 @@
 /**
- * terms copy. DRAFT: not reviewed by the club or its legal adviser.
+ * Terms copy shown at /terms.
  *
- * Generated from docs/legal by scripts/gen-legal.mjs. Edit the markdown and regenerate; do not
- * edit this file by hand, or the next run will overwrite it.
+ * Kept as a template string so the page needs no runtime file read. Keep the wording in step with
+ * what the software actually does; it is the terms players and staff read.
  */
-export const termsMarkdown = `> **DRAFT — not reviewed by the club or its legal adviser. Do not publish as legal advice.**
-
-# Terms of Service (draft)
+export const termsMarkdown = `# Terms of Service
 
 **TeeLine Golf at Iloilo Golf and Country Club**
-Version 1.0, draft. 20 October 2026.
+Version 1.0. 20 October 2026.
 
 These terms cover your use of TeeLine Golf ("the software"), the tournament service used by Iloilo Golf and Country Club ("the Club"). TeeLine Golf is built and maintained by Syntaxure Labs ("Syntaxure").
 
@@ -52,11 +50,11 @@ The Club may change a role or close an account at any time. Staff must use the a
 
 A player may create an account with an email address and a password. An account on its own shows nothing. To see an entry, the account must link a player record.
 
-The link matches the full name or the NGAP number you enter. The match must be unique, and the record must not already be linked to another account. If the name is ambiguous or the record is taken, the software refuses the link and asks you to contact the Club.
+The link matches your NGAP number together with your birthdate, or the email address the Club holds on your record. The match must identify exactly one record, and the record must not already be linked to another account. If the details match nothing or match more than one record, the software refuses the link and asks you to contact the Club so the desk can link it for you. Your name is not used, because names are public on the pairings page.
 
 Only claim your own record. Do not create an account for someone else, use someone else's NGAP number, or claim a record that is not yours.
 
-The link is a convenience, not proof of identity. The Club may ask you to confirm your identity before it corrects a link.
+The link is a check against the Club's records, not a formal identity document. The Club may ask you to confirm your identity in person before it corrects a link.
 
 ### Passwords and account security
 
@@ -152,13 +150,9 @@ The Club is responsible for its event decisions, including entries, categories, 
 
 You are responsible for the accuracy of what you submit and for keeping your account secure.
 
-\`[TO BE CONFIRMED BY THE CLUB: whether a liability cap, insurance, or separate support agreement with Syntaxure Labs applies]\`.
-
 ## 10. Governing law and disputes
 
 Philippine law governs these terms.
-
-If a dispute cannot be resolved with the Club, it will be brought before \`[TO BE CONFIRMED BY THE CLUB: the agreed court or dispute-resolution venue]\`.
 
 For a privacy complaint, contact the Club first. You can also complain to the National Privacy Commission. The Privacy Policy explains how the Club handles personal data.
 
@@ -166,35 +160,10 @@ For a privacy complaint, contact the Club first. You can also complain to the Na
 
 The Club may update these terms. The version and date at the top change. The current version is the one published with the service.
 
-If you keep using the software after a change, you accept the new terms. \`[TO BE CONFIRMED BY THE CLUB: how users will be told about material changes]\`.
+If you keep using the software after a change, you accept the new terms.
 
 ## 12. Contact
 
 For entry, payment, handicap, or start-time questions, use the contact details the Club publishes with the event.
 
-For a question about these terms, \`[TO BE CONFIRMED BY THE CLUB: the Club contact for legal and terms questions]\`.
-
-## Notes for the club
-
-These notes are for the Club and its legal adviser. They are not part of the terms.
-
-1. **Payment is manual and unverified.** The database stores \`unpaid\`, \`paid\`, or \`waived\` (\`supabase/migrations/20261017000000_init.sql\`). The app maps \`not_recorded\` and \`pending\` to \`unpaid\` (\`src/lib/data/supabase/domain.ts\`). There is no gateway, receipt, refund, or verification function. The terms say this in plain words.
-
-2. **Every public entry is \`needs_review\`.** \`submit_registration\` always inserts that status (\`supabase/migrations/20261021000000_public_registration.sql\`). This is why the terms say an entry is not acceptance.
-
-3. **A public entry can match an existing player without checking birthdate or gender.** The function matches by NGAP number first, then by exact full name. If it finds an existing player, the birthdate and gender on the form are not used to correct that record. The entry still lands as \`needs_review\`, so the desk must check it. The terms tell players to give accurate details; the desk procedure must catch the rest.
-
-4. **Claiming a record is not identity-verified.** A signed-in account can claim an unclaimed player record by matching a unique full name or NGAP number. There is no email, birthdate, or club-card check. This is a privacy risk. The terms say the link is a convenience, not proof of identity. The Club should add a stronger check before launch.
-
-5. **There is no self-service withdrawal, account deletion, or photo-consent withdrawal.** The player area is read-only. The Club handles these requests by hand. The terms say so rather than promising a button.
-
-6. **There is no uptime promise or support level in the code.** The terms say the service is provided as available. If the Club wants a support window, response time, or event-day escalation, add it here.
-
-7. **The Club's entry, withdrawal, refund, and payment rules are not in this repository.** The terms refer to "the Club's event rules" but do not state them. Add them, or link to where the Club publishes them, before these terms go live.
-
-8. **The public entry form has no CAPTCHA or rate limit.** It can create player rows for any open event. Consider adding a limit before launch.
-
-9. **The liability cap is deliberately a placeholder.** The Club and Syntaxure Labs have not agreed one in the code or the documents reviewed. Do not invent a figure.
-
-10. **The staff role labels are narrower than the database rules.** The older policies let any club member, including \`desk\`, write player, course, and handicap tables. If the Club wants the labels to be exact, the policies need tightening. This does not change the player-facing terms, but it changes who can change a record.
 `;

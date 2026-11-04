@@ -11,6 +11,33 @@ Supabase project, because the code and the database are released separately.
 
 Nothing yet.
 
+## [0.27.3] - 2026-11-04
+
+Production-grade pass before the club staff adopt the desk.
+
+### Added
+- **`create_registration`**: one transaction that writes the entry, its playing days and the
+  registration-player link, so the desk cannot report a saved entry that the database refused.
+  Migration `20261104000000`, applied 4 Nov 2026.
+- **Live health check**: `scripts/health-check.mjs` plus a scheduled GitHub workflow, and the
+  runbook's backup, rollback and event-week sections.
+- **Branded error and not-found pages**, so a wrong link no longer lands on a bare framework error.
+
+### Changed
+- **The desk saves what it says it saved.** Re-freeze, remove-entry, publish, unpublish and the
+  registration review now wait for the database; failures stay on screen with an error instead of a
+  false "Saved" or "Published". `/register` gains a Refresh control and reloads once when the pending
+  count rises.
+- **Account linking no longer uses a name.** A player links with NGAP number + birthdate, or the
+  email the club holds. The old name-based claim is dropped, and the import-player helper is no
+  longer executable by a signed-in client. Migration `20261104000100`, applied 4 Nov 2026.
+- **`/my` finds the player's group by player id**, falling back to the name only for snapshots that
+  predate ids. Migration `20261104000200`, applied 4 Nov 2026.
+- **Publication times render in Manila time**, and one inconsistent snapshot row no longer blanks
+  the whole pairings page.
+- **The legal pages are publishable**: draft banner, internal notes and placeholders removed; the
+  account-linking paragraph matches the new rule.
+
 ## [0.27.2] - 2026-11-04
 
 The logo lockup and the landing page after entries close.

@@ -92,20 +92,22 @@ export const en = {
       "No entries on file for you yet. Enter through the event link the club sent you, or ask the club to add you to the event.",
     claim: {
       heading: "Can't see your entry?",
-      body: "We match your account to your club record by name. If your entry is missing, enter the full name the club has on file, or your NGAP number.",
-      name: "Full name, as the club has it",
-      ngapId: "NGAP number (if you know it)",
-      help: "A name that matches more than one member is refused rather than guessed, so the NGAP number settles it.",
+      body: "We link a record only when we can confirm it is yours. Enter the NGAP number and birthdate the club has for you. If the club already has this account's email on your record, leave both fields empty and press Find my entry.",
+      ngapId: "NGAP number",
+      birthdate: "Birthdate on the club record",
+      help: "Both fields are needed for a match. A name alone is public and no longer links a record. If neither check matches, ask the desk to link your entry.",
       submit: "Find my entry",
       linked: "Your club record is linked. Your entries are below.",
       notReady:
         "The player area is not switched on for this project yet. The club has to apply the player portal migration first.",
       failed: "Your record could not be linked just now. Try again in a moment.",
-      invalid: "Enter your full name, or your NGAP number.",
+      invalid:
+        "Enter your NGAP number and birthdate together, or leave both empty to match the email on this account.",
       tooLong: "That is longer than the club's records hold. Check it and try again.",
       ambiguous:
-        "More than one member record matches that. Add your NGAP number so the club can tell them apart.",
-      noMatch: "No club record matches those details yet. Ask the desk to link your entry.",
+        "More than one member record matches. Use your NGAP number and birthdate so the club can tell them apart.",
+      noMatch:
+        "We could not confirm your identity from those details. Ask the desk to link your entry.",
       taken: "That member record is already linked to another account. Ask the club to check it.",
       signedOut: "Your session has ended. Sign in again.",
       alreadyLinked: "Your member record is already linked to this account.",
@@ -257,7 +259,8 @@ export const en = {
         entry: "Your entries are listed here: the event, your start, flight, tee and payment.",
         notListed:
           "If your group is not out yet, the card says so. The club decides when pairings go out.",
-        claim: "Nothing here yet? Link your club record with your full name or your NGAP number.",
+        claim:
+          "Nothing here yet? Link your club record with your NGAP number and birthdate. If that does not work, the desk can link it for you.",
         link: "The full player list is one tap away on the pairings page.",
       },
       pairings: {

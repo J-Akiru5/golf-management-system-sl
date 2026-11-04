@@ -26,6 +26,7 @@ import {
   type RevisionStore,
 } from "@/lib/data/supabase/adapters";
 import {
+  type PublishResult,
   publishPairings,
   refreshPublicPage,
   saveDraw,
@@ -130,6 +131,13 @@ interface Desk {
   /** True while a write is in flight, for a "saving…" label. */
   saving: boolean;
   /**
+   * The publish and unpublish writes. The screens show the change only when this returns to
+   * "idle"; "failed" carries the message so the dialog can keep itself open with a retry. The
+   * provider never shows Published before the database confirms it.
+   */
+  publishState: "idle" | "working" | "failed";
+  publishError: string | null;
+  /**
    * Who is signed in, for the session bar. `undefined` means this build has no auth at all (demo);
    * `null` means signed in without a club membership row.
    */
@@ -199,6 +207,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [accessProblem, setAccessProblem] = useState<DeskAccessProblem | null>(null);
   const [saving, setSaving] = useState(false);
+  const [publishState, setPublishState] = useState<Desk["publishState"]>("idle");
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [member, setMember] = useState<Desk["member"]>(connected ? undefined : undefined);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -377,7 +387,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   }
 
   const runDrawJob = useCallback(
-    async (job: DrawJob, supabase: SupabaseClient<Database>) => {
+    async (job: DrawJob, supabase: SupabaseClient<Database>): Promise<PublishResult | null> => {
       // The same store the setup write uses. Reading it here is what makes the two agree.
       const revision = revisionStore.get(job.tournamentId) ?? 0;
       if (job.kind === "save") {
@@ -385,32 +395,55 @@ export function DeskProvider({ children }: { children: ReactNode }) {
           job.tournamentId,
           await saveDraw(supabase, job.tournamentId, revision, job.draw, job.overrides),
         );
-        return;
+        return null;
       }
       if (job.kind === "publish") {
         const result = await publishPairings(supabase, job.tournamentId, revision, job.published);
-        rawDispatch({
-          type: "publishAck",
-          tournamentId: job.tournamentId,
-          version: result.version,
-          at: result.at,
-        });
-      } else {
-        await unpublishPairings(supabase, job.tournamentId);
+        await refreshPublicPage(supabase);
+        return result;
       }
+      await unpublishPairings(supabase, job.tournamentId);
       await refreshPublicPage(supabase);
+      return null;
     },
     [revisionStore],
   );
+
+  // Applies an action to the newest state and shows it. Used after a write confirms, so a screen
+  // changes once, when the database has the change, rather than before it.
+  const apply = useCallback<Dispatch<Action>>((action) => {
+    latest.current = reducer(latest.current, action);
+    rawDispatch(action);
+  }, []);
+
+  // Shows exactly the published snapshot the database accepted, and nothing else. The rest of the
+  // board stays as it is now: an edit made while the write was in flight must not be dropped, and
+  // must not be shown as published either.
+  const applyPublished = useCallback((tournamentId: string, published: Published | null) => {
+    const current = latest.current;
+    const board = current.boards[tournamentId];
+    if (!board) return;
+    const next: DeskState = {
+      ...current,
+      boards: { ...current.boards, [tournamentId]: { ...board, published } },
+    };
+    latest.current = next;
+    rawDispatch({ type: "hydrate", state: next });
+  }, []);
 
   // Every screen dispatches through this. In demo mode it is the plain reducer; with Supabase the
   // draw actions are also queued for the database.
   const dispatch = useCallback<Dispatch<Action>>(
     (action) => {
+      const isPublish = action.type === "publish" || action.type === "unpublish";
       // Offline is not a queue: the change is refused before it reaches the reducer, so the screen
       // cannot show a value that the database never received.
       if (connected && !LOCAL_ONLY_ACTIONS.has(action.type) && !canWriteRef.current) {
         setError(OFFLINE_WRITE_NOTICE);
+        if (isPublish) {
+          setPublishState("failed");
+          setPublishError(OFFLINE_WRITE_NOTICE);
+        }
         return;
       }
       if (!client || !DRAW_ACTIONS.has(action.type)) {
@@ -419,13 +452,71 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       }
       const before = latest.current;
       const after = reducer(before, action);
+
+      if (isPublish) {
+        const jobs = planDrawJobs(action, before, after);
+        // Nothing to write: the reducer refused the action (blocking issues) or there was no
+        // published copy to take down. The screen must not claim anything changed.
+        if (jobs.length === 0) {
+          if (action.type === "publish") {
+            setPublishState("failed");
+            setPublishError(
+              "The pairings were not published. Check the problems above and try again.",
+            );
+          }
+          return;
+        }
+        setPublishError(null);
+        setPublishState("working");
+        for (const job of jobs) {
+          drawQueue.current?.(async () => {
+            try {
+              const result = await runDrawJob(job, client);
+              if (job.kind === "publish") {
+                // The snapshot the database accepted, not a fresh one built from the screen.
+                const accepted = after.boards[job.tournamentId]?.published ?? null;
+                if (!accepted) {
+                  setPublishState("failed");
+                  setPublishError(
+                    "The pairings were published, but this screen could not show them. Open the draw again.",
+                  );
+                  return;
+                }
+                // Shown only now, and then stamped with the version the database assigned.
+                applyPublished(job.tournamentId, accepted);
+                if (result) {
+                  apply({
+                    type: "publishAck",
+                    tournamentId: job.tournamentId,
+                    version: result.version,
+                    at: result.at,
+                  });
+                }
+              } else {
+                // Nothing is published any more; the old snapshot goes only after the write lands.
+                applyPublished(job.tournamentId, null);
+              }
+              setPublishState("idle");
+            } catch (error) {
+              setPublishState("failed");
+              setPublishError(
+                error instanceof Error ? error.message : "Could not save the pairings.",
+              );
+              // The queue reports it to the session bar as well.
+              throw error;
+            }
+          });
+        }
+        return;
+      }
+
       latest.current = after;
       rawDispatch(action);
       for (const job of planDrawJobs(action, before, after)) {
         drawQueue.current?.(() => runDrawJob(job, client));
       }
     },
-    [client, connected, runDrawJob],
+    [apply, applyPublished, client, connected, runDrawJob],
   );
 
   const adapters = useMemo<Adapters>(() => {
@@ -550,6 +641,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       error,
       accessProblem,
       saving,
+      publishState,
+      publishError,
       member: connected ? member : undefined,
       scoring,
       lastSavedAt,
@@ -566,6 +659,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     error,
     accessProblem,
     saving,
+    publishState,
+    publishError,
     member,
     connected,
     lastSavedAt,

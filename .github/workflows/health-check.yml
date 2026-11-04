@@ -1,0 +1,35 @@
+name: Health check
+
+# Runs against the live site, never against a build or a preview. It reads only: GETs plus one
+# read-only RPC. There is no deployment and no write.
+#
+# GitHub's scheduler does not promise 15-minute precision. Runs are queued and can be delayed when
+# the platform is busy, so "no run for an hour" means check the workflow, not that the site is down.
+# A schedule also only starts once this file is on the default branch (`main`).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    name: live site
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # A non-zero exit fails the job, which is what sends the owner the GitHub notification.
+      # The script skips the database check when both secret values are empty.
+      - name: Check the live site
+        run: node scripts/health-check.mjs
+        env:
+          HEALTH_SUPABASE_URL: ${{ secrets.HEALTH_SUPABASE_URL }}
+          HEALTH_SUPABASE_ANON_KEY: ${{ secrets.HEALTH_SUPABASE_ANON_KEY }}

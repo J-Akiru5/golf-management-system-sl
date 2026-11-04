@@ -36,8 +36,18 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
  * notifications and de-duplicates the overlap, so the badge and the Issues panel cannot disagree.
  */
 export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
-  const { state, registrations, names, tournament, draw, published, status, players, reload } =
-    useDesk();
+  const {
+    state,
+    registrations,
+    entries,
+    names,
+    tournament,
+    draw,
+    published,
+    status,
+    players,
+    reload,
+  } = useDesk();
   const connected = isSupabaseConfigured();
   const tournamentId = tournament?.id ?? null;
   const pathname = usePathname();
@@ -128,7 +138,16 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
   // count a minute, and again when the tab regains focus, and refresh the stored alerts everywhere.
   // The desk itself reloads only on the registration screen: no timer throws away an open form on
   // Setup, the Draw or the scorecard.
-  const lastPending = useRef<number | null>(null);
+  //
+  // The count is of entries waiting at the desk (the database's own `status`), so it is compared
+  // with the loaded entries in that same state: a bigger number means one arrived that has not
+  // been loaded. One reload per new count, so a difference that survives a reload does not reload
+  // every minute; the list's own Refresh entries control covers that.
+  const needsReviewLoaded = entries.filter((r) => r.status === "needs_review").length;
+  const needsReview = useRef(needsReviewLoaded);
+  needsReview.current = needsReviewLoaded;
+  const reloadedFor = useRef<number | null>(null);
+
   useEffect(() => {
     if (!connected || !tournamentId || !ready) return;
     let alive = true;
@@ -141,10 +160,11 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
         return;
       }
       if (!alive || count === null) return;
-      if (lastPending.current !== null && count > lastPending.current && pathname === "/register") {
+      const arrived = count > needsReview.current && reloadedFor.current !== count;
+      if (pathname === "/register" && arrived) {
+        reloadedFor.current = count;
         reload();
       }
-      lastPending.current = count;
       await check(true);
     };
     const onFocus = () => void poll();

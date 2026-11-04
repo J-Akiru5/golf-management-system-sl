@@ -192,6 +192,11 @@ export interface PublicPairingsData {
   published: Published | null;
   /** Public photo paths for the player ids in the published snapshot. */
   photoByPlayerId: Record<string, string>;
+  /**
+   * Rows that could not be used because they were incomplete or disagreed with the rest of their
+   * group. They are left out of `published`; the page shows the rest and notes the gap.
+   */
+  skippedRows: number;
 }
 
 export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData | null {
@@ -203,6 +208,10 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
 
   const groups = new Map<number, PublishedGroup>();
   const photoByPlayerId: Record<string, string> = {};
+  // A published snapshot is written by the app, but a historical row can still be incomplete or
+  // disagree with its group after a manual repair. Skipping the bad row keeps the rest of the
+  // board readable; the caller gets the count and can say part of the list is missing.
+  let skippedRows = 0;
   for (const row of rows) {
     if (
       row.tournament_id !== first.tournament_id ||
@@ -221,7 +230,7 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
         row.flight_name !== null ||
         row.player_name !== null
       ) {
-        throw new Error("The public pairings response has incomplete group data.");
+        skippedRows += 1;
       }
       continue;
     }
@@ -232,7 +241,8 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
       row.player_name === null ||
       row.published_at === null
     ) {
-      throw new Error("The public pairings response has incomplete player data.");
+      skippedRows += 1;
+      continue;
     }
     const group = groups.get(row.group_number) ?? {
       number: row.group_number,
@@ -249,13 +259,19 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
       group.time !== row.tee_time.slice(0, 5) ||
       group.flight !== row.flight_name
     ) {
-      throw new Error(`Public pairings group ${row.group_number} has inconsistent rows.`);
+      skippedRows += 1;
+      continue;
     }
     group.players.push(row.player_name);
     // Keep the ids aligned with the names even when an old snapshot has no id for this row.
     group.playerIds?.push(row.player_id ?? "");
     if (row.player_id && row.photo_path) photoByPlayerId[row.player_id] = row.photo_path;
     groups.set(row.group_number, group);
+  }
+
+  // Nothing usable survived. The page should show its failure state, not an empty draw.
+  if (groups.size === 0 && skippedRows > 0) {
+    throw new Error("The public pairings response has no usable rows.");
   }
 
   const published: Published | null =
@@ -279,5 +295,6 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
     firstTeeTime: first.first_tee_time.slice(0, 5),
     published,
     photoByPlayerId,
+    skippedRows,
   };
 }

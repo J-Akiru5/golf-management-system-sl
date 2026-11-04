@@ -122,6 +122,7 @@ export default async function LeaderboardPage({
                 {new Date(board.round.publishedAt).toLocaleString("en-PH", {
                   dateStyle: "medium",
                   timeStyle: "short",
+                  timeZone: "Asia/Manila",
                 })}{" "}
                 · Version {board.round.version}. Only consented player photos are shown.
               </p>
