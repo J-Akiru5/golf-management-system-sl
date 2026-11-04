@@ -885,6 +885,21 @@
     --ink-muted: var(--on-forest-muted);
     --focus: var(--gold);
   }
+  /* The language picker in the band. It stays a plain select, so a phone opens its own picker, but
+     the shared field rule paints the page surface while the band's ink is ivory: the closed control
+     read ivory on white. The option list is a browser-drawn popup, so the options carry page
+     colours of their own instead of inheriting the band's ivory on its light background. */
+  .band .lang-select {
+    width: auto;
+    padding: 0 10px;
+    border-color: var(--on-forest-muted);
+    background: transparent;
+    color: var(--on-forest);
+  }
+  .lang-select option {
+    background: var(--surface-raised);
+    color: var(--ink-page);
+  }
   /* Text laid straight on the darkened course image: fixed light colours, like display cards. */
   .on-photo {
     color: #f7f5ee;
