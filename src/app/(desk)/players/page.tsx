@@ -455,13 +455,13 @@ function Players() {
       </div>
 
       {/* Phones: one card per player. */}
-      <ul className="grid gap-2.5 md:hidden" aria-label="Players">
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-2.5 md:hidden" aria-label="Players">
         {page.items.map((p) => {
           const r = regById.get(p.id);
           const entered = entryByPlayer.has(p.id);
           return (
-            <li key={p.id} className="card grid gap-3 !p-3.5">
-              <div className="flex items-center gap-3">
+            <li key={p.id} className="card grid min-w-0 gap-3 !p-3.5">
+              <div className="flex min-w-0 items-center gap-3">
                 <Avatar name={p.name} photo={photoOf(p)} />
                 <div className="min-w-0 flex-1">
                   <Link
@@ -480,13 +480,13 @@ function Players() {
                 {r ? <StatusPill status={r.status} /> : <span className="pill">Not entered</span>}
               </div>
               <dl className="grid grid-cols-3 gap-2 rounded-[10px] bg-surface-sunken px-3 py-2">
-                <div>
+                <div className="min-w-0">
                   <dt className="overline !text-[10px]">Index</dt>
                   <dd className="m-0 font-display font-bold tnum">
                     {fmtIndex(r?.frozenIndex ?? null)}
                   </dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="overline !text-[10px]">Playing</dt>
                   <dd className="m-0 font-display font-bold tnum">
                     {fmtHcp(r?.playingHandicap ?? null)}
@@ -499,10 +499,10 @@ function Players() {
                   </dd>
                 </div>
               </dl>
-              {r && r.reasons.length > 0 && <p className="hint">{r.reasons[0]}</p>}
-              <div className="flex items-center justify-between gap-2">
-                <span className="hint">{p.homeCourse ?? "Home course not set"}</span>
-                <span className="flex gap-1">
+              {r && r.reasons.length > 0 && <p className="hint min-w-0">{r.reasons[0]}</p>}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="hint min-w-0">{p.homeCourse ?? "Home course not set"}</span>
+                <span className="flex shrink-0 flex-wrap gap-1">
                   {!entered && (
                     <Button variant="secondary" size="sm" asChild>
                       <Link href={`/register?player=${p.id}`}>Register</Link>
