@@ -48,14 +48,10 @@ export function LanguageSwitcher({
         value={locale}
         onChange={(event) => choose(event.target.value)}
         aria-label={t("common.language")}
-        className={cn(
-          "!h-11 !w-auto !px-2.5 text-[16px] font-medium sm:text-[13px]",
-          tone === "on-forest" &&
-            "!border-on-forest-muted !bg-transparent !text-on-forest focus-visible:!outline-gold",
-        )}
+        className={cn("font-medium", tone === "on-forest" && "lang-select")}
       >
         {LOCALES.map((code) => (
-          <option key={code} value={code} className="text-ink">
+          <option key={code} value={code}>
             {LOCALE_LABEL[code]}
           </option>
         ))}
