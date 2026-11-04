@@ -2,6 +2,7 @@
 
 import { Camera, CheckCircle2, ImagePlus, Loader2, ScanLine, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CardCamera } from "@/components/scoring/CardCamera";
 import { Button } from "@/components/ui/button";
 import type { HoleDefinition } from "@/lib/scoring";
 import type {
@@ -71,6 +72,7 @@ export function ScorecardScan({
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
   const [captureKey, setCaptureKey] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -283,11 +285,12 @@ export function ScorecardScan({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {/* No `capture` attribute: the camera is the app's own window, and this input is the
+            "upload a photo" choice inside it. */}
         <input
           ref={inputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          capture="environment"
           className="sr-only"
           onChange={(event) => void chooseFile(event.target.files?.[0] ?? null)}
           disabled={busy || disabled}
@@ -296,11 +299,11 @@ export function ScorecardScan({
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => setCameraOpen(true)}
           disabled={busy || disabled}
         >
           <Camera className="size-4" aria-hidden="true" />
-          Take or choose photo
+          Take photo
         </Button>
         {file && (
           <>
@@ -437,9 +440,25 @@ export function ScorecardScan({
       {!file && (
         <p className="hint">
           <ScanLine className="mr-1 inline size-4" aria-hidden="true" />
-          The card reader is optional. If it is unavailable, the photo can still be attached and the
-          scores entered by hand.
+          Take photo opens this device's camera and lists every camera it finds. Upload a photo is a
+          button in the same window. The card reader is optional: if it is unavailable, the photo
+          can still be attached and the scores entered by hand.
         </p>
+      )}
+
+      {cameraOpen && (
+        <CardCamera
+          onCapture={(captured) => {
+            setCameraOpen(false);
+            void chooseFile(captured);
+          }}
+          onUpload={() => {
+            setCameraOpen(false);
+            // Still inside the click that asked for it, so the file picker opens.
+            inputRef.current?.click();
+          }}
+          onClose={() => setCameraOpen(false)}
+        />
       )}
     </div>
   );

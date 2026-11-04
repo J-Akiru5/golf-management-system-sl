@@ -25,6 +25,12 @@ Supabase project, because the code and the database are released separately.
   when that section has unsaved changes.
 
 ### Added
+- **The scorecard screen has its own camera window.** Take photo now opens an in-app preview instead
+  of handing off to the operating system's file picker. Every camera the device reports can be
+  chosen from a source list, so a laptop webcam or a USB camera works and a dashcam can be added
+  later. A guide shaped like the printed card shows what will be kept, the capture is cropped to
+  that guide, and a phone held upright is asked to turn sideways. Upload a photo sits in the same
+  window as a button, and a blocked camera never stops the desk from attaching a photo.
 - **The control room map zooms under the pointer.** Scroll the wheel over the illustrated course, or
   pinch it on a touch screen, and the map scales between 1× and 2.5× around the point you are
   looking at. The drag still pans, its travel grows with the zoom so no bare edge can show, and
