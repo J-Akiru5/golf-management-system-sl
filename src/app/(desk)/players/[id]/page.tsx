@@ -7,6 +7,7 @@ import {
   ClipboardList,
   History,
   ImageIcon,
+  Link2,
   Lock,
   Pencil,
   ScrollText,
@@ -49,8 +50,18 @@ function BackLink() {
 
 export default function PlayerProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { tournament, playerById, regById, entryByPlayer, draw, names, adapters, tees, member } =
-    useDesk();
+  const {
+    tournament,
+    playerById,
+    regById,
+    entryByPlayer,
+    draw,
+    names,
+    adapters,
+    tees,
+    member,
+    status,
+  } = useDesk();
   const player = playerById.get(id);
   const reg = regById.get(id);
   const entry = entryByPlayer.get(id);
@@ -59,6 +70,9 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
   const [pending, setPending] = useState<string | undefined>();
   const [photoError, setPhotoError] = useState("");
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkMessage, setLinkMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
 
   if (!tournament) return <NeedsTournament what="The player profile" />;
 
@@ -91,6 +105,7 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
   const shotgun = tournament.config.startFormat === "shotgun";
   const group = draw?.find((g) => g.playerIds.includes(player.id)) ?? null;
   const photo = photoOf(player);
+  const playerId = player.id;
   const dateLabel = new Date(`${tournament.config.date}T00:00:00`).toLocaleDateString("en-PH", {
     dateStyle: "long",
   });
@@ -137,6 +152,36 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
         { label: "Entry", value: "Not entered in this event" },
         { label: "NGAP ID", value: player.ngapId ?? "—", mono: true },
       ];
+
+  /**
+   * Links this record to an account that already exists. The database does the checks (role,
+   * one-account-per-record, one-record-per-account); this only shows the answer.
+   */
+  async function linkAccount(e: React.FormEvent) {
+    e.preventDefault();
+    const email = linkEmail.trim();
+    if (!email || linkBusy) return;
+    setLinkBusy(true);
+    setLinkMessage(null);
+    try {
+      await adapters.players.linkAccount(playerId, email);
+      setLinkEmail("");
+      setLinkMessage({
+        tone: "ok",
+        text: "The account is linked to this player. They can sign in to the player portal now.",
+      });
+    } catch (error) {
+      setLinkMessage({
+        tone: "bad",
+        text:
+          error instanceof Error
+            ? error.message
+            : "The account was not linked. Nothing was changed.",
+      });
+    } finally {
+      setLinkBusy(false);
+    }
+  }
 
   return (
     <div className="grid gap-6">
@@ -513,6 +558,62 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
               when the separate public consent is recorded. Withdrawal removes the public copy.
             </p>
           </SectionCard>
+
+          {status !== "demo" && member !== undefined && (
+            <RoleGate role={member?.role} allow={["owner", "organizer", "desk"]} mode="hide">
+              <SectionCard
+                id="account-h"
+                icon={<Link2 />}
+                title="Player portal account"
+                subtitle="Links this directory record to the sign-in account the player already has."
+              >
+                <form className="grid gap-3" onSubmit={(e) => void linkAccount(e)}>
+                  <label className="field">
+                    <span>Account email</span>
+                    <input
+                      type="email"
+                      value={linkEmail}
+                      disabled={linkBusy}
+                      onChange={(e) => {
+                        setLinkEmail(e.target.value);
+                        setLinkMessage(null);
+                      }}
+                      placeholder="The address they sign in with"
+                      autoComplete="off"
+                    />
+                  </label>
+                  <p className="hint">
+                    The account must already exist. The database refuses when this record or the
+                    account is already linked, and it never shows the account id.
+                  </p>
+                  {linkMessage && (
+                    <p
+                      className={
+                        linkMessage.tone === "bad" ? "hint !text-danger" : "hint !text-fairway"
+                      }
+                      role={linkMessage.tone === "bad" ? "alert" : "status"}
+                    >
+                      {linkMessage.text}
+                    </p>
+                  )}
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    className="justify-self-start"
+                    disabled={linkBusy || !linkEmail.trim()}
+                  >
+                    <Link2 aria-hidden="true" />{" "}
+                    {linkBusy
+                      ? "Linking…"
+                      : linkMessage?.tone === "bad"
+                        ? "Try link again"
+                        : "Link account"}
+                  </Button>
+                </form>
+              </SectionCard>
+            </RoleGate>
+          )}
         </div>
       </div>
 

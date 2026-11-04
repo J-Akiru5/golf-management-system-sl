@@ -17,8 +17,9 @@ export interface SessionBarProps {
   /** ISO timestamp of the last successful write. */
   lastSavedAt?: string | null;
   saving?: boolean;
-  /** Last write error; shown with a retry when the screen can offer one. */
+  /** Last write error; shown next to the reload control when the screen can offer one. */
   error?: string | null;
+  /** Re-reads the database. It never repeats a failed write; screens that keep the draft offer that. */
   onRetry?: () => void;
   /** The assembler drops the sign-out form (server action) in here. */
   signOutSlot?: ReactNode;
@@ -84,9 +85,14 @@ export function SessionBar({
             <TriangleAlert className="size-4 shrink-0 text-danger" aria-hidden="true" />
             <span className="text-[13px] text-danger">{error}</span>
             {onRetry && (
-              <button type="button" className="btn small" onClick={onRetry}>
+              <button
+                type="button"
+                className="btn small"
+                onClick={onRetry}
+                title="Fetch the latest rows from the club database. This does not repeat a save."
+              >
                 <RefreshCw aria-hidden="true" />
-                Retry
+                Reload from database
               </button>
             )}
           </span>

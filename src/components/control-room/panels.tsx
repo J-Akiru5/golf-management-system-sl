@@ -703,7 +703,11 @@ export function AttentionPanel({
   const review = b.registrations.filter((r) => r.status === "needs_review");
   const ineligible = b.registrations.filter((r) => r.status === "ineligible");
   const guests = b.registrations.filter((r) => r.role === "guest").length;
-  const pendingPayment = b.registrations.filter((r) => r.paymentStatus === "pending").length;
+  const pendingPayment = b.registrations.filter(
+    // `not_recorded` is the default a new entry is created with, so it is unpaid too. Counting only
+    // `pending` hid every entry the desk had not touched yet.
+    (r) => r.paymentStatus === "pending" || r.paymentStatus === "not_recorded",
+  ).length;
 
   const items: {
     id: string;
@@ -785,7 +789,7 @@ export function AttentionPanel({
       id: "payment",
       tone: "info",
       icon: <CircleAlert className="size-4 text-info" aria-hidden="true" />,
-      title: `${pendingPayment} payments pending`,
+      title: `${pendingPayment} payments outstanding`,
       detail: "Payment status is recorded by hand; nothing is taken online.",
       href: "/register",
       cta: "Open the desk",
