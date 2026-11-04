@@ -1,0 +1,4 @@
+# Training and ONNX export only. The service does not need these.
+torch>=2.4,<3
+onnx>=1.16,<2
+roboflow>=1.1,<2

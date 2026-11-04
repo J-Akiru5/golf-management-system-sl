@@ -13,7 +13,7 @@ services:
       - key: SCAN_MODEL_BACKEND
         value: roboflow_hosted
       - key: ROBOFLOW_MODEL_ID
-        value: igcc-scorecard-digits-v2/1
+        value: igcc-scorecard-digits-v2/4
       - key: SCAN_CARD_MODE
         value: auto
       - key: SCAN_CONFIDENCE_THRESHOLD

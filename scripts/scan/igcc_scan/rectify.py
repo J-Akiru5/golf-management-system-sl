@@ -322,14 +322,28 @@ def grid_alignment_score(card: np.ndarray, template: CardTemplate) -> float:
 def choose_orientation(
     card: np.ndarray, template: CardTemplate
 ) -> tuple[np.ndarray, int, float, bool]:
-    """Pick the right-angle rotation whose table lines match the template."""
+    """Pick the right-angle rotation whose table lines match the template.
+
+    Only rotations that keep the card in the template frame are considered. A 90
+    degree turn makes an 1800 x 1000 card portrait, and the template cell boxes
+    (x up to 1733) then fall outside the image; the row scores on a portrait crop
+    are noise, so a portrait turn could win on a real photo and every cell box
+    was outside the card. Rectification always returns the template frame, so 0
+    and 180 are the only meaningful choices.
+    """
     best: tuple[np.ndarray, int, float] | None = None
-    for degrees in (0, 90, 180, 270):
+    for degrees in (0, 180):
         rotated = rotate_image(card, degrees)
+        if rotated.shape[:2] != (template.height, template.width):
+            continue
         score = grid_alignment_score(rotated, template)
         if best is None or score > best[2]:
             best = (rotated, degrees, score)
-    assert best is not None
+    if best is None:
+        raise CardNotFoundError(
+            "The card was not rectified to the 1800 x 1000 template frame, so the "
+            "cell boxes do not fit it. No scores were read."
+        )
     rotated, degrees, score = best
     # A blank card has no grid evidence. Returning an arbitrary orientation is
     # safe only because every cell is null; flag it for the caller.
@@ -571,6 +585,13 @@ def rectify_card(
         card = warp_card(image, np.asarray(corners, dtype=np.float32), template)
         detected_by = "corners"
     elif mode == "prewarped":
+        height, width = image.shape[:2]
+        if (height > width) != (template.height > template.width):
+            raise CardNotFoundError(
+                "A prewarped card must already be in the template orientation "
+                f"({template.width} x {template.height} landscape), got "
+                f"{width} x {height}. No scores were read."
+            )
         card = _resize_prewarped(image, template)
         detected_by = "prewarped"
         warnings.append("Card was treated as already rectified (SCAN_CARD_MODE=prewarped).")

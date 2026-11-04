@@ -10,6 +10,14 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **The card reader runs a local ONNX model.** Roboflow cannot export this project to ONNX: a
+  classification project answers `HTTP 400 onnx is an invalid format for project type
+  classification. Please use one of: folder, clip.` and version 4 lists `exports: ["folder"]`, so
+  the trained weights stay on their host. The labelled cells are still exported, so
+  `scripts/scan/train_onnx.py` trains a small network on them and writes the ONNX file and its
+  class list. On the held-out cells the reader reads 0.866 of the validation split and 0.837 of
+  the test split; 4, 5 and 6 are the confusions that show up, which is what the amber check flag
+  is for. Model files stay out of Git.
 - **The reader's draft arrives with its doubts marked.** Use with card now carries each cell's
   confidence into the card form: holes read weakly or not at all are amber, the small label says
   check, and a summary counts filled, weak and blank holes. Values the reader never produced are not
@@ -40,6 +48,14 @@ Supabase project, because the code and the database are released separately.
   the URL hash, so `/setup#course` and the existing links from the print screen, the registration
   desk and alerts still open the right section, the back button walks the tabs, and a tab shows a dot
   when that section has unsaved changes.
+
+### Fixed
+- **The reader no longer warps a card into portrait.** The orientation step tried all four right
+  angles; on an 1800x1000 card a 90 degree turn makes the image portrait, its row scores are noise,
+  and it could win, after which every cell box (x up to 1733) fell outside the card and the scan
+  failed with a server error instead of returning a readable card. Only 0 and 180 degrees are
+  considered now, and a card that is not in the template frame is refused as `card_not_detected`
+  instead of cropped anyway.
 
 ### Added
 - **The scorecard screen has its own camera window.** Take photo now opens an in-app preview instead

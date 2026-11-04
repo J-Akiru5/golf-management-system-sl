@@ -1,6 +1,15 @@
 # Scorecard scan model
 
-Status: 2026-10-25, branch `feat/scorecard-table-detect`. The local service, card
+Status: 2026-11-05. The reader runs a local ONNX model. Roboflow has no ONNX export
+for this project type (see "Export and run locally"), so `scripts/scan/train_onnx.py`
+trains a small network on the labelled cells exported from
+`igcc-scorecard-digits-v2` version 4 and writes the ONNX file the service loads. On
+held-out cells it reads 0.866 of the validation split and 0.837 of the test split.
+On a rectified card it reads written rows as digits and empty rows as blank.
+Reading a raw phone photo is still the weak link; see "Rectification without the
+card outline".
+
+Historical note, 2026-10-25, branch `feat/scorecard-table-detect`. The local service, card
 template, table fallback, bootstrap dataset tooling and tests exist. A **bootstrap**
 Roboflow classification model (`igcc-scorecard-digits-v2/1`) was trained on the one
 filled card and reads 31 of 36 used cells with 0 wrong on that same card. That is
@@ -49,11 +58,12 @@ point, not a promise. Add cards until per-digit errors are understood.
 
 The work is blocked on these, not on code:
 
-1. **Roboflow API key.** The key exists only in an ignored local environment file.
-   It is not committed and must be rotated after it was shared in chat.
+1. **Roboflow API key.** It is read from the process environment only
+   (`ROBOFLOW_API_KEY`). It is not committed, and it should be rotated after it was
+   shared in chat.
 2. **Workspace and project.** Private workspace
-   `lou-vincent-j-baroro-s-workspace`, project `igcc-scorecard-digits-v2`, version 1.
-   The project is single-label classification.
+   `lou-vincent-j-baroro-s-workspace`, project `igcc-scorecard-digits-v2`, version 4.
+   The project is single-label classification (`modelType: vit`, 1951 labelled cells).
 3. **More filled cards.** Only `golf score Sheet.jpg` exists. It is one card.
 4. **Human cell labels.** The two used rows on the one card were labelled by hand.
    More cards need labels; `.tmp/scan-dataset/labels.template.json` is not truth.
@@ -134,8 +144,40 @@ the confidence threshold conservative and return null below it.
 
 ### 4. Export and run locally
 
-Download the classification weights as ONNX. Put the model and a `classes.json`
-outside Git (`models/` is ignored). The local adapter expects:
+Roboflow cannot export this project to ONNX. A classification project answers
+
+```text
+HTTP 400 {"error":"onnx is an invalid format for project type classification. Please use one of: folder, clip."}
+```
+
+and version 4 lists `exports: ["folder"]`. The trained `vit` weights stay on the
+Roboflow host, so the only extractable artefact is the labelled cell dataset.
+`scripts/scan/train_onnx.py` downloads that `folder` export, trains a small
+convolutional network on the same cells and writes the ONNX file plus its
+`classes.json`. It is a different model from Roboflow's, trained on the same labels:
+
+```powershell
+cd scripts/scan
+python -m pip install -r requirements-train.txt
+$env:ROBOFLOW_API_KEY="<process environment only>"
+python train_onnx.py --project lou-vincent-j-baroro-s-workspace/igcc-scorecard-digits-v2/4
+```
+
+Measured on version 4: 1951 cells, 1520 train / 216 valid / 215 test, split by
+Roboflow. The split is by cell, so cells from the same card appear in more than one
+split and the numbers are optimistic for a new card.
+
+| Split | Accuracy |
+| --- | --- |
+| valid (best epoch) | 0.866 |
+| test | 0.837 |
+
+The frequent mistakes are 4/5/6 confusions, which is what the desk's amber check
+flag is for. The model is over-confident on this small dataset, so treat its score
+as a ranking rather than a probability.
+
+Put the model and a `classes.json` outside Git (`models/*.onnx` is ignored). The
+local adapter expects:
 
 - input `1 x channels x size x size`, default `1 x 1 x 64 x 64`, float32 0..1;
 - one output vector in class order;
@@ -166,9 +208,10 @@ $env:ROBOFLOW_MODEL_ID="<workspace>/<project>/<version>"
 ```
 
 This sends 72 cell images per card and uses 72 credits. The app's timeout is 60
-seconds; the adapter runs cells concurrently (`SCAN_CLASSIFY_CONCURRENCY`). It is
-implemented against the documented serverless API but has not been run against a
-live project.
+seconds; the adapter runs cells concurrently (`SCAN_CLASSIFY_CONCURRENCY`). It has
+been run against version 4: a 200 response returns `top` and `confidence`, which the
+adapter reads. It cannot be the production path because it needs one network call
+per cell.
 
 ## Card template
 
@@ -207,10 +250,19 @@ and landscape candidates are preferred, so a sideways phone photo is not warped
 into a portrait card. `raw.card.detectedBy` reports `card`, `table`, `corners` or
 `prewarped`.
 
-On the one real photo, this path produced a clean 1800x1000 card and the bootstrap
-model read 31 of 36 used cells with **0 wrong** and 5 abstentions. That is
-training-set behaviour from one card, not independent accuracy. The desk still
-reviews every cell.
+Automatic rectification of the raw photos in `.tmp/scorecard-samples/raw` is not
+reliable yet. The quad the detector picks on those photos is not the card, so the
+cells cropped from that warp hold the wrong ink and the digits read from them are
+noise, including digits on empty rows. The prepared rectified cards in
+`.tmp/scorecard-samples/prepared/rectified_v2` read correctly (written rows give
+digits, empty rows give blank), so the model and the cell boxes are fine and the gap
+is in detection.
+
+Two rules keep that failure quiet instead of wrong-looking. Orientation only
+considers 0 and 180 degrees, because a 90 degree turn makes the 1800x1000 card
+portrait and the cell boxes (x up to 1733) then fall outside the image. A card that
+is not in the template frame, including a portrait `prewarped` image, is refused as
+`card_not_detected` rather than cropped anyway.
 
 The printed handicap information on this card is the separate HANDICAP row at
 y 725..770, not dots in the score cells. The service therefore leaves the dot mask
@@ -234,7 +286,8 @@ correct a cell.
 2. Fill `labels.template.json` for the one card by hand and run the uploader dry
    run, then a real bootstrap upload only to test the path.
 3. Collect more filled cards with consent. Crop, label, split by card, retrain.
-4. Download the ONNX export, set `SCAN_MODEL_PATH`/`SCAN_MODEL_CLASSES`, and smoke
-   test `POST /scan` against a known card.
+4. Run `train_onnx.py` (see "Export and run locally"), set
+   `SCAN_MODEL_PATH`/`SCAN_MODEL_CLASSES`, and smoke test `POST /scan` against a
+   known card.
 5. Only then set `SCAN_INFERENCE_URL` in the app environment. Keep the desk review
    and the ordinary approval step.
