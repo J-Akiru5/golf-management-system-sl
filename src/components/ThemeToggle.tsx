@@ -46,8 +46,11 @@ export function ThemeToggle({
   tone = "sheet",
 }: {
   compact?: boolean;
-  /** "rail" is the dark chrome of the left rail; "sheet" is a page surface (the mobile menu). */
-  tone?: "rail" | "sheet";
+  /**
+   * "rail" is the dark chrome of the left rail; "sheet" is a page surface (the mobile menu); "nav"
+   * is the dark hero bar of the public site, which needs the hairline pill the sign-in link uses.
+   */
+  tone?: "rail" | "sheet" | "nav";
 }) {
   const [choice, setChoice] = useState<ThemeChoice>("auto");
 
@@ -73,7 +76,12 @@ export function ThemeToggle({
     <button
       type="button"
       aria-label={`Colour theme: ${current.label}`}
-      className="grid size-11 place-items-center rounded-full text-on-forest-muted hover:bg-[rgba(238,240,234,0.1)] hover:text-on-forest"
+      className={cn(
+        "grid size-11 place-items-center rounded-full",
+        tone === "nav"
+          ? "border border-[rgba(247,245,238,0.55)] bg-[rgba(8,33,25,0.18)] text-[#f7f5ee] backdrop-blur-md hover:text-[#e5c77a]"
+          : "text-on-forest-muted hover:bg-[rgba(238,240,234,0.1)] hover:text-on-forest",
+      )}
     >
       <Icon className="size-[18px]" aria-hidden="true" />
     </button>
@@ -96,13 +104,16 @@ export function ThemeToggle({
   // The tooltip wraps the menu trigger, not the other way round: a trigger built with `asChild`
   // hands its props to its child, and a component that does not pass them on would swallow them
   // (the menu then simply never opens).
-  const menuTrigger = compact ? (
-    <Tip label={`Colour theme: ${current.label}`}>
+  // The public nav has no TooltipProvider (the desk shell mounts it), and the button already names
+  // itself with aria-label, so the nav gets the plain trigger rather than a tooltip it cannot render.
+  const menuTrigger =
+    compact && tone !== "nav" ? (
+      <Tip label={`Colour theme: ${current.label}`}>
+        <DropdownMenu.Trigger asChild>{triggerButton}</DropdownMenu.Trigger>
+      </Tip>
+    ) : (
       <DropdownMenu.Trigger asChild>{triggerButton}</DropdownMenu.Trigger>
-    </Tip>
-  ) : (
-    <DropdownMenu.Trigger asChild>{triggerButton}</DropdownMenu.Trigger>
-  );
+    );
 
   return (
     // Non-modal: a menu is a utility, not a gate. A modal one marks the rest of the page
@@ -112,8 +123,8 @@ export function ThemeToggle({
       {menuTrigger}
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          side={tone === "rail" ? "right" : "top"}
-          align={tone === "rail" ? "end" : "start"}
+          side={tone === "rail" ? "right" : tone === "nav" ? "bottom" : "top"}
+          align={tone === "rail" || tone === "nav" ? "end" : "start"}
           sideOffset={8}
           collisionPadding={12}
           className="on-surface z-50 min-w-[12rem] rounded-[12px] border border-line bg-surface p-1 shadow-lift outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"

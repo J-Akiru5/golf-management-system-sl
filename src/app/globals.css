@@ -1903,6 +1903,14 @@
   background: rgb(8 33 25 / 18%);
   backdrop-filter: blur(12px);
 }
+/* The theme control and the sign-in pill sit together at the end of the bar, so the bar keeps its
+   three columns and the pair travels as one item. */
+.site-nav-end {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 10px;
+}
 .site-nav-action svg,
 .hero-actions svg,
 .capability a svg,
@@ -2608,7 +2616,7 @@
   .site-brand {
     grid-row: 1 / span 2;
   }
-  .site-nav-action {
+  .site-nav-end {
     grid-column: 2;
     grid-row: 1;
   }
@@ -3143,7 +3151,9 @@
 /* The strip used to be pulled up over the foot of the hero. With a stat strip now sitting there, the
    overlap put the strip's heading across the Days cell, so it sits below the hero instead. */
 .teeline-site .tournament-strip {
-  margin: 26px auto 0;
+  /* The card is the last thing in its section, so with no bottom margin it butted straight against
+     the schedule band underneath it. */
+  margin: 26px auto clamp(36px, 5vw, 64px);
 }
 
 @keyframes hero-drift-a {

@@ -7,6 +7,7 @@ import { MotionLayer } from "@/components/public/MotionLayer";
 import { TournamentCarousel } from "@/components/public/TournamentCarousel";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { loadPublicEvents } from "@/lib/data/supabase/public-events";
 import { demoOpenEvents } from "@/lib/public/demo-events";
 import {
@@ -225,9 +226,12 @@ export default async function HomePage() {
             <Link href="/pairings">Player pairings</Link>
             <Link href="/faq">NGAP FAQ</Link>
           </nav>
-          <Link className="site-nav-action" href="/login">
-            Sign in <ArrowRight aria-hidden="true" />
-          </Link>
+          <div className="site-nav-end">
+            <ThemeToggle compact tone="nav" />
+            <Link className="site-nav-action" href="/login">
+              Sign in <ArrowRight aria-hidden="true" />
+            </Link>
+          </div>
         </header>
 
         <div className="hero-content">
