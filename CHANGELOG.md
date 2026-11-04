@@ -10,6 +10,11 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **The reader's draft arrives with its doubts marked.** Use with card now carries each cell's
+  confidence into the card form: holes read weakly or not at all are amber, the small label says
+  check, and a summary counts filled, weak and blank holes. Values the reader never produced are not
+  flagged, so a hand-typed card is not covered in warnings. The reader-unavailable message now says
+  the service is not connected rather than only that a reader is unconfigured.
 - **One tee time for a shotgun day.** A shotgun wave starts everyone at once, so `/tee-times` now
   offers the event's wave times (wave A at the first tee, each later wave one wave gap after, for
   example 06:30 and 12:30) as a batch. One press fills the time for every player on the day who has

@@ -239,14 +239,17 @@ export function ScorecardScan({
       return;
     }
     const strokes: Record<number, string> = {};
+    const confidence: Record<number, number | null> = {};
     if (selectedResult) {
       for (const hole of selectedResult.holes) {
         strokes[hole.hole] = hole.strokes === null ? "" : String(hole.strokes);
+        confidence[hole.hole] = hole.confidence;
       }
     }
     onApply({
       playerId,
       strokes,
+      confidence,
       image,
       extraction: result
         ? { engine: result.engine, engineVersion: result.engineVersion, raw: result.raw }

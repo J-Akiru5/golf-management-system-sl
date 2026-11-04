@@ -43,7 +43,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       ok: true,
       available: false,
       message:
-        "No card reader is configured yet. The photo is stored; enter the scores below and submit the card.",
+        "The card reader is not connected on this deployment, so no scores can be drafted. The photo is stored; enter the scores by hand. An owner can connect it by setting SCAN_INFERENCE_URL.",
     });
   }
 

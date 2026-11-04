@@ -31,6 +31,7 @@ import {
   type StandingsRow,
   validateScorecard,
 } from "@/lib/scoring";
+import { scanReview } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -64,6 +65,8 @@ export default function ScoresPage() {
   const [scanImage, setScanImage] = useState<ScorecardScanImage | null>(null);
   const [scanExtraction, setScanExtraction] = useState<ScorecardScanApply["extraction"]>(null);
   const [scanCaptureKey, setScanCaptureKey] = useState("");
+  /** Reader confidence per hole, so the card form can flag what needs a person to check. */
+  const [scanConfidence, setScanConfidence] = useState<Record<number, number | null>>({});
   /** The card being corrected. A correction is a new revision, never an edit of the old row. */
   const [editingCard, setEditingCard] = useState<Scorecard | null>(null);
   const [correctionReason, setCorrectionReason] = useState("");
@@ -136,6 +139,12 @@ export default function ScoresPage() {
     return sum + (Number.isInteger(value) ? value : 0);
   }, 0);
 
+  const scan = useMemo(
+    () => scanReview(holes, strokes, scanConfidence),
+    [holes, strokes, scanConfidence],
+  );
+  const scanned = Object.keys(scanConfidence).length > 0;
+
   async function run(action: () => Promise<ScoringRoundView | null>) {
     setBusy(true);
     setError(null);
@@ -166,6 +175,7 @@ export default function ScoresPage() {
     setScanImage(apply.image);
     setScanExtraction(apply.extraction);
     setScanCaptureKey(apply.captureKey);
+    setScanConfidence(apply.confidence);
     setError(null);
   }
 
@@ -181,6 +191,7 @@ export default function ScoresPage() {
     setScanImage(null);
     setScanExtraction(null);
     setScanCaptureKey("");
+    setScanConfidence({});
     setError(null);
     document.getElementById("score-entry")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -192,6 +203,7 @@ export default function ScoresPage() {
     setScanImage(null);
     setScanExtraction(null);
     setScanCaptureKey("");
+    setScanConfidence({});
     setError(null);
     if (!view) return;
     setStrokes(strokesFor(view.course.holes));
@@ -444,6 +456,15 @@ export default function ScoresPage() {
                     after every hole is checked.
                   </div>
                 )}
+                {scanned && (
+                  <div className="notice warn" role="status">
+                    <b>Draft from the photo.</b> {scan.filled} of {holes.length} holes filled.
+                    {scan.weak > 0 &&
+                      ` ${scan.weak} ${scan.weak === 1 ? "hole was" : "holes were"} read weakly and need checking against the photo.`}
+                    {scan.blank > 0 &&
+                      ` ${scan.blank} ${scan.blank === 1 ? "hole is" : "holes are"} still blank.`}
+                  </div>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Combobox
                     label="Player"
@@ -508,28 +529,46 @@ export default function ScoresPage() {
                 )}
 
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                  {holes.map((hole) => (
-                    <label key={hole.number} className="field">
-                      <span className="text-[11px]">
-                        H{hole.number} · par {hole.par} · SI {hole.strokeIndex}
-                      </span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        max={20}
-                        value={strokes[hole.number] ?? ""}
-                        onChange={(event) =>
-                          setStrokes((current) => ({
-                            ...current,
-                            [hole.number]: event.target.value,
-                          }))
-                        }
-                        disabled={busy}
-                      />
-                    </label>
-                  ))}
+                  {holes.map((hole) => {
+                    const state = scan.holes[hole.number];
+                    return (
+                      <label key={hole.number} className="field">
+                        <span
+                          className={
+                            state === "check" ? "text-[11px] !text-warning" : "text-[11px]"
+                          }
+                        >
+                          H{hole.number} · par {hole.par} · SI {hole.strokeIndex}
+                          {state === "check" ? " · check" : ""}
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={20}
+                          value={strokes[hole.number] ?? ""}
+                          aria-invalid={state === "check" ? true : undefined}
+                          aria-describedby={state === "check" ? "scan-check-hint" : undefined}
+                          className={state === "check" ? "!border-warning" : undefined}
+                          onChange={(event) =>
+                            setStrokes((current) => ({
+                              ...current,
+                              [hole.number]: event.target.value,
+                            }))
+                          }
+                          disabled={busy}
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
+                {scan.weak > 0 && (
+                  <p id="scan-check-hint" className="hint">
+                    Amber holes were read with low confidence or not at all. Compare each one with
+                    the photo before submitting; typing a value does not clear the flag until the
+                    card is submitted fresh.
+                  </p>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="hint">

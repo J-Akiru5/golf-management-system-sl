@@ -20,6 +20,23 @@ Cloudflare R2 and the normal scoring approval rules still apply.
 If no card reader is configured, the photo is still attached and the scores are entered by hand.
 The screen says so; it does not invent scores.
 
+## Autofill and the review flags
+
+When the reader is connected, **Use with card** copies the draft into the card form and carries each
+cell's confidence with it:
+
+- A hole read below 0.9 confidence, or not read at all, is marked **check** in amber on the field
+  and named in the note under the score grid. The desk compares it with the photo.
+- The summary above the card counts how many holes are filled, how many were read weakly and how
+  many are still blank.
+- A value the reader never produced is not flagged: a hand-typed hole has nothing to doubt.
+- Submitting still runs the ordinary validation, and the card still needs approval.
+
+The flags are derived by `scanReview` in `src/lib/scoring/scan/review.ts`, which is tested without a
+browser. The reader itself is never bundled with the Next.js app: inference runs in the Python
+service behind `SCAN_INFERENCE_URL`, and with that unset the extract route answers
+`available: false` and says the reader is not connected.
+
 ## Camera and framing
 
 - The camera window uses `getUserMedia` in the browser, so the preview is local. Nothing is sent
@@ -132,7 +149,8 @@ player/row; empty rows come back with `strokes: null`.
 
 ## Current limits
 
-- No trained Roboflow model is connected yet. The screen works with the photo plus manual entry.
+- No trained Roboflow model is connected in this deployment yet. The screen works with the photo
+  plus manual entry, and says plainly that the reader is not connected.
 - The card template detection and per-cell cropping live in the local inference service, not in the
   Next.js app.
 - `scorecard_images` currently accepts the R2 key; a future screen should show the private photo with

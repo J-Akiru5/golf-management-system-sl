@@ -34,6 +34,8 @@ export interface ScorecardScanImage {
 export interface ScorecardScanApply {
   playerId: string;
   strokes: Record<number, string>;
+  /** Reader confidence per hole. A missing key means the value was not read by the reader. */
+  confidence: Record<number, number | null>;
   image: ScorecardScanImage | null;
   extraction: {
     engine: string;
