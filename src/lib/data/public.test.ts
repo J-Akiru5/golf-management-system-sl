@@ -277,6 +277,29 @@ describe("toPublicProgramme", () => {
     expect(out.players).toEqual([]);
     expect(out.rulesOfPlay).toBeNull();
   });
+
+  it("leaves out an entry that is still waiting for the desk, in both lists", () => {
+    const out = toPublicProgramme({
+      days,
+      entries: [{ ...entry, id: "e3", playerId: "p3" }],
+      registrations: [
+        {
+          ...registration,
+          entryId: "e3",
+          playerId: "p3",
+          playerName: "Noel Yulo",
+          status: "needs_review",
+        },
+      ],
+      players: [{ ...player, id: "p3", name: "Noel Yulo", homeCourse: null }],
+      categories: [],
+      flights: [],
+      rulesOfPlay: null,
+    });
+    // A signed-out visitor sees a name only after the desk confirms the entry.
+    expect(out.players).toEqual([]);
+    expect(out.days.flatMap((day) => day.players)).toEqual([]);
+  });
 });
 
 describe("mapPublicProgramme", () => {
