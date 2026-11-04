@@ -18,6 +18,12 @@ Supabase project, because the code and the database are released separately.
 - **Scoring activity on `/audit`**: `scoring_audit` rows (approvals, rejections, corrections,
   revocations, resolutions and publications) are now readable beside the general `audit_log`.
 
+### Changed
+- **Settings is one section per tab** (issue #161) instead of a nine-section scroll. The tab lives in
+  the URL hash, so `/setup#course` and the existing links from the print screen, the registration
+  desk and alerts still open the right section, the back button walks the tabs, and a tab shows a dot
+  when that section has unsaved changes.
+
 ### Fixed
 - **The saved theme and rail width survive a page change.** The pre-paint scripts still keep the
   first load from flashing, and the shell now re-applies the choice to `<html>` after hydration and
