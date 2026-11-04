@@ -406,14 +406,18 @@ export default async function HomePage() {
       </section>
 
       <section className="pairings-callout" data-motion="reveal">
-        <div>
-          <p className="section-kicker">For players</p>
-          <h2>When pairings are published, they should be easy to find.</h2>
-          <p>Search the approved player view by name. No private profile details, no guesswork.</p>
+        <div className="pairings-callout-inner">
+          <div>
+            <p className="section-kicker">For players</p>
+            <h2>When pairings are published, they should be easy to find.</h2>
+            <p>
+              Search the approved player view by name. No private profile details, no guesswork.
+            </p>
+          </div>
+          <Link className="button-dark" href="/pairings">
+            Open player pairings <ArrowRight aria-hidden="true" />
+          </Link>
         </div>
-        <Link className="button-dark" href="/pairings">
-          Open player pairings <ArrowRight aria-hidden="true" />
-        </Link>
       </section>
 
       <footer className="site-footer">
