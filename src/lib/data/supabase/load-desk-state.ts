@@ -410,6 +410,25 @@ export async function loadDeskState(
   const active =
     preferred ?? tournaments.find((t) => t.state === "open")?.id ?? tournaments[0]?.id ?? null;
 
+  const records = asArray(recordRows.data).map(toHandicapRecord);
+
+  // The control room tile beside "Handicaps" reports how many of the selected event's records came
+  // from an NGAP import. It was hard-coded to 0, so a finished import still read "Not imported
+  // yet". Count what the connected desk loader counts: imported records for this event's field,
+  // dated on or before its cut-off.
+  const activeTournament = tournaments.find((t) => t.id === active) ?? null;
+  const activePlayerIds = new Set(
+    entries.filter((entry) => entry.tournamentId === active).map((entry) => entry.playerId),
+  );
+  const importedCount = activeTournament
+    ? records.filter(
+        (record) =>
+          record.source === "ngap_import" &&
+          record.effectiveDate <= activeTournament.cutOffDate &&
+          activePlayerIds.has(record.playerId),
+      ).length
+    : 0;
+
   // The tees and holes the setup edits. Without these the desk would show the sample ratings even
   // after they had been saved, which reads as "it did not save".
   const courseId = asArray(tournamentRows.data).find((t) => t.id === active)?.course_id ?? null;
@@ -458,14 +477,14 @@ export async function loadDeskState(
       activeTournamentId: active,
       days: daysByTournament,
       players,
-      records: asArray(recordRows.data).map(toHandicapRecord),
+      records,
       entries: withDays,
       caddies,
       photoPaths,
       batches: asArray(batchRows.data).map(toImportBatch),
       deferred: asArray(deferredRows.data).map(toDeferredMatch),
       boards,
-      importedCount: 0,
+      importedCount,
       seq: 0,
     },
   };
