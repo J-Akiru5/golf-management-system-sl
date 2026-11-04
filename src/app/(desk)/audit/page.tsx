@@ -1,6 +1,6 @@
 "use client";
 
-import { ScrollText, Search } from "lucide-react";
+import { Flag, ScrollText, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { RoleGate } from "@/components/desk";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useDesk } from "@/lib/store/desk-store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import type { AuditLogRow } from "@/lib/supabase/types";
+import type { AuditLogRow, ScoringAuditRow } from "@/lib/supabase/types";
 
 const PAGE = 100;
 
@@ -25,6 +25,7 @@ const RESULT_TONE: Record<AuditLogRow["result"], string> = {
 export default function AuditPage() {
   const { state, member } = useDesk();
   const [rows, setRows] = useState<AuditLogRow[]>([]);
+  const [scoringRows, setScoringRows] = useState<ScoringAuditRow[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,12 +37,22 @@ export default function AuditPage() {
       return;
     }
     const client = createSupabaseBrowserClient();
-    const { data, error: queryError } = await client
-      .from("audit_log")
-      .select("*")
-      .eq("club_id", state.clubId)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + PAGE - 1);
+    const [{ data, error: queryError }, { data: scoringData, error: scoringError }] =
+      await Promise.all([
+        client
+          .from("audit_log")
+          .select("*")
+          .eq("club_id", state.clubId)
+          .order("created_at", { ascending: false })
+          .range(offset, offset + PAGE - 1),
+        client
+          .from("scoring_audit")
+          .select("*")
+          .eq("club_id", state.clubId)
+          .order("at", { ascending: false })
+          .range(offset, offset + PAGE - 1),
+      ]);
+    if (scoringError) setError(`Scoring activity: ${scoringError.message}`);
     if (queryError) {
       setError(queryError.message);
       setLoading(false);
@@ -49,6 +60,8 @@ export default function AuditPage() {
     }
     const next = (data ?? []) as AuditLogRow[];
     setRows((current) => (offset === 0 ? next : [...current, ...next]));
+    const scoringPage = (scoringData ?? []) as ScoringAuditRow[];
+    setScoringRows((current) => (offset === 0 ? scoringPage : [...current, ...scoringPage]));
     setHasMore(next.length === PAGE);
     setLoading(false);
   };
@@ -174,6 +187,59 @@ export default function AuditPage() {
             <Button variant="secondary" size="sm" onClick={() => void load(rows.length)}>
               Load more
             </Button>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          id="scoring-audit"
+          icon={<Flag />}
+          title="Scoring activity"
+          subtitle="Cards, corrections, revocations, resolutions and publications. Append-only; entries cannot be edited or deleted here."
+        >
+          {!isSupabaseConfigured() ? (
+            <div className="notice" role="status">
+              Demo mode has no scoring audit table.
+            </div>
+          ) : scoringRows.length === 0 ? (
+            <p className="muted">No scoring activity recorded yet.</p>
+          ) : (
+            <div className="table-wrap !shadow-none">
+              <table>
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Record</th>
+                    <th>Reason</th>
+                    <th>Actor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scoringRows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="whitespace-nowrap text-[13px]">
+                        {new Date(row.at).toLocaleString("en-PH", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </td>
+                      <td>
+                        <b>{row.action}</b>
+                      </td>
+                      <td>{row.entity}</td>
+                      <td className="font-mono text-[12px]">
+                        {row.entity_id ? `${row.entity_id.slice(0, 8)}…` : "—"}
+                      </td>
+                      <td className="max-w-[260px] text-[13px]">{row.reason ?? "—"}</td>
+                      <td className="font-mono text-[12px]">
+                        {row.actor_id ? `${row.actor_id.slice(0, 8)}…` : "System"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </SectionCard>
       </RoleGate>

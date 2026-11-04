@@ -1,6 +1,15 @@
 # Scorecard scan model
 
-Status: 2026-10-25, branch `feat/scorecard-table-detect`. The local service, card
+Status: 2026-11-05. The reader runs a local ONNX model. Roboflow has no ONNX export
+for this project type (see "Export and run locally"), so `scripts/scan/train_onnx.py`
+trains a small network on the labelled cells exported from
+`igcc-scorecard-digits-v2` version 4 and writes the ONNX file the service loads. On
+held-out cells it reads 0.866 of the validation split and 0.837 of the test split.
+On a rectified card it reads written rows as digits and empty rows as blank.
+Reading a raw phone photo is still the weak link; see "Rectification without the
+card outline".
+
+Historical note, 2026-10-25, branch `feat/scorecard-table-detect`. The local service, card
 template, table fallback, bootstrap dataset tooling and tests exist. A **bootstrap**
 Roboflow classification model (`igcc-scorecard-digits-v2/1`) was trained on the one
 filled card and reads 31 of 36 used cells with 0 wrong on that same card. That is
@@ -49,11 +58,12 @@ point, not a promise. Add cards until per-digit errors are understood.
 
 The work is blocked on these, not on code:
 
-1. **Roboflow API key.** The key exists only in an ignored local environment file.
-   It is not committed and must be rotated after it was shared in chat.
+1. **Roboflow API key.** It is read from the process environment only
+   (`ROBOFLOW_API_KEY`). It is not committed, and it should be rotated after it was
+   shared in chat.
 2. **Workspace and project.** Private workspace
-   `lou-vincent-j-baroro-s-workspace`, project `igcc-scorecard-digits-v2`, version 1.
-   The project is single-label classification.
+   `lou-vincent-j-baroro-s-workspace`, project `igcc-scorecard-digits-v2`, version 4.
+   The project is single-label classification (`modelType: vit`, 1951 labelled cells).
 3. **More filled cards.** Only `golf score Sheet.jpg` exists. It is one card.
 4. **Human cell labels.** The two used rows on the one card were labelled by hand.
    More cards need labels; `.tmp/scan-dataset/labels.template.json` is not truth.
@@ -134,8 +144,40 @@ the confidence threshold conservative and return null below it.
 
 ### 4. Export and run locally
 
-Download the classification weights as ONNX. Put the model and a `classes.json`
-outside Git (`models/` is ignored). The local adapter expects:
+Roboflow cannot export this project to ONNX. A classification project answers
+
+```text
+HTTP 400 {"error":"onnx is an invalid format for project type classification. Please use one of: folder, clip."}
+```
+
+and version 4 lists `exports: ["folder"]`. The trained `vit` weights stay on the
+Roboflow host, so the only extractable artefact is the labelled cell dataset.
+`scripts/scan/train_onnx.py` downloads that `folder` export, trains a small
+convolutional network on the same cells and writes the ONNX file plus its
+`classes.json`. It is a different model from Roboflow's, trained on the same labels:
+
+```powershell
+cd scripts/scan
+python -m pip install -r requirements-train.txt
+$env:ROBOFLOW_API_KEY="<process environment only>"
+python train_onnx.py --project lou-vincent-j-baroro-s-workspace/igcc-scorecard-digits-v2/4
+```
+
+Measured on version 4: 1951 cells, 1520 train / 216 valid / 215 test, split by
+Roboflow. The split is by cell, so cells from the same card appear in more than one
+split and the numbers are optimistic for a new card.
+
+| Split | Accuracy |
+| --- | --- |
+| valid (best epoch) | 0.866 |
+| test | 0.837 |
+
+The frequent mistakes are 4/5/6 confusions, which is what the desk's amber check
+flag is for. The model is over-confident on this small dataset, so treat its score
+as a ranking rather than a probability.
+
+Put the model and a `classes.json` outside Git (`models/*.onnx` is ignored). The
+local adapter expects:
 
 - input `1 x channels x size x size`, default `1 x 1 x 64 x 64`, float32 0..1;
 - one output vector in class order;
@@ -166,9 +208,10 @@ $env:ROBOFLOW_MODEL_ID="<workspace>/<project>/<version>"
 ```
 
 This sends 72 cell images per card and uses 72 credits. The app's timeout is 60
-seconds; the adapter runs cells concurrently (`SCAN_CLASSIFY_CONCURRENCY`). It is
-implemented against the documented serverless API but has not been run against a
-live project.
+seconds; the adapter runs cells concurrently (`SCAN_CLASSIFY_CONCURRENCY`). It has
+been run against version 4: a 200 response returns `top` and `confidence`, which the
+adapter reads. It cannot be the production path because it needs one network call
+per cell.
 
 ## Card template
 
@@ -207,10 +250,19 @@ and landscape candidates are preferred, so a sideways phone photo is not warped
 into a portrait card. `raw.card.detectedBy` reports `card`, `table`, `corners` or
 `prewarped`.
 
-On the one real photo, this path produced a clean 1800x1000 card and the bootstrap
-model read 31 of 36 used cells with **0 wrong** and 5 abstentions. That is
-training-set behaviour from one card, not independent accuracy. The desk still
-reviews every cell.
+Automatic rectification of the raw photos in `.tmp/scorecard-samples/raw` is not
+reliable yet. The quad the detector picks on those photos is not the card, so the
+cells cropped from that warp hold the wrong ink and the digits read from them are
+noise, including digits on empty rows. The prepared rectified cards in
+`.tmp/scorecard-samples/prepared/rectified_v2` read correctly (written rows give
+digits, empty rows give blank), so the model and the cell boxes are fine and the gap
+is in detection.
+
+Two rules keep that failure quiet instead of wrong-looking. Orientation only
+considers 0 and 180 degrees, because a 90 degree turn makes the 1800x1000 card
+portrait and the cell boxes (x up to 1733) then fall outside the image. A card that
+is not in the template frame, including a portrait `prewarped` image, is refused as
+`card_not_detected` rather than cropped anyway.
 
 The printed handicap information on this card is the separate HANDICAP row at
 y 725..770, not dots in the score cells. The service therefore leaves the dot mask
@@ -234,7 +286,110 @@ correct a cell.
 2. Fill `labels.template.json` for the one card by hand and run the uploader dry
    run, then a real bootstrap upload only to test the path.
 3. Collect more filled cards with consent. Crop, label, split by card, retrain.
-4. Download the ONNX export, set `SCAN_MODEL_PATH`/`SCAN_MODEL_CLASSES`, and smoke
-   test `POST /scan` against a known card.
+4. Run `train_onnx.py` (see "Export and run locally"), set
+   `SCAN_MODEL_PATH`/`SCAN_MODEL_CLASSES`, and smoke test `POST /scan` against a
+   known card.
 5. Only then set `SCAN_INFERENCE_URL` in the app environment. Keep the desk review
    and the ordinary approval step.
+
+## Card detection and rectification (November 2026)
+
+The detector was replaced. The old one took the largest contour that happened to
+approximate a 1.8 quad and never checked whether the warp lined up with the printed
+table. On the 111 raw photos it could not find the card on 14, fell back to the
+printed table on 66, and every one of the 97 comparable warps was misaligned: the
+median grid alignment score was 0.29 against 0.84 for the reference warps, so the
+cropped cells held the wrong ink.
+
+Detection is now three steps, and each one is measurable on its own:
+
+1. **Template features** (`igcc_scan/features.py`). The card is a fixed printed
+   object, so the photo is matched against one stored reference card with SIFT and a
+   RANSAC homography. The reference is stored as keypoints and descriptors
+   (`models/igcc-card-template.npz`), not as an image, so no filled card photo is
+   committed. Regenerate it with `python build_card_template.py --card <rectified
+   card>`; point `SCAN_CARD_TEMPLATE` at another file to use a different card.
+2. **Geometric fallback** (`igcc_scan/detect.py`). Without a template, every
+   card-shaped and table-shaped quadrilateral from several edge maps is proposed,
+   and the printed-table proposals are projected back to the card frame.
+3. **Validation** (`igcc_scan/align.py`, `igcc_scan/quads.py`). Candidates are ranked
+   by a projection alignment score: the printed ink is projected onto the row and
+   column axes and correlated with the template's line positions, smoothed so the
+   score degrades with misalignment instead of saturating. Geometry (convexity,
+   corner angles, aspect, area), edge support, sharpness and glare are checked too.
+
+The score thresholds are calibrated on the raw photo set: reference warps score
+0.41-0.53, a warp onto the wrong rectangle scores -0.06 to 0.13.
+
+| Outcome | Meaning | Service behaviour |
+| --- | --- | --- |
+| `accept` | alignment >= 0.36, clean geometry | reads the card; `raw.card.confidence = high` |
+| `confirm` | alignment 0.24-0.36, or a quality warning | reads the card, asks the desk to confirm the corners |
+| `retake` | alignment 0.16-0.24 | HTTP 422 `card_not_detected` with the reasons |
+| `reject` | alignment < 0.16 or implausible geometry | HTTP 422 `card_not_detected` with the reasons |
+
+The scan response gains `raw.card.confidence`, `decision`, `alignment`,
+`alignmentMargin`, `featureInliers`, `reasons` and `quality` (sharpness, glare,
+brightness). `detectedBy` is now one of `template_features`, `card`, `table`,
+`prewarped` or `corners`. `card_not_detected` now names the reason instead of saying
+only that nothing was found.
+
+### Measured on the 111 raw photos
+
+`python eval_detection.py --photos ../../.tmp/scorecard-samples/raw --reference
+../../.tmp/card-gt.json` compares against independent corners matched from the
+reference warps:
+
+- matched: 111/111 (before: 97/111, 14 not found)
+- decisions: 108 accept, 2 confirm, 1 reject; none accepted with a corner error
+  above 80 px
+- corner error: median 7.8 px, 98/111 within 20 px, 109/111 within 40 px,
+  111/111 within 80 px
+- alignment score: median 0.489 (reference warps: 0.31-0.48)
+- 0.2-0.3 s per photo
+
+### End-to-end digits are not production ready yet
+
+`python eval_end_to_end.py --photos ../../.tmp/scorecard-samples/raw --reference
+../../.tmp/scorecard-samples/prepared/rectified_v2 --limit 30` reads the raw photo
+and its reference warp with the same model and compares all 72 cells. All 30 photos
+passed detection (0 rejected), but only 0.236 of cells matched on the median card
+(worst 0.125, best 0.931) and no card matched on every cell. The rectification is
+not the cause: the raw warp's printed table sits within a few pixels of the template
+(`tableLevelled` true, `tableQuad` within ~6 px) and scores higher than the reference
+warp. The readings differ because the model drifts on these photos: it reads 3 where
+the card says 4 or 5, and it reports low digits on empty cells. That is the same
+4/5/6 confusion noted above.
+
+So: raw-photo **detection and rectification** are usable, and the reader now refuses
+a card it cannot align instead of returning digits from the wrong ink. Raw-photo
+**digit accuracy** still needs a better model (a training set of the real card under
+real phone conditions) before this is claimed as production ready. The desk review
+step stays.
+
+### Learned detector (YOLOv8 segmentation): workflow, not trained
+
+A learned detector is the right answer only if the geometric path is not enough on
+new photos. It is **not trained here**: there are no annotated full scorecard photos,
+and the digit-cell crops are a different task and must not be reused. No YOLO metrics
+are reported because there is no held-out annotated set to measure them on.
+
+The workflow to prepare one:
+
+1. Collect raw photos, one directory per physical photograph. Consent rules apply;
+   keep the private original and the public copy separate, as for every other photo.
+2. Annotate each photo with one polygon per card (YOLOv8 segmentation, four points in
+   TL, TR, BR, BL order, single class `scorecard`). Export as
+   `labels/<stem>.txt` with `class x1 y1 x2 y2 ...` normalised to the image size.
+3. Split by photograph, never by crop or augmented copy; augmentation happens only
+   inside the training split.
+4. `yolo segment train model=yolov8n-seg.pt data=igcc-cards.yaml imgsz=1024 epochs=100`
+   then `yolo export model=runs/segment/train/weights/best.pt format=onnx`.
+5. Score it with the same tools as the geometric detector:
+   `python eval_detection.py --photos <dir> --reference <corners.json>`, and compare
+   recall, false positives, corner error and the rectification rate against the
+   template matcher on the same held-out photos before changing the default.
+
+A detector is only worth switching to if it beats the template matcher on unseen
+photos where the printed card is partly covered or the reference card does not match
+the print run.

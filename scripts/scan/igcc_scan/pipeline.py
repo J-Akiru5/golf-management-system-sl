@@ -82,6 +82,7 @@ def scan_image(
         forced_rotation=settings.card_rotation,
         debug_dir=settings.debug_dir,
     )
+    detection = rectified.detection
     cells = crop_cells(rectified.image, template, mask_dots=settings.mask_dots)
     workers = min(settings.classify_concurrency, len(cells))
     predictions, errors = _classify_all(classifier, cells, workers=workers)
@@ -157,6 +158,19 @@ def scan_image(
                 "tableLevelled": rectified.table_levelled,
                 "tableQuad": [list(point) for point in rectified.table_quad]
                 if rectified.table_quad
+                else None,
+                "confidence": detection.confidence if detection else None,
+                "decision": detection.decision if detection else None,
+                "alignment": detection.alignment if detection else None,
+                "alignmentMargin": detection.margin if detection else None,
+                "featureInliers": detection.inliers if detection else 0,
+                "reasons": list(detection.reasons) if detection else [],
+                "quality": {
+                    "sharpness": detection.quality.sharpness,
+                    "glareFraction": detection.quality.glare_fraction,
+                    "brightness": detection.quality.brightness,
+                }
+                if detection
                 else None,
             },
             "cells": len(cells),

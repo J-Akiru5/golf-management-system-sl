@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { THEME_CHOICES, THEME_INIT_SCRIPT, THEME_KEY } from "./ThemeToggle";
+import { parseTheme, THEME_CHOICES, THEME_INIT_SCRIPT, THEME_KEY } from "./ThemeToggle";
 
 /**
  * The storage contract is what these guard: the key and the three values are what a saved choice
@@ -13,6 +13,14 @@ describe("the theme choice", () => {
       "Light (Ivory)",
       "Dark (Charcoal)",
     ]);
+  });
+
+  it("reads only an explicit light or dark as a choice, and everything else as System", () => {
+    expect(parseTheme("light")).toBe("light");
+    expect(parseTheme("dark")).toBe("dark");
+    for (const junk of [null, undefined, "", "auto", "LIGHT", "true"]) {
+      expect(parseTheme(junk), String(junk)).toBe("auto");
+    }
   });
 
   it("keeps the storage key and the pre-paint script in step", () => {

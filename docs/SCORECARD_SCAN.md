@@ -7,7 +7,9 @@ Cloudflare R2 and the normal scoring approval rules still apply.
 
 1. Open **Scores** and choose **Scan a card**.
 2. Pick **Individual card** or **Group sheet** and the player whose card it is.
-3. Take a photo or choose a file.
+3. Press **Take photo**. The app opens its own camera window, lists the video devices it finds
+   (laptop webcam, USB camera, and later a dashcam), and shows a card-shaped guide. **Upload a photo**
+   in that same window opens the file picker instead. On a phone held upright it asks for landscape.
 4. The app fingerprints the image, uploads it to R2 through a short-lived signed URL, and stores
    the R2 object key.
 5. If a card reader is configured, it returns proposed strokes and a confidence for every hole.
@@ -17,6 +19,35 @@ Cloudflare R2 and the normal scoring approval rules still apply.
 
 If no card reader is configured, the photo is still attached and the scores are entered by hand.
 The screen says so; it does not invent scores.
+
+## Autofill and the review flags
+
+When the reader is connected, **Use with card** copies the draft into the card form and carries each
+cell's confidence with it:
+
+- A hole read below 0.9 confidence, or not read at all, is marked **check** in amber on the field
+  and named in the note under the score grid. The desk compares it with the photo.
+- The summary above the card counts how many holes are filled, how many were read weakly and how
+  many are still blank.
+- A value the reader never produced is not flagged: a hand-typed hole has nothing to doubt.
+- Submitting still runs the ordinary validation, and the card still needs approval.
+
+The flags are derived by `scanReview` in `src/lib/scoring/scan/review.ts`, which is tested without a
+browser. The reader itself is never bundled with the Next.js app: inference runs in the Python
+service behind `SCAN_INFERENCE_URL`, and with that unset the extract route answers
+`available: false` and says the reader is not connected.
+
+## Camera and framing
+
+- The camera window uses `getUserMedia` in the browser, so the preview is local. Nothing is sent
+  until **Upload and read** is pressed, and that is the existing fingerprint plus signed R2 upload.
+- The guide is the printed card's own shape (1800 x 1000, 9:5). The capture is cropped to the guide
+  before upload, so edges of the desk, a hand or the floor are not sent.
+- Every camera the browser reports is offered in **Camera source**. Labels only appear after the
+  browser has been granted camera access once; before that they read "Camera 1", "Camera 2".
+- A blocked or missing camera never blocks the desk: the window says what happened and keeps
+  **Upload a photo** available.
+- The crop maths lives in `src/lib/scoring/scan/frame.ts` and is tested without a browser.
 
 ## R2 setup
 
@@ -118,7 +149,8 @@ player/row; empty rows come back with `strokes: null`.
 
 ## Current limits
 
-- No trained Roboflow model is connected yet. The screen works with the photo plus manual entry.
+- No trained Roboflow model is connected in this deployment yet. The screen works with the photo
+  plus manual entry, and says plainly that the reader is not connected.
 - The card template detection and per-cell cropping live in the local inference service, not in the
   Next.js app.
 - `scorecard_images` currently accepts the R2 key; a future screen should show the private photo with

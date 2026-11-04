@@ -1,7 +1,10 @@
 type LogoVariant = "light" | "reverse" | "mono";
 
+// "light" means the mark for a page surface, not a fixed ivory one. The surface is ivory or charcoal
+// depending on the theme, so its ink comes from a token: the wordmark used to be hard-coded forest
+// green, which vanished against the charcoal sign-in page.
 const COLORS: Record<LogoVariant, { upper: string; lower: string; gold: string }> = {
-  light: { upper: "#073d2e", lower: "#073d2e", gold: "#b89550" },
+  light: { upper: "var(--logo-ink)", lower: "var(--logo-ink)", gold: "#b89550" },
   reverse: { upper: "#f7f5ee", lower: "#8db39b", gold: "#d4b46f" },
   mono: { upper: "#202522", lower: "#202522", gold: "#202522" },
 };

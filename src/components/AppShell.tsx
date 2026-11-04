@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { roleLabel } from "@/components/desk";
 import { FirstRunWelcome, HelpButton } from "@/components/help";
 import { DeskBottomBar } from "@/components/MobileTabBar";
@@ -34,14 +34,21 @@ import { AlertsBell } from "@/components/notifications/AlertsBell";
 import { SignOutForm } from "@/components/SignOutForm";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { TournamentSelect } from "@/components/TournamentSelect";
+import { TournamentPicker, TournamentSelect } from "@/components/TournamentSelect";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tip, TooltipProvider } from "@/components/ui/tooltip";
 import { validateDraw } from "@/lib/draw/validate";
 import { useDesk } from "@/lib/store/desk-store";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { cn } from "@/lib/ui/cn";
-import { applyRail, parseRail, RAIL_KEY, type RailChoice } from "@/lib/ui/rail";
+import {
+  applyRail,
+  parseRail,
+  RAIL_KEY,
+  type RailChoice,
+  railSnapshot,
+  subscribeRail,
+} from "@/lib/ui/rail";
 
 interface NavItem {
   href: string;
@@ -68,21 +75,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   const desk = useDesk();
   const { registrations, draw, warnings, tournament, deferred, member, status } = desk;
   const [menuOpen, setMenuOpen] = useState(false);
-  // Compact by default; the saved choice is applied by the pre-paint script, read back here so the
-  // buttons agree with what the page already shows.
-  const [rail, setRail] = useState<RailChoice>("compact");
+  // Read from `<html>` rather than a private copy, so this agrees with the stylesheet, with the
+  // pre-paint script, and with any other rail control on the page.
+  const rail = useSyncExternalStore(subscribeRail, railSnapshot, () => "compact" as RailChoice);
   const railExpanded = rail === "expanded";
+  // React owns `<html>`, and hydration can drop the attribute the pre-paint script set. Re-assert
+  // the saved width after hydration and on each route so the rail never silently collapses.
   useEffect(() => {
     try {
-      setRail(parseRail(window.localStorage.getItem(RAIL_KEY)));
+      if (
+        parseRail(window.localStorage.getItem(RAIL_KEY)) === "expanded" &&
+        document.documentElement.dataset.rail !== "expanded"
+      ) {
+        applyRail("expanded");
+      }
     } catch {
-      // Storage off: stay compact.
+      // Storage off: the rail is compact, which is already the default.
     }
-  }, []);
+  }, [path]);
   const toggleRail = () => {
-    const next: RailChoice = railExpanded ? "compact" : "expanded";
-    setRail(next);
-    applyRail(next);
+    applyRail(railExpanded ? "compact" : "expanded");
   };
   // Supabase configured means the sign-in guard is live, but the shell still runs on demo data.
   const supabaseConfigured = isSupabaseConfigured();
@@ -230,12 +242,33 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Menu className="size-5" />
             </SheetTrigger>
             <SheetContent side="left" title="Menu" description="TeeLine Golf tournament office">
+              <div className="grid gap-1 border-b border-line pb-2">
+                <p className="overline px-1">Event</p>
+                <TournamentPicker onPicked={() => setMenuOpen(false)} />
+              </div>
               <nav aria-label="Main" className="grid gap-1">
                 {nav.filter((n) => n.group !== "more").map((n) => renderNavLink(n, true))}
                 <div className="my-2 border-t border-line" role="presentation" />
                 {nav.filter((n) => n.group === "more").map((n) => renderNavLink(n, true))}
               </nav>
               <div className="mt-auto grid gap-3">
+                {/* The header's account chip is hidden below 768px, so the drawer carries the same
+                    account and sign-out. Without it a phone has no way to end the session. */}
+                {supabaseConfigured && member && (
+                  <div className="grid gap-1 border-t border-line pt-3">
+                    <span className="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-ink">
+                      <CircleUserRound className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{account.name}</span>
+                    </span>
+                    <span className="hint truncate">{account.detail}</span>
+                    <SignOutForm className="btn ghost mt-1 justify-self-start" />
+                  </div>
+                )}
+                {supabaseConfigured && !member && status === "error" && (
+                  <Link href="/login" className="btn ghost justify-self-start no-underline">
+                    Sign in
+                  </Link>
+                )}
                 <ThemeToggle />
                 <p className="hint">Developed by Syntaxure Labs</p>
               </div>

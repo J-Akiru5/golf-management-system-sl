@@ -9,7 +9,105 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **The card is found by matching the printed card, not by guessing a rectangle.** The photo is
+  matched against one stored reference card with SIFT and a RANSAC homography, and the result is
+  validated against the printed table before any cell is cropped. On the 111 raw photos the old
+  detector missed 14 and misaligned all 97 that it found; the new one finds 111 with a median
+  corner error of 7.8 px (98 within 20 px, 109 within 40 px). A detection that cannot be aligned to
+  the table is refused as `card_not_detected` with the reason, so a wrong quadrilateral can no
+  longer produce digits from the wrong ink. The scan response now carries `confidence`, `decision`,
+  `alignment`, `featureInliers`, `reasons` and `quality`, and `detectedBy` can be
+  `template_features`. The reference is stored as keypoints, not as a photo, and is rebuilt with
+  `scripts/scan/build_card_template.py`. Raw-photo digit accuracy is still not production ready:
+  the model's 4/5/6 drift remains, so the desk review step stays.
+- **Waves follow the field, and each player can be put in one.** The tee-times screen used to offer
+  exactly three wave times. It now lists every wave the day actually has: the field size gives the
+  floor (one group on every hole fills a wave), the draw adds any extra wave it used to keep a
+  flight whole, and a wave already written on a player is kept. The batch buttons set the time and
+  the wave together, and each row has its own wave field for the exceptions. The wave is stored on
+  the day assignment, so it survives a reload; it stays internal, because the public page still
+  shows only a confirmed time and hole. The column ships in migration `20261104001100`, which is
+  **not applied** yet.
+- **The reader states its accuracy.** Settings carries a card reader note with the measured figures
+  and what they do not mean, and the scan section on `/scores` shows the same two figures in one
+  line. The numbers live in one place, so retraining the model updates both screens.
+- **The card reader runs a local ONNX model.** Roboflow cannot export this project to ONNX: a
+  classification project answers `HTTP 400 onnx is an invalid format for project type
+  classification. Please use one of: folder, clip.` and version 4 lists `exports: ["folder"]`, so
+  the trained weights stay on their host. The labelled cells are still exported, so
+  `scripts/scan/train_onnx.py` trains a small network on them and writes the ONNX file and its
+  class list. On the held-out cells the reader reads 0.866 of the validation split and 0.837 of
+  the test split; 4, 5 and 6 are the confusions that show up, which is what the amber check flag
+  is for. Model files stay out of Git.
+- **The reader's draft arrives with its doubts marked.** Use with card now carries each cell's
+  confidence into the card form: holes read weakly or not at all are amber, the small label says
+  check, and a summary counts filled, weak and blank holes. Values the reader never produced are not
+  flagged, so a hand-typed card is not covered in warnings. The reader-unavailable message now says
+  the service is not connected rather than only that a reader is unconfigured.
+- **One tee time for a shotgun day.** A shotgun wave starts everyone at once, so `/tee-times` now
+  offers the event's wave times (wave A at the first tee, each later wave one wave gap after, for
+  example 06:30 and 12:30) as a batch. One press fills the time for every player on the day who has
+  none, or overwrites every time while keeping each player's hole and confirmation. The per-row time,
+  hole and confirmation fields stay for the exceptions. A time without a start hole is now accepted
+  while it is unconfirmed, matching the database's own check, because the draw assigns the holes;
+  confirming still needs both.
+- **Revoke an approved scorecard** on `/scores` (issue #160). A card that should not count (wrong
+  marker, duplicate entry, a score ruled unofficial) is withdrawn with a reason, and the standings
+  are rebuilt from the cards and resolutions that remain. The card, its entries and its audit row are
+  kept, and a finalized round stays locked. A correction is still a new revision, not a revocation.
+  The function ships in migration `20261104001000`, which is **not applied** yet.
+- **Scoring activity on `/audit`**: `scoring_audit` rows (approvals, rejections, corrections,
+  revocations, resolutions and publications) are now readable beside the general `audit_log`.
+
+### Changed
+- **Player fields on the score screen are searchable** (issue #163). An event can carry more than a
+  hundred players, where a plain dropdown is unusable. The player and marker fields on a card, and
+  the player field when scanning, are now type-to-search lists that match names, NGAP ids and home
+  courses, keep the keyboard working (arrows, Enter, Escape) and say how many matches are hidden
+  once the list is capped.
+- **Settings is one section per tab** (issue #161) instead of a nine-section scroll. The tab lives in
+  the URL hash, so `/setup#course` and the existing links from the print screen, the registration
+  desk and alerts still open the right section, the back button walks the tabs, and a tab shows a dot
+  when that section has unsaved changes.
+
+### Fixed
+- **The reader no longer warps a card into portrait.** The orientation step tried all four right
+  angles; on an 1800x1000 card a 90 degree turn makes the image portrait, its row scores are noise,
+  and it could win, after which every cell box (x up to 1733) fell outside the card and the scan
+  failed with a server error instead of returning a readable card. Only 0 and 180 degrees are
+  considered now, and a card that is not in the template frame is refused as `card_not_detected`
+  instead of cropped anyway.
+
+### Added
+- **The scorecard screen has its own camera window.** Take photo now opens an in-app preview instead
+  of handing off to the operating system's file picker. Every camera the device reports can be
+  chosen from a source list, so a laptop webcam or a USB camera works and a dashcam can be added
+  later. A guide shaped like the printed card shows what will be kept, the capture is cropped to
+  that guide, and a phone held upright is asked to turn sideways. Upload a photo sits in the same
+  window as a button, and a blocked camera never stops the desk from attaching a photo.
+- **The control room map zooms under the pointer.** Scroll the wheel over the illustrated course, or
+  pinch it on a touch screen, and the map scales between 1× and 2.5× around the point you are
+  looking at. The drag still pans, its travel grows with the zoom so no bare edge can show, and
+  Reset view returns to the whole course. The map is an illustration drawn on a canvas, so zooming
+  past 2.5× would only blur it.
+
+### Fixed
+- **The calendar marks today.** The month grid rings the current day in gold, fills its date circle
+  and labels it Today, so the desk can see where the month actually is without counting cells. The
+  list view also marks an event that is on today. The day is calculated in Manila time, since the
+  events are stored as dates rather than instants.
+- **A phone can sign out again.** The account chip that holds the sign-out button is hidden below
+  768px, and the menu it is replaced by had no account or sign-out at all. The menu now ends with
+  the signed-in name, their role and Sign out, or a sign-in link when the session failed.
+- **The registration desk no longer runs off the right edge.** A card's single column took the
+  width of its widest row, so the two-column page pushed the registrations list past the viewport.
+  Cards and the list now use a column that can shrink, and a row wraps its actions instead of
+  widening the card.
+- **The saved theme and rail width survive a page change.** The pre-paint scripts still keep the
+  first load from flashing, and the shell now re-applies the choice to `<html>` after hydration and
+  on every route. The theme control and the rail toggle read the applied attribute instead of a
+  private copy, so two controls on one page can no longer disagree about the current state.
 
 ## [0.27.4] - 2026-11-04
 

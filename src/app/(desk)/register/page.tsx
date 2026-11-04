@@ -683,7 +683,9 @@ function RegisterDesk() {
         </SectionCard>
       )}
 
-      <div className="grid items-start gap-6 xl:grid-cols-2">
+      {/* Both columns may hold long rows. `minmax(0, 1fr)` lets them shrink, so the list wraps its
+          actions instead of pushing the card past the right edge of the page. */}
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {step === "form" && (
           <SectionCard
             id="form-h"
@@ -1447,7 +1449,7 @@ function RegisterDesk() {
               </div>
             </div>
           )}
-          <div className="grid gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
             {page.items.map(({ e, r, p }) => {
               if (!p) return null;
               const provisional = r?.provisional === true;
@@ -1570,7 +1572,8 @@ function RegisterDesk() {
           latestIndexDate={overrideLatest?.effectiveDate ?? null}
           onSave={(input) => {
             adapters.players.update(override.player.id, { birthdate: input.birthdate });
-            adapters.registrations.overrideReady(override.entry.id, input);
+            // The row changes on screen only when the write lands; a refusal leaves it in review.
+            void adapters.registrations.overrideReady(override.entry.id, input);
             setOverride(null);
           }}
         />

@@ -182,7 +182,7 @@ export interface RegistrationRepository {
   /** Resolves after the row is written; demo returns immediately. */
   update(id: string, patch: Partial<RegistrationEntry>): void | Promise<void>;
   /** Marks a needs-review entry ready with the organizer's manual routing facts. */
-  overrideReady(entryId: string, input: OverrideReadyInput): void;
+  overrideReady(entryId: string, input: OverrideReadyInput): void | Promise<void>;
   /** Confirms the listed needs-review entries in one call and resolves with how many changed. */
   confirmMany(tournamentId: string, entryIds: string[]): Promise<number>;
   remove(id: string): void;

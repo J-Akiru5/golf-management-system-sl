@@ -872,9 +872,9 @@ export function createSupabaseAdapters(
         overridden: true,
         overrideReason: input.reason,
       };
-      dispatch({ type: "updatePlayer", id: entry.playerId, patch: { birthdate: input.birthdate } });
-      dispatch({ type: "updateEntry", id: entryId, patch: next });
-      enqueue(async () => {
+      // Nothing changes on screen until both rows are written. A refused override must not leave
+      // the desk showing a player as ready when the database still says needs review.
+      return queuedWrite(async () => {
         const { error: playerError } = await client
           .from("players")
           .update({ birthdate: input.birthdate })
@@ -902,6 +902,12 @@ export function createSupabaseAdapters(
           .eq("club_id", clubId)
           .eq("id", entryId);
         fail("Could not mark the player ready", error);
+        dispatch({
+          type: "updatePlayer",
+          id: entry.playerId,
+          patch: { birthdate: input.birthdate },
+        });
+        dispatch({ type: "updateEntry", id: entryId, patch: next });
       });
     },
     remove: (id) => {
@@ -1007,13 +1013,14 @@ export function createSupabaseAdapters(
         p_tee_time: assignment.teeTime,
         p_start_hole: assignment.startHole,
         p_confirmed: assignment.confirmed,
+        p_wave: assignment.wave,
       });
       if (error) {
         const missing =
           error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
         throw new Error(
           missing
-            ? "The tee-time assignment needs migration 20261037000000. Nothing was saved."
+            ? "The tee-time assignment needs migration 20261037000000 and its wave column needs 20261104001100. Nothing was saved."
             : `Could not save the tee time: ${error.message}`,
         );
       }

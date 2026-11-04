@@ -16,8 +16,10 @@ import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { HandicapSummary } from "@/components/scoring/HandicapSummary";
+import { ReaderAccuracyLine } from "@/components/scoring/ReaderAccuracy";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import type { ScoringRoundView } from "@/lib/data/scoring";
 import { fmtHcp, fmtIndex } from "@/lib/format";
 import {
@@ -30,6 +32,7 @@ import {
   type StandingsRow,
   validateScorecard,
 } from "@/lib/scoring";
+import { scanReview } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -63,6 +66,8 @@ export default function ScoresPage() {
   const [scanImage, setScanImage] = useState<ScorecardScanImage | null>(null);
   const [scanExtraction, setScanExtraction] = useState<ScorecardScanApply["extraction"]>(null);
   const [scanCaptureKey, setScanCaptureKey] = useState("");
+  /** Reader confidence per hole, so the card form can flag what needs a person to check. */
+  const [scanConfidence, setScanConfidence] = useState<Record<number, number | null>>({});
   /** The card being corrected. A correction is a new revision, never an edit of the old row. */
   const [editingCard, setEditingCard] = useState<Scorecard | null>(null);
   const [correctionReason, setCorrectionReason] = useState("");
@@ -135,6 +140,12 @@ export default function ScoresPage() {
     return sum + (Number.isInteger(value) ? value : 0);
   }, 0);
 
+  const scan = useMemo(
+    () => scanReview(holes, strokes, scanConfidence),
+    [holes, strokes, scanConfidence],
+  );
+  const scanned = Object.keys(scanConfidence).length > 0;
+
   async function run(action: () => Promise<ScoringRoundView | null>) {
     setBusy(true);
     setError(null);
@@ -165,6 +176,7 @@ export default function ScoresPage() {
     setScanImage(apply.image);
     setScanExtraction(apply.extraction);
     setScanCaptureKey(apply.captureKey);
+    setScanConfidence(apply.confidence);
     setError(null);
   }
 
@@ -180,6 +192,7 @@ export default function ScoresPage() {
     setScanImage(null);
     setScanExtraction(null);
     setScanCaptureKey("");
+    setScanConfidence({});
     setError(null);
     document.getElementById("score-entry")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -191,6 +204,7 @@ export default function ScoresPage() {
     setScanImage(null);
     setScanExtraction(null);
     setScanCaptureKey("");
+    setScanConfidence({});
     setError(null);
     if (!view) return;
     setStrokes(strokesFor(view.course.holes));
@@ -378,6 +392,7 @@ export default function ScoresPage() {
             subtitle="Take a photo of the paper card. The reader can draft the scores; the desk still checks every value before submitting."
             dataHelp="scores-scan"
           >
+            <ReaderAccuracyLine />
             <RoleGate
               role={member?.role}
               allow={["owner", "organizer", "desk"]}
@@ -443,53 +458,52 @@ export default function ScoresPage() {
                     after every hole is checked.
                   </div>
                 )}
+                {scanned && (
+                  <div className="notice warn" role="status">
+                    <b>Draft from the photo.</b> {scan.filled} of {holes.length} holes filled.
+                    {scan.weak > 0 &&
+                      ` ${scan.weak} ${scan.weak === 1 ? "hole was" : "holes were"} read weakly and need checking against the photo.`}
+                    {scan.blank > 0 &&
+                      ` ${scan.blank} ${scan.blank === 1 ? "hole is" : "holes are"} still blank.`}
+                  </div>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="field">
-                    <span>Player</span>
-                    <select
-                      value={playerId}
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        setPlayerId(next);
-                        if (next === scorerId) {
-                          const rotation = reciprocalRotation(
-                            players.map((player) => player.playerId),
-                          );
-                          const mapped = rotation.find(
-                            (assignment) => assignment.playerId === next,
-                          )?.scorerId;
-                          setScorerId(
-                            mapped ??
-                              players.find((player) => player.playerId !== next)?.playerId ??
-                              "",
-                          );
-                        }
-                      }}
-                      disabled={busy || players.length < 2 || Boolean(editingCard)}
-                    >
-                      {players.map((player) => (
-                        <option key={player.playerId} value={player.playerId}>
-                          {player.playerName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field">
-                    <span>Marked by</span>
-                    <select
-                      value={scorerId}
-                      onChange={(event) => setScorerId(event.target.value)}
-                      disabled={busy || players.length < 2 || Boolean(editingCard)}
-                    >
-                      {players
-                        .filter((player) => player.playerId !== playerId)
-                        .map((player) => (
-                          <option key={player.playerId} value={player.playerId}>
-                            {player.playerName}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
+                  <Combobox
+                    label="Player"
+                    value={playerId}
+                    options={players.map((player) => ({
+                      id: player.playerId,
+                      label: player.playerName,
+                    }))}
+                    onChange={(next) => {
+                      setPlayerId(next);
+                      if (next === scorerId) {
+                        const rotation = reciprocalRotation(
+                          players.map((player) => player.playerId),
+                        );
+                        const mapped = rotation.find(
+                          (assignment) => assignment.playerId === next,
+                        )?.scorerId;
+                        setScorerId(
+                          mapped ??
+                            players.find((player) => player.playerId !== next)?.playerId ??
+                            "",
+                        );
+                      }
+                    }}
+                    placeholder="Type a player's name"
+                    disabled={busy || players.length < 2 || Boolean(editingCard)}
+                  />
+                  <Combobox
+                    label="Marked by"
+                    value={scorerId}
+                    options={players
+                      .filter((player) => player.playerId !== playerId)
+                      .map((player) => ({ id: player.playerId, label: player.playerName }))}
+                    onChange={setScorerId}
+                    placeholder="Type the marker's name"
+                    disabled={busy || players.length < 2 || Boolean(editingCard)}
+                  />
                 </div>
 
                 {!editingCard && (
@@ -517,28 +531,46 @@ export default function ScoresPage() {
                 )}
 
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                  {holes.map((hole) => (
-                    <label key={hole.number} className="field">
-                      <span className="text-[11px]">
-                        H{hole.number} · par {hole.par} · SI {hole.strokeIndex}
-                      </span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        max={20}
-                        value={strokes[hole.number] ?? ""}
-                        onChange={(event) =>
-                          setStrokes((current) => ({
-                            ...current,
-                            [hole.number]: event.target.value,
-                          }))
-                        }
-                        disabled={busy}
-                      />
-                    </label>
-                  ))}
+                  {holes.map((hole) => {
+                    const state = scan.holes[hole.number];
+                    return (
+                      <label key={hole.number} className="field">
+                        <span
+                          className={
+                            state === "check" ? "text-[11px] !text-warning" : "text-[11px]"
+                          }
+                        >
+                          H{hole.number} · par {hole.par} · SI {hole.strokeIndex}
+                          {state === "check" ? " · check" : ""}
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={20}
+                          value={strokes[hole.number] ?? ""}
+                          aria-invalid={state === "check" ? true : undefined}
+                          aria-describedby={state === "check" ? "scan-check-hint" : undefined}
+                          className={state === "check" ? "!border-warning" : undefined}
+                          onChange={(event) =>
+                            setStrokes((current) => ({
+                              ...current,
+                              [hole.number]: event.target.value,
+                            }))
+                          }
+                          disabled={busy}
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
+                {scan.weak > 0 && (
+                  <p id="scan-check-hint" className="hint">
+                    Amber holes were read with low confidence or not at all. Compare each one with
+                    the photo before submitting; typing a value does not clear the flag until the
+                    card is submitted fresh.
+                  </p>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="hint">
@@ -620,6 +652,19 @@ export default function ScoresPage() {
                           }}
                           canEdit={canEdit}
                           onEdit={() => editCard(card)}
+                          roundLocked={view.roundStatus === "final"}
+                          onRevoke={() => {
+                            const reason = (rejectReasons[card.id] ?? "").trim();
+                            if (reason.length < 3) {
+                              setError("A revocation needs a reason of at least 3 characters.");
+                              return;
+                            }
+                            void run(async () => {
+                              const next = await scoring.revokeCard(tournamentId, card.id, reason);
+                              setRejectReasons((current) => ({ ...current, [card.id]: "" }));
+                              return next;
+                            });
+                          }}
                         />
                       ))}
                     </tbody>
@@ -819,6 +864,10 @@ export default function ScoresPage() {
                 ? "The sample uses a proposed tie-break that is deliberately unconfirmed, so finalization stays blocked. The organizer's written rule is still required."
                 : "Finalization stays blocked until the organizer's card count, net results, tie-break rule and final approval authority are all recorded."}
             </p>
+            <p className="hint">
+              A correction or a revocation after publication changes the standings, but the live
+              board keeps the last published version until you publish again.
+            </p>
           </SectionCard>
         </>
       )}
@@ -836,6 +885,8 @@ function CardRow({
   onReject,
   canEdit,
   onEdit,
+  roundLocked,
+  onRevoke,
 }: {
   card: Scorecard;
   view: ScoringRoundView;
@@ -846,6 +897,8 @@ function CardRow({
   onReject: () => void;
   canEdit: boolean;
   onEdit: () => void;
+  roundLocked: boolean;
+  onRevoke: () => void;
 }) {
   const player = view.players.find((candidate) => candidate.playerId === card.playerId) ?? null;
   const playerName = player?.playerName ?? card.playerId;
@@ -860,7 +913,8 @@ function CardRow({
     course: view.course,
     minOcrConfidence: view.policy.minOcrConfidence,
   });
-  const decided = card.status === "approved" || card.status === "rejected";
+  const decided =
+    card.status === "approved" || card.status === "rejected" || card.status === "revoked";
   // Only the newest revision is the card the desk is working on. Editing an older one after a
   // correction would create a third revision out of order.
   const latestRevision = Math.max(
@@ -909,7 +963,11 @@ function CardRow({
       <td>
         <span
           className={`pill ${
-            card.status === "approved" ? "ok" : card.status === "rejected" ? "bad" : "warn"
+            card.status === "approved"
+              ? "ok"
+              : card.status === "rejected" || card.status === "revoked"
+                ? "bad"
+                : "warn"
           }`}
         >
           {card.status}
@@ -920,6 +978,8 @@ function CardRow({
           <span className="muted">Approved.</span>
         ) : card.status === "rejected" ? (
           <span className="muted">Rejected.</span>
+        ) : card.status === "revoked" ? (
+          <span className="muted">Revoked. It no longer counts.</span>
         ) : validation.approvable ? (
           <span className="muted">Ready for approval.</span>
         ) : (
@@ -943,6 +1003,31 @@ function CardRow({
               />
               <Button variant="danger" size="sm" onClick={onReject} disabled={busy}>
                 Reject
+              </Button>
+            </>
+          )}
+          {card.status === "approved" && (
+            <>
+              <input
+                value={rejectReason}
+                onChange={(event) => onRejectReason(event.target.value)}
+                placeholder="Revoke reason"
+                aria-label={`Revocation reason for ${playerName}'s card`}
+                className="h-8 w-28"
+                disabled={busy || roundLocked}
+              />
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={onRevoke}
+                disabled={busy || roundLocked}
+                title={
+                  roundLocked
+                    ? "A finalized round is locked; this score cannot change."
+                    : "Withdraw this card from the scores. The card and its audit row are kept."
+                }
+              >
+                Revoke
               </Button>
             </>
           )}

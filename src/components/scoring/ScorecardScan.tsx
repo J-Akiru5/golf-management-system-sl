@@ -2,7 +2,9 @@
 
 import { Camera, CheckCircle2, ImagePlus, Loader2, ScanLine, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CardCamera } from "@/components/scoring/CardCamera";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import type { HoleDefinition } from "@/lib/scoring";
 import type {
   ScorecardScanApply,
@@ -71,6 +73,7 @@ export function ScorecardScan({
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
   const [captureKey, setCaptureKey] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -236,14 +239,17 @@ export function ScorecardScan({
       return;
     }
     const strokes: Record<number, string> = {};
+    const confidence: Record<number, number | null> = {};
     if (selectedResult) {
       for (const hole of selectedResult.holes) {
         strokes[hole.hole] = hole.strokes === null ? "" : String(hole.strokes);
+        confidence[hole.hole] = hole.confidence;
       }
     }
     onApply({
       playerId,
       strokes,
+      confidence,
       image,
       extraction: result
         ? { engine: result.engine, engineVersion: result.engineVersion, raw: result.raw }
@@ -266,28 +272,26 @@ export function ScorecardScan({
             <option value="group">Group sheet</option>
           </select>
         </label>
-        <label className="field min-w-[16rem] flex-1">
-          <span>Player</span>
-          <select
-            value={playerId}
-            onChange={(event) => setPlayerId(event.target.value)}
-            disabled={busy || disabled || players.length === 0}
-          >
-            {players.map((player) => (
-              <option key={player.playerId} value={player.playerId}>
-                {player.playerName}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* A typed search, not a plain dropdown: an event can carry more than a hundred players. */}
+        <Combobox
+          label="Player"
+          className="min-w-[16rem] flex-1"
+          value={playerId}
+          options={players.map((player) => ({ id: player.playerId, label: player.playerName }))}
+          onChange={setPlayerId}
+          placeholder="Type a player's name"
+          emptyMessage="No player in this round matches that name."
+          disabled={busy || disabled || players.length === 0}
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {/* No `capture` attribute: the camera is the app's own window, and this input is the
+            "upload a photo" choice inside it. */}
         <input
           ref={inputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          capture="environment"
           className="sr-only"
           onChange={(event) => void chooseFile(event.target.files?.[0] ?? null)}
           disabled={busy || disabled}
@@ -296,11 +300,11 @@ export function ScorecardScan({
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => setCameraOpen(true)}
           disabled={busy || disabled}
         >
           <Camera className="size-4" aria-hidden="true" />
-          Take or choose photo
+          Take photo
         </Button>
         {file && (
           <>
@@ -437,9 +441,25 @@ export function ScorecardScan({
       {!file && (
         <p className="hint">
           <ScanLine className="mr-1 inline size-4" aria-hidden="true" />
-          The card reader is optional. If it is unavailable, the photo can still be attached and the
-          scores entered by hand.
+          Take photo opens this device's camera and lists every camera it finds. Upload a photo is a
+          button in the same window. The card reader is optional: if it is unavailable, the photo
+          can still be attached and the scores entered by hand.
         </p>
+      )}
+
+      {cameraOpen && (
+        <CardCamera
+          onCapture={(captured) => {
+            setCameraOpen(false);
+            void chooseFile(captured);
+          }}
+          onUpload={() => {
+            setCameraOpen(false);
+            // Still inside the click that asked for it, so the file picker opens.
+            inputRef.current?.click();
+          }}
+          onClose={() => setCameraOpen(false)}
+        />
       )}
     </div>
   );

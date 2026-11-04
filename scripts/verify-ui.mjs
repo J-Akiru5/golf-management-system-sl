@@ -510,7 +510,12 @@ const drawSummary = crossSheet
   .filter({ hasText: /^Draw & pairings$/ });
 await drawSummary.click();
 const drawGuide = drawSummary.locator("xpath=..");
-await drawGuide.getByRole("button", { name: "Show me" }).first().click();
+// The guide's first step is the day filter now, and that control only exists for an event with
+// playing days. This check is about the draw button, so it names that step rather than the first.
+const runStep = drawGuide
+  .locator("li")
+  .filter({ hasText: "Make the draw when the entries are in." });
+await runStep.getByRole("button", { name: "Show me" }).first().click();
 await expect(page).toHaveURL(/\/draw$/, { timeout: 15000 });
 check("Show me on another screen's step navigates there", true);
 const crossRing = page.locator(".help-ring");

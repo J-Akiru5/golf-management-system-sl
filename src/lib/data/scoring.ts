@@ -114,6 +114,7 @@ export interface ScoringRepository {
   submitCard(tournamentId: string, input: SubmitCardInput): Promise<ScoringRoundView>;
   approveCard(tournamentId: string, cardId: string, reason?: string): Promise<ScoringRoundView>;
   rejectCard(tournamentId: string, cardId: string, reason: string): Promise<ScoringRoundView>;
+  revokeCard(tournamentId: string, cardId: string, reason: string): Promise<ScoringRoundView>;
   resolveHole(tournamentId: string, input: ResolveHoleInput): Promise<ScoringRoundView>;
   publishRound(tournamentId: string, note?: string): Promise<ScoringRoundView>;
   finalizeRound(tournamentId: string, note?: string): Promise<ScoringRoundView>;
@@ -289,6 +290,23 @@ export function createDemoScoringRepository(
       }
       cards = cards.map((candidate) =>
         candidate.id === cardId ? { ...candidate, status: "rejected" } : candidate,
+      );
+      return view();
+    },
+
+    async revokeCard(tournamentId, cardId, reason) {
+      assertTournament(tournamentId);
+      const card = cards.find((candidate) => candidate.id === cardId);
+      if (!card) throw new Error("Scorecard not found.");
+      if (reason.trim().length < 3) throw new Error("A revocation needs a reason.");
+      if (roundStatus === "final") {
+        throw new Error("The round is final; its results cannot be revoked.");
+      }
+      if (card.status !== "approved") {
+        throw new Error("Only an approved card can be revoked.");
+      }
+      cards = cards.map((candidate) =>
+        candidate.id === cardId ? { ...candidate, status: "revoked" } : candidate,
       );
       return view();
     },

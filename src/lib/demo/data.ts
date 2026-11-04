@@ -514,6 +514,7 @@ export function makeDemoSeed(cutOffDate = BAMBOO_TEE_CUT_OFF): DemoSeed {
       1: {
         teeTime: demoTime(slot),
         startHole: slot % 2 === 0 ? 1 : 10,
+        wave: slot % 2 === 0 ? "A" : "B",
         confirmed: true,
       },
     };
@@ -521,6 +522,7 @@ export function makeDemoSeed(cutOffDate = BAMBOO_TEE_CUT_OFF): DemoSeed {
       dayTee[2] = {
         teeTime: demoTime(slot),
         startHole: slot % 2 === 0 ? 1 : 10,
+        wave: slot % 2 === 0 ? "A" : "B",
         confirmed: true,
       };
     }

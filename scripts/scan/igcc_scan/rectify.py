@@ -18,9 +18,15 @@ import cv2
 import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from .detect import CardDetection, detect_card
+from .features import CardTemplateMatcher, load_default_matcher
 from .geometry import CardTemplate
+from .quads import order_quad, quad_aspect
 
 MAX_IMAGE_PIXELS = 60_000_000
+
+# Kept for the legacy contour helpers below; new code uses `quads.quad_aspect`.
+_quad_aspect = quad_aspect
 
 
 class ImageDecodeError(ValueError):
@@ -47,6 +53,7 @@ class RectifiedCard:
     table_quad: tuple[tuple[float, float], ...] | None
     warnings: list[str] = field(default_factory=list)
     detected_by: str = "none"
+    detection: CardDetection | None = None
 
 
 def decode_image(data: bytes) -> np.ndarray:
@@ -73,28 +80,6 @@ def rotate_image(image: np.ndarray, degrees: int) -> np.ndarray:
     if degrees % 360 not in {90, 180, 270}:
         raise ValueError("Rotation must be 0, 90, 180 or 270 degrees.")
     return np.ascontiguousarray(np.rot90(image, k=(degrees % 360) // 90))
-
-
-def order_quad(points: np.ndarray | list[list[float]]) -> np.ndarray:
-    """Order four points as TL, TR, BR, BL."""
-    pts = np.asarray(points, dtype=np.float32).reshape(4, 2)
-    sums = pts.sum(axis=1)
-    diffs = np.diff(pts, axis=1).ravel()
-    ordered = np.array(
-        [pts[np.argmin(sums)], pts[np.argmin(diffs)], pts[np.argmax(sums)], pts[np.argmax(diffs)]],
-        dtype=np.float32,
-    )
-    if len({tuple(point) for point in ordered.tolist()}) != 4:
-        raise ValueError("The four card corners are not distinct.")
-    return ordered
-
-
-def _quad_aspect(points: np.ndarray) -> float:
-    top = np.linalg.norm(points[0] - points[1])
-    left = np.linalg.norm(points[0] - points[3])
-    long_side = max(top, left)
-    short_side = min(top, left)
-    return float(long_side / short_side) if short_side else 0.0
 
 
 def _find_quad(gray: np.ndarray) -> np.ndarray | None:
@@ -322,14 +307,28 @@ def grid_alignment_score(card: np.ndarray, template: CardTemplate) -> float:
 def choose_orientation(
     card: np.ndarray, template: CardTemplate
 ) -> tuple[np.ndarray, int, float, bool]:
-    """Pick the right-angle rotation whose table lines match the template."""
+    """Pick the right-angle rotation whose table lines match the template.
+
+    Only rotations that keep the card in the template frame are considered. A 90
+    degree turn makes an 1800 x 1000 card portrait, and the template cell boxes
+    (x up to 1733) then fall outside the image; the row scores on a portrait crop
+    are noise, so a portrait turn could win on a real photo and every cell box
+    was outside the card. Rectification always returns the template frame, so 0
+    and 180 are the only meaningful choices.
+    """
     best: tuple[np.ndarray, int, float] | None = None
-    for degrees in (0, 90, 180, 270):
+    for degrees in (0, 180):
         rotated = rotate_image(card, degrees)
+        if rotated.shape[:2] != (template.height, template.width):
+            continue
         score = grid_alignment_score(rotated, template)
         if best is None or score > best[2]:
             best = (rotated, degrees, score)
-    assert best is not None
+    if best is None:
+        raise CardNotFoundError(
+            "The card was not rectified to the 1800 x 1000 template frame, so the "
+            "cell boxes do not fit it. No scores were read."
+        )
     rotated, degrees, score = best
     # A blank card has no grid evidence. Returning an arbitrary orientation is
     # safe only because every cell is null; flag it for the caller.
@@ -552,6 +551,26 @@ def _resize_prewarped(image: np.ndarray, template: CardTemplate) -> np.ndarray:
     return cv2.resize(image, (template.width, template.height), interpolation=cv2.INTER_AREA)
 
 
+def table_quad_from_card_quad(card_quad: np.ndarray, template: CardTemplate) -> np.ndarray:
+    """Locate the printed table in the photo from a card-frame quadrilateral."""
+    table = template.table
+    card_rect = np.array(
+        [
+            [0.0, 0.0],
+            [template.width - 1.0, 0.0],
+            [template.width - 1.0, template.height - 1.0],
+            [0.0, template.height - 1.0],
+        ],
+        dtype=np.float32,
+    )
+    matrix = cv2.getPerspectiveTransform(card_rect, order_quad(card_quad))
+    table_rect = np.array(
+        [[table.x0, table.y0], [table.x1, table.y0], [table.x1, table.y1], [table.x0, table.y1]],
+        dtype=np.float32,
+    ).reshape(-1, 1, 2)
+    return cv2.perspectiveTransform(table_rect, matrix).reshape(4, 2)
+
+
 def rectify_card(
     image: np.ndarray,
     template: CardTemplate,
@@ -560,6 +579,7 @@ def rectify_card(
     mode: str = "auto",
     forced_rotation: int | None = None,
     debug_dir: Path | None = None,
+    matcher: CardTemplateMatcher | None = None,
 ) -> RectifiedCard:
     warnings: list[str] = []
     auto_detected = False
@@ -567,41 +587,59 @@ def rectify_card(
     detected_by = "none"
     detected_table_quad: np.ndarray | None = None
     detection_rotation = 0
+    detection: CardDetection | None = None
     if corners is not None:
         card = warp_card(image, np.asarray(corners, dtype=np.float32), template)
         detected_by = "corners"
     elif mode == "prewarped":
+        height, width = image.shape[:2]
+        if (height > width) != (template.height > template.width):
+            raise CardNotFoundError(
+                "A prewarped card must already be in the template orientation "
+                f"({template.width} x {template.height} landscape), got "
+                f"{width} x {height}. No scores were read."
+            )
         card = _resize_prewarped(image, template)
         detected_by = "prewarped"
         warnings.append("Card was treated as already rectified (SCAN_CARD_MODE=prewarped).")
     else:
-        found = detect_card_quad(image)
-        if found is not None:
-            quad, area_fraction = found
-            auto_detected = True
-            detected_by = "card"
-            used_corners = tuple((float(x), float(y)) for x, y in quad.tolist())
-            card = warp_card(image, quad, template)
-            if area_fraction < 0.25:
-                warnings.append("The detected card covers less than a quarter of the photo.")
-        else:
-            table_found = detect_table_in_rotations(image, template)
-            if table_found is None:
-                raise CardNotFoundError(
-                    "Neither the card outline nor the printed table could be found. "
-                    "Use a photo with the whole table visible, or configure "
-                    "SCAN_CARD_CORNERS / SCAN_CARD_MODE=prewarped. No scores were read."
-                )
-            rotated, detection_rotation, table_quad, area_fraction = table_found
-            auto_detected = True
+        detection = detect_card(
+            image,
+            template,
+            matcher=matcher if matcher is not None else load_default_matcher(),
+        )
+        if detection is None or not detection.accepted:
+            reasons = (
+                list(detection.reasons)
+                if detection is not None and detection.reasons
+                else ["No card-shaped or table-shaped outline was found."]
+            )
+            raise CardNotFoundError(
+                "The scorecard could not be located in this photo. "
+                + " ".join(reasons)
+                + " Take another photo with the whole card in frame. No scores were read."
+            )
+        auto_detected = True
+        used_corners = detection.corners
+        card = warp_card(image, detection.quad, template)
+        if detection.source.startswith("table"):
             detected_by = "table"
-            detected_table_quad = table_quad
-            card = warp_table(rotated, table_quad, template)
+            detected_table_quad = table_quad_from_card_quad(detection.quad, template)
             warnings.append(
                 "Card outline was not found; the printed table was used for rectification."
             )
-            if area_fraction < 0.15:
-                warnings.append("The detected table covers less than 15% of the photo.")
+        elif detection.source == "template_features":
+            detected_by = "template_features"
+        else:
+            detected_by = "card"
+        if detection.geometry.area_fraction < 0.2:
+            warnings.append("The detected card covers less than a fifth of the photo.")
+        warnings.extend(detection.quality.warnings)
+        if detection.confidence != "high":
+            warnings.append(
+                f"Card detection confidence is {detection.confidence}; "
+                "confirm the corners with the player before saving."
+            )
     if used_corners is not None and not auto_detected:
         warnings.append("Card corners came from configuration, not from detection.")
 
@@ -650,4 +688,5 @@ def rectify_card(
         table_quad=table_quad,
         warnings=warnings,
         detected_by=detected_by,
+        detection=detection,
     )

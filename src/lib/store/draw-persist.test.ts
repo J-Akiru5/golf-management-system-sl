@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planDrawJobs } from "./draw-persist";
+import { planDrawJobs, publishedWhileWritesPending } from "./draw-persist";
 import { type Action, type DeskState, initialState, reducer } from "./state";
 
 const run = (state: DeskState, action: Action) => reducer(state, action);
@@ -46,13 +46,31 @@ describe("planDrawJobs", () => {
   });
 
   it("takes the public page down when a fresh proposal drops the published copy", () => {
+    // The board the database already holds is unchanged, so only the unpublish is written.
     const jobs = plan(published(), { type: "generate", preserveLocks: false });
-    expect(jobs.map((j) => j.kind)).toEqual(["save", "unpublish"]);
+    expect(jobs.map((j) => j.kind)).toEqual(["unpublish"]);
+  });
+
+  it("keeps the old published copy on screen until a queued takedown is written", () => {
+    const was = published();
+    const id = was.activeTournamentId ?? "";
+    const after = run(was, { type: "generate", preserveLocks: false });
+    const jobs = planDrawJobs({ type: "generate", preserveLocks: false }, was, after);
+    const before = was.boards[id]?.published ?? null;
+    const now = after.boards[id]?.published ?? null;
+    expect(now).toBeNull();
+    expect(publishedWhileWritesPending(jobs, before, now)).toEqual(before);
+    // Nothing is being taken down, so the screen shows what the reducer produced.
+    expect(publishedWhileWritesPending([], before, now)).toBeNull();
+  });
+
+  it("writes nothing when a re-run proposes the board that is already saved", () => {
+    expect(plan(published(), { type: "generate", preserveLocks: true })).toEqual([]);
   });
 
   it("keeps the public page up when locks are preserved", () => {
     const jobs = plan(published(), { type: "generate", preserveLocks: true });
-    expect(jobs.map((j) => j.kind)).toEqual(["save"]);
+    expect(jobs.map((j) => j.kind)).not.toContain("unpublish");
   });
 
   it("unpublishes only when something is published", () => {

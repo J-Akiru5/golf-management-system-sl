@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { teeAssignmentProblem } from "./tee-time";
+import {
+  teeAssignmentProblem,
+  waveCountForField,
+  wavePosition,
+  waveProblem,
+  waveStartTimes,
+} from "./tee-time";
 
 const base = { courseHoles: 18, confirmed: false };
 
@@ -12,10 +18,12 @@ describe("teeAssignmentProblem", () => {
     expect(teeAssignmentProblem({ ...base, teeTime: null, startHole: null })).toBeNull();
   });
 
-  it("refuses one field without the other", () => {
-    expect(teeAssignmentProblem({ ...base, teeTime: "06:30", startHole: null })).toBe(
-      "both_or_neither",
-    );
+  it("accepts a wave time before the draw has assigned a hole", () => {
+    // A shotgun wave starts everyone together; the hole comes from the draw later.
+    expect(teeAssignmentProblem({ ...base, teeTime: "06:30", startHole: null })).toBeNull();
+  });
+
+  it("refuses a start hole with no tee time", () => {
     expect(teeAssignmentProblem({ ...base, teeTime: null, startHole: 1 })).toBe("both_or_neither");
   });
 
@@ -28,5 +36,85 @@ describe("teeAssignmentProblem", () => {
     expect(teeAssignmentProblem({ ...base, teeTime: null, startHole: null, confirmed: true })).toBe(
       "confirmed_needs_both",
     );
+  });
+
+  it("refuses a confirmed time with no hole", () => {
+    expect(
+      teeAssignmentProblem({ ...base, teeTime: "06:30", startHole: null, confirmed: true }),
+    ).toBe("confirmed_needs_both");
+  });
+});
+
+describe("wavePosition", () => {
+  it("counts waves from A", () => {
+    expect(wavePosition("A")).toBe(1);
+    expect(wavePosition("b")).toBe(2);
+    expect(wavePosition(" D ")).toBe(4);
+  });
+
+  it("returns null for something that is not a wave", () => {
+    expect(wavePosition(null)).toBeNull();
+    expect(wavePosition("")).toBeNull();
+    expect(wavePosition("AA")).toBeNull();
+    expect(wavePosition("1")).toBeNull();
+  });
+});
+
+describe("waveProblem", () => {
+  it("accepts one letter in either case", () => {
+    expect(waveProblem(null)).toBeNull();
+    expect(waveProblem("A")).toBeNull();
+    expect(waveProblem("c")).toBeNull();
+  });
+
+  it("refuses anything longer than one letter", () => {
+    expect(waveProblem("AB")).toBe("wave_format");
+    expect(waveProblem("wave 2")).toBe("wave_format");
+  });
+});
+
+describe("waveCountForField", () => {
+  it("fills one hole with one group before a second wave is needed", () => {
+    expect(waveCountForField(72, 18, 4)).toBe(1);
+    expect(waveCountForField(73, 18, 4)).toBe(2);
+  });
+
+  it("follows the event's own group size and hole count", () => {
+    expect(waveCountForField(40, 18, 2)).toBe(2);
+    expect(waveCountForField(40, 9, 4)).toBe(2);
+  });
+
+  it("never reports fewer than one wave", () => {
+    expect(waveCountForField(0, 18, 4)).toBe(1);
+    expect(waveCountForField(Number.NaN, 0, 0)).toBe(1);
+  });
+});
+
+describe("waveStartTimes", () => {
+  it("lists wave A at the first tee and each later wave one gap after", () => {
+    expect(waveStartTimes("06:30", 360)).toEqual([
+      { wave: "A", time: "06:30" },
+      { wave: "B", time: "12:30" },
+      { wave: "C", time: "18:30" },
+    ]);
+  });
+
+  it("honours the requested count", () => {
+    expect(waveStartTimes("07:00", 300, 1)).toEqual([{ wave: "A", time: "07:00" }]);
+    expect(waveStartTimes("07:00", 300, 0)).toHaveLength(1);
+  });
+
+  it("wraps past midnight rather than producing an invalid time", () => {
+    expect(waveStartTimes("20:00", 360, 2)).toEqual([
+      { wave: "A", time: "20:00" },
+      { wave: "B", time: "02:00" },
+    ]);
+  });
+
+  it("treats a nonsense gap as no gap", () => {
+    expect(waveStartTimes("06:30", Number.NaN, 2).map((wave) => wave.time)).toEqual([
+      "06:30",
+      "06:30",
+    ]);
   });
 });

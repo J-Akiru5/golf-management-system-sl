@@ -111,6 +111,27 @@ def test_orientation_scoring_recovers_an_upside_down_card():
     assert grid_alignment_score(upright, IGCC_PAPER) >= grid_alignment_score(rotated, IGCC_PAPER)
 
 
+def test_orientation_keeps_the_template_frame():
+    card = make_card()
+    upright, degrees, _score, _confident = choose_orientation(card, IGCC_PAPER)
+    assert degrees in {0, 180}
+    assert upright.shape[:2] == (IGCC_PAPER.height, IGCC_PAPER.width)
+
+
+def test_orientation_refuses_a_portrait_card():
+    # A 90 degree turn puts the template cell boxes outside the image, so it must
+    # never be chosen. A card that arrives portrait is a failed rectification.
+    portrait = rotate_image(make_card(), 90)
+    with pytest.raises(CardNotFoundError, match="template frame"):
+        choose_orientation(portrait, IGCC_PAPER)
+
+
+def test_rectified_card_always_matches_the_template_frame():
+    photo, _corners = make_photo()
+    rectified = rectify_card(photo, IGCC_PAPER)
+    assert rectified.image.shape[:2] == (IGCC_PAPER.height, IGCC_PAPER.width)
+
+
 def test_prewarped_mode_resizes_without_detection():
     card = make_card()
     small = cv2.resize(card, (900, 500), interpolation=cv2.INTER_AREA)
@@ -136,6 +157,12 @@ def test_table_leveling_corrects_a_small_rotation():
     assert rectified.table_levelled is True
     assert after > before
     assert rectified.table_quad is not None
+
+
+def test_prewarped_mode_rejects_a_portrait_image():
+    portrait = rotate_image(make_card(), 90)
+    with pytest.raises(CardNotFoundError, match="template orientation"):
+        rectify_card(portrait, IGCC_PAPER, mode="prewarped")
 
 
 def test_no_card_returns_a_clear_error():

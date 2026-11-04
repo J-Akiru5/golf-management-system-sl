@@ -9,6 +9,7 @@ import {
   List,
   Menu,
   TableProperties,
+  Trophy,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -32,6 +33,7 @@ const ICONS: Record<MobileIcon, typeof Flag> = {
   player: CircleUserRound,
   list: List,
   home: House,
+  trophy: Trophy,
 };
 
 /**
@@ -73,7 +75,7 @@ function TabBar({
             </button>
           );
         }
-        const on = isMobileCurrent(path, item.href);
+        const on = isMobileCurrent(path, item.href) && (!item.exact || path === item.href);
         return (
           <Link
             key={item.testId}

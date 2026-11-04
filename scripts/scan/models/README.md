@@ -1,7 +1,37 @@
 # Model files
 
-Put the Roboflow ONNX export here, or anywhere outside the repository, and point
-`SCAN_MODEL_PATH` at it. Model binaries are ignored by Git; never commit them.
+Model binaries are ignored by Git; never commit one. Two routes put a model here.
+
+## Roboflow cannot export this project to ONNX
+
+Project `igcc-scorecard-digits-v2` is a single-label classification project
+(`modelType: vit`). The export API refuses ONNX:
+
+    HTTP 400 {"error":"onnx is an invalid format for project type classification.
+    Please use one of: folder, clip."}
+
+Version 4 lists `exports: ["folder"]`. The trained weights therefore stay on the
+Roboflow host, and the only extractable artefact is the labelled cell dataset.
+
+## Route 1: train and export locally (current)
+
+`../train_onnx.py` downloads the `folder` export, trains a small convolutional
+network on the same labelled cells and writes both files here:
+
+```powershell
+cd scripts/scan
+python -m pip install -r requirements-train.txt
+$env:ROBOFLOW_API_KEY="<process environment only>"
+python train_onnx.py --project lou-vincent-j-baroro-s-workspace/igcc-scorecard-digits-v2/4
+```
+
+Output: `igcc-scorecard-digits.onnx` (ignored by Git) and `classes.json` (small,
+committed, fixes the output order).
+
+## Route 2: a Roboflow ONNX export
+
+If Roboflow later offers ONNX for this project type, drop the file here, or point
+`SCAN_MODEL_PATH` at it anywhere outside the repository, and add a `classes.json`.
 
 Expected local adapter contract:
 
@@ -11,10 +41,18 @@ Expected local adapter contract:
   the model with the same stem);
 - output one score vector, either probabilities or logits.
 
-`classes.example.json` is a starting list for a digit-only bootstrap model. If the
-trained dataset includes `10`..`20`, add those labels there too. The labels must
-match the Roboflow class folder names exactly.
+`classes.example.json` is a digit-only starting list. The trained model uses the
+project's own class folders: `1`..`9`, `blank`, `unreadable` and `x`.
 
 Set `SCAN_MODEL_INPUT_SIZE`, `SCAN_MODEL_INPUT_CHANNELS`,
 `SCAN_MODEL_INPUT_LAYOUT` and `SCAN_MODEL_INPUT_NORMALIZE` to match the export.
 The service validates a static input shape and refuses a mismatched model.
+
+## Card detection template
+
+`igcc-card-template.npz` is the reference used by feature-based card detection. It
+holds SIFT keypoints and descriptors plus the reference size, not an image, so no
+photograph of a filled card is committed. Rebuild it from a rectified card with
+`python build_card_template.py --card <rectified card>`; a clean blank card is
+preferred, because handwriting adds features that will not match another card.
+Set `SCAN_CARD_TEMPLATE` to point at a different file.

@@ -1453,6 +1453,7 @@ export type Database = {
           tee_time: string | null;
           tournament_day_id: string;
           updated_at: string;
+          wave: string | null;
         };
         Insert: {
           club_id: string;
@@ -1465,6 +1466,7 @@ export type Database = {
           tee_time?: string | null;
           tournament_day_id: string;
           updated_at?: string;
+          wave?: string | null;
         };
         Update: {
           club_id?: string;
@@ -1477,6 +1479,7 @@ export type Database = {
           tee_time?: string | null;
           tournament_day_id?: string;
           updated_at?: string;
+          wave?: string | null;
         };
         Relationships: [
           {
@@ -2510,6 +2513,7 @@ export type Database = {
           p_registration: string;
           p_start_hole: number;
           p_tee_time: string;
+          p_wave: string | null;
         };
         Returns: Json;
       };
@@ -2661,6 +2665,10 @@ export type Database = {
       };
       reject_scorecard: {
         Args: { p_card: string; p_reason: string };
+        Returns: undefined;
+      };
+      revoke_scorecard: {
+        Args: { p_canonical: Json; p_card: string; p_reason: string };
         Returns: undefined;
       };
       resolve_hole: {

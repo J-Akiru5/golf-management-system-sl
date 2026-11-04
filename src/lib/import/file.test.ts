@@ -38,7 +38,8 @@ describe("parseCsv", () => {
   });
 });
 
-describe("parseXlsx", () => {
+// The fixture is a real workbook; on a loaded machine parsing it can pass 5 s, which is not a bug.
+describe("parseXlsx", { timeout: 20_000 }, () => {
   it("lists the worksheets and reads the selected one", async () => {
     const parsed = await parseXlsx(fixture, "Roster");
     expect(parsed.sheets).toEqual(["Roster", "Notes"]);

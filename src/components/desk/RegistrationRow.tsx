@@ -160,7 +160,11 @@ export function RegistrationRow({
           </span>
         )}
       </div>
-      {actions && <span className="flex flex-wrap items-center gap-1.5">{actions}</span>}
+      {actions && (
+        <span className="flex min-w-0 flex-wrap items-center gap-1.5 sm:justify-end">
+          {actions}
+        </span>
+      )}
     </article>
   );
 }

@@ -74,7 +74,9 @@ export function SectionCard({
     <section
       aria-labelledby={id}
       data-help={dataHelp}
-      className={cn("card grid gap-4 sm:p-5", className)}
+      // One column that is allowed to shrink: without this the implicit column takes the widest
+      // row's max-content and the card can push past the page instead of wrapping its contents.
+      className={cn("card grid grid-cols-[minmax(0,1fr)] gap-4 sm:p-5", className)}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
