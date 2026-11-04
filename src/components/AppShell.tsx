@@ -248,6 +248,23 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {nav.filter((n) => n.group === "more").map((n) => renderNavLink(n, true))}
               </nav>
               <div className="mt-auto grid gap-3">
+                {/* The header's account chip is hidden below 768px, so the drawer carries the same
+                    account and sign-out. Without it a phone has no way to end the session. */}
+                {supabaseConfigured && member && (
+                  <div className="grid gap-1 border-t border-line pt-3">
+                    <span className="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-ink">
+                      <CircleUserRound className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{account.name}</span>
+                    </span>
+                    <span className="hint truncate">{account.detail}</span>
+                    <SignOutForm className="btn ghost mt-1 justify-self-start" />
+                  </div>
+                )}
+                {supabaseConfigured && !member && status === "error" && (
+                  <Link href="/login" className="btn ghost justify-self-start no-underline">
+                    Sign in
+                  </Link>
+                )}
                 <ThemeToggle />
                 <p className="hint">Developed by Syntaxure Labs</p>
               </div>
