@@ -22,6 +22,7 @@ import { CourseCardEditor } from "@/components/course/CourseCardEditor";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
+import { ReaderAccuracySheet } from "@/components/scoring/ReaderAccuracy";
 import { Button } from "@/components/ui/button";
 import { ResizableTextarea } from "@/components/ui/resizable-textarea";
 import { checkTournament } from "@/lib/data/config-checks";
@@ -1435,6 +1436,8 @@ function SetupWizard({
               <Link href="/draw">Open the draw</Link> to see a setting take effect on the proposal.
             </p>
           </section>
+
+          <ReaderAccuracySheet />
         </aside>
       </div>
     </div>

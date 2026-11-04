@@ -16,6 +16,7 @@ import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { HandicapSummary } from "@/components/scoring/HandicapSummary";
+import { ReaderAccuracyLine } from "@/components/scoring/ReaderAccuracy";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
@@ -391,6 +392,7 @@ export default function ScoresPage() {
             subtitle="Take a photo of the paper card. The reader can draft the scores; the desk still checks every value before submitting."
             dataHelp="scores-scan"
           >
+            <ReaderAccuracyLine />
             <RoleGate
               role={member?.role}
               allow={["owner", "organizer", "desk"]}

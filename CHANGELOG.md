@@ -10,6 +10,9 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **The reader states its accuracy.** Settings carries a card reader note with the measured figures
+  and what they do not mean, and the scan section on `/scores` shows the same two figures in one
+  line. The numbers live in one place, so retraining the model updates both screens.
 - **The card reader runs a local ONNX model.** Roboflow cannot export this project to ONNX: a
   classification project answers `HTTP 400 onnx is an invalid format for project type
   classification. Please use one of: folder, clip.` and version 4 lists `exports: ["folder"]`, so
