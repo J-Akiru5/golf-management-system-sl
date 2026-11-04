@@ -743,6 +743,16 @@ export function createSupabaseAdapters(
       // meant the deferred day rule could refuse the insert after the screen had already said the
       // entry was saved. The entry carries the write as `saved`, so the register screen can wait for
       // the database before it shows the saved state.
+      //
+      // The optimistic row comes off the screen exactly once, whichever way the write fails: the
+      // pre-flight refusal below, the RPC error, or a refusal in the payload. `dropped` makes the
+      // rollback idempotent so the action does not fire twice for one failure.
+      let dropped = false;
+      const drop = () => {
+        if (dropped) return;
+        dropped = true;
+        dispatch({ type: "removeEntry", id: entry.id });
+      };
       const saved = queuedWrite(async () => {
         const { data, error } = await callUnlisted(client, "create_registration", {
           p_id: entry.id,
@@ -763,7 +773,7 @@ export function createSupabaseAdapters(
         });
         if (error) {
           // Nothing reached the database, so the optimistic entry comes off the screen too.
-          dispatch({ type: "removeEntry", id: entry.id });
+          drop();
           const missing =
             error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
           throw new Error(
@@ -774,13 +784,13 @@ export function createSupabaseAdapters(
         }
         const result = (data ?? {}) as { ok?: boolean; message?: string };
         if (!result.ok) {
-          dispatch({ type: "removeEntry", id: entry.id });
+          drop();
           throw new Error(result.message ?? "The registration was refused. Nothing was saved.");
         }
       });
       // The pre-flight refusal (offline) never runs the work above, so roll the optimistic entry
-      // back for any rejection. A write that already removed it makes this a no-op.
-      void saved.catch(() => dispatch({ type: "removeEntry", id: entry.id }));
+      // back for any rejection. `drop` is idempotent, so this cannot remove it twice.
+      void saved.catch(drop);
 
       // Typed so the extra `saved` handle survives the repository's `RegistrationEntry` return
       // type; a screen that only needs the row can ignore it.
