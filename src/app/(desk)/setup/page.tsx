@@ -244,20 +244,23 @@ function SetupWizard({
   const useStandardClasses = () => {
     const carrier = draft.categories[0]?.id;
     if (!carrier) return;
+    const ranges = [
+      { name: "Class A", min: 0, max: 12 },
+      { name: "Class B", min: 12.1, max: 18 },
+      { name: "Class C", min: 18.1, max: 23 },
+      { name: "Class D", min: 23.1, max: draft.config.maxIndex },
+    ];
+    // Reuse the rows already saved, lowest band first, so the save updates them in place instead of
+    // inserting a new class on top of the row it replaces. Registrations and groups that still point
+    // at those rows keep working.
+    const existing = [...draft.flights].sort((a, b) => a.min - b.min);
     update(
       {
-        flights: [
-          { id: idOf("flt"), categoryId: carrier, name: "Class A", min: 0, max: 12 },
-          { id: idOf("flt"), categoryId: carrier, name: "Class B", min: 12.1, max: 18 },
-          { id: idOf("flt"), categoryId: carrier, name: "Class C", min: 18.1, max: 23 },
-          {
-            id: idOf("flt"),
-            categoryId: carrier,
-            name: "Class D",
-            min: 23.1,
-            max: draft.config.maxIndex,
-          },
-        ],
+        flights: ranges.map((range, index) => ({
+          id: existing[index]?.id ?? idOf("flt"),
+          categoryId: carrier,
+          ...range,
+        })),
       },
       "flights",
     );
