@@ -121,14 +121,16 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
   reg.teeId = tee.id;
   reg.playingHandicap = playingHandicap(index, tee, config.allowance);
 
-  const value = config.flightBasis === "index" ? index : reg.playingHandicap;
+  // The club classes the field on the handicap index: a player's own index, and for a member-guest
+  // pair the average of the two. The course handicap converter still sets the playing handicap.
+  const value = index;
   // Class first: the ranges are field-wide, so a player joins a class on their number alone and the
   // tee group plays no part.
   const flightMatches = matchFlights(flights, value);
   if (flightMatches.length !== 1) {
     return review(
       flightMatches.length === 0
-        ? `No class covers ${config.flightBasis} ${value}.`
+        ? `No class covers index ${value}.`
         : `Class ranges overlap at ${value}.`,
     );
   }
