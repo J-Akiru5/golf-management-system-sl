@@ -36,7 +36,7 @@ import {
 } from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
 import { SETUP_SECTIONS, type SetupSection } from "@/lib/data/setup-payload";
-import { waveCountForField, waveGapBetween, waveStartTimes } from "@/lib/data/tee-time";
+import { waveCountForField, waveStartTimes } from "@/lib/data/tee-time";
 import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
 import type { CategoryRule, FlightRule, StartFormat, Tee, TournamentConfig } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -60,15 +60,6 @@ const TAB_ALIAS: Record<string, SetupTab> = { registration: "fields" };
 
 /** Marker colours in the order the club lists them. A new tee takes the first one not in use. */
 const TEE_NAMES = ["Blue", "White", "Silver", "Red", "Gold", "Black"];
-
-/** A gap in the words an organizer uses: hours and minutes after the first wave. */
-function describeWaveGap(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return `${rest} minutes after the first wave.`;
-  if (rest === 0) return `${hours} hours after the first wave.`;
-  return `${hours} hours ${rest} minutes after the first wave.`;
-}
 
 function nextTeeName(tees: readonly Tee[]): string {
   const used = new Set(tees.map((tee) => tee.name.trim().toLowerCase()));
@@ -308,12 +299,6 @@ function SetupWizard({
     });
     mark("basics");
   };
-
-  // The organizer knows when the PM wave goes off, not the gap between waves. The gap is what the
-  // draw and the database store, so it is derived from the two times on the way in and shown back as
-  // a plain reading.
-  const secondWaveTime =
-    waveStartTimes(draft.config.firstTeeTime, draft.config.waveGapMinutes, 2)[1]?.time ?? "12:30";
 
   const checks = checkTournament(draft, draftTees, draftHoles);
   const bad = checks.filter((c) => c.level === "bad").length;
@@ -1273,17 +1258,21 @@ function SetupWizard({
                     </label>
                   ) : (
                     <label className="field">
-                      <span>Second wave (PM) start</span>
+                      <span>Minutes between waves (interval)</span>
                       <input
-                        type="time"
-                        value={secondWaveTime}
-                        aria-label="Second wave start time"
+                        type="number"
+                        min={1}
+                        max={240}
+                        value={draft.config.waveGapMinutes}
                         onChange={(e) => {
-                          const gap = waveGapBetween(draft.config.firstTeeTime, e.target.value);
-                          if (gap !== null) updateConfig({ waveGapMinutes: gap }, "start");
+                          const n = num(e.target.value);
+                          if (n !== null && n > 0) updateConfig({ waveGapMinutes: n }, "start");
                         }}
                       />
-                      <span className="hint">{describeWaveGap(draft.config.waveGapMinutes)}</span>
+                      <span className="hint">
+                        Wave A starts at the first tee time. Each later wave starts this many
+                        minutes after the one before it.
+                      </span>
                     </label>
                   )}
                   <label className="field">
@@ -1339,7 +1328,7 @@ function SetupWizard({
                       <p className="hint mt-0.5">
                         {fieldSize} {fieldSize === 1 ? "player" : "players"} entered. This event
                         plays two shotgun waves at most, A and B: Wave A starts at the first tee
-                        time and Wave B one gap later, so the first tee time and the gap above are
+                        time and Wave B starts the interval above after it, so those two numbers are
                         what move them.{" "}
                         {waveCount === 1
                           ? "This field fits in Wave A alone."
@@ -1358,10 +1347,10 @@ function SetupWizard({
                   </div>
                 )}
                 <p className="hint">
-                  Shotgun: a group starts on every hole, and the field plays Wave A in the morning
-                  and Wave B in the afternoon. A flight is never split unless it is larger than a
-                  wave, and that is flagged. Two-tee: slot n starts at the first time plus floor(n ÷
-                  2) × the interval, alternating holes 1 and 10.
+                  Shotgun: a group starts on every hole, and each wave starts the interval after the
+                  one before it. A flight is never split unless it is larger than a wave, and that
+                  is flagged. Two-tee: slot n starts at the first time plus floor(n ÷ 2) × the
+                  interval, alternating holes 1 and 10.
                 </p>
               </SectionCard>
             )}

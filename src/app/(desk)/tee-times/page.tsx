@@ -24,7 +24,6 @@ import type {
 } from "@/lib/data/types";
 import { fmtIndex, fmtTime } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
-import { cn } from "@/lib/ui/cn";
 
 /**
  * Tee times per playing day. Day selection and tee-time assignment are separate writes: this screen
@@ -35,7 +34,6 @@ export default function TeeTimesPage() {
   const { tournament, days, entries, players, caddies, adapters, status } = useDesk();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [batchTime, setBatchTime] = useState("");
-  const [batchWave, setBatchWave] = useState("");
   const [batching, setBatching] = useState<"missing" | "all" | null>(null);
   const [batchMessage, setBatchMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(
     null,
@@ -96,16 +94,11 @@ export default function TeeTimesPage() {
   const waveCount = MAX_WAVES;
   const waves =
     config.startFormat === "shotgun" && day
-      ? dayWaveStartTimes(
-          day,
-          dayIndex,
-          days.length,
-          config.firstTeeTime,
-          config.waveGapMinutes,
-          waveCount,
-        )
+      ? dayWaveStartTimes(day, config.firstTeeTime, config.waveGapMinutes, waveCount)
       : [];
-  const chosenTime = batchTime || waves[0]?.time || config.firstTeeTime;
+  // The operator types the batch time. A wave never fills it in: the wave letters come from the
+  // draw, and the times from the event's first tee time and its interval.
+  const chosenTime = batchTime || config.firstTeeTime;
   const dayStart = dayStartDraft?.key === dayKey ? dayStartDraft.value : (day?.startTime ?? "");
   const dayStartMessage = dayStartResult?.key === dayKey ? dayStartResult : null;
 
@@ -144,7 +137,7 @@ export default function TeeTimesPage() {
           await adapters.registrations.assignDayTee(row.entry.id, day.dayNumber, {
             teeTime: time,
             startHole: existing?.startHole ?? null,
-            wave: batchWave || existing?.wave || null,
+            wave: existing?.wave ?? null,
             confirmed: Boolean(existing?.confirmed && existing.startHole),
           });
           saved += 1;
@@ -163,7 +156,7 @@ export default function TeeTimesPage() {
           }
         : {
             tone: "ok",
-            text: `Set ${time}${batchWave ? ` in wave ${batchWave}` : ""} for ${saved} player${saved === 1 ? "" : "s"}. Their start holes come from the draw; a time can be confirmed once its hole is set.`,
+            text: `Set ${time} for ${saved} player${saved === 1 ? "" : "s"}. Each player keeps the wave the draw gave them; a time can be confirmed once its hole is set.`,
           },
     );
   }
@@ -299,14 +292,13 @@ export default function TeeTimesPage() {
               {config.startFormat === "shotgun" && rows.length > 0 && (
                 <div className="grid gap-3 rounded-[12px] border border-line bg-surface-sunken p-3">
                   <div>
-                    <b className="text-[14px]">AM and PM waves</b>
+                    <b className="text-[14px]">Waves and the batch time</b>
                     <p className="hint mt-0.5">
-                      A shotgun wave sends every player off at once. Every day runs a morning and an
-                      afternoon, so a short field is not pulled into one wave: AM{" "}
-                      {fmtTime(waves[0]?.time ?? config.firstTeeTime)} and PM{" "}
-                      {fmtTime(waves[1]?.time ?? config.firstTeeTime)}. Wave A starts at this
-                      day&apos;s own start time, and the last day&apos;s afternoon is 11:30. This
-                      day holds {rows.length} players.{" "}
+                      A shotgun wave sends every player off at once. Wave A starts at this
+                      day&apos;s own start time and Wave B starts the event&apos;s interval after
+                      it: A {fmtTime(waves[0]?.time ?? config.firstTeeTime)} and B{" "}
+                      {fmtTime(waves[1]?.time ?? config.firstTeeTime)}. This day holds {rows.length}{" "}
+                      players. A batch time is typed below, never filled in from a wave.{" "}
                       <Link href="/setup#start" className="underline">
                         Change the event times in Settings
                       </Link>
@@ -314,24 +306,6 @@ export default function TeeTimesPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-end gap-2">
-                    {waves.map((wave) => (
-                      <button
-                        key={wave.wave}
-                        type="button"
-                        className={cn(
-                          "btn small",
-                          chosenTime === wave.time && batchWave === wave.wave ? "gold" : "ghost",
-                        )}
-                        aria-pressed={chosenTime === wave.time && batchWave === wave.wave}
-                        onClick={() => {
-                          setBatchTime(wave.time);
-                          setBatchWave(wave.wave);
-                          setBatchMessage(null);
-                        }}
-                      >
-                        Wave {wave.wave} · {wave.time}
-                      </button>
-                    ))}
                     <label className="field w-36">
                       <span>Batch time</span>
                       <input

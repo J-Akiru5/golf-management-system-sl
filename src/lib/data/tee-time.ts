@@ -1,4 +1,3 @@
-import { AM_TEE_TIME, daySessions } from "@/lib/data/sessions";
 import { addMinutes, waveLetter } from "@/lib/routing/schedule";
 
 export type TeeAssignmentProblem = "both_or_neither" | "hole_range" | "confirmed_needs_both" | null;
@@ -75,78 +74,39 @@ export function waveCountForField(playerCount: number, holes: number, groupSize:
 }
 
 /**
- * The event's wave start times, from the settings the draw already uses.
- *
- * Wave A is the first tee time; each later wave is one wave gap after the previous one. The tee-time
- * screen offers these as batch choices, so a shotgun day is not typed player by player, and the
- * draw and the schedule cannot disagree about when a wave starts.
- */
-/**
- * The gap that puts the second wave at `second`, measured from `first`, in minutes.
- *
- * The desk sets the PM start time because that is what an organizer knows; the gap is what the draw
- * and the database store, so it is derived from the two times. A second wave earlier on the clock is
- * read as the next morning, and a second wave at the same time is refused: it is not a second wave.
- */
-export function waveGapBetween(first: string, second: string): number | null {
-  const from = minutesOfDay(first);
-  const to = minutesOfDay(second);
-  if (from === null || to === null) return null;
-  const gap = (to - from + 1440) % 1440;
-  return gap === 0 ? null : gap;
-}
-
-/** Minutes after midnight for an "HH:MM" value, or null when it is not a time of day. */
-function minutesOfDay(value: string): number | null {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
-  if (hours > 23 || minutes > 59) return null;
-  return hours * 60 + minutes;
-}
-
-/**
  * The wave start times for one playing day.
  *
- * Every day runs an AM and a PM session, so a short field still has two waves: a day with 35 players
- * is not turned into a morning-only day. Wave A starts at the day's own start time when one is set,
- * otherwise at the event's first tee time. Wave B is one step later, and the step is the event's
- * wave gap except on the last day, whose afternoon is 11:30 (the club's own rule). A count above
- * two is cut to two: this club plays Wave A and Wave B, never a third.
+ * A wave is an interval, not a session: Wave A starts at the day's own start time when one is set,
+ * otherwise at the event's first tee time, and each later wave starts the event's interval after the
+ * one before it. Nothing is read back from the session clock, so a 15-minute interval gives A 06:30
+ * and B 06:45 on every day alike.
+ *
+ * A count above two is cut to two: this club plays Wave A and Wave B, never a third.
  */
 export function dayWaveStartTimes(
   day: { startTime: string | null },
-  dayIndex: number,
-  dayCount: number,
   firstTeeTime: string,
-  waveGapMinutes: number,
-  count = 2,
-): WaveStart[] {
-  const waves = Math.min(MAX_WAVES, Math.max(1, Math.floor(count)));
-  const gap = Number.isFinite(waveGapMinutes) ? Math.max(0, Math.floor(waveGapMinutes)) : 0;
-  const first = day.startTime?.trim() || firstTeeTime;
-  const lastDay = dayCount > 0 && dayIndex === dayCount - 1;
-  const afternoon = daySessions(dayIndex, dayCount)[1];
-  const step = lastDay
-    ? Math.max(0, (minutesOfDay(afternoon?.time ?? "") ?? 0) - (minutesOfDay(AM_TEE_TIME) ?? 0))
-    : gap;
-  return Array.from({ length: waves }, (_, index) => ({
-    wave: waveLetter(index),
-    time: addMinutes(first, index * step),
-  }));
-}
-
-export function waveStartTimes(
-  firstTeeTime: string,
-  waveGapMinutes: number,
+  intervalMinutes: number,
   count = MAX_WAVES,
 ): WaveStart[] {
-  const waves = Math.min(MAX_WAVES, Math.max(1, Math.floor(count)));
-  const gap = Number.isFinite(waveGapMinutes) ? Math.max(0, Math.floor(waveGapMinutes)) : 0;
+  const first = day.startTime?.trim() || firstTeeTime;
+  return waveStartTimes(first, intervalMinutes, count);
+}
+
+/**
+ * Wave starts counted from the first time: A at that time, each later wave one interval after the
+ * one before it. The count is cut to the club's two waves, so no caller can ask for a Wave C.
+ */
+export function waveStartTimes(
+  firstTeeTime: string,
+  intervalMinutes: number,
+  count = MAX_WAVES,
+): WaveStart[] {
+  const wanted = Number.isFinite(count) ? Math.floor(count) : MAX_WAVES;
+  const waves = Math.min(MAX_WAVES, Math.max(1, wanted));
+  const step = Number.isFinite(intervalMinutes) ? Math.max(0, Math.floor(intervalMinutes)) : 0;
   return Array.from({ length: waves }, (_, index) => ({
     wave: waveLetter(index),
-    time: addMinutes(firstTeeTime, index * gap),
+    time: addMinutes(firstTeeTime, index * step),
   }));
 }

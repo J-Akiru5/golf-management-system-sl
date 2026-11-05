@@ -99,56 +99,65 @@ describe("waveCountForField", () => {
 });
 
 describe("dayWaveStartTimes", () => {
-  it("gives a day with a small field its AM and PM waves anyway", () => {
-    expect(dayWaveStartTimes({ startTime: null }, 1, 4, "06:30", 360)).toEqual([
+  it("puts wave B one interval after wave A", () => {
+    expect(dayWaveStartTimes({ startTime: null }, "06:30", 15)).toEqual([
       { wave: "A", time: "06:30" },
-      { wave: "B", time: "12:30" },
+      { wave: "B", time: "06:45" },
     ]);
   });
 
-  it("starts at the day's own time and keeps the last day's earlier afternoon", () => {
-    expect(dayWaveStartTimes({ startTime: "07:00" }, 3, 4, "06:30", 360)).toEqual([
+  it("starts at the day's own time and keeps the event's interval", () => {
+    expect(dayWaveStartTimes({ startTime: "07:00" }, "06:30", 20)).toEqual([
       { wave: "A", time: "07:00" },
-      { wave: "B", time: "12:00" },
+      { wave: "B", time: "07:20" },
+    ]);
+  });
+
+  it("reads the interval on every day instead of the day's session times", () => {
+    // The last day no longer borrows the 11:30 afternoon: the interval is the only step.
+    expect(dayWaveStartTimes({ startTime: null }, "06:30", 60).map((wave) => wave.time)).toEqual([
+      "06:30",
+      "07:30",
     ]);
   });
 
   it("cuts a larger count to the two waves the club plays", () => {
-    expect(
-      dayWaveStartTimes({ startTime: null }, 0, 4, "06:30", 360, 3).map((w) => w.wave),
-    ).toEqual(["A", "B"]);
-    expect(dayWaveStartTimes({ startTime: null }, 0, 4, "06:30", 360, 9)).toEqual([
+    expect(dayWaveStartTimes({ startTime: null }, "06:30", 15, 3).map((w) => w.wave)).toEqual([
+      "A",
+      "B",
+    ]);
+    expect(dayWaveStartTimes({ startTime: null }, "06:30", 15, 9)).toEqual([
       { wave: "A", time: "06:30" },
-      { wave: "B", time: "12:30" },
+      { wave: "B", time: "06:45" },
     ]);
   });
 });
 
 describe("waveStartTimes", () => {
-  it("lists wave A at the first tee and wave B one gap after", () => {
-    expect(waveStartTimes("06:30", 360)).toEqual([
+  it("lists wave A at the first tee and wave B one interval after", () => {
+    expect(waveStartTimes("06:30", 15)).toEqual([
       { wave: "A", time: "06:30" },
-      { wave: "B", time: "12:30" },
+      { wave: "B", time: "06:45" },
     ]);
   });
 
   it("honours the requested count", () => {
-    expect(waveStartTimes("07:00", 300, 1)).toEqual([{ wave: "A", time: "07:00" }]);
-    expect(waveStartTimes("07:00", 300, 0)).toHaveLength(1);
+    expect(waveStartTimes("07:00", 15, 1)).toEqual([{ wave: "A", time: "07:00" }]);
+    expect(waveStartTimes("07:00", 15, 0)).toHaveLength(1);
   });
 
   it("never offers a third wave, whatever count it is asked for", () => {
-    expect(waveStartTimes("06:30", 360, 6).map((wave) => wave.wave)).toEqual(["A", "B"]);
+    expect(waveStartTimes("06:30", 15, 6).map((wave) => wave.wave)).toEqual(["A", "B"]);
   });
 
   it("wraps past midnight rather than producing an invalid time", () => {
-    expect(waveStartTimes("20:00", 360, 2)).toEqual([
-      { wave: "A", time: "20:00" },
-      { wave: "B", time: "02:00" },
+    expect(waveStartTimes("23:50", 15, 2)).toEqual([
+      { wave: "A", time: "23:50" },
+      { wave: "B", time: "00:05" },
     ]);
   });
 
-  it("treats a nonsense gap as no gap", () => {
+  it("treats a nonsense interval as no gap", () => {
     expect(waveStartTimes("06:30", Number.NaN, 2).map((wave) => wave.time)).toEqual([
       "06:30",
       "06:30",
