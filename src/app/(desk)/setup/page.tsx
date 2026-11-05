@@ -1040,7 +1040,9 @@ function SetupWizard({
                           value={c.teeId}
                           onChange={(e) => setCategory(c.id, { teeId: e.target.value })}
                         >
-                          {tees.map((t) => (
+                          {/* The draft, not the saved list: a marker added in Course & tees has to be
+                              pickable before the section is saved, or the category waits a reload. */}
+                          {draftTees.map((t) => (
                             <option key={t.id} value={t.id}>
                               {t.name}
                             </option>
@@ -1065,7 +1067,7 @@ function SetupWizard({
                               gender: "M",
                               minAge: 0,
                               maxAge: null,
-                              teeId: tees[0]?.id ?? "white",
+                              teeId: draftTees[0]?.id ?? "white",
                             },
                           ],
                         },
@@ -1078,8 +1080,9 @@ function SetupWizard({
                 </div>
                 <p className="hint">
                   Regular, Senior and Ladies tee mappings are still open; only Super Senior = Silver
-                  is confirmed. Overlapping categories leave players in review rather than guessing
-                  one.
+                  is confirmed. A marker missing from the list is added in Course &amp; tees, and it
+                  appears here as soon as it is in the draft. Overlapping categories leave players
+                  in review rather than guessing one.
                 </p>
               </SectionCard>
             )}
