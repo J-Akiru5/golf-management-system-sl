@@ -1,3 +1,4 @@
+import { daySessions } from "@/lib/data/sessions";
 import { addMinutes, waveLetter } from "@/lib/routing/schedule";
 
 export type TeeAssignmentProblem = "both_or_neither" | "hole_range" | "confirmed_needs_both" | null;
@@ -91,6 +92,36 @@ export function dayWaveStartTimes(
 ): WaveStart[] {
   const first = day.startTime?.trim() || firstTeeTime;
   return waveStartTimes(first, intervalMinutes, count);
+}
+
+/**
+ * The tee time a player plays on one day: the day's session start, moved one interval for each wave
+ * after the first.
+ *
+ * Wave A plays at the session's own start, so a 15-minute interval puts a wave B player 15 minutes
+ * later. The morning starts at the day's own start time when the desk set one, and otherwise at the
+ * event's first tee time; the afternoon is the club's afternoon time, which is 11:30 on the last day
+ * and 12:30 on every other day. A player with no wave plays at the session start, and a day with no
+ * session is read as the morning: nothing is guessed beyond that.
+ */
+export function sessionWaveTime(input: {
+  session: "AM" | "PM" | null;
+  wave: string | null;
+  day: { startTime: string | null };
+  dayIndex: number;
+  dayCount: number;
+  firstTeeTime: string;
+  intervalMinutes: number;
+}): string {
+  const morning = input.day.startTime?.trim() || input.firstTeeTime;
+  const afternoon = daySessions(input.dayIndex, input.dayCount)[1]?.time ?? "12:30";
+  const base = input.session === "PM" ? afternoon : morning;
+  const step = Number.isFinite(input.intervalMinutes)
+    ? Math.max(0, Math.floor(input.intervalMinutes))
+    : 0;
+  const position = wavePosition(input.wave);
+  const offset = position === null ? 0 : Math.max(0, position - 1) * step;
+  return addMinutes(base, offset);
 }
 
 /**

@@ -11,6 +11,7 @@ import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
 import {
   dayWaveStartTimes,
   MAX_WAVES,
+  sessionWaveTime,
   teeAssignmentProblem,
   type WaveStart,
   waveProblem,
@@ -22,7 +23,7 @@ import type {
   RegistrationEntry,
   TournamentDay,
 } from "@/lib/data/types";
-import { type DrawTeeTime, teeTimesFromDraw } from "@/lib/draw/tee-times";
+import { type DrawPlacement, placementsFromDraw } from "@/lib/draw/tee-times";
 import { fmtIndex, fmtTime } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -64,8 +65,8 @@ export default function TeeTimesPage() {
     () => new Map(players.map((player) => [player.id, player])),
     [players],
   );
-  // What each player takes from the draw: their group's time, wave letter and start hole.
-  const drawTimes = useMemo(() => teeTimesFromDraw(draw ?? []), [draw]);
+  // Where the draw put each player: their wave and their hole. The clock comes from the session.
+  const placements = useMemo(() => placementsFromDraw(draw ?? []), [draw]);
   const rows = useMemo(() => {
     if (!day) return [];
     return entries
@@ -92,7 +93,7 @@ export default function TeeTimesPage() {
   const timed = rows.filter(({ entry }) => day && entry.dayTee?.[day.dayNumber]?.teeTime).length;
   const untimed = rows.length - timed;
   /** Players on this day whose group is on the board, so the draw can give them a time. */
-  const fromDraw = rows.filter(({ player }) => drawTimes.has(player.id)).length;
+  const fromDraw = rows.filter(({ player }) => placements.has(player.id)).length;
   const config = tournament.config;
   // The club plays two waves a day and never a third, each one interval after the one before it. A
   // wave already written on a player stays in that player's own list, so nothing is invented.
@@ -167,17 +168,38 @@ export default function TeeTimesPage() {
   }
 
   /**
-   * Copies the draw onto this day: each player's time, wave letter and start hole come from the group
-   * they were drawn into. Nothing is invented for a player the board has no group for; those stay
-   * without a time and are counted in the message. Times are saved unconfirmed, so the desk still
-   * ticks each one after looking at it.
+   * Copies the draw onto this day: each player's wave letter and start hole come from the group they
+   * were drawn into, and the time is that day's own session start moved by the wave interval. A
+   * morning wave B player therefore goes off 15 minutes after the morning start, and an afternoon
+   * wave B player 15 minutes after that day's afternoon start. Nothing is invented for a player the
+   * board has no group for; those stay without a time and are counted in the message. Times are
+   * saved unconfirmed, so the desk still ticks each one after looking at it.
    */
   async function applyFromDraw() {
     if (!day || batching) return;
-    const targets: { entry: RegistrationEntry; player: PlayerRecord; drawn: DrawTeeTime }[] = [];
+    const targets: {
+      entry: RegistrationEntry;
+      player: PlayerRecord;
+      placed: DrawPlacement;
+      teeTime: string;
+    }[] = [];
     for (const { entry, player } of rows) {
-      const drawn = drawTimes.get(player.id);
-      if (drawn) targets.push({ entry, player, drawn });
+      const placed = placements.get(player.id);
+      if (!placed) continue;
+      targets.push({
+        entry,
+        player,
+        placed,
+        teeTime: sessionWaveTime({
+          session: entry.daySessions?.[day.dayNumber] ?? null,
+          wave: placed.wave,
+          day,
+          dayIndex,
+          dayCount: days.length,
+          firstTeeTime: config.firstTeeTime,
+          intervalMinutes: config.waveGapMinutes,
+        }),
+      });
     }
     if (targets.length === 0) {
       setBatchMessage({
@@ -197,9 +219,9 @@ export default function TeeTimesPage() {
         if (!item) return;
         try {
           await adapters.registrations.assignDayTee(item.entry.id, day.dayNumber, {
-            teeTime: item.drawn.teeTime,
-            startHole: item.drawn.startHole,
-            wave: item.drawn.wave,
+            teeTime: item.teeTime,
+            startHole: item.placed.startHole,
+            wave: item.placed.wave,
             confirmed: false,
           });
           saved += 1;
@@ -215,13 +237,13 @@ export default function TeeTimesPage() {
       failed.length > 0
         ? {
             tone: "bad",
-            text: `Took the draw's time for ${saved} player${saved === 1 ? "" : "s"}. ${failed.length} could not be saved: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}.`,
+            text: `Took the draw's wave for ${saved} player${saved === 1 ? "" : "s"}. ${failed.length} could not be saved: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}.`,
           }
         : {
             tone: "ok",
-            text: `Took the draw's time, wave and hole for ${saved} player${saved === 1 ? "" : "s"}${
+            text: `Took the draw's wave and hole for ${saved} player${saved === 1 ? "" : "s"}${
               left > 0 ? `; ${left} on this day ${left === 1 ? "has" : "have"} no group yet` : ""
-            }. They are saved unconfirmed, so each one still needs the desk's tick.`,
+            }. Each time is their own AM or PM start moved by their wave, saved unconfirmed so the desk still ticks it.`,
           },
     );
   }
@@ -363,8 +385,8 @@ export default function TeeTimesPage() {
                       day&apos;s own start time and Wave B starts the event&apos;s interval after
                       it: A {fmtTime(waves[0]?.time ?? config.firstTeeTime)} and B{" "}
                       {fmtTime(waves[1]?.time ?? config.firstTeeTime)}. This day holds {rows.length}{" "}
-                      players. A batch time is typed below, or each player&apos;s own time, wave and
-                      hole are taken straight from the draw.{" "}
+                      players. A batch time is typed below, or each player&apos;s wave and hole are
+                      taken from the draw and timed at their own AM or PM session.{" "}
                       <Link href="/setup#start" className="underline">
                         Change the event times in Settings
                       </Link>

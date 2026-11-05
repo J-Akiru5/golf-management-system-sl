@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dayWaveStartTimes,
+  sessionWaveTime,
   teeAssignmentProblem,
   waveCountForField,
   wavePosition,
@@ -130,6 +131,50 @@ describe("dayWaveStartTimes", () => {
       { wave: "A", time: "06:30" },
       { wave: "B", time: "06:45" },
     ]);
+  });
+});
+
+describe("sessionWaveTime", () => {
+  const base = {
+    day: { startTime: null },
+    dayCount: 4,
+    firstTeeTime: "06:30",
+    intervalMinutes: 15,
+  };
+
+  it("puts wave A at the session's own start", () => {
+    expect(sessionWaveTime({ ...base, session: "AM", wave: "A", dayIndex: 2 })).toBe("06:30");
+    expect(sessionWaveTime({ ...base, session: "PM", wave: "A", dayIndex: 2 })).toBe("12:30");
+  });
+
+  it("moves each later wave one interval later, in whichever session the player plays", () => {
+    expect(sessionWaveTime({ ...base, session: "AM", wave: "B", dayIndex: 2 })).toBe("06:45");
+    expect(sessionWaveTime({ ...base, session: "PM", wave: "B", dayIndex: 2 })).toBe("12:45");
+  });
+
+  it("keeps the last day's afternoon at 11:30", () => {
+    expect(sessionWaveTime({ ...base, session: "PM", wave: "A", dayIndex: 3 })).toBe("11:30");
+    expect(sessionWaveTime({ ...base, session: "PM", wave: "B", dayIndex: 3 })).toBe("11:45");
+  });
+
+  it("starts the morning at the day's own start time when it has one", () => {
+    expect(
+      sessionWaveTime({
+        ...base,
+        session: "AM",
+        wave: "A",
+        dayIndex: 1,
+        day: { startTime: "07:00" },
+      }),
+    ).toBe("07:00");
+  });
+
+  it("reads a missing session as the morning and a missing wave as the first", () => {
+    expect(sessionWaveTime({ ...base, session: null, wave: null, dayIndex: 0 })).toBe("06:30");
+  });
+
+  it("treats an unreadable wave as the first, never as a later one", () => {
+    expect(sessionWaveTime({ ...base, session: "AM", wave: "?", dayIndex: 0 })).toBe("06:30");
   });
 });
 
