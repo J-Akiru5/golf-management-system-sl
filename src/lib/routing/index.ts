@@ -14,7 +14,7 @@ import type {
   TournamentConfig,
 } from "./types";
 
-export { ageOn, playingHandicap, rawCourseHandicap } from "./handicap";
+export { ageOn, courseHandicap, playingHandicap, rawCourseHandicap } from "./handicap";
 export { addMinutes } from "./schedule";
 export * from "./types";
 
@@ -95,12 +95,14 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
   reg.playingHandicap = playingHandicap(player.index, tee, config.allowance);
 
   const value = config.flightBasis === "index" ? player.index : reg.playingHandicap;
-  const flightMatches = matchFlights(flights, category.id, value);
+  // Class first: the ranges are field-wide, so a player joins a class on their number alone and the
+  // tee group plays no part.
+  const flightMatches = matchFlights(flights, value);
   if (flightMatches.length !== 1) {
     return review(
       flightMatches.length === 0
-        ? `No ${category.name} flight covers ${config.flightBasis} ${value}.`
-        : `Flight ranges overlap at ${value} in ${category.name}.`,
+        ? `No class covers ${config.flightBasis} ${value}.`
+        : `Class ranges overlap at ${value}.`,
     );
   }
   reg.flightId = (flightMatches[0] as FlightRule).id;
@@ -177,12 +179,9 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
     for (const id of g.playerIds) lockedIds.add(id);
   }
 
-  // Flight play order: category order first, then lowest handicap range first.
-  const catOrder = new Map(categories.map((c, i) => [c.id, i]));
-  const orderedFlights = [...flights].sort(
-    (a, b) =>
-      (catOrder.get(a.categoryId) ?? 0) - (catOrder.get(b.categoryId) ?? 0) || a.min - b.min,
-  );
+  // Class play order: the lowest handicap range first. Classes never sort by category or tee, so a
+  // class stays whole even when its players come from different tee groups.
+  const orderedFlights = [...flights].sort((a, b) => a.min - b.min);
 
   const placed: { flight: FlightRule; groups: string[][] }[] = [];
   for (const flight of orderedFlights) {
@@ -198,7 +197,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
     const cut = chunk(members, sizes);
     for (const g of cut) {
       if (g.length < config.minGroupSize) {
-        warnings.push(`Flight ${flight.name}: a group has only ${g.length} player(s).`);
+        warnings.push(`Class ${flight.name}: a group has only ${g.length} player(s).`);
       }
     }
     placed.push({ flight, groups: cut.map((g) => g.map((r) => r.playerId)) });
@@ -271,7 +270,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
       cursor += flight.groups.length;
       if (waves.size > 1 && flight.groups.length <= config.holes) {
         warnings.push(
-          `Flight ${flight.flight.name} is split across waves because locked groups hold slots in the first wave.`,
+          `Class ${flight.flight.name} is split across waves because locked groups hold slots in the first wave.`,
         );
       }
     }

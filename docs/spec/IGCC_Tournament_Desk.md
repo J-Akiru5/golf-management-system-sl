@@ -24,6 +24,11 @@ Answers from the organizer, 17 Oct 2026. These go into the system as tournament 
 | Ladies | Own category and own tees | Per tournament |
 | Maximum handicap | 30, checked on the NGAP index. Above 30 cannot register. | Per tournament |
 | Flights | Fixed handicap ranges, grouped by flight | Per tournament |
+| Classes | Class A 0–12, Class B 13–18, Class C 19–23, Class D 24 and above, read off the NGAP record. Each class is played and awarded on its own. | Per tournament |
+| Teams | One member and one guest. The pair plays as one team, and its handicap is the rounded average of both players. | Per tournament |
+| Class prizes | Champion, 1st runner-up and 2nd runner-up in each class. | Per tournament |
+| Team net prize | Highest Scoring Team NET: aggregate Stableford, both partners' points added on every hole, counted on the team handicap. The higher 36-hole total wins. | Per tournament |
+| Team gross prize | Over-All Champion Team on gross, the pair's actual strokes with no pick-up scores. The lower total wins. | Per tournament |
 | Holes | 18 by default | Per course |
 | Shotgun | Max 4 players per hole. When all 18 holes are full, a second wave starts a set gap after wave 1 (1A = wave 1, 1B = wave 2). A flight is never split across waves. | Per tournament |
 | Two-tee start ("barrel") | Holes 1 and 10, groups queue at an interval | Per tournament |
@@ -33,6 +38,66 @@ Answers from the organizer, 17 Oct 2026. These go into the system as tournament 
 | Extra fields | Organizer chooses per event (e.g. T-shirt size) | Per tournament |
 | Player photo | Player sends one, or the desk takes it at on-site registration | Player profile |
 | Tenancy | Built for IGCC only, data model ready for more clubs | Architecture |
+
+**Classes, confirmed 5 November 2026.** The club runs class events: a player is placed by handicap into Class A (0–12), Class B (13–18), Class C (19–23) or Class D (24 and above), and each class is played and awarded separately. Age and gender do not decide the class; the NGAP record does.
+
+**Class beats the tee, confirmed 5 November 2026.** A class spans the whole field regardless of tee group. One set of Class A to D is cut over every player, and the tee a player plays from (blue, white, silver, red) never splits, reorders or caps a class. A Class A can therefore hold a man on blue next to a lady on red, and the draw fills a class before it looks at tees.
+
+The class number is the team's average handicap index, confirmed 5 November 2026: the two partners' indexes are added, divided by two and rounded, and both partners sit in that class. The pairing itself can stay individual, so the partners may be drawn into different groups; their cards only meet when the scores are added up for the team net and the team gross. The desk does not store teams yet, so until it does a player is classed on their own index at the event's class basis. Once pairs are stored, the average takes over.
+
+In the desk a class is a stored flight. The flights table still hangs a row off a category, so every class is kept under one carrier category; the engine matches a class by range alone and ignores the carrier, which is what lets one class hold several tee groups. Settings calls the screen Classes, and a class added there is not scoped to the category it sits under. The organizers also said the draw should not be held up by missing player data, since guests often never send it; a confirmed entry without an age or a class plays in an Unclassified group and is corrected later.
+
+**Teams, confirmed 5 November 2026.** A team is one member and one guest. The team handicap is the rounded average of the two players, and that average is what puts the pair in its class. Team NET is aggregate Stableford: both partners play their own ball, each off their own handicap, and their points are added on every hole over 36 holes. The higher team total wins. The Over-All Champion Team is on gross, the pair's actual strokes with no pick-up, lowest total. The desk keeps routing single players and stores no team row, so the pairing, the averaged handicap and the team scores are not modelled yet; the owner chose on 5 November 2026 to keep the draw on individuals for now, and teams are paired by hand when the sheets are printed.
+
+**Course handicap, confirmed 5 November 2026.** Scoring uses the course handicap, not the index. The club's printed tables are the WHS formula rounded half up, and the desk computes it from the tee's numbers rather than storing 60 rows per tee:
+
+```
+Course handicap = Index x (Slope / 113) + (Course Rating - Par)
+```
+
+At the 100% allowance these events use, the playing handicap is the same number. Tests check the computation against rows read off the printed sheets for all three tees. Ratings in play from 26 October 2026:
+
+| Tee | Course rating | Slope | Par |
+| --- | --- | --- | --- |
+| Men's Blue | 69.6 | 130 | 70 |
+| Men's White | 67.9 | 127 | 70 |
+| Women's Red | 72.1 | 126 | 70 |
+
+Men 70 and over play the Silver markers but use the White conversion, so Silver carries the White numbers. The committee may adjust a player's course handicap; the desk records the adjusted number against the override reason.
+
+## Conditions of play: 24th IGCCI Bamboo Tee Invitational
+
+Received as `bamboo-tee-Rules-of-Play.pdf` on 5 November 2026, together with the committee's own list of clarifications. These are the tournament's conditions; the settings above are how the desk expresses them.
+
+| Item | Condition |
+| --- | --- |
+| Dates and place | 12–15 November 2026, Santa Barbara, Iloilo |
+| Team | One IGCCI member (active, nominee or proprietary non-playing shareholder in good standing) and one guest. Member + member and guest + guest teams are not allowed. |
+| Amateurs only | Professionals, touring or teaching, and active caddies cannot play. |
+| Entry fee | P12,000 per two-man team. Registering on or before 15 October 2026 includes one free joker mulligan for each day. |
+| Handicap source | NGAP WHS certified index. A foreign member-guest without one may use a USGA or R&A St Andrews accredited handicap. Where a player holds several, the lowest is used. |
+| Handicap date | The index for 30 September 2026. |
+| Handicap cap | 30. The committee may adjust a registered handicap. |
+| No verifiable handicap | Zero handicap for the whole tournament. |
+| Format | 36 holes of aggregate Stableford in two-man teams: both partners play their own ball, and their points are added on every hole. Net of handicap per hole. |
+| Points | Double bogey or worse 0, bogey 1, par 2, birdie 3, eagle 4, albatross 5. |
+| Pick-up | A player with no chance of a point must pick up, score 0 and mark an X. Two points off the day's score per breach, and a signed score above net bogey counts as a breach. |
+| Classes | Team handicap is the rounded average of both players. Class A 0–12, B 13–18, C 19–23, D 24 and above, each with champion, 1st and 2nd runner-up. |
+| Prizes | Highest Scoring Team NET, and Over-All Champion Team on gross with no pick-up scores. |
+| Ties | Countback on the final round cards: net team points over holes 16, 17 and 18, then holes 13, 14 and 15, then a drawing of lots. |
+| Tees | Blue for men under 60, white for men 60 and above, silver for men 70 and above, red for ladies. Handicaps are adjusted by the IGCCI and WHS tee computation. |
+| Start times | Thursday to Saturday: shotgun at 6:30 AM and 12:30 PM. Sunday: 6:30 AM and 11:30 AM. |
+| Schedules | Thu AM–Sat PM, Thu PM–Sat AM, Fri AM–Sun PM, Fri PM–Sun AM. A team's schedule is final once chosen; only the committee changes it, and the committee assigns holes and flightmates by division. |
+| Field | At most 200 teams (400 players). A slot is confirmed on payment, first paid first served. Registration closes on 22 October 2026. |
+| Play | R&A Rules of Golf and local rules. The triangular area left of the Hole 1 drive is a no-play zone: one penalty shot, then a drop in the designated area. Changing balls on the green is not allowed. |
+| Mulligans | One front and one back for two days at P1,000; a joker mulligan for two days at P500, usable anywhere except the putting green. At most three a day. Declared to the marker before the shot and marked M. No provisional mulligan, none on the green, and a hole in one made with one does not win the hole-in-one prize. |
+| Gimme | 24 inches. |
+| Cards | Marked by the other team in the flight, or by a marshal if that team withdraws; signed by player and marker; handed in within 15 minutes of holing out. Players score, never caddies, and only with the committee's official pen. |
+| Pace and lateness | 40 seconds a shot. A group with an open hole ahead is warned, then loses 2 points or scores zero on the open holes. A late team joins if the other team has not played its second shot, otherwise it starts on the next hole with X and zero on the unplayed holes. |
+| Weather | The tournament director suspends and resumes play. Only completed rounds count; one complete round is enough to declare results, and the highest points in that round wins. |
+| Hole in one | Subject to the sponsor's conditions, with at least three witnesses from the same flight including the player. The prize is split if there is more than one. |
+
+Not modelled yet: teams as a stored pair, aggregate team scoring, mulligans, the pick-up penalty and the countback. The desk scores individual players and pairs teams by hand, which the owner chose on 5 November 2026.
 
 ## How auto-routing works
 
@@ -122,7 +187,7 @@ Every table carries `club_id` with row-level security from day one. Adding it no
 | handicap_records | Player, index, effective date, source (NGAP export upload or manual fix) |
 | tournaments | Date, course, cut-off date, start format, interval, first tee time, wave gap, max handicap, allowance |
 | categories | Tournament, name, gender, age range, tee |
-| flights | Category, name, handicap range |
+| flights | Class: name and handicap range, spanning the whole field. A carrier category is still required by the table, but the class is not scoped to it. |
 | registration_fields | Extra questions per tournament, e.g. T-shirt size |
 | registrations | Player, frozen index, category, tee, course handicap, flight, payment status, extra answers, overrides |
 | groups | Flight, start hole, wave (A/B) or tee time, locked flag |

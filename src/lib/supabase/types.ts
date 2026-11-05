@@ -246,6 +246,7 @@ export type RegistrationDayRow = {
   registration_id: string;
   tournament_day_id: string;
   selected: boolean;
+  session: string | null;
   tee_time: string | null;
   start_hole: number | null;
   tee_confirmed: boolean;
@@ -700,6 +701,7 @@ export interface Database {
           registration_id: string;
           tournament_day_id: string;
           selected?: boolean;
+          session?: string | null;
           tee_time?: string | null;
           start_hole?: number | null;
           tee_confirmed?: boolean;
@@ -953,7 +955,7 @@ export interface Database {
         Returns: Json;
       };
       set_registration_days: {
-        Args: { p_registration: string; p_days: number[] };
+        Args: { p_registration: string; p_days: number[]; p_sessions: Json };
         Returns: Json;
       };
       assign_registration_day_tee: {

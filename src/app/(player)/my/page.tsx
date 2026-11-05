@@ -27,7 +27,16 @@ const claimNotice = (t: Translate, code: string): { tone: "ok" | "bad"; text: st
   return message ? { tone: "bad", text: message } : null;
 };
 
-function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
+function ClaimCard({
+  t,
+  notice,
+  defaultNgap,
+}: {
+  t: Translate;
+  notice: string | null;
+  /** Carried by a scorecard's QR code, so the form opens with the number already in it. */
+  defaultNgap: string;
+}) {
   return (
     <section className="card grid gap-4" aria-labelledby="claim-h" data-help="my-claim">
       <div className="grid gap-1">
@@ -58,7 +67,13 @@ function ClaimCard({ t, notice }: { t: Translate; notice: string | null }) {
         <form action={claimPlayerRecord} className="grid gap-3.5">
           <label className="field">
             <span>{t("player.claim.ngapId")}</span>
-            <input name="ngapId" type="text" inputMode="numeric" autoComplete="off" />
+            <input
+              name="ngapId"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              defaultValue={defaultNgap}
+            />
           </label>
           <label className="field">
             <span>{t("player.claim.birthdate")}</span>
@@ -80,12 +95,14 @@ function PortalBody({
   notice,
   linkedMessage,
   today,
+  defaultNgap,
 }: {
   t: Translate;
   state: PortalState;
   notice: string | null;
   linkedMessage: string | null;
   today: string;
+  defaultNgap: string;
 }) {
   if (!state.linked || !state.player) {
     // Not linked is not a locked door. The player pages stay open and say what is missing; only
@@ -95,7 +112,7 @@ function PortalBody({
         <PlayerOfflineNotice />
         <PortalEntries state={state} t={t} linkedMessage={linkedMessage} />
         <AppTiles t={t} />
-        <ClaimCard t={t} notice={notice} />
+        <ClaimCard t={t} notice={notice} defaultNgap={defaultNgap} />
       </div>
     );
   }
@@ -116,11 +133,13 @@ function PortalBody({
 export default async function MyGolfPage({
   searchParams,
 }: {
-  searchParams: Promise<{ claim?: string }>;
+  searchParams: Promise<{ claim?: string; ngap?: string }>;
 }) {
   const { t } = await getI18n();
   const params = await searchParams;
   const code = params.claim ?? "";
+  // A printed card's QR code carries the NGAP number, so the claim form opens with it filled in.
+  const defaultNgap = (params.ngap ?? "").replace(/[^0-9A-Za-z-]/g, "").slice(0, 40);
   const parsedNotice = code ? claimNotice(t, code) : null;
   const notice = parsedNotice?.tone === "bad" ? parsedNotice.text : null;
   const linkedMessage = parsedNotice?.tone === "ok" ? parsedNotice.text : null;
@@ -163,6 +182,7 @@ export default async function MyGolfPage({
       notice={notice}
       linkedMessage={linkedMessage}
       today={manilaToday()}
+      defaultNgap={defaultNgap}
     />
   );
 }

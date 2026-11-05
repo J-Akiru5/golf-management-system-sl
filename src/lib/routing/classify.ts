@@ -17,11 +17,10 @@ export function matchCategories(
   );
 }
 
-/** Finds the flight in a category whose range contains the value. */
-export function matchFlights(
-  flights: FlightRule[],
-  categoryId: string,
-  value: number,
-): FlightRule[] {
-  return flights.filter((f) => f.categoryId === categoryId && value >= f.min && value <= f.max);
+/**
+ * Finds the classes whose band contains the value. A class is not scoped to a category or a tee: the
+ * same ranges apply to every player, which is what makes class the priority over the tee group.
+ */
+export function matchFlights(flights: FlightRule[], value: number): FlightRule[] {
+  return flights.filter((f) => value >= f.min && value <= f.max);
 }

@@ -291,6 +291,11 @@ export interface RegistrationEntry {
   teePreferences: Record<string, string | null>;
   /** Selected tournament day numbers. Structured; never a display string. */
   selectedDays?: number[];
+  /**
+   * The session the desk put the player in, per day number: AM or PM. The final playing day runs one
+   * tee time, so it is never stored here. Missing means the desk has not chosen yet.
+   */
+  daySessions?: Record<number, "AM" | "PM">;
   /** Confirmed tee-time assignments, keyed by tournament day number. */
   dayTee?: Record<number, DayTeeAssignment>;
   /** Active caddie assignment per tournament day, when one exists. */
@@ -318,7 +323,12 @@ export interface RegistrationEntry {
 }
 
 /** A routing fact the desk still has to collect. */
-export type MissingFact = "birthdate" | "gender" | "handicap index";
+/**
+ * A routing fact the desk still has to collect. Category and flight are on the entry, not the player
+ * record: an override can be recorded before the class is known, and the entry then plays in an
+ * Unclassified group.
+ */
+export type MissingFact = "birthdate" | "gender" | "handicap index" | "category" | "flight";
 
 /** A change the organizer made by hand, with the reason. The router never does this. */
 export interface ManualOverride {

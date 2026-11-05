@@ -1,7 +1,9 @@
 "use client";
 
+import { QRCodeSVG } from "qrcode.react";
 import { fmtHcp, fmtTime } from "@/lib/format";
 import { handicapDots } from "@/lib/print/handicap-dots";
+import { SITE_URL } from "@/lib/seo";
 import styles from "./print.module.css";
 import type {
   CourseDataStatus,
@@ -48,11 +50,18 @@ export function Scorecard({
     holes.length === HOLE_COUNT &&
     holesByNumber.size === HOLE_COUNT &&
     orderedHoles.every((hole) => hole.par !== null && hole.strokeIndex !== null);
-  const canAllocateDots = courseDataComplete && courseDataStatus !== "missing";
+  const canAllocateDots = courseDataComplete;
   const startLabel =
     startFormat === "shotgun"
       ? `Hole ${group.startHole}${group.wave ? ` · Wave ${group.wave}` : ""}`
       : `Tee ${group.startHole}`;
+  // The tee is part of the card: the course handicap on it is read off that tee's rating and slope,
+  // so a group playing several tees names each one in the header.
+  const teesInPlay = [...new Set(players.map((player) => player.teeName).filter(Boolean))];
+  // Each player gets their own code, because a claim is per player. Scanning opens the player page
+  // with the NGAP number already in the claim form, so linking is one birthdate away.
+  const claimUrl = (ngapId: string) => `${SITE_URL}/my?ngap=${encodeURIComponent(ngapId)}`;
+  const codePlayers = players.filter((player) => (player.ngapId ?? "").trim() !== "");
 
   return (
     <article
@@ -60,11 +69,6 @@ export function Scorecard({
       className={styles.scorecard}
       aria-label={`Scorecard for group ${group.number}`}
     >
-      {courseDataStatus === "placeholder" && (
-        <div className={styles.watermark} aria-hidden="true">
-          PLACEHOLDER COURSE DATA
-        </div>
-      )}
       <div className={styles.scorecardContent}>
         <header className={styles.scorecardHeader}>
           <div className={styles.scorecardBrand}>
@@ -90,14 +94,32 @@ export function Scorecard({
             <span>{startLabel}</span>
             <span>{fmtTime(group.time)}</span>
             <span>{group.flight}</span>
+            <span>
+              {teesInPlay.length > 0 ? `Tees: ${teesInPlay.join(", ")}` : "Tees: not set"}
+            </span>
           </div>
         </header>
 
-        {courseDataStatus === "placeholder" && (
-          <p className={styles.courseNotice}>
-            <b>PLACEHOLDER COURSE DATA</b> · Sample values only. Do not use as IGCC course data.
-          </p>
+        {codePlayers.length > 0 && (
+          <div className={styles.qrPanel}>
+            {codePlayers.map((player) => (
+              <div key={player.id} className={styles.qrPlayer}>
+                <QRCodeSVG
+                  value={claimUrl((player.ngapId ?? "").trim())}
+                  size={68}
+                  level="M"
+                  aria-label={`QR code to link ${player.name}`}
+                />
+                <span>{player.name}</span>
+              </div>
+            ))}
+            <p className={styles.qrNote}>
+              Scan your code, then confirm your birthdate to link your NGAP record and open your
+              card.
+            </p>
+          </div>
         )}
+
         {!courseDataComplete && (
           <p className={styles.courseNotice} role="status">
             <b>COURSE DATA NOT ENTERED</b> · Par and stroke index are required for handicap dots.
@@ -145,7 +167,12 @@ export function Scorecard({
                   <th scope="row">
                     <span className={styles.playerName}>{player.name}</span>
                     <span className={styles.playerMeta}>
-                      {player.teeName ?? "Tee not set"} · PH {fmtHcp(player.playingHandicap)}
+                      {player.teeName ?? "Tee not set"}
+                      {player.teeRating != null && player.teeSlope != null
+                        ? ` ${player.teeRating}/${player.teeSlope}`
+                        : ""}
+                      {" · PH "}
+                      {fmtHcp(player.playingHandicap)}
                     </span>
                   </th>
                   {orderedHoles.map((hole, index) => {

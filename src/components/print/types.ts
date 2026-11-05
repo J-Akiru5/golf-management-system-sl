@@ -10,7 +10,13 @@ export interface PrintPlayer {
   name: string;
   handicapIndex: number | null;
   playingHandicap: number | null;
+  /** The tee the player is scored from: Blue, White, Silver or Red. */
   teeName: string | null;
+  /** That tee's rating and slope, printed so the course handicap can be checked from the card. */
+  teeRating?: number | null;
+  teeSlope?: number | null;
+  /** The NGAP number the card's QR code carries, so a player can link their record by scanning. */
+  ngapId?: string | null;
   /** A signed or data URL only when internal photo consent is recorded. */
   photo?: string;
 }

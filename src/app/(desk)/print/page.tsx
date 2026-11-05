@@ -64,12 +64,19 @@ export default function PrintCenter() {
     players: group.playerIds.map((id) => {
       const player = playerById.get(id);
       const registration = regById.get(id);
+      const tee = registration?.teeId
+        ? tees.find((item) => item.id === registration.teeId)
+        : undefined;
       return {
         id,
         name: player?.name ?? "Unknown player",
         handicapIndex: registration?.frozenIndex ?? null,
         playingHandicap: registration?.playingHandicap ?? null,
-        teeName: registration?.teeId ? names.tee(registration.teeId) : null,
+        // The tee and its numbers go on the card: the course handicap beside them comes off them.
+        teeName: registration?.teeId ? (tee?.name ?? names.tee(registration.teeId)) : null,
+        teeRating: tee?.courseRating ?? null,
+        teeSlope: tee?.slope ?? null,
+        ngapId: player?.ngapId ?? null,
         photo: player ? photoOf(player) : undefined,
       };
     }),

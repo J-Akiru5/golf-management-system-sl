@@ -61,15 +61,15 @@ export const DEMO_CATEGORIES: CategoryRule[] = [
   { id: "ladies", name: "Ladies", gender: "F", minAge: 0, maxAge: null, teeId: "red" },
 ];
 
+/**
+ * Classes, not per-category flights: one set of ranges over the whole field, so a class holds
+ * players from every tee. The categoryId is storage only, and every row carries the same carrier.
+ */
 export const DEMO_FLIGHTS: FlightRule[] = [
-  { id: "r-a", categoryId: "regular", name: "Regular A", min: -10, max: 12 },
-  { id: "r-b", categoryId: "regular", name: "Regular B", min: 12.1, max: 20 },
-  { id: "r-c", categoryId: "regular", name: "Regular C", min: 20.1, max: 30 },
-  { id: "s-a", categoryId: "senior", name: "Senior A", min: -10, max: 18 },
-  { id: "s-b", categoryId: "senior", name: "Senior B", min: 18.1, max: 30 },
-  { id: "ss-a", categoryId: "super", name: "Super Senior", min: -10, max: 30 },
-  { id: "l-a", categoryId: "ladies", name: "Ladies A", min: -10, max: 18 },
-  { id: "l-b", categoryId: "ladies", name: "Ladies B", min: 18.1, max: 30 },
+  { id: "a", categoryId: "regular", name: "Class A", min: -10, max: 12 },
+  { id: "b", categoryId: "regular", name: "Class B", min: 12.1, max: 18 },
+  { id: "c", categoryId: "regular", name: "Class C", min: 18.1, max: 23 },
+  { id: "d", categoryId: "regular", name: "Class D", min: 23.1, max: 30 },
 ];
 
 /**

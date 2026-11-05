@@ -452,3 +452,33 @@
     margin-inline: auto;
   }
 }
+
+/* A player's own link code, one per player, kept beside the card and never over the scores. */
+.qrPanel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 6px 0 2px;
+}
+
+.qrPlayer {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  font-size: 8px;
+}
+
+.qrPlayer span {
+  max-width: 72px;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.qrNote {
+  margin: 0;
+  max-width: 36ch;
+  font-size: 8px;
+  line-height: 1.2;
+  color: #444;
+}

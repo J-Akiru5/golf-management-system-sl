@@ -18,7 +18,13 @@ export interface CategoryRule {
   teeId: string;
 }
 
-/** Fixed handicap range inside a category. Ranges are inclusive. */
+/**
+ * A class: a fixed handicap range, inclusive. Classes are the priority over tees, so a class is cut
+ * over the whole field and never split by category or tee.
+ *
+ * `categoryId` is storage only. The flights table still hangs a row off a category, so classes are
+ * kept under one carrier category; the engine ignores it when matching.
+ */
 export interface FlightRule {
   id: string;
   categoryId: string;

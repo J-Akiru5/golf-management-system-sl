@@ -364,6 +364,25 @@ export async function loadDeskState(
     }
   }
 
+  // The AM/PM session sits beside the day. It is read on its own so a database that has not run
+  // migration 20261105000100 still loads its days, just without a session on them.
+  const sessionsByRegistration = new Map<string, Record<number, "AM" | "PM">>();
+  const sessionRows = await client
+    .from("registration_days")
+    .select("registration_id, tournament_day_id, session")
+    .eq("club_id", clubId)
+    .eq("selected", true);
+  if (!sessionRows.error) {
+    for (const row of asArray(sessionRows.data)) {
+      const day = dayNumberById.get(row.tournament_day_id);
+      if (!day) continue;
+      if (row.session !== "AM" && row.session !== "PM") continue;
+      const sessions = sessionsByRegistration.get(row.registration_id) ?? {};
+      sessions[day.dayNumber] = row.session;
+      sessionsByRegistration.set(row.registration_id, sessions);
+    }
+  }
+
   const caddieAssignmentsByRegistration = new Map<
     string,
     NonNullable<RegistrationEntry["caddieByDay"]>
@@ -400,6 +419,7 @@ export async function loadDeskState(
       return {
         ...entry,
         selectedDays: [...stored].sort((a, b) => a - b),
+        daySessions: sessionsByRegistration.get(entry.id) ?? {},
         dayTee,
         caddieByDay,
       };
@@ -408,6 +428,7 @@ export async function loadDeskState(
     return {
       ...entry,
       selectedDays: selectedDaysOf(entry, tournamentDays),
+      daySessions: sessionsByRegistration.get(entry.id) ?? {},
       dayTee,
       caddieByDay,
     };

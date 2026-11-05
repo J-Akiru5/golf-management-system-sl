@@ -26,7 +26,24 @@ export function missingFactsFor(player: PlayerRecord, entry: RegistrationEntry):
   if (player.birthdate === null) missing.push("birthdate");
   if (player.gender === null) missing.push("gender");
   if (entry.frozen.index === null) missing.push("handicap index");
+  // An override can be recorded before the class is known. Such an entry plays in an Unclassified
+  // group until a category and a flight are added to it.
+  if (entry.overridden === true && entry.status === "ok") {
+    if (!entry.categoryId) missing.push("category");
+    if (!entry.flightId) missing.push("flight");
+  }
   return missing;
+}
+
+/**
+ * True when the entry plays today without a category and flight, so it is placed in an Unclassified
+ * group. An override that names both is placed by those facts even when the player record is still
+ * missing a birthdate.
+ */
+export function playsUnclassified(player: PlayerRecord, entry: RegistrationEntry): boolean {
+  if (entry.status !== "ok") return false;
+  if (entry.overridden === true && entry.categoryId && entry.flightId) return false;
+  return missingFactsFor(player, entry).length > 0;
 }
 
 /**
@@ -34,23 +51,16 @@ export function missingFactsFor(player: PlayerRecord, entry: RegistrationEntry):
  * stored confirmation and the player record, never persisted as a status of its own.
  */
 export function isProvisional(player: PlayerRecord, entry: RegistrationEntry): boolean {
-  return entry.status === "ok" && missingFactsFor(player, entry).length > 0;
+  return playsUnclassified(player, entry);
 }
 
 /**
- * True when an organizer override stored every routing fact the draw needs. Such an entry is
- * placed by its stored facts, not by the provisional group.
+ * True when an organizer override is stored on the entry. The entry is placed by those stored facts,
+ * even when some of them are empty: those empties put the player in an Unclassified group rather
+ * than being guessed.
  */
 export function hasStoredRouting(entry: RegistrationEntry): boolean {
-  return (
-    entry.overridden === true &&
-    Boolean(entry.categoryId) &&
-    Boolean(entry.teeId) &&
-    Boolean(entry.flightId) &&
-    entry.frozen.index !== null &&
-    entry.playingHandicap !== null &&
-    entry.playingHandicap !== undefined
-  );
+  return entry.overridden === true && entry.status === "ok";
 }
 
 /**
@@ -69,7 +79,7 @@ export function registrationFor({
   const stale = isStale(selection, tournament.cutOffDate, tournament.staleIndexDays);
   const outdated = frozenOutdated(entry.frozen, selection);
   const missing = missingFactsFor(player, entry);
-  const provisional = entry.status === "ok" && missing.length > 0;
+  const provisional = playsUnclassified(player, entry);
 
   const flags: string[] = [];
   if (outdated) {

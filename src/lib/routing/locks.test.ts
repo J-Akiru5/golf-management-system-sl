@@ -16,10 +16,10 @@ const categories = [
   { id: "senior", name: "Senior", gender: "M" as const, minAge: 60, maxAge: 69, teeId: "senior" },
 ];
 
+// Classes run over the whole field; the carrier category is storage only.
 const flights = [
-  { id: "r-a", categoryId: "regular", name: "Regular A", min: 0, max: 12 },
-  { id: "r-b", categoryId: "regular", name: "Regular B", min: 12.1, max: 30 },
-  { id: "s-a", categoryId: "senior", name: "Senior A", min: 0, max: 30 },
+  { id: "a", categoryId: "regular", name: "Class A", min: 0, max: 12 },
+  { id: "b", categoryId: "regular", name: "Class B", min: 12.1, max: 30 },
 ];
 
 const config: TournamentConfig = {
@@ -125,7 +125,7 @@ describe("lock-aware re-run", () => {
     const first = route(input(players));
     const locked = asLocked(first.groups[0] as NonNullable<(typeof first.groups)[number]>);
     const second = route(input(players), { lockedGroups: [locked] });
-    const waves = new Set(second.groups.filter((g) => g.flightId === "r-a").map((g) => g.wave));
+    const waves = new Set(second.groups.filter((g) => g.flightId === "a").map((g) => g.wave));
     expect(waves.size).toBe(2);
     expect(second.warnings.some((w) => w.includes("split across waves"))).toBe(true);
   });

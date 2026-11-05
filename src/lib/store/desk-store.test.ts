@@ -17,7 +17,7 @@ describe("demo Desk fallback", () => {
     expect(state.players[0]?.name).toBe("Antonio Alcantara");
     expect(state.tees).toHaveLength(4);
     expect(state.categories).toHaveLength(4);
-    expect(state.flights).toHaveLength(8);
+    expect(state.flights).toHaveLength(4);
     expect(state.photoPaths).toEqual({});
   });
 
