@@ -1,7 +1,14 @@
 import { applyTeamClasses, defaultCategoryFor, matchCategories, matchFlights } from "./classify";
 import { chunk, groupSizes, packUnits } from "./groups";
 import { ageOn, playingHandicap } from "./handicap";
-import { planShotgunFrom, planTwoTeeFrom, type Slot, shotgunKey, twoTeeKey } from "./schedule";
+import {
+  planShotgunFrom,
+  planTwoTeeFrom,
+  type Slot,
+  seedFrom,
+  shotgunKey,
+  twoTeeKey,
+} from "./schedule";
 import type {
   CategoryRule,
   FlightRule,
@@ -56,6 +63,11 @@ export interface LockedGroup {
 export interface RouteOptions {
   /** Groups that must not move when the draw is re-run. */
   lockedGroups?: LockedGroup[];
+  /**
+   * Fixes the shuffled hole order. Left out, the draw seeds itself from the field, so the same field
+   * draws the same holes and a re-run never reshuffles a board the desk has already seen.
+   */
+  seed?: number;
 }
 
 /** Steps 2 to 7 of the routing flow: classify one player. Pure, so it can be tested alone. */
@@ -313,6 +325,13 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
       config.firstTeeTime,
       config.waveGapMinutes,
       occupied,
+      options.seed ??
+        seedFrom(
+          registrations
+            .map((r) => `${r.playerId}:${r.index ?? ""}`)
+            .sort()
+            .join("|"),
+        ),
     );
     warnings.push(...plan.warnings);
     slots = plan.slots;
