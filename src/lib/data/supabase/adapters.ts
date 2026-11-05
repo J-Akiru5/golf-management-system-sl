@@ -39,6 +39,7 @@ import {
   tournamentTemplate,
 } from "@/lib/store/state";
 import type { Database, Json } from "@/lib/supabase/types";
+import { detachDroppedClassGroups } from "./classes";
 import { toPlayerInsert, toRegistrationAnswers } from "./domain";
 import { createSupabaseEmailRepository } from "./email";
 import { deleteEventLogo, saveEventLogo } from "./event-logo";
@@ -1222,6 +1223,16 @@ export function createSupabaseAdapters(
       // stroke index for a hole nobody has filled in.
       const payload = setupPayload(next, tees, holes, sections);
       const write = queuedWrite(async () => {
+        // A class row this save is removing can still be named by a group on the board, and the
+        // database refuses to delete an in-use class: it skips the row and the row comes back on the
+        // next reload. Move those groups onto the class that replaces it first, and only when this
+        // save really drops a row, so a rename or a range edit touches no group at all.
+        const keepIds = new Set(next.flights.map((flight) => flight.id));
+        const storedFlights = state.tournaments.find((item) => item.id === next.id)?.flights ?? [];
+        const droppingClass = storedFlights.some((flight) => !keepIds.has(flight.id));
+        if ((sections === "all" || sections.includes("flights")) && droppingClass) {
+          await detachDroppedClassGroups(client, next.id, [...keepIds]);
+        }
         const { data, error } = await client.rpc("save_event_setup", {
           p_tournament: next.id,
           // Read when the write runs, not when it was queued, so it is the latest known. Null on a
