@@ -284,6 +284,11 @@ export interface RegistrationEntry {
   tournamentId: string;
   playerId: string;
   role: "member" | "guest";
+  /**
+   * The club sheet's pair number when this entry is half of a member-guest team, so the draw keeps
+   * the two together. Null for a player entered on their own.
+   */
+  teamNo?: number | null;
   /** Answer to the event's sponsor question; null = not asked yet. */
   sponsor: boolean | null;
   shirt: string | null;

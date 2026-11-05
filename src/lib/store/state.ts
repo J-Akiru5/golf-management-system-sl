@@ -291,6 +291,7 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
       birthdate: p.birthdate,
       gender: p.gender,
       index: entry.frozen.index,
+      teamKey: entry.teamNo === null || entry.teamNo === undefined ? null : `team-${entry.teamNo}`,
     });
   }
   return {

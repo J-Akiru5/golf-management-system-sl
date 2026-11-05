@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupSizes } from "./groups";
+import { groupSizes, packUnits } from "./groups";
 import { ageOn, playingHandicap, rawCourseHandicap } from "./handicap";
 import { classifyPlayer, type RoutingInput, route } from "./index";
 import { addMinutes, planShotgun, planTwoTee } from "./schedule";
@@ -153,6 +153,34 @@ describe("group sizes", () => {
     expect(groupSizes(9, 4)).toEqual([3, 3, 3]);
     expect(groupSizes(0, 4)).toEqual([]);
   });
+
+  it("packs teams without splitting one across two groups", () => {
+    const packed = packUnits(
+      [
+        ["a", "b"],
+        ["c", "d"],
+        ["e", "f"],
+      ],
+      2,
+    );
+    expect(packed).toEqual([
+      ["a", "b"],
+      ["c", "d"],
+      ["e", "f"],
+    ]);
+    const four = packUnits(
+      [
+        ["a", "b"],
+        ["c", "d"],
+        ["e", "f"],
+      ],
+      4,
+    );
+    expect(four).toEqual([
+      ["a", "b", "c", "d"],
+      ["e", "f"],
+    ]);
+  });
 });
 
 describe("schedule", () => {
@@ -230,6 +258,40 @@ describe("route", () => {
   it("flags groups smaller than the minimum", () => {
     const out = route(input([player({ index: 5 }), player({ index: 6 })]));
     expect(out.warnings.some((w) => w.includes("only 2"))).toBe(true);
+  });
+
+  it("keeps each member-guest pair in one group of two", () => {
+    const players = [
+      player({ index: 5, teamKey: "pair-1" }),
+      player({ index: 6, teamKey: "pair-1" }),
+      player({ index: 9, teamKey: "pair-2" }),
+      player({ index: 10, teamKey: "pair-2" }),
+    ];
+    const out = route(input(players, { groupSize: 2 }));
+
+    expect(out.groups).toHaveLength(2);
+    for (const group of out.groups) {
+      const keys = group.playerIds.map(
+        (id) => players.find((entry) => entry.id === id)?.teamKey ?? null,
+      );
+      expect(new Set(keys).size).toBe(1);
+    }
+  });
+
+  it("puts two pairs in a four-ball without splitting either", () => {
+    const players = [
+      player({ index: 5, teamKey: "pair-1" }),
+      player({ index: 6, teamKey: "pair-1" }),
+      player({ index: 9, teamKey: "pair-2" }),
+      player({ index: 10, teamKey: "pair-2" }),
+    ];
+    const out = route(input(players, { groupSize: 4 }));
+
+    expect(out.groups).toHaveLength(1);
+    const keys = (out.groups[0]?.playerIds ?? []).map(
+      (id) => players.find((entry) => entry.id === id)?.teamKey ?? null,
+    );
+    expect(keys.sort()).toEqual(["pair-1", "pair-1", "pair-2", "pair-2"]);
   });
 
   it("uses the two-tee plan when chosen", () => {

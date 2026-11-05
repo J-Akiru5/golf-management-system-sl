@@ -41,6 +41,11 @@ export interface Player {
   gender: Gender;
   /** Handicap index frozen at the tournament cut-off date (from the NGAP export). */
   index: number | null;
+  /**
+   * The club's team or pair, when the event is played in teams. Players with the same key are kept
+   * in one group; null or missing means the player is drawn on their own.
+   */
+  teamKey?: string | null;
 }
 
 /**
@@ -84,6 +89,8 @@ export type RegistrationStatus = "ok" | "ineligible" | "needs_review";
 export interface Registration {
   playerId: string;
   playerName: string;
+  /** Copied from the player so the draw can keep a pair together. */
+  teamKey?: string | null;
   status: RegistrationStatus;
   reasons: string[];
   index: number | null;

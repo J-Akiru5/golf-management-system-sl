@@ -131,6 +131,7 @@ export function toRegistrationEntry(row: RegistrationRow): RegistrationEntry {
           ? answers.sponsor
           : null,
     shirt: str(row.shirt_size) ?? str(answers.shirt),
+    teamNo: typeof answers.teamNo === "number" ? answers.teamNo : null,
     teePreferences: Object.fromEntries(
       Object.entries(teePreferences).map(([day, value]) => [day, str(value)]),
     ),
@@ -340,6 +341,7 @@ export function toRegistrationAnswers(entry: RegistrationEntry) {
     role: entry.role,
     sponsor: entry.sponsor,
     shirt: entry.shirt,
+    teamNo: entry.teamNo ?? null,
     teePreferences: entry.teePreferences,
     declaredWshId: entry.declaredWshId,
     declaredWshHandicap: entry.declaredWshHandicap,

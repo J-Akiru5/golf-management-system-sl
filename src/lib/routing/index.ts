@@ -1,5 +1,5 @@
 import { matchCategories, matchFlights } from "./classify";
-import { chunk, groupSizes } from "./groups";
+import { chunk, groupSizes, packUnits } from "./groups";
 import { ageOn, playingHandicap } from "./handicap";
 import { planShotgunFrom, planTwoTeeFrom, type Slot, shotgunKey, twoTeeKey } from "./schedule";
 import type {
@@ -59,6 +59,7 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
   const reg: Registration = {
     playerId: player.id,
     playerName: player.name,
+    teamKey: player.teamKey ?? null,
     status: "ok",
     reasons: [],
     index: player.index,
@@ -113,6 +114,30 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
 }
 
 /**
+ * The players of one class, gathered into units: a team of two becomes one unit, everyone else a
+ * unit of their own. The order is the class order, so the strongest pair still goes out first.
+ */
+function teamUnits(members: Registration[]): Registration[][] {
+  const units: Registration[][] = [];
+  const at = new Map<string, number>();
+  for (const member of members) {
+    const key = member.teamKey ?? null;
+    if (key === null) {
+      units.push([member]);
+      continue;
+    }
+    const index = at.get(key);
+    if (index === undefined) {
+      at.set(key, units.length);
+      units.push([member]);
+    } else {
+      units[index]?.push(member);
+    }
+  }
+  return units;
+}
+
+/**
  * Full routing: classify everyone, then form groups and assign starts.
  * It only proposes. The organizer reviews and overrides before publishing.
  *
@@ -129,6 +154,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
   const provisionalRegistrations: Registration[] = provisional.map((p) => ({
     playerId: p.id,
     playerName: p.name,
+    teamKey: null,
     status: "ok",
     reasons: [`Confirmed as provisional; still missing ${p.missing.join(", ")}.`],
     index: p.index,
@@ -196,8 +222,13 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
           a.playerName.localeCompare(b.playerName),
       );
     if (members.length === 0) continue;
-    const sizes = groupSizes(members.length, config.groupSize);
-    const cut = chunk(members, sizes);
+    // A pair is never split. When a class holds teams, groups are filled team by team; without
+    // teams the even split is kept, so an ordinary event's groups stay as balanced as before.
+    const units = teamUnits(members);
+    const hasTeams = units.some((unit) => unit.length > 1);
+    const cut = hasTeams
+      ? packUnits(units, config.groupSize)
+      : chunk(members, groupSizes(members.length, config.groupSize));
     for (const g of cut) {
       if (g.length < config.minGroupSize) {
         warnings.push(`Class ${flight.name}: a group has only ${g.length} player(s).`);

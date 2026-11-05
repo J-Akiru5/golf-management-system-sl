@@ -36,33 +36,23 @@ function tidyName(name: string): string {
     .trim();
 }
 
-const sameSchedule = (a: FieldPlayer, b: FieldPlayer) =>
-  JSON.stringify(a.schedule) === JSON.stringify(b.schedule);
-
 function notesFor(pair: FieldPair, side: "member" | "guest"): string[] {
   const player = pair[side];
-  const partner = side === "member" ? pair.guest : pair.member;
   const notes: string[] = [];
   if (!/^\S[^,]*,\s*\S/.test(player.name)) {
     notes.push("The name on the club sheet is incomplete.");
   }
+  // Every player is ready to play. A partner on a different schedule is normal: each player keeps
+  // their own days, and the desk re-schedules one of them when the club says so.
+  if (player.index === null) {
+    notes.push("No index on the club sheet; 0 was recorded.");
+  } else if (player.index > MAX_READABLE_INDEX) {
+    notes.push(`The club sheet shows ${player.index}, which is not an index; 0 was recorded.`);
+  }
   if (player.schedule.length === 0) {
     notes.push("No schedule on the club sheet.");
-  } else {
-    if (player.schedule.length === 1) notes.push("The club sheet gives one playing day.");
-    if (player.scheduleNote) {
-      notes.push(`The schedule on the club sheet is incomplete: ${player.scheduleNote}`);
-    }
-    if (partner.schedule.length > 0 && !sameSchedule(player, partner)) {
-      notes.push("The partner is on a different schedule on the club sheet.");
-    }
-  }
-  // A blank index is not a reason to hold the player back: the event rule treats an unverified
-  // handicap as 0 when it routes. A number that cannot be an index is, so it is not recorded.
-  if (player.index !== null && player.index > MAX_READABLE_INDEX) {
-    notes.push(
-      `The club sheet shows ${player.index}, which is not a handicap index, so no index was recorded.`,
-    );
+  } else if (player.scheduleNote) {
+    notes.push(`The schedule on the club sheet is incomplete: ${player.scheduleNote}`);
   }
   return notes;
 }
@@ -72,8 +62,10 @@ const q = (value: string) => `'${value.replace(/'/g, "''")}'`;
 function playerRow(pair: FieldPair, side: "member" | "guest"): string {
   const player = pair[side];
   const name = tidyName(player.name);
-  const index =
-    player.index === null || player.index > MAX_READABLE_INDEX ? "null" : player.index.toFixed(1);
+  // The sheet is the club's NGAP list, so a number on it is an NGAP import. The 0 recorded for a
+  // blank cell, or for 203, is the desk's own entry, and it is what lets the player be paired.
+  const fromSheet = player.index !== null && player.index <= MAX_READABLE_INDEX;
+  const index = (fromSheet && player.index !== null ? player.index : 0).toFixed(1);
   const [first, second] = player.schedule;
   const note = notesFor(pair, side).join(" ");
   return [
@@ -81,6 +73,7 @@ function playerRow(pair: FieldPair, side: "member" | "guest"): string {
     q(name),
     q(side),
     index,
+    q(fromSheet ? "ngap_import" : "manual"),
     first ? String(first.day) : "null",
     first ? q(first.session) : "null",
     second ? String(second.day) : "null",
@@ -111,19 +104,19 @@ const sql = `-- 24th Bamboo Tee: the club's own field, from the sheet supplied o
 -- What it writes
 --   * one player per name on the sheet, matched by name inside the club
 --   * a member or guest membership when the player has none
---   * the index on the sheet as of the event's cut-off date, source ngap_import
---   * one registration per player with the index frozen at the cut-off
+--   * a handicap record for every player, dated at the event's cut-off. A number on the sheet is an
+--     ngap_import; the 0 recorded for a blank cell, and for the 203 on pair 104, is a manual row
+--   * one registration per player, ready (status ok), with that index frozen at the cut-off
 --   * the player's own playing days and AM/PM session from the sheet
+--   * the sheet's pair number on the registration, so the draw keeps a member and their guest in
+--     one group
 --
 -- What it does not write, on purpose
---   * an index the sheet leaves blank, and the 203 on pair 104. A blank is not zero, and the event
---     rule treats an unverified handicap as 0 when it routes, so nothing is invented here; 203 is
---     not an index, so the player is registered without one and marked needs_review
---   * one partner's schedule for the other. When the two differ, each player keeps their own days
---     and both registrations are marked needs_review with the reason
---   * days for a player whose sheet count does not match the event's required days. The
---     registration is marked needs_review instead of writing days the day rule would refuse
---   * a team, a class, a flight or a tee time. The desk makes those after the field is confirmed
+--   * one partner's schedule for the other. Each player keeps the days the club wrote for them; a
+--     pair on two different schedules is normal and both partners stay ready
+--   * days for a player whose sheet count does not match the event's required days. The note says
+--     so, and the day rule is left to the desk rather than written around
+--   * a class, a flight or a tee time. The desk makes those after the field is confirmed
 --
 -- Re-running it is safe: players are matched by name, the index and the registration are updated in
 -- place, and days are merged rather than replaced.
@@ -161,7 +154,7 @@ begin
   for r in
     select * from (values
 ${fieldRows.map((row) => `      ${row}`).join(",\n")}
-    ) as f(pair_no, full_name, role, idx, d1, s1, d2, s2, note)
+    ) as f(pair_no, full_name, role, idx, idx_source, d1, s1, d2, s2, note)
   loop
     v_note := btrim(r.note);
     v_day_count := (case when r.d1 is null then 0 else 1 end) + (case when r.d2 is null then 0 else 1 end);
@@ -194,22 +187,29 @@ ${fieldRows.map((row) => `      ${row}`).join(",\n")}
       values (v_club, v_player, r.role);
     end if;
 
-    if r.idx is not null then
-      insert into public.handicap_records (club_id, player_id, handicap_index, effective_date, source)
-      values (v_club, v_player, r.idx, v_cutoff, 'ngap_import')
-      on conflict (player_id, effective_date)
-      do update set handicap_index = excluded.handicap_index, source = excluded.source;
-    end if;
+    -- Every player has a record on file, including the 0 recorded where the sheet had no index, so
+    -- the player card and the draw never disagree about the number they play off.
+    insert into public.handicap_records (club_id, player_id, handicap_index, effective_date, source)
+    values (v_club, v_player, r.idx, v_cutoff, r.idx_source)
+    on conflict (player_id, effective_date)
+    do update set handicap_index = excluded.handicap_index, source = excluded.source;
 
     v_reasons := case when v_note = '' then '{}'::text[] else array[v_note] end;
 
-    insert into public.registrations (club_id, tournament_id, player_id, frozen_index, status, reasons)
-    values (v_club, v_tournament, v_player, r.idx,
-            case when v_note = '' then 'ok' else 'needs_review' end, v_reasons)
+    -- Every player on the sheet is ready to play. The note is kept as a reason the desk can read;
+    -- it no longer holds anyone out of the draw.
+    -- The pair number rides along in the registration answers so the draw keeps a member and their
+    -- guest in one group, whatever group size the event uses.
+    insert into public.registrations as reg
+      (club_id, tournament_id, player_id, frozen_index, status, reasons, answers)
+    values (v_club, v_tournament, v_player, r.idx, 'ok', v_reasons,
+            jsonb_build_object('teamNo', r.pair_no))
     on conflict (tournament_id, player_id)
     do update set frozen_index = excluded.frozen_index,
                   status = excluded.status,
-                  reasons = excluded.reasons
+                  reasons = excluded.reasons,
+                  answers = coalesce(reg.answers, '{}'::jsonb)
+                            || jsonb_build_object('teamNo', r.pair_no)
     returning id into v_reg;
 
     if v_write_days then
@@ -271,7 +271,7 @@ console.log(
   [
     `wrote ${OUT}`,
     `${field.length} pairs, ${field.length * 2} players, ${waiting.length} waiting-list players`,
-    `${review.filter((note) => note.length > 0).length} player rows carry a needs_review reason`,
+    `${review.filter((note) => note.length > 0).length} player rows carry a note for the desk`,
     `mismatched schedules: ${summary.mismatched}`,
     `blank indexes: ${summary.missingIndex}`,
     `unreadable indexes: ${summary.unreadableIndex}`,
