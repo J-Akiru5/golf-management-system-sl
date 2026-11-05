@@ -22,6 +22,7 @@ import type {
   RegistrationEntry,
   TournamentDay,
 } from "@/lib/data/types";
+import { type DrawTeeTime, teeTimesFromDraw } from "@/lib/draw/tee-times";
 import { fmtIndex, fmtTime } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -31,10 +32,10 @@ import { useDesk } from "@/lib/store/desk-store";
  * selected. The database function checks the course's hole count and the day's start time.
  */
 export default function TeeTimesPage() {
-  const { tournament, days, entries, players, caddies, adapters, status } = useDesk();
+  const { tournament, days, entries, players, caddies, adapters, status, draw } = useDesk();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [batchTime, setBatchTime] = useState("");
-  const [batching, setBatching] = useState<"missing" | "all" | null>(null);
+  const [batching, setBatching] = useState<"missing" | "all" | "draw" | null>(null);
   const [batchMessage, setBatchMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(
     null,
   );
@@ -63,6 +64,8 @@ export default function TeeTimesPage() {
     () => new Map(players.map((player) => [player.id, player])),
     [players],
   );
+  // What each player takes from the draw: their group's time, wave letter and start hole.
+  const drawTimes = useMemo(() => teeTimesFromDraw(draw ?? []), [draw]);
   const rows = useMemo(() => {
     if (!day) return [];
     return entries
@@ -88,9 +91,11 @@ export default function TeeTimesPage() {
   ).length;
   const timed = rows.filter(({ entry }) => day && entry.dayTee?.[day.dayNumber]?.teeTime).length;
   const untimed = rows.length - timed;
+  /** Players on this day whose group is on the board, so the draw can give them a time. */
+  const fromDraw = rows.filter(({ player }) => drawTimes.has(player.id)).length;
   const config = tournament.config;
-  // The club plays two waves a day and never a third: A in the morning, B in the afternoon. A wave
-  // already written on a player stays in that player's own list, so nothing is hidden or invented.
+  // The club plays two waves a day and never a third, each one interval after the one before it. A
+  // wave already written on a player stays in that player's own list, so nothing is invented.
   const waveCount = MAX_WAVES;
   const waves =
     config.startFormat === "shotgun" && day
@@ -157,6 +162,66 @@ export default function TeeTimesPage() {
         : {
             tone: "ok",
             text: `Set ${time} for ${saved} player${saved === 1 ? "" : "s"}. Each player keeps the wave the draw gave them; a time can be confirmed once its hole is set.`,
+          },
+    );
+  }
+
+  /**
+   * Copies the draw onto this day: each player's time, wave letter and start hole come from the group
+   * they were drawn into. Nothing is invented for a player the board has no group for; those stay
+   * without a time and are counted in the message. Times are saved unconfirmed, so the desk still
+   * ticks each one after looking at it.
+   */
+  async function applyFromDraw() {
+    if (!day || batching) return;
+    const targets: { entry: RegistrationEntry; player: PlayerRecord; drawn: DrawTeeTime }[] = [];
+    for (const { entry, player } of rows) {
+      const drawn = drawTimes.get(player.id);
+      if (drawn) targets.push({ entry, player, drawn });
+    }
+    if (targets.length === 0) {
+      setBatchMessage({
+        tone: "bad",
+        text: "The draw has no group for anyone on this day yet. Make the draw first.",
+      });
+      return;
+    }
+    setBatching("draw");
+    setBatchMessage(null);
+    let saved = 0;
+    const failed: string[] = [];
+    const queue = [...targets];
+    const workers = Array.from({ length: Math.min(6, queue.length) }, async () => {
+      for (;;) {
+        const item = queue.shift();
+        if (!item) return;
+        try {
+          await adapters.registrations.assignDayTee(item.entry.id, day.dayNumber, {
+            teeTime: item.drawn.teeTime,
+            startHole: item.drawn.startHole,
+            wave: item.drawn.wave,
+            confirmed: false,
+          });
+          saved += 1;
+        } catch {
+          failed.push(item.player.name);
+        }
+      }
+    });
+    await Promise.all(workers);
+    setBatching(null);
+    const left = rows.length - targets.length;
+    setBatchMessage(
+      failed.length > 0
+        ? {
+            tone: "bad",
+            text: `Took the draw's time for ${saved} player${saved === 1 ? "" : "s"}. ${failed.length} could not be saved: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}.`,
+          }
+        : {
+            tone: "ok",
+            text: `Took the draw's time, wave and hole for ${saved} player${saved === 1 ? "" : "s"}${
+              left > 0 ? `; ${left} on this day ${left === 1 ? "has" : "have"} no group yet` : ""
+            }. They are saved unconfirmed, so each one still needs the desk's tick.`,
           },
     );
   }
@@ -298,11 +363,12 @@ export default function TeeTimesPage() {
                       day&apos;s own start time and Wave B starts the event&apos;s interval after
                       it: A {fmtTime(waves[0]?.time ?? config.firstTeeTime)} and B{" "}
                       {fmtTime(waves[1]?.time ?? config.firstTeeTime)}. This day holds {rows.length}{" "}
-                      players. A batch time is typed below, never filled in from a wave.{" "}
+                      players. A batch time is typed below, or each player&apos;s own time, wave and
+                      hole are taken straight from the draw.{" "}
                       <Link href="/setup#start" className="underline">
                         Change the event times in Settings
                       </Link>
-                      . Start holes stay with the draw, so a batch time is saved unconfirmed.
+                      . Either way the time is saved unconfirmed until the desk ticks it.
                     </p>
                   </div>
                   <div className="flex flex-wrap items-end gap-2">
@@ -335,6 +401,16 @@ export default function TeeTimesPage() {
                       onClick={() => void applyBatch("all")}
                     >
                       {batching === "all" ? "Overwriting…" : `Overwrite all ${rows.length}`}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={batching !== null || fromDraw === 0}
+                      onClick={() => void applyFromDraw()}
+                    >
+                      {batching === "draw"
+                        ? "Taking the draw…"
+                        : `Take the draw's times (${fromDraw})`}
                     </Button>
                   </div>
                   {batchMessage && (
