@@ -170,6 +170,12 @@ async function ensurePlayer(name: string): Promise<string> {
 async function applyPlayer(pair: FieldPair, side: "member" | "guest"): Promise<void> {
   const player = pair[side];
   const name = tidyName(player.name);
+  // The sheet writes a surname with no given name in a few cells. That is not a player, and creating
+  // one would put a phantom name in the club directory, so it is reported and left to the desk.
+  if (!/^\S[^,]*,\s*\S/.test(player.name)) {
+    failures.push(`${pair.number}. ${name}: the club sheet has no complete name in this cell.`);
+    return;
+  }
   const fromSheet = player.index !== null && player.index <= MAX_READABLE_INDEX;
   const index = fromSheet && player.index !== null ? player.index : 0;
   const playerId = await ensurePlayer(player.name);
@@ -213,6 +219,8 @@ async function applyPlayer(pair: FieldPair, side: "member" | "guest"): Promise<v
         player_id: playerId,
         frozen_index: index,
         status: "ok",
+        // The entry's own member/guest: without it every guest reads as a member on every screen.
+        membership_type: side,
         reasons: notesFor(pair, side),
         answers: { teamNo: pair.number, teePreferences },
       },

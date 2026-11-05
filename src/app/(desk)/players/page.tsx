@@ -319,6 +319,9 @@ function Players() {
             {page.items.map((p) => {
               const r = regById.get(p.id);
               const entered = entryByPlayer.has(p.id);
+              // The club's own classification, not the entry's: a registration can be created
+              // without a role, and the member directory is what the desk checks.
+              const role = p.membershipType ?? r?.role ?? null;
               const latest = adapters.players.latestRecord(p.id);
               return (
                 <tr key={p.id}>
@@ -339,12 +342,10 @@ function Players() {
                     </Link>
                   </td>
                   <td>
-                    {entered ? (
-                      r?.role === "guest" ? (
-                        <span className="pill info">Guest</span>
-                      ) : (
-                        <span className="pill">Member</span>
-                      )
+                    {role === "guest" ? (
+                      <span className="pill info">Guest</span>
+                    ) : role === "member" ? (
+                      <span className="pill">Member</span>
                     ) : (
                       <span className="pill">—</span>
                     )}
@@ -459,6 +460,7 @@ function Players() {
         {page.items.map((p) => {
           const r = regById.get(p.id);
           const entered = entryByPlayer.has(p.id);
+          const role = p.membershipType ?? r?.role ?? null;
           return (
             <li key={p.id} className="card grid min-w-0 gap-3 !p-3.5">
               <div className="flex min-w-0 items-center gap-3">
@@ -474,7 +476,7 @@ function Players() {
                   <span className="hint">
                     {names.category(r?.categoryId ?? null)}
                     {r?.ageKnown ? ` · age ${r.age}` : ""}
-                    {entered && r?.role === "guest" ? " · guest" : ""}
+                    {role === "guest" ? " · guest" : ""}
                   </span>
                 </div>
                 {r ? <StatusPill status={r.status} /> : <span className="pill">Not entered</span>}
