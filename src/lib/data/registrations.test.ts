@@ -122,34 +122,25 @@ describe("registrationFor", () => {
     ]);
   });
 
-  it("keeps an entry without an override in review when the profile is incomplete", () => {
+  it("draws a player with no birthdate or gender on the club's open division", () => {
     const reg = registrationFor({
       tournament,
       tees,
-      player: player({ birthdate: null }),
-      entry: entry(),
-      records: [],
-    });
-
-    expect(reg.status).toBe("needs_review");
-    expect(reg.reasons.join(" ")).toContain("Birthdate is missing");
-    expect(reg.categoryId).toBeNull();
-  });
-
-  it("marks a confirmed entry without a birthdate provisional and keeps it placeable", () => {
-    const reg = registrationFor({
-      tournament,
-      tees,
-      player: player({ birthdate: null }),
+      player: player({ birthdate: null, gender: null }),
       entry: entry({ status: "ok" }),
       records: [],
     });
 
     expect(reg.status).toBe("ok");
-    expect(reg.provisional).toBe(true);
-    expect(reg.missing).toEqual(["birthdate"]);
-    expect(reg.categoryId).toBeNull();
-    expect(reg.flightId).toBeNull();
+    expect(reg.provisional).toBe(false);
+    expect(reg.categoryId).toBe("regular");
+    expect(reg.teeId).toBe("white");
+    expect(reg.flightId).toBe("r-a");
+    expect(reg.playingHandicap).not.toBeNull();
+    expect(reg.ageKnown).toBe(false);
+    // The facts are still listed so the desk can collect them before scoring.
+    expect(reg.missing).toEqual(["birthdate", "gender"]);
+    expect(reg.reasons.join(" ")).toContain("No birthdate or gender on file; Regular is used");
   });
 
   it("classifies a confirmed entry without a handicap index at 0 instead of parking it", () => {

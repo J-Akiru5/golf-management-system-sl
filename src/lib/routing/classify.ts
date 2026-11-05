@@ -1,4 +1,4 @@
-import type { CategoryRule, FlightRule, Gender } from "./types";
+import type { CategoryRule, FlightRule, Gender, Registration } from "./types";
 
 /**
  * Picks the category whose gender and age band match. Returns the matches so the caller can
@@ -15,6 +15,56 @@ export function matchCategories(
       age >= r.minAge &&
       (r.maxAge === null || age <= r.maxAge),
   );
+}
+
+/**
+ * The category a player joins when their birthdate or gender is not on file: the club's open
+ * division, which is the men's (or any-gender) category with the lowest age band. The draw is
+ * scheduled first so the field can play; the tee and the playing handicap are corrected once the
+ * missing details arrive for scoring.
+ */
+export function defaultCategoryFor(rules: CategoryRule[]): CategoryRule | null {
+  const open = rules
+    .filter((rule) => rule.gender === "M" || rule.gender === "any")
+    .sort((a, b) => a.minAge - b.minAge || a.name.localeCompare(b.name));
+  return open[0] ?? rules[0] ?? null;
+}
+
+/**
+ * The number a team is classed on: the average of its members' indexes, rounded to one decimal, which
+ * is the precision the class ranges are written in. A blank index counts as 0, the same rule the
+ * single-player draw uses, so a pair is never held back by a missing number.
+ */
+export function averageIndex(indexes: (number | null)[]): number {
+  if (indexes.length === 0) return 0;
+  const total = indexes.reduce<number>((sum, index) => sum + (index ?? 0), 0);
+  return Math.round((total / indexes.length) * 10) / 10;
+}
+
+/**
+ * Classes a member-guest pair together: both partners take the class that covers the average of their
+ * indexes, so the two play in one class and are never split into different groups. A team whose
+ * average covers no class, or more than one, keeps the classes it was given player by player.
+ */
+export function applyTeamClasses(registrations: Registration[], flights: FlightRule[]): void {
+  const teams = new Map<string, Registration[]>();
+  for (const reg of registrations) {
+    if (reg.status !== "ok" || !reg.teamKey) continue;
+    const members = teams.get(reg.teamKey);
+    if (members) members.push(reg);
+    else teams.set(reg.teamKey, [reg]);
+  }
+  for (const members of teams.values()) {
+    if (members.length < 2) continue;
+    const value = averageIndex(members.map((member) => member.index));
+    const matches = matchFlights(flights, value);
+    if (matches.length !== 1) continue;
+    const flight = matches[0] as FlightRule;
+    for (const member of members) {
+      member.flightId = flight.id;
+      member.reasons.push(`Class ${flight.name} is cut on the pair's average index ${value}.`);
+    }
+  }
 }
 
 /**

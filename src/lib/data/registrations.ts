@@ -1,4 +1,10 @@
-import { ageOn, classifyPlayer, type Registration, type Tee } from "@/lib/routing";
+import {
+  ageOn,
+  classifyPlayer,
+  defaultCategoryFor,
+  type Registration,
+  type Tee,
+} from "@/lib/routing";
 import { frozenOutdated, isStale, selectIndexForCutOff } from "./frozen";
 import type {
   DeskRegistration,
@@ -42,10 +48,13 @@ export function missingFactsFor(player: PlayerRecord, entry: RegistrationEntry):
  * group. An override that names both is placed by those facts even when the player record is still
  * missing a birthdate.
  */
-export function playsUnclassified(player: PlayerRecord, entry: RegistrationEntry): boolean {
+export function playsUnclassified(_player: PlayerRecord, entry: RegistrationEntry): boolean {
   if (entry.status !== "ok") return false;
   if (entry.overridden === true && entry.categoryId && entry.flightId) return false;
-  return missingFactsFor(player, entry).length > 0;
+  // A birthdate and a gender no longer send a player to Unclassified: the class comes from the
+  // handicap and the club's open division carries the tee until the details arrive for scoring. Only
+  // an override that names no category leaves an entry without one.
+  return entry.overridden === true;
 }
 
 /**
@@ -135,41 +144,28 @@ export function registrationFor({
   if (player.birthdate === null) missingReasons.push(`Birthdate is missing for ${player.name}.`);
   if (player.gender === null) missingReasons.push(`Gender is missing for ${player.name}.`);
 
-  let routing: Registration;
-  const birthdate = player.birthdate;
-  const gender = player.gender;
-  if (missingReasons.length > 0 || birthdate === null || gender === null) {
-    routing = {
-      playerId: player.id,
-      playerName: player.name,
-      // A confirmed entry goes into the draw as provisional. Unconfirmed entries stay parked.
-      status: provisional ? "ok" : "needs_review",
-      reasons: missingReasons,
+  // The owner's rule: schedule first. A missing birthdate or gender no longer holds an entry back.
+  // The player is classed on their handicap through the club's open division, and the missing facts
+  // stay on the entry as notes for scoring.
+  let routing: Registration = classifyPlayer(
+    {
+      id: player.id,
+      name: player.name,
+      birthdate: player.birthdate,
+      gender: player.gender,
       index: entry.frozen.index,
-      age: 0,
-      categoryId: null,
-      teeId: null,
-      playingHandicap: null,
-      flightId: null,
-      provisional,
-    };
-  } else {
-    routing = classifyPlayer(
-      {
-        id: player.id,
-        name: player.name,
-        birthdate,
-        gender,
-        index: entry.frozen.index,
-      },
-      {
-        players: [],
-        config: tournament.config,
-        tees,
-        categories: tournament.categories,
-        flights: tournament.flights,
-      },
-    );
+    },
+    {
+      players: [],
+      config: tournament.config,
+      tees,
+      categories: tournament.categories,
+      flights: tournament.flights,
+      defaultCategoryId: defaultCategoryFor(tournament.categories)?.id,
+    },
+  );
+  routing = { ...routing, reasons: [...missingReasons, ...routing.reasons] };
+  {
     if (entry.frozen.index === null) {
       // The engine already placed this player with a handicap of 0. The desk wording says where the
       // missing number came from, and the status stays as the engine set it.

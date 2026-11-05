@@ -28,6 +28,7 @@ import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
 import { displayName } from "@/lib/format";
 import type { MergeRow, ResolvedImportRow } from "@/lib/ngap";
 import {
+  defaultCategoryFor,
   type ProvisionalPlayer,
   type RoutingInput,
   route,
@@ -288,7 +289,8 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
       provisional.push({ id: p.id, name: p.name, index: entry.frozen.index, missing });
       continue;
     }
-    if (p.birthdate === null || p.gender === null) continue;
+    // A missing birthdate or gender is not a reason to leave a player out: the class comes from the
+    // handicap and the club's open division carries the tee. The missing facts travel with the entry.
     players.push({
       id: p.id,
       name: p.name,
@@ -304,6 +306,7 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
     tees: s.tees,
     categories: t.categories,
     flights: t.flights,
+    defaultCategoryId: defaultCategoryFor(t.categories)?.id,
     provisional,
   };
 }

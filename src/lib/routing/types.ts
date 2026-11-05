@@ -36,9 +36,10 @@ export interface FlightRule {
 export interface Player {
   id: string;
   name: string;
-  /** ISO date, YYYY-MM-DD */
-  birthdate: string;
-  gender: Gender;
+  /** ISO date, YYYY-MM-DD. Null when the club has not recorded it; the player is still drawn. */
+  birthdate: string | null;
+  /** Null when the club has not recorded it; the player is still drawn. */
+  gender: Gender | null;
   /** Handicap index frozen at the tournament cut-off date (from the NGAP export). */
   index: number | null;
   /**

@@ -1,4 +1,4 @@
-import { matchCategories, matchFlights } from "./classify";
+import { applyTeamClasses, defaultCategoryFor, matchCategories, matchFlights } from "./classify";
 import { chunk, groupSizes, packUnits } from "./groups";
 import { ageOn, playingHandicap } from "./handicap";
 import { planShotgunFrom, planTwoTeeFrom, type Slot, shotgunKey, twoTeeKey } from "./schedule";
@@ -14,6 +14,7 @@ import type {
   TournamentConfig,
 } from "./types";
 
+export { averageIndex, defaultCategoryFor } from "./classify";
 export { ageOn, courseHandicap, playingHandicap, rawCourseHandicap } from "./handicap";
 export { addMinutes } from "./schedule";
 export * from "./types";
@@ -30,6 +31,11 @@ export interface RoutingInput {
   tees: Tee[];
   categories: CategoryRule[];
   flights: FlightRule[];
+  /**
+   * The category a player joins when their birthdate or gender is not on file. Schedule first, then
+   * collect the missing details for scoring; nothing about the player is invented.
+   */
+  defaultCategoryId?: string;
   /**
    * Desk-confirmed players missing a routing fact. They are placed in Unclassified groups so they
    * can play today; the missing details are corrected later and the draw is re-run.
@@ -55,7 +61,9 @@ export interface RouteOptions {
 /** Steps 2 to 7 of the routing flow: classify one player. Pure, so it can be tested alone. */
 export function classifyPlayer(player: Player, input: RoutingInput): Registration {
   const { config, tees, categories, flights } = input;
-  const age = ageOn(player.birthdate, config.date);
+  // Age is measured on the day of play. A player without a birthdate on file is still drawn: the
+  // age stays unknown and the class comes from the handicap alone.
+  const age = player.birthdate === null ? 0 : ageOn(player.birthdate, config.date);
   const reg: Registration = {
     playerId: player.id,
     playerName: player.name,
@@ -85,12 +93,27 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
     return reg;
   }
 
-  const matches = matchCategories(categories, player.gender, age);
-  if (matches.length === 0) return review(`No category fits a ${age}-year-old (${player.gender}).`);
-  if (matches.length > 1) {
-    return review(`Category rules overlap: ${matches.map((m) => m.name).join(", ")}.`);
+  let category: CategoryRule | undefined;
+  if (player.birthdate === null || player.gender === null) {
+    // The owner's rule: schedule first. The club's open division is used until the birthdate and
+    // gender are collected, which is when the tee and the playing handicap can be corrected.
+    category =
+      categories.find((rule) => rule.id === input.defaultCategoryId) ??
+      defaultCategoryFor(categories) ??
+      undefined;
+    if (!category) {
+      return review("No category is set up to draw a player whose birthdate or gender is unknown.");
+    }
+    reg.reasons.push(`No birthdate or gender on file; ${category.name} is used for the draw.`);
+  } else {
+    const matches = matchCategories(categories, player.gender, age);
+    if (matches.length === 0)
+      return review(`No category fits a ${age}-year-old (${player.gender}).`);
+    if (matches.length > 1) {
+      return review(`Category rules overlap: ${matches.map((m) => m.name).join(", ")}.`);
+    }
+    category = matches[0] as CategoryRule;
   }
-  const category = matches[0] as CategoryRule;
   reg.categoryId = category.id;
 
   const tee = tees.find((t) => t.id === category.teeId);
@@ -169,6 +192,9 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
     ...players.map((p) => classifyPlayer(p, input)),
     ...provisionalRegistrations,
   ];
+  // A member-guest pair is classed on the average of the two indexes, before any grouping, so both
+  // partners share one class and cannot be split across groups.
+  applyTeamClasses(registrations, flights);
   const byId = new Map(registrations.map((r) => [r.playerId, r]));
   const warnings: string[] = [];
 

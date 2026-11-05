@@ -507,8 +507,10 @@ export interface Database {
           id?: string;
           club_id: string;
           full_name: string;
-          birthdate: string;
-          gender: PlayerRow["gender"];
+          // Nullable in the database since 20261037000000: the desk adds a player before the
+          // birthdate and gender are known.
+          birthdate?: string | null;
+          gender?: PlayerRow["gender"] | null;
           ngap_id?: string | null;
           phone?: string | null;
           photo_path?: string | null;
