@@ -238,6 +238,34 @@ function RegisterDesk() {
   );
   const { page, setPage } = usePagedList(orderedRows, listQuery);
 
+  // The club sheet's pair, on the row. The number lives on the registration; the partner's name is
+  // read from the other entry that carries the same number.
+  const teamNotes = useMemo(() => {
+    const byTeam = new Map<number, { entryId: string; name: string }[]>();
+    for (const entry of entries) {
+      const teamNo = entry.teamNo;
+      if (teamNo === null || teamNo === undefined) continue;
+      const player = players.find((candidate) => candidate.id === entry.playerId);
+      if (!player) continue;
+      const list = byTeam.get(teamNo) ?? [];
+      list.push({ entryId: entry.id, name: player.name });
+      byTeam.set(teamNo, list);
+    }
+    const notes = new Map<string, string>();
+    for (const [teamNo, members] of byTeam) {
+      for (const member of members) {
+        const partner = members.find((other) => other.entryId !== member.entryId);
+        notes.set(
+          member.entryId,
+          partner
+            ? `Pair ${teamNo} · with ${partner.name}`
+            : `Pair ${teamNo} · partner not entered`,
+        );
+      }
+    }
+    return notes;
+  }, [entries, players]);
+
   // Bulk confirmation takes every entry the database still holds as needs_review, except the two
   // that are about identity or eligibility: a duplicated display name in this event, and an entry
   // the router already called ineligible. Missing birthdate, gender or handicap index no longer
@@ -1497,6 +1525,7 @@ function RegisterDesk() {
                   }
                   paymentStatus={e.paymentStatus}
                   shirt={e.shirt}
+                  teamNote={teamNotes.get(e.id) ?? null}
                   daysNote={
                     selectedDays.length
                       ? `Days ${selectedDays

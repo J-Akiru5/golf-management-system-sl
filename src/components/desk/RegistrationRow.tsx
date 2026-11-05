@@ -77,6 +77,11 @@ export interface RegistrationRowProps {
   daysNote?: string | null;
   /** E.g. "prefers 6:30 AM" summary the assembler builds from the entry. */
   teePreferenceNote?: string | null;
+  /**
+   * The pair from the club sheet, e.g. "Pair 59 · with TOLEDO, ANGELICA". Shown on the row so the
+   * desk can see who is teed with whom without opening a second screen.
+   */
+  teamNote?: string | null;
   /** Added by / at / overridden. All optional. */
   audit?: RegistrationAudit;
   /** When provided the name becomes a link to the profile. */
@@ -103,6 +108,7 @@ export function RegistrationRow({
   flightName = null,
   paymentStatus = null,
   shirt = null,
+  teamNote = null,
   daysNote = null,
   teePreferenceNote = null,
   audit,
@@ -148,6 +154,7 @@ export function RegistrationRow({
             {role === "guest" ? "Guest" : "Member"}
           </span>
           {status && <StatusPill status={status} />}
+          {teamNote && <span className="pill info">{teamNote}</span>}
           {audit?.overridden && <OverriddenBadge reason={audit.overrideReason} />}
         </span>
         {meta.length > 0 && <span className="hint mt-0.5 block truncate">{meta.join(" · ")}</span>}
