@@ -598,7 +598,12 @@ function TeeRow({
           aria-label={`Wave for ${player.name} on ${day.label}`}
           className="w-24"
           onChange={(e) => {
-            setWave(e.target.value);
+            const next = e.target.value;
+            setWave(next);
+            // A wave is a time: picking one puts that wave's start in the time field, so the row
+            // cannot be saved with a wave and no time. "No wave" leaves the typed time alone.
+            const start = waves.find((item) => item.wave === next);
+            if (start) setTeeTime(start.time);
             setMessage(null);
           }}
         >
