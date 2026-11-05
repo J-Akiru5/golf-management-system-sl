@@ -36,7 +36,7 @@ import {
 } from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
 import { SETUP_SECTIONS, type SetupSection } from "@/lib/data/setup-payload";
-import { waveCountForField, waveStartTimes } from "@/lib/data/tee-time";
+import { waveCountForField, waveGapBetween, waveStartTimes } from "@/lib/data/tee-time";
 import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
 import type { CategoryRule, FlightRule, StartFormat, Tee, TournamentConfig } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -60,6 +60,15 @@ const TAB_ALIAS: Record<string, SetupTab> = { registration: "fields" };
 
 /** Marker colours in the order the club lists them. A new tee takes the first one not in use. */
 const TEE_NAMES = ["Blue", "White", "Silver", "Red", "Gold", "Black"];
+
+/** A gap in the words an organizer uses: hours and minutes after the first wave. */
+function describeWaveGap(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} minutes after the first wave.`;
+  if (rest === 0) return `${hours} hours after the first wave.`;
+  return `${hours} hours ${rest} minutes after the first wave.`;
+}
 
 function nextTeeName(tees: readonly Tee[]): string {
   const used = new Set(tees.map((tee) => tee.name.trim().toLowerCase()));
@@ -297,6 +306,12 @@ function SetupWizard({
     });
     mark("basics");
   };
+
+  // The organizer knows when the PM wave goes off, not the gap between waves. The gap is what the
+  // draw and the database store, so it is derived from the two times on the way in and shown back as
+  // a plain reading.
+  const secondWaveTime =
+    waveStartTimes(draft.config.firstTeeTime, draft.config.waveGapMinutes, 2)[1]?.time ?? "12:30";
 
   const checks = checkTournament(draft, draftTees, draftHoles);
   const bad = checks.filter((c) => c.level === "bad").length;
@@ -1252,18 +1267,17 @@ function SetupWizard({
                     </label>
                   ) : (
                     <label className="field">
-                      <span>Minutes until the second wave</span>
+                      <span>Second wave (PM) start</span>
                       <input
-                        type="number"
-                        min={60}
-                        max={600}
-                        step={15}
-                        value={draft.config.waveGapMinutes}
+                        type="time"
+                        value={secondWaveTime}
+                        aria-label="Second wave start time"
                         onChange={(e) => {
-                          const n = num(e.target.value);
-                          if (n !== null && n > 0) updateConfig({ waveGapMinutes: n }, "start");
+                          const gap = waveGapBetween(draft.config.firstTeeTime, e.target.value);
+                          if (gap !== null) updateConfig({ waveGapMinutes: gap }, "start");
                         }}
                       />
+                      <span className="hint">{describeWaveGap(draft.config.waveGapMinutes)}</span>
                     </label>
                   )}
                   <label className="field">

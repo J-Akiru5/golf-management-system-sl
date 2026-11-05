@@ -75,6 +75,32 @@ export function waveCountForField(playerCount: number, holes: number, groupSize:
  * screen offers these as batch choices, so a shotgun day is not typed player by player, and the
  * draw and the schedule cannot disagree about when a wave starts.
  */
+/**
+ * The gap that puts the second wave at `second`, measured from `first`, in minutes.
+ *
+ * The desk sets the PM start time because that is what an organizer knows; the gap is what the draw
+ * and the database store, so it is derived from the two times. A second wave earlier on the clock is
+ * read as the next morning, and a second wave at the same time is refused: it is not a second wave.
+ */
+export function waveGapBetween(first: string, second: string): number | null {
+  const from = minutesOfDay(first);
+  const to = minutesOfDay(second);
+  if (from === null || to === null) return null;
+  const gap = (to - from + 1440) % 1440;
+  return gap === 0 ? null : gap;
+}
+
+/** Minutes after midnight for an "HH:MM" value, or null when it is not a time of day. */
+function minutesOfDay(value: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
 export function waveStartTimes(
   firstTeeTime: string,
   waveGapMinutes: number,
