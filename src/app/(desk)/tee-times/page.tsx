@@ -7,6 +7,7 @@ import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
+import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
 import {
   teeAssignmentProblem,
   type WaveStart,
@@ -41,6 +42,14 @@ export default function TeeTimesPage() {
     null,
   );
   const day = days.find((d) => d.dayNumber === selectedDay) ?? days[0] ?? null;
+  // 0-based position, which is what the session defaults read: every day but the last runs a
+  // morning and an afternoon, and the last day runs one tee time.
+  const dayIndex = day
+    ? Math.max(
+        0,
+        days.findIndex((d) => d.dayNumber === day.dayNumber),
+      )
+    : 0;
 
   const playerById = useMemo(
     () => new Map(players.map((player) => [player.id, player])),
@@ -195,11 +204,11 @@ export default function TeeTimesPage() {
               id="tee-times"
               icon={<CalendarClock />}
               title={`${day.label} · ${fmtIso(day.playDate)}`}
-              subtitle={
+              subtitle={`${daySessionSummary(dayIndex, days.length)}. ${
                 day.startTime
-                  ? `Day starts at ${day.startTime}. Times before that are refused.`
-                  : "No day start time is set. The event's first tee time is the floor."
-              }
+                  ? `The day opens at ${day.startTime}, and times before that are refused.`
+                  : "No day start time is set, so the event's first tee time is the floor."
+              }`}
             >
               <div className="tiles grid-cols-2 lg:grid-cols-4">
                 <div className="tile">
@@ -310,6 +319,7 @@ export default function TeeTimesPage() {
                         <th>Index</th>
                         <th>Membership</th>
                         <th>Wave</th>
+                        <th>Session</th>
                         <th>Tee time</th>
                         <th>Start hole</th>
                         <th>Caddie</th>
@@ -324,6 +334,8 @@ export default function TeeTimesPage() {
                           entry={entry}
                           player={player}
                           day={day}
+                          dayIndex={dayIndex}
+                          dayCount={days.length}
                           caddies={caddies.filter((caddie) => caddie.active)}
                           courseHoles={tournament.config.holes}
                           waves={waves}
@@ -351,6 +363,8 @@ function TeeRow({
   entry,
   player,
   day,
+  dayIndex,
+  dayCount,
   caddies,
   courseHoles,
   waves,
@@ -360,6 +374,9 @@ function TeeRow({
   entry: RegistrationEntry;
   player: PlayerRecord;
   day: TournamentDay;
+  /** 0-based day position, used only to name the session. */
+  dayIndex: number;
+  dayCount: number;
   caddies: Caddie[];
   courseHoles: number;
   /** The day's waves, from the field size and the draw. A player may sit in any of them. */
@@ -508,6 +525,11 @@ function TeeRow({
             </option>
           ))}
         </select>
+      </td>
+      <td>
+        <span className="pill">
+          {sessionLabelForTime(teeTime || null, dayIndex, dayCount) ?? "—"}
+        </span>
       </td>
       <td>
         <input

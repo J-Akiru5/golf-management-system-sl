@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CourseCardEditor } from "@/components/course/CourseCardEditor";
+import { CourseHandicapConverter } from "@/components/course/CourseHandicapConverter";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
@@ -47,7 +48,7 @@ const SECTIONS = [
   ["course", "Course & tees"],
   ["rules", "Cut-off & handicap"],
   ["categories", "Categories"],
-  ["flights", "Flights"],
+  ["flights", "Classes"],
   ["start", "Start & groups"],
   ["fields", "Registration fields"],
 ] as const;
@@ -56,6 +57,14 @@ type SetupTab = (typeof SECTIONS)[number][0];
 
 /** A link may name a section the tabs spell differently. */
 const TAB_ALIAS: Record<string, SetupTab> = { registration: "fields" };
+
+/** Marker colours in the order the club lists them. A new tee takes the first one not in use. */
+const TEE_NAMES = ["Blue", "White", "Silver", "Red", "Gold", "Black"];
+
+function nextTeeName(tees: readonly Tee[]): string {
+  const used = new Set(tees.map((tee) => tee.name.trim().toLowerCase()));
+  return TEE_NAMES.find((name) => !used.has(name.toLowerCase())) ?? `Tee ${tees.length + 1}`;
+}
 
 /** The tab named in the URL hash, or Basics when there is none or it is unknown. */
 function readTab(): SetupTab {
@@ -73,7 +82,7 @@ const SECTION_TITLE: Record<SetupSection, string> = {
   fields: "Registration fields",
   course: "Course & tees",
   categories: "Categories",
-  flights: "Flights",
+  flights: "Classes",
 };
 
 export default function SetupPage() {
@@ -202,9 +211,56 @@ function SetupWizard({
     setDraftTees((current) => current.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     mark("course");
   };
+  // A tee the card has not listed yet. The marker colours run in the order the club uses them, so
+  // adding a tee where Blue, White and Red exist gives Silver. Its numbers start from the White tee,
+  // because a men's Silver marker is scored off the White conversion, and they stay a sample until
+  // the card below is confirmed.
+  const addTee = () => {
+    const totalPar = draftHoles.reduce((sum, hole) => sum + (hole.par ?? 0), 0);
+    const white = draftTees.find((t) => t.name.trim().toLowerCase().startsWith("white"));
+    setDraftTees((current) => [
+      ...current,
+      {
+        id: idOf("tee"),
+        name: nextTeeName(current),
+        courseRating: white?.courseRating ?? (totalPar || 72),
+        slope: white?.slope ?? 113,
+        par: white?.par ?? (totalPar || 72),
+      },
+    ]);
+    mark("course");
+  };
   const replaceHoles = (next: Hole[]) => {
     setDraftHoles(next);
     mark("course");
+  };
+
+  // Classes are cut over the whole field, so every range is compared with every other one. Old
+  // per-category rows overlap each other the moment they are read as one set, and the fix is to
+  // replace them with one set rather than to move a range around.
+  const classOverlap = draft.flights.some((a, i) =>
+    draft.flights.some((b, j) => j > i && a.min <= b.max && b.min <= a.max),
+  );
+  const useStandardClasses = () => {
+    const carrier = draft.categories[0]?.id;
+    if (!carrier) return;
+    update(
+      {
+        flights: [
+          { id: idOf("flt"), categoryId: carrier, name: "Class A", min: 0, max: 12 },
+          { id: idOf("flt"), categoryId: carrier, name: "Class B", min: 12.1, max: 18 },
+          { id: idOf("flt"), categoryId: carrier, name: "Class C", min: 18.1, max: 23 },
+          {
+            id: idOf("flt"),
+            categoryId: carrier,
+            name: "Class D",
+            min: 23.1,
+            max: draft.config.maxIndex,
+          },
+        ],
+      },
+      "flights",
+    );
   };
 
   const setDay = (index: number, value: string) => {
@@ -761,12 +817,25 @@ function SetupWizard({
                             />
                           </td>
                           <td>
-                            <span className="pill warn">Sample</span>
+                            {draft.courseDataConfirmed ? (
+                              <span className="pill ok">Confirmed</span>
+                            ) : (
+                              <span className="pill warn">Sample</span>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <Button variant="secondary" size="sm" disabled={!canEdit} onClick={addTee}>
+                    <ListPlus aria-hidden="true" /> Add a tee
+                  </Button>
+                  <span className="hint">
+                    Every tee on the card is listed here, so a missing marker colour is added before
+                    its numbers are checked.
+                  </span>
                 </div>
                 <CourseCardEditor
                   holes={draftHoles}
@@ -776,6 +845,8 @@ function SetupWizard({
                   disabled={!canEdit}
                   idPrefix="setup"
                 />
+
+                <CourseHandicapConverter tees={draftTees} allowance={draft.config.allowance} />
 
                 {/* The one thing that cannot be derived: a person saying the numbers were checked. */}
                 <div className="well grid gap-2 p-3.5">
@@ -1015,96 +1086,116 @@ function SetupWizard({
                 id="flights"
                 icon={<Layers />}
                 dataHelp="setup-flights"
-                title="Flights"
-                subtitle="Fixed handicap ranges per category. Ranges must not overlap."
+                title="Classes"
+                subtitle="Class is the priority over the tee: one range per class, cut over the whole field. Ranges must not overlap."
                 action={sectionAction("flights")}
               >
                 <div className="grid gap-3">
-                  {draft.categories.map((c) => {
-                    const own = draft.flights.filter((f) => f.categoryId === c.id);
-                    return (
-                      <div key={c.id} className="grid gap-2">
-                        <h3 className="small-h">{c.name}</h3>
-                        {own.map((f) => (
-                          <div
-                            key={f.id}
-                            className="grid gap-2.5 rounded-[12px] border border-line p-3 sm:grid-cols-[minmax(0,1fr)_6.5rem_6.5rem_auto]"
-                          >
-                            <label className="field">
-                              <span>Flight name</span>
-                              <input
-                                type="text"
-                                value={f.name}
-                                onChange={(e) => setFlight(f.id, { name: e.target.value })}
-                              />
-                            </label>
-                            <label className="field">
-                              <span>From</span>
-                              <input
-                                type="number"
-                                step={0.1}
-                                value={f.min}
-                                onChange={(e) => {
-                                  const n = num(e.target.value);
-                                  if (n !== null) setFlight(f.id, { min: n });
-                                }}
-                              />
-                            </label>
-                            <label className="field">
-                              <span>To</span>
-                              <input
-                                type="number"
-                                step={0.1}
-                                value={f.max}
-                                onChange={(e) => {
-                                  const n = num(e.target.value);
-                                  if (n !== null) setFlight(f.id, { max: n });
-                                }}
-                              />
-                            </label>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={`Remove ${f.name}`}
-                              className="justify-self-end text-ink-muted hover:text-danger"
-                              onClick={() =>
-                                update(
-                                  { flights: draft.flights.filter((x) => x.id !== f.id) },
-                                  "flights",
-                                )
-                              }
-                            >
-                              <Trash2 aria-hidden="true" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="justify-self-start"
-                          onClick={() =>
-                            update(
-                              {
-                                flights: [
-                                  ...draft.flights,
-                                  {
-                                    id: idOf("flt"),
-                                    categoryId: c.id,
-                                    name: `${c.name} new flight`,
-                                    min: 0,
-                                    max: draft.config.maxIndex,
-                                  },
-                                ],
-                              },
-                              "flights",
-                            )
-                          }
-                        >
-                          <ListPlus aria-hidden="true" /> Add a flight to {c.name}
-                        </Button>
-                      </div>
-                    );
-                  })}
+                  {classOverlap && (
+                    <div className="notice warn flex flex-wrap items-center justify-between gap-2">
+                      <p className="m-0 text-[13px]">
+                        <b>These ranges overlap.</b> A class is cut over the whole field, so every
+                        range is compared with every other one, including rows saved under different
+                        categories before class took priority. Replace them with one set.
+                      </p>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={draft.categories.length === 0}
+                        onClick={useStandardClasses}
+                      >
+                        Use classes A to D
+                      </Button>
+                    </div>
+                  )}
+                  {draft.flights.length === 0 && (
+                    <p className="hint m-0">
+                      No classes yet. Add the ones the event runs, for example Class A to D.
+                    </p>
+                  )}
+                  {draft.flights.map((f) => (
+                    <div
+                      key={f.id}
+                      className="grid gap-2.5 rounded-[12px] border border-line p-3 sm:grid-cols-[minmax(0,1fr)_6.5rem_6.5rem_auto]"
+                    >
+                      <label className="field">
+                        <span>Flight name</span>
+                        <input
+                          type="text"
+                          value={f.name}
+                          onChange={(e) => setFlight(f.id, { name: e.target.value })}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>From</span>
+                        <input
+                          type="number"
+                          step={0.1}
+                          value={f.min}
+                          onChange={(e) => {
+                            const n = num(e.target.value);
+                            if (n !== null) setFlight(f.id, { min: n });
+                          }}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>To</span>
+                        <input
+                          type="number"
+                          step={0.1}
+                          value={f.max}
+                          onChange={(e) => {
+                            const n = num(e.target.value);
+                            if (n !== null) setFlight(f.id, { max: n });
+                          }}
+                        />
+                      </label>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Remove ${f.name}`}
+                        className="justify-self-end text-ink-muted hover:text-danger"
+                        onClick={() =>
+                          update({ flights: draft.flights.filter((x) => x.id !== f.id) }, "flights")
+                        }
+                      >
+                        <Trash2 aria-hidden="true" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="justify-self-start"
+                    disabled={draft.categories.length === 0}
+                    onClick={() =>
+                      update(
+                        {
+                          flights: [
+                            ...draft.flights,
+                            {
+                              id: idOf("flt"),
+                              // Storage only: the row hangs off one carrier category, while the
+                              // engine matches a class by range across the whole field.
+                              categoryId: draft.categories[0]?.id ?? "",
+                              name: `Class ${String.fromCharCode(65 + draft.flights.length)}`,
+                              min: 0,
+                              max: draft.config.maxIndex,
+                            },
+                          ],
+                        },
+                        "flights",
+                      )
+                    }
+                  >
+                    <ListPlus aria-hidden="true" /> Add a class
+                  </Button>
+                  {draft.categories.length === 0 && (
+                    <p className="hint m-0">
+                      Add a category first. A class row is stored against one, though the class
+                      itself spans every tee.
+                    </p>
+                  )}
                 </div>
               </SectionCard>
             )}

@@ -1,6 +1,6 @@
 import { daysOfTournament } from "@/lib/data/dates";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
-import { missingFactsFor, registrationFor } from "@/lib/data/registrations";
+import { missingFactsFor, playsUnclassified, registrationFor } from "@/lib/data/registrations";
 import type {
   Caddie,
   Club,
@@ -278,7 +278,7 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
     // A confirmed entry missing a routing fact cannot be classified. It is handed to the engine
     // separately so it can still be placed, without a category or flight being invented for it.
     const missing = missingFactsFor(p, entry);
-    if (entry.status === "ok" && missing.length > 0) {
+    if (playsUnclassified(p, entry)) {
       provisional.push({ id: p.id, name: p.name, index: entry.frozen.index, missing });
       continue;
     }

@@ -875,13 +875,17 @@ export function createSupabaseAdapters(
       // Nothing changes on screen until both rows are written. A refused override must not leave
       // the desk showing a player as ready when the database still says needs review.
       return queuedWrite(async () => {
-        const { error: playerError } = await client
-          .from("players")
-          .update({ birthdate: input.birthdate })
-          .eq("club_id", clubId)
-          .eq("id", entry.playerId);
-        if (playerError) {
-          throw new Error(`Could not save the player's birthdate: ${playerError.message}`);
+        // A guest's birthdate may never arrive. Only write the player record when the desk supplied
+        // one; a blank field must not wipe a date that is already on file.
+        if (input.birthdate) {
+          const { error: playerError } = await client
+            .from("players")
+            .update({ birthdate: input.birthdate })
+            .eq("club_id", clubId)
+            .eq("id", entry.playerId);
+          if (playerError) {
+            throw new Error(`Could not save the player's birthdate: ${playerError.message}`);
+          }
         }
         const { error } = await client
           .from("registrations")
@@ -902,11 +906,13 @@ export function createSupabaseAdapters(
           .eq("club_id", clubId)
           .eq("id", entryId);
         fail("Could not mark the player ready", error);
-        dispatch({
-          type: "updatePlayer",
-          id: entry.playerId,
-          patch: { birthdate: input.birthdate },
-        });
+        if (input.birthdate) {
+          dispatch({
+            type: "updatePlayer",
+            id: entry.playerId,
+            patch: { birthdate: input.birthdate },
+          });
+        }
         dispatch({ type: "updateEntry", id: entryId, patch: next });
       });
     },
@@ -979,17 +985,18 @@ export function createSupabaseAdapters(
       options.onSaved();
       return count;
     },
-    setDays: async (entryId, days) => {
+    setDays: async (entryId, days, sessions = {}) => {
       const { data, error } = await client.rpc("set_registration_days", {
         p_registration: entryId,
         p_days: days,
+        p_sessions: sessions,
       });
       if (error) {
         const missing =
           error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
         throw new Error(
           missing
-            ? "The playing days need migration 20261037000000. Nothing was saved."
+            ? "Saving the days with their AM/PM session needs migration 20261105000100. Nothing was saved."
             : `Could not save the playing days: ${error.message}`,
         );
       }
@@ -1003,7 +1010,7 @@ export function createSupabaseAdapters(
       dispatch({
         type: "updateEntry",
         id: entryId,
-        patch: { selectedDays: days, caddieByDay },
+        patch: { selectedDays: days, daySessions: sessions, caddieByDay },
       });
     },
     assignDayTee: async (entryId, dayNumber, assignment) => {

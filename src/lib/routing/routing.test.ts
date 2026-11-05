@@ -27,14 +27,12 @@ const categories = [
   { id: "ladies", name: "Ladies", gender: "F" as const, minAge: 0, maxAge: null, teeId: "red" },
 ];
 
+// Classes are field-wide: one set of ranges, whatever category or tee a player is in. The carrier
+// categoryId is storage only.
 const flights = [
-  { id: "r-a", categoryId: "regular", name: "Regular A", min: 0, max: 12 },
-  { id: "r-b", categoryId: "regular", name: "Regular B", min: 12.1, max: 20 },
-  { id: "r-c", categoryId: "regular", name: "Regular C", min: 20.1, max: 30 },
-  { id: "s-a", categoryId: "senior", name: "Senior A", min: 0, max: 18 },
-  { id: "s-b", categoryId: "senior", name: "Senior B", min: 18.1, max: 30 },
-  { id: "ss-a", categoryId: "super", name: "Super Senior A", min: 0, max: 30 },
-  { id: "l-a", categoryId: "ladies", name: "Ladies A", min: 0, max: 30 },
+  { id: "a", categoryId: "regular", name: "Class A", min: 0, max: 12 },
+  { id: "b", categoryId: "regular", name: "Class B", min: 12.1, max: 20 },
+  { id: "c", categoryId: "regular", name: "Class C", min: 20.1, max: 30 },
 ];
 
 const config: TournamentConfig = {
@@ -101,7 +99,8 @@ describe("classification", () => {
     expect(r.categoryId).toBe("senior");
     expect(r.teeId).toBe("senior");
     expect(r.playingHandicap).toBe(14);
-    expect(r.flightId).toBe("s-a");
+    // Class B, the same class a player on any other tee with this index would join.
+    expect(r.flightId).toBe("b");
   });
 
   it("puts a 70-year-old man in Super Senior on Silver", () => {
@@ -138,7 +137,7 @@ describe("classification", () => {
     const p = player({ birthdate: "1990-01-01", index: 12 });
     const byIndex = classifyPlayer(p, input([], { flightBasis: "index" }));
     const byCh = classifyPlayer(p, input([], { flightBasis: "courseHandicap" }));
-    expect(byIndex.flightId).toBe("r-a");
+    expect(byIndex.flightId).toBe("a");
     expect(byCh.playingHandicap).toBe(Math.round(12 * (128 / 113) + (71.5 - 72)));
   });
 });

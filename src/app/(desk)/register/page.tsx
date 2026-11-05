@@ -34,8 +34,10 @@ import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Pager } from "@/components/paging/Pager";
 import { usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
+import type { DaySessionChoice } from "@/lib/data/day-selection";
 import { instructionText } from "@/lib/data/instructions";
 import { fmtIso } from "@/lib/data/labels";
+import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
 import {
   type DeskRegistration,
   PAYMENT_LABEL,
@@ -257,7 +259,11 @@ function RegisterDesk() {
     [listRows],
   );
 
-  async function saveDays(entry: RegistrationEntry, next: number[]) {
+  async function saveDays(
+    entry: RegistrationEntry,
+    next: number[],
+    sessions: Record<number, DaySessionChoice> = {},
+  ) {
     if (tournament?.requiredDays !== null && tournament?.requiredDays !== undefined) {
       if (next.length !== tournament.requiredDays) {
         throw new Error(`This event requires exactly ${tournament.requiredDays} playing day(s).`);
@@ -268,7 +274,7 @@ function RegisterDesk() {
         throw new Error(`This event allows at most ${tournament.maxDays} playing day(s).`);
       }
     }
-    await adapters.registrations.setDays(entry.id, next);
+    await adapters.registrations.setDays(entry.id, next, sessions);
   }
 
   if (!tournament) return <NeedsTournament what="The registration desk" />;
@@ -1009,7 +1015,7 @@ function RegisterDesk() {
                   <fieldset className="grid gap-3">
                     <legend className="overline float-left mb-2 w-full">Playing days</legend>
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {days.map((day) => {
+                      {days.map((day, index) => {
                         const checked = draft.selectedDays.includes(day.dayNumber);
                         return (
                           <label
@@ -1033,8 +1039,11 @@ function RegisterDesk() {
                                 {day.label} · {fmtIso(day.playDate)}
                               </b>
                               <span className="hint block">
-                                {day.startTime ? `Starts ${day.startTime}` : "Start time not set"}
+                                {daySessionSummary(index, days.length)}
                               </span>
+                              {day.startTime && (
+                                <span className="hint block">The day opens at {day.startTime}</span>
+                              )}
                             </span>
                           </label>
                         );
@@ -1481,7 +1490,21 @@ function RegisterDesk() {
                   shirt={e.shirt}
                   daysNote={
                     selectedDays.length
-                      ? `Days ${selectedDays.join(", ")}`
+                      ? `Days ${selectedDays
+                          .map((dayNumber) => {
+                            const index = days.findIndex((day) => day.dayNumber === dayNumber);
+                            const session =
+                              e.daySessions?.[dayNumber] ??
+                              (index >= 0
+                                ? sessionLabelForTime(
+                                    e.dayTee?.[dayNumber]?.teeTime ?? null,
+                                    index,
+                                    days.length,
+                                  )
+                                : null);
+                            return session ? `${dayNumber} ${session}` : String(dayNumber);
+                          })
+                          .join(", ")}`
                       : "No playing days selected"
                   }
                   teePreferenceNote={
@@ -1523,7 +1546,7 @@ function RegisterDesk() {
                         days={days}
                         required={tournament.requiredDays}
                         max={tournament.maxDays}
-                        onSave={(next) => saveDays(e, next)}
+                        onSave={(next, sessions) => saveDays(e, next, sessions)}
                       />
                       {r?.frozenOutdated && (
                         <Button variant="secondary" size="sm" onClick={() => void refreeze([e.id])}>
@@ -1571,7 +1594,10 @@ function RegisterDesk() {
           latestIndex={overrideLatest?.index ?? null}
           latestIndexDate={overrideLatest?.effectiveDate ?? null}
           onSave={(input) => {
-            adapters.players.update(override.player.id, { birthdate: input.birthdate });
+            // A blank birthdate is normal for a guest: leave the player record untouched.
+            if (input.birthdate) {
+              adapters.players.update(override.player.id, { birthdate: input.birthdate });
+            }
             // The row changes on screen only when the write lands; a refusal leaves it in review.
             void adapters.registrations.overrideReady(override.entry.id, input);
             setOverride(null);

@@ -1,6 +1,7 @@
 import type { Dispatch } from "react";
 import { courseNumbersChanged } from "@/lib/data/course-data";
 import { daysOfTournament } from "@/lib/data/dates";
+import type { DaySessionChoice } from "@/lib/data/day-selection";
 import type { EmailRepository } from "@/lib/data/email";
 import { explainRegistration, type RoutingExplanation } from "@/lib/data/explain";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
@@ -164,13 +165,16 @@ export interface SetupRepository {
 
 /** The minimum facts the organizer must supply to place a player whose profile is incomplete. */
 export interface OverrideReadyInput {
-  index: number;
-  effectiveDate: string;
-  birthdate: string;
-  categoryId: string;
-  teeId: string;
-  flightId: string;
-  playingHandicap: number;
+  /** Null when no NGAP record exists yet: the entry then plays as provisional. */
+  index: number | null;
+  effectiveDate: string | null;
+  /** Null when the player has not supplied it. The player record is left as it is. */
+  birthdate: string | null;
+  /** Null when the class is still unknown: the entry plays in an Unclassified group. */
+  categoryId: string | null;
+  teeId: string | null;
+  flightId: string | null;
+  playingHandicap: number | null;
   reason: string;
   /** Details that are still missing and stay visible as pending notes. */
   pending: string[];
@@ -188,8 +192,15 @@ export interface RegistrationRepository {
   remove(id: string): void;
   /** Copies the latest index on or before the cut-off onto the entries again. */
   refreeze(tournamentId: string, entryIds?: string[]): void;
-  /** Replaces the player's selected day numbers. Resolves after the database accepts them. */
-  setDays(entryId: string, days: number[]): Promise<void>;
+  /**
+   * Replaces the player's selected day numbers and the AM/PM session the desk picked for each one.
+   * Resolves after the database accepts them.
+   */
+  setDays(
+    entryId: string,
+    days: number[],
+    sessions?: Record<number, DaySessionChoice>,
+  ): Promise<void>;
   /** Assigns the confirmed tee time and start hole for one selected day. */
   assignDayTee(entryId: string, dayNumber: number, assignment: DayTeeAssignment): Promise<void>;
 }
@@ -448,11 +459,13 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     overrideReady: (entryId, input) => {
       const entry = state.entries.find((item) => item.id === entryId);
       if (!entry) throw new Error("That registration was not found.");
-      dispatch({
-        type: "updatePlayer",
-        id: entry.playerId,
-        patch: { birthdate: input.birthdate },
-      });
+      if (input.birthdate) {
+        dispatch({
+          type: "updatePlayer",
+          id: entry.playerId,
+          patch: { birthdate: input.birthdate },
+        });
+      }
       dispatch({
         type: "updateEntry",
         id: entryId,
@@ -481,7 +494,7 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         "Confirming registrations in bulk needs the connected club database. Nothing was changed.",
       );
     },
-    setDays: async (entryId, days) => {
+    setDays: async (entryId, days, sessions = {}) => {
       const entry = state.entries.find((item) => item.id === entryId);
       if (!entry) throw new Error("That registration was not found.");
       const caddieByDay = { ...(entry.caddieByDay ?? {}) };
@@ -491,7 +504,7 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       dispatch({
         type: "updateEntry",
         id: entryId,
-        patch: { selectedDays: days, caddieByDay },
+        patch: { selectedDays: days, daySessions: sessions, caddieByDay },
       });
     },
     assignDayTee: async (entryId, dayNumber, assignment) => {

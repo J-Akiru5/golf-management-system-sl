@@ -1448,6 +1448,7 @@ export type Database = {
           id: string;
           registration_id: string;
           selected: boolean;
+          session: string | null;
           start_hole: number | null;
           tee_confirmed: boolean;
           tee_time: string | null;
@@ -1461,6 +1462,7 @@ export type Database = {
           id?: string;
           registration_id: string;
           selected?: boolean;
+          session?: string | null;
           start_hole?: number | null;
           tee_confirmed?: boolean;
           tee_time?: string | null;
@@ -1474,6 +1476,7 @@ export type Database = {
           id?: string;
           registration_id?: string;
           selected?: boolean;
+          session?: string | null;
           start_hole?: number | null;
           tee_confirmed?: boolean;
           tee_time?: string | null;
@@ -2728,7 +2731,7 @@ export type Database = {
         Returns: string;
       };
       set_registration_days: {
-        Args: { p_days: number[]; p_registration: string };
+        Args: { p_days: number[]; p_registration: string; p_sessions?: Json };
         Returns: Json;
       };
       submit_registration: {

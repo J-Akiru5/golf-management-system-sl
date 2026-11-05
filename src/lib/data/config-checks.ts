@@ -133,13 +133,9 @@ export function checkTournament(tournament: Tournament, tees: Tee[], holes: Hole
 
   const overlaps: string[] = [];
   for (const f of flights) {
+    // One set of classes covers the whole field, so every class is compared with every other one.
     const twin = flights.find(
-      (o) =>
-        o.id !== f.id &&
-        o.categoryId === f.categoryId &&
-        f.min <= o.max &&
-        o.min <= f.max &&
-        !(f.max < o.min),
+      (o) => o.id !== f.id && f.min <= o.max && o.min <= f.max && !(f.max < o.min),
     );
     if (twin) overlaps.push(`${f.name} overlaps ${twin.name}`);
   }
@@ -154,18 +150,16 @@ export function checkTournament(tournament: Tournament, tees: Tee[], holes: Hole
       : {
           id: "flights",
           level: "ok",
-          label: "Flight ranges do not overlap",
-          detail: `${flights.length} flights`,
+          label: "Class ranges do not overlap",
+          detail: `${flights.length} classes`,
         },
   );
 
   const gaps: string[] = [];
-  for (const category of categories) {
-    for (let value = 0; value <= config.maxIndex; value += 1) {
-      if (matchFlights(flights, category.id, value).length === 0) {
-        gaps.push(`${category.name} has no flight at index ${value}`);
-        break;
-      }
+  for (let value = 0; value <= config.maxIndex; value += 1) {
+    if (matchFlights(flights, value).length === 0) {
+      gaps.push(`No class covers index ${value}`);
+      break;
     }
   }
   checks.push(
@@ -173,13 +167,13 @@ export function checkTournament(tournament: Tournament, tees: Tee[], holes: Hole
       ? {
           id: "flights-gap",
           level: "warn",
-          label: "Some handicaps have no flight",
-          detail: `${gaps.join("; ")}. Those players wait for review rather than being guessed into a flight.`,
+          label: "Some handicaps have no class",
+          detail: `${gaps.join("; ")}. Those players wait for review rather than being guessed into a class.`,
         }
       : {
           id: "flights-gap",
           level: "ok",
-          label: "Every category has flights up to the maximum index",
+          label: "Every class covers up to the maximum index",
           detail: `Limit ${config.maxIndex}`,
         },
   );

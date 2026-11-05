@@ -189,4 +189,57 @@ describe("registrationFor", () => {
     expect(reg.missing).toEqual([]);
     expect(reg.flightId).toBe("r-a");
   });
+
+  it("keeps an override placeable when the age and class never arrived", () => {
+    const reg = registrationFor({
+      tournament,
+      tees,
+      player: player({ birthdate: null, gender: null }),
+      entry: entry({
+        status: "ok",
+        frozen: {
+          index: null,
+          recordId: null,
+          effectiveDate: null,
+          frozenAt: "2026-11-01T00:00:00.000Z",
+        },
+        categoryId: null,
+        teeId: null,
+        flightId: null,
+        playingHandicap: null,
+        overridden: true,
+        overrideReason: "Guest did not send their details.",
+      }),
+      records: [],
+    });
+
+    expect(reg.status).toBe("ok");
+    expect(reg.provisional).toBe(true);
+    expect(reg.missing).toEqual(["birthdate", "gender", "handicap index", "category", "flight"]);
+    expect(reg.categoryId).toBeNull();
+    expect(reg.flightId).toBeNull();
+    expect(reg.ageKnown).toBe(false);
+  });
+
+  it("places an override that names a category and a flight by those facts", () => {
+    const reg = registrationFor({
+      tournament,
+      tees,
+      player: player({ birthdate: null }),
+      entry: entry({
+        status: "ok",
+        categoryId: "regular",
+        teeId: "white",
+        flightId: "r-a",
+        playingHandicap: 12,
+        overridden: true,
+      }),
+      records: [],
+    });
+
+    expect(reg.status).toBe("ok");
+    expect(reg.provisional).toBe(false);
+    expect(reg.flightId).toBe("r-a");
+    expect(reg.playingHandicap).toBe(12);
+  });
 });

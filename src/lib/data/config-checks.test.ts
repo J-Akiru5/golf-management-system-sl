@@ -45,15 +45,16 @@ describe("checkTournament", () => {
     expect(checks.find((c) => c.id === "tee-ladies")?.level).toBe("bad");
   });
 
-  it("warns when a handicap band has no flight", () => {
+  it("warns when a handicap band has no class", () => {
+    // Classes are field-wide, so dropping one leaves that band uncovered for every tee.
     const broken: Tournament = {
       ...bambooTee,
-      flights: bambooTee.flights.map((f) => (f.id === "r-c" ? { ...f, min: 25, max: 30 } : f)),
+      flights: bambooTee.flights.filter((f) => f.id !== "c"),
     };
     const checks = checkTournament(broken, DEMO_TEES, DEMO_HOLES);
     const gap = checks.find((c) => c.id === "flights-gap");
     expect(gap?.level).toBe("warn");
-    expect(gap?.detail).toContain("Regular");
+    expect(gap?.detail).toContain("No class covers index");
   });
 });
 

@@ -16,7 +16,16 @@ import { matchFlights } from "@/lib/routing/classify";
 
 const INDEX_MIN = -10;
 const INDEX_MAX = 54;
+/** The largest committee adjustment the desk accepts, in strokes either way. */
+const ADJUSTMENT_MAX = 10;
 
+/**
+ * Marks a needs-review entry ready.
+ *
+ * A guest often never sends an age, a class or an NGAP record. The draw no longer waits for those
+ * facts: whatever the desk knows is stored, the rest is listed as pending on the registration, and
+ * an entry without a category and flight plays in an Unclassified group until it is corrected.
+ */
 export function ReadyOverrideDialog({
   open,
   onOpenChange,
@@ -50,14 +59,14 @@ export function ReadyOverrideDialog({
   const [birthdate, setBirthdate] = useState(player.birthdate ?? "");
   const [categoryId, setCategoryId] = useState(registration.categoryId ?? "");
   const [flightId, setFlightId] = useState(registration.flightId ?? "");
+  const [adjustment, setAdjustment] = useState("");
   const [reason, setReason] = useState("");
 
+  // Blank is a real answer here: a player with no NGAP record still plays today.
   const indexValue = index.trim() === "" ? null : Number(index);
   const indexValid =
-    indexValue !== null &&
-    Number.isFinite(indexValue) &&
-    indexValue >= INDEX_MIN &&
-    indexValue <= INDEX_MAX;
+    indexValue === null ||
+    (Number.isFinite(indexValue) && indexValue >= INDEX_MIN && indexValue <= INDEX_MAX);
   const overLimit = indexValue !== null && indexValid && indexValue > tournament.config.maxIndex;
   const age = birthdate ? ageOn(birthdate, tournament.config.date) : null;
   const category = tournament.categories.find((item) => item.id === categoryId) ?? null;
@@ -66,11 +75,17 @@ export function ReadyOverrideDialog({
     indexValue !== null && indexValid && tee
       ? playingHandicap(indexValue, tee, tournament.config.allowance)
       : null;
+  // The conditions of play let the committee adjust a course handicap. The adjustment is strokes on
+  // the computed number, and it is stored with the reason below.
+  const adjustmentValue = adjustment.trim() === "" ? 0 : Number(adjustment);
+  const adjustmentValid =
+    Number.isInteger(adjustmentValue) && Math.abs(adjustmentValue) <= ADJUSTMENT_MAX;
+  const adjusted = playing === null ? null : playing + adjustmentValue;
   const flightOptions = tournament.flights.filter((item) => item.categoryId === categoryId);
   const matchingFlights = useMemo(() => {
     if (indexValue === null || !indexValid || !category || playing === null) return [];
     const value = tournament.config.flightBasis === "index" ? indexValue : playing;
-    return matchFlights(tournament.flights, category.id, value);
+    return matchFlights(tournament.flights, value);
   }, [
     category,
     indexValid,
@@ -83,37 +98,35 @@ export function ReadyOverrideDialog({
   const flaggedReasons =
     registration.reasons.length > 0 ? registration.reasons : (entry.reasons ?? []);
 
+  // Everything the draw still has to collect. Listed here so the desk sees what to fill in later,
+  // and stored on the registration when the override is saved.
   const pending = [
+    birthdate === "" ? "Birthdate is still missing, so the player has no age on file." : null,
     !player.gender ? "Gender is still missing; the category was chosen by the organizer." : null,
+    category === null
+      ? "Category and tee are not set, so the player plays in an Unclassified group."
+      : flight === null
+        ? "Flight is not set, so the player plays in an Unclassified group."
+        : null,
     !player.ngapId ? "NGAP ID is still missing." : null,
   ].filter((note): note is string => note !== null);
 
-  const canSave =
-    open &&
-    indexValid &&
-    !overLimit &&
-    birthdate !== "" &&
-    age !== null &&
-    category !== null &&
-    tee !== null &&
-    flight !== null &&
-    playing !== null &&
-    reason.trim().length >= 3;
+  // Only the reason is required: it is the only thing the desk must supply, and it is what makes
+  // an incomplete entry auditable. An index, when entered, has to be usable.
+  const canSave = open && indexValid && !overLimit && adjustmentValid && reason.trim().length >= 3;
 
   function submit() {
-    if (!canSave || indexValue === null || category === null || tee === null || playing === null) {
-      return;
-    }
+    if (!canSave) return;
     onSave({
       index: indexValue,
-      // The organizer's index is the one used for this event. Keep the record date when one was
-      // supplied; otherwise the override is dated today.
-      effectiveDate: latestIndexDate ?? new Date().toISOString().slice(0, 10),
-      birthdate,
-      categoryId: category.id,
-      teeId: tee.id,
-      flightId,
-      playingHandicap: playing,
+      // Keep the record date when one was supplied; a fresh index is dated today, and an entry
+      // with no index has no date to record.
+      effectiveDate: latestIndexDate ?? (indexValue !== null ? today() : null),
+      birthdate: birthdate === "" ? null : birthdate,
+      categoryId: category?.id ?? null,
+      teeId: tee?.id ?? null,
+      flightId: flight?.id ?? null,
+      playingHandicap: adjusted,
       reason: reason.trim(),
       pending,
     });
@@ -136,9 +149,10 @@ export function ReadyOverrideDialog({
         >
           <div className="notice warn" role="note">
             <p className="m-0 text-[13px]">
-              <b>Only the handicap index and the age are required to draft this player.</b> The
-              category, tee and flight are recorded by hand because the profile is incomplete. Other
-              missing details stay marked as pending and can be filled later.
+              <b>Record what you know and mark the player ready.</b> A guest with no age, category
+              or flight still plays today: the entry goes into an <b>Unclassified</b> group, and
+              whatever is missing is listed on it so the desk can fill it in later. An NGAP index is
+              used when one is entered.
             </p>
           </div>
 
@@ -163,10 +177,11 @@ export function ReadyOverrideDialog({
               value={index}
               onChange={(event) => setIndex(event.target.value)}
               aria-label="Handicap index"
-              required
             />
             <span className="hint">
-              The event uses this index.{" "}
+              {indexValue === null
+                ? "Leave it blank when there is no NGAP record yet. The player still plays today."
+                : "The event uses this index."}{" "}
               {latestIndexDate ? `Latest record: ${latestIndexDate}.` : ""}
             </span>
           </label>
@@ -178,9 +193,14 @@ export function ReadyOverrideDialog({
               value={birthdate}
               onChange={(event) => setBirthdate(event.target.value)}
               aria-label="Birthdate"
-              required
             />
-            <span className="hint">{age === null ? "Enter a valid date." : `Age ${age}.`}</span>
+            <span className="hint">
+              {birthdate === ""
+                ? "Leave it blank if the player has not sent it. A date that is not valid is ignored."
+                : age === null
+                  ? "Enter a valid date."
+                  : `Age ${age}.`}
+            </span>
           </label>
 
           <label className="field">
@@ -192,9 +212,8 @@ export function ReadyOverrideDialog({
                 setFlightId("");
               }}
               aria-label="Category"
-              required
             >
-              <option value="">Choose a category</option>
+              <option value="">Not set yet (Unclassified)</option>
               {tournament.categories.map((item) => {
                 const itemTee = tees.find((candidate) => candidate.id === item.teeId);
                 return (
@@ -207,7 +226,11 @@ export function ReadyOverrideDialog({
               })}
             </select>
             <span className="hint">
-              {tee ? `Tee: ${tee.name}` : "Choose the category the player belongs to."}
+              {tee
+                ? `Tee: ${tee.name}`
+                : categoryId === ""
+                  ? "Leave it blank when the class is not known yet."
+                  : "This category has no tee set up in Settings."}
             </span>
           </label>
 
@@ -217,10 +240,9 @@ export function ReadyOverrideDialog({
               value={flightId}
               onChange={(event) => setFlightId(event.target.value)}
               aria-label="Flight"
-              required
               disabled={!categoryId}
             >
-              <option value="">Choose a flight</option>
+              <option value="">Not set yet (Unclassified)</option>
               {flightOptions.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name} · {item.min} to {item.max}
@@ -228,18 +250,26 @@ export function ReadyOverrideDialog({
               ))}
             </select>
             <span className="hint">
-              {matchingFlights.length === 1
-                ? `The index falls in ${matchingFlights[0]?.name}.`
-                : matchingFlights.length > 1
-                  ? "The flight ranges overlap; choose the one the organizer confirmed."
-                  : "No flight matches this index automatically."}
+              {!categoryId
+                ? "Leave it blank until the category is known."
+                : matchingFlights.length === 1
+                  ? `The index falls in ${matchingFlights[0]?.name}.`
+                  : matchingFlights.length > 1
+                    ? "The flight ranges overlap; choose the one the organizer confirmed."
+                    : "No flight matches this index automatically."}
             </span>
           </label>
 
           <div className="grid grid-cols-2 gap-3 rounded-[12px] bg-surface-sunken p-3 text-[13px]">
             <div>
               <span className="overline !text-[10px]">Playing handicap</span>
-              <b className="block font-display text-xl">{playing ?? "—"}</b>
+              <b className="block font-display text-xl">{adjusted ?? "—"}</b>
+              {adjusted !== null && adjustmentValue !== 0 && (
+                <span className="hint block">
+                  Computed {playing}, adjusted by {adjustmentValue > 0 ? "+" : ""}
+                  {adjustmentValue}.
+                </span>
+              )}
             </div>
             <div>
               <span className="overline !text-[10px]">Age</span>
@@ -254,6 +284,26 @@ export function ReadyOverrideDialog({
               instead of overriding the entry.
             </p>
           )}
+
+          <label className="field">
+            <span>Committee adjustment (strokes)</span>
+            <input
+              type="number"
+              step="1"
+              min={-ADJUSTMENT_MAX}
+              max={ADJUSTMENT_MAX}
+              value={adjustment}
+              onChange={(event) => setAdjustment(event.target.value)}
+              aria-label="Committee adjustment"
+            />
+            <span className="hint">
+              {indexValue === null
+                ? "Set the index first; an adjustment only changes a computed number."
+                : adjustmentValid
+                  ? "Leave it blank for the computed course handicap. The conditions of play let the committee adjust a handicap; the reason below records why."
+                  : `Use whole strokes, at most ${ADJUSTMENT_MAX} either way.`}
+            </span>
+          </label>
 
           <label className="field">
             <span>Reason for the override (required)</span>
@@ -284,4 +334,9 @@ export function ReadyOverrideDialog({
       </SheetContent>
     </Sheet>
   );
+}
+
+/** Today in the ISO form the database stores. */
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
 }
