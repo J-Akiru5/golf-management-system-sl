@@ -134,6 +134,11 @@ export interface TournamentRepository {
   days(tournamentId: string): TournamentDay[];
   /** Owner/organizer only; the database function enforces it. */
   saveDayRule(tournamentId: string, required: number | null, max: number | null): Promise<void>;
+  /**
+   * Sets the time one playing day opens, or clears it with null so the event's first tee time is
+   * used. Only that day's waves move; the other days keep their own start.
+   */
+  setDayStart(tournamentId: string, dayNumber: number, time: string | null): Promise<void>;
 }
 
 /**
@@ -423,6 +428,9 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         type: "saveTournament",
         tournament: { ...tournament, requiredDays: required, maxDays: max },
       });
+    },
+    setDayStart: async (tournamentId, dayNumber, time) => {
+      dispatch({ type: "setDayStart", tournamentId, dayNumber, time });
     },
   };
 

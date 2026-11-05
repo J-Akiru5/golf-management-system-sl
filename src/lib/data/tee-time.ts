@@ -1,3 +1,4 @@
+import { AM_TEE_TIME, daySessions } from "@/lib/data/sessions";
 import { addMinutes, waveLetter } from "@/lib/routing/schedule";
 
 export type TeeAssignmentProblem = "both_or_neither" | "hole_range" | "confirmed_needs_both" | null;
@@ -99,6 +100,37 @@ function minutesOfDay(value: string): number | null {
   if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
   if (hours > 23 || minutes > 59) return null;
   return hours * 60 + minutes;
+}
+
+/**
+ * The wave start times for one playing day.
+ *
+ * Every day runs an AM and a PM session, so a short field still has two waves: a day with 35 players
+ * is not turned into a morning-only day. Wave A starts at the day's own start time when one is set,
+ * otherwise at the event's first tee time. Wave B is one step later, and the step is the event's
+ * wave gap except on the last day, whose afternoon is 11:30 (the club's own rule). Further waves,
+ * when the field or the draw needs them, keep stepping by the same step.
+ */
+export function dayWaveStartTimes(
+  day: { startTime: string | null },
+  dayIndex: number,
+  dayCount: number,
+  firstTeeTime: string,
+  waveGapMinutes: number,
+  count = 2,
+): WaveStart[] {
+  const waves = Math.max(1, Math.floor(count));
+  const gap = Number.isFinite(waveGapMinutes) ? Math.max(0, Math.floor(waveGapMinutes)) : 0;
+  const first = day.startTime?.trim() || firstTeeTime;
+  const lastDay = dayCount > 0 && dayIndex === dayCount - 1;
+  const afternoon = daySessions(dayIndex, dayCount)[1];
+  const step = lastDay
+    ? Math.max(0, (minutesOfDay(afternoon?.time ?? "") ?? 0) - (minutesOfDay(AM_TEE_TIME) ?? 0))
+    : gap;
+  return Array.from({ length: waves }, (_, index) => ({
+    wave: waveLetter(index),
+    time: addMinutes(first, index * step),
+  }));
 }
 
 export function waveStartTimes(

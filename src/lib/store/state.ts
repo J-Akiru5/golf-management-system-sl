@@ -124,6 +124,8 @@ export type Action =
   | { type: "setTournamentLogo"; id: string; logoPath: string | null; logoUrl?: string }
   /** One setup edit: the event row together with the tees and holes it is routed against. */
   | { type: "saveSetup"; tournament: Tournament; tees: Tee[]; holes: Hole[] }
+  /** One playing day opens at its own time; null clears it back to the event's first tee time. */
+  | { type: "setDayStart"; tournamentId: string; dayNumber: number; time: string | null }
   | { type: "addPlayer"; player: PlayerRecord }
   | { type: "updatePlayer"; id: string; patch: Partial<PlayerRecord> }
   | { type: "removePlayer"; id: string }
@@ -453,6 +455,20 @@ export function reducer(state: DeskState, a: Action): DeskState {
               [a.tournament.id]: daysOfTournament({ ...a.tournament, days: undefined }),
             }
           : state.days,
+      };
+    }
+
+    case "setDayStart": {
+      const tournament = state.tournaments.find((t) => t.id === a.tournamentId);
+      const list = state.days[a.tournamentId] ?? (tournament ? daysOfTournament(tournament) : []);
+      return {
+        ...state,
+        days: {
+          ...state.days,
+          [a.tournamentId]: list.map((day) =>
+            day.dayNumber === a.dayNumber ? { ...day, startTime: a.time } : day,
+          ),
+        },
       };
     }
 

@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
 import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
 import {
+  dayWaveStartTimes,
   teeAssignmentProblem,
   type WaveStart,
   waveCountForField,
   wavePosition,
   waveProblem,
-  waveStartTimes,
 } from "@/lib/data/tee-time";
 import type {
   Caddie,
@@ -50,6 +50,17 @@ export default function TeeTimesPage() {
         days.findIndex((d) => d.dayNumber === day.dayNumber),
       )
     : 0;
+
+  // The day's own start time, editable per day: Sunday's morning is not Thursday's. A draft keeps the
+  // day it was typed for, so switching days shows that day's saved value instead of the last edit.
+  const dayKey = day ? `${day.id}-${day.dayNumber}` : "";
+  const [dayStartDraft, setDayStartDraft] = useState<{ key: string; value: string } | null>(null);
+  const [dayStartSaving, setDayStartSaving] = useState(false);
+  const [dayStartResult, setDayStartResult] = useState<{
+    key: string;
+    tone: "ok" | "bad";
+    text: string;
+  } | null>(null);
 
   const playerById = useMemo(
     () => new Map(players.map((player) => [player.id, player])),
@@ -90,17 +101,28 @@ export default function TeeTimesPage() {
   const savedWaves = rows
     .map(({ entry }) => wavePosition(day ? entry.dayTee?.[day.dayNumber]?.wave : null))
     .filter((value): value is number => value !== null);
+  // A day runs a morning and an afternoon, so a short field still has two waves. A field that does
+  // not fit in one wave, a draw that used more, or a wave already written on a player adds more.
   const waveCount = Math.max(
-    1,
+    2,
     waveCountForField(rows.length, config.holes, config.groupSize),
     ...drawnWaves,
     ...savedWaves,
   );
   const waves =
-    config.startFormat === "shotgun"
-      ? waveStartTimes(config.firstTeeTime, config.waveGapMinutes, waveCount)
+    config.startFormat === "shotgun" && day
+      ? dayWaveStartTimes(
+          day,
+          dayIndex,
+          days.length,
+          config.firstTeeTime,
+          config.waveGapMinutes,
+          waveCount,
+        )
       : [];
-  const chosenTime = batchTime || config.firstTeeTime;
+  const chosenTime = batchTime || waves[0]?.time || config.firstTeeTime;
+  const dayStart = dayStartDraft?.key === dayKey ? dayStartDraft.value : (day?.startTime ?? "");
+  const dayStartMessage = dayStartResult?.key === dayKey ? dayStartResult : null;
 
   /**
    * Writes one wave time to the day, in small parallel batches.
@@ -161,6 +183,34 @@ export default function TeeTimesPage() {
     );
   }
 
+  /** Saves this day's own opening time, which is what Wave A uses on this day only. */
+  async function saveDayStart(time: string) {
+    if (!day || dayStartSaving) return;
+    const event = tournament;
+    if (!event) return;
+    setDayStartSaving(true);
+    setDayStartResult(null);
+    try {
+      await adapters.tournaments.setDayStart(event.id, day.dayNumber, time || null);
+      setDayStartResult({
+        key: dayKey,
+        tone: "ok",
+        text: time
+          ? `Saved. Wave A on this day starts at ${time}.`
+          : "Cleared. This day starts at the event's first tee time.",
+      });
+    } catch (error) {
+      setDayStartResult({
+        key: dayKey,
+        tone: "bad",
+        text:
+          error instanceof Error ? error.message : "Could not save the start time for this day.",
+      });
+    } finally {
+      setDayStartSaving(false);
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <PageHeader
@@ -210,6 +260,38 @@ export default function TeeTimesPage() {
                   : "No day start time is set, so the event's first tee time is the floor."
               }`}
             >
+              <div className="flex flex-wrap items-end gap-2 rounded-[12px] border border-line bg-surface-sunken p-3">
+                <label className="field w-40">
+                  <span>Day start (AM)</span>
+                  <input
+                    type="time"
+                    value={dayStart}
+                    disabled={dayStartSaving}
+                    onChange={(event) => {
+                      setDayStartDraft({ key: dayKey, value: event.target.value });
+                      setDayStartResult(null);
+                    }}
+                    aria-label={`Start time for ${day.label}`}
+                  />
+                </label>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={dayStartSaving || dayStart === (day.startTime ?? "")}
+                  onClick={() => void saveDayStart(dayStart)}
+                >
+                  {dayStartSaving ? "Saving…" : "Save day start"}
+                </Button>
+                <span
+                  className={dayStartMessage?.tone === "bad" ? "hint !text-danger" : "hint"}
+                  role={dayStartMessage?.tone === "bad" ? "alert" : "status"}
+                >
+                  {dayStartMessage
+                    ? dayStartMessage.text
+                    : `Only this day moves. Leave it empty to start at the event's first tee time, ${fmtTime(config.firstTeeTime)}.`}
+                </span>
+              </div>
+
               <div className="tiles grid-cols-2 lg:grid-cols-4">
                 <div className="tile">
                   <b>{rows.length}</b>
@@ -232,14 +314,16 @@ export default function TeeTimesPage() {
               {config.startFormat === "shotgun" && rows.length > 0 && (
                 <div className="grid gap-3 rounded-[12px] border border-line bg-surface-sunken p-3">
                   <div>
-                    <b className="text-[14px]">One tee time for the whole day</b>
+                    <b className="text-[14px]">AM and PM waves</b>
                     <p className="hint mt-0.5">
-                      A shotgun wave sends every player off at once. Wave times come from the event
-                      settings: first tee {fmtTime(config.firstTeeTime)}, then every{" "}
-                      {config.waveGapMinutes} minutes. This day needs {waveCount}{" "}
-                      {waveCount === 1 ? "wave" : "waves"} for {rows.length} players.{" "}
+                      A shotgun wave sends every player off at once. Every day runs a morning and an
+                      afternoon, so a short field is not pulled into one wave: AM{" "}
+                      {fmtTime(waves[0]?.time ?? config.firstTeeTime)} and PM{" "}
+                      {fmtTime(waves[1]?.time ?? config.firstTeeTime)}. Wave A starts at this
+                      day&apos;s own start time, and the last day&apos;s afternoon is 11:30. This
+                      day holds {rows.length} players.{" "}
                       <Link href="/setup#start" className="underline">
-                        Change them in Settings
+                        Change the event times in Settings
                       </Link>
                       . Start holes stay with the draw, so a batch time is saved unconfirmed.
                     </p>

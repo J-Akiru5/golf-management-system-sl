@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dayWaveStartTimes,
   teeAssignmentProblem,
   waveCountForField,
   wavePosition,
@@ -87,6 +88,28 @@ describe("waveCountForField", () => {
   it("never reports fewer than one wave", () => {
     expect(waveCountForField(0, 18, 4)).toBe(1);
     expect(waveCountForField(Number.NaN, 0, 0)).toBe(1);
+  });
+});
+
+describe("dayWaveStartTimes", () => {
+  it("gives a day with a small field its AM and PM waves anyway", () => {
+    expect(dayWaveStartTimes({ startTime: null }, 1, 4, "06:30", 360)).toEqual([
+      { wave: "A", time: "06:30" },
+      { wave: "B", time: "12:30" },
+    ]);
+  });
+
+  it("starts at the day's own time and keeps the last day's earlier afternoon", () => {
+    expect(dayWaveStartTimes({ startTime: "07:00" }, 3, 4, "06:30", 360)).toEqual([
+      { wave: "A", time: "07:00" },
+      { wave: "B", time: "12:00" },
+    ]);
+  });
+
+  it("keeps stepping by the gap when the field needs more than two waves", () => {
+    expect(
+      dayWaveStartTimes({ startTime: null }, 0, 4, "06:30", 360, 3).map((w) => w.time),
+    ).toEqual(["06:30", "12:30", "18:30"]);
   });
 });
 
