@@ -145,7 +145,7 @@ export function eligibilityView(input: EligibilityInput): EligibilityView {
 
   const message =
     input.index === null
-      ? "Ready to route once an index is on file."
+      ? "Ready to route: no index is on file, so the event rule uses 0."
       : max === null
         ? `Index ${indexLabel} is on file and ready to route.`
         : `Index ${indexLabel} is within the event maximum of ${max}.`;

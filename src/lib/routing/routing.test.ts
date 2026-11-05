@@ -119,8 +119,12 @@ describe("classification", () => {
     expect(classifyPlayer(player({ index: 30 }), input([])).status).toBe("ok");
   });
 
-  it("sends a player without an index to review", () => {
-    expect(classifyPlayer(player({ index: null }), input([])).status).toBe("needs_review");
+  it("gives a player with no index on file a handicap of 0 so they can be paired", () => {
+    const r = classifyPlayer(player({ index: null }), input([]));
+    expect(r.status).toBe("ok");
+    expect(r.playingHandicap).toBe(0);
+    expect(r.flightId).toBe("a");
+    expect(r.reasons.join(" ")).toContain("0 is used");
   });
 
   it("sends an unmatched player to review instead of guessing", () => {
@@ -214,11 +218,13 @@ describe("route", () => {
     }
   });
 
-  it("leaves ineligible and review players out of the groups", () => {
+  it("leaves an ineligible player out of the groups but keeps a player with no index", () => {
     const out = route(
       input([player({ index: 31 }), player({ index: null }), player({ index: 8 })]),
     );
-    expect(out.groups.flatMap((g) => g.playerIds)).toHaveLength(1);
+    const grouped = out.groups.flatMap((g) => g.playerIds);
+    expect(grouped).toHaveLength(2);
+    expect(out.registrations.find((r) => r.index === 31)?.status).toBe("ineligible");
   });
 
   it("flags groups smaller than the minimum", () => {

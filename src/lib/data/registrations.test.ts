@@ -152,7 +152,7 @@ describe("registrationFor", () => {
     expect(reg.flightId).toBeNull();
   });
 
-  it("marks a confirmed entry without a handicap index provisional", () => {
+  it("classifies a confirmed entry without a handicap index at 0 instead of parking it", () => {
     const reg = registrationFor({
       tournament,
       tees,
@@ -170,9 +170,11 @@ describe("registrationFor", () => {
     });
 
     expect(reg.status).toBe("ok");
-    expect(reg.provisional).toBe(true);
-    expect(reg.missing).toEqual(["handicap index"]);
-    expect(reg.playingHandicap).toBeNull();
+    expect(reg.provisional).toBe(false);
+    expect(reg.missing).toEqual([]);
+    expect(reg.flightId).toBe("r-a");
+    expect(reg.playingHandicap).toBe(0);
+    expect(reg.reasons.join(" ")).toContain("No NGAP record on or before the cut-off");
   });
 
   it("does not mark a complete entry provisional", () => {
@@ -215,7 +217,7 @@ describe("registrationFor", () => {
 
     expect(reg.status).toBe("ok");
     expect(reg.provisional).toBe(true);
-    expect(reg.missing).toEqual(["birthdate", "gender", "handicap index", "category", "flight"]);
+    expect(reg.missing).toEqual(["birthdate", "gender", "category", "flight"]);
     expect(reg.categoryId).toBeNull();
     expect(reg.flightId).toBeNull();
     expect(reg.ageKnown).toBe(false);

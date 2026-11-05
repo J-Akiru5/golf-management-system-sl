@@ -74,10 +74,13 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
     return reg;
   };
 
-  if (player.index === null) return review("No handicap index on file for the cut-off date.");
-  if (player.index > config.maxIndex) {
+  // The event rule treats an unverified handicap as 0: a player with no index on file still plays,
+  // joins a class and can be paired. The reason names the number so the desk can correct it later.
+  const index = player.index ?? 0;
+  if (player.index === null) reg.reasons.push("No handicap index on file; 0 is used.");
+  if (index > config.maxIndex) {
     reg.status = "ineligible";
-    reg.reasons.push(`Index ${player.index} is above the maximum of ${config.maxIndex}.`);
+    reg.reasons.push(`Index ${index} is above the maximum of ${config.maxIndex}.`);
     return reg;
   }
 
@@ -92,9 +95,9 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
   const tee = tees.find((t) => t.id === category.teeId);
   if (!tee) return review(`Tee ${category.teeId} for ${category.name} is not set up.`);
   reg.teeId = tee.id;
-  reg.playingHandicap = playingHandicap(player.index, tee, config.allowance);
+  reg.playingHandicap = playingHandicap(index, tee, config.allowance);
 
-  const value = config.flightBasis === "index" ? player.index : reg.playingHandicap;
+  const value = config.flightBasis === "index" ? index : reg.playingHandicap;
   // Class first: the ranges are field-wide, so a player joins a class on their number alone and the
   // tee group plays no part.
   const flightMatches = matchFlights(flights, value);

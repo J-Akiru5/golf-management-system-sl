@@ -127,6 +127,12 @@ describe("eligibility messaging", () => {
     );
   });
 
+  it("says 0 is used when a ready player has no index on file", () => {
+    expect(eligibilityView({ status: "ok", index: null, maxIndex: 30 }).message).toBe(
+      "Ready to route: no index is on file, so the event rule uses 0.",
+    );
+  });
+
   it("formats a plus handicap as golfers read it", () => {
     expect(eligibilityView({ status: "ok", index: -1.2, maxIndex: 30 }).message).toBe(
       "Index +1.2 is within the event maximum of 30.",

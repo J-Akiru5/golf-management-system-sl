@@ -94,7 +94,9 @@ export default function DrawPage() {
   const provisionalCount = provisional.length;
   const onBoard = new Set(draw?.flatMap((g) => g.playerIds) ?? []);
   const provisionalOffBoard = draw ? provisional.filter((r) => !onBoard.has(r.playerId)) : [];
-  const missingSummary = (["birthdate", "gender", "handicap index"] as const)
+  // A missing index is not on this list: the event rule treats it as 0, so it never holds a player
+  // out of the draw.
+  const missingSummary = (["birthdate", "gender"] as const)
     .map((fact) => ({ fact, n: provisional.filter((r) => r.missing.includes(fact)).length }))
     .filter((item) => item.n > 0)
     .map((item) => `${item.n} without ${item.fact}`)

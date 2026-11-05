@@ -20,12 +20,14 @@ export interface RegistrationArgs {
 /**
  * The routing facts still missing from this entry. These are the facts the desk has to collect;
  * nothing here invents a default. Order matches the correction path on the register screen.
+ *
+ * A missing index is not on this list. The event rule treats an unverified handicap as 0, so the
+ * player is classified and paired; the entry's reasons say that 0 was used.
  */
 export function missingFactsFor(player: PlayerRecord, entry: RegistrationEntry): MissingFact[] {
   const missing: MissingFact[] = [];
   if (player.birthdate === null) missing.push("birthdate");
   if (player.gender === null) missing.push("gender");
-  if (entry.frozen.index === null) missing.push("handicap index");
   // An override can be recorded before the class is known. Such an entry plays in an Unclassified
   // group until a category and a flight are added to it.
   if (entry.overridden === true && entry.status === "ok") {
@@ -169,14 +171,12 @@ export function registrationFor({
       },
     );
     if (entry.frozen.index === null) {
-      // The generic engine wording hides where the number came from; the desk knows better.
+      // The engine already placed this player with a handicap of 0. The desk wording says where the
+      // missing number came from, and the status stays as the engine set it.
       const reason = selection.reason ?? "No NGAP index was frozen onto this registration.";
       routing = {
         ...routing,
-        // A confirmed entry is provisional, not parked: it plays today without a playing handicap.
-        status: provisional ? "ok" : "needs_review",
         reasons: [reason, ...routing.reasons.filter((r) => !/No handicap index/i.test(r))],
-        provisional,
       };
     }
   }
