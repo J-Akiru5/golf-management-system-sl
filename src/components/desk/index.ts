@@ -33,6 +33,8 @@ export type {
   RegistrationRowProps,
 } from "./RegistrationRow";
 export { OverriddenBadge, RegisteredBy, RegistrationRow } from "./RegistrationRow";
+export type { RegistrationTeamProps, TeamPlayer } from "./RegistrationTeam";
+export { RegistrationTeam } from "./RegistrationTeam";
 export type { RoleGateProps } from "./RoleGate";
 export { RoleGate } from "./RoleGate";
 export type { SessionBarProps } from "./SessionBar";

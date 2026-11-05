@@ -25,8 +25,9 @@ import {
   PlayerQuickPick,
   RegisterConfirm,
   RegistrationDaysEditor,
-  RegistrationRow,
+  RegistrationTeam,
   SaveTruth,
+  type TeamPlayer,
 } from "@/components/desk";
 import { ReadyOverrideDialog } from "@/components/desk/ReadyOverrideDialog";
 import { NeedsTournament } from "@/components/NeedsTournament";
@@ -119,6 +120,9 @@ const emptyDraft = (): Draft => ({
  * Demo mode returns the entry alone, and there is nothing to wait for.
  */
 type SavingEntry = RegistrationEntry & { saved?: Promise<void> };
+
+/** One listed entry with the player record that is guaranteed to be loaded. */
+type ListRow = { e: RegistrationEntry; r: DeskRegistration | undefined; p: PlayerRecord };
 
 function RegisterDesk() {
   const {
@@ -229,44 +233,48 @@ function RegisterDesk() {
       });
   }, [entries, regById, players, listQuery]);
 
-  // Filter first, then page. The order is stable so editing an entry cannot move it to another
-  // page, and changing the filter sends the desk back to page 1.
-  const orderedRows = useMemo(
-    () =>
-      [...listRows].sort(
-        (a, b) => (a.p?.name ?? "").localeCompare(b.p?.name ?? "") || a.e.id.localeCompare(b.e.id),
-      ),
+  /** Rows whose player record is loaded. The rest cannot be shown, so they are left out. */
+  const knownRows = useMemo(
+    () => listRows.filter((row): row is ListRow => Boolean(row.p)),
     [listRows],
   );
-  const { page, setPage } = usePagedList(orderedRows, listQuery);
 
-  // The club sheet's pair, on the row. The number lives on the registration; the partner's name is
-  // read from the other entry that carries the same number.
-  const teamNotes = useMemo(() => {
-    const byTeam = new Map<number, { entryId: string; name: string }[]>();
-    for (const entry of entries) {
-      const teamNo = entry.teamNo;
-      if (teamNo === null || teamNo === undefined) continue;
-      const player = players.find((candidate) => candidate.id === entry.playerId);
-      if (!player) continue;
-      const list = byTeam.get(teamNo) ?? [];
-      list.push({ entryId: entry.id, name: player.name });
-      byTeam.set(teamNo, list);
+  // The desk works a member and their guest as one team, so a pair from the club sheet becomes one
+  // card: the guest on the left, the member on the right. Each player is still their own entry, so
+  // one partner's status or buttons never stand for the other's. Paging counts teams, not entries,
+  // and the order is stable so editing one player cannot move the card to another page.
+  const teams = useMemo(() => {
+    const byNumber = new Map<number, ListRow[]>();
+    const solo: ListRow[] = [];
+    for (const row of knownRows) {
+      const teamNo = row.e.teamNo;
+      if (teamNo === null || teamNo === undefined) {
+        solo.push(row);
+        continue;
+      }
+      const list = byNumber.get(teamNo) ?? [];
+      list.push(row);
+      byNumber.set(teamNo, list);
     }
-    const notes = new Map<string, string>();
-    for (const [teamNo, members] of byTeam) {
-      for (const member of members) {
-        const partner = members.find((other) => other.entryId !== member.entryId);
-        notes.set(
-          member.entryId,
-          partner
-            ? `Pair ${teamNo} · with ${partner.name}`
-            : `Pair ${teamNo} · partner not entered`,
-        );
+    // One card per member and guest. A number that somehow carries three entries (a duplicate on
+    // the club sheet) still shows every one of them: the extra player gets a card of their own
+    // rather than disappearing from the list.
+    const grouped: { key: string; number: number | null; rows: ListRow[] }[] = [];
+    for (const [number, rows] of byNumber) {
+      const members = rows.filter((row) => row.e.role === "member");
+      const guests = rows.filter((row) => row.e.role === "guest");
+      const cards = Math.max(members.length, guests.length);
+      for (let at = 0; at < cards; at += 1) {
+        const pair = [members[at], guests[at]].filter((row): row is ListRow => Boolean(row));
+        grouped.push({ key: `pair-${number}-${at}`, number, rows: pair });
       }
     }
-    return notes;
-  }, [entries, players]);
+    grouped.push(...solo.map((row) => ({ key: row.e.id, number: null, rows: [row] })));
+    const lead = (team: { rows: ListRow[] }) =>
+      (team.rows.find((row) => row.e.role === "member") ?? team.rows[0])?.p.name ?? "";
+    return grouped.sort((a, b) => lead(a).localeCompare(lead(b)) || a.key.localeCompare(b.key));
+  }, [knownRows]);
+  const { page, setPage } = usePagedList(teams, listQuery);
 
   // Bulk confirmation takes every entry the database still holds as needs_review, except the two
   // that are about identity or eligibility: a duplicated display name in this event, and an entry
@@ -538,6 +546,92 @@ function RegisterDesk() {
     setEntryError("");
     setRemoveAsk(null);
     setStep("form");
+  }
+
+  /** Everything one player's column shows: their own days, status, missing facts and buttons. */
+  function slotFor({ e, r, p }: ListRow): TeamPlayer & { role: "member" | "guest" } {
+    const provisional = r?.provisional === true;
+    const selectedDays = e.selectedDays ?? [];
+    const preferred = Object.entries(e.teePreferences)
+      .filter(([date, value]) => {
+        if (!value) return false;
+        return selectedDays.some(
+          (dayNumber) => days.find((day) => day.dayNumber === dayNumber)?.playDate === date,
+        );
+      })
+      .map(([, value]) => value);
+    const dayLabels = selectedDays.map((dayNumber) => {
+      const index = days.findIndex((day) => day.dayNumber === dayNumber);
+      const session =
+        e.daySessions?.[dayNumber] ??
+        (index >= 0
+          ? sessionLabelForTime(e.dayTee?.[dayNumber]?.teeTime ?? null, index, days.length)
+          : null);
+      return session ? `Day ${dayNumber} ${session}` : `Day ${dayNumber}`;
+    });
+    const note = [
+      e.shirt ? `shirt ${e.shirt}` : null,
+      preferred.length > 0 ? `prefers ${preferred.join(", ")}` : "no tee preference given",
+    ]
+      .filter((part): part is string => part !== null)
+      .join(" · ");
+    return {
+      role: e.role,
+      name: p.name,
+      photo: photoOf({ photo: p.photo, photoConsent: p.photoConsent }),
+      profileHref: `/players/${p.id}`,
+      status: r?.status ?? null,
+      index: r?.frozenIndex ?? null,
+      playingHandicap: r?.playingHandicap ?? null,
+      flightName: r && r.flightId ? names.flight(r.flightId) : provisional ? "Unclassified" : null,
+      days: dayLabels,
+      note,
+      // Missing facts belong to the player who is missing them, never to the pair.
+      missing: provisional ? (r?.missing ?? []) : [],
+      overridden: e.overridden,
+      overrideReason: e.overrideReason ?? null,
+      actions: (
+        <>
+          <PaymentEditor
+            entry={e}
+            name={p.name}
+            disabled={!canRecordPayment}
+            onSave={(next) => savePayment(e.id, next)}
+          />
+          {canEdit && r?.status === "needs_review" && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setOverride({ player: p, entry: e, registration: r })}
+            >
+              <BadgeCheck aria-hidden="true" />
+              Mark ready
+            </Button>
+          )}
+          <RegistrationDaysEditor
+            entry={e}
+            days={days}
+            required={tournament?.requiredDays ?? null}
+            max={tournament?.maxDays ?? null}
+            onSave={(next, sessions) => saveDays(e, next, sessions)}
+          />
+          {r?.frozenOutdated && (
+            <Button variant="secondary" size="sm" onClick={() => void refreeze([e.id])}>
+              <RefreshCw aria-hidden="true" /> Re-freeze
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Remove ${p.name} from this event`}
+            className="text-ink-muted hover:text-danger"
+            onClick={() => setRemoveAsk({ id: e.id, name: p.name })}
+          >
+            <X aria-hidden="true" />
+          </Button>
+        </>
+      ),
+    };
   }
 
   return (
@@ -1440,122 +1534,27 @@ function RegisterDesk() {
               </div>
             </div>
           )}
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
-            {page.items.map(({ e, r, p }) => {
-              if (!p) return null;
-              const provisional = r?.provisional === true;
-              const missing = r?.missing ?? [];
-              const selectedDays = e.selectedDays ?? [];
-              const preferred = Object.entries(e.teePreferences)
-                .filter(([date, value]) => {
-                  if (!value) return false;
-                  return selectedDays.some(
-                    (dayNumber) =>
-                      days.find((day) => day.dayNumber === dayNumber)?.playDate === date,
-                  );
-                })
-                .map(([, value]) => value);
+          {/* One card per team, with its own column titles: Guest on the left, Member on the right.
+              Each player keeps their own days, status and buttons, so nothing one partner does is
+              read as the other's. */}
+          <div className="grid gap-2.5">
+            {page.items.map((team) => {
+              const slots = team.rows.map((row) => slotFor(row));
               return (
-                <RegistrationRow
-                  key={e.id}
-                  name={p.name}
-                  photo={photoOf(p)}
-                  photoConsent={p.photoConsent}
-                  role={e.role}
-                  status={r?.status ?? null}
-                  index={r?.frozenIndex ?? null}
-                  playingHandicap={r?.playingHandicap ?? null}
-                  flightName={
-                    r && r.flightId ? names.flight(r.flightId) : provisional ? "Unclassified" : null
-                  }
-                  paymentStatus={e.paymentStatus}
-                  shirt={e.shirt}
-                  teamNote={teamNotes.get(e.id) ?? null}
-                  daysNote={
-                    selectedDays.length
-                      ? `Days ${selectedDays
-                          .map((dayNumber) => {
-                            const index = days.findIndex((day) => day.dayNumber === dayNumber);
-                            const session =
-                              e.daySessions?.[dayNumber] ??
-                              (index >= 0
-                                ? sessionLabelForTime(
-                                    e.dayTee?.[dayNumber]?.teeTime ?? null,
-                                    index,
-                                    days.length,
-                                  )
-                                : null);
-                            return session ? `${dayNumber} ${session}` : String(dayNumber);
-                          })
-                          .join(", ")}`
-                      : "No playing days selected"
-                  }
-                  teePreferenceNote={
-                    preferred.length ? `prefers ${preferred.join(", ")}` : "no tee preference given"
-                  }
-                  profileHref={`/players/${p.id}`}
-                  audit={{
-                    overridden: e.overridden,
-                    overrideReason: e.overrideReason,
-                  }}
-                  actions={
-                    <>
-                      {provisional && (
-                        <span
-                          className="pill warn"
-                          title={`Confirmed without ${missing.join(", ")}. Correct it on the player record, then re-freeze or re-run the draw.`}
-                        >
-                          Provisional · missing {missing.join(", ")}
-                        </span>
-                      )}
-                      <PaymentEditor
-                        entry={e}
-                        name={p.name}
-                        disabled={!canRecordPayment}
-                        onSave={(next) => savePayment(e.id, next)}
-                      />
-                      {canEdit && r?.status === "needs_review" && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setOverride({ player: p, entry: e, registration: r })}
-                        >
-                          <BadgeCheck aria-hidden="true" />
-                          Mark ready
-                        </Button>
-                      )}
-                      <RegistrationDaysEditor
-                        entry={e}
-                        days={days}
-                        required={tournament.requiredDays}
-                        max={tournament.maxDays}
-                        onSave={(next, sessions) => saveDays(e, next, sessions)}
-                      />
-                      {r?.frozenOutdated && (
-                        <Button variant="secondary" size="sm" onClick={() => void refreeze([e.id])}>
-                          <RefreshCw aria-hidden="true" /> Re-freeze
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Remove ${p.name} from this event`}
-                        className="text-ink-muted hover:text-danger"
-                        onClick={() => setRemoveAsk({ id: e.id, name: p.name })}
-                      >
-                        <X aria-hidden="true" />
-                      </Button>
-                    </>
-                  }
+                <RegistrationTeam
+                  key={team.key}
+                  number={team.number}
+                  guest={slots.find((slot) => slot.role === "guest") ?? null}
+                  member={slots.find((slot) => slot.role === "member") ?? null}
                 />
               );
             })}
             {page.total === 0 && (
-              <li className="card muted">
+              <p className="card muted">
                 {entries.length === 0
                   ? "No registrations in this event yet."
                   : "No registration matches that filter."}
-              </li>
+              </p>
             )}
           </div>
           <Pager page={page} onPage={setPage} />
