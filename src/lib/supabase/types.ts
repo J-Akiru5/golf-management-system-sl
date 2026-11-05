@@ -108,6 +108,10 @@ export type PlayerRow = {
   /** Added by 20261037000000. Optional so code still loads on a database without it. */
   whs_id?: string | null;
   updated_at?: string;
+  /** Added by 20261105000300. False when the club retired the record. */
+  active?: boolean;
+  /** When the desk soft-deleted the record. Null or absent while the player is in use. */
+  deleted_at?: string | null;
 };
 
 /** One queued or provider-confirmed email. Added by 20261040000000. */
@@ -519,6 +523,8 @@ export interface Database {
           email?: string | null;
           whs_id?: string | null;
           updated_at?: string;
+          active?: boolean;
+          deleted_at?: string | null;
         },
         {
           full_name?: string;
@@ -537,6 +543,8 @@ export interface Database {
           photo_consent_at?: string | null;
           photo_public_path?: string | null;
           photo_public_consent_at?: string | null;
+          active?: boolean;
+          deleted_at?: string | null;
         }
       >;
       player_memberships: Table<

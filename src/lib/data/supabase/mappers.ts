@@ -28,6 +28,8 @@ export function mapPlayerRow(
     gender: row.gender,
     index: frozenIndex,
     ngapId: row.ngap_id,
+    active: row.active ?? true,
+    deletedAt: row.deleted_at ?? null,
     photo: row.photo_consent_at ? options.photoUrl : undefined,
     photoConsent: Boolean(row.photo_consent_at),
     shirt: options.shirt || undefined,

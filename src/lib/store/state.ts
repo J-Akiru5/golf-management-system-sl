@@ -1,5 +1,6 @@
 import { daysOfTournament } from "@/lib/data/dates";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
+import { isPlayerRemoved } from "@/lib/data/player-state";
 import { missingFactsFor, playsUnclassified, registrationFor } from "@/lib/data/registrations";
 import type {
   Caddie,
@@ -277,6 +278,9 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
   for (const entry of entriesFor(s, t.id)) {
     const p = s.players.find((x) => x.id === entry.playerId);
     if (!p) continue;
+    // A disabled or soft-deleted player is never drawn. The entry stays on file, so putting the
+    // record back and running the draw again returns them to the board.
+    if (isPlayerRemoved(p)) continue;
     // A confirmed entry missing a routing fact cannot be classified. It is handed to the engine
     // separately so it can still be placed, without a category or flight being invented for it.
     const missing = missingFactsFor(p, entry);

@@ -107,6 +107,12 @@ export interface PlayerRepository {
   /** Copies an existing private photo to the public bucket, or removes the public copy. */
   setPhotoPublicConsent(id: string, consent: boolean): Promise<void>;
   setMembership(id: string, type: "member" | "guest", memberNumber?: string | null): Promise<void>;
+  /** Disables or re-enables the record. Nothing is deleted; the registrations stay. */
+  setActive(id: string, active: boolean): Promise<void>;
+  /** Hides a duplicate or withdrawn player everywhere, keeping the record and its history. */
+  softDelete(id: string): Promise<void>;
+  /** Puts a soft-deleted player back in the directory. */
+  restore(id: string): Promise<void>;
   remove(id: string): void;
 }
 
@@ -369,6 +375,19 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
           memberNumber: type === "member" ? memberNumber?.trim() || null : null,
         },
       });
+    },
+    setActive: async (id, active) => {
+      dispatch({ type: "updatePlayer", id, patch: { active } });
+    },
+    softDelete: async (id) => {
+      dispatch({
+        type: "updatePlayer",
+        id,
+        patch: { active: false, deletedAt: new Date().toISOString() },
+      });
+    },
+    restore: async (id) => {
+      dispatch({ type: "updatePlayer", id, patch: { active: true, deletedAt: null } });
     },
     remove: (id) => dispatch({ type: "removePlayer", id }),
   };

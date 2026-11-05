@@ -71,6 +71,10 @@ export interface PlayerRecord {
   photoPublicConsent?: boolean;
   /** The public-bucket path, when a public copy exists. Never a private path. */
   photoPublicPath?: string | null;
+  /** False when the club disabled the record. Absent means active. */
+  active?: boolean;
+  /** ISO timestamp of a soft delete. Null or absent while the player is in use. */
+  deletedAt?: string | null;
   /** Club membership classification, when an active membership row exists. */
   membershipType?: "member" | "guest" | null;
   memberNumber?: string | null;

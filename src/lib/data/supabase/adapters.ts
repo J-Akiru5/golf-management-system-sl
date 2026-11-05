@@ -211,7 +211,38 @@ export function createSupabaseAdapters(
   }
 
   /**
+   * Saves one player's retired state, then applies the same values to the loaded list.
+   *
+   * The two columns arrived with migration 20261105000300. A database without them answers with a
+   * schema error, which is said plainly rather than left looking like a network fault.
+   */
+  function writePlayerState(
+    id: string,
+    row: { active: boolean; deleted_at?: string | null },
+    patch: { active: boolean; deletedAt?: string | null },
+  ) {
+    return queuedWrite(async () => {
+      const { data, error } = await client
+        .from("players")
+        .update(row)
+        .eq("club_id", clubId)
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        throw new Error(
+          /column .* does not exist|schema cache/i.test(error.message)
+            ? "Player disable and delete need migration 20261105000300. Nothing was saved."
+            : `Could not save the player state: ${error.message}`,
+        );
+      }
+      if (!data || data.length === 0) {
+        throw new Error("That player is no longer in the directory. Reload the page.");
+      }
+      dispatch({ type: "updatePlayer", id, patch });
+    });
+  }
 
+  /**
    * Players ------------------------------------------------------------------------------------ */
 
   const players: Adapters["players"] = {
@@ -536,6 +567,17 @@ export function createSupabaseAdapters(
       });
       options.onSaved();
     },
+    setActive: (id, active) => writePlayerState(id, { active }, { active }),
+    softDelete: (id) => {
+      const deletedAt = new Date().toISOString();
+      return writePlayerState(
+        id,
+        { active: false, deleted_at: deletedAt },
+        { active: false, deletedAt },
+      );
+    },
+    restore: (id) =>
+      writePlayerState(id, { active: true, deleted_at: null }, { active: true, deletedAt: null }),
     remove: (id) => {
       // Delete first, then take the row off the list. `players` has a before-delete guard that
       // refuses a player who still has registrations or scoring rows, and the database message is

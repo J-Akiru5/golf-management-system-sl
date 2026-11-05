@@ -577,6 +577,10 @@ Maria Unknown,,15.5,13/13/2026
 /** The old desk player: one index per player, before handicap records and registrations split. */
 export interface DeskPlayer extends Player {
   ngapId: string | null;
+  /** False when the club disabled the record. Absent means active. */
+  active?: boolean;
+  /** ISO timestamp of a soft delete. Null or absent while the player is in use. */
+  deletedAt?: string | null;
   photo?: string;
   /** Set only when the player agreed to the photo being kept and used. */
   photoConsent?: boolean;

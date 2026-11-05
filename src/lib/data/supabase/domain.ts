@@ -60,6 +60,9 @@ export function toPlayerRecord(row: PlayerRow, photoUrl?: string): PlayerRecord 
     email: row.email,
     ngapId: row.ngap_id,
     whsId: row.whs_id ?? null,
+    // A retired record still loads: the desk needs it to show the removal and to undo it.
+    active: row.active ?? true,
+    deletedAt: row.deleted_at ?? null,
     // A photo is only ever exposed where internal consent was recorded.
     photo: row.photo_consent_at ? photoUrl : undefined,
     photoConsent: Boolean(row.photo_consent_at),

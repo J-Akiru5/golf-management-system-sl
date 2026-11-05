@@ -1,6 +1,14 @@
 "use client";
 
-import { ChevronRight, ClipboardList, Search, Trash2, UserPlus } from "lucide-react";
+import {
+  ChevronRight,
+  ClipboardList,
+  Power,
+  RotateCcw,
+  Search,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -13,18 +21,23 @@ import { sortStable, usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tip } from "@/components/ui/tooltip";
+import { isPlayerRemoved, playerStateLabel } from "@/lib/data/player-state";
 import { fmtHcp, fmtIndex, photoOf } from "@/lib/format";
 import { shrinkPhoto } from "@/lib/photo";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
 
-type Filter = "all" | "ok" | "needs_review" | "ineligible" | "not_entered";
+/** The playing states, which are what the directory filters by. */
+type StatusFilter = "ok" | "needs_review" | "ineligible" | "not_entered";
+type Filter = "all" | "removed" | StatusFilter;
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "ok", label: "Ready" },
   { id: "needs_review", label: "Needs review" },
   { id: "ineligible", label: "Not eligible" },
   { id: "not_entered", label: "Not entered" },
+  // Disabled and soft-deleted records. They are left out of every other filter.
+  { id: "removed", label: "Removed" },
 ];
 
 export default function PlayersPage() {
@@ -35,9 +48,9 @@ export default function PlayersPage() {
   );
 }
 
-function statusOf(entry: boolean, status: string | undefined): Filter {
+function statusOf(entry: boolean, status: string | undefined): StatusFilter {
   if (!entry) return "not_entered";
-  return (status as Filter) ?? "needs_review";
+  return (status as StatusFilter | undefined) ?? "needs_review";
 }
 
 function Players() {
@@ -80,7 +93,7 @@ function Players() {
   /** Why the directory write was refused. The sheet stays open with every value still in it. */
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
-  /** The row whose delete is in flight, so the button cannot be pressed twice. */
+  /** The row whose state change is in flight, so its buttons cannot be pressed twice. */
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const homeCourses = useMemo(
@@ -96,7 +109,9 @@ function Players() {
       const reg = regById.get(p.id);
       const entered = entryByPlayer.has(p.id);
       const status = statusOf(entered, reg?.status);
-      if (filter !== "all" && status !== filter) return false;
+      // A retired record appears only under Removed; every other filter is about playing.
+      if (isPlayerRemoved(p) !== (filter === "removed")) return false;
+      if (filter !== "all" && filter !== "removed" && status !== filter) return false;
       if (gender !== "all" && p.gender !== gender) return false;
       if (home !== "all" && p.homeCourse !== home) return false;
       if (category !== "all" && reg?.categoryId !== category) return false;
@@ -125,14 +140,35 @@ function Players() {
       needs_review: 0,
       ineligible: 0,
       not_entered: 0,
+      removed: 0,
     };
     for (const p of players) {
+      if (isPlayerRemoved(p)) {
+        c.removed++;
+        continue;
+      }
       const reg = regById.get(p.id);
       c.all++;
       c[statusOf(entryByPlayer.has(p.id), reg?.status)]++;
     }
     return c;
   }, [players, regById, entryByPlayer]);
+
+  /**
+   * Runs one state change and holds that row's buttons while it is in flight. The connected adapter
+   * resolves after the database has decided, so a refused change leaves the row as it was and the
+   * desk's error bar carries the database message.
+   */
+  async function runState(id: string, run: () => Promise<void>) {
+    setRemovingId(id);
+    try {
+      await run();
+    } catch {
+      // The desk's error bar shows the reason.
+    } finally {
+      setRemovingId(null);
+    }
+  }
 
   function reset() {
     setFirstName("");
@@ -369,6 +405,9 @@ function Players() {
                   <td className="num mono">{fmtHcp(r?.playingHandicap ?? null)}</td>
                   <td>{names.flight(r?.flightId ?? null)}</td>
                   <td>
+                    {isPlayerRemoved(p) && (
+                      <span className="pill warn mb-1">{playerStateLabel(p)}</span>
+                    )}
                     {r ? (
                       <>
                         <span className="flex flex-wrap gap-1">
@@ -401,43 +440,74 @@ function Players() {
                         </Link>
                       </Button>
                       <RoleGate role={member?.role} allow={["owner", "organizer"]} mode="hide">
-                        <Tip label="Remove from the club directory" side="left">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={
-                              removingId === p.id ? `Removing ${p.name}` : `Remove ${p.name}`
-                            }
-                            className="text-ink-muted hover:text-danger"
-                            disabled={removingId === p.id}
-                            onClick={async () => {
-                              const confirmed = window.confirm(
-                                [
-                                  `Remove ${p.name} from the club directory?`,
-                                  "",
-                                  "This deletes the directory record and the handicap history attached to it. It is recorded in the audit log and cannot be undone.",
-                                  "",
-                                  "The database refuses this while the player still has registrations or scoring entries. Remove those first, or ask the club owner.",
-                                ].join("\n"),
-                              );
-                              if (!confirmed) return;
-                              setRemovingId(p.id);
-                              try {
-                                // The connected adapter resolves after the database has decided,
-                                // and only then takes the row off the list. A refused delete leaves
-                                // the row where it is.
-                                await adapters.players.remove(p.id);
-                              } catch {
-                                // The desk's error bar carries the database message, for example
-                                // the delete guard naming what still points at this player.
-                              } finally {
-                                setRemovingId(null);
+                        {isPlayerRemoved(p) ? (
+                          <Tip label="Put back in the club directory" side="left">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={
+                                removingId === p.id ? `Restoring ${p.name}` : `Restore ${p.name}`
                               }
-                            }}
-                          >
-                            <Trash2 aria-hidden="true" />
-                          </Button>
-                        </Tip>
+                              className="text-ink-muted hover:text-ink"
+                              disabled={removingId === p.id}
+                              onClick={() => runState(p.id, () => adapters.players.restore(p.id))}
+                            >
+                              <RotateCcw aria-hidden="true" />
+                            </Button>
+                          </Tip>
+                        ) : (
+                          <>
+                            <Tip
+                              label={
+                                p.active === false ? "Enable this player" : "Disable this player"
+                              }
+                              side="left"
+                            >
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={
+                                  p.active === false ? `Enable ${p.name}` : `Disable ${p.name}`
+                                }
+                                className="text-ink-muted hover:text-ink"
+                                disabled={removingId === p.id}
+                                onClick={() =>
+                                  runState(p.id, () =>
+                                    adapters.players.setActive(p.id, p.active === false),
+                                  )
+                                }
+                              >
+                                <Power aria-hidden="true" />
+                              </Button>
+                            </Tip>
+                            <Tip label="Remove from the club directory" side="left">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={
+                                  removingId === p.id ? `Removing ${p.name}` : `Remove ${p.name}`
+                                }
+                                className="text-ink-muted hover:text-danger"
+                                disabled={removingId === p.id}
+                                onClick={() => {
+                                  const confirmed = window.confirm(
+                                    [
+                                      `Remove ${p.name} from the club directory?`,
+                                      "",
+                                      "This hides the record, so it stops appearing in the directory and is never drawn. The handicap history and the registrations are kept, and Restore brings the player back.",
+                                    ].join("\n"),
+                                  );
+                                  if (!confirmed) return;
+                                  // The adapter resolves after the database has decided, so a
+                                  // refused change leaves the row where it is.
+                                  runState(p.id, () => adapters.players.softDelete(p.id));
+                                }}
+                              >
+                                <Trash2 aria-hidden="true" />
+                              </Button>
+                            </Tip>
+                          </>
+                        )}
                       </RoleGate>
                     </span>
                   </td>
@@ -479,6 +549,7 @@ function Players() {
                     {role === "guest" ? " · guest" : ""}
                   </span>
                 </div>
+                {isPlayerRemoved(p) && <span className="pill warn">{playerStateLabel(p)}</span>}
                 {r ? <StatusPill status={r.status} /> : <span className="pill">Not entered</span>}
               </div>
               <dl className="grid grid-cols-3 gap-2 rounded-[10px] bg-surface-sunken px-3 py-2">
@@ -516,6 +587,51 @@ function Players() {
                       <ChevronRight aria-hidden="true" />
                     </Link>
                   </Button>
+                  <RoleGate role={member?.role} allow={["owner", "organizer"]} mode="hide">
+                    {isPlayerRemoved(p) ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={removingId === p.id}
+                        onClick={() => runState(p.id, () => adapters.players.restore(p.id))}
+                      >
+                        Restore
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={removingId === p.id}
+                          onClick={() =>
+                            runState(p.id, () =>
+                              adapters.players.setActive(p.id, p.active === false),
+                            )
+                          }
+                        >
+                          {p.active === false ? "Enable" : "Disable"}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={removingId === p.id}
+                          onClick={() => {
+                            const confirmed = window.confirm(
+                              [
+                                `Remove ${p.name} from the club directory?`,
+                                "",
+                                "This hides the record, so it stops appearing in the directory and is never drawn. The handicap history and the registrations are kept, and Restore brings the player back.",
+                              ].join("\n"),
+                            );
+                            if (!confirmed) return;
+                            runState(p.id, () => adapters.players.softDelete(p.id));
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </>
+                    )}
+                  </RoleGate>
                 </span>
               </div>
             </li>
