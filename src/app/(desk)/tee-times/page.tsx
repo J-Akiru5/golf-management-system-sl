@@ -406,8 +406,8 @@ export default function TeeTimesPage() {
                         <th>Session</th>
                         <th>Tee time</th>
                         <th>Start hole</th>
-                        <th>Caddie</th>
                         <th>Confirmed</th>
+                        <th>Caddie (optional)</th>
                         <th />
                       </tr>
                     </thead>
@@ -644,10 +644,23 @@ function TeeRow({
         />
       </td>
       <td>
+        <input
+          type="checkbox"
+          checked={confirmed}
+          disabled={saving}
+          aria-label={`Confirm the tee time for ${player.name} on ${day.label}`}
+          onChange={(e) => void toggleConfirmed(e.target.checked)}
+        />
+      </td>
+      {/* Optional: a caddie is never needed to time, hole or confirm a player, so the column sits
+          after the confirmation and says so. Empty is a normal, finished state. */}
+      <td>
         <select
           value={caddieId}
           disabled={caddieSaving}
-          aria-label={`Caddie for ${player.name} on ${day.label}`}
+          title="Optional. A player can be timed and confirmed without a caddie."
+          aria-label={`Caddie for ${player.name} on ${day.label} (optional)`}
+          className="w-36"
           onChange={async (e) => {
             const next = e.target.value;
             setCaddieId(next);
@@ -667,7 +680,7 @@ function TeeRow({
             }
           }}
         >
-          <option value="">No caddie</option>
+          <option value="">None</option>
           {caddies.map((caddie) => (
             <option key={caddie.id} value={caddie.id}>
               {caddie.fullName}
@@ -675,15 +688,6 @@ function TeeRow({
             </option>
           ))}
         </select>
-      </td>
-      <td>
-        <input
-          type="checkbox"
-          checked={confirmed}
-          disabled={saving}
-          aria-label={`Confirm the tee time for ${player.name} on ${day.label}`}
-          onChange={(e) => void toggleConfirmed(e.target.checked)}
-        />
       </td>
       <td>
         <span className="flex flex-wrap items-center gap-1.5">
