@@ -4,7 +4,7 @@ import { memo, useState } from "react";
 import { Avatar } from "@/components/bits";
 import type { DeskRegistration, PlayerRecord } from "@/lib/data/types";
 import type { DrawGroup, DropCheck, Issue } from "@/lib/draw/validate";
-import { fmtHcp, fmtTime, photoOf } from "@/lib/format";
+import { fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
 
 export interface GroupCardProps {
   g: DrawGroup;
@@ -42,6 +42,9 @@ function GroupCardImpl(p: GroupCardProps) {
   const [over, setOver] = useState(false);
   const n = g.playerIds.length;
   const allProvisional = n > 0 && g.playerIds.every((id) => p.regs.get(id)?.provisional === true);
+  // What the player records are actually short of. The entry's own index is on file, so the note
+  // names the missing facts rather than saying the handicap is absent.
+  const groupMissing = [...new Set(g.playerIds.flatMap((id) => p.regs.get(id)?.missing ?? []))];
   const own = active ? g.playerIds.includes(active.id) : false;
   const blocking = p.issues.some((i) => i.severity === "blocking");
   const warning = p.issues.some((i) => i.severity === "warning");
@@ -124,8 +127,10 @@ function GroupCardImpl(p: GroupCardProps) {
 
       {allProvisional && (
         <p className="hint">
-          Provisional group: no birthdate, gender or handicap index on file. Correct it tomorrow and
-          re-run the draw.
+          Provisional group:{" "}
+          {groupMissing.length > 0 ? groupMissing.join(" and ") : "a routing fact"} missing on the
+          player records, so no category and no playing handicap are set. Each entry keeps the index
+          from the club sheet; fill these in and re-run the draw.
         </p>
       )}
 
@@ -172,8 +177,21 @@ function GroupCardImpl(p: GroupCardProps) {
               </span>
             </button>
             <span className="right">
-              <span className="hcp mono" title="Course handicap">
-                {fmtHcp(r.playingHandicap)}
+              <span
+                className="hcp mono"
+                title={
+                  r.playingHandicap !== null
+                    ? "Course handicap"
+                    : r.frozenIndex !== null
+                      ? "Index on the entry. No course handicap until the category is set."
+                      : "No course handicap"
+                }
+              >
+                {r.playingHandicap !== null
+                  ? fmtHcp(r.playingHandicap)
+                  : r.frozenIndex !== null
+                    ? fmtIndex(r.frozenIndex)
+                    : "—"}
               </span>
               {g.locked ? (
                 <span className="hint">Locked</span>

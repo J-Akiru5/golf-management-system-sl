@@ -556,8 +556,9 @@ export default function DrawPage() {
                     <h2>{heading}</h2>
                     {heading === UNCLASSIFIED_LABEL && (
                       <p className="hint">
-                        Confirmed without a birthdate, gender or handicap index. Correct the player
-                        records tomorrow, then re-run the draw.
+                        Confirmed while the player record is short of a routing fact, so no category
+                        or flight was invented. The entry keeps the index from the club sheet;
+                        correct the records, then re-run the draw.
                       </p>
                     )}
                   </div>
