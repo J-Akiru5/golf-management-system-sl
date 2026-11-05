@@ -35,6 +35,7 @@ import { Pager } from "@/components/paging/Pager";
 import { usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
 import type { DaySessionChoice } from "@/lib/data/day-selection";
+import { selectIndexForCutOff } from "@/lib/data/frozen";
 import { instructionText } from "@/lib/data/instructions";
 import { fmtIso } from "@/lib/data/labels";
 import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
@@ -201,7 +202,15 @@ function RegisterDesk() {
   const savedReg = savedId ? regById.get(savedId) : null;
   const savedEntry = savedId ? entries.find((e) => e.playerId === savedId) : null;
   const savedPlayer = savedId ? players.find((p) => p.id === savedId) : null;
-  const overrideLatest = override ? adapters.players.latestRecord(override.player.id) : null;
+  // The event accepts the player's index on the cut-off day: the last NGAP record on or before it,
+  // never a later import. A later record is reported so the desk can see it exists, and the dialog
+  // cannot seed itself from it.
+  const cutOffIndex = override
+    ? selectIndexForCutOff(
+        adapters.players.recordsFor(override.player.id),
+        tournament?.cutOffDate ?? "",
+      )
+    : null;
 
   const listRows = useMemo(() => {
     const q = listQuery.trim().toLowerCase();
@@ -1591,8 +1600,10 @@ function RegisterDesk() {
           registration={override.registration}
           tournament={tournament}
           tees={tees}
-          latestIndex={overrideLatest?.index ?? null}
-          latestIndexDate={overrideLatest?.effectiveDate ?? null}
+          cutOffDate={tournament?.cutOffDate ?? null}
+          cutOffIndex={cutOffIndex?.index ?? null}
+          cutOffIndexDate={cutOffIndex?.record?.effectiveDate ?? null}
+          newerIndexDate={cutOffIndex?.newer?.effectiveDate ?? null}
           onSave={(input) => {
             // A blank birthdate is normal for a guest: leave the player record untouched.
             if (input.birthdate) {

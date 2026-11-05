@@ -34,8 +34,10 @@ export function ReadyOverrideDialog({
   registration,
   tournament,
   tees,
-  latestIndex,
-  latestIndexDate,
+  cutOffDate,
+  cutOffIndex,
+  cutOffIndexDate,
+  newerIndexDate,
   onSave,
 }: {
   open: boolean;
@@ -45,13 +47,19 @@ export function ReadyOverrideDialog({
   registration: DeskRegistration;
   tournament: Tournament;
   tees: Tee[];
-  latestIndex: number | null;
-  latestIndexDate: string | null;
+  /** The event's cut-off date, so the hint can name it. */
+  cutOffDate: string | null;
+  /** The index on the cut-off day, from the last NGAP record on or before it. */
+  cutOffIndex: number | null;
+  /** The effective date of that record. */
+  cutOffIndexDate: string | null;
+  /** A record dated after the cut-off. Shown as a note; the event never uses it. */
+  newerIndexDate: string | null;
   onSave: (input: OverrideReadyInput) => void;
 }) {
   const [index, setIndex] = useState(
-    latestIndex !== null
-      ? String(latestIndex)
+    cutOffIndex !== null
+      ? String(cutOffIndex)
       : registration.frozenIndex !== null
         ? String(registration.frozenIndex)
         : "",
@@ -115,13 +123,20 @@ export function ReadyOverrideDialog({
   // an incomplete entry auditable. An index, when entered, has to be usable.
   const canSave = open && indexValid && !overLimit && adjustmentValid && reason.trim().length >= 3;
 
+  // The record's date belongs only to its own index. An index the desk types in is not in that
+  // record, so it is dated today rather than borrowing a date it never had.
+  const effectiveDate =
+    indexValue === null
+      ? null
+      : indexValue === cutOffIndex && cutOffIndexDate
+        ? cutOffIndexDate
+        : today();
+
   function submit() {
     if (!canSave) return;
     onSave({
       index: indexValue,
-      // Keep the record date when one was supplied; a fresh index is dated today, and an entry
-      // with no index has no date to record.
-      effectiveDate: latestIndexDate ?? (indexValue !== null ? today() : null),
+      effectiveDate,
       birthdate: birthdate === "" ? null : birthdate,
       categoryId: category?.id ?? null,
       teeId: tee?.id ?? null,
@@ -168,7 +183,7 @@ export function ReadyOverrideDialog({
           )}
 
           <label className="field">
-            <span>Handicap index (latest)</span>
+            <span>Handicap index at cut-off</span>
             <input
               type="number"
               step="0.1"
@@ -179,10 +194,14 @@ export function ReadyOverrideDialog({
               aria-label="Handicap index"
             />
             <span className="hint">
-              {indexValue === null
-                ? "Leave it blank when there is no NGAP record yet. The player still plays today."
-                : "The event uses this index."}{" "}
-              {latestIndexDate ? `Latest record: ${latestIndexDate}.` : ""}
+              {cutOffIndex === null
+                ? cutOffDate
+                  ? `No NGAP record on or before the cut-off (${cutOffDate}). Leave it blank when there is none yet: the player still plays today.`
+                  : "Leave it blank when there is no NGAP record yet. The player still plays today."
+                : `The index the event accepts: the NGAP record dated ${cutOffIndexDate}, the last one on or before the cut-off${cutOffDate ? ` (${cutOffDate})` : ""}.`}
+              {newerIndexDate
+                ? ` A later record dated ${newerIndexDate} is not used for this event.`
+                : ""}
             </span>
           </label>
 
