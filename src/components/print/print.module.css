@@ -482,3 +482,135 @@
   line-height: 1.2;
   color: #444;
 }
+
+/* The pairing sheet the club posts: a page per wave, TeeLine across the top, then one row per group
+   with the hole on the left. Built on the club's own paper layout, so the desk recognises it. */
+.pairingsPages {
+  display: grid;
+  gap: 10mm;
+}
+
+.pairingPage {
+  display: grid;
+  gap: 4mm;
+}
+
+.pairingHeader {
+  display: grid;
+  grid-template-columns: 40mm minmax(0, 1fr);
+  align-items: center;
+  gap: 5mm;
+  padding-bottom: 3mm;
+  border-bottom: 2px solid #b89550;
+}
+
+.brandLogo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pairingEvent {
+  display: grid;
+  gap: 0.8mm;
+  min-width: 0;
+}
+
+.pairingKicker {
+  margin: 0;
+  color: #444;
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.pairingEvent h2 {
+  margin: 0;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 17pt;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.pairingDate {
+  margin: 0;
+  font-size: 9pt;
+}
+
+.teeOff {
+  margin: 1mm 0 0;
+  font-size: 11pt;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.holeTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #000;
+  background: #fff;
+}
+
+.holeTable th,
+.holeTable td {
+  padding: 1.7mm 2mm;
+  border: 1px solid #000;
+  color: #000;
+  background: #fff;
+  text-align: left;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  font-size: 9.5pt;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.holeTable thead th {
+  background: #eee;
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.holeTable th.holeCell {
+  width: 25mm;
+  background: #f2f2f2;
+  font-size: 8.5pt;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.holeRow:nth-child(even) td {
+  background: #fafafa;
+}
+
+.holeRow {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.pairingFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+  padding-top: 2mm;
+  border-top: 1px solid #000;
+  font-size: 8pt;
+}
+
+@media print {
+  .pairingPage + .pairingPage {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .holeTable thead {
+    display: table-header-group;
+  }
+}
