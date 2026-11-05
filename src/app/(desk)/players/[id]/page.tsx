@@ -115,7 +115,7 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
       ? [{ id: "index", label: "Handicap Index", value: fmtIndex(reg.frozenIndex) }]
       : []),
     ...(reg && reg.playingHandicap !== null
-      ? [{ id: "playing", label: "Playing handicap", value: fmtHcp(reg.playingHandicap) }]
+      ? [{ id: "playing", label: "Course handicap", value: fmtHcp(reg.playingHandicap) }]
       : []),
     ...(reg?.categoryId
       ? [{ id: "category", label: "Category", value: names.category(reg.categoryId) }]

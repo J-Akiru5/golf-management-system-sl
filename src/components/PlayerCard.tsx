@@ -15,8 +15,9 @@ interface Names {
 
 /**
  * One consistent player card for the directory, the draw and the profile page.
- * Handicap Index (from NGAP) and playing handicap (worked out for the tee) are always labelled
- * apart, because mixing them up is the commonest scoring mistake on the day.
+ * Handicap Index (from NGAP) and course handicap (worked out from the tee) are always labelled
+ * apart, because mixing them up is the commonest scoring mistake on the day. The event runs at a
+ * 100% allowance, so the course handicap is also the number that scores.
  * `hero` is the profile page's header: the name is the page heading.
  */
 export function PlayerCard({
@@ -72,7 +73,7 @@ export function PlayerCard({
       </div>
       <dl className="m-0 grid grid-cols-3 gap-px overflow-hidden rounded-[12px] border border-line bg-line">
         <Fact label="Handicap Index" value={fmtIndex(reg.frozenIndex)} num />
-        <Fact label="Playing HCP" value={fmtHcp(reg.playingHandicap)} num strong />
+        <Fact label="Course handicap" value={fmtHcp(reg.playingHandicap)} num strong />
         <Fact label="Flight" value={names.flight(reg.flightId)} />
       </dl>
       {reg.reasons.length > 0 && (

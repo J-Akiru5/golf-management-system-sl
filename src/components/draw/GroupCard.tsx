@@ -172,7 +172,7 @@ function GroupCardImpl(p: GroupCardProps) {
               </span>
             </button>
             <span className="right">
-              <span className="hcp mono" title="Playing handicap">
+              <span className="hcp mono" title="Course handicap">
                 {fmtHcp(r.playingHandicap)}
               </span>
               {g.locked ? (

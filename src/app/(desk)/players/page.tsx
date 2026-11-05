@@ -307,7 +307,7 @@ function Players() {
               <th>Category</th>
               <th className="num">Age</th>
               <th className="num">Index at cut-off</th>
-              <th className="num">Playing HCP</th>
+              <th className="num">Course handicap</th>
               <th>Flight</th>
               <th>Status</th>
               <th>
