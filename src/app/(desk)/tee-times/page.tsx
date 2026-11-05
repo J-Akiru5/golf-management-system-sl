@@ -10,10 +10,9 @@ import { fmtIso } from "@/lib/data/labels";
 import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
 import {
   dayWaveStartTimes,
+  MAX_WAVES,
   teeAssignmentProblem,
   type WaveStart,
-  waveCountForField,
-  wavePosition,
   waveProblem,
 } from "@/lib/data/tee-time";
 import type {
@@ -33,7 +32,7 @@ import { cn } from "@/lib/ui/cn";
  * selected. The database function checks the course's hole count and the day's start time.
  */
 export default function TeeTimesPage() {
-  const { tournament, days, entries, players, caddies, adapters, status, state } = useDesk();
+  const { tournament, days, entries, players, caddies, adapters, status } = useDesk();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [batchTime, setBatchTime] = useState("");
   const [batchWave, setBatchWave] = useState("");
@@ -92,23 +91,9 @@ export default function TeeTimesPage() {
   const timed = rows.filter(({ entry }) => day && entry.dayTee?.[day.dayNumber]?.teeTime).length;
   const untimed = rows.length - timed;
   const config = tournament.config;
-  // The day's waves come from the three things that actually decide them: the field size (one group
-  // on every hole fills a wave), the waves the draw used to keep flights whole, and any wave already
-  // written on a player. The screen lists all of them, so two waves or seven are both fine.
-  const drawnWaves = (state.boards[tournament.id]?.draw ?? [])
-    .map((group) => wavePosition(group.wave))
-    .filter((value): value is number => value !== null);
-  const savedWaves = rows
-    .map(({ entry }) => wavePosition(day ? entry.dayTee?.[day.dayNumber]?.wave : null))
-    .filter((value): value is number => value !== null);
-  // A day runs a morning and an afternoon, so a short field still has two waves. A field that does
-  // not fit in one wave, a draw that used more, or a wave already written on a player adds more.
-  const waveCount = Math.max(
-    2,
-    waveCountForField(rows.length, config.holes, config.groupSize),
-    ...drawnWaves,
-    ...savedWaves,
-  );
+  // The club plays two waves a day and never a third: A in the morning, B in the afternoon. A wave
+  // already written on a player stays in that player's own list, so nothing is hidden or invented.
+  const waveCount = MAX_WAVES;
   const waves =
     config.startFormat === "shotgun" && day
       ? dayWaveStartTimes(

@@ -1337,14 +1337,15 @@ function SetupWizard({
                     <div>
                       <b className="text-[14px]">Waves for this field</b>
                       <p className="hint mt-0.5">
-                        {fieldSize} {fieldSize === 1 ? "player" : "players"} entered, and one group
-                        on every hole fills a wave: {draft.config.holes} holes ×{" "}
-                        {draft.config.groupSize} per hole ={" "}
-                        {draft.config.holes * draft.config.groupSize} players, so this event needs{" "}
-                        {waveCount} {waveCount === 1 ? "wave" : "waves"}. Wave A is the first tee
-                        time and every later wave starts one gap after the one before, so the first
-                        tee time and the gap above are what move a wave. The draw can add another
-                        wave to keep a flight whole, and the tee-times screen assigns the letters.
+                        {fieldSize} {fieldSize === 1 ? "player" : "players"} entered. This event
+                        plays two shotgun waves at most, A and B: Wave A starts at the first tee
+                        time and Wave B one gap later, so the first tee time and the gap above are
+                        what move them.{" "}
+                        {waveCount === 1
+                          ? "This field fits in Wave A alone."
+                          : "This field plays both waves."}{" "}
+                        The draw places the groups on the holes and the tee-times screen assigns the
+                        letters.
                       </p>
                     </div>
                     <div className="chips" aria-label="Wave start times">
@@ -1357,9 +1358,10 @@ function SetupWizard({
                   </div>
                 )}
                 <p className="hint">
-                  Shotgun: 18 holes × 4 players = 72 in a wave; a flight is never split unless it is
-                  larger than a wave, and that is flagged. Two-tee: slot n starts at the first time
-                  plus floor(n ÷ 2) × the interval, alternating holes 1 and 10.
+                  Shotgun: a group starts on every hole, and the field plays Wave A in the morning
+                  and Wave B in the afternoon. A flight is never split unless it is larger than a
+                  wave, and that is flagged. Two-tee: slot n starts at the first time plus floor(n ÷
+                  2) × the interval, alternating holes 1 and 10.
                 </p>
               </SectionCard>
             )}

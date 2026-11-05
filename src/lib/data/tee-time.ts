@@ -41,6 +41,12 @@ export interface WaveStart {
   time: string;
 }
 
+/**
+ * A day runs two shotgun waves and no more: A in the morning, B in the afternoon. The club's own
+ * rule, not a capacity calculation, so nothing in the desk offers a Wave C onwards.
+ */
+export const MAX_WAVES = 2;
+
 /** A wave letter as its 1-based position: A is 1, B is 2. Null for anything else. */
 export function wavePosition(wave: string | null | undefined): number | null {
   const normalised = (wave ?? "").trim().toUpperCase();
@@ -58,15 +64,14 @@ export function waveProblem(wave: string | null): "wave_format" | null {
 }
 
 /**
- * How many waves a field needs at the event's own rule: one group on every hole, so a wave holds
- * `holes x groupSize` players. This is the floor, not a setting: the draw can need more waves when
- * it keeps a flight whole, and the desk can move one player by hand.
+ * How many waves a field plays: one group on every hole fills a wave, and a day never asks for more
+ * than the club's two waves, A and B. A smaller field still gets one wave, so the answer is 1 or 2.
  */
 export function waveCountForField(playerCount: number, holes: number, groupSize: number): number {
   const usableHoles = Number.isFinite(holes) && holes > 0 ? Math.floor(holes) : 18;
   const usableGroup = Number.isFinite(groupSize) && groupSize > 0 ? Math.floor(groupSize) : 1;
   const players = Number.isFinite(playerCount) && playerCount > 0 ? Math.floor(playerCount) : 0;
-  return Math.max(1, Math.ceil(players / (usableHoles * usableGroup)));
+  return Math.min(MAX_WAVES, Math.max(1, Math.ceil(players / (usableHoles * usableGroup))));
 }
 
 /**
@@ -108,8 +113,8 @@ function minutesOfDay(value: string): number | null {
  * Every day runs an AM and a PM session, so a short field still has two waves: a day with 35 players
  * is not turned into a morning-only day. Wave A starts at the day's own start time when one is set,
  * otherwise at the event's first tee time. Wave B is one step later, and the step is the event's
- * wave gap except on the last day, whose afternoon is 11:30 (the club's own rule). Further waves,
- * when the field or the draw needs them, keep stepping by the same step.
+ * wave gap except on the last day, whose afternoon is 11:30 (the club's own rule). A count above
+ * two is cut to two: this club plays Wave A and Wave B, never a third.
  */
 export function dayWaveStartTimes(
   day: { startTime: string | null },
@@ -119,7 +124,7 @@ export function dayWaveStartTimes(
   waveGapMinutes: number,
   count = 2,
 ): WaveStart[] {
-  const waves = Math.max(1, Math.floor(count));
+  const waves = Math.min(MAX_WAVES, Math.max(1, Math.floor(count)));
   const gap = Number.isFinite(waveGapMinutes) ? Math.max(0, Math.floor(waveGapMinutes)) : 0;
   const first = day.startTime?.trim() || firstTeeTime;
   const lastDay = dayCount > 0 && dayIndex === dayCount - 1;
@@ -136,9 +141,9 @@ export function dayWaveStartTimes(
 export function waveStartTimes(
   firstTeeTime: string,
   waveGapMinutes: number,
-  count = 3,
+  count = MAX_WAVES,
 ): WaveStart[] {
-  const waves = Math.max(1, Math.floor(count));
+  const waves = Math.min(MAX_WAVES, Math.max(1, Math.floor(count)));
   const gap = Number.isFinite(waveGapMinutes) ? Math.max(0, Math.floor(waveGapMinutes)) : 0;
   return Array.from({ length: waves }, (_, index) => ({
     wave: waveLetter(index),

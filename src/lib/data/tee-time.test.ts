@@ -89,6 +89,13 @@ describe("waveCountForField", () => {
     expect(waveCountForField(0, 18, 4)).toBe(1);
     expect(waveCountForField(Number.NaN, 0, 0)).toBe(1);
   });
+
+  it("never asks for more than the club's two waves", () => {
+    // 384 players would be six waves at one group on every hole. This club plays A and B only.
+    expect(waveCountForField(384, 18, 4)).toBe(2);
+    expect(waveCountForField(288, 18, 2)).toBe(2);
+    expect(waveCountForField(1000, 18, 4)).toBe(2);
+  });
 });
 
 describe("dayWaveStartTimes", () => {
@@ -106,25 +113,32 @@ describe("dayWaveStartTimes", () => {
     ]);
   });
 
-  it("keeps stepping by the gap when the field needs more than two waves", () => {
+  it("cuts a larger count to the two waves the club plays", () => {
     expect(
-      dayWaveStartTimes({ startTime: null }, 0, 4, "06:30", 360, 3).map((w) => w.time),
-    ).toEqual(["06:30", "12:30", "18:30"]);
+      dayWaveStartTimes({ startTime: null }, 0, 4, "06:30", 360, 3).map((w) => w.wave),
+    ).toEqual(["A", "B"]);
+    expect(dayWaveStartTimes({ startTime: null }, 0, 4, "06:30", 360, 9)).toEqual([
+      { wave: "A", time: "06:30" },
+      { wave: "B", time: "12:30" },
+    ]);
   });
 });
 
 describe("waveStartTimes", () => {
-  it("lists wave A at the first tee and each later wave one gap after", () => {
+  it("lists wave A at the first tee and wave B one gap after", () => {
     expect(waveStartTimes("06:30", 360)).toEqual([
       { wave: "A", time: "06:30" },
       { wave: "B", time: "12:30" },
-      { wave: "C", time: "18:30" },
     ]);
   });
 
   it("honours the requested count", () => {
     expect(waveStartTimes("07:00", 300, 1)).toEqual([{ wave: "A", time: "07:00" }]);
     expect(waveStartTimes("07:00", 300, 0)).toHaveLength(1);
+  });
+
+  it("never offers a third wave, whatever count it is asked for", () => {
+    expect(waveStartTimes("06:30", 360, 6).map((wave) => wave.wave)).toEqual(["A", "B"]);
   });
 
   it("wraps past midnight rather than producing an invalid time", () => {
