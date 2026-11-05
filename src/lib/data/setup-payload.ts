@@ -113,6 +113,11 @@ export function setupPayload(
   const categoryNameById = new Map(
     tournament.categories.map((category) => [category.id, category.name]),
   );
+  // A class ignores its carrier category now, so a row whose carrier is not one of this event's
+  // categories is hung off the first one instead of being sent with a blank name. The database looks
+  // the carrier up by name and refuses the whole section when it finds nothing.
+  const carrierName = (categoryId: string) =>
+    categoryNameById.get(categoryId) ?? tournament.categories[0]?.name ?? "";
 
   return {
     p_course: want("course") || want("start") ? { holes: tournament.config.holes } : null,
@@ -153,7 +158,7 @@ export function setupPayload(
     p_flights: want("flights")
       ? tournament.flights.map((flight) => ({
           id: databaseId(flight.id),
-          categoryName: categoryNameById.get(flight.categoryId) ?? "",
+          categoryName: carrierName(flight.categoryId),
           name: flight.name,
           min: flight.min,
           max: flight.max,

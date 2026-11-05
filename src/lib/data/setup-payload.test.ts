@@ -75,6 +75,15 @@ describe("setupPayload", () => {
     expect(payload.p_registration).toBe(tournament.registration);
   });
 
+  it("hangs a class whose carrier category is gone off the event's first category", () => {
+    const orphan = {
+      ...tournament,
+      flights: [{ id: "flt-1", categoryId: "cat-gone", name: "Class A", min: 0, max: 12 }],
+    };
+    const payload = setupPayload(orphan, tees, holes, ["flights"]);
+    expect(payload.p_flights?.[0]?.categoryName).toBe("Regular");
+  });
+
   it("sends only the section asked for", () => {
     const payload = setupPayload(tournament, tees, holes, ["basics"]);
     expect(payload.p_basics).not.toBeNull();

@@ -15,7 +15,7 @@ import type {
   TournamentDay,
 } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
-import type { Tee } from "@/lib/routing";
+import type { CategoryRule, FlightRule, Tee } from "@/lib/routing";
 import type { BoardState, DeskState, Published } from "@/lib/store/state";
 import type { Database, Json, TableRow } from "@/lib/supabase/types";
 import {
@@ -161,11 +161,27 @@ export async function loadDeskState(
     if (result.error) throw new Error(`Could not load the desk: ${result.error.message}`);
   }
 
-  const categories = asArray(categoryRows.data).map(toCategoryRule);
-  const flights = asArray(flightRows.data).map(toFlightRule);
-  const baseTournaments = asArray(tournamentRows.data).map((row) =>
-    toTournament(row, categories, flights),
-  );
+  // Categories and classes belong to one event, and a club can hold more than one event. Handing
+  // every event the club's whole list put another event's classes on this event's Classes screen,
+  // and saving that section then sent a class naming a category this event does not have, which the
+  // database refused for the whole section.
+  const categoriesByTournament = new Map<string, CategoryRule[]>();
+  for (const row of asArray(categoryRows.data)) {
+    const list = categoriesByTournament.get(row.tournament_id) ?? [];
+    list.push(toCategoryRule(row));
+    categoriesByTournament.set(row.tournament_id, list);
+  }
+  const flightsByCategory = new Map<string, FlightRule[]>();
+  for (const row of asArray(flightRows.data)) {
+    const list = flightsByCategory.get(row.category_id) ?? [];
+    list.push(toFlightRule(row));
+    flightsByCategory.set(row.category_id, list);
+  }
+  const baseTournaments = asArray(tournamentRows.data).map((row) => {
+    const categories = categoriesByTournament.get(row.id) ?? [];
+    const flights = categories.flatMap((category) => flightsByCategory.get(category.id) ?? []);
+    return toTournament(row, categories, flights);
+  });
 
   // Structured days are optional: a database that has not applied 20261037000000 still loads and
   // the UI derives the same shape from the event dates.

@@ -17,7 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CourseCardEditor } from "@/components/course/CourseCardEditor";
 import { CourseHandicapConverter } from "@/components/course/CourseHandicapConverter";
 import { NeedsTournament } from "@/components/NeedsTournament";
@@ -251,7 +251,9 @@ function SetupWizard({
     draft.flights.some((b, j) => j > i && a.min <= b.max && b.min <= a.max),
   );
   const useStandardClasses = () => {
-    const carrier = draft.categories[0]?.id;
+    // The carrier category is storage only, so a saved class row's own carrier is as good a place to
+    // hang the new set as the first category.
+    const carrier = draft.categories[0]?.id ?? draft.flights[0]?.categoryId;
     if (!carrier) return;
     const ranges = [
       { name: "Class A", min: 0, max: 12 },
@@ -353,7 +355,11 @@ function SetupWizard({
     mark("fields");
   };
 
-  const idOf = (prefix: string) => `${prefix}-${Date.now().toString(36)}`;
+  // A counter as well as the clock: the classes A to D are built in one pass, and two rows made in
+  // the same millisecond would share an id, which breaks the React keys and the save.
+  const newIdSeq = useRef(0);
+  const idOf = (prefix: string) =>
+    `${prefix}-${Date.now().toString(36)}-${(newIdSeq.current += 1)}`;
 
   // A save is reported only when the database has answered. `savingSections` holds the sections in
   // flight, `saveError` keeps the failure on screen instead of letting the bar say "no unsaved
