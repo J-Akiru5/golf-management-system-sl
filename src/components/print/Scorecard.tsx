@@ -53,7 +53,7 @@ export function Scorecard({
   const canAllocateDots = courseDataComplete;
   const startLabel =
     startFormat === "shotgun"
-      ? `Hole ${group.startHole}${group.wave ? ` · Wave ${group.wave}` : ""}`
+      ? `Hole ${group.startHole}${group.wave ? ` · Flight ${group.wave.split("-").pop()}` : ""}`
       : `Tee ${group.startHole}`;
   // The tee is part of the card: the course handicap on it is read off that tee's rating and slope,
   // so a group playing several tees names each one in the header.

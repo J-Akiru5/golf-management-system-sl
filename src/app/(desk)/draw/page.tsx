@@ -15,6 +15,7 @@ import { fmtTime } from "@/lib/format";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
+import { flightName, waveHeading } from "@/lib/ui/labels";
 
 const REASONS = [
   "Organizer request",
@@ -250,7 +251,7 @@ export default function DrawPage() {
     const key = isUnclassifiedGroup(g.playerIds, regById)
       ? UNCLASSIFIED_LABEL
       : shotgun
-        ? `Wave ${g.wave} · ${fmtTime(g.time)}`
+        ? `${waveHeading(g.wave)} · ${flightName(g.wave)}`
         : fmtTime(g.time);
     sections.set(key, [...(sections.get(key) ?? []), g]);
   }

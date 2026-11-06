@@ -5,6 +5,7 @@ import { Avatar } from "@/components/bits";
 import type { DeskRegistration, PlayerRecord } from "@/lib/data/types";
 import type { DrawGroup, DropCheck, Issue } from "@/lib/draw/validate";
 import { fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
+import { flightOfLabel } from "@/lib/ui/labels";
 
 export interface GroupCardProps {
   g: DrawGroup;
@@ -91,7 +92,7 @@ function GroupCardImpl(p: GroupCardProps) {
         >
           <span className="hole" aria-hidden="true">
             {g.startHole}
-            {g.wave ?? ""}
+            {flightOfLabel(g.wave) ?? ""}
           </span>
           <span>
             <b>{p.shotgun ? `Hole ${g.startHole}` : `Tee ${g.startHole}`}</b>
