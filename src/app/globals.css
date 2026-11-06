@@ -2018,9 +2018,13 @@
   .mobile-tabbar {
     display: none !important;
   }
+  html,
   body {
-    background: #fff;
-    color: #000;
+    background: #fff !important;
+    color: #000 !important;
+    /* The desk runs a dark theme on screen. Without this the print engine keeps the dark canvas
+       and light default ink, and the saved PDF comes out blank. */
+    color-scheme: light !important;
     font-size: 12pt;
   }
   .public-head {
@@ -2086,6 +2090,31 @@
   .print-note {
     font-size: 9pt;
     color: #333;
+  }
+  /* Whatever the theme does on screen, everything inside the print scope goes on paper as black
+     ink, and scroll cards stop clipping their contents to one page box. */
+  .print-sheet-scope,
+  .print-sheet-scope * {
+    color: #000 !important;
+  }
+  .print-sheet-scope .table-wrap {
+    overflow: visible !important;
+    max-height: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  .print-sheet-scope table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .print-sheet-scope thead {
+    display: table-header-group;
+  }
+  .print-sheet-scope tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 
