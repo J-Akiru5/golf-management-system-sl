@@ -7,7 +7,15 @@ import type { DayCountBlock } from "@/lib/print/day-counts";
  * listed in tee-off order so the sheet answers "how many on Saturday morning" and "who goes off
  * when" on one page. Printable through the browser's print dialog, like the other sheets.
  */
-export function DayCounts({ blocks, eventName }: { blocks: DayCountBlock[]; eventName: string }) {
+export function DayCounts({
+  blocks,
+  eventName,
+  loading = false,
+}: {
+  blocks: DayCountBlock[];
+  eventName: string;
+  loading?: boolean;
+}) {
   return (
     <section className="grid gap-6">
       <div>
@@ -17,6 +25,7 @@ export function DayCounts({ blocks, eventName }: { blocks: DayCountBlock[]; even
           desk&apos;s AM or PM choice, or the one the player&apos;s tee time falls in. Tee-off times
           come from the draw.
         </p>
+        {loading && <p className="hint no-print m-0">Loading the draw&apos;s tee times…</p>}
       </div>
 
       <div className="table-wrap !shadow-none">

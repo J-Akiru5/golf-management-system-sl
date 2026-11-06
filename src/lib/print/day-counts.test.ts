@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildDayCountBlocks, type CountEntry, sessionOfEntry, tallyDay } from "./day-counts";
+import {
+  buildDayCountBlocks,
+  type CountEntry,
+  sessionOfEntry,
+  sessionOfWave,
+  tallyDay,
+} from "./day-counts";
 
 const days = [
   { dayNumber: 1, label: "Day 1", playDate: "2026-11-05" },
@@ -107,5 +113,51 @@ describe("buildDayCountBlocks", () => {
     ]);
     expect(day3?.rows.map((row) => row.session)).toEqual(["AM", "PM", null]);
     expect(day3?.rows[0]?.startHole).toBe(4);
+  });
+});
+
+describe("draw pairings", () => {
+  it("reads AM or PM from the group's wave label", () => {
+    expect(sessionOfWave("D3-PM-A")).toBe("PM");
+    expect(sessionOfWave("D3-AM-A")).toBe("AM");
+    expect(sessionOfWave(null)).toBeNull();
+  });
+
+  it("uses the pairing's time and hole for the sheet", () => {
+    const blocks = buildDayCountBlocks({
+      days,
+      entries: [entry({ entryId: "a", playerId: "a", selectedDays: [3] })],
+      players: [{ id: "a", name: "Drawn Player" }],
+      boards: [
+        {
+          day: 3,
+          groups: [{ time: "06:45", startHole: 7, wave: "D3-AM-A", players: [{ id: "a" }] }],
+        },
+      ],
+    });
+    expect(blocks[2]?.rows[0]).toMatchObject({ session: "AM", teeTime: "06:45", startHole: 7 });
+    expect(blocks[2]?.tally).toEqual({ am: 1, pm: 0, unset: 0, total: 1 });
+  });
+
+  it("lets a stored per-day time win over the pairing", () => {
+    const blocks = buildDayCountBlocks({
+      days,
+      entries: [
+        entry({
+          entryId: "b",
+          playerId: "b",
+          selectedDays: [3],
+          dayTee: { 3: { teeTime: "12:30", startHole: 2 } },
+        }),
+      ],
+      players: [{ id: "b", name: "Moved Player" }],
+      boards: [
+        {
+          day: 3,
+          groups: [{ time: "06:45", startHole: 7, wave: "D3-AM-A", players: [{ id: "b" }] }],
+        },
+      ],
+    });
+    expect(blocks[2]?.rows[0]).toMatchObject({ session: "PM", teeTime: "12:30", startHole: 2 });
   });
 });

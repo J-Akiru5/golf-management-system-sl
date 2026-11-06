@@ -1,12 +1,14 @@
 import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
+import { sessionOfLabel } from "@/lib/ui/labels";
 
 /**
  * Headcounts for the organisers: how many players are on each playing day, split into the morning
- * (AM) and afternoon (PM) sessions, plus the tee-off time each player was given by the draw.
+ * (AM) and afternoon (PM) sessions, plus the tee-off time and start hole the draw gave each player.
  *
  * Nothing is invented here. The session is the desk's own AM/PM choice for that day; when the desk
- * has not chosen, the player's stored tee time is read back into the session it falls in. A player
- * with neither is counted as "not set", never guessed into a wave.
+ * has not chosen, the draw's wave label says whether the group goes off in the morning or the
+ * afternoon, and a stored tee time is read back into the session it falls in. A player with neither
+ * is counted as "not set", never guessed into a wave.
  */
 
 /** The part of a registration this module reads. Structural, so the desk's own type fits. */
@@ -16,6 +18,24 @@ export interface CountEntry {
   selectedDays?: number[];
   daySessions?: Record<number, SessionKey>;
   dayTee?: Record<number, { teeTime: string | null; startHole: number | null } | undefined>;
+}
+
+/** Where the draw put one player on one day: the group's time, hole and wave label. */
+export interface DrawPlacement {
+  time: string | null;
+  startHole: number | null;
+  wave: string | null;
+}
+
+/** One playing day's board, as the print center loaded it. */
+export interface DrawBoard {
+  day: number;
+  groups: {
+    time: string;
+    startHole: number;
+    wave: string | null;
+    players: { id: string }[];
+  }[];
 }
 
 export interface DayTally {
@@ -53,18 +73,32 @@ function minutesOf(time: string | null): number | null {
   return hours * 60 + minutes;
 }
 
-/** The session a player is in on a day: the desk's choice first, then the time they were given. */
+/** "AM"/"PM" from a stored group wave label such as `D3-AM-A`, or null. */
+export function sessionOfWave(wave: string | null): SessionKey | null {
+  const session = sessionOfLabel(wave);
+  return session === "AM" || session === "PM" ? session : null;
+}
+
+/**
+ * The session a player is in on a day: the desk's choice first, then the wave of the group the draw
+ * put them in, then the time they were given.
+ */
 export function sessionOfEntry(
   entry: CountEntry,
   dayNumber: number,
   dayIndex: number,
   dayCount: number,
+  drawOf?: (playerId: string) => DrawPlacement | null,
 ): SessionKey | null {
   const chosen = entry.daySessions?.[dayNumber];
   if (chosen === "AM" || chosen === "PM") return chosen;
-  const time = entry.dayTee?.[dayNumber]?.teeTime ?? null;
-  if (!time) return null;
-  return sessionForTime(time, dayIndex, dayCount)?.key ?? null;
+  const draw = drawOf?.(entry.playerId) ?? null;
+  const time = entry.dayTee?.[dayNumber]?.teeTime ?? draw?.time ?? null;
+  if (time) {
+    const session = sessionForTime(time, dayIndex, dayCount)?.key ?? null;
+    if (session) return session;
+  }
+  return sessionOfWave(draw?.wave ?? null);
 }
 
 /** How many players selected this day, and how they split across AM, PM and undecided. */
@@ -73,12 +107,13 @@ export function tallyDay(
   dayNumber: number,
   dayIndex: number,
   dayCount: number,
+  drawOf?: (playerId: string) => DrawPlacement | null,
 ): DayTally {
   const tally: DayTally = { am: 0, pm: 0, unset: 0, total: 0 };
   for (const entry of entries) {
     if (!(entry.selectedDays ?? []).includes(dayNumber)) continue;
     tally.total += 1;
-    const session = sessionOfEntry(entry, dayNumber, dayIndex, dayCount);
+    const session = sessionOfEntry(entry, dayNumber, dayIndex, dayCount, drawOf);
     if (session === "AM") tally.am += 1;
     else if (session === "PM") tally.pm += 1;
     else tally.unset += 1;
@@ -86,29 +121,51 @@ export function tallyDay(
   return tally;
 }
 
+/** Each player's placement on each day, keyed `day:player`. Null when the draw has no group for them. */
+function placementsOf(boards: DrawBoard[] | null): Map<string, DrawPlacement> {
+  const placements = new Map<string, DrawPlacement>();
+  for (const board of boards ?? []) {
+    for (const group of board.groups) {
+      for (const player of group.players) {
+        placements.set(`${board.day}:${player.id}`, {
+          time: group.time || null,
+          startHole: group.startHole,
+          wave: group.wave,
+        });
+      }
+    }
+  }
+  return placements;
+}
+
 /**
- * One block per playing day: the tally and its players in tee-off order, morning first. Rows sort
- * by the stored tee time, then by name; a player with no time yet sits at the end of their day.
+ * One block per playing day: the tally and its players in tee-off order, morning first. The time and
+ * hole come from the player's pairing; a stored per-day time wins when the desk saved one. Rows with
+ * no time yet sit at the end of their day.
  */
 export function buildDayCountBlocks(input: {
   days: { dayNumber: number; label: string; playDate: string | null }[];
   entries: CountEntry[];
   players: { id: string; name: string }[];
+  boards?: DrawBoard[] | null;
 }): DayCountBlock[] {
   const nameOf = new Map(input.players.map((player) => [player.id, player.name]));
+  const placements = placementsOf(input.boards ?? null);
   const dayCount = input.days.length;
   return input.days.map((day, dayIndex) => {
+    const drawOf = (playerId: string) => placements.get(`${day.dayNumber}:${playerId}`) ?? null;
     const rows = input.entries
       .filter((entry) => (entry.selectedDays ?? []).includes(day.dayNumber))
       .map((entry) => {
         const tee = entry.dayTee?.[day.dayNumber];
+        const draw = drawOf(entry.playerId);
         return {
           entryId: entry.entryId,
           playerId: entry.playerId,
           name: nameOf.get(entry.playerId) ?? "Unknown player",
-          session: sessionOfEntry(entry, day.dayNumber, dayIndex, dayCount),
-          teeTime: tee?.teeTime ?? null,
-          startHole: tee?.startHole ?? null,
+          session: sessionOfEntry(entry, day.dayNumber, dayIndex, dayCount, drawOf),
+          teeTime: tee?.teeTime ?? draw?.time ?? null,
+          startHole: tee?.startHole ?? draw?.startHole ?? null,
         };
       })
       .sort(
@@ -116,11 +173,19 @@ export function buildDayCountBlocks(input: {
           (minutesOf(a.teeTime) ?? 24 * 60) - (minutesOf(b.teeTime) ?? 24 * 60) ||
           a.name.localeCompare(b.name),
       );
+    // The tally is read off the same rows the sheet prints, so the summary can never disagree
+    // with the list under it.
+    const tally: DayTally = {
+      am: rows.filter((row) => row.session === "AM").length,
+      pm: rows.filter((row) => row.session === "PM").length,
+      unset: rows.filter((row) => row.session === null).length,
+      total: rows.length,
+    };
     return {
       dayNumber: day.dayNumber,
       label: day.label,
       playDate: day.playDate,
-      tally: tallyDay(input.entries, day.dayNumber, dayIndex, dayCount),
+      tally,
       rows,
     };
   });

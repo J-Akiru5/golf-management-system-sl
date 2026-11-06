@@ -87,8 +87,9 @@ export default function PrintCenter() {
           dayTee: entry.dayTee,
         })),
         players,
+        boards: everyDay,
       }),
-    [playingDays, entries, players],
+    [playingDays, entries, everyDay, players],
   );
 
   const pairings = useMemo(() => {
@@ -155,7 +156,7 @@ export default function PrintCenter() {
    * Prints every playing day in one run. The desk holds one day at a time, so this reads the whole
    * event's board once and lays out a start sheet per day.
    */
-  const loadEveryDay = async () => {
+  const loadEveryDay = async (autoPrint = true) => {
     setPreparingAll(true);
     try {
       const client = createSupabaseBrowserClient();
@@ -214,7 +215,7 @@ export default function PrintCenter() {
         }));
 
       setEveryDay(boards);
-      window.setTimeout(() => window.print(), 400);
+      if (autoPrint) window.setTimeout(() => window.print(), 400);
     } finally {
       setPreparingAll(false);
     }
@@ -282,7 +283,7 @@ export default function PrintCenter() {
             )}
             <Button
               variant="secondary"
-              onClick={loadEveryDay}
+              onClick={() => void loadEveryDay()}
               disabled={preparingAll}
               className="no-print"
               data-help="print-all"
@@ -331,7 +332,11 @@ export default function PrintCenter() {
               type="button"
               role="tab"
               aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => {
+                setTab(t.id);
+                // The counts sheet reads each player's pairing, so it needs every day's board once.
+                if (t.id === "counts" && !everyDay && !preparingAll) void loadEveryDay(false);
+              }}
               className="flex items-center gap-2 px-4"
             >
               <t.icon className="size-4" aria-hidden="true" />
@@ -350,7 +355,7 @@ export default function PrintCenter() {
 
       <div className="print-sheet-scope">
         {tab === "counts" ? (
-          <DayCounts blocks={countBlocks} eventName={tournament.name} />
+          <DayCounts blocks={countBlocks} eventName={tournament.name} loading={preparingAll} />
         ) : tab === "howto" ? (
           <section className="grid gap-3">
             <h2 className="text-[20px]">How to use the desk</h2>
