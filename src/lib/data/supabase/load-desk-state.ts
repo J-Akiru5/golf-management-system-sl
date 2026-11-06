@@ -428,6 +428,34 @@ export async function loadDeskState(
     }
   }
 
+  // The arrival stamp sits on the same day row, added by 20261106000000. It is read on its own so
+  // a database that has not run that migration still loads, just with everybody still expected.
+  const checkInByRegistration = new Map<string, NonNullable<RegistrationEntry["dayCheckIn"]>>();
+  const checkInRows = (await client
+    .from("registration_days")
+    .select("registration_id, tournament_day_id, checked_in_at")
+    .eq("club_id", clubId)
+    .eq("selected", true)
+    .not("checked_in_at", "is", null)) as unknown as {
+    data:
+      | {
+          registration_id: string;
+          tournament_day_id: string | null;
+          checked_in_at: string | null;
+        }[]
+      | null;
+    error: { message: string; code?: string } | null;
+  };
+  if (!checkInRows.error) {
+    for (const row of asArray(checkInRows.data)) {
+      const day = row.tournament_day_id ? dayNumberById.get(row.tournament_day_id) : undefined;
+      if (!day || !row.checked_in_at) continue;
+      const map = checkInByRegistration.get(row.registration_id) ?? {};
+      map[day.dayNumber] = { at: row.checked_in_at, byName: null };
+      checkInByRegistration.set(row.registration_id, map);
+    }
+  }
+
   const caddieAssignmentsByRegistration = new Map<
     string,
     NonNullable<RegistrationEntry["caddieByDay"]>
@@ -465,6 +493,7 @@ export async function loadDeskState(
         ...entry,
         selectedDays: [...stored].sort((a, b) => a - b),
         daySessions: sessionsByRegistration.get(entry.id) ?? {},
+        dayCheckIn: checkInByRegistration.get(entry.id) ?? {},
         dayTee,
         caddieByDay,
       };
@@ -474,6 +503,7 @@ export async function loadDeskState(
       ...entry,
       selectedDays: selectedDaysOf(entry, tournamentDays),
       daySessions: sessionsByRegistration.get(entry.id) ?? {},
+      dayCheckIn: checkInByRegistration.get(entry.id) ?? {},
       dayTee,
       caddieByDay,
     };
