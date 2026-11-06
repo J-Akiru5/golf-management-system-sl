@@ -1,11 +1,20 @@
 "use client";
 
-import { CircleHelp, FileText, Flag, Printer, Smartphone, TableProperties } from "lucide-react";
+import {
+  CircleHelp,
+  FileText,
+  Flag,
+  Printer,
+  Smartphone,
+  TableProperties,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CheatSheet } from "@/components/help";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
+import { DayCounts } from "@/components/print/DayCounts";
 import { PairingsSheet } from "@/components/print/PairingsSheet";
 import { Scorecards } from "@/components/print/Scorecards";
 import { StartSheet } from "@/components/print/StartSheet";
@@ -15,6 +24,7 @@ import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-da
 import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { photoOf } from "@/lib/format";
+import { buildDayCountBlocks } from "@/lib/print/day-counts";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
@@ -22,10 +32,11 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/ui/cn";
 import { sessionOfLabel, waveHeading } from "@/lib/ui/labels";
 
-type Tab = "start" | "pairings" | "scorecards" | "howto";
+type Tab = "start" | "counts" | "pairings" | "scorecards" | "howto";
 
 const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
   { id: "start", label: "Start sheet", icon: TableProperties },
+  { id: "counts", label: "Counts", icon: Users },
   { id: "pairings", label: "Pairings", icon: Flag },
   { id: "scorecards", label: "Scorecards", icon: FileText },
   { id: "howto", label: "How to", icon: CircleHelp },
@@ -38,6 +49,7 @@ export default function PrintCenter() {
     players,
     regById,
     registrations,
+    entries,
     names,
     tees,
     holes,
@@ -58,6 +70,26 @@ export default function PrintCenter() {
   // Every day at once, fetched on demand: the desk itself only holds the selected day.
   const [everyDay, setEveryDay] = useState<{ day: number; groups: PrintGroup[] }[] | null>(null);
   const [preparingAll, setPreparingAll] = useState(false);
+  // The organisers' headcount: players per playing day, split into AM and PM, with tee-off times.
+  const countBlocks = useMemo(
+    () =>
+      buildDayCountBlocks({
+        days: playingDays.map((d) => ({
+          dayNumber: d.dayNumber,
+          label: d.label,
+          playDate: d.playDate,
+        })),
+        entries: entries.map((entry) => ({
+          entryId: entry.id,
+          playerId: entry.playerId,
+          selectedDays: entry.selectedDays,
+          daySessions: entry.daySessions,
+          dayTee: entry.dayTee,
+        })),
+        players,
+      }),
+    [playingDays, entries, players],
+  );
 
   const pairings = useMemo(() => {
     if (!tournament) return null;
@@ -292,7 +324,7 @@ export default function PrintCenter() {
       )}
 
       <div className="no-print flex flex-wrap items-center gap-3" data-help="print-tabs">
-        <div className="tabs !w-auto grid-cols-4">
+        <div className="tabs !w-auto grid-cols-5">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -317,7 +349,9 @@ export default function PrintCenter() {
       </div>
 
       <div className="print-sheet-scope">
-        {tab === "howto" ? (
+        {tab === "counts" ? (
+          <DayCounts blocks={countBlocks} eventName={tournament.name} />
+        ) : tab === "howto" ? (
           <section className="grid gap-3">
             <h2 className="text-[20px]">How to use the desk</h2>
             <CheatSheet />
