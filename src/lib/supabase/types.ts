@@ -474,6 +474,31 @@ export interface Database {
   public: {
     Tables: {
       clubs: Table<ClubRow, { id?: string; name: string; created_at?: string }>;
+      // One row per playing day; a draw board is stored against the day's round.
+      competition_rounds: Table<
+        {
+          id: string;
+          club_id: string;
+          tournament_id: string;
+          day_number: number;
+          play_date: string;
+          hole_count: number;
+          status: string;
+          allowance: number;
+          handicap_rounding: string;
+        },
+        {
+          id?: string;
+          club_id: string;
+          tournament_id: string;
+          day_number: number;
+          play_date: string;
+          hole_count?: number;
+          status?: string;
+          allowance?: number;
+          handicap_rounding?: string;
+        }
+      >;
       club_members: Table<
         ClubMemberRow,
         {
@@ -1072,6 +1097,8 @@ export interface Database {
           p_expected_revision: number;
           p_groups: Json;
           p_overrides?: Json | null;
+          /** The playing day's round. Left out, the whole event board is replaced. */
+          p_round?: string | null;
         };
         Returns: number;
       };

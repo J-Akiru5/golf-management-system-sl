@@ -41,6 +41,8 @@ const deskState = (): DeskState => ({ ...emptyState(), players: [player()] });
 const loadedDesk = (): LoadedDesk => ({
   clubName: "Iloilo Golf & Country Club",
   revisions: { "t-1": 3 },
+  rounds: {},
+  roundDays: {},
   state: deskState(),
   courseId: null,
   tees: [],

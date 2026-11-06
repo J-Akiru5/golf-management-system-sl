@@ -41,19 +41,25 @@ export function drawToJson(draw: DrawGroup[]): Json {
   );
 }
 
-/** Replaces the whole draw in one transaction. Returns the new revision. */
+/**
+ * Replaces the draw in one transaction and returns the new revision. When a playing day's round is
+ * named, only that day's groups are replaced and the rest of the week is left alone; without one the
+ * whole event board is replaced, which is what a caller with no day on screen still gets.
+ */
 export async function saveDraw(
   client: SupabaseClient<Database>,
   tournamentId: string,
   expectedRevision: number,
   draw: DrawGroup[],
   overrides: ManualOverride[] | null,
+  roundId: string | null = null,
 ): Promise<number> {
   const { data, error } = await client.rpc("save_draw", {
     p_tournament: tournamentId,
     p_expected_revision: expectedRevision,
     p_groups: drawToJson(draw),
     p_overrides: overrides ? asJson(overrides) : null,
+    p_round: roundId,
   });
   if (error) {
     if (isConflict(error)) throw new DrawConflictError();

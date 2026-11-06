@@ -102,6 +102,10 @@ export interface LoadedDesk {
   clubName: string;
   /** Each tournament's draw revision. A draw save must name the revision it started from. */
   revisions: Record<string, number>;
+  /** The playing day's round each tournament's board was read from, so a save writes it back. */
+  rounds: Record<string, string>;
+  /** The playing day number of that round, per tournament. */
+  roundDays: Record<string, number>;
   /** The course the setup edits belong to, or null when no event is set up yet. */
   courseId: string | null;
   /** The club's saved tees and holes, so entered ratings are read back rather than shown as samples. */
@@ -115,6 +119,8 @@ export async function loadDeskState(
   options: {
     /** Keep this event selected across a reload (for example right after creating it). */
     preferTournamentId?: string | null;
+    /** The playing day whose board to load. Left out, the first playing day is used. */
+    dayNumber?: number | null;
   } = {},
 ): Promise<LoadedDesk> {
   const { data: club, error: clubError } = await client
@@ -277,12 +283,35 @@ export async function loadDeskState(
   const tournamentIds = tournaments.map((t) => t.id);
   const boards: Record<string, BoardState> = {};
   const revisions: Record<string, number> = {};
-  if (tournamentIds.length) {
+  // A board belongs to one playing day. Only the selected day's round is read, so the desk shows
+  // that day's groups alone; without a selection the first playing day is used.
+  const roundRows = await client
+    .from("competition_rounds")
+    .select("id, tournament_id, day_number")
+    .eq("club_id", clubId)
+    .order("day_number");
+  if (roundRows.error && !missingObject(roundRows.error)) {
+    throw new Error(`Could not load the playing days of the draw: ${roundRows.error.message}`);
+  }
+  const rounds: Record<string, string> = {};
+  const roundDays: Record<string, number> = {};
+  for (const tournament of tournaments) {
+    const rows = asArray(roundRows.data)
+      .filter((row) => row.tournament_id === tournament.id)
+      .sort((a, b) => a.day_number - b.day_number);
+    const picked = rows.find((row) => row.day_number === options.dayNumber) ?? rows[0];
+    if (!picked) continue;
+    rounds[tournament.id] = picked.id;
+    roundDays[tournament.id] = picked.day_number;
+  }
+  const roundIds = Object.values(rounds);
+
+  if (tournamentIds.length && roundIds.length) {
     const { data: groupRows, error: groupError } = await client
       .from("groups")
       .select("*")
       .eq("club_id", clubId)
-      .in("tournament_id", tournamentIds)
+      .in("round_id", roundIds)
       .order("number");
     if (groupError) throw new Error(`Could not load the draw: ${groupError.message}`);
 
@@ -510,6 +539,8 @@ export async function loadDeskState(
   return {
     clubName: club.name,
     revisions,
+    rounds,
+    roundDays,
     courseId,
     tees,
     holes,

@@ -41,6 +41,19 @@ describe("saveDraw", () => {
       p_expected_revision: 4,
       p_groups: [group],
       p_overrides: [],
+      p_round: null,
+    });
+  });
+
+  it("names the playing day's round so only that day is replaced", async () => {
+    const { client, rpc } = fakeClient({ data: 6, error: null });
+    await saveDraw(client, "t1", 5, [group], null, "r3");
+    expect(rpc).toHaveBeenCalledWith("save_draw", {
+      p_tournament: "t1",
+      p_expected_revision: 5,
+      p_groups: [group],
+      p_overrides: null,
+      p_round: "r3",
     });
   });
 

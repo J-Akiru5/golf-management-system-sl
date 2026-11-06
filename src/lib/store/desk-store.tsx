@@ -152,6 +152,10 @@ interface Desk {
   cachedAt: string | null;
   /** Re-runs the load after a failure, for the retry control. */
   reload: () => void;
+  /** The playing day whose board is on screen. A draw save names that day's round. */
+  drawDay: number | null;
+  /** Shows another playing day's board, loaded and saved in place of this one. */
+  setDrawDay: (day: number | null) => void;
 }
 
 const Ctx = createContext<Desk | null>(null);
@@ -216,6 +220,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Desk["member"]>(connected ? undefined : undefined);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  // The playing day on screen, and the round each event's board belongs to. A save names the round,
+  // so changing one day cannot rewrite the rest of the week.
+  const [drawDay, setDrawDayState] = useState<number | null>(null);
+  const drawDayRef = useRef<number | null>(null);
+  const roundsRef = useRef<Record<string, string>>({});
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [networkOnline, setNetworkOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine,
@@ -283,12 +292,17 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         const signedIn = await getDeskMember(supabase, userId);
         const loaded = await loadDeskState(supabase, signedIn.clubId, {
           preferTournamentId: keepSelected.current ?? latest.current.activeTournamentId,
+          dayNumber: drawDayRef.current,
         });
         if (!active) return "failed";
         keepSelected.current = null;
         setClient(supabase);
         setMember({ displayName: signedIn.displayName, role: signedIn.role });
         revisions.current = loaded.revisions;
+        roundsRef.current = loaded.rounds;
+        const shownDay = loaded.roundDays[loaded.state.activeTournamentId ?? ""] ?? null;
+        drawDayRef.current = shownDay;
+        setDrawDayState(shownDay);
         rawDispatch({ type: "hydrate", state: loaded.state });
         setStatus("ready");
         setCachedAt(null);
@@ -370,6 +384,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   }, [connected, reloadToken]);
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+  const setDrawDay = useCallback((day: number | null) => {
+    drawDayRef.current = day;
+    setDrawDayState(day);
+    setReloadToken((n) => n + 1);
+  }, []);
   const onEventCreated = useCallback((id: string) => {
     keepSelected.current = id;
     setReloadToken((n) => n + 1);
@@ -400,7 +419,14 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       if (job.kind === "save") {
         revisionStore.set(
           job.tournamentId,
-          await saveDraw(supabase, job.tournamentId, revision, job.draw, job.overrides),
+          await saveDraw(
+            supabase,
+            job.tournamentId,
+            revision,
+            job.draw,
+            job.overrides,
+            roundsRef.current[job.tournamentId] ?? null,
+          ),
         );
         return null;
       }
@@ -717,6 +743,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       offline: connected && (!networkOnline || cachedAt !== null),
       cachedAt,
       reload,
+      drawDay,
+      setDrawDay,
     };
   }, [
     state,
@@ -735,6 +763,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     networkOnline,
     cachedAt,
     reload,
+    drawDay,
+    setDrawDay,
   ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

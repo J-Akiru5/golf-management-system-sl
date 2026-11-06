@@ -42,6 +42,8 @@ export default function DrawPage() {
     member,
     entries,
     days,
+    drawDay,
+    setDrawDay,
   } = desk;
   const draw = desk.draw;
   const config = tournament?.config ?? null;
@@ -60,7 +62,10 @@ export default function DrawPage() {
   // The draw is built once for the event, but an event can run over several playing days. The day
   // selector decides which side of that one draw this screen shows.
   const playingDays = useMemo(() => days.filter((d) => d.isPlayingDay), [days]);
-  const [day, setDay] = useState<number | null>(null);
+  // The selector changes which playing day's board is loaded, not just what is hidden: the board on
+  // file belongs to one day, and every draw save names that day.
+  const day = drawDay;
+  const setDay = setDrawDay;
   const dayByPlayer = useMemo(() => {
     const m = new Map<string, number[]>();
     for (const e of entries) m.set(e.playerId, e.selectedDays ?? []);
@@ -385,7 +390,6 @@ export default function DrawPage() {
                 className="!w-auto"
                 data-help="draw-day"
               >
-                <option value="">All playing days</option>
                 {playingDays.map((d) => (
                   <option key={d.id} value={d.dayNumber}>
                     {d.label} · {fmtIso(d.playDate)}
@@ -410,8 +414,8 @@ export default function DrawPage() {
             <p className="hint w-full">
               Showing {chosenDay?.label ?? "one day"} only: {visibleDraw?.length ?? 0} group
               {(visibleDraw?.length ?? 0) === 1 ? "" : "s"}, {readyOnDay} ready player
-              {readyOnDay === 1 ? "" : "s"}. The draw is made once for the event, so this narrows
-              the view rather than making a second draw.
+              {readyOnDay === 1 ? "" : "s"}. This day's own board is loaded, and a save writes that
+              day's round, so the other playing days stay exactly as they are.
               {mixedGroups.length > 0 &&
                 ` ${mixedGroups.length} group${mixedGroups.length === 1 ? "" : "s"} also hold players from another day.`}
             </p>
