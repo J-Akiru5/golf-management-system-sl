@@ -109,5 +109,6 @@ export const config = {
     "/setup/:path*",
     "/course/:path*",
     "/spotlight/:path*",
+    "/staff/:path*",
   ],
 };

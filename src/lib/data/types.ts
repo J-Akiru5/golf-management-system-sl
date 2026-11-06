@@ -309,6 +309,11 @@ export interface RegistrationEntry {
   dayTee?: Record<number, DayTeeAssignment>;
   /** Active caddie assignment per tournament day, when one exists. */
   caddieByDay?: Record<number, { caddieId: string; caddieName: string; status: string }>;
+  /**
+   * Arrivals recorded by staff, per tournament day number. Missing means the player is expected and
+   * has not been checked in; it never means absent.
+   */
+  dayCheckIn?: Record<number, { at: string; byName: string | null }>;
   /** Given by the participant on the form; informational, not used for eligibility. */
   declaredWshId: string | null;
   declaredWshHandicap: string | null;

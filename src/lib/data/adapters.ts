@@ -214,6 +214,11 @@ export interface RegistrationRepository {
   ): Promise<void>;
   /** Assigns the confirmed tee time and start hole for one selected day. */
   assignDayTee(entryId: string, dayNumber: number, assignment: DayTeeAssignment): Promise<void>;
+  /**
+   * Records or undoes a player's arrival for one playing day. Stamps the time and the staff account
+   * on the database side; the local entry is updated only after the write is accepted.
+   */
+  checkIn(entryId: string, dayNumber: number, arrived: boolean): Promise<void>;
 }
 
 export interface CaddieRepository {
@@ -542,6 +547,14 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         id: entryId,
         patch: { dayTee: { ...(entry.dayTee ?? {}), [dayNumber]: assignment } },
       });
+    },
+    checkIn: async (entryId, dayNumber, arrived) => {
+      const entry = state.entries.find((item) => item.id === entryId);
+      if (!entry) throw new Error("That registration was not found.");
+      const next = { ...(entry.dayCheckIn ?? {}) };
+      if (arrived) next[dayNumber] = { at: new Date().toISOString(), byName: "Demo desk" };
+      else delete next[dayNumber];
+      dispatch({ type: "updateEntry", id: entryId, patch: { dayCheckIn: next } });
     },
   };
 

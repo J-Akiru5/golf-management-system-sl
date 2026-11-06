@@ -1119,6 +1119,42 @@ export function createSupabaseAdapters(
         },
       });
     },
+    checkIn: async (entryId, dayNumber, arrived) => {
+      // Unlisted on purpose: the generated database types cannot know a function that ships in the
+      // same change as this screen.
+      const { data, error } = await callUnlisted(client, "set_entry_day_check_in", {
+        p_registration: entryId,
+        p_day_number: dayNumber,
+        p_arrived: arrived,
+      });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "Recording arrivals needs migration 20261106000000. Nothing was saved."
+            : /not entered for that day/i.test(error.message)
+              ? "That player is not entered for this day."
+              : `Could not record the arrival: ${error.message}`,
+        );
+      }
+      const result = data as unknown as {
+        ok?: boolean;
+        message?: string;
+        checked_in_at?: string | null;
+      } | null;
+      if (!result?.ok) {
+        throw new Error(result?.message ?? "The arrival was refused. Nothing was saved.");
+      }
+      const entry = state.entries.find((item) => item.id === entryId);
+      const next = { ...(entry?.dayCheckIn ?? {}) };
+      if (arrived) {
+        next[dayNumber] = { at: result.checked_in_at ?? new Date().toISOString(), byName: null };
+      } else {
+        delete next[dayNumber];
+      }
+      dispatch({ type: "updateEntry", id: entryId, patch: { dayCheckIn: next } });
+    },
   };
 
   /**
