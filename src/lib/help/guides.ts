@@ -203,6 +203,12 @@ export const DESK_GUIDES: HelpGuide[] = [
     routes: ["/print"],
     steps: [
       {
+        text: literal(
+          "Choose the playing day to print. The sheets come from that day's board only, so two days are never mixed on one sheet.",
+        ),
+        anchor: "print-day",
+      },
+      {
         text: literal("Pick a sheet: start sheet, pairings, scorecards, or the how-to page."),
         anchor: "print-tabs",
       },

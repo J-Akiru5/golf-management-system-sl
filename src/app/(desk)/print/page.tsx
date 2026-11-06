@@ -12,7 +12,7 @@ import { StartSheet } from "@/components/print/StartSheet";
 import type { PrintGroup } from "@/components/print/types";
 import { Button } from "@/components/ui/button";
 import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
-import { fmtDateLabel } from "@/lib/data/labels";
+import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { photoOf } from "@/lib/format";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
@@ -30,9 +30,25 @@ const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
 ];
 
 export default function PrintCenter() {
-  const { tournament, draw, players, regById, names, tees, holes, published, changedSincePublish } =
-    useDesk();
+  const {
+    tournament,
+    draw,
+    players,
+    regById,
+    names,
+    tees,
+    holes,
+    published,
+    changedSincePublish,
+    days,
+    drawDay,
+    setDrawDay,
+  } = useDesk();
   const [tab, setTab] = useState<Tab>("start");
+  // Printing follows the desk's day: picking a day here loads that day's board, so the sheets
+  // never mix two days together.
+  const playingDays = useMemo(() => days.filter((d) => d.isPlayingDay), [days]);
+  const chosenDay = playingDays.find((d) => d.dayNumber === drawDay) ?? null;
 
   const pairings = useMemo(() => {
     if (!tournament) return null;
@@ -89,12 +105,13 @@ export default function PrintCenter() {
     tees,
     holes,
   });
-  const subtitle = `${tournament.name} · ${fmtDateLabel(tournament.dates)} · ${
+  const dayPart = chosenDay ? `${chosenDay.label} · ` : "";
+  const subtitle = `${tournament.name} · ${dayPart}${fmtDateLabel(tournament.dates)} · ${
     shotgun ? "Shotgun start" : "Two-tee start"
   } · first tee ${tournament.config.firstTeeTime}${
     groups[0] ? ` · ${groups.length} groups` : " · no draw yet"
   }`;
-  const scorecardSubtitle = `${fmtDateLabel(tournament.dates)} · ${
+  const scorecardSubtitle = `${dayPart}${fmtDateLabel(tournament.dates)} · ${
     shotgun ? "Shotgun start" : "Two-tee start"
   } · first tee ${tournament.config.firstTeeTime}`;
 
@@ -106,6 +123,25 @@ export default function PrintCenter() {
         crumbs={[{ label: tournament.name, href: "/tournaments" }, { label: "Print center" }]}
         actions={
           <>
+            {playingDays.length > 0 && (
+              <label className="no-print grid gap-1">
+                <span className="overline !text-[10px]">Day to print</span>
+                <select
+                  value={drawDay ?? ""}
+                  onChange={(e) =>
+                    setDrawDay(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                  className="!w-auto"
+                  data-help="print-day"
+                >
+                  {playingDays.map((d) => (
+                    <option key={d.id} value={d.dayNumber}>
+                      {d.label} · {fmtIso(d.playDate)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <Button variant="secondary" asChild>
               <Link href="/pairings">
                 <Smartphone aria-hidden="true" /> Public preview
