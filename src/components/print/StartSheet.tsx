@@ -2,6 +2,7 @@
 
 import { fmtHcp, fmtIndex, fmtTime } from "@/lib/format";
 import { groupStartGroups, type PrintStartFormat } from "@/lib/print/start-sheet";
+import { flightName, waveHeading } from "@/lib/ui/labels";
 import styles from "./print.module.css";
 import type { CourseDataStatus, PrintGroup } from "./types";
 
@@ -47,7 +48,7 @@ export function StartSheet({
         <section key={section.key} className={styles.startSection}>
           <h3 className={styles.sectionHeading}>
             {startFormat === "shotgun"
-              ? `Wave ${section.wave ?? "not assigned"}`
+              ? `${waveHeading(section.wave)} · ${flightName(section.wave)}`
               : `Tee time ${fmtTime(section.time)}`}
             {startFormat === "shotgun" && section.time && <span>{fmtTime(section.time)}</span>}
           </h3>
@@ -60,7 +61,7 @@ export function StartSheet({
                 <header className={styles.groupHeader}>
                   <b>
                     {startFormat === "shotgun"
-                      ? `Hole ${group.startHole}${group.wave ?? ""}`
+                      ? `Hole ${group.startHole}`
                       : `Tee ${group.startHole}`}
                     <span> · Group {group.number}</span>
                   </b>

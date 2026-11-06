@@ -215,6 +215,12 @@ export const DESK_GUIDES: HelpGuide[] = [
         anchor: "print-wave",
       },
       {
+        text: literal(
+          "Print all days lays out a start sheet for every playing day in one print run.",
+        ),
+        anchor: "print-all",
+      },
+      {
         text: literal("Pick a sheet: start sheet, pairings, scorecards, or the how-to page."),
         anchor: "print-tabs",
       },

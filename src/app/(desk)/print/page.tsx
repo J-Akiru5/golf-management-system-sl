@@ -18,6 +18,7 @@ import { photoOf } from "@/lib/format";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/ui/cn";
 import { sessionOfLabel, waveHeading } from "@/lib/ui/labels";
 
@@ -36,6 +37,7 @@ export default function PrintCenter() {
     draw,
     players,
     regById,
+    registrations,
     names,
     tees,
     holes,
@@ -53,6 +55,9 @@ export default function PrintCenter() {
   // One wave at a time is what the club prints: the morning and afternoon sheets are handed out
   // separately. "All waves" keeps the whole day on one sheet.
   const [waveFilter, setWaveFilter] = useState<"all" | "AM" | "PM">("all");
+  // Every day at once, fetched on demand: the desk itself only holds the selected day.
+  const [everyDay, setEveryDay] = useState<{ day: number; groups: PrintGroup[] }[] | null>(null);
+  const [preparingAll, setPreparingAll] = useState(false);
 
   const pairings = useMemo(() => {
     if (!tournament) return null;
@@ -77,7 +82,14 @@ export default function PrintCenter() {
       ? dayGroups
       : dayGroups.filter((group) => sessionOfLabel(group.wave) === waveFilter);
   // This existing route remains the assembler: adapt the desk's domain objects into plain print props here.
-  const printGroups: PrintGroup[] = groups.map((group) => ({
+  const toPrintGroup = (group: {
+    number: number;
+    startHole: number;
+    wave: string | null;
+    time: string;
+    flightId: string;
+    playerIds: string[];
+  }): PrintGroup => ({
     number: group.number,
     startHole: group.startHole,
     wave: group.wave,
@@ -104,7 +116,77 @@ export default function PrintCenter() {
         photo: player ? photoOf(player) : undefined,
       };
     }),
-  }));
+  });
+  const printGroups = groups.map(toPrintGroup);
+
+  /**
+   * Prints every playing day in one run. The desk holds one day at a time, so this reads the whole
+   * event's board once and lays out a start sheet per day.
+   */
+  const loadEveryDay = async () => {
+    setPreparingAll(true);
+    try {
+      const client = createSupabaseBrowserClient();
+      const [groupsReply, roundsReply] = await Promise.all([
+        client
+          .from("groups")
+          .select("*, group_members(registration_id, position)")
+          .eq("tournament_id", tournament.id)
+          .order("number"),
+        client
+          .from("competition_rounds")
+          .select("id, day_number")
+          .eq("tournament_id", tournament.id),
+      ]);
+      if (groupsReply.error) throw new Error(groupsReply.error.message);
+      if (roundsReply.error) throw new Error(roundsReply.error.message);
+
+      type Row = {
+        number: number;
+        start_hole: number;
+        wave: string | null;
+        tee_time: string;
+        flight_id: string;
+        round_id: string;
+        group_members: { registration_id: string; position: number }[] | null;
+      };
+      const rows = (groupsReply.data ?? []) as unknown as Row[];
+      const dayOf = new Map(
+        ((roundsReply.data ?? []) as { id: string; day_number: number }[]).map((round) => [
+          round.id,
+          round.day_number,
+        ]),
+      );
+      const playerOfRegistration = new Map(registrations.map((reg) => [reg.entryId, reg.playerId]));
+
+      const boards = [...new Set(dayOf.values())]
+        .sort((a, b) => a - b)
+        .map((day) => ({
+          day,
+          groups: rows
+            .filter((row) => dayOf.get(row.round_id) === day)
+            .map((row) =>
+              toPrintGroup({
+                number: row.number,
+                startHole: row.start_hole,
+                wave: row.wave,
+                time: row.tee_time,
+                flightId: row.flight_id,
+                playerIds: (row.group_members ?? [])
+                  .slice()
+                  .sort((a, b) => a.position - b.position)
+                  .map((member) => playerOfRegistration.get(member.registration_id))
+                  .filter((id): id is string => Boolean(id)),
+              }),
+            ),
+        }));
+
+      setEveryDay(boards);
+      window.setTimeout(() => window.print(), 400);
+    } finally {
+      setPreparingAll(false);
+    }
+  };
 
   // Derived from what is saved and whether an owner or organizer confirmed it against the club
   // scorecard, never typed in: real, confirmed data prints clean; anything else keeps its mark.
@@ -166,6 +248,15 @@ export default function PrintCenter() {
                 </select>
               </label>
             )}
+            <Button
+              variant="secondary"
+              onClick={loadEveryDay}
+              disabled={preparingAll}
+              className="no-print"
+              data-help="print-all"
+            >
+              <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
+            </Button>
             <Button variant="secondary" asChild>
               <Link href="/pairings">
                 <Smartphone aria-hidden="true" /> Public preview
@@ -245,13 +336,40 @@ export default function PrintCenter() {
             </div>
           </div>
         ) : tab === "start" ? (
-          <StartSheet
-            title="Start sheet"
-            subtitle={subtitle}
-            groups={printGroups}
-            startFormat={tournament.config.startFormat}
-            courseDataStatus={courseDataStatus}
-          />
+          everyDay ? (
+            <div className="grid gap-6">
+              <p className="hint no-print">
+                Every playing day, one sheet each.{" "}
+                <button type="button" className="btn small ghost" onClick={() => setEveryDay(null)}>
+                  Back to this day only
+                </button>
+              </p>
+              {everyDay.map((board) => {
+                const label =
+                  playingDays.find((d) => d.dayNumber === board.day)?.label ?? `Day ${board.day}`;
+                return (
+                  <StartSheet
+                    key={board.day}
+                    title={`Start sheet · ${label}`}
+                    subtitle={`${tournament.name} · ${label} · ${fmtDateLabel(tournament.dates)} · ${
+                      shotgun ? "Shotgun start" : "Two-tee start"
+                    } · ${board.groups.length} groups`}
+                    groups={board.groups}
+                    startFormat={tournament.config.startFormat}
+                    courseDataStatus={courseDataStatus}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <StartSheet
+              title="Start sheet"
+              subtitle={subtitle}
+              groups={printGroups}
+              startFormat={tournament.config.startFormat}
+              courseDataStatus={courseDataStatus}
+            />
+          )
         ) : tab === "pairings" ? (
           <section className="grid gap-3">
             <h2 className="text-[20px]">Pairings</h2>
