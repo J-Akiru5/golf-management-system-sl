@@ -2,6 +2,7 @@
 
 import {
   CircleHelp,
+  Download,
   FileText,
   Flag,
   Printer,
@@ -14,7 +15,7 @@ import { useMemo, useState } from "react";
 import { CheatSheet } from "@/components/help";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
-import { DayCounts } from "@/components/print/DayCounts";
+import { type CountsGrouping, DayCounts } from "@/components/print/DayCounts";
 import { PairingsSheet } from "@/components/print/PairingsSheet";
 import { Scorecards } from "@/components/print/Scorecards";
 import { StartSheet } from "@/components/print/StartSheet";
@@ -23,8 +24,9 @@ import { Button } from "@/components/ui/button";
 import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
 import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
+import { buildXlsx, type Cell } from "@/lib/export/xlsx";
 import { photoOf } from "@/lib/format";
-import { buildDayCountBlocks } from "@/lib/print/day-counts";
+import { buildDayCountBlocks, buildGroupBlocks } from "@/lib/print/day-counts";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
@@ -70,6 +72,8 @@ export default function PrintCenter() {
   // Every day at once, fetched on demand: the desk itself only holds the selected day.
   const [everyDay, setEveryDay] = useState<{ day: number; groups: PrintGroup[] }[] | null>(null);
   const [preparingAll, setPreparingAll] = useState(false);
+  // The organisers read the same players two ways: by AM/PM session, or by the draw's groups.
+  const [groupBy, setGroupBy] = useState<CountsGrouping>("session");
   // The organisers' headcount: players per playing day, split into AM and PM, with tee-off times.
   const countBlocks = useMemo(
     () =>
@@ -90,6 +94,18 @@ export default function PrintCenter() {
         boards: everyDay,
       }),
     [playingDays, entries, everyDay, players],
+  );
+  const groupBlocks = useMemo(
+    () =>
+      buildGroupBlocks({
+        days: playingDays.map((d) => ({
+          dayNumber: d.dayNumber,
+          label: d.label,
+          playDate: d.playDate,
+        })),
+        boards: everyDay,
+      }),
+    [playingDays, everyDay],
   );
 
   const pairings = useMemo(() => {
@@ -219,6 +235,66 @@ export default function PrintCenter() {
     } finally {
       setPreparingAll(false);
     }
+  };
+
+  /**
+   * The same numbers as a workbook: a summary, every player by session, and every group with its
+   * players. Built in the browser, so nothing about the event leaves the desk.
+   */
+  const exportCounts = () => {
+    const summary: Cell[][] = [
+      ["Day", "Date", "AM", "PM", "Not set", "Players"],
+      ...countBlocks.map((block) => [
+        block.label,
+        block.playDate ?? "",
+        block.tally.am,
+        block.tally.pm,
+        block.tally.unset,
+        block.tally.total,
+      ]),
+    ];
+    const bySession: Cell[][] = [
+      ["Day", "Date", "AM/PM", "Tee off", "Start hole", "Player"],
+      ...countBlocks.flatMap((block) =>
+        block.rows.map((row) => [
+          block.label,
+          block.playDate ?? "",
+          row.session ?? "Not set",
+          row.teeTime ?? "",
+          row.startHole ?? "",
+          row.name,
+        ]),
+      ),
+    ];
+    const byGroup: Cell[][] = [
+      ["Day", "Date", "Group", "Tee off", "Start hole", "AM/PM", "Flight", "Players"],
+      ...groupBlocks.flatMap((block) =>
+        block.groups.map((group) => [
+          block.label,
+          block.playDate ?? "",
+          group.number,
+          group.time ?? "",
+          group.startHole ?? "",
+          group.session ?? "Not set",
+          group.flight,
+          group.players.map((player) => player.name).join(", "),
+        ]),
+      ),
+    ];
+    const bytes = buildXlsx([
+      { name: "Summary", rows: summary },
+      { name: "By session", rows: bySession },
+      { name: "By group", rows: byGroup },
+    ]);
+    const blob = new Blob([bytes.buffer as ArrayBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `players-by-day-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   // Derived from what is saved and whether an owner or organizer confirmed it against the club
@@ -355,7 +431,15 @@ export default function PrintCenter() {
 
       <div className="print-sheet-scope">
         {tab === "counts" ? (
-          <DayCounts blocks={countBlocks} eventName={tournament.name} loading={preparingAll} />
+          <DayCounts
+            blocks={countBlocks}
+            groupBlocks={groupBlocks}
+            groupBy={groupBy}
+            onGroupBy={setGroupBy}
+            onExport={exportCounts}
+            eventName={tournament.name}
+            loading={preparingAll}
+          />
         ) : tab === "howto" ? (
           <section className="grid gap-3">
             <h2 className="text-[20px]">How to use the desk</h2>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDayCountBlocks,
+  buildGroupBlocks,
   type CountEntry,
   sessionOfEntry,
   sessionOfWave,
@@ -159,5 +160,47 @@ describe("draw pairings", () => {
       ],
     });
     expect(blocks[2]?.rows[0]).toMatchObject({ session: "PM", teeTime: "12:30", startHole: 2 });
+  });
+});
+
+describe("buildGroupBlocks", () => {
+  it("lists each day's groups in tee order with their session and players", () => {
+    const blocks = buildGroupBlocks({
+      days,
+      boards: [
+        {
+          day: 3,
+          groups: [
+            {
+              number: 9,
+              startHole: 12,
+              wave: "D3-PM-A",
+              time: "12:30",
+              flight: "Class C",
+              players: [{ id: "x", name: "Afternoon Player" }],
+            },
+            {
+              number: 2,
+              startHole: 4,
+              wave: "D3-AM-A",
+              time: "06:30",
+              flight: "Class A",
+              players: [{ id: "y", name: "Morning Player" }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(blocks).toHaveLength(4);
+    const day3 = blocks[2];
+    expect(day3?.groups.map((group) => group.number)).toEqual([2, 9]);
+    expect(day3?.groups.map((group) => group.session)).toEqual(["AM", "PM"]);
+    expect(day3?.groups[0]?.players[0]?.name).toBe("Morning Player");
+    expect(day3?.groups[0]?.flight).toBe("Class A");
+  });
+
+  it("returns an empty day when the board is not loaded", () => {
+    expect(buildGroupBlocks({ days }).every((block) => block.groups.length === 0)).toBe(true);
   });
 });

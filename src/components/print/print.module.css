@@ -694,3 +694,30 @@
     page-break-inside: avoid;
   }
 }
+
+/* ---------- Counts controls and group view ---------- */
+.countsControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3mm;
+  padding-bottom: 2mm;
+  border-bottom: 1px solid #000;
+}
+
+.countsGroupPlayers {
+  font-size: 8.5pt;
+  line-height: 1.25;
+}
+
+@media print {
+  .countsDayHeader {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
+
+.countsPlayers {
+  width: 55%;
+}

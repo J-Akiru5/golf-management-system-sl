@@ -190,3 +190,62 @@ export function buildDayCountBlocks(input: {
     };
   });
 }
+
+/** One group on a day's board, with the players the draw put in it. */
+export interface GroupBoardGroup {
+  number: number;
+  startHole: number;
+  wave: string | null;
+  time: string;
+  flight: string;
+  players: { id: string; name: string }[];
+}
+
+export interface GroupRow {
+  key: string;
+  number: number;
+  time: string | null;
+  startHole: number | null;
+  session: SessionKey | null;
+  flight: string;
+  players: { id: string; name: string }[];
+}
+
+export interface DayGroupBlock {
+  dayNumber: number;
+  label: string;
+  playDate: string | null;
+  groups: GroupRow[];
+}
+
+/**
+ * The same day split by the draw's groups instead of by session: one row per tee-off group, in tee
+ * order, with the players who go off together. Used by the organisers' "by group" view and sheet.
+ */
+export function buildGroupBlocks(input: {
+  days: { dayNumber: number; label: string; playDate: string | null }[];
+  boards?: { day: number; groups: GroupBoardGroup[] }[] | null;
+}): DayGroupBlock[] {
+  const byDay = new Map((input.boards ?? []).map((board) => [board.day, board.groups]));
+  return input.days.map((day) => ({
+    dayNumber: day.dayNumber,
+    label: day.label,
+    playDate: day.playDate,
+    groups: [...(byDay.get(day.dayNumber) ?? [])]
+      .map((group) => ({
+        key: `${group.number}-${group.startHole}`,
+        number: group.number,
+        time: group.time || null,
+        startHole: group.startHole,
+        session: sessionOfWave(group.wave),
+        flight: group.flight,
+        players: group.players,
+      }))
+      .sort(
+        (a, b) =>
+          (minutesOf(a.time) ?? 24 * 60) - (minutesOf(b.time) ?? 24 * 60) ||
+          (a.startHole ?? 0) - (b.startHole ?? 0) ||
+          a.number - b.number,
+      ),
+  }));
+}
