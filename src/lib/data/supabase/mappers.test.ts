@@ -54,6 +54,11 @@ describe("database row mappers", () => {
     ).toBe(undefined);
   });
 
+  it("keeps the pair a player was entered with, so the draw can hold the two together", () => {
+    expect(mapPlayerRow(player, 14.2, { teamKey: "team-7" }).teamKey).toBe("team-7");
+    expect(mapPlayerRow(player, 14.2).teamKey).toBe(null);
+  });
+
   it("maps an event's database values without rounding or inventing tournament rules", () => {
     const tournament: TournamentRow = {
       id: "tournament-1",

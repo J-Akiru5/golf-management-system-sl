@@ -12,6 +12,9 @@
  *   pnpm exec tsx scripts/apply-bamboo-tee-field.ts             apply, and report what is there
  *   pnpm exec tsx scripts/apply-bamboo-tee-field.ts --dry-run   plan only
  *   pnpm exec tsx scripts/apply-bamboo-tee-field.ts --status    counts only
+ *
+ * `--no-waiting` leaves the waiting list out of the club directory. The desk asked for the field
+ * only, so those names are not players.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -30,6 +33,7 @@ if (!url || !key) {
   throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are needed.");
 }
 
+const skippingWaitingList = process.argv.includes("--no-waiting");
 const mode = process.argv.includes("--dry-run")
   ? "plan"
   : process.argv.includes("--status")
@@ -52,9 +56,11 @@ function notesFor(pair: FieldPair, side: "member" | "guest"): string[] {
   const player = pair[side];
   const notes: string[] = [];
   if (!/^\S[^,]*,\s*\S/.test(player.name)) notes.push("The name on the club sheet is incomplete.");
-  if (player.index === null) notes.push("No index on the club sheet; 0 was recorded.");
+  if (player.index === null) notes.push("No index on the club sheet; none was recorded.");
   else if (player.index > MAX_READABLE_INDEX) {
-    notes.push(`The club sheet shows ${player.index}, which is not an index; 0 was recorded.`);
+    notes.push(
+      `The club sheet shows ${player.index}, which is not a handicap index. It was kept as written for the desk to correct.`,
+    );
   }
   if (player.schedule.length === 0) notes.push("No schedule on the club sheet.");
   else if (player.scheduleNote) {
@@ -176,8 +182,10 @@ async function applyPlayer(pair: FieldPair, side: "member" | "guest"): Promise<v
     failures.push(`${pair.number}. ${name}: the club sheet has no complete name in this cell.`);
     return;
   }
-  const fromSheet = player.index !== null && player.index <= MAX_READABLE_INDEX;
-  const index = fromSheet && player.index !== null ? player.index : 0;
+  // The sheet is the record: a blank index stays blank rather than becoming 0, and an implausible
+  // figure is kept and flagged instead of being silently corrected.
+  const index = player.index;
+  const fromSheet = index !== null;
   const playerId = await ensurePlayer(player.name);
 
   if (!members.has(playerId)) {
@@ -273,7 +281,7 @@ for (let at = 0; at < tasks.length; at += 10) {
   );
 }
 
-for (const entry of waiting) {
+for (const entry of skippingWaitingList ? [] : waiting) {
   try {
     await ensurePlayer(entry.name);
   } catch (error) {

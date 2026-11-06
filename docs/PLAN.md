@@ -331,7 +331,13 @@ These are places where the spec promises something the code does not do yet. Che
    See gap 14.
 6. **Tee data is placeholder.** Demo and test numbers (e.g. White 71.5 / 128 / 72) are invented.
 7. **Wave rule vs. small flights.** Keeping flights whole can push a small flight to wave 2; an
-   organizer decision is still needed (section 10).
+   organizer decision is still needed (section 10). The 24th Bamboo Tee showed the real shape on
+   6 November 2026: a playing day runs a morning and an afternoon shotgun, each filled from its own
+   start time, which is what keeps the board at waves A and B. `route` now draws that way through
+   its `sessions` input. The board still cannot be saved per playing day: `groups` holds one board
+   per event and `save_draw` does not name a playing day,so a per-day save needs the save call to take the day first. Migration 20261106000100 now gives
+   `save_draw` the playing day and numbers groups per day, so a per-day board can be stored; the
+   desk does not pass a day yet, so the draft is drawn per day into `docs/draft-24th-bamboo-tee.md`.
 8. **Import is CSV-only** and the NGAP format has still not been seen; the queue's column mapping is
    the guard against guessing it.
 9. **Multi-day events are a demo assumption.** Age and the cut-off read the first day, because the

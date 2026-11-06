@@ -22,3 +22,6 @@ demo-video/capture/timing.json
 demo-video/build/work/
 demo-video/out/
 .tmp-*
+
+# Local backups before a wipe
+backups/

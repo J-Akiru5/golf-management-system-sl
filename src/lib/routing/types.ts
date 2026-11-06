@@ -63,6 +63,27 @@ export interface ProvisionalPlayer {
 
 export type StartFormat = "shotgun" | "two_tee";
 
+/** A playing day runs two shotguns, a morning and an afternoon. */
+export type Session = "AM" | "PM";
+
+export interface SessionStarts {
+  /** "HH:MM" start of the morning shotgun. */
+  AM: string;
+  /** "HH:MM" start of the afternoon shotgun. */
+  PM: string;
+}
+
+/**
+ * One playing day's sessions. A player only appears on a day they chose, so this is the session the
+ * desk recorded for that player on the day being drawn.
+ */
+export interface SessionInput {
+  byPlayer: ReadonlyMap<string, Session | null> | Record<string, Session | null | undefined>;
+  starts: SessionStarts;
+  /** Playing-day number. It labels each wave, so one board can hold every day: D3-AM-A. */
+  dayNumber?: number;
+}
+
 export interface TournamentConfig {
   /** ISO date of play. Age is measured on this day. */
   date: string;
@@ -112,7 +133,11 @@ export interface Group {
   playerIds: string[];
   /** Shotgun: hole to start on. Two-tee: 1 or 10. */
   startHole: number;
-  /** Shotgun wave letter A, B, C... Null for a two-tee start. */
+  /**
+   * Shotgun wave. A plain letter (A, B...) for an event drawn without sessions, or the day and
+   * session in front of it (D3-AM-A) when the draw covers named morning and afternoon shotguns.
+   * Null for a two-tee start.
+   */
   wave: string | null;
   /** "HH:MM" */
   time: string;

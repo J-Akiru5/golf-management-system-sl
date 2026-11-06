@@ -17,6 +17,8 @@ import type {
   ProvisionalPlayer,
   Registration,
   RoutingResult,
+  Session,
+  SessionInput,
   Tee,
   TournamentConfig,
 } from "./types";
@@ -48,6 +50,12 @@ export interface RoutingInput {
    * can play today; the missing details are corrected later and the draw is re-run.
    */
   provisional?: ProvisionalPlayer[];
+  /**
+   * The day's morning and afternoon shotguns. When it is given, the field is cut and slotted per
+   * session: each session fills its own holes from its own start time, and a wave is labelled with
+   * the day and session it belongs to (D3-AM-A).
+   */
+  sessions?: SessionInput;
 }
 
 /** A group the organizer has locked. A re-run keeps it exactly as it is. */
@@ -68,6 +76,12 @@ export interface RouteOptions {
    * draws the same holes and a re-run never reshuffles a board the desk has already seen.
    */
   seed?: number;
+  /**
+   * Fill each wave as it goes and let a class continue into the next wave when the holes run out,
+   * instead of moving the whole class on. The club fills a day this way: wave 1 takes groups until
+   * the 18 holes are used, and wave 2 takes whoever is left.
+   */
+  splitClassesAcrossWaves?: boolean;
 }
 
 /** Steps 2 to 7 of the routing flow: classify one player. Pure, so it can be tested alone. */
@@ -252,29 +266,65 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
   // class stays whole even when its players come from different tee groups.
   const orderedFlights = [...flights].sort((a, b) => a.min - b.min);
 
-  const placed: { flight: FlightRule; groups: string[][] }[] = [];
-  for (const flight of orderedFlights) {
-    const members = registrations
-      .filter((r) => r.status === "ok" && r.flightId === flight.id && !lockedIds.has(r.playerId))
-      .sort(
-        (a, b) =>
-          (a.playingHandicap ?? 0) - (b.playingHandicap ?? 0) ||
-          a.playerName.localeCompare(b.playerName),
+  // A day can run two shotguns. When the caller names each player's session, the field is cut per
+  // session, so the morning never borrows the afternoon's holes or its start time.
+  const sessionInput = input.sessions;
+  const sessionOf = (playerId: string): Session | null => {
+    if (!sessionInput) return null;
+    const byPlayer = sessionInput.byPlayer;
+    const value =
+      byPlayer instanceof Map
+        ? byPlayer.get(playerId)
+        : (byPlayer as Record<string, Session | null | undefined>)[playerId];
+    return value === "AM" || value === "PM" ? value : null;
+  };
+  // A player with no session on file still plays: the morning is used and the warning names the
+  // gap, so the desk corrects it instead of the player dropping off the board.
+  const sessionFor = (r: Registration): Session | null =>
+    sessionOf(r.playerId) ?? (sessionInput ? "AM" : null);
+  const sessionOrder: (Session | null)[] = sessionInput ? ["AM", "PM"] : [null];
+  if (sessionInput) {
+    const unassigned = registrations.filter(
+      (r) => r.status === "ok" && sessionOf(r.playerId) === null,
+    );
+    if (unassigned.length > 0) {
+      warnings.push(
+        `${unassigned.length} player(s) have no morning or afternoon session on this day, so they are drawn in the morning.`,
       );
-    if (members.length === 0) continue;
-    // A pair is never split. When a class holds teams, groups are filled team by team; without
-    // teams the even split is kept, so an ordinary event's groups stay as balanced as before.
-    const units = teamUnits(members);
-    const hasTeams = units.some((unit) => unit.length > 1);
-    const cut = hasTeams
-      ? packUnits(units, config.groupSize)
-      : chunk(members, groupSizes(members.length, config.groupSize));
-    for (const g of cut) {
-      if (g.length < config.minGroupSize) {
-        warnings.push(`Class ${flight.name}: a group has only ${g.length} player(s).`);
-      }
     }
-    placed.push({ flight, groups: cut.map((g) => g.map((r) => r.playerId)) });
+  }
+
+  const placed: { flight: FlightRule; groups: string[][]; session: Session | null }[] = [];
+  for (const session of sessionOrder) {
+    for (const flight of orderedFlights) {
+      const members = registrations
+        .filter(
+          (r) =>
+            r.status === "ok" &&
+            r.flightId === flight.id &&
+            !lockedIds.has(r.playerId) &&
+            sessionFor(r) === session,
+        )
+        .sort(
+          (a, b) =>
+            (a.playingHandicap ?? 0) - (b.playingHandicap ?? 0) ||
+            a.playerName.localeCompare(b.playerName),
+        );
+      if (members.length === 0) continue;
+      // A pair is never split. When a class holds teams, groups are filled team by team; without
+      // teams the even split is kept, so an ordinary event's groups stay as balanced as before.
+      const units = teamUnits(members);
+      const hasTeams = units.some((unit) => unit.length > 1);
+      const cut = hasTeams
+        ? packUnits(units, config.groupSize)
+        : chunk(members, groupSizes(members.length, config.groupSize));
+      for (const g of cut) {
+        if (g.length < config.minGroupSize) {
+          warnings.push(`Class ${flight.name}: a group has only ${g.length} player(s).`);
+        }
+      }
+      placed.push({ flight, groups: cut.map((g) => g.map((r) => r.playerId)), session });
+    }
   }
 
   // Unclassified placement: confirmed players the engine cannot classify. They keep empty
@@ -299,9 +349,17 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
         warnings.push(`${UNCLASSIFIED_LABEL}: a group has only ${g.length} player(s).`);
       }
     }
-    placed.push({
+    // The unclassified block belongs to the morning, after that session's classes, so the slot
+    // order stays in step with the group order.
+    const looseSession = sessionOrder[0] ?? null;
+    const boundary = placed.reduce(
+      (last, entry, index) => (entry.session === looseSession ? index + 1 : last),
+      0,
+    );
+    placed.splice(boundary, 0, {
       flight: { id: carrierFlightId, name: UNCLASSIFIED_LABEL, categoryId: "", min: 0, max: 0 },
       groups: cut.map((g) => g.map((r) => r.id)),
+      session: looseSession,
     });
     warnings.push(
       `${loose.length} confirmed player(s) are missing a birthdate, gender or handicap index and were placed in ${UNCLASSIFIED_LABEL} groups. Correct the details and re-run the draw.`,
@@ -317,24 +375,55 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
     ),
   );
 
+  const drawSeed =
+    options.seed ??
+    seedFrom(
+      registrations
+        .map((r) => `${r.playerId}:${r.index ?? ""}`)
+        .sort()
+        .join("|"),
+    );
+
   let slots: Slot[];
   if (config.startFormat === "shotgun") {
-    const plan = planShotgunFrom(
-      placed.map((p) => ({ flightName: p.flight.name, groups: p.groups.length })),
-      config.holes,
-      config.firstTeeTime,
-      config.waveGapMinutes,
-      occupied,
-      options.seed ??
-        seedFrom(
-          registrations
-            .map((r) => `${r.playerId}:${r.index ?? ""}`)
-            .sort()
-            .join("|"),
-        ),
-    );
-    warnings.push(...plan.warnings);
-    slots = plan.slots;
+    if (sessionInput) {
+      // Each session fills its own holes from its own start time. A wave carries the day and the
+      // session (D3-AM-A), so a board can hold a day's both shotguns and never confuse them.
+      const dayPrefix = sessionInput.dayNumber ? `D${sessionInput.dayNumber}-` : "";
+      slots = [];
+      for (const session of sessionOrder) {
+        if (session === null) continue;
+        const counts = placed
+          .filter((p) => p.session === session)
+          .map((p) => ({ flightName: p.flight.name, groups: p.groups.length }));
+        if (counts.length === 0) continue;
+        const plan = planShotgunFrom(
+          counts,
+          config.holes,
+          sessionInput.starts[session],
+          config.waveGapMinutes,
+          occupied,
+          drawSeed,
+          `${dayPrefix}${session}-`,
+          options.splitClassesAcrossWaves ?? false,
+        );
+        warnings.push(...plan.warnings);
+        slots.push(...plan.slots);
+      }
+    } else {
+      const plan = planShotgunFrom(
+        placed.map((p) => ({ flightName: p.flight.name, groups: p.groups.length })),
+        config.holes,
+        config.firstTeeTime,
+        config.waveGapMinutes,
+        occupied,
+        drawSeed,
+        "",
+        options.splitClassesAcrossWaves ?? false,
+      );
+      warnings.push(...plan.warnings);
+      slots = plan.slots;
+    }
   } else {
     slots = planTwoTeeFrom(newGroupCount, config.firstTeeTime, config.intervalMinutes, occupied);
   }

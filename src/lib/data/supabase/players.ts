@@ -12,6 +12,13 @@ function answerShirt(value: RegistrationRow["answers"]): string | undefined {
   return typeof shirt === "string" ? shirt : undefined;
 }
 
+/** The pair the entry was imported with, in the same key shape the desk uses for a team. */
+function answerTeamKey(value: RegistrationRow["answers"]): string | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const teamNo = value.teamNo;
+  return typeof teamNo === "number" ? `team-${teamNo}` : null;
+}
+
 export interface LoadedPlayers {
   players: DeskPlayer[];
   photoPaths: Record<string, string | null>;
@@ -50,6 +57,7 @@ export async function loadTournamentPlayers(
       return mapPlayerRow(row, registration.frozen_index, {
         photoUrl,
         shirt: answerShirt(registration.answers),
+        teamKey: answerTeamKey(registration.answers),
       });
     }),
   );

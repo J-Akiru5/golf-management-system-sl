@@ -19,7 +19,7 @@ import type {
 export function mapPlayerRow(
   row: PlayerRow,
   frozenIndex: number | null,
-  options: { photoUrl?: string; shirt?: string } = {},
+  options: { photoUrl?: string; shirt?: string; teamKey?: string | null } = {},
 ): DeskPlayer {
   return {
     id: row.id,
@@ -28,6 +28,9 @@ export function mapPlayerRow(
     gender: row.gender,
     index: frozenIndex,
     ngapId: row.ngap_id,
+    // A member-guest pair saved on the entry: without it the router treats both partners as solo
+    // players, splits them across groups and classes each one on their own index.
+    teamKey: options.teamKey ?? null,
     active: row.active ?? true,
     deletedAt: row.deleted_at ?? null,
     photo: row.photo_consent_at ? options.photoUrl : undefined,

@@ -82,6 +82,18 @@ export function planShotgunFrom(
   waveGapMinutes: number,
   occupied: ReadonlySet<string> = new Set(),
   seed?: number,
+  /**
+   * Put in front of the wave letter, so a board can hold a day and its session: `D3-AM-A`.
+   * Locked slots in `occupied` carry the same prefix.
+   */
+  wavePrefix = "",
+  /**
+   * Keep filling the wave a class is already in and let the class continue into the next wave when
+   * the holes run out, instead of moving the whole class on. The club fills a day this way: wave 1
+   * takes groups until the 18 holes are used, and wave 2 takes whoever is left. A class that lands
+   * in two waves is named in the warnings.
+   */
+  fillSequentially = false,
 ): ShotgunPlan {
   const slots: Slot[] = [];
   const warnings: string[] = [];
@@ -89,6 +101,7 @@ export function planShotgunFrom(
   let placedInWave = 0;
   const random = seed === undefined ? null : mulberry32(seed);
   const orders = new Map<number, number[]>();
+  const label = (index: number) => `${wavePrefix}${waveLetter(index)}`;
 
   /** The free holes of a wave, in the order they will be handed out. */
   const orderFor = (index: number) => {
@@ -96,7 +109,7 @@ export function planShotgunFrom(
     if (cached) return cached;
     const list: number[] = [];
     for (let hole = 1; hole <= holes; hole++) {
-      if (!occupied.has(shotgunKey(waveLetter(index), hole))) list.push(hole);
+      if (!occupied.has(shotgunKey(label(index), hole))) list.push(hole);
     }
     if (random) shuffle(list, random);
     orders.set(index, list);
@@ -117,7 +130,7 @@ export function planShotgunFrom(
       }
       slots.push({
         startHole,
-        wave: waveLetter(wave),
+        wave: label(wave),
         time: addMinutes(firstTeeTime, wave * waveGapMinutes),
       });
       placedInWave += 1;
@@ -127,15 +140,21 @@ export function planShotgunFrom(
 
   for (const { flightName, groups } of flightGroupCounts) {
     if (groups === 0) continue;
+    const startWave = wave;
     if (groups > holes) {
       warnings.push(
         `Flight ${flightName} has ${groups} groups, more than the ${holes} holes in one wave, so it was split across waves.`,
       );
-    } else if (groups > roomNow() && placedInWave > 0) {
+    } else if (!fillSequentially && groups > roomNow() && placedInWave > 0) {
       wave += 1;
       placedInWave = 0;
     }
     for (let i = 0; i < groups; i++) place();
+    if (fillSequentially && groups <= holes && wave > startWave) {
+      warnings.push(
+        `Class ${flightName} plays across waves ${label(startWave)} to ${label(wave)}.`,
+      );
+    }
   }
   return { slots, warnings };
 }
