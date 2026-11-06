@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import { Avatar } from "@/components/bits";
 import { fmtIso } from "@/lib/data/labels";
-import type { PublicProgramme, PublicTeeTimeDay } from "@/lib/data/types";
+import type { PublicProgramme } from "@/lib/data/types";
 import { fmtIndex, fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
+import { teeBoardFor } from "@/lib/public/tee-slots";
 
 /**
  * The public programme: the day's tee times, the player cards and the organizers' rules of play.
@@ -37,39 +38,13 @@ export function ProgrammeNav({
   );
 }
 
-interface TimeGroup {
-  key: string;
-  teeTime: string | null;
-  startHole: number | null;
-  names: string[];
-}
-
-/** One card per confirmed time and hole; everyone not confirmed shares a final card. */
-function groupByTime(day: PublicTeeTimeDay): TimeGroup[] {
-  const groups = new Map<string, TimeGroup>();
-  for (const player of day.players) {
-    const key =
-      player.teeTime === null
-        ? "to-be-confirmed"
-        : `${player.teeTime}|${player.startHole ?? "no-hole"}`;
-    const group = groups.get(key) ?? {
-      key,
-      teeTime: player.teeTime,
-      startHole: player.startHole,
-      names: [],
-    };
-    group.names.push(player.name);
-    groups.set(key, group);
-  }
-  return [...groups.values()];
-}
-
 export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
   const { t } = useI18n();
   const firstDay = programme.days[0]?.dayNumber ?? 1;
   const [selected, setSelected] = useState(firstDay);
   const day = programme.days.find((item) => item.dayNumber === selected) ?? programme.days[0];
-  const groups = useMemo(() => (day ? groupByTime(day) : []), [day]);
+  const board = useMemo(() => teeBoardFor(day), [day]);
+  const groups = board.slots;
 
   return (
     <section className="card grid gap-3" id="tee-times">
@@ -108,28 +83,42 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
             </span>
           </div>
 
-          {groups.length === 0 ? (
+          {board.total === 0 ? (
             <p className="muted">{t("programme.noPlayersDay")}</p>
+          ) : groups.length === 0 ? (
+            <section className="pairings-empty" role="status">
+              <h2>{t("programme.teeTimesPendingTitle")}</h2>
+              <p>{t("programme.teeTimesPendingBody")}</p>
+            </section>
           ) : (
-            <div className="tee-slots">
-              {groups.map((group) => (
-                <article key={group.key} className="tee-slot">
-                  <div className="tee-slot-head">
-                    <b className={group.teeTime ? "mono" : "muted"}>
-                      {group.teeTime ? fmtTime(group.teeTime) : t("programme.toBeConfirmed")}
-                    </b>
-                    {group.teeTime && group.startHole !== null && (
-                      <span className="pill">{t("programme.hole", { hole: group.startHole })}</span>
-                    )}
-                  </div>
-                  <ul className="plain">
-                    {group.names.map((name, index) => (
-                      <li key={`${name}-${index}`}>{name}</li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
-            </div>
+            <>
+              <div className="tee-slots">
+                {groups.map((group) => (
+                  <article key={group.key} className="tee-slot">
+                    <div className="tee-slot-head">
+                      <b className="mono">{fmtTime(group.teeTime)}</b>
+                      {group.startHole !== null && (
+                        <span className="pill">
+                          {t("programme.hole", { hole: group.startHole })}
+                        </span>
+                      )}
+                    </div>
+                    <ul className="plain">
+                      {group.names.map((name, index) => (
+                        <li key={`${name}-${index}`}>{name}</li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+              {board.awaiting > 0 && (
+                <p className="hint m-0">
+                  {board.awaiting === 1
+                    ? t("programme.awaitingTimeOne")
+                    : t("programme.awaitingTime", { count: board.awaiting })}
+                </p>
+              )}
+            </>
           )}
         </>
       )}

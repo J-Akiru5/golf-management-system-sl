@@ -221,6 +221,11 @@ export const en = {
     dayStartUnknown: "Day start time not set",
     hole: "Hole {hole}",
     toBeConfirmed: "Time to be confirmed",
+    teeTimesPendingTitle: "Start times not confirmed yet",
+    teeTimesPendingBody:
+      "The desk publishes a time for each group, and only confirmed times appear here. The players still waiting are in the list below.",
+    awaitingTime: "{count} players waiting for a confirmed start time.",
+    awaitingTimeOne: "1 player waiting for a confirmed start time.",
     noDays: "This event has no playing days yet.",
     noPlayersDay: "No players have chosen this day yet.",
     playersTitle: "Players",

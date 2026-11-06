@@ -219,6 +219,11 @@ export const tl: Dictionary = {
     dayStartUnknown: "Wala pang oras ng simula",
     hole: "Hole {hole}",
     toBeConfirmed: "Kumpirmahin pa ang oras",
+    teeTimesPendingTitle: "Wala pang kumpirmadong oras ng simula",
+    teeTimesPendingBody:
+      "Nagpapalabas ang desk ng oras para sa bawat grupo, at mga kumpirmadong oras lang ang lumalabas dito. Nasa listahan sa ibaba ang mga manlalarong naghihintay pa.",
+    awaitingTime: "{count} manlalaro ang naghihintay ng kumpirmadong oras ng simula.",
+    awaitingTimeOne: "1 manlalaro ang naghihintay ng kumpirmadong oras ng simula.",
     noDays: "Wala pang araw ng laro ang event na ito.",
     noPlayersDay: "Wala pang manlalaro na pumili ng araw na ito.",
     playersTitle: "Mga manlalaro",

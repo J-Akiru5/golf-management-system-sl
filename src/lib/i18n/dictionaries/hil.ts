@@ -219,6 +219,11 @@ export const hil: Dictionary = {
     dayStartUnknown: "Wala pa naset nga oras sang pagsugod",
     hole: "Hole {hole}",
     toBeConfirmed: "Kumpirmahon pa ang oras",
+    teeTimesPendingTitle: "Wala pa nakumpirma nga oras sang pagsugod",
+    teeTimesPendingBody:
+      "Ginapahibalo sang desk ang oras sa kada grupo, kag ang mga nakumpirma lang nga oras ang makita diri. Yara sa listahan sa idalom ang mga manug hampang nga nagahulat pa.",
+    awaitingTime: "{count} ka manug hampang ang nagahulat sang nakumpirma nga oras sang pagsugod.",
+    awaitingTimeOne: "1 ka manug hampang ang nagahulat sang nakumpirma nga oras sang pagsugod.",
     noDays: "Wala pa mga adlaw sang hampang ang sini nga event.",
     noPlayersDay: "Wala pa manug hampang nga nagpili sa sini nga adlaw.",
     playersTitle: "Mga manug hampang",
