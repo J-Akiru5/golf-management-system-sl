@@ -19,6 +19,7 @@ import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
 import { cn } from "@/lib/ui/cn";
+import { sessionOfLabel, waveHeading } from "@/lib/ui/labels";
 
 type Tab = "start" | "pairings" | "scorecards" | "howto";
 
@@ -49,6 +50,9 @@ export default function PrintCenter() {
   // never mix two days together.
   const playingDays = useMemo(() => days.filter((d) => d.isPlayingDay), [days]);
   const chosenDay = playingDays.find((d) => d.dayNumber === drawDay) ?? null;
+  // One wave at a time is what the club prints: the morning and afternoon sheets are handed out
+  // separately. "All waves" keeps the whole day on one sheet.
+  const [waveFilter, setWaveFilter] = useState<"all" | "AM" | "PM">("all");
 
   const pairings = useMemo(() => {
     if (!tournament) return null;
@@ -67,7 +71,11 @@ export default function PrintCenter() {
 
   const playerById = new Map(players.map((p) => [p.id, p]));
   const shotgun = tournament.config.startFormat === "shotgun";
-  const groups = draw ?? [];
+  const dayGroups = draw ?? [];
+  const groups =
+    waveFilter === "all"
+      ? dayGroups
+      : dayGroups.filter((group) => sessionOfLabel(group.wave) === waveFilter);
   // This existing route remains the assembler: adapt the desk's domain objects into plain print props here.
   const printGroups: PrintGroup[] = groups.map((group) => ({
     number: group.number,
@@ -106,7 +114,8 @@ export default function PrintCenter() {
     holes,
   });
   const dayPart = chosenDay ? `${chosenDay.label} · ` : "";
-  const subtitle = `${tournament.name} · ${dayPart}${fmtDateLabel(tournament.dates)} · ${
+  const wavePart = waveFilter === "all" ? "" : `${waveHeading(groups[0]?.wave)} · `;
+  const subtitle = `${tournament.name} · ${dayPart}${wavePart}${fmtDateLabel(tournament.dates)} · ${
     shotgun ? "Shotgun start" : "Two-tee start"
   } · first tee ${tournament.config.firstTeeTime}${
     groups[0] ? ` · ${groups.length} groups` : " · no draw yet"
@@ -139,6 +148,21 @@ export default function PrintCenter() {
                       {d.label} · {fmtIso(d.playDate)}
                     </option>
                   ))}
+                </select>
+              </label>
+            )}
+            {shotgun && (
+              <label className="no-print grid gap-1">
+                <span className="overline !text-[10px]">Wave to print</span>
+                <select
+                  value={waveFilter}
+                  onChange={(e) => setWaveFilter(e.target.value as "all" | "AM" | "PM")}
+                  className="!w-auto"
+                  data-help="print-wave"
+                >
+                  <option value="all">All waves</option>
+                  <option value="AM">Wave A · Morning</option>
+                  <option value="PM">Wave B · Afternoon</option>
                 </select>
               </label>
             )}

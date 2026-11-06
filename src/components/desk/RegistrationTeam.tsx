@@ -59,6 +59,12 @@ function metaLine(player: TeamPlayer): string {
  */
 export function RegistrationTeam({ number, guest, member }: RegistrationTeamProps) {
   const entered = (guest ? 1 : 0) + (member ? 1 : 0);
+  // A pair is classed on the average of its two indexes, so both partners normally share one class.
+  // Showing it on the pair makes the rule visible instead of leaving it to be read off each player.
+  const sharedClass =
+    guest?.flightName && member?.flightName && guest.flightName === member.flightName
+      ? guest.flightName
+      : null;
   return (
     <article className="overflow-hidden rounded-[14px] border border-line bg-surface-raised">
       <header className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line bg-surface-sunken/60 px-3.5 py-2">
@@ -66,6 +72,14 @@ export function RegistrationTeam({ number, guest, member }: RegistrationTeamProp
           <span className="pill gold">Pair {number}</span>
         ) : (
           <span className="pill">Individual entry</span>
+        )}
+        {sharedClass && (
+          <span
+            className="pill info"
+            title="Both partners take the class that covers the average of their indexes"
+          >
+            {sharedClass}
+          </span>
         )}
         <span className="text-[12.5px] text-ink-muted">
           {entered === 2

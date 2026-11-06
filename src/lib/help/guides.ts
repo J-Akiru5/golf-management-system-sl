@@ -209,6 +209,12 @@ export const DESK_GUIDES: HelpGuide[] = [
         anchor: "print-day",
       },
       {
+        text: literal(
+          "Choose a wave to print. The morning and afternoon sheets are handed out separately.",
+        ),
+        anchor: "print-wave",
+      },
+      {
         text: literal("Pick a sheet: start sheet, pairings, scorecards, or the how-to page."),
         anchor: "print-tabs",
       },
