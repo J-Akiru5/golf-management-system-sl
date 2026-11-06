@@ -25,6 +25,25 @@ describe("sessionOfEntry", () => {
     expect(sessionOfEntry(entry({ entryId: "a", daySessions: { 3: "PM" } }), 3, 2, 4)).toBe("PM");
   });
 
+  it("reads a stored HH:MM:SS tee time as the session it falls in", () => {
+    expect(
+      sessionOfEntry(
+        entry({ entryId: "sec", dayTee: { 3: { teeTime: "06:30:00", startHole: 4 } } }),
+        3,
+        2,
+        4,
+      ),
+    ).toBe("AM");
+    expect(
+      sessionOfEntry(
+        entry({ entryId: "sec2", dayTee: { 3: { teeTime: "12:30:00", startHole: 4 } } }),
+        3,
+        2,
+        4,
+      ),
+    ).toBe("PM");
+  });
+
   it("reads the session back from the tee time when the desk has not chosen", () => {
     expect(
       sessionOfEntry(

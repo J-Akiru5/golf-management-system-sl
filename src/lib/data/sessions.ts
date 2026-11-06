@@ -36,7 +36,8 @@ export function daySessions(dayIndex: number, dayCount: number): DaySession[] {
 /** Minutes after midnight for an "HH:MM" time, or null when it is not one. */
 function minutesOf(time: string | null): number | null {
   if (!time) return null;
-  const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  // Stored tee times come back from Postgres as HH:MM:SS, so the seconds are optional here.
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(time.trim());
   if (!match?.[1] || !match[2]) return null;
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
