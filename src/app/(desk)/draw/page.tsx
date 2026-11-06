@@ -52,6 +52,8 @@ export default function DrawPage() {
   const [active, setActive] = useState<{ id: string; via: "pick" | "drag" } | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
   const [tab, setTab] = useState<Tab>("pool");
+  // The check list is long, so it lives on its own tab and the groups are visible on opening.
+  const [view, setView] = useState<"board" | "checks">("board");
   const [flash, setFlash] = useState<number | null>(null);
   const [pubOpen, setPubOpen] = useState(false);
   const [confirm, setConfirm] = useState<"startOver" | "unpublish" | null>(null);
@@ -526,9 +528,39 @@ export default function DrawPage() {
             </div>
           </section>
 
-          <div data-help="draw-issues">
-            <IssuesPanel issues={issues} onShow={onShowIssue} />
-          </div>
+          <nav className="row" aria-label="Draw view">
+            <button
+              type="button"
+              className={view === "board" ? "btn small" : "btn small ghost"}
+              aria-pressed={view === "board"}
+              onClick={() => setView("board")}
+            >
+              Groups{visibleDraw ? ` · ${visibleDraw.length}` : ""}
+            </button>
+            <button
+              type="button"
+              className={view === "checks" ? "btn small" : "btn small ghost"}
+              aria-pressed={view === "checks"}
+              onClick={() => setView("checks")}
+            >
+              Checks
+              {blockingCount || warningCount
+                ? ` · ${blockingCount} must fix · ${warningCount} to check`
+                : ""}
+            </button>
+          </nav>
+
+          {view === "checks" && (
+            <div data-help="draw-issues">
+              <IssuesPanel
+                issues={issues}
+                onShow={(issue) => {
+                  setView("board");
+                  onShowIssue(issue);
+                }}
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -551,7 +583,7 @@ export default function DrawPage() {
         </div>
       )}
 
-      {draw && (
+      {draw && view === "board" && (
         <div className="draw-layout">
           <div className="board stack">
             {[...sections.entries()].map(([heading, groups]) => (
