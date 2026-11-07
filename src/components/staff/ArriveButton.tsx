@@ -65,7 +65,7 @@ export function ArriveButton({
               ? "Undo"
               : compact
                 ? "Arrive"
-                : "Arrived"}
+                : "Mark arrived"}
       </button>
       {phase === "error" && (
         <span className={styles.error} role="alert" style={{ maxWidth: 200 }}>

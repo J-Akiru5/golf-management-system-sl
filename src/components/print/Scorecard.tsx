@@ -24,6 +24,7 @@ export interface ScorecardProps {
   holes: readonly PrintHole[];
   startFormat: PrintStartFormat;
   courseDataStatus: CourseDataStatus;
+  showQrCodes?: boolean;
 }
 
 const HOLE_COUNT = 18;
@@ -40,6 +41,7 @@ export function Scorecard({
   holes,
   startFormat,
   courseDataStatus,
+  showQrCodes = true,
 }: ScorecardProps) {
   const holesByNumber = new Map(holes.map((hole) => [hole.number, hole]));
   const orderedHoles = Array.from({ length: HOLE_COUNT }, (_, index) => {
@@ -98,7 +100,7 @@ export function Scorecard({
           </div>
         </header>
 
-        {codePlayers.length > 0 && (
+        {showQrCodes && codePlayers.length > 0 && (
           <div className={styles.qrPanel}>
             {codePlayers.map((player) => (
               <div key={player.id} className={styles.qrPlayer}>

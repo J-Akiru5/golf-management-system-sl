@@ -11,6 +11,9 @@ export interface StartSheetProps {
   groups: readonly PrintGroup[];
   startFormat: PrintStartFormat;
   courseDataStatus: CourseDataStatus;
+  showFlight?: boolean;
+  showTee?: boolean;
+  showHandicaps?: boolean;
 }
 
 /** Print-only start list. All fields are passed in; no player data is fetched here. */
@@ -20,6 +23,9 @@ export function StartSheet({
   groups,
   startFormat,
   courseDataStatus,
+  showFlight = true,
+  showTee = true,
+  showHandicaps = true,
 }: StartSheetProps) {
   const groupsWithPlayers = groups.filter((group) => group.players.length > 0);
   const sections = groupStartGroups(groupsWithPlayers, startFormat);
@@ -58,7 +64,7 @@ export function StartSheet({
                   </b>
                   <time>{fmtTime(group.time)}</time>
                 </header>
-                <p className={styles.flight}>{group.flight}</p>
+                {showFlight && <p className={styles.flight}>{group.flight}</p>}
                 <ol className={styles.playerList}>
                   {group.players.map((player) => (
                     <li key={player.id}>
@@ -67,9 +73,13 @@ export function StartSheet({
                       )}
                       <span className={styles.playerName}>{player.name}</span>
                       <span className={styles.playerFacts}>
-                        {player.teeName && <span>{player.teeName}</span>}
-                        <span>HI {fmtIndex(player.handicapIndex)}</span>
-                        <b>PH {fmtHcp(player.playingHandicap)}</b>
+                        {showTee && player.teeName && <span>{player.teeName}</span>}
+                        {showHandicaps && (
+                          <>
+                            <span>HI {fmtIndex(player.handicapIndex)}</span>
+                            <b>PH {fmtHcp(player.playingHandicap)}</b>
+                          </>
+                        )}
                       </span>
                     </li>
                   ))}

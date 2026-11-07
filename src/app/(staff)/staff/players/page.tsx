@@ -63,6 +63,7 @@ function StaffPlayers() {
   const [selected, setSelected] = useState<StaffRow | null>(null);
   const [moving, setMoving] = useState(false);
   const [moveReason, setMoveReason] = useState("");
+  const [moveTarget, setMoveTarget] = useState<number | "">("");
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sheetError, setSheetError] = useState("");
@@ -113,6 +114,7 @@ function StaffPlayers() {
     setSelected(row);
     setMoving(false);
     setMoveReason("");
+    setMoveTarget("");
     setConfirmWithdraw(false);
     setSheetError("");
   }
@@ -198,8 +200,12 @@ function StaffPlayers() {
     }
   }
 
-  function moveTo(toGroup: number) {
-    if (!selected || !tournament || !draw) return;
+  function moveTo() {
+    if (!selected || !tournament || !draw || moveTarget === "") {
+      setSheetError("Pick the group this player should move to.");
+      return;
+    }
+    const toGroup = moveTarget;
     if (moveReason.trim().length < 3) {
       setSheetError("Write a short reason for the move.");
       return;
@@ -346,7 +352,13 @@ function StaffPlayers() {
       )}
 
       <Sheet open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
-        <SheetContent side="right" title={selected?.name ?? "Player"} description={day?.label}>
+        <SheetContent
+          side="right"
+          title={selected?.name ?? "Player"}
+          description={day?.label}
+          className={styles.sheetPanel}
+          style={{ background: "#ffffff", color: "#10140f" }}
+        >
           {selected && entry && (
             <div className={styles.sheetBody}>
               <dl className={styles.kv}>
@@ -433,27 +445,67 @@ function StaffPlayers() {
                         Pick the group this player should walk with. The reason is kept with the
                         board.
                       </p>
+                      <label className={styles.fieldGrid} style={{ marginTop: 10 }}>
+                        <span className={styles.sub} style={{ margin: 0 }}>
+                          New group
+                        </span>
+                        <select
+                          className={styles.select}
+                          value={moveTarget}
+                          onChange={(event) =>
+                            setMoveTarget(
+                              event.target.value === "" ? "" : Number(event.target.value),
+                            )
+                          }
+                          aria-label="New group for the player"
+                        >
+                          <option value="">Choose a group</option>
+                          {schedule
+                            .filter((group) => group.id !== selected.group?.id)
+                            .map((group) => {
+                              const check = dropCheck(
+                                draw ?? [],
+                                tournament.config,
+                                new Map(
+                                  registrations.map((registration) => [
+                                    registration.playerId,
+                                    registration,
+                                  ]),
+                                ),
+                                selected.playerId,
+                                group.number,
+                                names,
+                              );
+                              return (
+                                <option key={group.id} value={group.number} disabled={!check.ok}>
+                                  Group {group.number} · {fmtTime(group.time)} · hole{" "}
+                                  {group.startHole}
+                                  {check.ok ? "" : ` — ${check.reason}`}
+                                </option>
+                              );
+                            })}
+                        </select>
+                      </label>
                       <input
                         className={styles.input}
                         value={moveReason}
                         onChange={(event) => setMoveReason(event.target.value)}
                         placeholder="Why is the player moving?"
                         aria-label="Reason for the move"
+                        style={{ marginTop: 8 }}
                       />
-                      <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                        {schedule
-                          .filter((group) => group.id !== selected.group?.id)
-                          .map((group) => (
-                            <button
-                              key={group.id}
-                              type="button"
-                              className={styles.secondary}
-                              onClick={() => moveTo(group.number)}
-                            >
-                              Group {group.number} · {fmtTime(group.time)} · hole {group.startHole}
-                            </button>
-                          ))}
-                      </div>
+                      <button
+                        type="button"
+                        className={styles.primary}
+                        style={{ marginTop: 10 }}
+                        disabled={moveTarget === ""}
+                        onClick={() => moveTo()}
+                      >
+                        Move player
+                      </button>
+                      <p className={styles.saving} style={{ margin: "8px 0 0" }}>
+                        Full and locked groups are disabled.
+                      </p>
                     </>
                   )}
                 </div>
@@ -474,7 +526,7 @@ function StaffPlayers() {
                   <div className={styles.buttonRow}>
                     <button
                       type="button"
-                      className={styles.primary}
+                      className={styles.dangerSolid}
                       disabled={busy}
                       onClick={() => void withdrawToday()}
                     >
@@ -492,7 +544,7 @@ function StaffPlayers() {
               ) : (
                 <button
                   type="button"
-                  className={styles.secondary}
+                  className={styles.danger}
                   onClick={() => setConfirmWithdraw(true)}
                 >
                   Withdraw from this day

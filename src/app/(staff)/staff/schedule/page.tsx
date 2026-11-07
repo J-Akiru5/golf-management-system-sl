@@ -1,5 +1,6 @@
 "use client";
 
+import { PencilLine, Printer } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { DayPills } from "@/components/staff/DayPills";
@@ -46,6 +47,17 @@ export default function StaffSchedulePage() {
 
       <DayPills days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
       {notice && <p className={styles.notice}>{notice}</p>}
+
+      <div className={styles.toolRow} style={{ marginTop: 10 }}>
+        <Link className={styles.toolLink} href="/staff/pairings">
+          <PencilLine aria-hidden="true" size={18} />
+          Edit pairings
+        </Link>
+        <Link className={styles.toolLink} href="/staff/print">
+          <Printer aria-hidden="true" size={18} />
+          Print
+        </Link>
+      </div>
       {error && (
         <p className={`${styles.notice} ${styles.noticeBad}`} role="alert">
           {error}
