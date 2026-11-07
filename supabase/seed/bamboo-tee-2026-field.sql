@@ -266,7 +266,7 @@ begin
       (102, 'LIBUNAO, BENEDICT', 'guest', 0.0, 'manual', 1, 'AM', 2, 'AM', 'No index on the club sheet; 0 was recorded.'),
       (103, 'SIA, KLARENZ', 'member', 22.8, 'ngap_import', 3, 'AM', 4, 'PM', ''),
       (103, 'REYES, LLEWELYN', 'guest', 0.0, 'manual', 3, 'AM', 4, 'PM', 'No index on the club sheet; 0 was recorded.'),
-      (104, 'SIASON, TIM', 'member', 20.3, 'ngap_import', 3, 'AM', 4, 'AM', ''),
+      (104, 'SIASON, TIM', 'member', 0.0, 'manual', 3, 'AM', 4, 'AM', 'The club sheet shows 203, which is not an index; 0 was recorded.'),
       (104, 'VALENCIA, ELBERT', 'guest', 28.7, 'ngap_import', 3, 'AM', 4, 'AM', ''),
       (105, 'SO, JAN LAWRENCE', 'member', 21.9, 'ngap_import', 3, 'PM', 4, 'PM', ''),
       (105, 'CHUA, JANZEN', 'guest', 19.8, 'ngap_import', 3, 'PM', 4, 'PM', ''),

@@ -40,7 +40,7 @@ Both rows are in the app exactly as the sheet has them. Please tell us which row
 - 46 players have no handicap on the sheet. The club's rule is that no handicap counts as 0, so
   they play in Class A.
 - Over the maximum of 30, so ineligible: ARCENAS, FEDERICO 30.2; LOCSIN, WILSON 30.5; TOBES, JEROME 30.6.
-- SIASON, TIM: the sheet says 203. Corrected to 20.3 on 8 Nov 2026 (record, registration and seed files).
+- SIASON, TIM: the sheet says 203. Corrected to 20.3 in the database on 8 Nov 2026 (handicap record and registration). The seed files still hold the sheet as written, so re-running the import script would bring 203 back.
 
 ## 4. Waiting list (24 rows)
 
