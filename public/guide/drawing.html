@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TeeLine Desk Guide: Drawing a day</title>
+<meta name="description" content="The steps to draw one playing day in TeeLine, in the right order, so the Checks list stays empty.">
+<style>
+  :root{
+    --bg:#ffffff; --text:#14201a; --muted:#5b6a62; --line:#e2e8e4; --soft:#f5f8f6;
+    --forest:#0b3d2e; --forest-2:#14684c; --gold:#b8892b; --gold-soft:#fbf3de;
+    --bad:#a32a1d; --bad-soft:#fdeeec; --ok:#17794f; --ok-soft:#e8f6ef;
+    --r-sm:6px; --r-lg:16px;
+    --topbar-h:60px; --side-w:248px; --rail-w:280px;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(var(--topbar-h) + 16px)}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:17px;line-height:1.6}
+  a{color:var(--forest-2)}
+  :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+  .topbar{position:sticky;top:0;z-index:50;height:var(--topbar-h);display:flex;align-items:center;gap:14px;
+    padding:0 clamp(16px,2.5vw,32px);background:#fff;border-bottom:1px solid var(--line)}
+  .hamburger{display:none;width:44px;height:44px;border:1px solid var(--line);border-radius:var(--r-sm);background:#fff;font-size:20px;cursor:pointer}
+  .wordmark{font-weight:700;color:var(--forest);letter-spacing:.01em}
+  .wordmark span{color:var(--muted);font-weight:500;margin-left:8px}
+  .spacer{flex:1}
+  .btn{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:var(--r-sm);
+    border:1px solid var(--forest);background:var(--forest);color:#fff;font:inherit;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
+  .btn.ghost{background:#fff;color:var(--forest)}
+
+  .shell{display:grid;grid-template-columns:var(--side-w) minmax(0,1fr) var(--rail-w);
+    gap:clamp(16px,2.5vw,36px);padding:0 clamp(16px,2.5vw,32px);align-items:start;max-width:1500px;margin:0 auto}
+  .sidebar,.rail{position:sticky;top:calc(var(--topbar-h) + 16px);max-height:calc(100vh - var(--topbar-h) - 32px);overflow-y:auto;padding:16px 0}
+  .sidebar nav{display:grid;gap:2px}
+  .sidebar a{display:block;padding:10px 12px;border-radius:var(--r-sm);color:var(--muted);text-decoration:none;font-size:15px;font-weight:500;border-left:3px solid transparent}
+  .sidebar a:hover{background:var(--soft);color:var(--text)}
+  .sidebar a.active{background:var(--soft);color:var(--forest);border-left-color:var(--forest);font-weight:700}
+  .sidebar .group{margin:18px 12px 6px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+  main{padding:28px 0 80px;min-width:0}
+  .section{padding:8px 0 40px}
+  .section + .section{border-top:1px solid var(--line);padding-top:40px}
+  h1{font-size:clamp(30px,4vw,42px);line-height:1.15;margin:0 0 14px;color:var(--forest);letter-spacing:-.01em}
+  h2{font-size:clamp(24px,3vw,30px);line-height:1.2;margin:0 0 14px;color:var(--forest)}
+  h3{font-size:19px;margin:24px 0 8px}
+  p{margin:0 0 14px;max-width:70ch}
+  .abstract{font-size:20px;color:var(--text);max-width:62ch}
+  .muted{color:var(--muted)}
+
+  .rule{margin:22px 0;padding:20px 24px;border-radius:var(--r-lg);background:var(--gold-soft);border:1px solid #ecd9a6;position:relative}
+  .rule::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold);border-radius:var(--r-lg) 0 0 var(--r-lg)}
+  .rule b{font-size:20px;color:#6d4d0f}
+  .rule p{margin:6px 0 0}
+
+  .callout{margin:18px 0;padding:16px 20px;border-radius:var(--r-lg);background:var(--soft);border:1px solid var(--line);position:relative}
+  .callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--forest-2);border-radius:var(--r-lg) 0 0 var(--r-lg)}
+  .callout.warn{background:var(--bad-soft);border-color:#f2c7c1}
+  .callout.warn::before{background:var(--bad)}
+  .callout p:last-child{margin-bottom:0}
+
+  .steps{list-style:none;counter-reset:s;margin:20px 0;padding:0;display:grid;gap:14px}
+  .steps > li{counter-increment:s;display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:start}
+  .steps > li::before{content:counter(s);display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--forest);color:#fff;font-weight:700;font-size:18px}
+  .steps > li > div{padding-top:6px}
+  .steps b{display:block;font-size:18px}
+  .where{display:inline-block;margin-top:4px;font-family:var(--mono);font-size:12px;letter-spacing:.03em;padding:3px 8px;border-radius:var(--r-sm);background:var(--soft);border:1px solid var(--line);color:var(--forest)}
+
+  .check{list-style:none;margin:16px 0;padding:0;display:grid;gap:10px}
+  .check li{display:block}
+  .check label{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start;min-height:44px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);cursor:pointer;background:#fff}
+  .check input{width:24px;height:24px;margin:2px 0 0;accent-color:var(--forest)}
+  .check input:checked + span{color:var(--muted);text-decoration:line-through}
+  .check small{display:block;color:var(--muted);font-size:14px;margin-top:2px;text-decoration:none}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:16px}
+  th,td{text-align:left;vertical-align:top;padding:12px 12px;border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--soft)}
+  td:first-child{font-weight:600;min-width:210px}
+  .tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-lg)}
+  .tbl table{margin:0}
+  .chip{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:var(--r-sm);border:1px solid var(--line)}
+  .chip.bad{background:var(--bad-soft);color:var(--bad);border-color:#f2c7c1}
+  .chip.warn{background:var(--gold-soft);color:#7a560f;border-color:#ecd9a6}
+  .chip.ok{background:var(--ok-soft);color:var(--ok);border-color:#bfe5d2}
+
+  figure.diagram{margin:24px 0;padding:16px;border:1px solid var(--line);border-radius:var(--r-lg);overflow-x:auto;background:#fff}
+  figure.diagram svg{display:block;min-width:480px;max-width:620px;max-width:100%;height:auto;margin:0 auto}
+  figure.diagram figcaption{margin-top:8px;text-align:center;font-size:14px;color:var(--muted)}
+
+  .panel{border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:14px;background:#fff}
+  .panel h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .panel p{margin:0 0 6px;font-size:15px}
+  .bar{height:10px;border-radius:99px;background:var(--line);overflow:hidden;margin:8px 0}
+  .bar > i{display:block;height:100%;width:0;background:var(--forest-2);transition:width .25s ease}
+  .facts{margin:0;padding:0;list-style:none;font-size:15px;display:grid;gap:8px}
+  .facts b{display:block;font-size:13px;color:var(--muted);font-weight:600}
+  .rail-inline{display:none}
+
+  @media (max-width:1200px){
+    .shell{grid-template-columns:var(--side-w) minmax(0,1fr)}
+    .rail{display:none}
+    .rail-inline{display:block;margin:0 0 24px}
+  }
+  @media (max-width:900px){
+    .shell{grid-template-columns:minmax(0,1fr)}
+    .hamburger{display:inline-grid;place-items:center}
+    .sidebar{position:fixed;inset:var(--topbar-h) auto 0 0;width:min(84vw,300px);max-height:none;background:#fff;border-right:1px solid var(--line);
+      transform:translateX(-100%);transition:transform .22s ease;z-index:60;padding:16px}
+    .sidebar.open{transform:none;box-shadow:0 12px 40px rgba(0,0,0,.18)}
+    .backdrop{position:fixed;inset:var(--topbar-h) 0 0 0;background:rgba(0,0,0,.3);z-index:55}
+    .backdrop[hidden]{display:none}
+    .wordmark span{display:none}
+  }
+  @media print{
+    .topbar,.sidebar,.rail,.rail-inline,.backdrop{display:none !important}
+    .shell{display:block;padding:0}
+    body{font-size:12pt}
+  }
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="hamburger" aria-label="Open the section list" aria-expanded="false" aria-controls="side">&#9776;</button>
+  <div class="wordmark">TeeLine <span>Desk guide</span></div>
+  <div class="spacer"></div>
+  <a class="btn ghost" href="javascript:window.print()">Print this guide</a>
+</header>
+<div class="backdrop" id="backdrop" hidden></div>
+
+<div class="shell">
+  <aside class="sidebar" id="side" aria-label="Sections">
+    <nav id="sectionNav"></nav>
+    <div class="group">Quick help</div>
+    <nav>
+      <a href="#s-checks">What each check means</a>
+      <a href="#s-stuck">If something looks wrong</a>
+    </nav>
+  </aside>
+
+  <main>
+    <!-- Summary -->
+    <article class="section" id="s-start" data-title="The one rule">
+      <h1>Drawing a day, step by step</h1>
+      <p class="abstract">Draw one playing day at a time. Before you press the draw button, every player must be confirmed and their handicap index frozen. Do it in that order and the Checks list stays empty.</p>
+
+      <div class="rule">
+        <b>Freeze first. Then draw. Never the other way round.</b>
+        <p>The draw groups players by class, and the class comes from the frozen index. If the index changes after the draw, the groups no longer match the players. That is what produced the 343 checks.</p>
+      </div>
+
+      <div class="rail-inline" id="railInline"></div>
+
+      <!-- Diagram: the seven steps -->
+      <figure class="diagram">
+        <svg viewBox="0 0 570 280" role="img" aria-label="The seven steps in order: confirm entries, import handicaps, freeze indexes, set days and sessions, draw one day, clear the checks, publish and print."><defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#14684c"/></marker></defs><g font-family="system-ui, Segoe UI, Arial, sans-serif" text-anchor="middle"><rect x="4" y="30" width="124" height="90" rx="12" fill="#f5f8f6" stroke="#cfd9d3"/><circle cx="66" cy="30" r="15" fill="#0b3d2e"/><text x="66" y="36" fill="#fff" font-size="16" font-weight="700">1</text><text x="66" y="70" font-size="14" font-weight="700" fill="#14201a">Confirm</text><text x="66" y="90" font-size="14" font-weight="700" fill="#14201a">entries</text><rect x="150" y="30" width="124" height="90" rx="12" fill="#f5f8f6" stroke="#cfd9d3"/><circle cx="212" cy="30" r="15" fill="#0b3d2e"/><text x="212" y="36" fill="#fff" font-size="16" font-weight="700">2</text><text x="212" y="70" font-size="14" font-weight="700" fill="#14201a">Import</text><text x="212" y="90" font-size="14" font-weight="700" fill="#14201a">handicaps</text><rect x="296" y="30" width="124" height="90" rx="12" fill="#fbf3de" stroke="#ecd9a6"/><circle cx="358" cy="30" r="15" fill="#b8892b"/><text x="358" y="36" fill="#fff" font-size="16" font-weight="700">3</text><text x="358" y="70" font-size="14" font-weight="700" fill="#14201a">Freeze</text><text x="358" y="90" font-size="14" font-weight="700" fill="#14201a">indexes</text><rect x="442" y="30" width="124" height="90" rx="12" fill="#f5f8f6" stroke="#cfd9d3"/><circle cx="504" cy="30" r="15" fill="#0b3d2e"/><text x="504" y="36" fill="#fff" font-size="16" font-weight="700">4</text><text x="504" y="70" font-size="14" font-weight="700" fill="#14201a">Days and</text><text x="504" y="90" font-size="14" font-weight="700" fill="#14201a">AM or PM</text><rect x="4" y="170" width="124" height="90" rx="12" fill="#f5f8f6" stroke="#cfd9d3"/><circle cx="66" cy="170" r="15" fill="#0b3d2e"/><text x="66" y="176" fill="#fff" font-size="16" font-weight="700">5</text><text x="66" y="210" font-size="14" font-weight="700" fill="#14201a">Draw one</text><text x="66" y="230" font-size="14" font-weight="700" fill="#14201a">day</text><rect x="150" y="170" width="124" height="90" rx="12" fill="#f5f8f6" stroke="#cfd9d3"/><circle cx="212" cy="170" r="15" fill="#0b3d2e"/><text x="212" y="176" fill="#fff" font-size="16" font-weight="700">6</text><text x="212" y="210" font-size="14" font-weight="700" fill="#14201a">Clear the</text><text x="212" y="230" font-size="14" font-weight="700" fill="#14201a">checks</text><rect x="296" y="170" width="124" height="90" rx="12" fill="#e8f6ef" stroke="#bfe5d2"/><circle cx="358" cy="170" r="15" fill="#17794f"/><text x="358" y="176" fill="#fff" font-size="16" font-weight="700">7</text><text x="358" y="210" font-size="14" font-weight="700" fill="#14201a">Publish and</text><text x="358" y="230" font-size="14" font-weight="700" fill="#14201a">print</text></g><g stroke="#14684c" stroke-width="2.5" marker-end="url(#arr)" fill="none"><path d="M130 75 H146"/><path d="M276 75 H292"/><path d="M422 75 H438"/><path d="M504 122 V146 H66 V160"/><path d="M130 215 H146"/><path d="M276 215 H292"/></g></svg>
+        <figcaption>Fig. 1. The gold step is the one that was missed. Repeat steps 5 to 7 for each playing day.</figcaption>
+      </figure>
+    </article>
+
+    <!-- Before you draw -->
+    <article class="section" id="s-before" data-title="Before you draw">
+      <h2>Before you draw: the checklist</h2>
+      <p>Tick these off. Your ticks stay on this device. All six must be true before you press the draw button.</p>
+      <ul class="check" id="checklist">
+        <li><label><input type="checkbox" data-k="confirm"><span>Every entry is confirmed<small>Registration desk. Nobody left on "Needs review". A player who is not confirmed is not drawn.</small></span></label></li>
+        <li><label><input type="checkbox" data-k="import"><span>The newest handicap file is imported<small>Handicap imports. A player with no index is treated as index 0 and lands in Class A, so import before you draw.</small></span></label></li>
+        <li><label><input type="checkbox" data-k="freeze"><span>Registration desk shows 0 outdated indexes<small>On Registration desk, press "Re-freeze outdated" until none are left.</small></span></label></li>
+        <li><label><input type="checkbox" data-k="days"><span>Each player's days and AM or PM are set<small>Registration desk, the Days editor on each entry. A player not on a day is left off that day's board.</small></span></label></li>
+        <li><label><input type="checkbox" data-k="settings"><span>Event settings are right<small>Settings. Group size, the allowance and the class ranges are event settings, so check them before the draw.</small></span></label></li>
+        <li><label><input type="checkbox" data-k="day"><span>You know which day you are drawing<small>You draw one day at a time. Start with Day 1, then Day 2 and so on.</small></span></label></li>
+      </ul>
+      <div class="callout warn">
+        <p><b>Changed an index after drawing?</b> Freeze again, then redraw that day. Do not try to fix the groups by hand one at a time.</p>
+      </div>
+    </article>
+
+    <!-- Steps -->
+    <article class="section" id="s-draw" data-title="Draw one day">
+      <h2>Draw one day</h2>
+      <ol class="steps">
+        <li><div><b>Open Draw &amp; pairings</b>Pick the day under "Day of the event".<br><span class="where">Draw &amp; pairings</span></div></li>
+        <li><div><b>Press "Make the draw"</b>The board fills with groups for that day only. Later you may see it called "Re-run proposal (keeps locks)". It does the same thing.<br><span class="where">Draw &amp; pairings, top of the page</span></div></li>
+        <li><div><b>Read the four tiles</b>Ready players in a group should say the same number twice, like 53/53. "Must fix" should be 0. "To check" should be 0 or a few lines you understand.<br><span class="where">Tiles under the day picker</span></div></li>
+        <li><div><b>Open the Checks tab</b>If there are checks, read the cards at the top first. They say what is behind the numbers and give the next step.<br><span class="where">Checks button, under the tiles</span></div></li>
+        <li><div><b>Lock the groups you are happy with</b>A locked group keeps its players when you redraw. Use it for groups the organizers asked for by name.<br><span class="where">Lock button on each group</span></div></li>
+      </ol>
+      <h3>Moving a player by hand</h3>
+      <p>Tap a player, then tap the group. A move that puts someone in a full or locked group is refused and says why. Choose a reason from "Override reason" first so the log shows why.</p>
+    </article>
+
+    <!-- Checks -->
+    <article class="section" id="s-checks" data-title="What each check means">
+      <h2>What each check means</h2>
+      <p>Red means publishing is off until you fix it. Gold means you may publish, but look first.</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>You see</th><th>Level</th><th>What to do</th></tr></thead>
+          <tbody>
+            <tr><td>Records now select the X index. Re-freeze before the draw.</td><td><span class="chip warn">Check</span></td><td>Registration desk, press "Re-freeze outdated". Then redraw the day. One cause, many lines.</td></tr>
+            <tr><td>Group N has players from another flight.</td><td><span class="chip warn">Check</span></td><td>The draw is older than the indexes. Freeze, then redraw the day. Do not move players one by one.</td></tr>
+            <tr><td>Group N has only 1 player.</td><td><span class="chip warn">Check</span></td><td>Move a player in or accept it. Allowed.</td></tr>
+            <tr><td>Group N mixes categories, so players are on different tees.</td><td><span class="chip warn">Check</span></td><td>Fine if intended. Otherwise move the odd player.</td></tr>
+            <tr><td>The frozen index dates from a long time before the cut-off.</td><td><span class="chip warn">Check</span></td><td>Import a fresh handicap file, freeze again.</td></tr>
+            <tr><td>A player is in more than one group.</td><td><span class="chip bad">Must fix</span></td><td>Remove them from one group.</td></tr>
+            <tr><td>Group N has more players than the limit.</td><td><span class="chip bad">Must fix</span></td><td>Move someone to a group with room.</td></tr>
+            <tr><td>A player is ready to play but has no group.</td><td><span class="chip bad">Must fix</span></td><td>Tap them in the pool and place them. Check they are on this day.</td></tr>
+            <tr><td>A player is not eligible or needs review but is in a group.</td><td><span class="chip bad">Must fix</span></td><td>Fix their status in Registration desk or take them out of the group.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <p><b>Why 343?</b> Last time only 2 of 283 players had been frozen. That gave 281 lines of "Re-freeze", and the draw had been made before the indexes arrived, which gave 61 more lines for groups that no longer matched. Two causes. Freezing and redrawing clears both.</p>
+      </div>
+    </article>
+
+    <!-- Publish -->
+    <article class="section" id="s-publish" data-title="Publish and print">
+      <h2>Publish and print</h2>
+      <ol class="steps">
+        <li><div><b>Press "Review and publish"</b>The preview lists every group. Check the day, the times and the holes.<br><span class="where">Draw &amp; pairings</span></div></li>
+        <li><div><b>Press "Publish N groups"</b>Players see only this frozen copy, never the live board. Publishing Day 2 keeps Day 1 as it was.<br><span class="where">Publish window</span></div></li>
+        <li><div><b>Set the tee times</b>Open Tee times, pick the day, press "Take the draw's times" and confirm each group.<br><span class="where">Tee times</span></div></li>
+        <li><div><b>Print the sheets</b>Choose "Day to print", then print the start sheet, pairings and scorecards.<br><span class="where">Print center</span></div></li>
+      </ol>
+      <p>If you change the board after publishing, the page shows that it has changed since publish. Publish again when you are ready. Players keep seeing the old copy until you do.</p>
+      <p>Then go back to step 5 and draw the next day.</p>
+    </article>
+
+    <!-- Stuck -->
+    <article class="section" id="s-stuck" data-title="If something looks wrong">
+      <h2>If something looks wrong</h2>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Problem</th><th>Why</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>"Day N has no round on file for this event"</td><td>That playing day has no scoring round yet.</td><td>Tell the admin. The rounds setup has to be applied before Day 2 onward can be drawn.</td></tr>
+            <tr><td>A player is missing from the board</td><td>They are not on that day, or not confirmed.</td><td>Check the Days editor and their status in Registration desk.</td></tr>
+            <tr><td>Everyone with no index is in Class A</td><td>No index counts as 0.</td><td>Import the handicap file, freeze, redraw.</td></tr>
+            <tr><td>"Re-freeze outdated" does nothing</td><td>The database refused the save.</td><td>The page shows the reason. Fix it, then press it again. The old index stays until it works.</td></tr>
+            <tr><td>The draw looks wrong after a redraw</td><td>Locked groups were kept.</td><td>Unlock the group and redraw.</td></tr>
+            <tr><td>I published too early</td><td>Players can already see it.</td><td>Unpublish, fix, publish again.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="section" id="s-rules" data-title="Five rules to remember">
+      <h2>Five rules to remember</h2>
+      <ol class="steps">
+        <li><div><b>Freeze before you draw.</b></div></li>
+        <li><div><b>One day at a time.</b></div></li>
+        <li><div><b>If an index changes, freeze and redraw. Do not patch groups.</b></div></li>
+        <li><div><b>Red must be zero before you publish.</b></div></li>
+        <li><div><b>Check the day before you press publish.</b></div></li>
+      </ol>
+    </article>
+  </main>
+
+  <aside class="rail" id="rail">
+    <div class="panel" id="railProgress">
+      <h4>Ready to draw?</h4>
+      <p><b id="doneCount">0</b> of <b>6</b> checklist items done</p>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0"><i id="barFill"></i></div>
+      <p class="muted" id="doneNote">Tick the checklist in "Before you draw".</p>
+    </div>
+    <div class="panel">
+      <h4>Quick facts</h4>
+      <ul class="facts">
+        <li><b>Event</b>24th Bamboo Tee, 12 to 15 November</li>
+        <li><b>Draw</b>One playing day at a time</li>
+        <li><b>Sessions</b>AM and PM shotgun on each day</li>
+        <li><b>Players see</b>Only what you publish</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h4>Order</h4>
+      <p>Confirm, import, freeze, set days, draw, clear checks, publish.</p>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function(){
+  var KEY='teeline-draw-guide-v1';
+  var secs=[].slice.call(document.querySelectorAll('.section[data-title]'));
+  var nav=document.getElementById('sectionNav');
+  nav.innerHTML=secs.map(function(s){return '<a href="#'+s.id+'" data-for="'+s.id+'">'+s.dataset.title+'</a>';}).join('');
+
+  var spy=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting) return;
+      [].forEach.call(document.querySelectorAll('.sidebar a'),function(a){a.classList.toggle('active',a.dataset.for===en.target.id);});
+    });
+  },{rootMargin:'-45% 0px -50% 0px'});
+  secs.forEach(function(s){spy.observe(s);});
+
+  // Drawer
+  var side=document.getElementById('side'), burger=document.querySelector('.hamburger'), back=document.getElementById('backdrop');
+  function setOpen(o){side.classList.toggle('open',o);burger.setAttribute('aria-expanded',String(o));back.hidden=!o;}
+  burger.addEventListener('click',function(){setOpen(!side.classList.contains('open'));});
+  back.addEventListener('click',function(){setOpen(false);});
+  side.addEventListener('click',function(e){if(e.target.tagName==='A')setOpen(false);});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')setOpen(false);});
+
+  // Checklist, kept on this device only
+  var boxes=[].slice.call(document.querySelectorAll('#checklist input'));
+  var saved={};
+  try{saved=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){}
+  boxes.forEach(function(b){b.checked=!!saved[b.dataset.k];b.addEventListener('change',save);});
+  function save(){
+    var o={};boxes.forEach(function(b){o[b.dataset.k]=b.checked;});
+    try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}
+    render();
+  }
+  function render(){
+    var n=boxes.filter(function(b){return b.checked;}).length, total=boxes.length;
+    document.getElementById('doneCount').textContent=n;
+    document.getElementById('barFill').style.width=Math.round(100*n/total)+'%';
+    document.querySelector('#railProgress .bar').setAttribute('aria-valuenow',n);
+    document.getElementById('doneNote').textContent=n===total?'All done. You can press Make the draw.':'Tick the checklist in "Before you draw".';
+    var inline=document.getElementById('railInline');
+    inline.innerHTML='<div class="panel"><h4>Ready to draw?</h4><p><b>'+n+'</b> of <b>'+total+'</b> checklist items done</p></div>';
+  }
+  render();
+})();
+</script>
+</body>
+</html>
