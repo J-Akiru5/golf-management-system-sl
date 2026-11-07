@@ -151,6 +151,8 @@ export type Action =
   | { type: "withdrawFromDraw"; playerId: string }
   /** Puts a withdrawn player back where they were, for the undo. */
   | { type: "restoreToDraw"; playerId: string; placement: GroupPlacement }
+  /** Puts a walk-up into a group the staff screen already found an open place in. */
+  | { type: "placeOnDraw"; playerId: string; groupNumber: number }
   | { type: "setGroupLocked"; group: number; locked: boolean; reason: string }
   | { type: "publish" }
   | { type: "unpublish" }
@@ -742,6 +744,22 @@ export function reducer(state: DeskState, a: Action): DeskState {
       return withBoard(state, t.id, {
         ...board,
         draw: restorePlayerToDraw(board.draw, a.playerId, a.placement),
+      });
+    }
+
+    case "placeOnDraw": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      if (board.draw.some((group) => group.playerIds.includes(a.playerId))) return state;
+      if (!board.draw.some((group) => group.number === a.groupNumber)) return state;
+      return withBoard(state, t.id, {
+        ...board,
+        draw: board.draw.map((group) =>
+          group.number === a.groupNumber
+            ? { ...group, playerIds: [...group.playerIds, a.playerId] }
+            : group,
+        ),
       });
     }
 

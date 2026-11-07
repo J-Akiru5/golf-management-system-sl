@@ -295,4 +295,27 @@ describe("staff rows", () => {
     expect(restoredGroup?.arrivals).toEqual([false, true]);
     expect(rowsInGroup(restoredRows, "g-10").map((row) => row.entryId)).toEqual(["e1", "e2"]);
   });
+
+  it("shows a walk-up saved for review as needing review even when its routing status is ok", () => {
+    const e4 = entry({
+      id: "e4",
+      playerId: "p4",
+      status: "needs_review",
+      reasons: ["No group in this player's class has an open place in the PM session."],
+    });
+    const rows = buildRows({
+      ...base,
+      entries: [e4],
+      statusByPlayer: new Map([["p4", "ok" as const]]),
+    });
+    const row = rows.find((candidate) => candidate.playerId === "p4");
+    expect(row?.needsReview).toBe(true);
+    expect(row?.group).toBeNull();
+
+    // The board still has only the drawn players: no phantom place for the walk-up.
+    const schedule = buildSchedule(groups, rows, flightName);
+    expect(
+      schedule.flatMap((group) => group.players.map((player) => player.playerId)),
+    ).not.toContain("p4");
+  });
 });

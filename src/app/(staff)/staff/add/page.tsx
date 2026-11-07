@@ -6,6 +6,7 @@ import { useStaffDay } from "@/components/staff/day-context";
 import styles from "@/components/staff/staff.module.css";
 import { useToast } from "@/components/ui/toast";
 import type { RegistrationEntry } from "@/lib/data/types";
+import { placeWalkUp } from "@/lib/staff/place";
 import { useDesk } from "@/lib/store/desk-store";
 
 /**
@@ -16,8 +17,8 @@ import { useDesk } from "@/lib/store/desk-store";
  * cannot place is left for review; nothing is defaulted here.
  */
 export default function StaffAddPage() {
-  const { tournament, players, entries, adapters } = useDesk();
-  const { days, day } = useStaffDay();
+  const { tournament, players, entries, adapters, dispatch, draw, classifyDraft } = useDesk();
+  const { days, day, dayIndex, dayCount } = useStaffDay();
   const toast = useToast();
   const router = useRouter();
 
@@ -66,6 +67,7 @@ export default function StaffAddPage() {
     try {
       let targetId = playerId;
       let role: "member" | "guest" = "member";
+      let target = selected;
       if (guestMode) {
         const first = guestFirst.trim();
         const last = guestLast.trim();
@@ -84,8 +86,9 @@ export default function StaffAddPage() {
         });
         await created.saved;
         targetId = created.id;
+        target = created;
         role = "guest";
-      } else if (!targetId) {
+      } else if (!targetId || !target) {
         setError("Pick a player, or switch to a new guest.");
         setBusy(false);
         return;
@@ -110,9 +113,55 @@ export default function StaffAddPage() {
       >;
       await adapters.registrations.setDays(entry.id, chosenDays, sessions);
 
+      // The entry alone is not a place on the board. Classify the player with the desk's own rules,
+      // then put them in a group of the same class and session that has an open place. When there
+      // is no honest place, save the review flag so staff see it and the desk can act.
+      const classification = classifyDraft({
+        name: target.fullName ?? target.name,
+        birthdate: target.birthdate,
+        gender: target.gender,
+        index: entry.frozen.index,
+      });
+      if (day && chosenDays.includes(day.number) && classification) {
+        const placement = placeWalkUp({
+          draw,
+          registration: classification,
+          session,
+          dayIndex,
+          dayCount,
+          groupSize: tournament.config.groupSize,
+        });
+        if (placement.ok) {
+          dispatch({
+            type: "placeOnDraw",
+            playerId: targetId,
+            groupNumber: placement.groupNumber,
+          });
+          toast.push({
+            title: `Walk-up added to group ${placement.groupNumber}`,
+            detail: `${target.name} is in the ${session} session on ${day.label}. Their arrival tick is on the schedule.`,
+            tone: "ok",
+          });
+          router.push("/staff/players");
+          return;
+        }
+
+        await adapters.registrations.update(entry.id, {
+          status: "needs_review",
+          reasons: [placement.reason],
+        });
+        toast.push({
+          title: "Saved, needs review",
+          detail: `${placement.reason} The organizers place this player from the full desk.`,
+          tone: "info",
+        });
+        router.push("/staff/players");
+        return;
+      }
+
       toast.push({
-        title: "Walk-up added",
-        detail: "The organizers see the entry in review. The payment is recorded by the desk.",
+        title: "Walk-up saved",
+        detail: `They are entered for ${chosenDays.map((number) => `Day ${number}`).join(", ")}. The organizers place them when that day's draw is checked.`,
         tone: "ok",
       });
       router.push("/staff/players");

@@ -100,6 +100,9 @@ export function buildRows(input: BuildRowsInput): StaffRow[] {
     const chosen = entry.daySessions?.[input.dayNumber] ?? null;
     const session = chosen ?? sessionForTime(teeTime, input.dayIndex, input.dayCount)?.key ?? null;
     const checkIn = entry.dayCheckIn?.[input.dayNumber] ?? null;
+    // The entry carries a review the desk has not cleared. Only when the entry says nothing does
+    // the derived registration decide, which is the normal case for an imported player.
+    const status = entry.status ?? input.statusByPlayer?.get(entry.playerId) ?? null;
     rows.push({
       entryId: entry.id,
       playerId: entry.playerId,
@@ -113,7 +116,7 @@ export function buildRows(input: BuildRowsInput): StaffRow[] {
       arrived: Boolean(checkIn?.at),
       arrivedAt: checkIn?.at ?? null,
       arrivedBy: checkIn?.byName ?? null,
-      needsReview: (input.statusByPlayer?.get(entry.playerId) ?? entry.status) === "needs_review",
+      needsReview: status === "needs_review",
     });
   }
 

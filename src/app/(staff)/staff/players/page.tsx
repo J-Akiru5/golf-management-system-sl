@@ -353,6 +353,13 @@ export default function StaffPlayersPage() {
                 <dd>{Object.values(dayChoices).join(", ") || "No days selected"}</dd>
               </dl>
 
+              {selected.needsReview && (
+                <p className={`${styles.notice} ${styles.noticeWarn}`}>
+                  <b>Needs review.</b> No group is assigned, so this player cannot be scored yet.
+                  The organizers place them from the full desk.
+                </p>
+              )}
+
               {selected.phone && (
                 <a className={styles.linkButton} href={`tel:${selected.phone.replace(/\s+/g, "")}`}>
                   <Phone aria-hidden="true" size={18} style={{ marginRight: 8 }} />

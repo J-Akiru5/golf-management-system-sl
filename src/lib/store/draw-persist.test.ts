@@ -113,6 +113,23 @@ describe("planDrawJobs", () => {
     expect(placementOf(restored.boards[id]?.draw ?? [], playerId)).toEqual(placement);
   });
 
+  it("saves the board when a walk-up is placed in a group", () => {
+    const state = generated();
+    const id = state.activeTournamentId ?? "";
+    const groupNumber = state.boards[id]?.draw?.[0]?.number ?? 1;
+
+    expect(
+      plan(state, { type: "placeOnDraw", playerId: "p-walkup", groupNumber }).map(
+        (job) => job.kind,
+      ),
+    ).toEqual(["save"]);
+
+    const after = run(state, { type: "placeOnDraw", playerId: "p-walkup", groupNumber });
+    expect(
+      after.boards[id]?.draw?.find((group) => group.number === groupNumber)?.playerIds,
+    ).toContain("p-walkup");
+  });
+
   it("ignores actions that do not touch the draw", () => {
     expect(plan(generated(), { type: "hydrate", state: generated() })).toEqual([]);
   });

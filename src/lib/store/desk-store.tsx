@@ -166,6 +166,7 @@ const DRAW_ACTIONS: ReadonlySet<Action["type"]> = new Set([
   "move",
   "withdrawFromDraw",
   "restoreToDraw",
+  "placeOnDraw",
   "setGroupLocked",
   "publish",
   "unpublish",
