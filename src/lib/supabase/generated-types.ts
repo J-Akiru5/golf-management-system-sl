@@ -2596,6 +2596,18 @@ export type Database = {
         Args: { p_tournament: string };
         Returns: number;
       };
+      open_round: {
+        Args: {
+          p_tournament: string;
+          p_expected_revision: number;
+          p_required_cards?: number;
+          p_finalization_authority?: string;
+          p_tie_break_policy_id?: string;
+          p_rules_version?: string;
+          p_day_number?: number;
+        };
+        Returns: string;
+      };
       player_portal_entries: { Args: never; Returns: Json };
       public_open_events: { Args: never; Returns: Json };
       public_pairings: {

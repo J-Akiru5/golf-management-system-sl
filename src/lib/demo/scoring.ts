@@ -107,5 +107,11 @@ export function buildDemoScoringSeed(): ScoringRoundSeed {
     finalizationAuthority: PROPOSED_SCORING_RULES.finalizationAuthority,
     roundStatus: "scoring",
     provisionalPublication: true,
+    rulesVersion: "demo-rules-v1",
+    draw: {
+      revision: 1,
+      published: true,
+      groups: [{ number: 1, playerIds: players.map((player) => player.playerId) }],
+    },
   };
 }

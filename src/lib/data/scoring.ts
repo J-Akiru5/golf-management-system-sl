@@ -1,3 +1,10 @@
+import {
+  assessOpenRound,
+  OPEN_ROUND_MESSAGES,
+  type OpenRoundSettingsInput,
+  type OpenRoundSnapshot,
+  type TieBreakPolicyOption,
+} from "@/lib/data/open-round";
 import type { FinalizationAuthority } from "@/lib/scoring";
 import {
   buildStandings,
@@ -57,6 +64,23 @@ export interface ScoringRoundSeed {
   finalizationAuthority?: FinalizationAuthority | null;
   roundStatus?: ScoringRoundStatus;
   provisionalPublication?: boolean;
+  /** The rules version stored on the round. The demo does not need one to score. */
+  rulesVersion?: string | null;
+  /**
+   * The published draw the demo can open a round from. When left out, the demo treats one group
+   * holding every seeded player as published at revision 1.
+   */
+  draw?: ScoringDrawSeed;
+}
+
+export interface ScoringDrawSeed {
+  revision: number;
+  published: boolean;
+  groups: readonly { number: number; playerIds: readonly string[] }[];
+  /** The live board, when it differs from the published one. Defaults to `groups`. */
+  liveGroups?: readonly { number: number; playerIds: readonly string[] }[];
+  /** False models a publish from before player ids were stored. */
+  hasPlayerIds?: boolean;
 }
 
 export interface ScoringRoundView {
@@ -74,6 +98,7 @@ export interface ScoringRoundView {
   tieBreak: TieBreakPolicy | null;
   approvedBy: string | null;
   finalizationAuthority: FinalizationAuthority | null;
+  rulesVersion: string | null;
   publications: ScoringPublication[];
   provisionalPublication: boolean;
 }
@@ -109,8 +134,22 @@ export interface ResolveHoleInput {
   reason: string;
 }
 
+export interface OpenRoundInput extends OpenRoundSettingsInput {
+  /** The draw revision the desk is acting on. A newer revision on the event is refused. */
+  expectedRevision: number;
+  /** The playing day to open. Left out, the earliest playing day is used. */
+  dayNumber?: number | null;
+}
+
 export interface ScoringRepository {
   loadRound(tournamentId: string): Promise<ScoringRoundView | null>;
+  /** What the desk needs to decide whether the round can be opened, and why not. */
+  loadOpenRoundState(tournamentId: string): Promise<OpenRoundSnapshot>;
+  /**
+   * Copies the published draw into the round, its entries and handicap snapshots in one
+   * transaction. Safe to call again for the same revision.
+   */
+  openRound(tournamentId: string, input: OpenRoundInput): Promise<ScoringRoundView>;
   submitCard(tournamentId: string, input: SubmitCardInput): Promise<ScoringRoundView>;
   approveCard(tournamentId: string, cardId: string, reason?: string): Promise<ScoringRoundView>;
   rejectCard(tournamentId: string, cardId: string, reason: string): Promise<ScoringRoundView>;
@@ -146,6 +185,10 @@ export function createDemoScoringRepository(
     : [];
   let publications: ScoringPublication[] = [];
   let roundStatus: ScoringRoundStatus = seed.roundStatus ?? "scoring";
+  let requiredCards: number | null = seed.policy.requiredCards;
+  let finalizationAuthority: FinalizationAuthority | null = seed.finalizationAuthority ?? null;
+  let tieBreak: TieBreakPolicy | null = seed.tieBreak ?? null;
+  let rulesVersion: string | null = seed.rulesVersion ?? null;
   const captureKeys = new Map<string, string>();
 
   let lastTick = 0;
@@ -155,6 +198,7 @@ export function createDemoScoringRepository(
   };
 
   function view(): ScoringRoundView {
+    const policy: VerificationPolicy = { ...seed.policy, requiredCards };
     const players: ScoringPlayer[] = seed.players.map((player) => ({
       ...player,
       canonical: deriveCanonicalHoleScores({
@@ -163,23 +207,23 @@ export function createDemoScoringRepository(
         course: seed.course,
         cards: cards.filter((card) => card.playerId === player.playerId),
         resolutions: resolutions.filter((resolution) => resolution.playerId === player.playerId),
-        policy: seed.policy,
+        policy,
       }),
     }));
 
     const standings = buildStandings({
       roundId: seed.roundId,
       course: seed.course,
-      policy: seed.policy,
+      policy,
       players,
     });
 
     const finalization = checkFinalization({
       roundId: seed.roundId,
       course: seed.course,
-      policy: seed.policy,
+      policy,
       players,
-      tieBreak: seed.tieBreak ?? null,
+      tieBreak,
       approvedBy: seed.approvedBy ?? null,
     });
 
@@ -187,17 +231,18 @@ export function createDemoScoringRepository(
       roundId: seed.roundId,
       tournamentId: seed.tournamentId,
       course: seed.course,
-      policy: seed.policy,
+      policy,
       players,
       cards: cards.map((card) => ({ ...card })),
       resolutions: resolutions.map((resolution) => ({ ...resolution })),
       standings,
       finalization,
       roundStatus,
-      requiredCards: seed.policy.requiredCards,
-      tieBreak: seed.tieBreak ?? null,
+      requiredCards,
+      tieBreak,
       approvedBy: seed.approvedBy ?? null,
-      finalizationAuthority: seed.finalizationAuthority ?? null,
+      finalizationAuthority,
+      rulesVersion,
       publications: publications.map((publication) => ({ ...publication })),
       provisionalPublication: seed.provisionalPublication ?? false,
     };
@@ -209,9 +254,75 @@ export function createDemoScoringRepository(
     }
   }
 
+  function openRoundSnapshot(): OpenRoundSnapshot {
+    const draw = seed.draw ?? {
+      revision: 1,
+      published: true,
+      groups: [{ number: 1, playerIds: seed.players.map((player) => player.playerId) }],
+    };
+    const policies: TieBreakPolicyOption[] = seed.tieBreak
+      ? [
+          {
+            id: seed.tieBreak.id,
+            name: seed.tieBreak.name,
+            confirmed: Boolean(seed.tieBreak.confirmedBy && seed.tieBreak.confirmedAt),
+          },
+        ]
+      : [];
+    return {
+      draw: {
+        revision: draw.revision,
+        published: draw.published,
+        publishedGroups: draw.hasPlayerIds === false ? null : draw.groups,
+        liveGroups: draw.liveGroups ?? draw.groups,
+      },
+      roundStatus,
+      storedSettings: {
+        requiredCards,
+        finalizationAuthority,
+        tieBreakPolicyId: tieBreak ? tieBreak.id : null,
+        rulesVersion,
+      },
+      tieBreakPolicies: policies,
+    };
+  }
+
   return {
     async loadRound(tournamentId) {
       if (tournamentId !== seed.tournamentId) return null;
+      return view();
+    },
+
+    async loadOpenRoundState(tournamentId) {
+      assertTournament(tournamentId);
+      return openRoundSnapshot();
+    },
+
+    async openRound(tournamentId, input) {
+      assertTournament(tournamentId);
+      const current = openRoundSnapshot();
+      // Repeating the same open from the same revision is a no-op, matching the database.
+      if (roundStatus === "open") {
+        if (input.expectedRevision === current.draw.revision) return view();
+        throw new Error(OPEN_ROUND_MESSAGES.staleRevision);
+      }
+
+      const assessment = assessOpenRound(current, input, input.expectedRevision);
+      if (assessment.state !== "ready") {
+        throw new Error(assessment.message);
+      }
+
+      const chosen =
+        seed.tieBreak && seed.tieBreak.id === input.tieBreakPolicyId ? seed.tieBreak : null;
+      if (!chosen) {
+        throw new Error("That tie-break policy is not one of the demo's policies.");
+      }
+
+      requiredCards = input.requiredCards ?? null;
+      finalizationAuthority = input.finalizationAuthority ?? null;
+      tieBreak = chosen;
+      rulesVersion = input.rulesVersion ?? null;
+      roundStatus = "open";
       return view();
     },
 
@@ -371,10 +482,10 @@ export function createDemoScoringRepository(
 
     async finalizeRound(tournamentId) {
       assertTournament(tournamentId);
-      if (!seed.finalizationAuthority) {
+      if (!finalizationAuthority) {
         throw new Error("The final approval authority has not been confirmed.");
       }
-      if (seed.finalizationAuthority === "committee") {
+      if (finalizationAuthority === "committee") {
         throw new Error("Committee finalization is not implemented.");
       }
       const current = view();
