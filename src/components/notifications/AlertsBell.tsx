@@ -396,7 +396,12 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
                 >
                   <Link
                     href={alert.href}
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                      // The panel link is about to unmount, so without this focus falls to the page
+                      // body. The bell stays in the shell on every desk screen.
+                      setOpen(false);
+                      bellRef.current?.focus();
+                    }}
                     className="grid min-h-11 gap-0.5 no-underline"
                   >
                     <b className="text-[14px] text-ink">{alert.title}</b>

@@ -323,6 +323,10 @@ await page.screenshot({ path: `${SHOTS}/bell-with-alerts-light.png` });
 await fixes.first().click();
 await page.waitForTimeout(1200);
 check("following Fix closes the panel and navigates", (await panel.count()) === 0 && /\/(draw|players|setup)/.test(page.url()), `(${page.url()})`);
+check(
+  "following Fix returns focus to the bell rather than the page body",
+  await bell.evaluate((el) => el === document.activeElement),
+);
 
 section("alerts bell: mark as read and close on navigation");
 if (!/\/draw$/.test(new URL(page.url()).pathname)) {
