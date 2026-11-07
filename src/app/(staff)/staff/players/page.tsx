@@ -3,7 +3,7 @@
 import { ArrowRight, Phone } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { ArriveButton } from "@/components/staff/ArriveButton";
 import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
@@ -37,7 +37,7 @@ const FILTERS: ArrivalFilter[] = ["not-arrived", "arrived", "needs-review", "all
  * volunteer is allowed to make: move a player to another group (manager only) or withdraw them
  * from today.
  */
-export default function StaffPlayersPage() {
+function StaffPlayers() {
   const {
     tournament,
     entries,
@@ -493,5 +493,13 @@ export default function StaffPlayersPage() {
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+export default function StaffPlayersPage() {
+  return (
+    <Suspense fallback={null}>
+      <StaffPlayers />
+    </Suspense>
   );
 }
