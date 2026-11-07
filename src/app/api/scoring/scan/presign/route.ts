@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createDemoScorecardKey, demoScanEnabled } from "@/lib/scoring/scan/demo";
 import {
   createScorecardObjectKey,
   isR2Configured,
@@ -17,12 +18,6 @@ function jsonError(status: number, message: string) {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const session = await scanSession();
-  if (!session.ok) return jsonError(session.status, session.message);
-  if (!isR2Configured()) {
-    return jsonError(503, "Photo storage is not configured. Add the R2 settings and try again.");
-  }
-
   let body: {
     tournamentId?: unknown;
     mime?: unknown;
@@ -49,6 +44,25 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
   if (!/^[0-9a-f]{64}$/.test(sha256)) {
     return jsonError(400, "The photo fingerprint is missing.");
+  }
+
+  // A development demo has no session or bucket. The browser still gets a real PUT URL, and the
+  // object route writes the bytes into this process so the extract route can read them.
+  if (demoScanEnabled()) {
+    const key = createDemoScorecardKey(mime);
+    return NextResponse.json({
+      ok: true,
+      key,
+      uploadUrl: `/api/scoring/scan/demo-object?key=${encodeURIComponent(key)}`,
+      headers: { "Content-Type": mime },
+      expiresIn: 900,
+    });
+  }
+
+  const session = await scanSession();
+  if (!session.ok) return jsonError(session.status, session.message);
+  if (!isR2Configured()) {
+    return jsonError(503, "Photo storage is not configured. Add the R2 settings and try again.");
   }
 
   try {

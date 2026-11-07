@@ -118,16 +118,16 @@ describe("lock-aware re-run", () => {
     expect(second.warnings.join(" ")).toContain("no longer in the field");
   });
 
-  it("flags a flight that a locked slot pushes across two waves", () => {
+  it("flags a flight that a locked slot pushes across two start times", () => {
     // 19 groups in one flight: exactly one wave plus one group. Locking a slot inside wave A
     // pushes the last of it into wave B.
     const players = Array.from({ length: 76 }, () => player({ index: 5 }));
     const first = route(input(players));
     const locked = asLocked(first.groups[0] as NonNullable<(typeof first.groups)[number]>);
     const second = route(input(players), { lockedGroups: [locked] });
-    const waves = new Set(second.groups.filter((g) => g.flightId === "a").map((g) => g.wave));
-    expect(waves.size).toBe(2);
-    expect(second.warnings.some((w) => w.includes("split across waves"))).toBe(true);
+    const starts = new Set(second.groups.filter((g) => g.flightId === "a").map((g) => g.time));
+    expect(starts.size).toBe(2);
+    expect(second.warnings.some((w) => w.includes("split across start times"))).toBe(true);
   });
 
   it("alternates two-tee slots around a locked pair", () => {

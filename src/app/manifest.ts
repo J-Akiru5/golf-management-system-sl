@@ -46,6 +46,12 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
+        name: "Staff desk",
+        short_name: "Staff",
+        description: "Check players in and score a group on the course.",
+        url: "/staff",
+      },
+      {
         name: "My golf",
         short_name: "My golf",
         description: "Your entry and your published start.",

@@ -80,7 +80,7 @@ export interface SessionStarts {
 export interface SessionInput {
   byPlayer: ReadonlyMap<string, Session | null> | Record<string, Session | null | undefined>;
   starts: SessionStarts;
-  /** Playing-day number. It labels each wave, so one board can hold every day: D3-AM-A. */
+  /** Playing-day number, so one board can hold every day. */
   dayNumber?: number;
 }
 
@@ -102,7 +102,7 @@ export interface TournamentConfig {
   firstTeeTime: string;
   /** Minutes between groups (two-tee start). */
   intervalMinutes: number;
-  /** Minutes between wave starts (shotgun). */
+  /** Minutes between start times (shotgun): how much later the next start follows. */
   waveGapMinutes: number;
 }
 
@@ -134,9 +134,8 @@ export interface Group {
   /** Shotgun: hole to start on. Two-tee: 1 or 10. */
   startHole: number;
   /**
-   * Shotgun wave. A plain letter (A, B...) for an event drawn without sessions, or the day and
-   * session in front of it (D3-AM-A) when the draw covers named morning and afternoon shotguns.
-   * Null for a two-tee start.
+   * Legacy stored field from when a day ran lettered waves. A draw always writes null now: a group
+   * is described by its start time and the hole it tees off on.
    */
   wave: string | null;
   /** "HH:MM" */

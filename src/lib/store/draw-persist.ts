@@ -66,6 +66,9 @@ export function planDrawJobs(action: Action, before: DeskState, after: DeskState
       return jobs;
     }
     case "move":
+    case "withdrawFromDraw":
+    case "restoreToDraw":
+    case "placeOnDraw":
     case "setGroupLocked":
       return save();
     case "publish":

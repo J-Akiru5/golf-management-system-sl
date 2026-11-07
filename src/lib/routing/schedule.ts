@@ -10,13 +10,8 @@ export function addMinutes(time: string, minutes: number): string {
   return `${hh}:${mm}`;
 }
 
-export function waveLetter(index: number): string {
-  return String.fromCharCode(65 + index);
-}
-
 export interface Slot {
   startHole: number;
-  wave: string | null;
   time: string;
 }
 
@@ -25,8 +20,8 @@ export interface ShotgunPlan {
   warnings: string[];
 }
 
-/** Key of a shotgun slot: wave letter and hole, e.g. "A:3". */
-export const shotgunKey = (wave: string, hole: number) => `${wave}:${hole}`;
+/** A shotgun slot: a start time and the hole the group tees off on. */
+export const shotgunKey = (time: string, hole: number) => `${time}:${hole}`;
 /** Key of a two-tee slot: hole and time, e.g. "10:07:12". */
 export const twoTeeKey = (hole: number, time: string) => `${hole}:${time}`;
 
@@ -64,95 +59,90 @@ export function seedFrom(text: string): number {
 }
 
 /**
- * Assigns each flight's groups to shotgun holes. One group per hole per wave.
- * A flight stays whole: if it does not fit in the rest of the wave it starts the next wave.
- * Only a flight with more groups than holes is split, and that is flagged.
+ * Assigns each flight's groups to shotgun holes at start times.
  *
- * With a `seed`, the holes of each wave are shuffled before they are handed out, so a class is
- * spread around the course instead of running down holes 1..N, and the order differs from wave to
- * wave. The same seed always produces the same board. Without a seed the holes stay in order.
+ * Every hole carries one group per start. The first start is the session's own time; when the holes
+ * are full, the next group goes off one gap later in the same session. There are no wave letters:
+ * a group is described by its time and the hole it starts on, and nothing else.
  *
- * `occupied` holds slots already taken by locked groups, so a re-run never lands on top of them.
- * `flightGroupCounts` is the number of groups in each flight, in play order.
+ * A flight stays whole: if it does not fit in the holes left at the current start, it waits for the
+ * next one. Only a flight with more groups than holes is split, and that is flagged.
+ *
+ * With a `seed`, the holes of each start are shuffled before they are handed out, so a class is
+ * spread around the course instead of running down holes 1..N, and the order differs from start to
+ * start. The same seed always produces the same board. Without a seed the holes stay in order.
+ *
+ * `occupied` holds time+hole slots already taken by locked groups, so a re-run never lands on top of
+ * them. `flightGroupCounts` is the number of groups in each flight, in play order.
  */
 export function planShotgunFrom(
   flightGroupCounts: { flightName: string; groups: number }[],
   holes: number,
   firstTeeTime: string,
-  waveGapMinutes: number,
+  gapMinutes: number,
   occupied: ReadonlySet<string> = new Set(),
   seed?: number,
   /**
-   * Put in front of the wave letter, so a board can hold a day and its session: `D3-AM-A`.
-   * Locked slots in `occupied` carry the same prefix.
-   */
-  wavePrefix = "",
-  /**
-   * Keep filling the wave a class is already in and let the class continue into the next wave when
-   * the holes run out, instead of moving the whole class on. The club fills a day this way: wave 1
-   * takes groups until the 18 holes are used, and wave 2 takes whoever is left. A class that lands
-   * in two waves is named in the warnings.
+   * Keep filling the start a class is already in and let the class continue into the next start when
+   * the holes run out, instead of moving the whole class on. The club fills a day this way: the first
+   * start takes groups until the holes are used, and the next start takes whoever is left.
    */
   fillSequentially = false,
 ): ShotgunPlan {
   const slots: Slot[] = [];
   const warnings: string[] = [];
-  let wave = 0;
-  let placedInWave = 0;
+  let start = 0;
+  let placedNow = 0;
   const random = seed === undefined ? null : mulberry32(seed);
   const orders = new Map<number, number[]>();
-  const label = (index: number) => `${wavePrefix}${waveLetter(index)}`;
+  const timeOf = (index: number) => addMinutes(firstTeeTime, index * gapMinutes);
 
-  /** The free holes of a wave, in the order they will be handed out. */
+  /** The free holes at a start, in the order they will be handed out. */
   const orderFor = (index: number) => {
     const cached = orders.get(index);
     if (cached) return cached;
     const list: number[] = [];
     for (let hole = 1; hole <= holes; hole++) {
-      if (!occupied.has(shotgunKey(label(index), hole))) list.push(hole);
+      if (!occupied.has(shotgunKey(timeOf(index), hole))) list.push(hole);
     }
     if (random) shuffle(list, random);
     orders.set(index, list);
     return list;
   };
 
-  /** Free holes left in this wave. */
-  const roomNow = () => orderFor(wave).length;
+  /** Free holes left at this start. */
+  const roomNow = () => orderFor(start).length;
 
   const place = () => {
     for (;;) {
-      const order = orderFor(wave);
+      const order = orderFor(start);
       const startHole = order.shift();
       if (startHole === undefined) {
-        wave += 1;
-        placedInWave = 0;
+        start += 1;
+        placedNow = 0;
         continue;
       }
-      slots.push({
-        startHole,
-        wave: label(wave),
-        time: addMinutes(firstTeeTime, wave * waveGapMinutes),
-      });
-      placedInWave += 1;
+      slots.push({ startHole, time: timeOf(start) });
+      placedNow += 1;
       return;
     }
   };
 
   for (const { flightName, groups } of flightGroupCounts) {
     if (groups === 0) continue;
-    const startWave = wave;
+    const startIndex = start;
     if (groups > holes) {
       warnings.push(
-        `Flight ${flightName} has ${groups} groups, more than the ${holes} holes in one wave, so it was split across waves.`,
+        `Flight ${flightName} has ${groups} groups, more than the ${holes} holes at one start, so it was split across start times.`,
       );
-    } else if (!fillSequentially && groups > roomNow() && placedInWave > 0) {
-      wave += 1;
-      placedInWave = 0;
+    } else if (!fillSequentially && groups > roomNow() && placedNow > 0) {
+      start += 1;
+      placedNow = 0;
     }
     for (let i = 0; i < groups; i++) place();
-    if (fillSequentially && groups <= holes && wave > startWave) {
+    if (fillSequentially && groups <= holes && start > startIndex) {
       warnings.push(
-        `Class ${flightName} plays across waves ${label(startWave)} to ${label(wave)}.`,
+        `Class ${flightName} plays across the ${timeOf(startIndex)} and ${timeOf(start)} starts.`,
       );
     }
   }
@@ -164,9 +154,9 @@ export function planShotgun(
   flightGroupCounts: { flightName: string; groups: number }[],
   holes: number,
   firstTeeTime: string,
-  waveGapMinutes: number,
+  gapMinutes: number,
 ): ShotgunPlan {
-  return planShotgunFrom(flightGroupCounts, holes, firstTeeTime, waveGapMinutes);
+  return planShotgunFrom(flightGroupCounts, holes, firstTeeTime, gapMinutes);
 }
 
 /**
@@ -184,7 +174,6 @@ export function planTwoTeeFrom(
   while (slots.length < groupCount) {
     const slot: Slot = {
       startHole: n % 2 === 0 ? 1 : 10,
-      wave: null,
       time: addMinutes(firstTeeTime, Math.floor(n / 2) * intervalMinutes),
     };
     n += 1;

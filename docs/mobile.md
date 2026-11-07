@@ -16,7 +16,7 @@ measured 56 px) and keeps its text label.
 
 | Item | Goes to | Why it is there |
 | --- | --- | --- |
-| Today | `/admin` | What needs attention now, before the next wave. The benchmark found this is the first question on the course. |
+| Today | `/admin` | What needs attention now, before the next start. The benchmark found this is the first question on the course. |
 | Draw | `/draw` | The live board is the reason to carry the phone on the course. |
 | Register | `/register` | The raised centre action: entries, withdrawals and changes on the day. |
 | Players | `/players` | Find a member, their index and their contact number. |

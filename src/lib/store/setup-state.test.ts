@@ -42,6 +42,28 @@ describe("tees live in the state, so an edit reaches the draw", () => {
     expect(before.tees.find((t) => t.id === sample.teeId)?.slope).not.toBe(150);
   });
 
+  it("does not feed a stored review back into the draw", () => {
+    const before = initialState();
+    const entry = before.entries[0];
+    if (!entry) throw new Error("demo has an entry");
+    const marked = {
+      ...before,
+      entries: before.entries.map((candidate) =>
+        candidate.id === entry.id
+          ? {
+              ...candidate,
+              status: "needs_review" as const,
+              reasons: ["No group in this player's class has an open place in the PM session."],
+            }
+          : candidate,
+      ),
+    };
+
+    const input = routingInputFor(marked);
+    expect(input?.players.some((player) => player.id === entry.playerId)).toBe(false);
+    expect(input?.provisional?.some((player) => player.id === entry.playerId)).toBe(false);
+  });
+
   it("saves the event row together with the tees and holes", () => {
     const before = initialState();
     const tournament = before.tournaments[0];

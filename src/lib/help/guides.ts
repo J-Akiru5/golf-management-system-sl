@@ -19,7 +19,7 @@ export const DESK_GUIDES: HelpGuide[] = [
     steps: [
       {
         text: literal(
-          "The course map, the waves, the readiness checks and the publish panel all live here.",
+          "The course map, the start times, the readiness checks and the publish panel all live here.",
         ),
         anchor: "control-map",
       },
@@ -219,12 +219,6 @@ export const DESK_GUIDES: HelpGuide[] = [
           "Choose the playing day to print. The sheets come from that day's board only, so two days are never mixed on one sheet.",
         ),
         anchor: "print-day",
-      },
-      {
-        text: literal(
-          "Choose a wave to print. The morning and afternoon sheets are handed out separately.",
-        ),
-        anchor: "print-wave",
       },
       {
         text: literal(

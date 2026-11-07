@@ -9,7 +9,7 @@ export type PinStatus = "full" | "short" | "blocking" | "empty" | "selected";
 
 export interface HoleSlot {
   hole: number;
-  wave: string | null;
+  time: string | null;
   group: DrawGroup | null;
   status: Exclude<PinStatus, "selected">;
   label: string;
@@ -52,23 +52,23 @@ export function useBoard() {
       draw?.filter((g) => g.playerIds.length > 0 && g.playerIds.length < groupSize).length ?? 0;
     const over = draw?.filter((g) => g.playerIds.length > groupSize).length ?? 0;
     const withIndex = registrations.filter((r) => r.index !== null).length;
-    const waves = [...new Set((draw ?? []).map((g) => g.wave).filter((w): w is string => !!w))];
+    const startTimes = [...new Set((draw ?? []).map((g) => g.time))].sort();
 
-    const slot = (hole: number, wave: string | null): HoleSlot => {
+    const slot = (hole: number, time: string | null): HoleSlot => {
       const group =
         draw?.find(
           (g) =>
-            g.startHole === hole && (config?.startFormat === "shotgun" ? g.wave === wave : true),
+            g.startHole === hole && (config?.startFormat === "shotgun" ? g.time === time : true),
         ) ?? null;
       const gi = group ? (byGroup.get(group.number) ?? []) : [];
       const n = group?.playerIds.length ?? 0;
       if (!group || n === 0)
-        return { hole, wave, group, status: "empty", label: "Open", issues: gi };
+        return { hole, time, group, status: "empty", label: "Open", issues: gi };
       if (gi.some((i) => i.severity === "blocking"))
-        return { hole, wave, group, status: "blocking", label: "Must fix", issues: gi };
+        return { hole, time, group, status: "blocking", label: "Must fix", issues: gi };
       if (n < groupSize)
-        return { hole, wave, group, status: "short", label: `${n}/${groupSize}`, issues: gi };
-      return { hole, wave, group, status: "full", label: `${n}/${groupSize}`, issues: gi };
+        return { hole, time, group, status: "short", label: `${n}/${groupSize}`, issues: gi };
+      return { hole, time, group, status: "full", label: `${n}/${groupSize}`, issues: gi };
     };
 
     return {
@@ -85,7 +85,7 @@ export function useBoard() {
       short,
       over,
       withIndex,
-      waves,
+      startTimes,
       slot,
     };
   }, [desk, draw, registrations, config, warnings, names, flags]);

@@ -122,7 +122,7 @@ Boundaries and rules:
 - `src/lib/data/frozen.ts` is the cut-off rule: latest NGAP record on or before the cut-off, frozen
   onto the registration; a later import never moves it, the desk offers a re-freeze.
 - `route()` takes locked groups: a re-run keeps their players and slots, releases a lock that no
-  longer makes sense with the reason, and warns when a locked slot splits a flight across waves.
+  longer makes sense with the reason, and warns when a locked slot splits a flight across start times.
 - The interface always shows "Demo shell · local session data". Payment status is manual and
   unverified; the app never computes an official WHS index.
 

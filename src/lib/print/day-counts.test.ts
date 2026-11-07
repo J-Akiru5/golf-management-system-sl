@@ -4,7 +4,6 @@ import {
   buildGroupBlocks,
   type CountEntry,
   sessionOfEntry,
-  sessionOfWave,
   tallyDay,
 } from "./day-counts";
 
@@ -137,12 +136,6 @@ describe("buildDayCountBlocks", () => {
 });
 
 describe("draw pairings", () => {
-  it("reads AM or PM from the group's wave label", () => {
-    expect(sessionOfWave("D3-PM-A")).toBe("PM");
-    expect(sessionOfWave("D3-AM-A")).toBe("AM");
-    expect(sessionOfWave(null)).toBeNull();
-  });
-
   it("uses the pairing's time and hole for the sheet", () => {
     const blocks = buildDayCountBlocks({
       days,
@@ -151,7 +144,7 @@ describe("draw pairings", () => {
       boards: [
         {
           day: 3,
-          groups: [{ time: "06:45", startHole: 7, wave: "D3-AM-A", players: [{ id: "a" }] }],
+          groups: [{ time: "06:45", startHole: 7, players: [{ id: "a" }] }],
         },
       ],
     });
@@ -174,11 +167,26 @@ describe("draw pairings", () => {
       boards: [
         {
           day: 3,
-          groups: [{ time: "06:45", startHole: 7, wave: "D3-AM-A", players: [{ id: "b" }] }],
+          groups: [{ time: "06:45", startHole: 7, players: [{ id: "b" }] }],
         },
       ],
     });
     expect(blocks[2]?.rows[0]).toMatchObject({ session: "PM", teeTime: "12:30", startHole: 2 });
+  });
+
+  it("reads the session from the start time the draw gave the group", () => {
+    const blocks = buildDayCountBlocks({
+      days,
+      entries: [entry({ entryId: "c", playerId: "c", selectedDays: [3] })],
+      players: [{ id: "c", name: "Afternoon Player" }],
+      boards: [
+        {
+          day: 3,
+          groups: [{ time: "12:45", startHole: 3, players: [{ id: "c" }] }],
+        },
+      ],
+    });
+    expect(blocks[2]?.rows[0]).toMatchObject({ session: "PM", teeTime: "12:45", startHole: 3 });
   });
 });
 
@@ -193,7 +201,6 @@ describe("buildGroupBlocks", () => {
             {
               number: 9,
               startHole: 12,
-              wave: "D3-PM-A",
               time: "12:30",
               flight: "Class C",
               players: [{ id: "x", name: "Afternoon Player" }],
@@ -201,7 +208,6 @@ describe("buildGroupBlocks", () => {
             {
               number: 2,
               startHole: 4,
-              wave: "D3-AM-A",
               time: "06:30",
               flight: "Class A",
               players: [{ id: "y", name: "Morning Player" }],

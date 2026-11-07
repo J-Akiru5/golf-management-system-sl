@@ -40,11 +40,9 @@ export function PairingsView({
   );
   const shotgun = pairings.startFormat === "shotgun";
 
-  const groupLabel = (startHole: number, wave: string | null) => {
+  const groupLabel = (startHole: number) => {
     if (!shotgun) return t("pairings.groupTee", { hole: startHole });
-    return wave
-      ? t("pairings.groupHoleWave", { hole: startHole, wave })
-      : t("pairings.groupHole", { hole: startHole });
+    return t("pairings.groupHole", { hole: startHole });
   };
 
   return (
@@ -89,7 +87,7 @@ export function PairingsView({
         {groups.map((g) => (
           <article key={g.number} className="group">
             <div className="group-head">
-              <b>{groupLabel(g.startHole, g.wave)}</b>
+              <b>{groupLabel(g.startHole)}</b>
               <span className="mono">{fmtTime(g.time)}</span>
             </div>
             {g.players.map((player) => {

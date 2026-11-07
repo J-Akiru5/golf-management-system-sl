@@ -214,6 +214,11 @@ export interface RegistrationRepository {
   ): Promise<void>;
   /** Assigns the confirmed tee time and start hole for one selected day. */
   assignDayTee(entryId: string, dayNumber: number, assignment: DayTeeAssignment): Promise<void>;
+  /**
+   * Records or undoes a player's arrival for one playing day. Stamps the time and the staff account
+   * on the database side; the local entry is updated only after the write is accepted.
+   */
+  checkIn(entryId: string, dayNumber: number, arrived: boolean): Promise<void>;
 }
 
 export interface CaddieRepository {
@@ -279,6 +284,10 @@ const nextId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(coun
 
 export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>): Adapters {
   const nameOf = (full: string, fallback: string) => full.trim() || fallback;
+  // The state argument is the snapshot this adapter set was built from. A screen that adds an entry
+  // and then gives it its days in the same save would otherwise look for a row React has not
+  // re-rendered yet, so the ids added here are remembered until the next snapshot arrives.
+  const addedEntries = new Set<string>();
 
   const players: PlayerRepository = {
     list: () => state.players,
@@ -480,6 +489,7 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         source: "desk",
       };
       dispatch({ type: "addEntry", entry });
+      addedEntries.add(entry.id);
       return entry;
     },
     update: (id, patch) => dispatch({ type: "updateEntry", id, patch }),
@@ -523,15 +533,23 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     },
     setDays: async (entryId, days, sessions = {}) => {
       const entry = state.entries.find((item) => item.id === entryId);
-      if (!entry) throw new Error("That registration was not found.");
-      const caddieByDay = { ...(entry.caddieByDay ?? {}) };
-      for (const key of Object.keys(caddieByDay)) {
-        if (!days.includes(Number(key))) delete caddieByDay[Number(key)];
+      if (!entry && !addedEntries.has(entryId)) {
+        throw new Error("That registration was not found.");
+      }
+      const caddieByDay = entry ? { ...(entry.caddieByDay ?? {}) } : null;
+      if (caddieByDay) {
+        for (const key of Object.keys(caddieByDay)) {
+          if (!days.includes(Number(key))) delete caddieByDay[Number(key)];
+        }
       }
       dispatch({
         type: "updateEntry",
         id: entryId,
-        patch: { selectedDays: days, daySessions: sessions, caddieByDay },
+        patch: {
+          selectedDays: days,
+          daySessions: sessions,
+          ...(caddieByDay ? { caddieByDay } : {}),
+        },
       });
     },
     assignDayTee: async (entryId, dayNumber, assignment) => {
@@ -542,6 +560,14 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         id: entryId,
         patch: { dayTee: { ...(entry.dayTee ?? {}), [dayNumber]: assignment } },
       });
+    },
+    checkIn: async (entryId, dayNumber, arrived) => {
+      const entry = state.entries.find((item) => item.id === entryId);
+      if (!entry) throw new Error("That registration was not found.");
+      const next = { ...(entry.dayCheckIn ?? {}) };
+      if (arrived) next[dayNumber] = { at: new Date().toISOString(), byName: "Demo desk" };
+      else delete next[dayNumber];
+      dispatch({ type: "updateEntry", id: entryId, patch: { dayCheckIn: next } });
     },
   };
 

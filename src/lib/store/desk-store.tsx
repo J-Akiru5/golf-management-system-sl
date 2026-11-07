@@ -164,6 +164,9 @@ const Ctx = createContext<Desk | null>(null);
 const DRAW_ACTIONS: ReadonlySet<Action["type"]> = new Set([
   "generate",
   "move",
+  "withdrawFromDraw",
+  "restoreToDraw",
+  "placeOnDraw",
   "setGroupLocked",
   "publish",
   "unpublish",

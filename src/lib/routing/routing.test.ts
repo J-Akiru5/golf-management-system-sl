@@ -195,7 +195,7 @@ describe("schedule", () => {
     expect(s.map((x) => x.time)).toEqual(["07:00", "07:00", "07:12", "07:12", "07:24"]);
   });
 
-  it("keeps a flight whole by moving it to the next wave", () => {
+  it("keeps a flight whole by moving it to the next start", () => {
     const plan = planShotgun(
       [
         { flightName: "A", groups: 15 },
@@ -206,28 +206,27 @@ describe("schedule", () => {
       300,
     );
     const b = plan.slots.slice(15);
-    expect(b.every((s) => s.wave === "B")).toBe(true);
+    expect(b.every((s) => s.time === "12:00")).toBe(true);
     expect(b.map((s) => s.startHole)).toEqual([1, 2, 3, 4, 5]);
-    expect(b[0]?.time).toBe("12:00");
-    expect(plan.slots.slice(0, 15).every((s) => s.wave === "A")).toBe(true);
+    expect(plan.slots.slice(0, 15).every((s) => s.time === "07:00")).toBe(true);
   });
 
-  it("splits and flags a flight that cannot fit in one wave", () => {
+  it("splits and flags a flight that cannot fit in one start", () => {
     const plan = planShotgun([{ flightName: "Big", groups: 20 }], 18, "07:00", 300);
     expect(plan.warnings).toHaveLength(1);
-    expect(plan.slots.filter((s) => s.wave === "B")).toHaveLength(2);
+    expect(plan.slots.filter((s) => s.time === "12:00")).toHaveLength(2);
   });
 });
 
 describe("route", () => {
-  it("never places a group on a hole twice in one wave and honors max group size", () => {
+  it("never places a group on a hole twice at one start and honors max group size", () => {
     const players = Array.from({ length: 100 }, (_, i) =>
       player({ index: 1 + (i % 28), birthdate: i % 3 === 0 ? "1960-01-01" : "1985-01-01" }),
     );
     const out = route(input(players));
     const seen = new Set<string>();
     for (const g of out.groups) {
-      const key = `${g.wave}-${g.startHole}`;
+      const key = `${g.time}-${g.startHole}`;
       expect(seen.has(key)).toBe(false);
       seen.add(key);
       expect(g.playerIds.length).toBeLessThanOrEqual(4);
@@ -298,6 +297,44 @@ describe("route", () => {
     const players = Array.from({ length: 16 }, () => player({ index: 8 }));
     const out = route(input(players, { startFormat: "two_tee" }));
     expect(out.groups.map((g) => g.startHole)).toEqual([1, 10, 1, 10]);
-    expect(out.groups.every((g) => g.wave === null)).toBe(true);
+    expect(out.groups.map((g) => g.time)).toEqual(["07:00", "07:00", "07:12", "07:12"]);
+  });
+});
+
+describe("walk-up shapes from the staff add screen", () => {
+  // The add screen can only send two shapes. A guest is a new record with a name and a phone, and the
+  // directory can only offer a player who has no entry yet. Both reach the engine with no birthdate,
+  // no gender and no handicap record, so both are classified the same way: the open division, a
+  // handicap of 0 and the class that covers it. Nothing is left for the desk to review.
+
+  it("places a walk-up with no birthdate, gender or index in the open division", () => {
+    const walkUp = player({ birthdate: null, gender: null, index: null });
+    const reg = classifyPlayer(walkUp, input([]));
+
+    expect(reg.status).toBe("ok");
+    expect(reg.categoryId).toBe("regular");
+    expect(reg.teeId).toBe("white");
+    expect(reg.flightId).toBe("a");
+    expect(reg.reasons.join(" ")).toContain("0 is used");
+
+    const out = route(input([walkUp]));
+    expect(out.groups.flatMap((group) => group.playerIds)).toEqual([walkUp.id]);
+  });
+
+  it("leaves a registration the event cannot classify out of every group", () => {
+    // A shape the add screen cannot send: an event with no category for the player. The engine still
+    // refuses to invent a category, a tee or a flight, and gives the player no group at all.
+    const woman = player({ gender: "F", index: 5 });
+    const out = route({
+      ...input([woman]),
+      categories: categories.filter((category) => category.id !== "ladies"),
+    });
+    const reg = out.registrations.find((candidate) => candidate.playerId === woman.id);
+
+    expect(reg?.status).toBe("needs_review");
+    expect(reg?.categoryId).toBeNull();
+    expect(reg?.teeId).toBeNull();
+    expect(reg?.flightId).toBeNull();
+    expect(out.groups.flatMap((group) => group.playerIds)).not.toContain(woman.id);
   });
 });

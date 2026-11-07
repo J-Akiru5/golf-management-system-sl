@@ -17,7 +17,6 @@ describe("toPublicPairings", () => {
         {
           number: 1,
           startHole: 1,
-          wave: "A",
           time: "06:30",
           flight: "Regular A",
           players: ["Antonio Alcantara", "  Maria Santos  "],
@@ -41,14 +40,7 @@ describe("toPublicPairings", () => {
     expect(out.tournamentName).toBe("Bamboo Tee (demo)");
     expect(out.groups).toHaveLength(1);
     const group = out.groups[0] as NonNullable<(typeof out.groups)[number]>;
-    expect(Object.keys(group).sort()).toEqual([
-      "flight",
-      "number",
-      "players",
-      "startHole",
-      "time",
-      "wave",
-    ]);
+    expect(Object.keys(group).sort()).toEqual(["flight", "number", "players", "startHole", "time"]);
     // Names are trimmed and shown in capitals; nothing else about a player survives.
     expect(group.players).toEqual([
       { id: null, name: "ANTONIO ALCANTARA", photoPath: null },
@@ -65,7 +57,6 @@ describe("toPublicPairings", () => {
           {
             number: 1,
             startHole: 1,
-            wave: "A",
             time: "06:30",
             flight: "Regular A",
             players: ["Antonio Alcantara", "Maria Santos"],
@@ -95,7 +86,6 @@ describe("toPublicPairings", () => {
           {
             number: 2,
             startHole: 10,
-            wave: null,
             time: "06:42",
             flight: "Regular B",
             players: ["", "   ", "Ramon Aguilar"],

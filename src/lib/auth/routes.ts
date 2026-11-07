@@ -29,6 +29,7 @@ export const STAFF_PREFIXES = [
   "/setup",
   "/course",
   "/spotlight",
+  "/staff",
 ] as const;
 
 /** The player area. Needs a signed-in account; the record link is handled on the page. */

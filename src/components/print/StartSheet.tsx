@@ -2,7 +2,6 @@
 
 import { fmtHcp, fmtIndex, fmtTime } from "@/lib/format";
 import { groupStartGroups, type PrintStartFormat } from "@/lib/print/start-sheet";
-import { flightName, waveHeading } from "@/lib/ui/labels";
 import styles from "./print.module.css";
 import type { CourseDataStatus, PrintGroup } from "./types";
 
@@ -12,6 +11,9 @@ export interface StartSheetProps {
   groups: readonly PrintGroup[];
   startFormat: PrintStartFormat;
   courseDataStatus: CourseDataStatus;
+  showFlight?: boolean;
+  showTee?: boolean;
+  showHandicaps?: boolean;
 }
 
 /** Print-only start list. All fields are passed in; no player data is fetched here. */
@@ -21,6 +23,9 @@ export function StartSheet({
   groups,
   startFormat,
   courseDataStatus,
+  showFlight = true,
+  showTee = true,
+  showHandicaps = true,
 }: StartSheetProps) {
   const groupsWithPlayers = groups.filter((group) => group.players.length > 0);
   const sections = groupStartGroups(groupsWithPlayers, startFormat);
@@ -46,18 +51,10 @@ export function StartSheet({
 
       {sections.map((section) => (
         <section key={section.key} className={styles.startSection}>
-          <h3 className={styles.sectionHeading}>
-            {startFormat === "shotgun"
-              ? `${waveHeading(section.wave)} · ${flightName(section.wave)}`
-              : `Tee time ${fmtTime(section.time)}`}
-            {startFormat === "shotgun" && section.time && <span>{fmtTime(section.time)}</span>}
-          </h3>
+          <h3 className={styles.sectionHeading}>Tee time {fmtTime(section.time)}</h3>
           <div className={styles.startGrid}>
             {section.groups.map((group) => (
-              <article
-                className={styles.startGroup}
-                key={`${group.wave ?? "two-tee"}-${group.number}`}
-              >
+              <article className={styles.startGroup} key={`${group.startHole}-${group.number}`}>
                 <header className={styles.groupHeader}>
                   <b>
                     {startFormat === "shotgun"
@@ -67,7 +64,7 @@ export function StartSheet({
                   </b>
                   <time>{fmtTime(group.time)}</time>
                 </header>
-                <p className={styles.flight}>{group.flight}</p>
+                {showFlight && <p className={styles.flight}>{group.flight}</p>}
                 <ol className={styles.playerList}>
                   {group.players.map((player) => (
                     <li key={player.id}>
@@ -76,9 +73,13 @@ export function StartSheet({
                       )}
                       <span className={styles.playerName}>{player.name}</span>
                       <span className={styles.playerFacts}>
-                        {player.teeName && <span>{player.teeName}</span>}
-                        <span>HI {fmtIndex(player.handicapIndex)}</span>
-                        <b>PH {fmtHcp(player.playingHandicap)}</b>
+                        {showTee && player.teeName && <span>{player.teeName}</span>}
+                        {showHandicaps && (
+                          <>
+                            <span>HI {fmtIndex(player.handicapIndex)}</span>
+                            <b>PH {fmtHcp(player.playingHandicap)}</b>
+                          </>
+                        )}
                       </span>
                     </li>
                   ))}

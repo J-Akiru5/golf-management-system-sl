@@ -370,7 +370,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
   const occupied = new Set(
     kept.map((g) =>
       config.startFormat === "shotgun"
-        ? shotgunKey(g.wave ?? "A", g.startHole)
+        ? shotgunKey(g.time, g.startHole)
         : twoTeeKey(g.startHole, g.time),
     ),
   );
@@ -387,9 +387,8 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
   let slots: Slot[];
   if (config.startFormat === "shotgun") {
     if (sessionInput) {
-      // Each session fills its own holes from its own start time. A wave carries the day and the
-      // session (D3-AM-A), so a board can hold a day's both shotguns and never confuse them.
-      const dayPrefix = sessionInput.dayNumber ? `D${sessionInput.dayNumber}-` : "";
+      // Each session fills its own holes from its own start time, and a session that needs more
+      // groups than the holes can hold gets a later start inside the same session.
       slots = [];
       for (const session of sessionOrder) {
         if (session === null) continue;
@@ -404,7 +403,6 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
           config.waveGapMinutes,
           occupied,
           drawSeed,
-          `${dayPrefix}${session}-`,
           options.splitClassesAcrossWaves ?? false,
         );
         warnings.push(...plan.warnings);
@@ -418,7 +416,6 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
         config.waveGapMinutes,
         occupied,
         drawSeed,
-        "",
         options.splitClassesAcrossWaves ?? false,
       );
       warnings.push(...plan.warnings);
@@ -428,19 +425,19 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
     slots = planTwoTeeFrom(newGroupCount, config.firstTeeTime, config.intervalMinutes, occupied);
   }
 
-  // A locked slot inside the first wave can force a flight that would fit into two waves.
+  // A locked slot at the first start can force a flight that would fit into two starts.
   if (config.startFormat === "shotgun" && kept.length > 0) {
     let cursor = 0;
     for (const flight of placed) {
-      const waves = new Set<string>();
+      const starts = new Set<string>();
       for (let i = 0; i < flight.groups.length; i++) {
         const slot = slots[cursor + i];
-        if (slot?.wave) waves.add(slot.wave);
+        if (slot?.time) starts.add(slot.time);
       }
       cursor += flight.groups.length;
-      if (waves.size > 1 && flight.groups.length <= config.holes) {
+      if (starts.size > 1 && flight.groups.length <= config.holes) {
         warnings.push(
-          `Class ${flight.flight.name} is split across waves because locked groups hold slots in the first wave.`,
+          `Class ${flight.flight.name} is split across start times because locked groups hold slots at the first start.`,
         );
       }
     }
@@ -451,7 +448,8 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
     flightId: g.flightId,
     playerIds: [...g.playerIds],
     startHole: g.startHole,
-    wave: g.wave,
+    // Kept for stored boards, but a draw no longer creates a wave: the time says when it starts.
+    wave: null,
     time: g.time,
   }));
 
@@ -474,7 +472,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
         flightId: flight.id,
         playerIds,
         startHole: slot.startHole,
-        wave: slot.wave,
+        wave: null,
         time: slot.time,
       });
       n += 1;

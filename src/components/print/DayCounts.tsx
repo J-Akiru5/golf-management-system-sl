@@ -48,7 +48,7 @@ export function DayCounts({
         <h2>Players by day and session</h2>
         <p>
           {eventName} · counted from the players who selected each day · AM/PM from the desk&apos;s
-          session or the draw&apos;s wave · tee-off times from the draw
+          session or the tee-off time · tee-off times from the draw
         </p>
       </header>
 

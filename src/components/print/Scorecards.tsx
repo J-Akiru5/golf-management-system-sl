@@ -14,6 +14,7 @@ export interface ScorecardsProps {
   startFormat: PrintStartFormat;
   courseDataStatus: CourseDataStatus;
   courseName?: string | null;
+  showQrCodes?: boolean;
 }
 
 /** Renders one scorecard per non-empty group, preserving the per-player handicap allocation. */
@@ -27,6 +28,7 @@ export function Scorecards({
   startFormat,
   courseDataStatus,
   courseName,
+  showQrCodes = true,
 }: ScorecardsProps) {
   const groupsWithPlayers = groups.filter((group) => group.players.length > 0);
 
@@ -34,7 +36,7 @@ export function Scorecards({
     <section className={styles.scorecards} aria-label="Scorecards">
       {groupsWithPlayers.map(({ players, ...group }) => (
         <Scorecard
-          key={`${group.wave ?? "two-tee"}-${group.number}`}
+          key={`${group.startHole}-${group.number}`}
           eventTitle={title}
           eventSubtitle={subtitle}
           eventHost={hostName}
@@ -45,6 +47,7 @@ export function Scorecards({
           holes={holes}
           startFormat={startFormat}
           courseDataStatus={courseDataStatus}
+          showQrCodes={showQrCodes}
         />
       ))}
       {groupsWithPlayers.length === 0 && <p>No groups to print yet.</p>}

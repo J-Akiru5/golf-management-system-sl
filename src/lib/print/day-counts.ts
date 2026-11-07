@@ -1,14 +1,12 @@
 import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
-import { sessionOfLabel } from "@/lib/ui/labels";
 
 /**
  * Headcounts for the organisers: how many players are on each playing day, split into the morning
  * (AM) and afternoon (PM) sessions, plus the tee-off time and start hole the draw gave each player.
  *
  * Nothing is invented here. The session is the desk's own AM/PM choice for that day; when the desk
- * has not chosen, the draw's wave label says whether the group goes off in the morning or the
- * afternoon, and a stored tee time is read back into the session it falls in. A player with neither
- * is counted as "not set", never guessed into a wave.
+ * has not chosen, a stored tee time or the start time the draw gave the group is read back into the
+ * session it falls in. A player with neither is counted as "not set", never guessed into a session.
  */
 
 /** The part of a registration this module reads. Structural, so the desk's own type fits. */
@@ -20,11 +18,10 @@ export interface CountEntry {
   dayTee?: Record<number, { teeTime: string | null; startHole: number | null } | undefined>;
 }
 
-/** Where the draw put one player on one day: the group's time, hole and wave label. */
+/** Where the draw put one player on one day: the group's time and hole. */
 export interface DrawPlacement {
   time: string | null;
   startHole: number | null;
-  wave: string | null;
 }
 
 /** One playing day's board, as the print center loaded it. */
@@ -33,7 +30,6 @@ export interface DrawBoard {
   groups: {
     time: string;
     startHole: number;
-    wave: string | null;
     players: { id: string }[];
   }[];
 }
@@ -74,15 +70,9 @@ function minutesOf(time: string | null): number | null {
   return hours * 60 + minutes;
 }
 
-/** "AM"/"PM" from a stored group wave label such as `D3-AM-A`, or null. */
-export function sessionOfWave(wave: string | null): SessionKey | null {
-  const session = sessionOfLabel(wave);
-  return session === "AM" || session === "PM" ? session : null;
-}
-
 /**
- * The session a player is in on a day: the desk's choice first, then the wave of the group the draw
- * put them in, then the time they were given.
+ * The session a player is in on a day: the desk's choice first, then the time they were given by
+ * the desk or by the draw.
  */
 export function sessionOfEntry(
   entry: CountEntry,
@@ -95,11 +85,8 @@ export function sessionOfEntry(
   if (chosen === "AM" || chosen === "PM") return chosen;
   const draw = drawOf?.(entry.playerId) ?? null;
   const time = entry.dayTee?.[dayNumber]?.teeTime ?? draw?.time ?? null;
-  if (time) {
-    const session = sessionForTime(time, dayIndex, dayCount)?.key ?? null;
-    if (session) return session;
-  }
-  return sessionOfWave(draw?.wave ?? null);
+  if (!time) return null;
+  return sessionForTime(time, dayIndex, dayCount)?.key ?? null;
 }
 
 /** How many players selected this day, and how they split across AM, PM and undecided. */
@@ -131,7 +118,6 @@ function placementsOf(boards: DrawBoard[] | null): Map<string, DrawPlacement> {
         placements.set(`${board.day}:${player.id}`, {
           time: group.time || null,
           startHole: group.startHole,
-          wave: group.wave,
         });
       }
     }
@@ -196,7 +182,6 @@ export function buildDayCountBlocks(input: {
 export interface GroupBoardGroup {
   number: number;
   startHole: number;
-  wave: string | null;
   time: string;
   flight: string;
   players: { id: string; name: string }[];
@@ -228,7 +213,8 @@ export function buildGroupBlocks(input: {
   boards?: { day: number; groups: GroupBoardGroup[] }[] | null;
 }): DayGroupBlock[] {
   const byDay = new Map((input.boards ?? []).map((board) => [board.day, board.groups]));
-  return input.days.map((day) => ({
+  const dayCount = input.days.length;
+  return input.days.map((day, dayIndex) => ({
     dayNumber: day.dayNumber,
     label: day.label,
     playDate: day.playDate,
@@ -238,7 +224,7 @@ export function buildGroupBlocks(input: {
         number: group.number,
         time: group.time || null,
         startHole: group.startHole,
-        session: sessionOfWave(group.wave),
+        session: group.time ? (sessionForTime(group.time, dayIndex, dayCount)?.key ?? null) : null,
         flight: group.flight,
         players: group.players,
       }))

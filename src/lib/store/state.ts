@@ -25,6 +25,11 @@ import {
   makeDemoTournaments,
 } from "@/lib/demo/data";
 import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
+import {
+  type GroupPlacement,
+  removePlayerFromDraw,
+  restorePlayerToDraw,
+} from "@/lib/draw/withdraw";
 import { displayName } from "@/lib/format";
 import type { MergeRow, ResolvedImportRow } from "@/lib/ngap";
 import {
@@ -142,6 +147,12 @@ export type Action =
   | { type: "resolveDeferred"; id: string; decision: "link" | "create" | "drop" }
   | { type: "generate"; preserveLocks: boolean }
   | { type: "move"; playerId: string; toGroup: number; reason: string }
+  /** Takes a withdrawn player off the day's board, leaving their group slot open. */
+  | { type: "withdrawFromDraw"; playerId: string }
+  /** Puts a withdrawn player back where they were, for the undo. */
+  | { type: "restoreToDraw"; playerId: string; placement: GroupPlacement }
+  /** Puts a walk-up into a group the staff screen already found an open place in. */
+  | { type: "placeOnDraw"; playerId: string; groupNumber: number }
   | { type: "setGroupLocked"; group: number; locked: boolean; reason: string }
   | { type: "publish" }
   | { type: "unpublish" }
@@ -277,6 +288,9 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
   const players: RoutingInput["players"] = [];
   const provisional: ProvisionalPlayer[] = [];
   for (const entry of entriesFor(s, t.id)) {
+    // A stored review means the desk already decided this entry cannot be routed. Feeding it back
+    // into the engine would give it a phantom group on the next proposal.
+    if (entry.status === "needs_review" || entry.status === "ineligible") continue;
     const p = s.players.find((x) => x.id === entry.playerId);
     if (!p) continue;
     // A disabled or soft-deleted player is never drawn. The entry stays on file, so putting the
@@ -713,6 +727,42 @@ export function reducer(state: DeskState, a: Action): DeskState {
         ...board,
         draw,
         overrides: [...board.overrides, override],
+      });
+    }
+
+    case "withdrawFromDraw": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      return withBoard(state, t.id, {
+        ...board,
+        draw: removePlayerFromDraw(board.draw, a.playerId),
+      });
+    }
+
+    case "restoreToDraw": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      return withBoard(state, t.id, {
+        ...board,
+        draw: restorePlayerToDraw(board.draw, a.playerId, a.placement),
+      });
+    }
+
+    case "placeOnDraw": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      if (board.draw.some((group) => group.playerIds.includes(a.playerId))) return state;
+      if (!board.draw.some((group) => group.number === a.groupNumber)) return state;
+      return withBoard(state, t.id, {
+        ...board,
+        draw: board.draw.map((group) =>
+          group.number === a.groupNumber
+            ? { ...group, playerIds: [...group.playerIds, a.playerId] }
+            : group,
+        ),
       });
     }
 
