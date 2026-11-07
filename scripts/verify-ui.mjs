@@ -115,7 +115,8 @@ await page.emulateMedia({ media: "screen" });
 section("/register paging");
 await go("/register");
 await expect(range).toHaveText("1–50 of 90", { timeout: 30000 });
-const regRows = page.locator("div.grid.gap-2 > article");
+// One card per team; the selector follows the current RegistrationTeam markup.
+const regRows = page.locator("article");
 check("page 1 holds 50 of 90", (await regRows.count()) === 50, `(${await regRows.count()})`);
 // networkidle does not mean hydrated, and a click that lands too early is swallowed rather than
 // queued. The register page is the heaviest list in the shell, so it is the one that shows it:
@@ -322,6 +323,55 @@ await page.screenshot({ path: `${SHOTS}/bell-with-alerts-light.png` });
 await fixes.first().click();
 await page.waitForTimeout(1200);
 check("following Fix closes the panel and navigates", (await panel.count()) === 0 && /\/(draw|players|setup)/.test(page.url()), `(${page.url()})`);
+
+section("alerts bell: mark as read and close on navigation");
+if (!/\/draw$/.test(new URL(page.url()).pathname)) {
+  await page.getByRole("link", { name: "Draw & pairings", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/draw$/, { timeout: 15000 });
+}
+await page.getByRole("button", { name: "Lock", exact: true }).first().click();
+await page.waitForTimeout(1200);
+await bell.click();
+await expect(panel).toBeVisible({ timeout: 15000 });
+check(
+  "an open panel locks the page behind it",
+  (await page.evaluate(() => document.body.style.overflow)) === "hidden",
+);
+check(
+  "a live info item offers Mark as read",
+  (await panel.getByRole("button", { name: "Mark as read" }).count()) === 1,
+);
+check(
+  "the panel header offers Mark all as read",
+  (await panel.getByRole("button", { name: "Mark all as read" }).count()) === 1,
+);
+check(
+  "live blocking and warning items say why they cannot be marked",
+  (await panel.getByText("Stays until the problem is fixed.", { exact: true }).count()) > 0,
+);
+const readLabelBefore = await bell.getAttribute("aria-label");
+await panel.getByRole("button", { name: "Mark as read" }).first().click();
+await expect(panel.getByText("Read", { exact: true }).first()).toBeVisible({ timeout: 10000 });
+check("marking one as read leaves a Read mark and keeps the item listed", (await panel.getByRole("link", { name: /Fix/ }).count()) > 0);
+const readLabelAfter = await bell.getAttribute("aria-label");
+check(
+  "the badge drops only the notice that was read",
+  readLabelBefore !== readLabelAfter,
+  `(${readLabelBefore} -> ${readLabelAfter})`,
+);
+
+await page.locator('a[href="/players"]').first().click();
+await expect(panel).toHaveCount(0, { timeout: 15000 });
+check("a rail navigation closes the panel", /\/players$/.test(page.url()), `(${page.url()})`);
+check(
+  "the scroll lock is released after navigation",
+  (await page.evaluate(() => document.body.style.overflow)) !== "hidden",
+);
+const afterNav = await page.evaluate(() => ({
+  tag: document.activeElement?.tagName ?? null,
+  href: document.activeElement?.getAttribute("href") ?? null,
+}));
+check("focus stays on the destination link, not the page body", afterNav.tag !== "BODY", `(${JSON.stringify(afterNav)})`);
 
 // -------------------------------------------------------------- player languages
 section("player languages");
@@ -680,6 +730,28 @@ check("below lg the panel is a full-width sheet", Math.abs(box.width - 390) < 2,
 check("it starts under the top bar", box.y > 60 && box.y < 120, `(y ${box.y})`);
 await mob.screenshot({ path: `${SHOTS}/bell-mobile.png` });
 
+// Mark all as read has to work on the phone sheet too.
+await mob.keyboard.press("Escape");
+await mob.goto(`${BASE}/draw`, { waitUntil: "networkidle", timeout: 120000 });
+await mob.getByRole("button", { name: "Make the draw" }).click();
+await mob.waitForTimeout(2500);
+await mob.getByRole("button", { name: "Lock", exact: true }).first().click();
+await mob.waitForTimeout(1200);
+await mob.locator('button[aria-label^="Alerts"]').click();
+await expect(mobPanel).toBeVisible({ timeout: 15000 });
+check(
+  "the phone sheet offers Mark all as read",
+  (await mobPanel.getByRole("button", { name: "Mark all as read" }).count()) === 1,
+);
+await mobPanel.getByRole("button", { name: "Mark all as read" }).click();
+await expect(mobPanel.getByText("Read", { exact: true }).first()).toBeVisible({ timeout: 10000 });
+check("mark all as read works on the phone sheet", true);
+await mob.keyboard.press("Escape");
+check(
+  "closing the phone sheet releases the scroll lock",
+  (await mob.evaluate(() => document.body.style.overflow)) !== "hidden",
+);
+
 // The same theme dropdown has to work inside the mobile menu, not just in the rail.
 await mob.keyboard.press("Escape");
 await mob.getByRole("button", { name: "Open menu" }).click();
@@ -901,7 +973,7 @@ await setCalendarTheme("light");
 await calendarContext.close();
 
 console.log(`\nconsole errors: ${errors.length}`);
-for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 200));
+for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 1200));
 console.log(`screenshots in ${SHOTS}`);
 console.log(`\n${pass} passed, ${fail} failed`);
 
