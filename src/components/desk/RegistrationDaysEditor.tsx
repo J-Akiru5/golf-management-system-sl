@@ -48,8 +48,8 @@ export function RegistrationDaysEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   // A non-playing day in the middle leaves gaps in the day numbers. Pruning checks the number, not
-  // the position in the list, so it needs the highest number rather than how many days there are.
-  const maxDayNumber = days.reduce((max, day) => Math.max(max, day.dayNumber), 0);
+  // the position in the list, so it needs the day numbers the event actually has.
+  const dayNumbers = days.map((day) => day.dayNumber);
 
   if (!open) {
     return (
@@ -173,7 +173,7 @@ export function RegistrationDaysEditor({
             }
             setSaving(true);
             try {
-              await onSave(selected, pruneDaySessions(selected, sessions, maxDayNumber));
+              await onSave(selected, pruneDaySessions(selected, sessions, dayNumbers));
               setOpen(false);
             } catch (e) {
               setError(e instanceof Error ? e.message : "Could not save the days.");

@@ -7,17 +7,27 @@ export type DaySessionChoice = "AM" | "PM";
  * The sessions worth keeping for a day selection: only days the player is playing, and only days the
  * event has. Saving a session for a deselected day would leave a morning on a day the player is not
  * in.
+ *
+ * The event's days are passed by number, not as a count, because a non-playing day in the middle
+ * leaves gaps: days 1, 2 and 4 are three days, but day 4 is not day 3. A plain number is still
+ * accepted and read as days 1 to that number.
  */
 export function pruneDaySessions(
   selected: number[],
   sessions: Record<number, DaySessionChoice>,
-  dayCount: number,
+  validDayNumbers: readonly number[] | number,
 ): Record<number, DaySessionChoice> {
+  const valid =
+    typeof validDayNumbers === "number"
+      ? new Set(
+          Array.from({ length: Math.max(0, Math.floor(validDayNumbers)) }, (_, index) => index + 1),
+        )
+      : new Set(validDayNumbers);
   const kept: Record<number, DaySessionChoice> = {};
   for (const [key, value] of Object.entries(sessions)) {
     const day = Number(key);
     if (!Number.isInteger(day)) continue;
-    if (day < 1 || day > dayCount) continue;
+    if (!valid.has(day)) continue;
     if (!selected.includes(day)) continue;
     kept[day] = value;
   }

@@ -22,6 +22,7 @@ import { StartSheet } from "@/components/print/StartSheet";
 import type { PrintGroup } from "@/components/print/types";
 import { Button } from "@/components/ui/button";
 import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
+import { playingDaysOf } from "@/lib/data/dates";
 import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { daySessionSummary } from "@/lib/data/sessions";
@@ -62,9 +63,10 @@ export default function PrintCenter() {
     setDrawDay,
   } = useDesk();
   const [tab, setTab] = useState<Tab>("start");
-  // Printing follows the desk's day: picking a day here loads that day's board, so the sheets
-  // never mix two days together.
-  const playingDays = useMemo(() => days.filter((d) => d.isPlayingDay), [days]);
+  // Printing follows the desk's day: picking a day here loads that day's board, so the sheets never
+  // mix two days together. Playing days only, in day order, so a trailing non-playing day does not
+  // make the last playing day's afternoon read as an ordinary day.
+  const playingDays = useMemo(() => playingDaysOf(days), [days]);
   const chosenDay = playingDays.find((d) => d.dayNumber === drawDay) ?? null;
   // Every day at once, fetched on demand: the desk itself only holds the selected day.
   const [everyDay, setEveryDay] = useState<{ day: number; groups: PrintGroup[] }[] | null>(null);
@@ -209,7 +211,8 @@ export default function PrintCenter() {
               toPrintGroup({
                 number: row.number,
                 startHole: row.start_hole,
-                time: row.tee_time,
+                // Postgres returns `time` as HH:MM:SS; the sheets read HH:MM.
+                time: row.tee_time.slice(0, 5),
                 flightId: row.flight_id,
                 playerIds: (row.group_members ?? [])
                   .slice()
@@ -313,14 +316,16 @@ export default function PrintCenter() {
         actions={
           <>
             {playingDays.length > 0 && (
-              <label className="no-print grid gap-1">
+              <label className="no-print grid w-full min-w-0 gap-1 sm:w-auto">
                 <span className="overline !text-[10px]">Day to print</span>
                 <select
                   value={drawDay ?? ""}
                   onChange={(e) =>
                     setDrawDay(e.target.value === "" ? null : Number(e.target.value))
                   }
-                  className="!w-auto"
+                  // The longest day label is wider than a phone; let it fill the row there and use
+                  // its own width on a desktop.
+                  className="w-full min-w-0 text-[16px] md:text-sm sm:w-auto"
                   data-help="print-day"
                 >
                   {playingDays.map((d, index) => (
@@ -336,12 +341,12 @@ export default function PrintCenter() {
               variant="secondary"
               onClick={() => void loadEveryDay()}
               disabled={preparingAll}
-              className="no-print"
+              className="no-print min-h-11 md:min-h-0"
               data-help="print-all"
             >
               <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
             </Button>
-            <Button variant="secondary" asChild>
+            <Button variant="secondary" asChild className="min-h-11">
               <Link href="/pairings">
                 <Smartphone aria-hidden="true" /> Public preview
               </Link>
@@ -349,7 +354,7 @@ export default function PrintCenter() {
             <Button
               variant="gold"
               onClick={() => window.print()}
-              className="no-print"
+              className="no-print min-h-11 md:min-h-0"
               data-help="print-now"
             >
               <Printer aria-hidden="true" /> Print this sheet
@@ -388,7 +393,7 @@ export default function PrintCenter() {
                 // The counts sheet reads each player's pairing, so it needs every day's board once.
                 if (t.id === "counts" && !everyDay && !preparingAll) void loadEveryDay(false);
               }}
-              className="flex items-center gap-2 px-4"
+              className="flex min-h-11 items-center gap-2 px-4"
             >
               <t.icon className="size-4" aria-hidden="true" />
               {t.label}
@@ -492,6 +497,28 @@ export default function PrintCenter() {
             courseDataStatus={courseDataStatus}
           />
         )}
+      </div>
+
+      {/* Phone only: the header actions sit at the top of a long sheet, so the two print actions
+          stay within reach above the app's bottom tab bar. The header actions remain. */}
+      <div className="no-print sticky bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-line bg-surface/95 px-4 py-2 backdrop-blur md:hidden">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="min-h-11 flex-1"
+          onClick={() => void loadEveryDay()}
+          disabled={preparingAll}
+        >
+          <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
+        </Button>
+        <Button
+          variant="gold"
+          size="sm"
+          className="min-h-11 flex-1"
+          onClick={() => window.print()}
+        >
+          <Printer aria-hidden="true" /> Print this sheet
+        </Button>
       </div>
     </div>
   );

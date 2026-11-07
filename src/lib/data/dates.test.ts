@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { makeDemoTournaments } from "@/lib/demo/data";
-import { addIsoDays, daysOfTournament, nextPlayDay, selectedDaysOf } from "./dates";
+import {
+  addIsoDays,
+  daysOfTournament,
+  nextPlayDay,
+  playingDaysOf,
+  selectedDaysOf,
+} from "./dates";
 import type { TournamentDay } from "./types";
 
 describe("addIsoDays", () => {
@@ -36,6 +42,36 @@ describe("nextPlayDay", () => {
   it("falls back to tomorrow when even the fallback is unreadable", () => {
     const next = nextPlayDay([], "not-a-date");
     expect(next).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("playingDaysOf", () => {
+  const day = (dayNumber: number, playDate: string, isPlayingDay = true): TournamentDay => ({
+    id: `d${dayNumber}`,
+    dayNumber,
+    playDate,
+    label: `Day ${dayNumber}`,
+    startTime: null,
+    isPlayingDay,
+  });
+
+  it("drops a trailing non-playing day so the last playing day is still last", () => {
+    const days = [
+      day(1, "2026-11-05"),
+      day(2, "2026-11-06"),
+      day(3, "2026-11-07"),
+      day(4, "2026-11-08", false),
+    ];
+    expect(playingDaysOf(days).map((item) => item.dayNumber)).toEqual([1, 2, 3]);
+  });
+
+  it("sorts by day number and keeps one row per day number", () => {
+    const days = [
+      day(2, "2026-11-06"),
+      day(1, "2026-11-05"),
+      day(1, "2026-11-05"),
+    ];
+    expect(playingDaysOf(days).map((item) => item.dayNumber)).toEqual([1, 2]);
   });
 });
 
@@ -76,6 +112,43 @@ describe("daysOfTournament", () => {
     });
     expect(days).toHaveLength(1);
     expect(days[0]?.id).toBe("d1");
+  });
+
+  it("sorts stored days by day number and drops a duplicate number", () => {
+    const tournament = makeDemoTournaments()[0];
+    expect(tournament).toBeDefined();
+    if (!tournament) return;
+    const days = daysOfTournament({
+      ...tournament,
+      days: [
+        {
+          id: "sunday",
+          dayNumber: 4,
+          playDate: "2026-11-08",
+          label: "Day 4",
+          startTime: null,
+          isPlayingDay: true,
+        },
+        {
+          id: "thursday",
+          dayNumber: 1,
+          playDate: "2026-11-05",
+          label: "Day 1",
+          startTime: "06:30",
+          isPlayingDay: true,
+        },
+        {
+          id: "thursday-again",
+          dayNumber: 1,
+          playDate: "2026-11-05",
+          label: "Day 1 again",
+          startTime: "07:00",
+          isPlayingDay: true,
+        },
+      ],
+    });
+    expect(days.map((item) => item.dayNumber)).toEqual([1, 4]);
+    expect(days[0]?.id).toBe("thursday");
   });
 
   it("derives a demo entry's days from its tee preferences, ignoring a null preference", () => {

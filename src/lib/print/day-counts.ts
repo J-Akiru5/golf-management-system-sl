@@ -219,15 +219,19 @@ export function buildGroupBlocks(input: {
     label: day.label,
     playDate: day.playDate,
     groups: [...(byDay.get(day.dayNumber) ?? [])]
-      .map((group) => ({
-        key: `${group.number}-${group.startHole}`,
-        number: group.number,
-        time: group.time || null,
-        startHole: group.startHole,
-        session: group.time ? (sessionForTime(group.time, dayIndex, dayCount)?.key ?? null) : null,
-        flight: group.flight,
-        players: group.players,
-      }))
+      .map((group) => {
+        // Postgres returns `time` as HH:MM:SS; the sheet reads HH:MM.
+        const time = group.time ? group.time.slice(0, 5) : null;
+        return {
+          key: `${group.number}-${group.startHole}`,
+          number: group.number,
+          time,
+          startHole: group.startHole,
+          session: time ? (sessionForTime(time, dayIndex, dayCount)?.key ?? null) : null,
+          flight: group.flight,
+          players: group.players,
+        };
+      })
       .sort(
         (a, b) =>
           (minutesOf(a.time) ?? 24 * 60) - (minutesOf(b.time) ?? 24 * 60) ||
