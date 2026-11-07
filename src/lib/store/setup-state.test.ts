@@ -87,3 +87,37 @@ describe("tees live in the state, so an edit reaches the draw", () => {
     expect(after.tournaments).toHaveLength(1);
   });
 });
+
+describe("a member-guest pair is classed on its average index", () => {
+  it("gives both partners the class of the pair, not of each own index", () => {
+    const before = initialState();
+    const tournament = before.tournaments.find((t) => t.id === before.activeTournamentId);
+    if (!tournament) throw new Error("demo has an active tournament");
+    const [a, b] = before.entries.filter((e) => e.tournamentId === tournament.id && !e.overridden);
+    if (!a || !b) throw new Error("demo has two entries");
+    const withFrozen = (index: number) => (e: typeof a) => ({
+      ...e,
+      teamNo: 1,
+      frozen: { ...e.frozen, index },
+    });
+    const state = {
+      ...before,
+      entries: before.entries.map((e) =>
+        e.id === a.id ? withFrozen(2)(e) : e.id === b.id ? withFrozen(27)(e) : e,
+      ),
+    };
+    const solo = buildRegistrations({
+      ...state,
+      entries: state.entries.map((e) =>
+        e.id === a.id || e.id === b.id ? { ...e, teamNo: null } : e,
+      ),
+    });
+    const paired = buildRegistrations(state);
+    const pick = (list: typeof paired, id: string) => list.find((r) => r.entryId === id);
+    // On their own the partners fall in different classes ...
+    expect(pick(solo, a.id)?.flightId).not.toBe(pick(solo, b.id)?.flightId);
+    // ... as a pair they share one class.
+    expect(pick(paired, a.id)?.flightId).toBeTruthy();
+    expect(pick(paired, a.id)?.flightId).toBe(pick(paired, b.id)?.flightId);
+  });
+});

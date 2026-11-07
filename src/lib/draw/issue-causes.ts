@@ -69,7 +69,7 @@ export function summariseIssues(issues: Issue[]): IssueCause[] {
       count: flights.length,
       title: `${plural(flights.length, "group")} ${flights.length === 1 ? "no longer matches" : "no longer match"} the players' classes`,
       detail:
-        "The saved draw was made from different indexes than the ones now on file. Redraw to regroup by class.",
+        "The saved draw was made from different indexes than the ones now on file. Redraw to regroup by class. If a group stays here after a redraw, its partner plays on another day: check the pair on the Register page.",
       action: "redraw",
       issueIds: flights.map((i) => i.id),
     });

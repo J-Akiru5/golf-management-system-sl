@@ -1,8 +1,13 @@
 import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
-import { daySessions } from "@/lib/data/sessions";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { isPlayerRemoved } from "@/lib/data/player-state";
-import { missingFactsFor, playsUnclassified, registrationFor } from "@/lib/data/registrations";
+import {
+  hasStoredRouting,
+  missingFactsFor,
+  playsUnclassified,
+  registrationFor,
+} from "@/lib/data/registrations";
+import { daySessions } from "@/lib/data/sessions";
 import type {
   Caddie,
   Club,
@@ -41,6 +46,7 @@ import {
   type Tee,
   UNCLASSIFIED_LABEL,
 } from "@/lib/routing";
+import { applyTeamClasses } from "@/lib/routing/classify";
 // AVP THROWAWAY BRANCH ONLY: the frozen draw for the recorded demo. It loads only when the recording
 // flag is set, so the product tests still start from an empty board.
 import drawFixture from "../../../demo-video/fixtures/bamboo-tee-draw.json";
@@ -287,16 +293,25 @@ export function buildRegistrations(s: DeskState): DeskRegistration[] {
   for (const entry of entriesFor(s, t.id)) {
     const player = s.players.find((p) => p.id === entry.playerId);
     if (!player) continue;
-    out.push(
-      registrationFor({
-        tournament: t,
-        tees: s.tees,
-        player,
-        entry,
-        records: recordsFor(s, player.id),
-      }),
-    );
+    const reg = registrationFor({
+      tournament: t,
+      tees: s.tees,
+      player,
+      entry,
+      records: recordsFor(s, player.id),
+    });
+    // A pair is classed together, so the team number rides along. An organizer override keeps the
+    // class the organizer chose and is left out of the team class.
+    out.push({
+      ...reg,
+      reasons: [...reg.reasons],
+      teamKey: entry.teamNo != null && !hasStoredRouting(entry) ? `team-${entry.teamNo}` : null,
+    });
   }
+  // The class of a member-guest pair is the average of both indexes, the same rule the engine
+  // draws by. Without it each partner is judged on their own index and the draw checks report a
+  // pair as "from another flight" although the engine grouped it correctly.
+  applyTeamClasses(out, t.flights);
   return out;
 }
 
@@ -322,7 +337,10 @@ export function playingDaysOfEvent(days: TournamentDay[]): TournamentDay[] {
  * session the desk recorded for that day. That is what keeps day 1's board from holding players who
  * registered for day 3, and what sends a confirmed afternoon player off in the afternoon.
  */
-export function routingInputFor(s: DeskState, dayNumber: number | null = null): RoutingInput | null {
+export function routingInputFor(
+  s: DeskState,
+  dayNumber: number | null = null,
+): RoutingInput | null {
   const t = activeTournament(s);
   if (!t) return null;
   const days = playingDaysOfEvent(s.days[t.id] ?? daysOfTournament(t));
@@ -494,9 +512,7 @@ export function buildPublished(
       flight: groupLabel(g),
       players: g.playerIds.map((id) => nameById.get(id) ?? "").filter((n) => n !== ""),
       playerIds: g.playerIds.filter((id) => nameById.has(id)),
-      ...(day
-        ? { dayNumber: day.dayNumber, dayLabel: day.dayLabel, playDate: day.playDate }
-        : {}),
+      ...(day ? { dayNumber: day.dayNumber, dayLabel: day.dayLabel, playDate: day.playDate } : {}),
     }));
   const otherDays = publishedGroupsForOtherDays(alreadyPublished, dayNumber);
   return {
@@ -834,8 +850,7 @@ export function reducer(state: DeskState, a: Action): DeskState {
       }));
       // A fresh proposal for one day does not take another day's published list down: only a
       // snapshot with no day left in it is cleared, which is the case until days are published.
-      const keepsOtherDays =
-        publishedGroupsForOtherDays(board.published, dayNumber).length > 0;
+      const keepsOtherDays = publishedGroupsForOtherDays(board.published, dayNumber).length > 0;
       const next: BoardState = {
         draw,
         // Small groups are checked live by validateDraw, so the engine's one-off copy would go stale.
