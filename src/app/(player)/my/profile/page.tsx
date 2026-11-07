@@ -25,9 +25,7 @@ export default async function PlayerProfilePage() {
   if (!isSupabaseConfigured()) {
     return (
       <div className="grid gap-4">
-        <h1 className="font-serif text-[30px] leading-9 font-semibold">
-          {t("player.profile.title")}
-        </h1>
+        <PlayerPageHeader title={t("player.profile.title")} />
         <p className="notice" role="status">
           {t("player.demo.body")}
         </p>

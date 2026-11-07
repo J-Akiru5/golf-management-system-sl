@@ -1545,6 +1545,13 @@
     display: grid;
     gap: 8px;
   }
+
+  /* --gold is tuned for the page surface. On the forest panel the small uppercased label
+     needs the lighter gold to stay above 4.5:1. */
+  .public-head .overline {
+    color: #e8cf95;
+  }
+
   .public-head h1,
   .public-head h2 {
     color: var(--on-forest);
@@ -1672,7 +1679,7 @@
     overflow: hidden;
   }
   .next-up .overline {
-    color: #d7b568;
+    color: #e8cf95;
   }
   .next-up-title {
     color: var(--on-forest);
@@ -2133,6 +2140,10 @@
     color: #000;
     border: 2px solid #000;
   }
+  .public-head .overline {
+    color: #000;
+  }
+
   .public-head h1,
   .public-head h2 {
     color: #000;

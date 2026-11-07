@@ -133,9 +133,17 @@ export function PortalEntries({
         <h2 className="text-[18px] leading-6">{entriesHeading}</h2>
       )}
       {state.entries.length === 0 ? (
-        <p className="notice" role="status">
-          {t("player.noEntries")}
-        </p>
+        <div className="grid gap-2">
+          <p className="notice" role="status">
+            {t("player.noEntries")}
+          </p>
+          <Link
+            href="/pairings"
+            className="inline-flex min-h-11 items-center font-semibold text-fairway no-underline hover:underline"
+          >
+            {t("player.app.openPairings")}
+          </Link>
+        </div>
       ) : entries.length > 0 ? (
         <div className="grid gap-4">
           {entries.map((entry) => (

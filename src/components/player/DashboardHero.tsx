@@ -51,7 +51,7 @@ export function DashboardHero({ next, t }: { next: NextUp; t: Translate }) {
       {status && (
         <p className="next-up-status" role="status">
           {status}
-          {entry.reasons.length > 0 && ` ${entry.reasons.join(" ")}`}
+          {entry.reasons.length > 0 && ` · ${entry.reasons.join(" ")}`}
         </p>
       )}
       <div className="next-up-actions">

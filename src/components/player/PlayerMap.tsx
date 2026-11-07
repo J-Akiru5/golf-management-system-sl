@@ -17,7 +17,8 @@ const VIEW_BOX = viewBoxOf(mapBounds(PLAYER_MAP_HOLES));
  * The holes as a diagram a phone can use: a routing drawing plus eighteen numbered chips.
  *
  * The chips are the tap targets, because a pin drawn on a 375px-wide illustration is smaller than
- * a thumb. The drawing follows the selection, so picking a hole shows where it runs.
+ * a thumb. The drawing is therefore presentational: the chips carry the interaction, and the
+ * drawing follows the selection so picking a hole still shows where it runs.
  */
 export function PlayerMap() {
   const { t } = useI18n();
@@ -36,19 +37,7 @@ export function PlayerMap() {
               />
               <circle cx={hole.tee[0]} cy={hole.tee[1]} r={5} className="hole-tee" />
               <circle cx={hole.green[0]} cy={hole.green[1]} r={9} className="hole-green" />
-              <g
-                role="button"
-                tabIndex={0}
-                aria-pressed={selected === hole.hole}
-                aria-label={t("player.course.hole", { hole: hole.hole })}
-                onClick={() => pick(hole.hole)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    pick(hole.hole);
-                  }
-                }}
-              >
+              <g aria-hidden="true">
                 <circle
                   cx={hole.pin[0]}
                   cy={hole.pin[1]}

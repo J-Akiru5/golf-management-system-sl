@@ -22,9 +22,7 @@ export default async function PlayerCardPage() {
   if (!isSupabaseConfigured()) {
     return (
       <div className="grid gap-4">
-        <h1 className="font-serif text-[30px] leading-9 font-semibold">
-          {t("player.scorecard.heading")}
-        </h1>
+        <PlayerPageHeader title={t("player.scorecard.heading")} />
         <p className="notice" role="status">
           {t("player.demo.body")}
         </p>
@@ -48,9 +46,12 @@ export default async function PlayerCardPage() {
           <p className="notice" role="status">
             {t("player.scorecard.empty")}
           </p>
-          <p className="hint">
-            <Link href="/pairings">{t("player.app.openPairings")}</Link>
-          </p>
+          <Link
+            href="/pairings"
+            className="inline-flex min-h-11 items-center font-semibold text-fairway no-underline hover:underline"
+          >
+            {t("player.app.openPairings")}
+          </Link>
         </div>
       ) : (
         entries.map((entry) => (

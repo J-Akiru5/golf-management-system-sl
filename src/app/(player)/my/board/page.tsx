@@ -32,9 +32,7 @@ export default async function PlayerBoardPage({
   if (!isSupabaseConfigured()) {
     return (
       <div className="grid gap-4">
-        <h1 className="font-serif text-[30px] leading-9 font-semibold">
-          {t("player.board.title")}
-        </h1>
+        <PlayerPageHeader title={t("player.board.title")} />
         <p className="notice" role="status">
           {t("player.demo.body")}
         </p>

@@ -113,7 +113,7 @@ function PortalBody({
     return (
       <div className="grid gap-4" data-help="my-entry">
         <PlayerOfflineNotice />
-        <PlayerPageHeader title={t("player.title")} intro={t("player.claim.notLinked")} />
+        <PlayerPageHeader title={t("player.title")} />
         <PortalEntries state={state} t={t} linkedMessage={linkedMessage} showIdentity={false} />
         <AppTiles t={t} />
         <ClaimCard t={t} notice={notice} defaultNgap={defaultNgap} />
