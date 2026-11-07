@@ -14,7 +14,7 @@ import { createSupabaseAdapters } from "./adapters";
  * a mutable `current` applied through the real reducer, and adds a fake database whose writes are
  * answered only when the test says so.
  */
-function connectedDesk(seed: DeskState) {
+function connectedDesk(seed: DeskState, options: { canWrite?: () => boolean } = {}) {
   let current = seed;
   const actions: Action[] = [];
   const errors: string[] = [];
@@ -60,7 +60,7 @@ function connectedDesk(seed: DeskState) {
       },
     },
     currentState: () => current,
-    canWrite: () => true,
+    canWrite: options.canWrite ?? (() => true),
     onError: (message) => errors.push(message),
     onSaved: () => {},
     onBusy: () => {},
@@ -169,6 +169,20 @@ describe("a registration edit while connected", () => {
 
     expect(entryById(h.state(), entry.id)?.paymentStatus).toBe(entry.paymentStatus);
     expect(h.errors[0]).toMatch(/row-level security policy/);
+  });
+
+  it("puts the previous value back when the desk cannot write at all", async () => {
+    const seed = initialState();
+    const entry = firstEntry(seed);
+    const h = connectedDesk(seed, { canWrite: () => false });
+
+    const write = h.adapters.registrations.update(entry.id, { paymentStatus: "recorded_paid" });
+    // The refusal happens before the queue starts, so nothing is sent.
+    await Promise.resolve(write).catch(() => undefined);
+    await h.settle();
+    expect(h.pending).toEqual([]);
+    expect(entryById(h.state(), entry.id)?.paymentStatus).toBe(entry.paymentStatus);
+    expect(h.errors[0]).toMatch(/offline, so this change was not saved/);
   });
 
   it("does not erase a later edit when the first write is refused", async () => {

@@ -978,7 +978,7 @@ export function createSupabaseAdapters(
       dispatch({ type: "updateEntry", id, patch });
       // The screen can wait for the row. A refused write puts the old values back, so an inline
       // payment control never keeps showing a change the database rejected.
-      return queuedWrite(async () => {
+      const write = queuedWrite(async () => {
         // Read the row when the write runs, not when it was queued: an earlier edit in the queue
         // has been applied by now, and this write must carry it rather than overwrite it.
         const row = latestState().entries.find((e) => e.id === id) ?? previous;
@@ -996,17 +996,20 @@ export function createSupabaseAdapters(
           })
           .eq("club_id", clubId)
           .eq("id", id);
-        if (error) {
-          if (previous) {
-            const now = latestState().entries.find((e) => e.id === id);
-            const restore = refusedPart(now, patch, previous);
-            if (Object.keys(restore).length > 0) {
-              dispatch({ type: "updateEntry", id, patch: restore });
-            }
-          }
-          throw new Error(`Could not save the registration: ${error.message}`);
+        if (error) throw new Error(`Could not save the registration: ${error.message}`);
+      });
+      // Any rejection puts the fields back, including the offline refusal, which never runs the
+      // work above. It is idempotent: after the first restore a field no longer holds the value
+      // this write set, so a second pass leaves it alone.
+      void write.catch(() => {
+        if (!previous) return;
+        const now = latestState().entries.find((e) => e.id === id);
+        const restore = refusedPart(now, patch, previous);
+        if (Object.keys(restore).length > 0) {
+          dispatch({ type: "updateEntry", id, patch: restore });
         }
       });
+      return write;
     },
     overrideReady: (entryId, input) => {
       const entry = latestState().entries.find((item) => item.id === entryId);
