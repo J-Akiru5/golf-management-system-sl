@@ -153,7 +153,7 @@ function mapPublishedGroup(value: unknown): PublishedGroup {
   ) {
     throw new Error("The saved published-pairings snapshot has an invalid group.");
   }
-  // Days are optional: snapshots written before 20261108000300 have none, and they still parse.
+  // Days are optional: snapshots written before 20261108000600 have none, and they still parse.
   const rawDayNumber = value.dayNumber;
   const dayNumber =
     typeof rawDayNumber === "number" && Number.isInteger(rawDayNumber) && rawDayNumber > 0

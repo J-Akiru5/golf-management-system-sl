@@ -3,7 +3,7 @@ import type { Database } from "@/lib/supabase/types";
 import { mapPublicPairingRows } from "./mappers";
 
 /**
- * The database has not had 20261108000300 yet. PostgREST answers with PGRST202 when a function is
+ * The database has not had 20261108000600 yet. PostgREST answers with PGRST202 when a function is
  * missing from its schema cache; anything else is a real failure and is thrown.
  */
 function isMissingFunction(error: { code?: string; message?: string }): boolean {

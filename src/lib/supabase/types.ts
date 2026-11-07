@@ -1091,7 +1091,7 @@ export interface Database {
       };
       /**
        * The same rows as public_pairings, split by playing day. Added by hand with
-       * 20261108000300_public_pairings_by_day.sql, which is not applied yet, so
+       * 20261108000600_public_pairings_by_day.sql, which is not applied yet, so
        * `supabase gen types typescript` cannot produce it.
        */
       public_pairings_by_day: {
