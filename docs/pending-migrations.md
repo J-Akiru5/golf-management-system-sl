@@ -13,8 +13,9 @@ here has been run by an agent. `20261108000100_open_round.sql` was applied by th
 | 5 | `20261108000600_public_pairings_by_day.sql` | A new public pairings function that returns every playing day | Scheduling (#176) |
 | 6 | `20261108000700_portal_starts_by_day.sql` | Replaces the body of the player portal function so each player gets one start per day. Same signature and grants. | Scheduling (#176) |
 
-Rules for the SQL editor: run one file at a time, read the result, then run the next. Take 4, 5 and
-6 together; 6 and 5 assume 4 has run. After 6, check `/my` for a player in a two-day event.
+Rules for the SQL editor: run one file at a time, read the result, then run the next. Keep 4, 5 and
+6 in that order; I did not find a hard dependency of 5 or 6 on 4, but the code that reads them
+assumes all three are in. After 6, check `/my` for a player in a two-day event.
 
 The same files live in the focus worktree (`S:\Dev\golf-management-system-sl\focus`), which is
 where the work is merged. The copies here are identical so you can see and open them.
