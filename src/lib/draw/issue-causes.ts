@@ -80,7 +80,8 @@ export function summariseIssues(issues: Issue[]): IssueCause[] {
       kind: "mixed-tees",
       count: tees.length,
       title: `${plural(tees.length, "group")} mix tees`,
-      detail: "Players in these groups start from different tees. Allowed, but look before you publish.",
+      detail:
+        "Players in these groups start from different tees. Allowed, but look before you publish.",
       action: null,
       issueIds: tees.map((i) => i.id),
     });

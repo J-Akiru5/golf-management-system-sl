@@ -263,6 +263,32 @@ export default function DrawPage() {
     setSelection(null);
   }
 
+  // The two steps behind a stale draw. Freezing writes the registrations first and the screen
+  // follows once the database answers, so a refused write leaves the old index in place and says so.
+  const [fixing, setFixing] = useState(false);
+  const [fixError, setFixError] = useState("");
+  async function fixCause(action: "refreeze" | "redraw") {
+    setFixError("");
+    if (action === "redraw") {
+      makeDraw(true);
+      return;
+    }
+    const ids = entries.filter((e) => regById.get(e.playerId)?.frozenOutdated).map((e) => e.id);
+    if (ids.length === 0 || !tournament) return;
+    setFixing(true);
+    try {
+      await adapters.registrations.refreeze(tournament.id, ids);
+    } catch (error) {
+      setFixError(
+        error instanceof Error
+          ? error.message
+          : "Could not freeze the indexes. The old ones are still in place.",
+      );
+    } finally {
+      setFixing(false);
+    }
+  }
+
   // Cards under one heading per start time. Confirmed provisional players get one clearly labelled
   // heading of their own instead of a made-up flight.
   const sections = new Map<string, NonNullable<typeof draw>>();
@@ -574,8 +600,15 @@ export default function DrawPage() {
 
           {view === "checks" && (
             <div data-help="draw-issues">
+              {fixError && (
+                <p className="notice bad" role="alert">
+                  {fixError}
+                </p>
+              )}
               <IssuesPanel
                 issues={issues}
+                busy={fixing}
+                onFix={(action) => void fixCause(action)}
                 onShow={(issue) => {
                   setView("board");
                   onShowIssue(issue);
