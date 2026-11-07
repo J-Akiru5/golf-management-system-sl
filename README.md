@@ -41,6 +41,12 @@ resets changes. To connect Supabase, copy `.env.example` to `.env.local` and set
 deployed domain so player-facing share links (the public entry link) point there rather than at
 localhost. The app uses email/password sign-in; it does not use a service-role key.
 
+For desk work without a Supabase project, the local dev server has one fixed development staff
+account: sign in at `/login` as `staff@gmail.com` with the password in
+[`docs/STAFF_ACCESS.md`](docs/STAFF_ACCESS.md). The app lands on `/admin` and the account chip
+shows the desk role. The account exists only in development with no Supabase URL; a production
+build or a configured project ignores it.
+
 **The shell is not wired to Supabase yet.** With Supabase configured, the sign-in guard and the
 login page are active, but the desk screens still read and write local demo data. The Supabase data
 layer is merged and parked at `src/lib/data/supabase` plus `src/lib/store/legacy-supabase-store.tsx`;

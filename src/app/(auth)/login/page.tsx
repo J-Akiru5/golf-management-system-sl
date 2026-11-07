@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { resendConfirmation, signInWithPassword } from "@/lib/auth/actions";
+import { hasDevStaffSession } from "@/lib/auth/dev-staff";
+import { devStaffLoginEnabled } from "@/lib/auth/dev-staff-rules";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -46,6 +49,8 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; message?: string; next?: string }>;
 }) {
   const params = await searchParams;
+  if (await hasDevStaffSession()) redirect("/admin");
+  const devStaff = devStaffLoginEnabled();
   const error = params.error ? ERRORS[params.error] : undefined;
   const message = params.message ? MESSAGES[params.message] : undefined;
   const configured = isSupabaseConfigured();
@@ -128,7 +133,15 @@ export default async function LoginPage({
         </p>
       </div>
 
-      {!configured && (
+      {!configured && devStaff && (
+        <p className="notice ok" role="status">
+          <b>Development sign-in is on.</b> Sign in as staff@gmail.com with the staff password in
+          docs/STAFF_ACCESS.md. It works on the local dev server only, and is off in a production
+          build or when Supabase is configured.
+        </p>
+      )}
+
+      {!configured && !devStaff && (
         <p className="hint">
           Supabase is not configured in this build, so sign-in is off and the desk runs on demo
           data. <Link href="/admin">Open the desk in demo mode</Link>.

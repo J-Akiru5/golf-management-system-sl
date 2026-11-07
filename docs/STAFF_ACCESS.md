@@ -4,6 +4,28 @@ This is the documented procedure for the people who run the tournament desk. It 
 default credentials with one account per person, a confirmed email address and a reset flow. The app
 does not contain a default password, and no one should be given one.
 
+## Local development sign-in (not a club account)
+
+A developer working on the desk can sign in without a Supabase project. On `pnpm dev` with no
+`NEXT_PUBLIC_SUPABASE_URL`, `/login` accepts one fixed development account:
+
+| Field | Value |
+| --- | --- |
+| Email | `staff@gmail.com` |
+| Password | `TeeLine-Desk-Dev-2026!` |
+| Role | `desk` (from the development session, not from `club_members`) |
+
+Start the app with `pnpm dev`, open `http://localhost:3000/login`, sign in, and the app lands
+on `/admin`. The account chip reads `staff@gmail.com` with `Desk · development sign-in`. The
+sample password is rated Strong by the app's own validator; the weak `password123` is still
+rejected and remains on the common-password list.
+
+This path is inert in a production build (`next build` and `next start` run with
+`NODE_ENV=production`) and inert whenever Supabase is configured, where the real staff
+accounts take over. It is a development cookie on the local dev server, never a database
+account: do not copy these details into a deployed environment, and do not create this
+address as a staff account in the real project.
+
 ## Who may do what
 
 | Role | Where it comes from | Can do |

@@ -37,6 +37,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { TournamentPicker, TournamentSelect } from "@/components/TournamentSelect";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tip, TooltipProvider } from "@/components/ui/tooltip";
+import { readDevStaffCookieEmail } from "@/lib/auth/dev-staff-cookie";
 import { validateDraw } from "@/lib/draw/validate";
 import { useDesk } from "@/lib/store/desk-store";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -98,14 +99,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
   // Supabase configured means the sign-in guard is live, but the shell still runs on demo data.
   const supabaseConfigured = isSupabaseConfigured();
+  // The development sign-in marker, read after mount so server and client render the same shell.
+  const [devStaffEmail, setDevStaffEmail] = useState<string | null>(null);
+  useEffect(() => {
+    setDevStaffEmail(readDevStaffCookieEmail());
+  }, []);
   // The account chip says what the desk store knows, not just that a server exists.
-  const account = !supabaseConfigured
-    ? { name: "Demo organizer", detail: "Demo · no sign-in yet" }
-    : member
-      ? { name: member.displayName, detail: roleLabel(member.role) ?? "Club member" }
-      : status === "loading"
-        ? { name: "Signing in…", detail: "Loading the desk" }
-        : { name: "Not signed in", detail: "Session unavailable" };
+  const account = devStaffEmail
+    ? { name: devStaffEmail, detail: "Desk · development sign-in" }
+    : !supabaseConfigured
+      ? { name: "Demo organizer", detail: "Demo · no sign-in yet" }
+      : member
+        ? { name: member.displayName, detail: roleLabel(member.role) ?? "Club member" }
+        : status === "loading"
+          ? { name: "Signing in…", detail: "Loading the desk" }
+          : { name: "Not signed in", detail: "Session unavailable" };
 
   const blocking = useMemo(() => {
     if (!draw || !tournament) return 0;
@@ -254,7 +262,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="mt-auto grid gap-3">
                 {/* The header's account chip is hidden below 768px, so the drawer carries the same
                     account and sign-out. Without it a phone has no way to end the session. */}
-                {supabaseConfigured && member && (
+                {(devStaffEmail || (supabaseConfigured && member)) && (
                   <div className="grid gap-1 border-t border-line pt-3">
                     <span className="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-ink">
                       <CircleUserRound className="size-4 shrink-0" aria-hidden="true" />
@@ -314,16 +322,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               <b className="block truncate text-sm text-ink">{account.name}</b>
               <small className="block truncate text-[11px] text-ink-muted">{account.detail}</small>
             </span>
-            {supabaseConfigured &&
-              (member ? (
-                <SignOutForm className="chrome-btn no-print" />
-              ) : (
-                status === "error" && (
-                  <Link href="/login" className="chrome-btn no-print no-underline">
-                    Sign in
-                  </Link>
-                )
-              ))}
+            {devStaffEmail || (supabaseConfigured && member) ? (
+              <SignOutForm className="chrome-btn no-print" />
+            ) : (
+              supabaseConfigured &&
+              status === "error" && (
+                <Link href="/login" className="chrome-btn no-print no-underline">
+                  Sign in
+                </Link>
+              )
+            )}
           </span>
         </header>
 

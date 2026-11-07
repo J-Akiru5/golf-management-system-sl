@@ -3,6 +3,8 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { REMEMBER_COOKIE, rememberCookieOptions } from "@/lib/auth/cookies";
+import { clearDevStaffSession, startDevStaffSession } from "@/lib/auth/dev-staff";
+import { devStaffLoginEnabled, isDevStaffCredentials } from "@/lib/auth/dev-staff-rules";
 import { passwordProblem } from "@/lib/auth/password";
 import { landingFor } from "@/lib/auth/routes";
 import { signInErrorCode } from "@/lib/auth/sign-in-error";
@@ -53,12 +55,20 @@ async function homeFor(
 }
 
 export async function signInWithPassword(formData: FormData): Promise<void> {
-  if (!isSupabaseConfigured()) redirect("/login?error=supabase_not_configured");
   const email = formData.get("email");
   const password = formData.get("password");
   if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password) {
     redirect("/login?error=credentials_required");
   }
+
+  // The local development desk account. Off in a production build and whenever Supabase is
+  // configured, where real staff accounts take over. See docs/STAFF_ACCESS.md.
+  if (devStaffLoginEnabled() && isDevStaffCredentials(email, password)) {
+    await startDevStaffSession(formData.get("remember") === "on");
+    redirect("/admin");
+  }
+
+  if (!isSupabaseConfigured()) redirect("/login?error=supabase_not_configured");
 
   // The preference is written first and passed to the client explicitly: the auth cookies are set in
   // the same action, and the request cookie store does not have to show the write back.
@@ -149,6 +159,9 @@ export async function signUpWithPassword(formData: FormData): Promise<void> {
 export async function signOut(): Promise<void> {
   const store = await cookies();
   store.delete(REMEMBER_COOKIE);
+  await clearDevStaffSession();
+  // In demo mode there is no provider session to end, and creating a client would throw.
+  if (!isSupabaseConfigured()) redirect("/login?message=signed_out");
   const client = await createSupabaseServerClient();
   await client.auth.signOut();
   redirect("/login?message=signed_out");
