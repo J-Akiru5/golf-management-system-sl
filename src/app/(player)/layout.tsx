@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { FirstRunWelcome, HelpButton } from "@/components/help";
+import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { OnboardingGate } from "@/components/onboarding";
@@ -57,7 +57,6 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
         </header>
         <main className="public mobile-bar-space">{children}</main>
         <OnboardingGate role="player" />
-        <FirstRunWelcome audience="player" />
         <PlayerBottomBar />
         <InstallPrompt />
       </div>
