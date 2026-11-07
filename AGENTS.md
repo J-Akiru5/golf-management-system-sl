@@ -49,13 +49,17 @@ by reading the code.
 
 ## Git
 
-Base branch `develop`. Work on a feature branch and open a PR into `develop`; the owner merges.
-Do not push to `develop` directly. `main` is production and is kept level with `develop` after each
-merge; there is no `staging` yet. Check the remote (`git ls-remote`) before stating what is merged or
-what a branch contains.
+Base branch `develop` is the integration branch and does not deploy. Each issue is built on its own
+branch in its own worktree. The orchestrator merges a finished branch straight into `develop` (no PR)
+after `pnpm typecheck && pnpm lint && pnpm test && pnpm build` pass and the diff is reviewed. When a
+batch on `develop` is stable it is promoted to `staging` (the preview deployment). `main` is
+production and moves only on a tagged release. Check the remote (`git ls-remote`) before stating
+what is merged or what a branch contains.
 
-Only `develop` and `main` auto-deploy. `vercel.json` disables Vercel deployments for every other
-branch, so previews are off by design; do not re-enable them without the owner.
+Only `main` (production) and `staging` (preview) auto-deploy. `vercel.json` disables Vercel
+deployments for every other branch, `develop` included; do not re-enable them without the owner.
+Coding agents other than the orchestrator never push, never merge to `develop` or `staging`, and
+never deploy.
 
 ## Writing style
 
