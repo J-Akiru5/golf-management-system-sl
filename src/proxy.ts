@@ -54,6 +54,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const user = error ? null : data.user;
 
   let identity: Identity = "signed-out";
+  let staffRole: string | null = null;
   if (user) {
     identity = "unlinked";
 
@@ -67,6 +68,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
     if (!memberError && (membership?.length ?? 0) > 0) {
       identity = "staff";
+      // One membership row gives one role; with several the desk reports the problem itself.
+      staffRole = membership?.length === 1 ? (membership[0]?.role ?? null) : null;
     } else {
       try {
         if (await currentPlayerId(client)) identity = "player";
@@ -81,6 +84,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     search: request.nextUrl.search,
     next: request.nextUrl.searchParams.get("next"),
     identity,
+    staffRole,
   });
 
   if (decision.type === "allow") return response;

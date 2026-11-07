@@ -81,13 +81,17 @@ export function decide(input: {
   search?: string;
   next?: string | null;
   identity: Identity;
+  staffRole?: string | null;
 }): Decision {
   const { pathname, identity } = input;
   const search = input.search ?? "";
 
   if (pathname === "/login") {
     if (identity === "signed-out") return { type: "allow" };
-    return { type: "redirect", to: landingFor({ next: input.next ?? null, identity }) };
+    return {
+      type: "redirect",
+      to: landingFor({ next: input.next ?? null, identity, staffRole: input.staffRole }),
+    };
   }
 
   const area = areaOf(pathname);
@@ -108,14 +112,22 @@ export function decide(input: {
  * Where an account goes after signing in (or when it opens /login while already signed in).
  * `next` is honoured only when that area is open to the account; otherwise each area has a home.
  */
-export function landingFor(input: { next?: string | null; identity: Identity }): string {
+export function landingFor(input: {
+  next?: string | null;
+  identity: Identity;
+  /** The club role of a staff account. A desk volunteer lands on the phone staff app. */
+  staffRole?: string | null;
+}): string {
   const { identity } = input;
   const next = input.next?.trim() ?? "";
   const safe = next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "";
   const area = safe === "" ? "public" : areaOf(safe.split("?")[0] ?? safe);
 
   if (identity === "staff") {
-    return safe !== "" && area === "staff" ? safe : "/admin";
+    if (safe !== "" && area === "staff") return safe;
+    // Owners and organizers run the event from the control room; a desk account is a volunteer
+    // whose job is the staff app on a phone.
+    return input.staffRole === "desk" ? "/staff" : "/admin";
   }
 
   // Players and unlinked accounts may land on a public page they asked for, never on the desk.

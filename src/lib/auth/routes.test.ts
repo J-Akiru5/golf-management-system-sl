@@ -118,6 +118,33 @@ describe("landingFor", () => {
     expect(landingFor({ identity: "player" })).toBe("/my");
     expect(landingFor({ identity: "unlinked" })).toBe("/my");
   });
+
+  it("sends a desk volunteer to the staff app and everyone else on the staff side to the desk", () => {
+    expect(landingFor({ identity: "staff", staffRole: "desk" })).toBe("/staff");
+    expect(landingFor({ identity: "staff", staffRole: "organizer" })).toBe("/admin");
+    expect(landingFor({ identity: "staff", staffRole: "owner" })).toBe("/admin");
+    expect(landingFor({ identity: "staff", staffRole: null })).toBe("/admin");
+  });
+
+  it("still honours a staff path a desk volunteer asked for, and never an off-site one", () => {
+    expect(landingFor({ next: "/staff/schedule", identity: "staff", staffRole: "desk" })).toBe(
+      "/staff/schedule",
+    );
+    expect(landingFor({ next: "//evil.example", identity: "staff", staffRole: "desk" })).toBe(
+      "/staff",
+    );
+  });
+
+  it("does not change where a player goes because of a role", () => {
+    expect(landingFor({ identity: "player", staffRole: "desk" })).toBe("/my");
+  });
+
+  it("applies the same rule when an already signed-in desk account opens /login", () => {
+    expect(decide({ pathname: "/login", identity: "staff", staffRole: "desk" })).toEqual({
+      type: "redirect",
+      to: "/staff",
+    });
+  });
 });
 
 describe("PROXY_MATCHER", () => {

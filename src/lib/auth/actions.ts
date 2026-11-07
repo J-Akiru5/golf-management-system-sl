@@ -35,8 +35,12 @@ async function homeFor(
   next: string,
 ): Promise<string> {
   try {
-    await getDeskMember(client, userId);
-    return landingFor({ next: next === "/" ? null : next, identity: "staff" });
+    const member = await getDeskMember(client, userId);
+    return landingFor({
+      next: next === "/" ? null : next,
+      identity: "staff",
+      staffRole: member.role,
+    });
   } catch {
     let linked = false;
     try {
