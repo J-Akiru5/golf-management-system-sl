@@ -21,6 +21,7 @@ export default function StaffScorePage() {
   const { schedule } = useStaffRows();
   const [claim, setClaim] = useState<GroupClaim | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [scanFirst, setScanFirst] = useState(false);
 
   useEffect(() => {
     if (!tournament || !day) {
@@ -31,6 +32,12 @@ export default function StaffScorePage() {
     setClaim(readClaim(tournament.id, day.number));
     setLoaded(true);
   }, [tournament, day]);
+
+  // The Today screen's "Scan a card" action arrives with ?tab=scan, so the group picked here opens
+  // on the scan tab instead of dropping the volunteer into tap scoring.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "scan") setScanFirst(true);
+  }, []);
 
   const claimed = claim ? (schedule.find((group) => group.id === claim.groupId) ?? null) : null;
 
@@ -68,7 +75,7 @@ export default function StaffScorePage() {
             {schedule.map((group) => (
               <Link
                 key={group.id}
-                href={`/staff/groups/${group.id}/score`}
+                href={`/staff/groups/${group.id}/score${scanFirst ? "?tab=scan" : ""}`}
                 className={styles.groupRow}
               >
                 <span className={styles.groupNumber}>{group.number}</span>

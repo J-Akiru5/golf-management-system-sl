@@ -147,7 +147,7 @@ export default function StaffTodayPage() {
         </Link>
         <Link
           className={styles.actionCard}
-          href={claim ? `/staff/groups/${claim.groupId}/score` : "/staff/score"}
+          href={claim ? `/staff/groups/${claim.groupId}/score?tab=scan` : "/staff/score?tab=scan"}
         >
           <span>
             <b>Scan a card</b>

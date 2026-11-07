@@ -172,6 +172,7 @@ export default function StaffPlayersPage() {
               <button type="button" className={styles.rowMain} onClick={() => open(row)}>
                 <b>{row.name}</b>
                 <span className={styles.rowMeta}>
+                  {row.flightId && <span>{names.flight(row.flightId)}</span>}
                   {row.group ? (
                     <span>Group {row.group.number}</span>
                   ) : (
