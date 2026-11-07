@@ -170,8 +170,11 @@ export interface SetupRepository {
    * An owner or organizer vouches that the saved tees and holes match the club scorecard. Printed
    * sheets lose their placeholder watermark only after this, and any later edit to the numbers
    * withdraws it.
+   *
+   * Resolves once the row is written; the demo returns immediately. A screen that shows a tick for
+   * it should wait, so a refusal can put the tick back.
    */
-  confirmCourse(tournamentId: string, confirmed: boolean): void;
+  confirmCourse(tournamentId: string, confirmed: boolean): void | Promise<void>;
 }
 
 /** The minimum facts the organizer must supply to place a player whose profile is incomplete. */
