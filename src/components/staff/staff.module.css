@@ -617,6 +617,12 @@
 .secondary,
 .danger,
 .dangerSolid {
+  /* A flex row, so an icon sits beside its label instead of stacking above it. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
   min-height: 54px;
   border-radius: 12px;
   padding: 0 20px;
@@ -624,6 +630,13 @@
   font-weight: 700;
   width: 100%;
   border: 1px solid transparent;
+}
+
+.primary svg,
+.secondary svg,
+.danger svg,
+.dangerSolid svg {
+  flex: none;
 }
 
 .primary {
