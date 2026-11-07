@@ -1,0 +1,441 @@
+/*
+ * The public join card: one A5 sheet for the desk and the same card on a phone.
+ *
+ * Screen view uses the app's ivory/charcoal tokens. The print block forces white paper and
+ * near-black ink, because a card printed while the desk is in dark mode is unreadable, and the
+ * QR code only scans on white.
+ */
+
+.join {
+  max-width: 720px;
+  gap: 16px;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px))
+    max(16px, env(safe-area-inset-right, 0px));
+}
+
+.screenHead {
+  display: grid;
+  gap: 6px;
+}
+
+.screenKicker {
+  margin: 0;
+  font-family: var(--f-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+
+.screenTitle {
+  margin: 0;
+  font-family: var(--f-serif);
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.screenLede {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.printActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.printButton {
+  flex: 0 0 auto;
+}
+
+.printHint {
+  margin: 0;
+  flex: 1 1 220px;
+}
+
+/* ---------- The card ---------- */
+
+.card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 148mm;
+  min-width: 0;
+  margin-inline: auto;
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+}
+
+.cardHead {
+  display: grid;
+  gap: 10px;
+}
+
+.brand {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.logoLight {
+  display: block;
+  width: 188px;
+  max-width: 100%;
+  height: auto;
+}
+
+.logoMono {
+  display: none;
+}
+
+.club {
+  margin: 0;
+  font-family: var(--f-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: var(--f-serif);
+  font-size: 30px;
+  line-height: 1.08;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cardLede {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* ---------- QR ---------- */
+
+.qrFigure {
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+/* Fixed box, so the placeholder before the origin resolves occupies exactly the same space. */
+.qrBox {
+  width: 168px;
+  height: 168px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.qrCode {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.qrCode svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.qrPlaceholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+}
+
+.qrUrl {
+  margin: 0;
+  min-height: 34px;
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  text-align: center;
+}
+
+.qrUrlLabel {
+  font-family: var(--f-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.qrUrlText {
+  font-family: var(--f-sans);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Player half ---------- */
+
+.playerHalf,
+.staffHalf {
+  display: grid;
+  gap: 8px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--f-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+
+.languages {
+  display: grid;
+  gap: 10px;
+}
+
+.language {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.language:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.languageLabel {
+  margin: 0;
+  font-family: var(--f-sans);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.steps {
+  margin: 0;
+  padding-left: 18px;
+  list-style: decimal;
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+/* ---------- Staff half ---------- */
+
+.staffBody {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.staffLink {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  color: var(--ink);
+  font-family: var(--f-sans);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ---------- Print: one A5 page ---------- */
+
+@media print {
+  @page {
+    size: A5 portrait;
+    margin: 0;
+  }
+
+  :global(html),
+  :global(body) {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* The app's install prompt is not part of the card and would land on the sheet. */
+  :global(.install-prompt) {
+    display: none !important;
+  }
+
+  .join {
+    display: block;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+  }
+
+  .screenHead,
+  .printActions {
+    display: none !important;
+  }
+
+  .card {
+    width: 148mm;
+    height: 210mm;
+    max-width: none;
+    margin: 0;
+    padding: 9mm;
+    overflow: hidden;
+    box-sizing: border-box;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    display: grid;
+    align-content: start;
+    gap: 4mm;
+    background: #fff;
+    color: #111;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .cardHead {
+    gap: 2.5mm;
+  }
+
+  .logoLight {
+    display: none;
+  }
+
+  .logoMono {
+    display: block;
+    width: 46mm;
+    height: 8.3mm;
+    max-width: 100%;
+  }
+
+  .club {
+    font-size: 8pt;
+    letter-spacing: 0.08em;
+    color: #333;
+  }
+
+  .cardTitle {
+    font-size: 17pt;
+    line-height: 1.1;
+    color: #111;
+  }
+
+  .cardLede {
+    font-size: 8pt;
+    line-height: 1.35;
+    color: #333;
+  }
+
+  .qrFigure {
+    gap: 1.5mm;
+  }
+
+  .qrBox {
+    width: 42mm;
+    height: 42mm;
+    border: 0.3mm solid #111;
+    border-radius: 0;
+    background: #fff;
+  }
+
+  .qrUrl {
+    min-height: 0;
+    gap: 0.6mm;
+  }
+
+  .qrUrlLabel {
+    font-size: 6.5pt;
+    color: #333;
+  }
+
+  .qrUrlText {
+    font-size: 7.5pt;
+    color: #111;
+  }
+
+  .playerHalf,
+  .staffHalf {
+    gap: 2mm;
+  }
+
+  .sectionTitle {
+    font-size: 8pt;
+    color: #111;
+  }
+
+  .languages {
+    gap: 2mm;
+  }
+
+  .language {
+    gap: 0.8mm;
+    padding-top: 1.5mm;
+    border-top: 0.25mm solid #111;
+  }
+
+  .languageLabel {
+    font-size: 8pt;
+    color: #111;
+  }
+
+  .steps {
+    padding-left: 4mm;
+    gap: 0.4mm;
+    font-size: 7.5pt;
+    line-height: 1.3;
+    color: #111;
+  }
+
+  .staffHalf {
+    padding-top: 2mm;
+    border-top: 0.3mm solid #111;
+  }
+
+  .staffBody {
+    font-size: 7.5pt;
+    line-height: 1.3;
+    color: #333;
+  }
+
+  .staffLink {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    font-size: 8pt;
+    font-weight: 700;
+    color: #111;
+    text-decoration: none;
+  }
+}
