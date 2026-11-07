@@ -4149,9 +4149,12 @@
   text-decoration: underline;
 }
 
-.footer-placeholder {
-  color: rgb(197 211 202 / 58%) !important;
-  font-style: italic;
+@media (max-width: 1023px) {
+  /* The touch-target rule above makes footer links flex boxes that stretch to the column, so a
+     centred label sits under a left-aligned heading. Keep the targets, align the words. */
+  .footer-col a {
+    justify-content: flex-start;
+  }
 }
 
 .footer-bar {
@@ -4162,6 +4165,10 @@
   gap: 10px 24px;
   padding-top: 22px;
   border-top: 1px solid rgb(197 211 202 / 16%);
+}
+
+.footer-bar .select-all {
+  white-space: nowrap;
 }
 
 .footer-bar p {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LiveBoard } from "@/components/player/LiveBoard";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
+import { PlayerDemoPanel } from "@/components/player/PlayerDemoPanel";
 import { PlayerPageHeader } from "@/components/player/PlayerPageHeader";
 import type { PublicRoundSummary } from "@/lib/data/public-results";
 import { getI18n } from "@/lib/i18n/server";
@@ -33,9 +34,7 @@ export default async function PlayerBoardPage({
     return (
       <div className="grid gap-4">
         <PlayerPageHeader title={t("player.board.title")} />
-        <p className="notice" role="status">
-          {t("player.demo.body")}
-        </p>
+        <PlayerDemoPanel t={t} />
       </div>
     );
   }

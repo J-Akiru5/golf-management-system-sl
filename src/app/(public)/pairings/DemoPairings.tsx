@@ -93,8 +93,11 @@ export function DemoPairings() {
         </>
       )}
 
+      <p className="hint no-print">{t("pairings.demoFooter")}</p>
       <p className="hint no-print">
-        {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link>
+        <Link href="/" className="font-semibold underline underline-offset-2">
+          {t("pairings.home")}
+        </Link>
       </p>
       <PlayerBottomBar />
     </main>

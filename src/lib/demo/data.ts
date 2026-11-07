@@ -113,7 +113,7 @@ export function makeDemoTournaments(): Tournament[] {
   const bambooTee: Tournament = {
     id: "bamboo-tee-2026",
     clubId: DEMO_CLUB.id,
-    name: "Bamboo Tee (demo sample title)",
+    name: "Bamboo Tee",
     // The materials in this repo do not name the November event, so the title is editable and flagged.
     nameNeedsConfirmation: true,
     courseId: DEMO_COURSE.id,

@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { requestPasswordReset } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+export const metadata: Metadata = { title: "Reset your password" };
 
 const ERRORS: Record<string, string> = {
   email_required: "Enter the email address on your account.",

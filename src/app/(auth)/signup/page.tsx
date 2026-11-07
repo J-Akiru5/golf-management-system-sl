@@ -103,7 +103,10 @@ export default async function SignUpPage({
           <p className="notice" role="status">
             Accounts are not available in this build, because it has no connection to the
             club&apos;s database. You can still{" "}
-            <Link href="/admin">open the desk in demo mode</Link>.
+            <Link href="/pairings" className="font-semibold underline underline-offset-2">
+              view the published pairings
+            </Link>
+            .
           </p>
         )}
 

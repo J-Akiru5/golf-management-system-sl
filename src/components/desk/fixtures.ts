@@ -98,7 +98,7 @@ export const FAKE_PICKS: PlayerPickItem[] = [
 ];
 
 export const FAKE_EVENT = {
-  name: "Bamboo Tee (demo sample title)",
+  name: "Bamboo Tee",
   dateLabel: "Nov 12 – 15, 2026",
   cutOffLabel: "cut-off Nov 1, 2026",
   formatLabel: "Shotgun · 6:30 AM",

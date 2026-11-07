@@ -442,7 +442,6 @@ export default async function HomePage() {
           <div className="footer-col">
             <h2>Club</h2>
             <p>Iloilo Golf and Country Club</p>
-            <p className="footer-placeholder">[Contact address to be confirmed by the club]</p>
           </div>
 
           <nav className="footer-col" aria-label="Legal">
@@ -466,12 +465,12 @@ export default async function HomePage() {
         </p>
       </footer>
 
-      <aside className="preview-note" role="note">
-        <span>Product preview</span>
-        {isSupabaseConfigured()
-          ? "The desk and the player area are behind sign-in. Pairings stay public."
-          : "This build runs on demo data with no accounts. Changes reset when the page is refreshed."}
-      </aside>
+      {!isSupabaseConfigured() && (
+        <aside className="preview-note" role="note">
+          <span>Demo build</span>
+          This build runs on demo data with no accounts. Changes reset when the page is refreshed.
+        </aside>
+      )}
       <PlayerBottomBar />
     </main>
   );

@@ -306,7 +306,7 @@ export const hil: Dictionary = {
     missing: "Wala sa sini nga screen ang control nga imo ginapangita subong.",
     welcome: {
       player: {
-        title: "Maayo nga pag-abot sa My golf",
+        title: "Maayo nga pag-abot sa TeeLine Golf",
         body: "Duha ka butang ang mahimo mo diri.",
         entries: "Tan-awa ang imo entry: pagsugod, flight, tee kag bayad.",
         pairings:

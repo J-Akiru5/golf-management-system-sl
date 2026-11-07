@@ -307,7 +307,7 @@ export const en = {
     missing: "That control is not on this screen right now.",
     welcome: {
       player: {
-        title: "Welcome to My golf",
+        title: "Welcome to TeeLine Golf",
         body: "Two things you can do here.",
         entries: "See your entry: start, flight, tee and payment.",
         pairings:

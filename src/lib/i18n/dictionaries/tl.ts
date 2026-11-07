@@ -306,7 +306,7 @@ export const tl: Dictionary = {
     missing: "Wala sa screen na ito ang control na iyon sa ngayon.",
     welcome: {
       player: {
-        title: "Maligayang pagdating sa My golf",
+        title: "Maligayang pagdating sa TeeLine Golf",
         body: "Dalawang bagay ang magagawa mo dito.",
         entries: "Tingnan ang entry mo: simula, flight, tee at bayad.",
         pairings:

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Avatar } from "@/components/bits";
+import { PlayerDemoPanel } from "@/components/player/PlayerDemoPanel";
 import { PlayerPageHeader } from "@/components/player/PlayerPageHeader";
 import { SignOutForm } from "@/components/SignOutForm";
 import { loadPublicPhotos } from "@/lib/data/public-results";
@@ -26,9 +27,7 @@ export default async function PlayerProfilePage() {
     return (
       <div className="grid gap-4">
         <PlayerPageHeader title={t("player.profile.title")} />
-        <p className="notice" role="status">
-          {t("player.demo.body")}
-        </p>
+        <PlayerDemoPanel t={t} />
       </div>
     );
   }

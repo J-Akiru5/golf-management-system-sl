@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppTiles, DashboardHero } from "@/components/player/DashboardHero";
 import { PlayerOfflineNotice, RememberPortal } from "@/components/player/OfflinePortal";
+import { PlayerDemoPanel } from "@/components/player/PlayerDemoPanel";
 import { PlayerGreeting } from "@/components/player/PlayerGreeting";
 import { PlayerPageHeader } from "@/components/player/PlayerPageHeader";
 import { PortalEntries } from "@/components/player/PortalView";
@@ -160,9 +161,7 @@ export default async function MyGolfPage({
     return (
       <div className="grid gap-4" data-help="my-entry">
         <PlayerPageHeader title={t("player.title")} />
-        <p className="notice" role="status">
-          {t("player.demo.body")} <Link href="/pairings">{t("player.demo.link")}</Link>.
-        </p>
+        <PlayerDemoPanel t={t} />
       </div>
     );
   }
