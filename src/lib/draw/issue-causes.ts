@@ -67,7 +67,7 @@ export function summariseIssues(issues: Issue[]): IssueCause[] {
     causes.push({
       kind: "flights",
       count: flights.length,
-      title: `${plural(flights.length, "group")} no longer match the players' classes`,
+      title: `${plural(flights.length, "group")} ${flights.length === 1 ? "no longer matches" : "no longer match"} the players' classes`,
       detail:
         "The saved draw was made from different indexes than the ones now on file. Redraw to regroup by class.",
       action: "redraw",

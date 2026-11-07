@@ -37,7 +37,7 @@ describe("summariseIssues", () => {
     ];
     const causes = summariseIssues(issues);
     expect(causes.map((c) => c.kind)).toEqual(["refreeze", "flights", "small"]);
-    expect(causes[1]?.title).toBe("1 group no longer match the players' classes");
+    expect(causes[1]?.title).toBe("1 group no longer matches the players' classes");
   });
 
   it("never folds a blocking issue, and leaves unknown warnings out of the causes", () => {
