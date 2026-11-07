@@ -111,6 +111,8 @@ describe("validateDraw", () => {
     ];
     const issues = check([grp(1, ["a", "b", "c"])], regs);
     expect(ids(issues)).toEqual(["flight-1", "cats-1"]);
+    // The line names who is in another flight, not only that someone is.
+    expect(issues.find((i) => i.id === "flight-1")?.message).toContain("Player c is");
   });
 
   it("passes the routing engine's warnings through as warnings", () => {

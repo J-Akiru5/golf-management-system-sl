@@ -147,7 +147,10 @@ export function validateDraw({
       issues.push({
         id: `flight-${g.number}`,
         severity: "warning",
-        message: `Group ${g.number} (${names.flight(g.flightId)}) has ${plural(other.length, "player")} from another flight.`,
+        message: `Group ${g.number} is ${names.flight(g.flightId)}, but ${other
+          .slice(0, 3)
+          .map((id) => `${nameOf(id)} is ${names.flight(regById.get(id)?.flightId ?? null)}`)
+          .join("; ")}${other.length > 3 ? ` and ${other.length - 3} more` : ""}.`,
         group: g.number,
       });
     }

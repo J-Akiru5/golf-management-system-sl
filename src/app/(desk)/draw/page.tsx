@@ -672,6 +672,7 @@ export default function DrawPage() {
                           ? UNCLASSIFIED_LABEL
                           : names.flight(g.flightId)
                       }
+                      flightNameOf={names.flight}
                       players={playerById}
                       regs={regById}
                       manualOverrideIds={manualOverrideIds}

@@ -12,6 +12,8 @@ export interface GroupCardProps {
   groupSize: number;
   minGroupSize: number;
   flightName: string;
+  /** The class name for any flight id, so a player in another class can say which one. */
+  flightNameOf?: (id: string | null) => string;
   players: Map<string, PlayerRecord>;
   regs: Map<string, DeskRegistration>;
   /** Players the organizer moved by hand; shown with a Manual pill. */
@@ -168,7 +170,9 @@ function GroupCardImpl(p: GroupCardProps) {
                 {p.manualOverrideIds.has(id) && <span className="pill gold">Manual</span>}
                 {r.provisional && <span className="pill warn">Provisional</span>}
                 {r.flightId && r.flightId !== g.flightId && (
-                  <span className="pill warn">Other flight</span>
+                  <span className="pill warn">
+                    {p.flightNameOf ? `Is ${p.flightNameOf(r.flightId)}` : "Other flight"}
+                  </span>
                 )}
                 {r.provisional && r.missing.length > 0 && (
                   <span className="hint">no {r.missing.join(", no ")}</span>
