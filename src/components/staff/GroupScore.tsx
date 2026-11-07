@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, ScanLine, Undo2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Hand, ScanLine, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
@@ -306,6 +306,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
           className={styles.tab}
           onClick={() => setTab("tap")}
         >
+          <Hand aria-hidden="true" />
           Tap scores
         </button>
         <button
@@ -315,7 +316,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
           className={styles.tab}
           onClick={() => setTab("scan")}
         >
-          <ScanLine aria-hidden="true" size={18} style={{ marginRight: 6 }} />
+          <ScanLine aria-hidden="true" />
           Scan card
         </button>
       </div>
