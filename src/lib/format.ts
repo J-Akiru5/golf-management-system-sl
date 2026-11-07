@@ -14,6 +14,22 @@ export function fmtTime(hhmm: string): string {
   return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${suffix}`;
 }
 
+/**
+ * "2026-11-12" stays a short day people say out loud: "Thu, Nov 12". The day is read in the club's
+ * time zone so a date stored at midnight UTC does not flip to the day before.
+ */
+export function shortDate(iso: string | null): string | null {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const date = new Date(`${iso}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-PH", {
+    timeZone: "Asia/Manila",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
 /** Plus handicaps are stored negative; golfers read them as "+2.3". */
 export function fmtIndex(index: number | null): string {
   if (index === null) return "NH";

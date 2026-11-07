@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
-import { fmtHcp, fmtIndex, fmtTime } from "@/lib/format";
+import { fmtHcp, fmtIndex, fmtTime, shortDate } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
 import {
   type PortalEntry,
@@ -27,15 +27,21 @@ export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
     { label: t("player.fact.payment"), value: paymentLabel(t, entry.paymentStatus) },
   ];
   const unconfirmed = entry.status !== "ok";
+  // "Thu, Nov 12 · Fri, Nov 13", not the stored ISO days.
+  const dates =
+    entry.dates.length > 1
+      ? entry.dates.map((date) => shortDate(date) ?? date).join(" · ")
+      : (() => {
+          const date = entry.eventDate ?? entry.dates[0];
+          return date ? (shortDate(date) ?? date) : t("player.value.dateTbc");
+        })();
 
   return (
     <article className="card grid gap-3">
       <header className="grid gap-1">
         <h3 className="font-serif text-[24px] leading-7 font-semibold">{entry.eventName}</h3>
         <p className="hint">
-          {entry.dates.length > 1
-            ? entry.dates.join(" · ")
-            : (entry.eventDate ?? t("player.value.dateTbc"))}
+          {dates}
           {" · "}
           {entry.startFormat === "shotgun" ? t("player.value.shotgun") : t("player.value.twoTee")}
         </p>
