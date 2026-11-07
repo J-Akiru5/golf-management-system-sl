@@ -131,7 +131,7 @@ export default function StaffSchedulePage() {
             </button>
           )}
         </div>
-        <p className={styles.searchCount}>
+        <p className={styles.searchCount} suppressHydrationWarning>
           {notice ? `${notice} · ` : ""}
           {query.trim() === ""
             ? `${visible.length} groups${sessionLabel ? ` in the ${sessionLabel} session` : ""} · ${fmtTime(now.clock)} at the club`
@@ -277,7 +277,7 @@ export default function StaffSchedulePage() {
       </div>
 
       {isNextDetailVisible(state, nextDetail) && (
-        <p className={styles.muted} aria-live="polite">
+        <p className={styles.muted} aria-live="polite" suppressHydrationWarning>
           {nextDetail === "first group"
             ? "The marked group is the first to tee off on this day."
             : `The marked group is next, ${nextDetail}.`}
