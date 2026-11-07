@@ -108,7 +108,8 @@ export default async function JoinPage() {
             {t("onboard.join.staffTitle")}
           </h3>
           <p className={styles.staffBody}>{t("onboard.join.staffBody")}</p>
-          <Link className={styles.staffLink} href="/login">
+          {/* Staff land on the phone staff app, not the full desk: sign-in honours `next`. */}
+          <Link className={styles.staffLink} href="/login?next=%2Fstaff">
             {t("onboard.join.staffAction")}
           </Link>
         </section>
