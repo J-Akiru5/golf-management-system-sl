@@ -65,7 +65,7 @@ const page = await context.newPage();
 const errors = [];
 const watch = (p) => {
   p.on("console", (m) => {
-    if (m.type() === "error") errors.push(m.text());
+    if (m.type() === "error") errors.push(`${p.url()} :: ${m.text()}`);
   });
   p.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 };
@@ -115,7 +115,7 @@ await page.emulateMedia({ media: "screen" });
 section("/register paging");
 await go("/register");
 await expect(range).toHaveText("1–50 of 90", { timeout: 30000 });
-const regRows = page.locator("div.grid.gap-2 > article");
+const regRows = page.locator("article");
 check("page 1 holds 50 of 90", (await regRows.count()) === 50, `(${await regRows.count()})`);
 // networkidle does not mean hydrated, and a click that lands too early is swallowed rather than
 // queued. The register page is the heaviest list in the shell, so it is the one that shows it:

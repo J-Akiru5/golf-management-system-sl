@@ -436,7 +436,12 @@ export function DivisionsPanel({ b, variant }: { b: Board; variant?: PanelVarian
             {rows.map(([k, c], i) => {
               const sweep = (Math.PI * c) / total;
               const a2 = a + sweep - (rows.length > 1 ? 0.03 : 0);
-              const d = `M${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)} A${r} ${r} 0 0 1 ${cx + r * Math.cos(a2)} ${cy + r * Math.sin(a2)}`;
+              // Rounded, not raw: a trigonometric result can differ in its last decimal place
+              // between the server and the browser, which React reports as a hydration mismatch
+              // on the path.
+              const point = (angle: number) =>
+                `${(cx + r * Math.cos(angle)).toFixed(2)} ${(cy + r * Math.sin(angle)).toFixed(2)}`;
+              const d = `M${point(a)} A${r} ${r} 0 0 1 ${point(a2)}`;
               a += sweep;
               return (
                 <path
@@ -578,6 +583,9 @@ export function ActivityList({ className }: { className?: string }) {
   const log = useActivity();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    // The first paint keeps the server's clock reading. Correcting it here makes the label
+    // accurate straight after hydration instead of at the next half-minute.
+    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
@@ -602,9 +610,11 @@ export function ActivityList({ className }: { className?: string }) {
             <b className="block truncate text-[13.5px] font-semibold">{e.title}</b>
             <span className="text-xs text-ink-muted">{e.detail}</span>
           </div>
+          {/* A relative time is meant to differ between the server and the browser. */}
           <time
             className="text-[11.5px] whitespace-nowrap text-ink-muted"
             dateTime={new Date(e.at).toISOString()}
+            suppressHydrationWarning
           >
             {ago(e.at, now)}
           </time>
