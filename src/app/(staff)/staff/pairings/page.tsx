@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Lock, Printer, Unlock, Users } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
 import styles from "@/components/staff/staff.module.css";
@@ -19,13 +19,52 @@ import { useDesk } from "@/lib/store/desk-store";
  * tee order and start format stay in the engine; this screen does not invent new defaults.
  */
 export default function StaffPairingsPage() {
-  const { tournament, draw, registrations, regById, names, dispatch, adapters } = useDesk();
+  const {
+    tournament,
+    draw,
+    registrations,
+    regById,
+    names,
+    dispatch,
+    adapters,
+    status,
+    saving,
+    error: deskError,
+    lastSavedAt,
+    reload,
+  } = useDesk();
   const { day, days, notice, setDayNumber } = useStaffDay();
   const { rows, schedule } = useStaffRows();
   const toast = useToast();
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("Staff pairing edit");
   const [error, setError] = useState("");
+  // The demo store has no network write to report, so it reports its local save here. The real
+  // desk keeps using `saving`, `deskError` and `lastSavedAt` below.
+  const [demoSaving, setDemoSaving] = useState(false);
+  const [demoSavedAt, setDemoSavedAt] = useState<string | null>(null);
+  const demoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (demoTimer.current) clearTimeout(demoTimer.current);
+    },
+    [],
+  );
+
+  function markLocalSave() {
+    if (status !== "demo") return;
+    setDemoSaving(true);
+    setDemoSavedAt(null);
+    if (demoTimer.current) clearTimeout(demoTimer.current);
+    demoTimer.current = setTimeout(() => {
+      setDemoSaving(false);
+      setDemoSavedAt(new Date().toISOString());
+    }, 300);
+  }
+
+  const busy = saving || demoSaving;
+  const savedAt = lastSavedAt ?? demoSavedAt;
 
   const groupSize = tournament?.config.groupSize ?? 4;
   const regMap = useMemo(
@@ -73,6 +112,7 @@ export default function StaffPairingsPage() {
       toGroup,
       reason: reason.trim(),
     });
+    markLocalSave();
     toast.push({
       title: `${name} moved to group ${toGroup}`,
       detail: check.notes.length > 0 ? check.notes.join(" ") : "The board keeps the reason.",
@@ -83,6 +123,7 @@ export default function StaffPairingsPage() {
   function removePlayer(playerId: string, name: string) {
     if (!checkReason()) return;
     dispatch({ type: "withdrawFromDraw", playerId });
+    markLocalSave();
     toast.push({
       title: `${name} removed from the group`,
       detail: "They stay on the day's list and can be added to another group.",
@@ -98,6 +139,7 @@ export default function StaffPairingsPage() {
       locked: !locked,
       reason: reason.trim(),
     });
+    markLocalSave();
     toast.push({
       title: locked ? `Group ${groupNumber} unlocked` : `Group ${groupNumber} locked`,
       detail: locked
@@ -110,6 +152,7 @@ export default function StaffPairingsPage() {
   function createPairings() {
     if (!tournament) return;
     adapters.router.propose(false);
+    markLocalSave();
     toast.push({
       title: "Pairings created",
       detail: "The event's group size, flights, tee order and start format were used.",
@@ -172,9 +215,32 @@ export default function StaffPairingsPage() {
               aria-label="Reason for the pairing changes"
             />
           </label>
-          <p className={styles.saving} style={{ margin: "0 0 12px" }}>
-            Changes save to the board as you make them. Publishing stays with the full desk.
-          </p>
+          <div
+            className={styles.saving}
+            style={{ margin: "0 0 12px" }}
+            role="status"
+            aria-live="polite"
+          >
+            {busy && "Saving…"}
+            {!busy && deskError && (
+              <span role="alert">
+                Not saved. {deskError}{" "}
+                <button
+                  type="button"
+                  className={styles.linkButton}
+                  style={{ minHeight: 48, padding: "0 12px" }}
+                  onClick={reload}
+                >
+                  Retry
+                </button>
+              </span>
+            )}
+            {!busy && !deskError && savedAt && "Saved."}
+            {!busy &&
+              !deskError &&
+              !savedAt &&
+              "Changes save to the board as you make them. Publishing stays with the full desk."}
+          </div>
 
           <div className={styles.search}>
             <input
@@ -257,9 +323,8 @@ export default function StaffPairingsPage() {
                   <section key={group.id} className={styles.pairGroup}>
                     <header className={styles.pairGroupHead}>
                       <div>
-                        <b>
-                          Group {group.number} · {fmtTime(group.time)}
-                        </b>
+                        <b>Group {group.number}</b>
+                        <span className={styles.pairTime}>{fmtTime(group.time)}</span>
                         <span>
                           Hole {group.startHole} · {group.flightName} · {group.players.length}/
                           {groupSize} players
@@ -345,7 +410,7 @@ export default function StaffPairingsPage() {
                               <button
                                 type="button"
                                 className={styles.secondary}
-                                style={{ minHeight: 40, width: "auto", padding: "0 12px" }}
+                                style={{ minHeight: 44, width: "auto", padding: "0 12px" }}
                                 disabled={locked}
                                 onClick={() => removePlayer(player.playerId, player.playerName)}
                               >

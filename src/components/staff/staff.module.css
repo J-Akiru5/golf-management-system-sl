@@ -637,6 +637,8 @@
 }
 
 .sheetPanel > div:first-child button {
+  width: 44px;
+  height: 44px;
   color: var(--s-ink);
   border-color: var(--s-line);
   background: #ffffff;
@@ -872,9 +874,19 @@
   font-size: 18px;
 }
 
-.pairGroupHead span {
+.pairGroupHead span:not(.pairTime) {
   color: var(--s-muted);
   font-size: 14px;
+}
+
+.pairTime {
+  display: block;
+  margin: 2px 0;
+  color: var(--s-ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 28px;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
 }
 
 .pairPlayer {

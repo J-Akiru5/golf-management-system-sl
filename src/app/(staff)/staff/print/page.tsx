@@ -207,7 +207,7 @@ export default function StaffPrintPage() {
               <button
                 type="button"
                 className={styles.linkButton}
-                style={{ minHeight: 36, padding: "0 10px" }}
+                style={{ minHeight: 48, padding: "0 12px" }}
                 onClick={() =>
                   setExcluded(allSelected ? new Set(printGroups.map((g) => g.number)) : new Set())
                 }
@@ -228,6 +228,11 @@ export default function StaffPrintPage() {
               ))}
             </div>
 
+            {selectedGroups.length === 0 && (
+              <p className={styles.noticeWarn} style={{ padding: 12, borderRadius: 12 }}>
+                Choose at least one group above, or use Select all.
+              </p>
+            )}
             <button
               type="button"
               className={styles.primary}

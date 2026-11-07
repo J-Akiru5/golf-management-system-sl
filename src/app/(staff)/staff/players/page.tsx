@@ -2,8 +2,7 @@
 
 import { ArrowRight, Phone } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArriveButton } from "@/components/staff/ArriveButton";
 import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
@@ -54,12 +53,8 @@ function StaffPlayers() {
   const { day, days, notice, setDayNumber } = useStaffDay();
   const { rows, schedule } = useStaffRows();
   const toast = useToast();
-  const search = useSearchParams();
-  const requestedFilter = search.get("filter");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<ArrivalFilter>(() =>
-    arrivalFilterFromQuery(requestedFilter),
-  );
+  const [filter, setFilter] = useState<ArrivalFilter>("not-arrived");
   const [selected, setSelected] = useState<StaffRow | null>(null);
   const [moving, setMoving] = useState(false);
   const [moveReason, setMoveReason] = useState("");
@@ -92,12 +87,14 @@ function StaffPlayers() {
   const tournamentId = tournament?.id ?? null;
   const selectedDayNumber = day?.number ?? null;
 
-  // The add screen sends a review save here with ?filter=needs-review. Read it when the query
-  // changes so the same mounted page still opens on the review case. Manually chosen chips are not
-  // overridden because this effect only runs when the address changes.
+  // The add screen sends a review save here with ?filter=needs-review. Read it after mount rather
+  // than through useSearchParams: the hook forces this static client page into a Suspense boundary
+  // that is not revealed on a full page load. Manually chosen chips are not overridden because this
+  // reads the address once on mount.
   useEffect(() => {
-    setFilter(arrivalFilterFromQuery(requestedFilter));
-  }, [requestedFilter]);
+    const requested = new URLSearchParams(window.location.search).get("filter");
+    setFilter(arrivalFilterFromQuery(requested));
+  }, []);
 
   // The last withdrawal on this tab, so leaving Players to look at the group and coming back still
   // offers the undo. The token holds ids, not names; the player is looked up below.
@@ -564,10 +561,4 @@ function StaffPlayers() {
   );
 }
 
-export default function StaffPlayersPage() {
-  return (
-    <Suspense fallback={null}>
-      <StaffPlayers />
-    </Suspense>
-  );
-}
+export default StaffPlayers;
