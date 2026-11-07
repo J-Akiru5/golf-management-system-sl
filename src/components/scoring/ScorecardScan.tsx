@@ -1,10 +1,13 @@
 "use client";
 
 import { Camera, CheckCircle2, ImagePlus, Loader2, ScanLine, Upload } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CardCamera } from "@/components/scoring/CardCamera";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
+import type { ClubRole } from "@/lib/auth/member";
+import { canOpenPlayerProfile, playerProfileHref } from "@/lib/data/player-profile";
 import type { HoleDefinition } from "@/lib/scoring";
 import type {
   ScorecardScanApply,
@@ -23,6 +26,8 @@ interface ScorecardScanProps {
   players: readonly ScanPlayer[];
   holes: readonly HoleDefinition[];
   disabled?: boolean;
+  /** undefined in demo builds, null for an account with no club membership row. */
+  role?: ClubRole | null;
   onApply: (apply: ScorecardScanApply) => void;
 }
 
@@ -58,6 +63,7 @@ export function ScorecardScan({
   players,
   holes,
   disabled = false,
+  role,
   onApply,
 }: ScorecardScanProps) {
   const [mode, setMode] = useState<ScorecardScanMode>("individual");
@@ -96,6 +102,7 @@ export function ScorecardScan({
   }, [result, rowIndex]);
 
   const busy = phase === "hashing" || phase === "uploading" || phase === "reading";
+  const scanPlayer = players.find((player) => player.playerId === playerId) ?? null;
 
   function reset() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -284,6 +291,19 @@ export function ScorecardScan({
           disabled={busy || disabled || players.length === 0}
         />
       </div>
+      {/* The picker is a text field, so this separate link is what makes the name clickable
+          without turning a selection into a navigation. It sits under the row so the fields keep
+          their bottom alignment. */}
+      {scanPlayer && canOpenPlayerProfile(role) && (
+        <p className="hint">
+          <Link
+            href={playerProfileHref(scanPlayer.playerId)}
+            className="text-[13px] underline underline-offset-2"
+          >
+            {`Open ${scanPlayer.playerName}'s profile`}
+          </Link>
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         {/* No `capture` attribute: the camera is the app's own window, and this input is the

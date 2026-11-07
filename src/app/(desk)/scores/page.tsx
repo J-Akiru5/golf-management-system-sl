@@ -17,11 +17,14 @@ import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { HandicapSummary } from "@/components/scoring/HandicapSummary";
 import { OpenRoundPanel } from "@/components/scoring/OpenRoundPanel";
+import { PlayerLink } from "@/components/scoring/PlayerLink";
 import { ReaderAccuracyLine } from "@/components/scoring/ReaderAccuracy";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
+import type { ClubRole } from "@/lib/auth/member";
 import { type OpenRoundSnapshot, openRoundErrorMessage } from "@/lib/data/open-round";
+import { canOpenPlayerProfile, playerProfileHref } from "@/lib/data/player-profile";
 import type { OpenRoundInput, ScoringRoundView } from "@/lib/data/scoring";
 import { fmtHcp, fmtIndex } from "@/lib/format";
 import {
@@ -80,8 +83,13 @@ export default function ScoresPage() {
   const players = view?.players ?? [];
   const holes = view?.course.holes ?? [];
   const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
+  // Demo has no auth at all (`member` is undefined); a signed-in account always has a role. The
+  // profile link is only painted when the account may actually open a staff profile page.
+  const profileRole = member === undefined ? undefined : (member?.role ?? null);
+  const canOpenProfile = canOpenPlayerProfile(profileRole);
   const totalPar = holes.reduce((sum, hole) => sum + hole.par, 0);
   const selectedPlayer = players.find((player) => player.playerId === playerId) ?? null;
+  const selectedScorer = players.find((player) => player.playerId === scorerId) ?? null;
   const editingPlayerName = editingCard
     ? (players.find((player) => player.playerId === editingCard.playerId)?.playerName ??
       editingCard.playerId)
@@ -462,6 +470,7 @@ export default function ScoresPage() {
             >
               <ScorecardScan
                 tournamentId={tournamentId}
+                role={profileRole}
                 players={players.map((player) => ({
                   playerId: player.playerId,
                   playerName: player.playerName,
@@ -495,7 +504,13 @@ export default function ScoresPage() {
                   <div className="notice info grid gap-2" role="note">
                     <p className="m-0 text-[13px]">
                       <b>
-                        Correcting revision {editingCard.revision} for {editingPlayerName}.
+                        Correcting revision {editingCard.revision} for{" "}
+                        <PlayerLink
+                          playerId={editingCard.playerId}
+                          name={editingPlayerName}
+                          role={profileRole}
+                        />
+                        .
                       </b>{" "}
                       The new revision needs approval before it counts, and the old revision stays
                       in the audit.
@@ -529,42 +544,68 @@ export default function ScoresPage() {
                   </div>
                 )}
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Combobox
-                    label="Player"
-                    value={playerId}
-                    options={players.map((player) => ({
-                      id: player.playerId,
-                      label: player.playerName,
-                    }))}
-                    onChange={(next) => {
-                      setPlayerId(next);
-                      if (next === scorerId) {
-                        const rotation = reciprocalRotation(
-                          players.map((player) => player.playerId),
-                        );
-                        const mapped = rotation.find(
-                          (assignment) => assignment.playerId === next,
-                        )?.scorerId;
-                        setScorerId(
-                          mapped ??
-                            players.find((player) => player.playerId !== next)?.playerId ??
-                            "",
-                        );
-                      }
-                    }}
-                    placeholder="Type a player's name"
-                    disabled={busy || players.length < 2 || Boolean(editingCard)}
-                  />
-                  <Combobox
-                    label="Marked by"
-                    value={scorerId}
-                    options={players
-                      .filter((player) => player.playerId !== playerId)
-                      .map((player) => ({ id: player.playerId, label: player.playerName }))}
-                    onChange={setScorerId}
-                    placeholder="Type the marker's name"
-                    disabled={busy || players.length < 2 || Boolean(editingCard)}
-                  />
+                  <div className="grid gap-1">
+                    <Combobox
+                      label="Player"
+                      value={playerId}
+                      options={players.map((player) => ({
+                        id: player.playerId,
+                        label: player.playerName,
+                      }))}
+                      onChange={(next) => {
+                        setPlayerId(next);
+                        if (next === scorerId) {
+                          const rotation = reciprocalRotation(
+                            players.map((player) => player.playerId),
+                          );
+                          const mapped = rotation.find(
+                            (assignment) => assignment.playerId === next,
+                          )?.scorerId;
+                          setScorerId(
+                            mapped ??
+                              players.find((player) => player.playerId !== next)?.playerId ??
+                              "",
+                          );
+                        }
+                      }}
+                      placeholder="Type a player's name"
+                      disabled={busy || players.length < 2 || Boolean(editingCard)}
+                    />
+                    {/* The picker is a text field, so the name cannot be the link inside it.
+                        This is the separate control: choosing a player never navigates away. */}
+                    {selectedPlayer && canOpenProfile && (
+                      <p className="hint">
+                        <Link
+                          href={playerProfileHref(selectedPlayer.playerId)}
+                          className="text-[13px] underline underline-offset-2"
+                        >
+                          {`Open ${selectedPlayer.playerName}'s profile`}
+                        </Link>
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid gap-1">
+                    <Combobox
+                      label="Marked by"
+                      value={scorerId}
+                      options={players
+                        .filter((player) => player.playerId !== playerId)
+                        .map((player) => ({ id: player.playerId, label: player.playerName }))}
+                      onChange={setScorerId}
+                      placeholder="Type the marker's name"
+                      disabled={busy || players.length < 2 || Boolean(editingCard)}
+                    />
+                    {selectedScorer && canOpenProfile && (
+                      <p className="hint">
+                        <Link
+                          href={playerProfileHref(selectedScorer.playerId)}
+                          className="text-[13px] underline underline-offset-2"
+                        >
+                          {`Open ${selectedScorer.playerName}'s profile`}
+                        </Link>
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {!editingCard && (
@@ -585,6 +626,7 @@ export default function ScoresPage() {
                   <HandicapSummary
                     playerId={selectedPlayer.playerId}
                     playerName={selectedPlayer.playerName}
+                    role={profileRole}
                     handicap={selectedPlayer.handicap}
                     frozenIndex={selectedPlayer.frozenIndex}
                     course={view.course}
@@ -694,6 +736,7 @@ export default function ScoresPage() {
                           card={card}
                           view={view}
                           busy={busy}
+                          role={profileRole}
                           rejectReason={rejectReasons[card.id] ?? ""}
                           onRejectReason={(value) =>
                             setRejectReasons((current) => ({ ...current, [card.id]: value }))
@@ -752,9 +795,14 @@ export default function ScoresPage() {
                   return (
                     <div key={key} className="card grid gap-3 !p-3">
                       <div>
-                        <b>
-                          {playerName} · hole {hole.hole}
-                        </b>
+                        <p className="m-0">
+                          <PlayerLink
+                            playerId={conflictPlayerId}
+                            name={playerName}
+                            role={profileRole}
+                          />{" "}
+                          <span className="font-semibold">· hole {hole.hole}</span>
+                        </p>
                         <p className="hint mt-0.5">{hole.note ?? "The cards disagree."}</p>
                       </div>
                       <div className="flex flex-wrap items-end gap-2">
@@ -820,7 +868,7 @@ export default function ScoresPage() {
               subtitle="Highest points first. Holes counted are shown because the round may still be incomplete."
               dataHelp="scores-gross"
             >
-              <StandingsTable board={view.standings.gross} />
+              <StandingsTable board={view.standings.gross} role={profileRole} />
             </SectionCard>
             <SectionCard
               id="score-net"
@@ -829,7 +877,11 @@ export default function ScoresPage() {
               subtitle="Uses each player's Playing Handicap snapshot. The PH column is that snapshot; a player without one is left out, not estimated."
               dataHelp="scores-net"
             >
-              <StandingsTable board={view.standings.net} players={view.players} />
+              <StandingsTable
+                board={view.standings.net}
+                players={view.players}
+                role={profileRole}
+              />
             </SectionCard>
           </div>
 
@@ -940,6 +992,7 @@ function CardRow({
   card,
   view,
   busy,
+  role,
   rejectReason,
   onRejectReason,
   onApprove,
@@ -952,6 +1005,7 @@ function CardRow({
   card: Scorecard;
   view: ScoringRoundView;
   busy: boolean;
+  role?: ClubRole | null;
   rejectReason: string;
   onRejectReason: (value: string) => void;
   onApprove: () => void;
@@ -993,7 +1047,7 @@ function CardRow({
   return (
     <tr>
       <td>
-        <b>{playerName}</b>
+        <PlayerLink playerId={card.playerId} name={playerName} role={role} />
         <span className="hint block">Revision {card.revision}</span>
         {player?.handicap ? (
           <span className="hint block">
@@ -1020,7 +1074,9 @@ function CardRow({
           </span>
         )}
       </td>
-      <td>{scorerName}</td>
+      <td>
+        <PlayerLink playerId={card.scorerId} name={scorerName} role={role} />
+      </td>
       <td>
         <span
           className={`pill ${
@@ -1113,9 +1169,11 @@ function CardRow({
 function StandingsTable({
   board,
   players = [],
+  role,
 }: {
   board: StandingsBoard;
   players?: ScoringRoundView["players"];
+  role?: ClubRole | null;
 }) {
   if (board.rows.length === 0) {
     return <p className="muted">No player has a verified or provisional hole yet.</p>;
@@ -1150,7 +1208,7 @@ function StandingsTable({
                 {row.tied ? "T" : ""}
               </td>
               <td>
-                <b>{row.playerName}</b>
+                <PlayerLink playerId={row.playerId} name={row.playerName} role={role} />
                 <span className="hint block">{row.flightId ?? "No flight"}</span>
               </td>
               {showHandicap && (
