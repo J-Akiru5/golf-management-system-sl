@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { placementOf } from "@/lib/draw/withdraw";
 import { planDrawJobs, publishedWhileWritesPending } from "./draw-persist";
 import { type Action, type DeskState, initialState, reducer } from "./state";
 
@@ -88,6 +89,28 @@ describe("planDrawJobs", () => {
       reason: "Sponsor group",
     });
     expect(jobs.map((j) => j.kind)).toEqual(["save"]);
+  });
+
+  it("saves the board when a player is withdrawn and when they are put back", () => {
+    const state = generated();
+    const id = state.activeTournamentId ?? "";
+    const draw = state.boards[id]?.draw ?? [];
+    const playerId = draw.flatMap((group) => group.playerIds)[0] ?? "";
+    expect(playerId).not.toBe("");
+    const placement = placementOf(draw, playerId);
+    expect(placement).not.toBeNull();
+    const at = placement ?? { groupNumber: 1, index: 0 };
+
+    expect(plan(state, { type: "withdrawFromDraw", playerId }).map((job) => job.kind)).toEqual([
+      "save",
+    ]);
+    const withdrawn = run(state, { type: "withdrawFromDraw", playerId });
+    expect(
+      plan(withdrawn, { type: "restoreToDraw", playerId, placement: at }).map((job) => job.kind),
+    ).toEqual(["save"]);
+
+    const restored = run(withdrawn, { type: "restoreToDraw", playerId, placement: at });
+    expect(placementOf(restored.boards[id]?.draw ?? [], playerId)).toEqual(placement);
   });
 
   it("ignores actions that do not touch the draw", () => {

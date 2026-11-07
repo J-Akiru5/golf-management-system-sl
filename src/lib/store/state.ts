@@ -25,6 +25,11 @@ import {
   makeDemoTournaments,
 } from "@/lib/demo/data";
 import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
+import {
+  type GroupPlacement,
+  removePlayerFromDraw,
+  restorePlayerToDraw,
+} from "@/lib/draw/withdraw";
 import { displayName } from "@/lib/format";
 import type { MergeRow, ResolvedImportRow } from "@/lib/ngap";
 import {
@@ -142,6 +147,10 @@ export type Action =
   | { type: "resolveDeferred"; id: string; decision: "link" | "create" | "drop" }
   | { type: "generate"; preserveLocks: boolean }
   | { type: "move"; playerId: string; toGroup: number; reason: string }
+  /** Takes a withdrawn player off the day's board, leaving their group slot open. */
+  | { type: "withdrawFromDraw"; playerId: string }
+  /** Puts a withdrawn player back where they were, for the undo. */
+  | { type: "restoreToDraw"; playerId: string; placement: GroupPlacement }
   | { type: "setGroupLocked"; group: number; locked: boolean; reason: string }
   | { type: "publish" }
   | { type: "unpublish" }
@@ -713,6 +722,26 @@ export function reducer(state: DeskState, a: Action): DeskState {
         ...board,
         draw,
         overrides: [...board.overrides, override],
+      });
+    }
+
+    case "withdrawFromDraw": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      return withBoard(state, t.id, {
+        ...board,
+        draw: removePlayerFromDraw(board.draw, a.playerId),
+      });
+    }
+
+    case "restoreToDraw": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      return withBoard(state, t.id, {
+        ...board,
+        draw: restorePlayerToDraw(board.draw, a.playerId, a.placement),
       });
     }
 

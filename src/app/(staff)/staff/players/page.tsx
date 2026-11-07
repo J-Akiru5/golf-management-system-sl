@@ -2,7 +2,7 @@
 
 import { ArrowRight, Phone } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArriveButton } from "@/components/staff/ArriveButton";
 import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
@@ -10,6 +10,7 @@ import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
+import { placementOf } from "@/lib/draw/withdraw";
 import { fmtTime } from "@/lib/format";
 import {
   type ArrivalFilter,
@@ -18,6 +19,12 @@ import {
   type StaffRow,
   summarise,
 } from "@/lib/staff/rows";
+import {
+  clearWithdrawal,
+  readWithdrawal,
+  type WithdrawUndo,
+  writeWithdrawal,
+} from "@/lib/staff/withdraw";
 import { useDesk } from "@/lib/store/desk-store";
 
 const FILTERS: ArrivalFilter[] = ["not-arrived", "arrived", "needs-review", "all"];
@@ -29,7 +36,17 @@ const FILTERS: ArrivalFilter[] = ["not-arrived", "arrived", "needs-review", "all
  * from today.
  */
 export default function StaffPlayersPage() {
-  const { tournament, entries, days: eventDays, adapters, dispatch, member, names } = useDesk();
+  const {
+    tournament,
+    entries,
+    players,
+    days: eventDays,
+    adapters,
+    dispatch,
+    draw,
+    member,
+    names,
+  } = useDesk();
   const { day, days, notice, setDayNumber } = useStaffDay();
   const { rows, schedule } = useStaffRows();
   const toast = useToast();
@@ -41,6 +58,9 @@ export default function StaffPlayersPage() {
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sheetError, setSheetError] = useState("");
+  const [undoWithdraw, setUndoWithdraw] = useState<WithdrawUndo | null>(null);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [undoError, setUndoError] = useState("");
 
   const counts = summarise(rows);
   const visible = useMemo(() => filterRows(rows, filter, query), [rows, filter, query]);
@@ -60,6 +80,20 @@ export default function StaffPlayersPage() {
     [entry, eventDays],
   );
 
+  const tournamentId = tournament?.id ?? null;
+  const selectedDayNumber = day?.number ?? null;
+
+  // The last withdrawal on this tab, so leaving Players to look at the group and coming back still
+  // offers the undo. The token holds ids, not names; the player is looked up below.
+  useEffect(() => {
+    if (!tournamentId || selectedDayNumber === null) {
+      setUndoWithdraw(null);
+      return;
+    }
+    setUndoWithdraw(readWithdrawal(tournamentId, selectedDayNumber));
+    setUndoError("");
+  }, [tournamentId, selectedDayNumber]);
+
   function open(row: StaffRow) {
     setSelected(row);
     setMoving(false);
@@ -69,18 +103,36 @@ export default function StaffPlayersPage() {
   }
 
   async function withdrawToday() {
-    if (!entry || !day) return;
+    if (!entry || !day || !tournament) return;
     setBusy(true);
     setSheetError("");
+    const placement = placementOf(draw ?? [], entry.playerId);
     try {
       const remaining = (entry.selectedDays ?? []).filter((number) => number !== day.number);
       const sessions = Object.fromEntries(
         Object.entries(entry.daySessions ?? {}).filter(([key]) => remaining.includes(Number(key))),
       ) as Record<number, "AM" | "PM">;
       await adapters.registrations.setDays(entry.id, remaining, sessions);
+      // The board is a saved draw, not a view. Taking the player off it is what keeps the group
+      // roster, the ticks and the player list telling the same story after the sheet closes.
+      if (placement) dispatch({ type: "withdrawFromDraw", playerId: entry.playerId });
+      const token: WithdrawUndo = {
+        tournamentId: tournament.id,
+        dayNumber: day.number,
+        entryId: entry.id,
+        playerId: entry.playerId,
+        previousDays: entry.selectedDays ?? [],
+        previousSessions: entry.daySessions ?? {},
+        placement,
+        at: new Date().toISOString(),
+      };
+      writeWithdrawal(token);
+      setUndoWithdraw(token);
       toast.push({
         title: `${selected?.name ?? "Player"} withdrawn from ${day.label}`,
-        detail: "The entry stays for the other days.",
+        detail: placement
+          ? "The group lists only the players who are still coming. Undo puts them back in it."
+          : "The entry stays for the other days. Undo puts them back on this one.",
         tone: "info",
       });
       setSelected(null);
@@ -88,6 +140,46 @@ export default function StaffPlayersPage() {
       setSheetError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function undoWithdrawal() {
+    if (!undoWithdraw) return;
+    setUndoBusy(true);
+    setUndoError("");
+    try {
+      await adapters.registrations.setDays(
+        undoWithdraw.entryId,
+        undoWithdraw.previousDays,
+        undoWithdraw.previousSessions,
+      );
+      if (undoWithdraw.placement) {
+        dispatch({
+          type: "restoreToDraw",
+          playerId: undoWithdraw.playerId,
+          placement: undoWithdraw.placement,
+        });
+      }
+      const name = players.find((player) => player.id === undoWithdraw.playerId)?.name ?? "Player";
+      const groupThere =
+        undoWithdraw.placement !== null &&
+        (draw ?? []).some((group) => group.number === undoWithdraw.placement?.groupNumber);
+      clearWithdrawal(undoWithdraw.tournamentId, undoWithdraw.dayNumber);
+      setUndoWithdraw(null);
+      toast.push({
+        title: `${name} is back in ${day?.label ?? "the day"}`,
+        detail:
+          undoWithdraw.placement === null
+            ? "They are back on the day's list."
+            : groupThere
+              ? "Their place in the group is back."
+              : "They are back on the day's list. The group changed, so the desk must place them.",
+        tone: "ok",
+      });
+    } catch (reason) {
+      setUndoError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setUndoBusy(false);
     }
   }
 
@@ -124,6 +216,34 @@ export default function StaffPlayersPage() {
 
       <DayPills days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
       {notice && <p className={styles.notice}>{notice}</p>}
+
+      {undoWithdraw && (
+        <div className={`${styles.notice} ${styles.noticeWarn}`} role="status">
+          <b>
+            {players.find((player) => player.id === undoWithdraw.playerId)?.name ?? "A player"}{" "}
+            withdrawn from {day?.label ?? "this day"}.
+          </b>
+          <p style={{ margin: "6px 0 10px" }}>
+            The group lists only the players who are still coming. Undo puts them back where they
+            were.
+          </p>
+          <div className={styles.buttonRow}>
+            <button
+              type="button"
+              className={styles.primary}
+              disabled={undoBusy}
+              onClick={() => void undoWithdrawal()}
+            >
+              {undoBusy ? "Saving…" : "Undo"}
+            </button>
+          </div>
+          {undoError && (
+            <p className={styles.error} role="alert">
+              {undoError}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className={styles.search}>
         <input

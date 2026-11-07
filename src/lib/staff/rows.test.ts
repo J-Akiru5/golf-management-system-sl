@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RegistrationEntry } from "@/lib/data/types";
+import type { DrawGroup } from "@/lib/draw/validate";
+import { placementOf, removePlayerFromDraw, restorePlayerToDraw } from "@/lib/draw/withdraw";
 import {
   buildRows,
   buildSchedule,
@@ -79,6 +81,34 @@ const base = {
   dayIndex: 2,
   dayCount: 4,
 };
+
+const flightName = (id: string | null) => (id === "class-a" ? "Class A" : "Class B");
+
+/** The board in the shape the draw stores it, so the withdrawal helpers can work on it. */
+const drawOf = (source: StaffGroup[]): DrawGroup[] =>
+  source.map((group) => ({
+    number: group.number,
+    startHole: group.startHole,
+    time: group.time,
+    wave: null,
+    flightId: group.flightId,
+    playerIds: group.players.map((player) => player.playerId),
+    locked: false,
+  }));
+
+/** The board as the staff app reads it, the way useStaffRows maps it. */
+const staffOf = (source: DrawGroup[]): StaffGroup[] =>
+  source.map((group) => ({
+    id: `g-${group.number}`,
+    number: group.number,
+    time: group.time,
+    startHole: group.startHole,
+    flightId: group.flightId,
+    players: group.playerIds.map((id) => ({
+      playerId: id,
+      playerName: people.get(id)?.playerName ?? "Unknown player",
+    })),
+  }));
 
 describe("staff rows", () => {
   const rows = buildRows({
@@ -213,5 +243,56 @@ describe("staff rows", () => {
       statusByPlayer: new Map([["p1", "needs_review" as const]]),
     });
     expect(row?.needsReview).toBe(true);
+  });
+
+  it("keeps the group, its ticks and the player list in step when a player withdraws and is put back", () => {
+    const e1 = entry({ id: "e1", playerId: "p1", status: "needs_review" });
+    const e2 = entry({
+      id: "e2",
+      playerId: "p2",
+      dayCheckIn: { 3: { at: "2026-11-14T06:05:00.000Z", byName: "Ana" } },
+    });
+    const e3 = entry({ id: "e3", playerId: "p3", selectedDays: [3, 4] });
+    const e4 = entry({ id: "e4", playerId: "p4", selectedDays: [4] });
+
+    const draw = drawOf(groups);
+    const placement = placementOf(draw, "p2");
+    expect(placement).toEqual({ groupNumber: 10, index: 1 });
+
+    // Withdrawn: the entry leaves day 3 and the draw loses the player from the group.
+    const withdrawnDraw = removePlayerFromDraw(draw, "p2");
+    const withdrawnEntries = [e1, { ...e2, selectedDays: [4] }, e3, e4];
+    const withdrawnRows = buildRows({
+      ...base,
+      groups: staffOf(withdrawnDraw),
+      entries: withdrawnEntries,
+    });
+    const withdrawnSchedule = buildSchedule(staffOf(withdrawnDraw), withdrawnRows, flightName);
+    const withdrawnGroup = withdrawnSchedule.find((group) => group.number === 10);
+    expect(withdrawnGroup?.players.map((player) => player.playerId)).toEqual(["p1"]);
+    expect(withdrawnGroup?.arrived).toBe(0);
+    expect(withdrawnGroup?.arrivals).toEqual([false]);
+    expect(rowsInGroup(withdrawnRows, "g-10").map((row) => row.entryId)).toEqual(["e1"]);
+
+    // Undone: the entry returns to day 3 and the player goes back to the same slot.
+    const restoredDraw = restorePlayerToDraw(
+      withdrawnDraw,
+      "p2",
+      placement ?? {
+        groupNumber: 10,
+        index: 1,
+      },
+    );
+    const restoredRows = buildRows({
+      ...base,
+      groups: staffOf(restoredDraw),
+      entries: [e1, e2, e3, e4],
+    });
+    const restoredSchedule = buildSchedule(staffOf(restoredDraw), restoredRows, flightName);
+    const restoredGroup = restoredSchedule.find((group) => group.number === 10);
+    expect(restoredGroup?.players.map((player) => player.playerId)).toEqual(["p1", "p2"]);
+    expect(restoredGroup?.arrived).toBe(1);
+    expect(restoredGroup?.arrivals).toEqual([false, true]);
+    expect(rowsInGroup(restoredRows, "g-10").map((row) => row.entryId)).toEqual(["e1", "e2"]);
   });
 });
