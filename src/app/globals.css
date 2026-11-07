@@ -4515,3 +4515,33 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* The way out of a shared page: home, pairings, leaderboard and the player's own area. */
+.public-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.public-nav a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--on-forest-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.public-nav a:hover {
+  background: rgba(238, 240, 234, 0.1);
+  color: var(--on-forest);
+}
+
+.public-nav a[aria-current="page"] {
+  background: rgba(238, 240, 234, 0.14);
+  color: #e8cf95;
+}

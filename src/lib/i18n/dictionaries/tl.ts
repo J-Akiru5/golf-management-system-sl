@@ -186,6 +186,8 @@ export const tl: Dictionary = {
   },
   pairings: {
     title: "Pairings ng tournament ng club",
+    navHome: "Home",
+    nav: "Mga pahina ng player",
     shotgun: "Shotgun start",
     twoTee: "Two-tee start",
     failedTitle: "Hindi ma-load ang pairings ngayon.",

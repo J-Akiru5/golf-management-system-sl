@@ -10,6 +10,7 @@ import {
   RulesOfPlay,
   TeeTimesBoard,
 } from "@/components/public/ProgrammeView";
+import { PublicNav } from "@/components/public/PublicNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
@@ -112,6 +113,7 @@ export default async function PublicPairingsPage() {
           </div>
           <HelpButton audience="player" screen="pairings" />
         </div>
+        <PublicNav current="/pairings" t={t} />
         {data && (
           <>
             <p className="overline mt-3">

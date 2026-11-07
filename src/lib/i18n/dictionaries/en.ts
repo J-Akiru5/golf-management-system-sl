@@ -187,6 +187,8 @@ export const en = {
   },
   pairings: {
     title: "Club tournament pairings",
+    navHome: "Home",
+    nav: "Player pages",
     shotgun: "Shotgun start",
     twoTee: "Two-tee start",
     failedTitle: "Pairings can't be loaded right now.",

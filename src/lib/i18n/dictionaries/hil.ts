@@ -186,6 +186,8 @@ export const hil: Dictionary = {
   },
   pairings: {
     title: "Pairing sang tournament sang club",
+    navHome: "Balay",
+    nav: "Mga pahina sang player",
     shotgun: "Shotgun start",
     twoTee: "Two-tee start",
     failedTitle: "Indi ma-load ang pairing subong.",

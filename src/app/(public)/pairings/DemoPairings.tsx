@@ -11,6 +11,7 @@ import {
   RulesOfPlay,
   TeeTimesBoard,
 } from "@/components/public/ProgrammeView";
+import { PublicNav } from "@/components/public/PublicNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings, toPublicProgramme } from "@/lib/data/public";
@@ -69,6 +70,7 @@ export function DemoPairings() {
           </div>
           <HelpButton audience="player" screen="pairings" />
         </div>
+        <PublicNav current="/pairings" t={t} />
         <p className="overline mt-3">
           {tournament.config.startFormat === "shotgun"
             ? t("pairings.shotgun")
