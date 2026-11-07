@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  type OpenRoundDrawGroup,
+  type OpenRoundSnapshot,
+  openRoundErrorMessage,
+} from "@/lib/data/open-round";
 import type {
+  OpenRoundInput,
   ResolveHoleInput,
   ScoringPlayer,
   ScoringPublication,
@@ -42,6 +48,58 @@ interface ProposalRow {
   provenance: "agreement" | "single_card" | "desk_resolution";
 }
 
+type OpenRoundArgs = Db["Functions"]["open_round"]["Args"];
+
+/**
+ * Reads the player ids from a published snapshot. A publish written after player ids were stored
+ * carries `playerIds` beside the names. An older publish carries names only, which cannot name a
+ * player reliably, so it is treated as absent rather than matched by name.
+ */
+export function publishedGroupsFromJson(snapshot: unknown): OpenRoundDrawGroup[] | null {
+  if (snapshot === null || typeof snapshot !== "object" || Array.isArray(snapshot)) return null;
+  const groups = (snapshot as Record<string, unknown>).groups;
+  if (!Array.isArray(groups) || groups.length === 0) return null;
+
+  const result: OpenRoundDrawGroup[] = [];
+  for (const group of groups) {
+    if (typeof group !== "object" || group === null || Array.isArray(group)) return null;
+    const record = group as Record<string, unknown>;
+    const number = record.number;
+    if (typeof number !== "number" || !Number.isFinite(number)) return null;
+    const playerIds = record.playerIds;
+    if (!Array.isArray(playerIds) || playerIds.length === 0) return null;
+    if (!playerIds.every((id) => typeof id === "string" && id !== "")) return null;
+    result.push({ number, playerIds });
+  }
+  return result;
+}
+
+/**
+ * Calls the guarded `open_round` function. Every argument is sent, with an explicit null where the
+ * desk left it out, so the database applies its own defaults predictably.
+ */
+export async function openRoundRequest(
+  client: SupabaseClient<Database>,
+  tournamentId: string,
+  input: OpenRoundInput,
+): Promise<string> {
+  const args = {
+    p_tournament: tournamentId,
+    p_expected_revision: input.expectedRevision,
+    p_required_cards: input.requiredCards ?? null,
+    p_finalization_authority: input.finalizationAuthority ?? null,
+    p_tie_break_policy_id: input.tieBreakPolicyId ?? null,
+    p_rules_version: input.rulesVersion ?? null,
+    p_day_number: input.dayNumber ?? null,
+  } as unknown as OpenRoundArgs;
+  const { data, error } = await client.rpc("open_round", args);
+  if (error) throw new Error(openRoundErrorMessage(error.message));
+  if (typeof data !== "string") {
+    throw new Error("The round was not opened: the database returned no round id.");
+  }
+  return data;
+}
+
 /**
  * The connected scoring repository. Reads the persisted evidence and derives the view with the same
  * pure engine the sample uses; writes go through the guarded RPCs, never directly to the tables.
@@ -51,11 +109,13 @@ export function createSupabaseScoringRepository(
 ): ScoringRepository {
   const db = options.client as unknown as SupabaseClient<Database>;
 
-  async function roundFor(tournamentId: string): Promise<Row<"competition_rounds"> | null> {
-    const { data, error } = await db
-      .from("competition_rounds")
-      .select("*")
-      .eq("tournament_id", tournamentId)
+  async function roundFor(
+    tournamentId: string,
+    dayNumber?: number,
+  ): Promise<Row<"competition_rounds"> | null> {
+    const base = db.from("competition_rounds").select("*").eq("tournament_id", tournamentId);
+    const filtered = dayNumber === undefined ? base : base.eq("day_number", dayNumber);
+    const { data, error } = await filtered
       .order("day_number", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -63,10 +123,17 @@ export function createSupabaseScoringRepository(
     return data;
   }
 
-  async function loadRound(tournamentId: string): Promise<ScoringRoundView | null> {
-    const round = await roundFor(tournamentId);
-    if (!round) return null;
+  async function roundForId(roundId: string): Promise<Row<"competition_rounds"> | null> {
+    const { data, error } = await db
+      .from("competition_rounds")
+      .select("*")
+      .eq("id", roundId)
+      .maybeSingle();
+    if (error) throw new Error(`Could not load the scoring round: ${error.message}`);
+    return data;
+  }
 
+  async function buildView(round: Row<"competition_rounds">): Promise<ScoringRoundView | null> {
     const [{ data: entries, error: entriesError }, { data: snapshotRows, error: snapshotError }] =
       await Promise.all([
         db.from("round_entries").select("*").eq("round_id", round.id).eq("status", "active"),
@@ -310,8 +377,109 @@ export function createSupabaseScoringRepository(
       tieBreak,
       approvedBy: auth.user?.id ?? null,
       finalizationAuthority: round.finalization_authority as FinalizationAuthority | null,
+      rulesVersion: round.rules_version,
       publications,
       provisionalPublication: round.provisional_publication !== "off",
+    };
+  }
+
+  async function loadRound(tournamentId: string): Promise<ScoringRoundView | null> {
+    const round = await roundFor(tournamentId);
+    if (!round) return null;
+    return buildView(round);
+  }
+
+  async function loadOpenRoundState(tournamentId: string): Promise<OpenRoundSnapshot> {
+    const { data: tournament, error: tournamentError } = await db
+      .from("tournaments")
+      .select("id, club_id, draw_revision, published, published_snapshot")
+      .eq("id", tournamentId)
+      .maybeSingle();
+    if (tournamentError) {
+      throw new Error(`Could not load the tournament: ${tournamentError.message}`);
+    }
+    if (!tournament) {
+      throw new Error("This event could not be found, so its round cannot be opened.");
+    }
+
+    const round = await roundFor(tournamentId);
+
+    let liveGroups: OpenRoundDrawGroup[] = [];
+    if (round) {
+      const { data: groupRows, error: groupError } = await db
+        .from("groups")
+        .select("id, number")
+        .eq("round_id", round.id)
+        .order("number", { ascending: true });
+      if (groupError) throw new Error(`Could not load the draw: ${groupError.message}`);
+
+      const groups = groupRows ?? [];
+      const groupIds = groups.map((group) => group.id);
+      const { data: memberRows, error: memberError } = groupIds.length
+        ? await db
+            .from("group_members")
+            .select("group_id, registration_id, position")
+            .in("group_id", groupIds)
+            .order("position", { ascending: true })
+        : { data: [], error: null };
+      if (memberError) throw new Error(`Could not load the group members: ${memberError.message}`);
+
+      const registrationIds = (memberRows ?? []).map((member) => member.registration_id);
+      const { data: registrationRows, error: registrationError } = registrationIds.length
+        ? await db.from("registrations").select("id, player_id").in("id", registrationIds)
+        : { data: [], error: null };
+      if (registrationError) {
+        throw new Error(`Could not load registrations: ${registrationError.message}`);
+      }
+
+      const playerByRegistration = new Map(
+        (registrationRows ?? []).map((registration) => [registration.id, registration.player_id]),
+      );
+      const membersByGroup = new Map<string, { registrationId: string; position: number }[]>();
+      for (const member of memberRows ?? []) {
+        const list = membersByGroup.get(member.group_id) ?? [];
+        list.push({ registrationId: member.registration_id, position: member.position });
+        membersByGroup.set(member.group_id, list);
+      }
+
+      liveGroups = groups.map((group) => ({
+        number: group.number,
+        playerIds: (membersByGroup.get(group.id) ?? [])
+          .sort((a, b) => a.position - b.position)
+          .map((member) => playerByRegistration.get(member.registrationId))
+          .filter((playerId): playerId is string => typeof playerId === "string"),
+      }));
+    }
+
+    const { data: policyRows, error: policyError } = await db
+      .from("tie_break_policies")
+      .select("id, name, confirmed_at, confirmed_by")
+      .eq("club_id", tournament.club_id)
+      .order("name", { ascending: true });
+    if (policyError) {
+      throw new Error(`Could not load the tie-break policies: ${policyError.message}`);
+    }
+
+    return {
+      draw: {
+        revision: tournament.draw_revision,
+        published: tournament.published,
+        publishedGroups: publishedGroupsFromJson(tournament.published_snapshot),
+        liveGroups,
+      },
+      roundStatus: round ? (round.status as OpenRoundSnapshot["roundStatus"]) : null,
+      storedSettings: {
+        requiredCards: round?.required_cards ?? null,
+        finalizationAuthority:
+          (round?.finalization_authority as FinalizationAuthority | null | undefined) ?? null,
+        tieBreakPolicyId: round?.tie_break_policy_id ?? null,
+        rulesVersion: round?.rules_version ?? null,
+      },
+      tieBreakPolicies: (policyRows ?? []).map((policy) => ({
+        id: policy.id,
+        name: policy.name,
+        confirmed: policy.confirmed_at !== null && policy.confirmed_by !== null,
+      })),
     };
   }
 
@@ -345,6 +513,19 @@ export function createSupabaseScoringRepository(
 
   return {
     loadRound,
+    loadOpenRoundState,
+
+    async openRound(tournamentId, input) {
+      const roundId = await openRoundRequest(db, tournamentId, input);
+      const round = await roundForId(roundId);
+      const view = round ? await buildView(round) : null;
+      if (!view) {
+        throw new Error(
+          "The round was opened, but its field could not be read. Reload the scoring screen.",
+        );
+      }
+      return view;
+    },
 
     async submitCard(tournamentId, input: SubmitCardInput) {
       const view = await refresh(tournamentId);

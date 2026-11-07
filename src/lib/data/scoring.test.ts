@@ -5,7 +5,8 @@ import {
   TEST_COURSE,
   TEST_POLICY,
 } from "@/lib/scoring/__tests__/fixtures";
-import { createDemoScoringRepository, type ScoringRoundSeed } from "./scoring";
+import { assessOpenRound, missingSettingsMessage, OPEN_ROUND_MESSAGES } from "./open-round";
+import { createDemoScoringRepository, type OpenRoundInput, type ScoringRoundSeed } from "./scoring";
 
 const TIE_BREAK = {
   id: "tb-demo",
@@ -312,6 +313,169 @@ describe("demo scoring repository", () => {
 
     await expect(repo.revokeCard("tournament-1", card.id, "Late change.")).rejects.toThrow(
       /final/i,
+    );
+  });
+});
+
+const SEEDED_GROUP = [{ number: 1, playerIds: ["p1", "p2"] }];
+
+function openInput(overrides: Partial<OpenRoundInput> = {}): OpenRoundInput {
+  return {
+    requiredCards: 2,
+    finalizationAuthority: "organizer",
+    tieBreakPolicyId: TIE_BREAK.id,
+    rulesVersion: "rules-2026-11",
+    expectedRevision: 1,
+    ...overrides,
+  };
+}
+
+describe("demo scoring repository opening a round", () => {
+  it("opens a draft round from a published draw", async () => {
+    const repo = repository({ roundStatus: "draft" });
+    const before = await repo.loadRound("tournament-1");
+
+    const opened = await repo.openRound("tournament-1", openInput({ requiredCards: 3 }));
+
+    expect(opened.roundStatus).toBe("open");
+    expect(opened.rulesVersion).toBe("rules-2026-11");
+    expect(opened.requiredCards).toBe(3);
+    expect(opened.policy.requiredCards).toBe(3);
+    expect(opened.finalizationAuthority).toBe("organizer");
+    // The demo seed already holds the players, so the entry list does not change.
+    expect(opened.players.map((player) => player.playerId)).toEqual(
+      before?.players.map((player) => player.playerId),
+    );
+    expect(opened.cards).toEqual([]);
+  });
+
+  it("treats a second open from the same revision as a no-op", async () => {
+    const repo = repository({ roundStatus: "draft" });
+
+    const first = await repo.openRound("tournament-1", openInput());
+    const second = await repo.openRound("tournament-1", openInput());
+
+    expect(second.roundStatus).toBe("open");
+    expect(second.requiredCards).toBe(first.requiredCards);
+    expect(second.rulesVersion).toBe(first.rulesVersion);
+    expect(second.tieBreak).toEqual(first.tieBreak);
+    expect(second.cards).toEqual(first.cards);
+    expect(second.players.map((player) => player.playerId)).toEqual(
+      first.players.map((player) => player.playerId),
+    );
+  });
+
+  it("refuses an already open round when the screen's revision is stale", async () => {
+    const repo = repository({
+      roundStatus: "open",
+      draw: { revision: 2, published: true, groups: SEEDED_GROUP },
+    });
+
+    await expect(
+      repo.openRound("tournament-1", openInput({ expectedRevision: 1 })),
+    ).rejects.toThrow(OPEN_ROUND_MESSAGES.staleRevision);
+  });
+
+  it("refuses a stale revision and a draw that moved after publication", async () => {
+    const stale = repository({
+      roundStatus: "draft",
+      draw: { revision: 2, published: true, groups: SEEDED_GROUP },
+    });
+    await expect(
+      stale.openRound("tournament-1", openInput({ expectedRevision: 1 })),
+    ).rejects.toThrow(OPEN_ROUND_MESSAGES.staleRevision);
+
+    const moved = repository({
+      roundStatus: "draft",
+      draw: {
+        revision: 1,
+        published: true,
+        groups: SEEDED_GROUP,
+        liveGroups: [{ number: 1, playerIds: ["p1"] }],
+      },
+    });
+    await expect(moved.openRound("tournament-1", openInput())).rejects.toThrow(
+      OPEN_ROUND_MESSAGES.drawMoved,
+    );
+  });
+
+  it("refuses each missing setting and names it", async () => {
+    const repo = repository({ roundStatus: "draft" });
+
+    await expect(
+      repo.openRound("tournament-1", openInput({ requiredCards: null })),
+    ).rejects.toThrow(missingSettingsMessage(["requiredCards"]));
+    await expect(
+      repo.openRound("tournament-1", openInput({ finalizationAuthority: null })),
+    ).rejects.toThrow(missingSettingsMessage(["finalizationAuthority"]));
+    await expect(
+      repo.openRound("tournament-1", openInput({ tieBreakPolicyId: "tb-unknown" })),
+    ).rejects.toThrow(missingSettingsMessage(["tieBreakPolicyId"]));
+    await expect(repo.openRound("tournament-1", openInput({ rulesVersion: "  " }))).rejects.toThrow(
+      missingSettingsMessage(["rulesVersion"]),
+    );
+  });
+
+  it("refuses an unpublished draw and a publish without player ids", async () => {
+    const unpublished = repository({
+      roundStatus: "draft",
+      draw: { revision: 1, published: false, groups: SEEDED_GROUP },
+    });
+    await expect(unpublished.openRound("tournament-1", openInput())).rejects.toThrow(
+      OPEN_ROUND_MESSAGES.notPublished,
+    );
+
+    const noPlayerIds = repository({
+      roundStatus: "draft",
+      draw: { revision: 1, published: true, groups: SEEDED_GROUP, hasPlayerIds: false },
+    });
+    await expect(noPlayerIds.openRound("tournament-1", openInput())).rejects.toThrow(
+      OPEN_ROUND_MESSAGES.missingPlayerIds,
+    );
+  });
+
+  it("opens with a confirmed tie-break and refuses an unconfirmed one", async () => {
+    const confirmed = repository({ roundStatus: "draft" });
+    await expect(confirmed.openRound("tournament-1", openInput())).resolves.toMatchObject({
+      roundStatus: "open",
+    });
+
+    const unconfirmed = repository({
+      roundStatus: "draft",
+      tieBreak: { ...TIE_BREAK, confirmedBy: "", confirmedAt: "" },
+    });
+    await expect(unconfirmed.openRound("tournament-1", openInput())).rejects.toThrow(
+      OPEN_ROUND_MESSAGES.tieBreakUnconfirmed,
+    );
+  });
+
+  it("agrees with the shared assessment for the same state and input", async () => {
+    const repo = repository({
+      roundStatus: "draft",
+      draw: { revision: 2, published: true, groups: SEEDED_GROUP },
+    });
+    const input = openInput({ expectedRevision: 1 });
+    const state = await repo.loadOpenRoundState("tournament-1");
+    const assessment = assessOpenRound(state, input, input.expectedRevision);
+
+    expect(assessment.state).toBe("draw_moved");
+    await expect(repo.openRound("tournament-1", input)).rejects.toThrow(assessment.message);
+
+    const settingsRepo = repository({ roundStatus: "draft" });
+    const missingInput = openInput({ requiredCards: null });
+    const settingsState = await settingsRepo.loadOpenRoundState("tournament-1");
+    const settingsAssessment = assessOpenRound(
+      settingsState,
+      missingInput,
+      missingInput.expectedRevision,
+    );
+
+    expect(settingsAssessment).toMatchObject({
+      state: "missing_settings",
+      missing: ["requiredCards"],
+    });
+    await expect(settingsRepo.openRound("tournament-1", missingInput)).rejects.toThrow(
+      OPEN_ROUND_MESSAGES.missingSettingsPrefix + "required cards.",
     );
   });
 });
