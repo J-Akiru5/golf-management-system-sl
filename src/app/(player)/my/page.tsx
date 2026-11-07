@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppTiles, DashboardHero } from "@/components/player/DashboardHero";
 import { PlayerOfflineNotice, RememberPortal } from "@/components/player/OfflinePortal";
+import { PlayerHomeDesktop } from "@/components/player/desktop/PlayerHomeDesktop";
 import { PortalEntries } from "@/components/player/PortalView";
 import { getI18n } from "@/lib/i18n/server";
 import type { Translate } from "@/lib/i18n/t";
@@ -152,7 +153,6 @@ export default async function MyGolfPage({
       const { demoPortalState, demoUnlinkedState } = await import(
         "@/components/player/desktop/demo-data"
       );
-      const { PlayerHomeDesktop } = await import("@/components/player/desktop/PlayerHomeDesktop");
       return (
         <PlayerHomeDesktop
           t={t}
@@ -198,13 +198,29 @@ export default async function MyGolfPage({
   }
 
   return (
-    <PortalBody
-      t={t}
-      state={state}
-      notice={notice}
-      linkedMessage={linkedMessage}
-      today={manilaToday()}
-      defaultNgap={defaultNgap}
-    />
+    <>
+      {/* Wide screens get the two-column home; a phone keeps the single-column body. */}
+      <div className="hidden lg:block">
+        <PlayerHomeDesktop
+          t={t}
+          state={state}
+          notice={notice}
+          linkedMessage={linkedMessage}
+          today={manilaToday()}
+          defaultNgap={defaultNgap}
+          locale={locale}
+        />
+      </div>
+      <div className="lg:hidden">
+        <PortalBody
+          t={t}
+          state={state}
+          notice={notice}
+          linkedMessage={linkedMessage}
+          today={manilaToday()}
+          defaultNgap={defaultNgap}
+        />
+      </div>
+    </>
   );
 }
