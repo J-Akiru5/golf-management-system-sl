@@ -185,4 +185,30 @@ describe("staff rows", () => {
     expect(schedule.map((group) => group.number)).toEqual([2, 10]);
     expect(schedule[1]).toMatchObject({ flightName: "Class A", arrived: 1 });
   });
+
+  it("walks a placed player to the group's tee, not a stale tee left on the entry", () => {
+    const [row] = buildRows({
+      ...base,
+      entries: [
+        entry({
+          id: "e1",
+          playerId: "p1",
+          dayTee: { 3: { teeTime: "13:10", startHole: 1, wave: null, confirmed: true } },
+        }),
+      ],
+    });
+    expect(row?.teeTime).toBe("12:30");
+    expect(row?.startHole).toBe(4);
+    expect(row?.session).toBe("PM");
+  });
+
+  it("flags a walk-up the desk has not cleared, even with no status on the entry", () => {
+    const [row] = buildRows({
+      ...base,
+      groups: [],
+      entries: [entry({ id: "e1", playerId: "p1", status: undefined })],
+      statusByPlayer: new Map([["p1", "needs_review" as const]]),
+    });
+    expect(row?.needsReview).toBe(true);
+  });
 });

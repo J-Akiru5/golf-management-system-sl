@@ -159,7 +159,11 @@ export default function StaffPlayersPage() {
             ? "No player matches that search. Try part of the name, the group number or the last four digits of the phone."
             : filter === "not-arrived"
               ? "Everyone on this day has arrived. Open All to see the whole list."
-              : "No players on this day yet. Add a walk-up if somebody turns up without an entry."}
+              : filter === "arrived"
+                ? "Nobody has arrived yet. Check players in from Not arrived."
+                : filter === "needs-review"
+                  ? "Nobody needs review. Open All to see the whole list."
+                  : "No players on this day yet. Add a walk-up if somebody turns up without an entry."}
         </p>
       ) : (
         <ul className={styles.list}>

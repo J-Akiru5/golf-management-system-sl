@@ -27,7 +27,8 @@ export interface StaffRows {
  * groups then belong to the day the header shows. In demo mode that call is harmless.
  */
 export function useStaffRows(): StaffRows {
-  const { entries, players, playerById, draw, names, drawDay, setDrawDay } = useDesk();
+  const { entries, players, playerById, draw, names, drawDay, setDrawDay, registrations } =
+    useDesk();
   const { day, dayIndex, dayCount } = useStaffDay();
 
   useEffect(() => {
@@ -48,6 +49,14 @@ export function useStaffRows(): StaffRows {
         ]),
       ),
     [players],
+  );
+
+  // The desk derives a registration's status from the player and the entry together. That status
+  // is what marks a walk-up as needing review; the entry alone often carries none.
+  const statusByPlayer = useMemo(
+    () =>
+      new Map(registrations.map((registration) => [registration.playerId, registration.status])),
+    [registrations],
   );
 
   const groups = useMemo<StaffGroup[]>(() => {
@@ -74,8 +83,9 @@ export function useStaffRows(): StaffRows {
       dayNumber: day.number,
       dayIndex,
       dayCount,
+      statusByPlayer,
     });
-  }, [day, entries, people, groups, dayIndex, dayCount]);
+  }, [day, entries, people, groups, dayIndex, dayCount, statusByPlayer]);
 
   const schedule = useMemo(
     () => buildSchedule(groups, rows, names.flight),

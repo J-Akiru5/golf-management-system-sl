@@ -66,6 +66,11 @@ export interface BuildRowsInput {
   /** The day's 0-based position and the event's day count, for the session cut. */
   dayIndex: number;
   dayCount: number;
+  /**
+   * The desk's own status per player. A new walk-up has no status on its entry until the desk
+   * clears it, so the derived registration is what tells the staff app that it still needs review.
+   */
+  statusByPlayer?: ReadonlyMap<string, "ok" | "ineligible" | "needs_review">;
 }
 
 const minutesOf = (time: string | null): number | null => {
@@ -88,8 +93,10 @@ export function buildRows(input: BuildRowsInput): StaffRow[] {
     const name = person?.playerName ?? "Unknown player";
     const group = groupByPlayer.get(entry.playerId) ?? null;
     const stored = entry.dayTee?.[input.dayNumber] ?? null;
-    const teeTime = stored?.teeTime ?? group?.time ?? null;
-    const startHole = stored?.startHole ?? group?.startHole ?? null;
+    // The group is where the player actually walks. A tee left on the entry by the desk's tee
+    // sheet can be older than the draw, so it only fills in for a player with no group.
+    const teeTime = group?.time ?? stored?.teeTime ?? null;
+    const startHole = group?.startHole ?? stored?.startHole ?? null;
     const chosen = entry.daySessions?.[input.dayNumber] ?? null;
     const session = chosen ?? sessionForTime(teeTime, input.dayIndex, input.dayCount)?.key ?? null;
     const checkIn = entry.dayCheckIn?.[input.dayNumber] ?? null;
@@ -106,7 +113,7 @@ export function buildRows(input: BuildRowsInput): StaffRow[] {
       arrived: Boolean(checkIn?.at),
       arrivedAt: checkIn?.at ?? null,
       arrivedBy: checkIn?.byName ?? null,
-      needsReview: entry.status === "needs_review",
+      needsReview: (input.statusByPlayer?.get(entry.playerId) ?? entry.status) === "needs_review",
     });
   }
 
