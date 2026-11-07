@@ -174,6 +174,87 @@ check(
   (await page.locator('input[type="time"]').count()) > 0,
 );
 
+// --------------------------------------------------------------- scores player links
+// Issue #170: a player's name on /scores opens their profile. The demo round always has four
+// players, so the pickers and the handicap summary can be checked first; then two cards are
+// entered and approved (in the demo only) so the Cards table, both boards and the conflict list
+// gain rows to check.
+section("/scores player links");
+await go("/scores");
+const scoresEntry = page.locator('section[aria-labelledby="score-entry"]');
+const scoresCards = page.locator('section[aria-labelledby="score-cards"]');
+const scoresConflicts = page.locator('section[aria-labelledby="score-conflicts"]');
+const entryProfileLinks = scoresEntry.locator('a[href^="/players/"]');
+await expect(entryProfileLinks.first()).toBeVisible({ timeout: 30000 });
+const entryHrefs = await entryProfileLinks.evaluateAll((links) =>
+  links.map((link) => link.getAttribute("href")),
+);
+check(
+  "Enter a card: the selected player and marker are linked",
+  entryHrefs.length >= 2,
+  `(${entryHrefs.length})`,
+);
+check(
+  "Enter a card: each name link points at /players/<id>",
+  entryHrefs.every((href) => /^\/players\/[^/]+$/.test(href ?? "")),
+  entryHrefs.join(", "),
+);
+check(
+  "Enter a card: the handicap summary name is a link",
+  (await scoresEntry.locator("section.handicap-summary a[href^='/players/']").count()) === 1,
+);
+check(
+  "Scan a card: the selected player is linked",
+  (await page.locator('section[aria-labelledby="score-scan"] a[href^="/players/"]').count()) === 1,
+);
+
+// Two cards for the same player, different markers, one hole apart: the desk flow that fills the
+// Cards table, both boards and the conflict list. Nothing here is new behaviour.
+await scoresEntry.locator("input[type=number]").nth(0).fill("5");
+await scoresEntry.getByRole("button", { name: "Submit card" }).click();
+await expect(scoresCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
+await scoresEntry.getByRole("combobox").nth(1).click();
+await page.getByRole("option", { name: /SAMPLE PLAYER C/ }).click();
+await scoresEntry.locator("input[type=number]").nth(0).fill("4");
+await scoresEntry.getByRole("button", { name: "Submit card" }).click();
+await expect(scoresCards.locator("tbody tr")).toHaveCount(2, { timeout: 20000 });
+for (let approved = 1; approved <= 2; approved += 1) {
+  await scoresCards.getByRole("button", { name: "Approve" }).first().click();
+  await expect(scoresCards.locator("tbody tr .pill.ok")).toHaveCount(approved, { timeout: 20000 });
+}
+const linkSites = [
+  [
+    "Cards table: player name",
+    scoresCards.locator('tbody tr td:nth-child(1) a[href^="/players/"]'),
+  ],
+  [
+    "Cards table: marked-by name",
+    scoresCards.locator('tbody tr td:nth-child(2) a[href^="/players/"]'),
+  ],
+  [
+    "Gross Stableford: player name",
+    page.locator(
+      'section[aria-labelledby="score-gross"] tbody tr td:nth-child(2) a[href^="/players/"]',
+    ),
+  ],
+  [
+    "Net Stableford: player name",
+    page.locator(
+      'section[aria-labelledby="score-net"] tbody tr td:nth-child(2) a[href^="/players/"]',
+    ),
+  ],
+  ["Conflicts: player name", scoresConflicts.locator('a[href^="/players/"]')],
+];
+for (const [label, locator] of linkSites) {
+  const count = await locator.count();
+  const href = count > 0 ? await locator.first().getAttribute("href") : null;
+  check(
+    label,
+    count > 0 && /^\/players\/[^/]+$/.test(href ?? ""),
+    `(${count}) ${href ?? "no link"}`,
+  );
+}
+
 // --------------------------------------------------------------- control room cards
 // Issue #96: the hole card forced a dark background but kept the light theme's text tokens, so the
 // heading and "Open slot" rows were dark-on-dark. The card must follow the theme like every other

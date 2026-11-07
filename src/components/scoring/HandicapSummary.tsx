@@ -1,5 +1,6 @@
 import { CircleAlert } from "lucide-react";
-import Link from "next/link";
+import { PlayerLink } from "@/components/scoring/PlayerLink";
+import type { ClubRole } from "@/lib/auth/member";
 import { fmtIso } from "@/lib/data/labels";
 import { fmtHcp, fmtIndex } from "@/lib/format";
 import { checkHandicapSnapshot, type HandicapSnapshot, type RoundCourse } from "@/lib/scoring";
@@ -9,17 +10,20 @@ import { checkHandicapSnapshot, type HandicapSnapshot, type RoundCourse } from "
  *
  * It is deliberately display-only. The snapshot is the scoring input; the registration freeze is
  * shown beside it so a checker can see when the two disagree. Correcting either belongs on the
- * player or registration record, not on a scorecard.
+ * player or registration record, not on a scorecard, so the player's name links there.
  */
 export function HandicapSummary({
   playerId,
   playerName,
+  role,
   handicap,
   frozenIndex,
   course,
 }: {
   playerId: string;
   playerName: string;
+  /** undefined in demo builds, null for an account with no club membership row. */
+  role?: ClubRole | null;
   handicap: HandicapSnapshot | null;
   frozenIndex?: number | null;
   course: RoundCourse;
@@ -36,14 +40,19 @@ export function HandicapSummary({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <span className="overline">Handicap used for this round</span>
+          <p className="mt-0.5">
+            <PlayerLink
+              playerId={playerId}
+              name={playerName}
+              role={role}
+              className="underline underline-offset-2"
+            />
+          </p>
           <p className="hint mt-0.5">
             The index, course handicap and playing handicap. Net Stableford uses the playing
             handicap.
           </p>
         </div>
-        <Link href={`/players/${playerId}`} className="text-[13px] underline underline-offset-2">
-          Open player record
-        </Link>
       </div>
 
       {!handicap ? (

@@ -45,7 +45,8 @@ function ControlRoomInner({
   const config = tournament.config;
   const draw = b.draw;
   const mapRef = useRef<HTMLElement>(null);
-  const cover = useCover(mapRef);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const cover = useCover(mapRef, titleRef);
   // The map is drag-pannable so holes that sit behind the bottom row can be reached. The drag is
   // clamped to the map's own overhang, so no bare corner can ever show through the glass.
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
@@ -58,8 +59,8 @@ function ControlRoomInner({
   // The wheel and pinch listeners are native, so they read the live view from a ref instead of a
   // closure frozen at the render that installed them.
   const view = useRef({ pan: { x: 0, y: 0 }, zoom: 1 });
-  const boundsFor = (scale: number) =>
-    panBounds(
+  const boundsFor = (scale: number) => {
+    const base = panBounds(
       { width: cover?.w ?? 0, height: cover?.h ?? 0 },
       {
         width: (cover?.s ?? 0) * MAP_W + 2 * (cover?.s ?? 0) * MAP_MARGIN,
@@ -67,6 +68,16 @@ function ControlRoomInner({
       },
       scale,
     );
+    // A fitted map sits off-centre; its slack is lopsided by that offset, which grows with zoom.
+    const shiftX = (cover?.dx ?? 0) * scale;
+    const shiftY = (cover?.dy ?? 0) * scale;
+    return {
+      minX: base.minX - shiftX,
+      maxX: base.maxX - shiftX,
+      minY: base.minY - shiftY,
+      maxY: base.maxY - shiftY,
+    };
+  };
   const applyView = (nextPan: Pan, nextZoom: number) => {
     view.current = { pan: nextPan, zoom: nextZoom };
     setPan(nextPan);
@@ -260,7 +271,9 @@ function ControlRoomInner({
       >
         <CourseCanvas cover={cover} pan={pan} zoom={zoom} />
 
-        <div className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[var(--rail-pad)]">
+        <div
+          ref={titleRef}
+          className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[var(--rail-pad)]">
           <p className="text-[11px] font-bold tracking-[.14em] text-[#e0bc65] uppercase">
             {shotgun ? "Shotgun start" : "Two-tee start"} · {fmtTime(startClock)} · {date}
           </p>

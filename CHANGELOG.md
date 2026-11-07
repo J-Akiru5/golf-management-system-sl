@@ -95,6 +95,13 @@ Supabase project, because the code and the database are released separately.
   lock when it closes. New migration `20261108000200_notification_single_read.sql` adds one
   function, `mark_notification_read(notification)`, for a single per-user read row. **Migration
   written, NOT applied to the live project**; it is additive (a new function only).
+
+- **Player names on the Scores screen open the player record (issue #170).** The Cards table (the
+  player and the marker), the correction notice, the selected player's handicap summary, both
+  Stableford boards and the conflict list link each name to `/players/[id]`. The player and marker
+  pickers keep their own click target and carry a separate "Open profile" link, so choosing a
+  player never navigates away. The link is only painted for an account that may open a staff
+  profile page. No migration.
 - **The reader no longer warps a card into portrait.** The orientation step tried all four right
   angles; on an 1800x1000 card a 90 degree turn makes the image portrait, its row scores are noise,
   and it could win, after which every cell box (x up to 1733) fell outside the card and the scan

@@ -2,6 +2,7 @@
 
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MAP_H, MAP_HOLES, MAP_W } from "@/lib/course/layout";
+import { coverFit, fitMap, type MapBox } from "@/lib/ui/map-fit";
 import type { Pan } from "@/lib/ui/map-pan";
 
 export interface Cover {
@@ -11,10 +12,40 @@ export interface Cover {
   oy: number;
   w: number;
   h: number;
+  /** How far the map sits from centred, so pan bounds can follow. Zero when it simply covers. */
+  dx: number;
+  dy: number;
+  /** True when the map was fitted into the free area instead of covering the section. */
+  fitted: boolean;
 }
 
-/** Scales the MAP_W × MAP_H design space to cover the element, like object-fit: cover. */
-export function useCover(ref: RefObject<HTMLElement | null>): Cover | null {
+/** The part of the map the holes occupy, with room for the pin labels. */
+const HOLE_BOX: MapBox = (() => {
+  const xs = MAP_HOLES.flatMap((h) => [h.tee[0], h.green[0], h.pin[0]]);
+  const ys = MAP_HOLES.flatMap((h) => [h.tee[1], h.green[1], h.pin[1]]);
+  return {
+    x0: Math.min(...xs) - 70,
+    x1: Math.max(...xs) + 70,
+    y0: Math.min(...ys) - 45,
+    y1: Math.max(...ys) + 45,
+  };
+})();
+
+/** Where the panels start to float over the map; the design was drawn for this width and up. */
+const WIDE = 1280;
+/** Below this the pins are hidden and the holes are listed under the map instead. */
+const PHONE = 640;
+
+/**
+ * Scales the MAP_W × MAP_H design space onto the element. At 1280px and up, and on a phone, it
+ * covers the element like object-fit: cover. In between there are no side panels, so the map is
+ * fitted into the area the rail, the title and the edges leave free, and every hole stays visible.
+ * `titleRef` is the heading block laid over the map's top left corner.
+ */
+export function useCover(
+  ref: RefObject<HTMLElement | null>,
+  titleRef?: RefObject<HTMLElement | null>,
+): Cover | null {
   const [cover, setCover] = useState<Cover | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -22,14 +53,45 @@ export function useCover(ref: RefObject<HTMLElement | null>): Cover | null {
     const measure = () => {
       const w = el.clientWidth;
       const h = el.clientHeight;
-      const s = Math.max(w / MAP_W, h / MAP_H);
-      setCover({ s, ox: (w - MAP_W * s) / 2, oy: (h - MAP_H * s) / 2, w, h });
+      const world = { w: MAP_W, h: MAP_H };
+      if (w < PHONE || w >= WIDE) {
+        setCover({ ...coverFit({ w, h }, world), w, h, fitted: false });
+        return;
+      }
+      const railPad = Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--rail-pad"),
+      );
+      const title = titleRef?.current;
+      const titleBottom = title
+        ? title.getBoundingClientRect().bottom - el.getBoundingClientRect().top
+        : 0;
+      const fit = fitMap({
+        view: { w, h },
+        world: { ...world, margin: MAP_MARGIN },
+        box: HOLE_BOX,
+        safe: {
+          left: w >= 1024 && Number.isFinite(railPad) ? railPad : 24,
+          right: 24,
+          top: titleBottom > 0 ? titleBottom + 12 : 160,
+          bottom: 56,
+        },
+        maxScale: 1.25,
+      });
+      setCover({ ...fit, w, h, fitted: true });
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
-  }, [ref]);
+    if (titleRef?.current) ro.observe(titleRef.current);
+    // The rail's width is a variable on <html>; expanding it moves the free area without resizing
+    // the section.
+    const mo = new MutationObserver(measure);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-rail"] });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [ref, titleRef]);
   return cover;
 }
 
@@ -244,8 +306,11 @@ export function CourseCanvas({
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            "linear-gradient(90deg,rgba(12,18,15,.55) 0,rgba(12,18,15,0) 22%,rgba(12,18,15,0) 62%,rgba(12,18,15,.7) 74%),linear-gradient(0deg,rgba(12,18,15,.85) 0,rgba(12,18,15,0) 42%),linear-gradient(180deg,rgba(12,18,15,.6) 0,rgba(12,18,15,0) 18%)",
+          // The right-hand darkening sits behind the status column, which only exists at 1280px and
+          // up; a fitted map has no column there, so it keeps just the left, bottom and top fades.
+          background: cover?.fitted
+            ? "linear-gradient(90deg,rgba(12,18,15,.45) 0,rgba(12,18,15,0) 14%),linear-gradient(0deg,rgba(12,18,15,.6) 0,rgba(12,18,15,0) 22%),linear-gradient(180deg,rgba(12,18,15,.6) 0,rgba(12,18,15,0) 18%)"
+            : "linear-gradient(90deg,rgba(12,18,15,.55) 0,rgba(12,18,15,0) 22%,rgba(12,18,15,0) 62%,rgba(12,18,15,.7) 74%),linear-gradient(0deg,rgba(12,18,15,.85) 0,rgba(12,18,15,0) 42%),linear-gradient(180deg,rgba(12,18,15,.6) 0,rgba(12,18,15,0) 18%)",
         }}
       />
     </>
