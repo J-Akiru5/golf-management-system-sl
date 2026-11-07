@@ -347,7 +347,8 @@ These are places where the spec promises something the code does not do yet. Che
    read-only audit ([`docs/audit-scheduling-2026-11-08.md`](audit-scheduling-2026-11-08.md)): the
    desk does pass a round id to `save_draw` (since `b1f026e`). The real blockers are that nothing
    created a `competition_rounds` row for playing days 2..n (`open_round`, migration
-   `20261108000100`, creates them but is **not applied yet**; issue #174), that the desk still draws
+   `20261108000100`, creates them; the owner applied it in the SQL editor on 8 Nov 2026, the SQL
+   editor reported success, and it has not yet had a rolled-back check; issue #174), that the desk still draws
    the whole event in one pass (#175), and that publishing one day replaces the event-wide snapshot
    (#176). Issues #174 to #184 track every finding.
 8. **Import is CSV-only** and the NGAP format has still not been seen; the queue's column mapping is
