@@ -16,6 +16,10 @@
  * - **The badge counts UNRESOLVED blocking and warning items, whatever their read state.** Marking
  *   something read must never hide a problem that still stops publishing. Read state only quiets
  *   INFO items, which is what "Dismiss notices" is for.
+ * - **Read marks are per item, and only where a mark makes sense.** A stored notification can be
+ *   marked read whatever its severity, and so can any info item. A live draw issue or registration
+ *   alert of blocking or warning severity cannot: it clears when the cause is fixed, so a read
+ *   mark there would only hide a problem instead of quieting a notice.
  * - **Blocking means the same thing everywhere: it stops publishing.** The vocabulary is
  *   Blocking / Warning / Info, the same three words the Issues panel uses.
  * - **De-duplicated.** A stored `unplaced` notification and a live `unplaced-*` issue are the same
@@ -173,9 +177,50 @@ export function badgeCount(alerts: Alert[]): number {
   return alerts.filter((alert) => alert.severity !== "info" || !alert.read).length;
 }
 
-/** The number a "Dismiss notices" action would actually quiet, so the copy can say it. */
+/**
+ * The unread info notices a "Dismiss notices" action would quiet, so the copy can say the count.
+ */
 export function dismissableCount(alerts: Alert[]): number {
   return alerts.filter((alert) => alert.severity === "info" && !alert.read).length;
+}
+
+/**
+ * The notification row id behind a stored alert, or null for a live alert. Only the `stored:`
+ * prefix is a marker; no other prefix is stripped.
+ */
+export function storedIdOf(alert: Alert): string | null {
+  return alert.id.startsWith("stored:") ? alert.id.slice("stored:".length) : null;
+}
+
+/**
+ * Whether a per-user read mark makes sense for this alert. Any stored row qualifies, whatever its
+ * severity, and so does any info item. A live draw issue or a registration alert of severity
+ * blocking or warning does not: it clears when its cause is fixed, so a read mark would only hide
+ * a problem that still stops publishing.
+ */
+export function canMarkRead(alert: Alert): boolean {
+  return storedIdOf(alert) !== null || alert.severity === "info";
+}
+
+/** Whether the alert is markable and not already read, which is what a mark action changes. */
+export function isUnreadMarkable(alert: Alert): boolean {
+  return canMarkRead(alert) && !alert.read;
+}
+
+/** How many alerts a mark action would change: unread and markable, nothing else. */
+export function markableCount(alerts: readonly Alert[]): number {
+  return alerts.filter((alert) => isUnreadMarkable(alert)).length;
+}
+
+/**
+ * The alerts with `read: true` on every id in `read`, and everything else untouched. Only the named
+ * alerts are copied; the input is never mutated. An empty set returns the very same array, so a
+ * render with nothing to apply costs nothing.
+ */
+export function applyReadState(alerts: readonly Alert[], read: ReadonlySet<string>): Alert[] {
+  // A caller's own array is mutable; this cast only drops `readonly` on the no-op path.
+  if (read.size === 0) return alerts as Alert[];
+  return alerts.map((alert) => (read.has(alert.id) ? { ...alert, read: true } : alert));
 }
 
 export interface AlertGroup {

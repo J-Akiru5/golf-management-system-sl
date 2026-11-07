@@ -3,17 +3,22 @@ import type { Issue } from "@/lib/draw/validate";
 import {
   alertsFromIssues,
   alertsFromStored,
+  applyReadState,
   badgeCount,
   bellLabel,
   buildAlerts,
+  canMarkRead,
   dismissableCount,
   duplicatedKinds,
   fixHref,
   groupAlerts,
+  isUnreadMarkable,
+  markableCount,
   registrationAlerts,
   type StoredNotification,
   shouldCheckAlerts,
   showsAllClear,
+  storedIdOf,
 } from "./alerts";
 
 const issue = (id: string, severity: Issue["severity"], message = "message"): Issue => ({
@@ -273,5 +278,120 @@ describe("new entries at the desk", () => {
 
   it("routes a stored registration alert to the desk as well", () => {
     expect(fixHref("registration_new")).toBe("/register");
+  });
+});
+
+describe("marking alerts read one item at a time", () => {
+  const nameOf = (playerId: string) => (playerId === "p1" ? "Ana Cruz" : null);
+  const pending = () =>
+    registrationAlerts([{ entryId: "r1", playerId: "p1", status: "needs_review" }], nameOf);
+
+  it("reads the notification row id off a stored alert, and nothing off a live one", () => {
+    const rows = alertsFromStored([stored("needs_review", "warning", false, "n1")], []);
+    expect(rows.map(storedIdOf)).toEqual(["n1"]);
+    const live = alertsFromIssues([issue("cap-1", "blocking")]);
+    expect(live.map(storedIdOf)).toEqual([null]);
+    expect(pending().map(storedIdOf)).toEqual([null]);
+  });
+
+  it("lets a stored row of any severity be marked read", () => {
+    const rows = alertsFromStored(
+      [
+        stored("unplaced", "blocking", false, "n1"),
+        stored("needs_review", "warning", false, "n2"),
+        stored("cutoff_soon", "info", false, "n3"),
+      ],
+      [],
+    );
+    expect(rows).toHaveLength(3);
+    expect(rows.every(canMarkRead)).toBe(true);
+    expect(rows.map(isUnreadMarkable)).toEqual([true, true, true]);
+  });
+
+  it("lets a live info item be marked read", () => {
+    const live = alertsFromIssues([issue("cap-1", "info")]);
+    expect(live.map(canMarkRead)).toEqual([true]);
+    expect(live.map(isUnreadMarkable)).toEqual([true]);
+  });
+
+  it("refuses a read mark on a live blocking or warning issue", () => {
+    const live = alertsFromIssues([issue("cap-1", "blocking"), issue("small-1", "warning")]);
+    expect(live.map(canMarkRead)).toEqual([false, false]);
+    expect(live.map(isUnreadMarkable)).toEqual([false, false]);
+  });
+
+  it("refuses a read mark on a new entry, which clears when the desk confirms it", () => {
+    expect(pending().map(canMarkRead)).toEqual([false]);
+    expect(pending().map(isUnreadMarkable)).toEqual([false]);
+  });
+
+  it("counts only unread, markable alerts", () => {
+    const alerts = [
+      ...alertsFromStored(
+        [
+          stored("needs_review", "warning", false, "n1"),
+          stored("cutoff_soon", "info", true, "n2"),
+          stored("cutoff_soon", "info", false, "n3"),
+        ],
+        [],
+      ),
+      ...alertsFromIssues([issue("cap-1", "blocking"), issue("cap-2", "info")]),
+      ...pending(),
+    ];
+    // The stored warning, the unread stored info, and the live info. Nothing else.
+    expect(alerts).toHaveLength(6);
+    expect(markableCount(alerts)).toBe(3);
+  });
+
+  it("marks only the named ids and leaves the other alerts alone", () => {
+    const alerts = buildAlerts(
+      [stored("needs_review", "warning", false, "n1"), stored("cutoff_soon", "info", false, "n2")],
+      [issue("cap-1", "blocking")],
+    );
+    const marked = applyReadState(alerts, new Set<string>(["stored:n2"]));
+    expect(marked.map((alert) => [alert.id, alert.read])).toEqual([
+      ["draw:cap-1", false],
+      ["stored:n1", false],
+      ["stored:n2", true],
+    ]);
+  });
+
+  it("never mutates the input", () => {
+    const alerts = buildAlerts([stored("cutoff_soon", "info", false, "n2")], []);
+    applyReadState(alerts, new Set<string>(["stored:n2"]));
+    expect(alerts.map((alert) => alert.read)).toEqual([false]);
+  });
+
+  it("returns the very same array for an empty set", () => {
+    const alerts = buildAlerts([stored("cutoff_soon", "info", false, "n2")], []);
+    expect(applyReadState(alerts, new Set<string>())).toBe(alerts);
+  });
+
+  it("returns the same objects for the alerts it did not touch", () => {
+    const alerts = buildAlerts(
+      [stored("cutoff_soon", "info", false, "n2")],
+      [issue("cap-1", "blocking")],
+    );
+    const marked = applyReadState(alerts, new Set<string>(["stored:n2"]));
+    expect(marked.find((alert) => alert.id === "draw:cap-1")).toBe(
+      alerts.find((alert) => alert.id === "draw:cap-1"),
+    );
+    expect(marked.find((alert) => alert.id === "stored:n2")).not.toBe(
+      alerts.find((alert) => alert.id === "stored:n2"),
+    );
+  });
+
+  it("still counts a stored warning in the badge after it is marked read", () => {
+    const alerts = buildAlerts([stored("needs_review", "warning", false, "n1")], []);
+    const marked = applyReadState(alerts, new Set<string>(["stored:n1"]));
+    expect(marked.map((alert) => alert.read)).toEqual([true]);
+    expect(badgeCount(marked)).toBe(1);
+  });
+
+  it("still counts a stored blocking row in the badge after it is marked read", () => {
+    const alerts = buildAlerts([stored("unplaced", "blocking", false, "n1")], []);
+    const marked = applyReadState(alerts, new Set<string>(["stored:n1"]));
+    expect(marked.map((alert) => alert.read)).toEqual([true]);
+    expect(badgeCount(marked)).toBe(1);
   });
 });
