@@ -87,9 +87,9 @@ export const DESK_MOBILE_ITEMS: readonly MobileNavItem[] = [
 ] as const;
 
 /**
- * The player app's five destinations: the dashboard, the live board, the cards, the pairings and
- * the player's own record. Club home moves into the header (the wordmark already goes there) to
- * make room: five is what the bar holds without shrinking the labels below a readable size.
+ * The player app's four destinations. The scorecard lives in the home hero's quick actions
+ * instead of taking a tab: four labels stay readable on a 360px phone, and the card is one tap
+ * from the start time it belongs to.
  */
 export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
   {
@@ -102,20 +102,6 @@ export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
   },
   {
     kind: "link",
-    href: "/my/board",
-    label: "Board",
-    icon: "trophy",
-    testId: "player-bar-board",
-  },
-  {
-    kind: "link",
-    href: "/my/card",
-    label: "Card",
-    icon: "clipboard",
-    testId: "player-bar-card",
-  },
-  {
-    kind: "link",
     href: "/pairings",
     label: "Pairings",
     icon: "list",
@@ -123,8 +109,15 @@ export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
   },
   {
     kind: "link",
+    href: "/my/board",
+    label: "Board",
+    icon: "trophy",
+    testId: "player-bar-board",
+  },
+  {
+    kind: "link",
     href: "/my/profile",
-    label: "Profile",
+    label: "Me",
     icon: "player",
     testId: "player-bar-profile",
   },

@@ -56,9 +56,17 @@ function TabBar({
   const path = usePathname();
 
   return (
-    <nav aria-label={label} className="mobile-tabbar" data-testid={testId}>
+    <nav
+      aria-label={label}
+      className="mobile-tabbar"
+      data-testid={testId}
+      data-onboard={testId === "player-bottom-bar" ? "tab-bar" : undefined}
+    >
       {items.map((item) => {
         const Icon = ICONS[item.icon];
+        const onboard = item.testId.startsWith("player-bar-")
+          ? `tab-${item.testId.slice("player-bar-".length)}`
+          : undefined;
         if (item.kind === "more") {
           return (
             <button
@@ -67,6 +75,7 @@ function TabBar({
               className="mobile-tabbar-item"
               onClick={onMore}
               data-testid={item.testId}
+              data-onboard={onboard}
             >
               <span className="mobile-tabbar-icon">
                 <Icon className="size-5" aria-hidden="true" />
@@ -87,6 +96,7 @@ function TabBar({
               on && "is-current",
             )}
             data-testid={item.testId}
+            data-onboard={onboard}
           >
             <span className={cn("mobile-tabbar-icon", item.action && "mobile-tabbar-action")}>
               <Icon className="size-5" aria-hidden="true" />

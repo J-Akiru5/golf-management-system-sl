@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PortalEntries } from "@/components/player/PortalView";
+import { fmtTime } from "@/lib/format";
 import { t as english } from "@/lib/i18n/t";
 import { NO_SNAPSHOT_NOTICE, offlineNotice, SnapshotEnvelope } from "@/lib/offline/cache";
 import { loadPlayerSnapshot } from "@/lib/offline/store";
-import type { PortalState } from "@/lib/player/portal";
+import { manilaToday, nextUp } from "@/lib/player/dashboard";
+import { type PortalState, startLabel } from "@/lib/player/portal";
 
 /**
  * The player's last saved entry, read from the phone when the server cannot be reached. The copy
@@ -47,6 +49,23 @@ export function OfflinePlayerView() {
       <p className="hint">
         The club may have changed things since this copy was saved. Nothing here is live.
       </p>
+
+      {/* The first question on the course is still answered with no signal: the last saved start,
+          with the age of the copy already named above. */}
+      {(() => {
+        const next = nextUp(snapshot.payload.entries, manilaToday());
+        if (!next) return null;
+        return (
+          <section className="card grid gap-1" data-testid="offline-start">
+            <p className="overline">{english("player.app.nextUp")}</p>
+            <p className="font-serif text-[22px] leading-7 font-semibold">{next.entry.eventName}</p>
+            <p className="text-[24px] leading-8 font-bold tnum">
+              {startLabel(next.entry, english, fmtTime)}
+            </p>
+          </section>
+        );
+      })()}
+
       <PortalEntries state={snapshot.payload} t={english} nameHeading="h2" />
       <div className="flex flex-wrap gap-2">
         <Link href="/my" className="btn small no-underline">

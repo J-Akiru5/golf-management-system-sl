@@ -15,7 +15,15 @@ import {
  * the offline screen cannot show a field the live one hides. The translator is passed in: the live
  * page knows the reader's language, and the offline page has no server to ask.
  */
-export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
+export function EntryCard({
+  entry,
+  t,
+  showScorecards = true,
+}: {
+  entry: PortalEntry;
+  t: Translate;
+  showScorecards?: boolean;
+}) {
   // A snapshot saved on the phone before scorecards existed has no array at all.
   const scorecards = entry.scorecards ?? [];
   const facts: { label: string; value: string }[] = [
@@ -60,15 +68,16 @@ export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
         ))}
       </dl>
 
-      {scorecards.length > 0 ? (
-        <div className="grid gap-4">
-          {scorecards.map((card) => (
-            <ScorecardBreakdown key={card.roundId} card={card} t={t} />
-          ))}
-        </div>
-      ) : (
-        <p className="hint">{t("player.scorecard.empty")}</p>
-      )}
+      {showScorecards &&
+        (scorecards.length > 0 ? (
+          <div className="grid gap-4">
+            {scorecards.map((card) => (
+              <ScorecardBreakdown key={card.roundId} card={card} t={t} />
+            ))}
+          </div>
+        ) : (
+          <p className="hint">{t("player.scorecard.empty")}</p>
+        ))}
 
       <p className="hint">
         {entry.published ? t("player.published.yes") : t("player.published.no")}{" "}
@@ -84,12 +93,17 @@ export function PortalEntries({
   t,
   linkedMessage,
   nameHeading = "h1",
+  showName = true,
+  showScorecards = true,
 }: {
   state: PortalState;
   t: Translate;
   linkedMessage?: string | null;
   /** The offline page already has its own h1, so it asks for h2. */
   nameHeading?: "h1" | "h2";
+  /** The home page puts the player's name at the top itself. */
+  showName?: boolean;
+  showScorecards?: boolean;
 }) {
   const NameHeading = nameHeading;
   return (
@@ -99,7 +113,7 @@ export function PortalEntries({
           {linkedMessage}
         </p>
       )}
-      {state.player && (
+      {showName && state.player && (
         <div className="grid gap-1">
           <p className="overline">{t("player.title")}</p>
           <NameHeading className="font-serif text-[32px] leading-9 font-semibold">
@@ -116,7 +130,12 @@ export function PortalEntries({
       ) : (
         <div className="grid gap-4">
           {state.entries.map((entry) => (
-            <EntryCard key={entry.tournamentId} entry={entry} t={t} />
+            <EntryCard
+              key={entry.tournamentId}
+              entry={entry}
+              t={t}
+              showScorecards={showScorecards}
+            />
           ))}
         </div>
       )}
