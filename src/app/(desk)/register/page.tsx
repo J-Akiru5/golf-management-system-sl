@@ -1652,10 +1652,9 @@ function RegisterDesk() {
           cutOffIndexDate={cutOffIndex?.record?.effectiveDate ?? null}
           newerIndexDate={cutOffIndex?.newer?.effectiveDate ?? null}
           onSave={(input) => {
-            // A blank birthdate is normal for a guest: leave the player record untouched.
-            if (input.birthdate) {
-              adapters.players.update(override.player.id, { birthdate: input.birthdate });
-            }
+            // The adapter writes the birthdate with the override, and shows both only when the
+            // database has them. A blank birthdate is normal for a guest: the player record is
+            // then left alone.
             // The row changes on screen only when the write lands; a refusal leaves it in review.
             void adapters.registrations.overrideReady(override.entry.id, input);
             setOverride(null);

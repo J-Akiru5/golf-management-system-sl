@@ -2,9 +2,12 @@
  * Supabase-backed adapters.
  *
  * The `Adapters` interface is synchronous because every screen already calls it that way. So the
- * shape here is: reads come from the hydrated desk state (one read on load), and writes update that
- * state first and are then queued to Supabase. A failed write is reported through `onError` so the
- * provider can show it, rather than pretending the save happened.
+ * shape here is: reads come from the hydrated desk state (one read on load), and writes are queued
+ * to Supabase. What the screen shows is decided per write: a control that must answer a tap at once
+ * (a payment status) is applied immediately and put back if the database refuses it, while a save
+ * that can wait for its own answer (the event setup, the manual override) is shown only after the
+ * write lands. A failed write is reported through `onError` so the provider can show it, rather than
+ * pretending the save happened.
  *
  * Nothing here is used in demo mode; `desk-store.tsx` picks the mock adapters when no
  * `NEXT_PUBLIC_SUPABASE_URL` is set.
@@ -90,6 +93,72 @@ export interface SupabaseAdapterOptions {
    * then refused before it starts and nothing is queued for later.
    */
   canWrite?: () => boolean;
+  /**
+   * The desk state as it is now, including actions the provider dispatched since this adapter was
+   * built. The provider rebuilds the adapters on every render, but a queued write can finish after
+   * a later edit, so a rollback must compare against the newest state rather than the render the
+   * adapter was made from. Falls back to the state the adapter was built with when absent.
+   */
+  currentState?: () => DeskState;
+}
+
+/**
+ * The part of `applied` that may be put back to its `saved` value after a refused write.
+ *
+ * Only a field that still holds exactly what the refused write set is restored. A field a later
+ * edit has changed is left alone, so a queued refusal cannot erase work that came after it. The
+ * comparison is by identity, which is what the reducer preserves: an action that changes a field
+ * stores a new value, and one that does not change it keeps the same reference.
+ */
+function refusedPart<T extends object>(
+  current: T | null | undefined,
+  applied: Partial<T>,
+  saved: T,
+): Partial<T> {
+  if (!current) return {};
+  const restore: Record<string, unknown> = {};
+  for (const key of Object.keys(applied)) {
+    const field = key as keyof T;
+    if (Object.is(current[field], applied[field])) restore[key] = saved[field];
+  }
+  return restore as Partial<T>;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** The members of `next` that differ from `was`, so a nested document is merged, not replaced. */
+function changedMembers(
+  was: Record<string, unknown>,
+  next: Record<string, unknown>,
+): Record<string, unknown> {
+  const changed: Record<string, unknown> = {};
+  for (const key of Object.keys(next)) {
+    if (!Object.is(was[key], next[key])) changed[key] = next[key];
+  }
+  return changed;
+}
+
+/**
+ * The event to show once a setup save lands, laid over the event as it is now.
+ *
+ * That dispatch now happens after the round trip, so another edit to the same event (a course
+ * confirmation, a day rule) can arrive first. Only the fields this save really changed are taken
+ * from the new draft; every other field stays as it is now, so the later edit is not put back.
+ */
+function shownSetup(before: Tournament | null, saved: Tournament, current: Tournament): Tournament {
+  if (!before) return saved;
+  const shown: Record<string, unknown> = { ...current };
+  for (const key of Object.keys(saved) as (keyof Tournament)[]) {
+    const was = before[key] as unknown;
+    const now = saved[key] as unknown;
+    if (Object.is(was, now)) continue;
+    shown[key] =
+      isRecord(was) && isRecord(now) && isRecord(current[key])
+        ? { ...(current[key] as Record<string, unknown>), ...changedMembers(was, now) }
+        : now;
+  }
+  return shown as unknown as Tournament;
 }
 
 const uuid = () => crypto.randomUUID();
@@ -169,6 +238,9 @@ export function createSupabaseAdapters(
 ): Adapters {
   const { client, clubId } = options;
   const enqueue = createQueue(options);
+  // The newest state, so a write that lands late reads what is on screen now and not the render it
+  // was queued from.
+  const latestState = options.currentState ?? (() => state);
   // The pure parts (CSV parsing, the merge queue, the routing explanation) read the same hydrated
   // state, so they reuse the mock implementation rather than duplicating it.
   const mock = createMockAdapters(state, dispatch);
@@ -900,37 +972,49 @@ export function createSupabaseAdapters(
       return created;
     },
     update: (id, patch) => {
-      const previous = state.entries.find((e) => e.id === id) ?? null;
+      const previous = latestState().entries.find((e) => e.id === id) ?? null;
+      // Shown at once, so an inline control answers the tap. The refusal below puts back exactly
+      // the fields this write set, and only those still holding the value it set.
       dispatch({ type: "updateEntry", id, patch });
-      const next = { ...(previous as RegistrationEntry), ...patch };
       // The screen can wait for the row. A refused write puts the old values back, so an inline
       // payment control never keeps showing a change the database rejected.
       return queuedWrite(async () => {
+        // Read the row when the write runs, not when it was queued: an earlier edit in the queue
+        // has been applied by now, and this write must carry it rather than overwrite it.
+        const row = latestState().entries.find((e) => e.id === id) ?? previous;
+        if (!row) throw new Error("That registration is no longer in this event. Reload the page.");
         const { error } = await client
           .from("registrations")
           .update({
             payment_status:
-              next.paymentStatus === "recorded_paid"
+              row.paymentStatus === "recorded_paid"
                 ? "paid"
-                : next.paymentStatus === "waived"
+                : row.paymentStatus === "waived"
                   ? "waived"
                   : "unpaid",
-            answers: toRegistrationAnswers(next) as Json,
+            answers: toRegistrationAnswers(row) as Json,
           })
           .eq("club_id", clubId)
           .eq("id", id);
         if (error) {
-          if (previous) dispatch({ type: "updateEntry", id, patch: previous });
+          if (previous) {
+            const now = latestState().entries.find((e) => e.id === id);
+            const restore = refusedPart(now, patch, previous);
+            if (Object.keys(restore).length > 0) {
+              dispatch({ type: "updateEntry", id, patch: restore });
+            }
+          }
           throw new Error(`Could not save the registration: ${error.message}`);
         }
       });
     },
     overrideReady: (entryId, input) => {
-      const entry = state.entries.find((item) => item.id === entryId);
+      const entry = latestState().entries.find((item) => item.id === entryId);
       if (!entry) throw new Error("That registration was not found.");
       const frozenAt = new Date().toISOString();
-      const next: RegistrationEntry = {
-        ...entry,
+      // Only the facts the override supplies. Sending the whole entry back would put an older
+      // payment status or caddie assignment over one that changed while this write was queued.
+      const patch: Partial<RegistrationEntry> = {
         status: "ok",
         reasons: input.pending,
         frozen: {
@@ -960,7 +1044,20 @@ export function createSupabaseAdapters(
           if (playerError) {
             throw new Error(`Could not save the player's birthdate: ${playerError.message}`);
           }
+          // That row is saved now, so it is shown even if the registration write below is refused:
+          // the date is on file, and a later player save must not write an older one back.
+          dispatch({
+            type: "updatePlayer",
+            id: entry.playerId,
+            patch: { birthdate: input.birthdate },
+          });
         }
+        // The stored answers are the whole row, so read the newest one: any field edited while this
+        // override waited in the queue travels with it instead of being written back.
+        const row: RegistrationEntry = {
+          ...(latestState().entries.find((item) => item.id === entryId) ?? entry),
+          ...patch,
+        };
         const { error } = await client
           .from("registrations")
           .update({
@@ -975,19 +1072,12 @@ export function createSupabaseAdapters(
             playing_handicap: input.playingHandicap,
             flight_id: input.flightId,
             overridden: true,
-            answers: toRegistrationAnswers(next) as Json,
+            answers: toRegistrationAnswers(row) as Json,
           })
           .eq("club_id", clubId)
           .eq("id", entryId);
         fail("Could not mark the player ready", error);
-        if (input.birthdate) {
-          dispatch({
-            type: "updatePlayer",
-            id: entry.playerId,
-            patch: { birthdate: input.birthdate },
-          });
-        }
-        dispatch({ type: "updateEntry", id: entryId, patch: next });
+        dispatch({ type: "updateEntry", id: entryId, patch });
       });
     },
     remove: (id) => {
@@ -1257,13 +1347,15 @@ export function createSupabaseAdapters(
         courseNumbersChanged({ tees: state.tees, holes: state.holes }, { tees, holes });
       const withdraws = changed && tournament.courseDataConfirmed;
       const next = withdraws ? { ...tournament, courseDataConfirmed: false } : tournament;
-      // The draft lands in the session state either way, so a failed write still leaves the edit on
-      // screen; the session bar is what says whether it reached the database. saveSetup rather than
-      // saveTournament, because the same call carries the tees and holes with it.
-      dispatch({ type: "saveSetup", tournament: next, tees, holes });
       // The card is judged inside setupPayload, which sends null rather than inventing a par or a
       // stroke index for a hole nobody has filled in.
       const payload = setupPayload(next, tees, holes, sections);
+      // The event as this adapter was built, so only the fields this save changed are taken from
+      // the new draft when it lands.
+      const stored = state.tournaments.find((item) => item.id === next.id) ?? null;
+      // Nothing is shown until the guarded write has passed. A refused save then leaves the last
+      // saved setup on screen, while the Settings draft keeps the edit for a retry.
+      let applied = false;
       const write = queuedWrite(async () => {
         // A class row this save is removing can still be named by a group on the board, and the
         // database refuses to delete an in-use class: it skips the row and the row comes back on the
@@ -1291,30 +1383,45 @@ export function createSupabaseAdapters(
         if (typeof result?.revision === "number") {
           options.revisions.set(next.id, result.revision);
         }
-        // After the guarded write has passed, so a refused save leaves nothing half-done.
+        // Shown only now, when the database has the change. saveSetup rather than saveTournament,
+        // because the same call carries the tees and holes with it.
+        applied = true;
+        const current = latestState().tournaments.find((item) => item.id === next.id) ?? next;
+        dispatch({ type: "saveSetup", tournament: shownSetup(stored, next, current), tees, holes });
+        // After the guarded write has passed, so a refused setup leaves nothing half-done.
         if (withdraws) await setCourseConfirmed(next.id, false);
       });
       if (withdraws) {
-        // The dispatch above shows the card as withdrawn before the database has answered. A
-        // refusal changed nothing in the database, so put the confirmation back while keeping the
-        // edited numbers on screen for the retry. A failure of the second, confirmation-only write
-        // is different: the numbers did land, so the card stays shown as unconfirmed.
-        void write.catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : "";
-          if (!message.startsWith("Could not save the event setup:")) return;
+        // Two different failures. If the setup write itself was refused, nothing was dispatched and
+        // the last saved setup stays on screen with its confirmation. If the numbers landed but the
+        // confirmation-only write was refused, the database still says confirmed, so put that back
+        // on screen to match it. Read the event now, not the call-time draft.
+        void write.catch(() => {
+          if (!applied) return;
+          const now = latestState().tournaments.find((item) => item.id === next.id);
+          if (!now) return;
           dispatch({
             type: "saveTournament",
-            tournament: { ...next, courseDataConfirmed: true },
+            tournament: { ...now, courseDataConfirmed: true },
           });
         });
       }
       return write;
     },
     confirmCourse: (tournamentId, confirmed) => {
-      const t = state.tournaments.find((x) => x.id === tournamentId);
-      if (!t) return;
-      dispatch({ type: "saveTournament", tournament: { ...t, courseDataConfirmed: confirmed } });
-      enqueue(() => setCourseConfirmed(tournamentId, confirmed));
+      if (!latestState().tournaments.some((x) => x.id === tournamentId)) return;
+      // Written first, shown after. The tick on the Settings screen is that screen's own draft; the
+      // desk must not claim a confirmation the database refused.
+      return queuedWrite(async () => {
+        await setCourseConfirmed(tournamentId, confirmed);
+        const saved = latestState().tournaments.find((x) => x.id === tournamentId);
+        if (saved) {
+          dispatch({
+            type: "saveTournament",
+            tournament: { ...saved, courseDataConfirmed: confirmed },
+          });
+        }
+      });
     },
   };
 

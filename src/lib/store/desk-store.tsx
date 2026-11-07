@@ -483,6 +483,10 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       if (!client || !DRAW_ACTIONS.has(action.type)) {
         const before = latest.current;
         const after = reducer(before, action);
+        // Keep the ref ahead of the render. An adapter dispatches here and then reads
+        // `currentState()` from its next queued write, which can run before React has committed
+        // this action; without this it would read the state from before its own dispatch.
+        latest.current = after;
         rawDispatch(action);
         const notice = actionNotice(action, before, after);
         if (notice) toast.push(notice);
@@ -620,6 +624,9 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       clubId: state.clubId,
       revisions: revisionStore,
       canWrite: () => canWriteRef.current,
+      // A queued write can finish after a later edit, so its rollback compares against the newest
+      // state rather than the render this adapter was built from.
+      currentState: () => latest.current,
       onError: setError,
       onSaved: () => {
         setError(null);

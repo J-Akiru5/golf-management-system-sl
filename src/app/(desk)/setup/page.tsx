@@ -135,7 +135,8 @@ function SetupWizard({
     holes: ReturnType<typeof useDesk>["holes"];
     sections: SetupSection[] | "all";
   }) => Promise<void>;
-  confirmCourse: (confirmed: boolean) => void;
+  /** Resolves once the database has recorded the confirmation; the demo resolves at once. */
+  confirmCourse: (confirmed: boolean) => void | Promise<void>;
   saveDayRule: (required: number | null, max: number | null) => Promise<void>;
 }) {
   // Everything on this screen is a draft until a save button is pressed. The old screen wrote on
@@ -867,11 +868,16 @@ function SetupWizard({
                       // lets write the column. The fieldset above already disables it for the desk.
                       disabled={!cardComplete || draftTees.length === 0}
                       onChange={(e) => {
-                        setDraft((current) => ({
-                          ...current,
-                          courseDataConfirmed: e.target.checked,
-                        }));
-                        confirmCourse(e.target.checked);
+                        const confirmed = e.target.checked;
+                        setDraft((current) => ({ ...current, courseDataConfirmed: confirmed }));
+                        // A refused write puts the tick back, so the box never says the numbers
+                        // were vouched for when the database did not record it.
+                        void Promise.resolve(confirmCourse(confirmed)).catch(() => {
+                          setDraft((current) => ({
+                            ...current,
+                            courseDataConfirmed: !confirmed,
+                          }));
+                        });
                       }}
                     />
                     <span>
