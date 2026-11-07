@@ -34,4 +34,12 @@ describe("pruneDaySessions", () => {
   it("drops a day the event does not have", () => {
     expect(pruneDaySessions([1, 7], { 1: "AM", 7: "PM" }, 3)).toEqual({ 1: "AM" });
   });
+
+  it("keeps a later day number when the event has a non-playing day in between", () => {
+    expect(pruneDaySessions([1, 2, 4], { 1: "AM", 2: "PM", 4: "AM" }, 4)).toEqual({
+      1: "AM",
+      2: "PM",
+      4: "AM",
+    });
+  });
 });

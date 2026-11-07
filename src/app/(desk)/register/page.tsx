@@ -39,7 +39,7 @@ import type { DaySessionChoice } from "@/lib/data/day-selection";
 import { selectIndexForCutOff } from "@/lib/data/frozen";
 import { instructionText } from "@/lib/data/instructions";
 import { fmtIso } from "@/lib/data/labels";
-import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
+import { daySessionSummary, registeredDayBadges } from "@/lib/data/sessions";
 import {
   type DeskRegistration,
   PAYMENT_LABEL,
@@ -329,6 +329,9 @@ function RegisterDesk() {
   const instructions = instructionText(tournament.registration.instructions);
   // Captured after the "no tournament" return so the handlers below keep a plain string.
   const tournamentId = tournament.id;
+  // The last playing day's second session is the 11:30 one, so the day lists and the editor must
+  // agree on which days count. A non-playing day in between is not offered for selection.
+  const playingDays = days.filter((day) => day.isPlayingDay);
 
   const fee = tournament.registration.fields.filter(
     (f) => f.appliesTo === "both" || f.appliesTo === draft.role,
@@ -556,19 +559,15 @@ function RegisterDesk() {
       .filter(([date, value]) => {
         if (!value) return false;
         return selectedDays.some(
-          (dayNumber) => days.find((day) => day.dayNumber === dayNumber)?.playDate === date,
+          (dayNumber) => playingDays.find((day) => day.dayNumber === dayNumber)?.playDate === date,
         );
       })
       .map(([, value]) => value);
-    const dayLabels = selectedDays.map((dayNumber) => {
-      const index = days.findIndex((day) => day.dayNumber === dayNumber);
-      const session =
-        e.daySessions?.[dayNumber] ??
-        (index >= 0
-          ? sessionLabelForTime(e.dayTee?.[dayNumber]?.teeTime ?? null, index, days.length)
-          : null);
-      return session ? `Day ${dayNumber} ${session}` : `Day ${dayNumber}`;
-    });
+    // Every registered day carries AM or PM. The desk's session wins, a stored tee time decides
+    // when there is no choice, and an unset day shows the day's morning default.
+    const dayLabels = registeredDayBadges(e, playingDays).map(
+      (badge) => `${badge.dayLabel} · ${badge.label} ${badge.time}`,
+    );
     const note = [
       e.shirt ? `shirt ${e.shirt}` : null,
       preferred.length > 0 ? `prefers ${preferred.join(", ")}` : "no tee preference given",
@@ -610,7 +609,7 @@ function RegisterDesk() {
           )}
           <RegistrationDaysEditor
             entry={e}
-            days={days}
+            days={playingDays}
             required={tournament?.requiredDays ?? null}
             max={tournament?.maxDays ?? null}
             onSave={(next, sessions) => saveDays(e, next, sessions)}
@@ -1093,7 +1092,7 @@ function RegisterDesk() {
                 <fieldset className="grid gap-3">
                   <legend className="overline float-left mb-2 w-full">Playing days</legend>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {days.map((day, index) => {
+                    {playingDays.map((day, index) => {
                       const checked = draft.selectedDays.includes(day.dayNumber);
                       return (
                         <label
@@ -1117,7 +1116,7 @@ function RegisterDesk() {
                               {day.label} · {fmtIso(day.playDate)}
                             </b>
                             <span className="hint block">
-                              {daySessionSummary(index, days.length)}
+                              {daySessionSummary(index, playingDays.length)}
                             </span>
                             {day.startTime && (
                               <span className="hint block">The day opens at {day.startTime}</span>
@@ -1143,7 +1142,7 @@ function RegisterDesk() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     {tournament.registration.teeTimes
                       .filter((d) => {
-                        const day = days.find((x) => x.playDate === d.date);
+                        const day = playingDays.find((x) => x.playDate === d.date);
                         return day ? draft.selectedDays.includes(day.dayNumber) : false;
                       })
                       .map((d) => (
