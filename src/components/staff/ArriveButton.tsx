@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useToast } from "@/components/ui/toast";
 import { useDesk } from "@/lib/store/desk-store";
+import { useStaffToast } from "./StaffToast";
 import styles from "./staff.module.css";
 
 type Phase = "idle" | "saving" | "error";
@@ -25,7 +25,7 @@ export function ArriveButton({
   compact?: boolean;
 }) {
   const { adapters } = useDesk();
-  const toast = useToast();
+  const toast = useStaffToast();
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState("");
 
@@ -56,6 +56,7 @@ export function ArriveButton({
         disabled={phase === "saving"}
         onClick={() => void toggle()}
         aria-label={arrived ? `Undo arrival for ${name}` : `Mark ${name} arrived`}
+        data-onboard="arrive-button"
       >
         {phase === "saving"
           ? "Saving…"
