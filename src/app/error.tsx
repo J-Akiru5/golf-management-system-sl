@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { PublicHeader } from "@/components/public/PublicHeader";
 
 /**
  * The last-resort error page for the app.
  *
  * It is a client component because Next needs the `reset` callback. It renders inside the root
- * layout, so it carries its own club header rather than relying on a route group's chrome.
+ * layout, outside the route group that provides the visitor's language, so the shared header falls
+ * back to English. The header is the same one every public page wears, because an error is exactly
+ * when a player most needs the way back to the pairings and the leaderboard.
  */
 export default function ErrorPage({
   reset,
@@ -17,15 +19,7 @@ export default function ErrorPage({
 }) {
   return (
     <main className="public">
-      <header className="public-head">
-        <div className="flex flex-wrap items-center gap-3">
-          <TeeLineLogo variant="reverse" width={172} />
-          <span className="leading-tight">
-            <b className="block font-display text-[13px] font-semibold">TeeLine Golf</b>
-            <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-          </span>
-        </div>
-      </header>
+      <PublicHeader current="" label="TeeLine Golf" homeSection />
 
       <section className="pairings-empty" role="alert">
         <h1 className="m-0 font-serif text-[26px] leading-8 font-semibold sm:text-[32px] sm:leading-10">

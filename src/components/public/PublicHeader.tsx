@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { HelpButton } from "@/components/help";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
-import type { Translate } from "@/lib/i18n/t";
+import { t as defaultT, type Translate } from "@/lib/i18n/t";
 import { PublicNav } from "./PublicNav";
 
 /**
@@ -20,7 +20,7 @@ import { PublicNav } from "./PublicNav";
 export function PublicHeader({
   current,
   label,
-  t,
+  t = defaultT,
   help,
   nav = true,
   homeSection = false,
@@ -28,7 +28,8 @@ export function PublicHeader({
 }: {
   current: string;
   label: string;
-  t: Translate;
+  /** Defaults to English: the 404 and error surfaces render outside the locale provider. */
+  t?: Translate;
   help?: "pairings" | "my";
   nav?: boolean;
   homeSection?: boolean;

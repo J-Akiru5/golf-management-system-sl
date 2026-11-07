@@ -65,7 +65,11 @@ const page = await context.newPage();
 const errors = [];
 const watch = (p) => {
   p.on("console", (m) => {
-    if (m.type() === "error") errors.push(`${p.url()} :: ${m.text()}`);
+    if (m.type() !== "error") return;
+    // The 404 surface answers 404 by design, and Chromium logs that response as a resource error.
+    // Every other console error on that page still counts.
+    if (p.url().includes("/no-such-page-teeline") && /status of 404/.test(m.text())) return;
+    errors.push(`${p.url()} :: ${m.text()}`);
   });
   p.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 };
@@ -1011,7 +1015,15 @@ const navAudit = () => {
   return { problems, rows };
 };
 
-const publicRoutes = ["/pairings", "/leaderboard", "/faq", "/privacy", "/terms"];
+const publicRoutes = [
+  "/pairings",
+  "/leaderboard",
+  "/faq",
+  "/privacy",
+  "/terms",
+  // A bad link is a public surface too: it has to lead somewhere.
+  "/no-such-page-teeline",
+];
 
 // The real routes, in both card shapes: the demo build renders a sample card on /my/card, so the
 // phone check has an actual table to measure rather than a promise.

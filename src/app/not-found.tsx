@@ -1,27 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { PublicHeader } from "@/components/public/PublicHeader";
 
 export const metadata: Metadata = {
   title: "Page not found",
 };
 
 /**
- * The shared 404. It uses the public header and panel styles, so a missing page still looks like
- * the club's site rather than a server default.
+ * The shared 404. It wears the same header as every public page, so a bad link still shows the
+ * club's logo and the way back to pairings, the leaderboard and home. The header falls back to
+ * English here because this surface renders outside the route group that reads the saved language.
  */
 export default function NotFound() {
   return (
     <main className="public">
-      <header className="public-head">
-        <div className="flex flex-wrap items-center gap-3">
-          <TeeLineLogo variant="reverse" width={172} />
-          <span className="leading-tight">
-            <b className="block font-display text-[13px] font-semibold">TeeLine Golf</b>
-            <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-          </span>
-        </div>
-      </header>
+      <PublicHeader current="" label="TeeLine Golf" homeSection />
 
       <section className="pairings-empty" role="status">
         <h1 className="m-0 font-serif text-[26px] leading-8 font-semibold sm:text-[32px] sm:leading-10">
