@@ -2,32 +2,49 @@ import { describe, expect, it } from "vitest";
 import { groupStartGroups, type SortableStartGroup, sortStartGroups } from "./start-sheet";
 
 const groups: SortableStartGroup[] = [
-  { number: 4, wave: "B", startHole: 1, time: "12:00" },
-  { number: 3, wave: "A", startHole: 10, time: "07:00" },
-  { number: 2, wave: "A", startHole: 2, time: "07:00" },
-  { number: 1, wave: "A", startHole: 1, time: "07:00" },
+  { number: 4, startHole: 1, time: "12:00" },
+  { number: 3, startHole: 10, time: "07:00" },
+  { number: 2, startHole: 2, time: "07:00" },
+  { number: 1, startHole: 1, time: "07:00" },
 ];
 
 describe("start-sheet sorting", () => {
-  it("orders shotgun groups by wave, then starting hole", () => {
+  it("orders shotgun groups by start time, then starting hole", () => {
     expect(sortStartGroups(groups, "shotgun").map((group) => group.number)).toEqual([1, 2, 3, 4]);
   });
 
-  it("groups shotgun starts into waves", () => {
+  it("groups shotgun starts by the time they tee off", () => {
     expect(
-      groupStartGroups(groups, "shotgun").map((section) => [section.wave, section.groups.length]),
+      groupStartGroups(groups, "shotgun").map((section) => [section.time, section.groups.length]),
     ).toEqual([
-      ["A", 3],
-      ["B", 1],
+      ["07:00", 3],
+      ["12:00", 1],
+    ]);
+  });
+
+  it("keeps two starts inside one session apart", () => {
+    const morning: SortableStartGroup[] = [
+      { number: 1, startHole: 1, time: "06:30" },
+      { number: 2, startHole: 2, time: "06:30" },
+      { number: 3, startHole: 1, time: "06:45" },
+    ];
+    expect(
+      groupStartGroups(morning, "shotgun").map((section) => [
+        section.time,
+        section.groups.map((group) => group.number),
+      ]),
+    ).toEqual([
+      ["06:30", [1, 2]],
+      ["06:45", [3]],
     ]);
   });
 
   it("orders two-tee starts by time then hole and groups concurrent tees together", () => {
     const twoTee = [
-      { ...groups[0]!, wave: null, startHole: 10 },
-      { ...groups[1]!, wave: null, startHole: 10 },
-      { ...groups[2]!, wave: null, startHole: 1, time: "06:48" },
-      { ...groups[3]!, wave: null, startHole: 1 },
+      { ...groups[0]!, startHole: 10 },
+      { ...groups[1]!, startHole: 10 },
+      { ...groups[2]!, startHole: 1, time: "06:48" },
+      { ...groups[3]!, startHole: 1 },
     ];
 
     expect(sortStartGroups(twoTee, "two_tee").map((group) => group.number)).toEqual([2, 1, 3, 4]);
@@ -57,7 +74,7 @@ describe("start sheet completeness", () => {
     players: { id: string }[];
   }
 
-  /** A field of `playerCount` players in groups of four, split across two waves. */
+  /** A field of `playerCount` players in groups of four, split across two start times. */
   function fieldOf(playerCount: number, size = 4): PrintGroup[] {
     const groups: PrintGroup[] = [];
     for (let i = 0; i < playerCount; i += size) {
@@ -65,7 +82,6 @@ describe("start sheet completeness", () => {
       groups.push({
         number,
         startHole: ((number - 1) % 18) + 1,
-        wave: number % 2 === 0 ? "PM" : "AM",
         time: number % 2 === 0 ? "12:00" : "07:00",
         players: Array.from({ length: Math.min(size, playerCount - i) }, (_, k) => ({
           id: `p${i + k + 1}`,
@@ -111,9 +127,9 @@ describe("start sheet completeness", () => {
     const field = fieldOf(12); // three groups: 1 and 3 in the AM wave, 2 in the PM
     const sections = groupStartGroups(field, "shotgun");
     const numbers = sections.flatMap((s) => s.groups.map((g) => g.number));
-    // The AM wave plays first in hole order, then the PM wave. Paging the desk's list would have
-    // reordered these by row, not by when the field actually tees off.
+    // The morning start plays first in hole order, then the afternoon one. Paging the desk's list
+    // would have reordered these by row, not by when the field actually tees off.
     expect(numbers).toEqual([1, 3, 2]);
-    expect(sections.map((s) => s.wave)).toEqual(["AM", "PM"]);
+    expect(sections.map((s) => s.time)).toEqual(["07:00", "12:00"]);
   });
 });

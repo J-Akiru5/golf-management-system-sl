@@ -34,7 +34,7 @@ export function Scorecards({
     <section className={styles.scorecards} aria-label="Scorecards">
       {groupsWithPlayers.map(({ players, ...group }) => (
         <Scorecard
-          key={`${group.wave ?? "two-tee"}-${group.number}`}
+          key={`${group.startHole}-${group.number}`}
           eventTitle={title}
           eventSubtitle={subtitle}
           eventHost={hostName}

@@ -32,7 +32,6 @@ import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/ui/cn";
-import { sessionOfLabel, waveHeading } from "@/lib/ui/labels";
 
 type Tab = "start" | "counts" | "pairings" | "scorecards" | "howto";
 
@@ -66,9 +65,6 @@ export default function PrintCenter() {
   // never mix two days together.
   const playingDays = useMemo(() => days.filter((d) => d.isPlayingDay), [days]);
   const chosenDay = playingDays.find((d) => d.dayNumber === drawDay) ?? null;
-  // One wave at a time is what the club prints: the morning and afternoon sheets are handed out
-  // separately. "All waves" keeps the whole day on one sheet.
-  const [waveFilter, setWaveFilter] = useState<"all" | "AM" | "PM">("all");
   // Every day at once, fetched on demand: the desk itself only holds the selected day.
   const [everyDay, setEveryDay] = useState<{ day: number; groups: PrintGroup[] }[] | null>(null);
   const [preparingAll, setPreparingAll] = useState(false);
@@ -126,22 +122,17 @@ export default function PrintCenter() {
   const playerById = new Map(players.map((p) => [p.id, p]));
   const shotgun = tournament.config.startFormat === "shotgun";
   const dayGroups = draw ?? [];
-  const groups =
-    waveFilter === "all"
-      ? dayGroups
-      : dayGroups.filter((group) => sessionOfLabel(group.wave) === waveFilter);
+  const groups = dayGroups;
   // This existing route remains the assembler: adapt the desk's domain objects into plain print props here.
   const toPrintGroup = (group: {
     number: number;
     startHole: number;
-    wave: string | null;
     time: string;
     flightId: string;
     playerIds: string[];
   }): PrintGroup => ({
     number: group.number,
     startHole: group.startHole,
-    wave: group.wave,
     time: group.time,
     flight: isUnclassifiedGroup(group.playerIds, regById)
       ? UNCLASSIFIED_LABEL
@@ -193,7 +184,6 @@ export default function PrintCenter() {
       type Row = {
         number: number;
         start_hole: number;
-        wave: string | null;
         tee_time: string;
         flight_id: string;
         round_id: string;
@@ -218,7 +208,6 @@ export default function PrintCenter() {
               toPrintGroup({
                 number: row.number,
                 startHole: row.start_hole,
-                wave: row.wave,
                 time: row.tee_time,
                 flightId: row.flight_id,
                 playerIds: (row.group_members ?? [])
@@ -305,8 +294,7 @@ export default function PrintCenter() {
     holes,
   });
   const dayPart = chosenDay ? `${chosenDay.label} · ` : "";
-  const wavePart = waveFilter === "all" ? "" : `${waveHeading(groups[0]?.wave)} · `;
-  const subtitle = `${tournament.name} · ${dayPart}${wavePart}${fmtDateLabel(tournament.dates)} · ${
+  const subtitle = `${tournament.name} · ${dayPart}${fmtDateLabel(tournament.dates)} · ${
     shotgun ? "Shotgun start" : "Two-tee start"
   } · first tee ${tournament.config.firstTeeTime}${
     groups[0] ? ` · ${groups.length} groups` : " · no draw yet"
@@ -339,21 +327,6 @@ export default function PrintCenter() {
                       {d.label} · {fmtIso(d.playDate)}
                     </option>
                   ))}
-                </select>
-              </label>
-            )}
-            {shotgun && (
-              <label className="no-print grid gap-1">
-                <span className="overline !text-[10px]">Wave to print</span>
-                <select
-                  value={waveFilter}
-                  onChange={(e) => setWaveFilter(e.target.value as "all" | "AM" | "PM")}
-                  className="!w-auto"
-                  data-help="print-wave"
-                >
-                  <option value="all">All waves</option>
-                  <option value="AM">Wave A · Morning</option>
-                  <option value="PM">Wave B · Afternoon</option>
                 </select>
               </label>
             )}

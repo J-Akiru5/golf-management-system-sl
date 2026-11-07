@@ -33,7 +33,7 @@ export function useSpotlightData(
   if (group) {
     stats.push({
       label: shotgun ? "Start hole" : "Start tee",
-      value: `${group.startHole}${group.wave ?? ""}`,
+      value: String(group.startHole),
     });
     stats.push({
       label: "Tee time",
@@ -70,8 +70,8 @@ export function useSpotlightData(
       : [],
     tee: group
       ? {
-          hole: `${group.startHole}${group.wave ?? ""}`,
-          label: `${shotgun ? "Hole" : "Tee"} ${group.startHole}${group.wave ?? ""} · ${shotgun ? "Shotgun " : ""}${fmtTime(group.time)}`,
+          hole: String(group.startHole),
+          label: `${shotgun ? "Hole" : "Tee"} ${group.startHole} · ${shotgun ? "Shotgun " : ""}${fmtTime(group.time)}`,
           date,
         }
       : null,

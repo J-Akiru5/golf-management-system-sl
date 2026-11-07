@@ -1,7 +1,7 @@
 # AVP production brief (for AI agents)
 
-Audience for this file: coding agents that will build the TeeLine Golf AVP (audio-visual presentation).
-Humans: this is the machine-readable twin of the plan the owner approved. Read `AGENTS.md` first; its
+Audience for this file: coding agents that will build the TeeLine Golf AVP (audio visual presentation).
+Humans: this is the machine readable twin of the plan the owner approved. Read `AGENTS.md` first; its
 rules apply here.
 
 Status: **approved by the owner on 18 Oct 2026. Every open question is answered (section 3).** The

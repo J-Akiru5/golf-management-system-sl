@@ -32,7 +32,6 @@ export interface PublishedLike {
   groups: {
     number: number;
     startHole: number;
-    wave: string | null;
     time: string;
     flight: string;
     players: string[];
@@ -76,7 +75,6 @@ export function toPublicPairings({
     return {
       number: g.number,
       startHole: g.startHole,
-      wave: g.wave,
       time: g.time,
       flight: g.flight,
       players,

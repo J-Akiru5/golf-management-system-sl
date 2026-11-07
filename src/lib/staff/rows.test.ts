@@ -54,7 +54,6 @@ const groups: StaffGroup[] = [
   {
     id: "g-10",
     number: 10,
-    wave: "D3-PM-A",
     time: "12:30",
     startHole: 4,
     flightId: "class-a",
@@ -66,7 +65,6 @@ const groups: StaffGroup[] = [
   {
     id: "g-2",
     number: 2,
-    wave: "D3-AM-A",
     time: "06:30:00",
     startHole: 9,
     flightId: "class-b",
@@ -116,7 +114,7 @@ describe("staff rows", () => {
     expect(delta?.group).toBeNull();
   });
 
-  it("prefers the desk's session, then the wave, then the tee time", () => {
+  it("prefers the desk's session, then the tee time", () => {
     const rowsWithChosen = buildRows({
       ...base,
       entries: [

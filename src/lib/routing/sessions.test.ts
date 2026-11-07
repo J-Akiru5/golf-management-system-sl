@@ -58,13 +58,12 @@ function draw(input: Player[], session: (id: string) => "AM" | "PM" | null, dayN
   );
 }
 
-const wavesOf = (result: ReturnType<typeof route>) => {
-  const waves = new Map<string, number>();
+const startsOf = (result: ReturnType<typeof route>) => {
+  const starts = new Map<string, number>();
   for (const group of result.groups) {
-    const key = group.wave ?? "none";
-    waves.set(key, (waves.get(key) ?? 0) + 1);
+    starts.set(group.time, (starts.get(group.time) ?? 0) + 1);
   }
-  return Object.fromEntries([...waves].sort());
+  return Object.fromEntries([...starts].sort());
 };
 
 describe("a playing day drawn in a morning and an afternoon session", () => {
@@ -79,24 +78,21 @@ describe("a playing day drawn in a morning and an afternoon session", () => {
     const result = draw(field, (id) => (afternoon.has(id) ? "PM" : "AM"));
 
     // Morning: Class A 8 players = 2 groups, Class B 4 = 1 group. Afternoon: one group each.
-    expect(wavesOf(result)).toEqual({ "D2-AM-A": 3, "D2-PM-A": 2 });
-
-    const times = new Map(result.groups.map((g) => [g.wave, g.time]));
-    expect(times.get("D2-AM-A")).toBe("06:30");
-    expect(times.get("D2-PM-A")).toBe("12:30");
+    expect(startsOf(result)).toEqual({ "06:30": 3, "12:30": 2 });
+    expect(new Set(result.groups.map((g) => g.time))).toEqual(new Set(["06:30", "12:30"]));
   });
 
-  it("only starts a second wave in the session that has more groups than holes", () => {
-    // 80 morning players are 20 groups, so the morning needs wave B; the afternoon fits one wave.
+  it("only starts a second time in the session that has more groups than holes", () => {
+    // 80 morning players are 20 groups, so the morning needs a second start; the afternoon fits one.
     const morning = players(80, 5);
     const afternoon = players(4, 5, 500);
     const result = draw([...morning, ...afternoon], (id) =>
       Number(id.slice(1)) >= 500 ? "PM" : "AM",
     );
 
-    expect(wavesOf(result)).toEqual({ "D2-AM-A": 18, "D2-AM-B": 2, "D2-PM-A": 1 });
-    const second = result.groups.find((g) => g.wave === "D2-AM-B");
-    expect(second?.time).toBe("06:39");
+    expect(startsOf(result)).toEqual({ "06:30": 18, "06:39": 2, "12:30": 1 });
+    const second = result.groups.find((g) => g.time === "06:39");
+    expect(second).toBeDefined();
     expect(result.warnings.some((w) => w.includes("Class A has 20 groups"))).toBe(true);
   });
 
@@ -115,10 +111,10 @@ describe("a playing day drawn in a morning and an afternoon session", () => {
     const field = players(4, 5);
     const result = draw(field, (id) => (id === "p1" ? null : "AM"));
     expect(result.warnings.some((w) => w.includes("no morning or afternoon session"))).toBe(true);
-    expect(wavesOf(result)).toEqual({ "D2-AM-A": 1 });
+    expect(startsOf(result)).toEqual({ "06:30": 1 });
   });
 
-  it("labels a day without a session name with the plain wave letter", () => {
+  it("starts a day without sessions at its first tee time", () => {
     const result = route({
       players: players(4, 5),
       config,
@@ -126,10 +122,10 @@ describe("a playing day drawn in a morning and an afternoon session", () => {
       categories: [category],
       flights,
     });
-    expect(result.groups.map((g) => g.wave)).toEqual(["A"]);
+    expect(result.groups.map((g) => g.time)).toEqual(["06:30"]);
   });
 
-  it("keeps filling a wave and lets a class continue into the next one", () => {
+  it("keeps filling a start and lets a class continue into the next one", () => {
     // 13 Class A groups fill 13 holes; Class B has 10 groups and does not fit the 5 holes left.
     const field = [...players(52, 5), ...players(40, 20, 100)];
     const input = {
@@ -145,12 +141,15 @@ describe("a playing day drawn in a morning and an afternoon session", () => {
       },
     };
 
-    // A class is moved whole by default, so Class B starts wave B.
-    expect(wavesOf(route(input, { seed: 7 }))).toEqual({ "D3-AM-A": 13, "D3-AM-B": 10 });
+    // A class is moved whole by default, so Class B starts at the later time.
+    expect(startsOf(route(input, { seed: 7 }))).toEqual({ "06:30": 13, "06:39": 10 });
 
-    // Filling the wave as it goes uses wave A to its last hole and starts B with what is left.
+    // Filling the start as it goes uses the first start to its last hole and starts the next with
+    // what is left.
     const filled = route(input, { seed: 7, splitClassesAcrossWaves: true });
-    expect(wavesOf(filled)).toEqual({ "D3-AM-A": 18, "D3-AM-B": 5 });
-    expect(filled.warnings.some((w) => w.includes("plays across waves"))).toBe(true);
+    expect(startsOf(filled)).toEqual({ "06:30": 18, "06:39": 5 });
+    expect(filled.warnings.some((w) => w.includes("plays across the 06:30 and 06:39 starts"))).toBe(
+      true,
+    );
   });
 });

@@ -74,18 +74,23 @@ function ControlRoomInner({
   };
   const bounds = useMemo(() => boundsFor(zoom), [cover, zoom]);
   const shotgun = config.startFormat === "shotgun";
-  const [wave, setWave] = useState<string>("A");
+  const [chosenStart, setChosenStart] = useState<string | null>(null);
   // Nothing is open on landing. The first hole card used to open itself when a draw existed,
   // which covered the map before anyone had asked for it.
   const [selected, setSelected] = useState<number | null>(null);
 
-  const waveGroups = draw?.filter((g) => !shotgun || g.wave === wave) ?? [];
+  // One start at a time on the map: a session can have more than one, and the pins can only hold
+  // one group per hole. The first start is shown until the organizer picks another.
+  const startTimes = b.startTimes;
+  const start =
+    chosenStart && startTimes.includes(chosenStart) ? chosenStart : (startTimes[0] ?? null);
+  const startGroups = draw?.filter((g) => !shotgun || g.time === start) ?? [];
   const date = new Date(`${config.date}T00:00:00`).toLocaleDateString("en-PH", {
     weekday: "short",
     month: "short",
     day: "numeric",
   });
-  const waveStart = waveGroups[0]?.time ?? config.firstTeeTime;
+  const startClock = startGroups[0]?.time ?? config.firstTeeTime;
 
   const startPan = (e: React.PointerEvent<HTMLElement>) => {
     // A fresh press is a fresh intent: it clears the guard, so Reset view still works when the
@@ -229,7 +234,7 @@ function ControlRoomInner({
   }, [cover]);
 
   const holes = MAP_HOLES.map((h) => {
-    const slot = b.slot(h.hole, shotgun ? wave : null);
+    const slot = b.slot(h.hole, shotgun ? start : null);
     if (!shotgun) {
       const n = draw?.filter((g) => g.startHole === h.hole).length ?? 0;
       return { h, slot: { ...slot, label: n ? `${n} groups` : "No start" } };
@@ -257,14 +262,14 @@ function ControlRoomInner({
 
         <div className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[var(--rail-pad)]">
           <p className="text-[11px] font-bold tracking-[.14em] text-[#e0bc65] uppercase">
-            {shotgun ? "Shotgun start" : "Two-tee start"} · {fmtTime(waveStart)} · {date}
+            {shotgun ? "Shotgun start" : "Two-tee start"} · {fmtTime(startClock)} · {date}
           </p>
           <h1 className="mt-1.5 font-serif text-[34px] leading-[38px] font-semibold !text-on-forest sm:text-[44px] sm:leading-[46px]">
             {draw ? (shotgun ? "Shotgun draw" : "Two-tee draw") : tournament.name}
           </h1>
           <p className="mt-1.5 text-sm opacity-85">
             {draw
-              ? `${tournament.name} · ${waveGroups.length} groups across ${shotgun ? `18 holes · Wave ${wave}` : "holes 1 and 10"}`
+              ? `${tournament.name} · ${startGroups.length} groups across ${shotgun ? "18 holes" : "holes 1 and 10"}`
               : `${b.ready.length} players ready · no draw yet`}
           </p>
           {(tournament.nameNeedsConfirmation || b.status === "demo") && !draw && (
@@ -274,15 +279,20 @@ function ControlRoomInner({
               {b.status === "demo" && "Demo data only."}
             </p>
           )}
-          {shotgun && b.waves.length > 1 && (
+          {shotgun && startTimes.length > 1 && (
             <div
               className="seg mt-3 !border-[rgba(238,240,234,.3)] bg-[rgba(14,22,18,.5)]"
               role="group"
-              aria-label="Wave"
+              aria-label="Start time"
             >
-              {b.waves.map((w) => (
-                <button key={w} type="button" aria-pressed={wave === w} onClick={() => setWave(w)}>
-                  Wave {w}
+              {startTimes.map((time) => (
+                <button
+                  key={time}
+                  type="button"
+                  aria-pressed={start === time}
+                  onClick={() => setChosenStart(time)}
+                >
+                  {fmtTime(time)}
                 </button>
               ))}
             </div>
@@ -298,7 +308,7 @@ function ControlRoomInner({
         >
           {cover &&
             holes.map(({ h, slot }) => {
-              const code = `${h.hole}${shotgun && slot.wave ? slot.wave : ""}`;
+              const code = `${h.hole}`;
               const isSel = selected === h.hole;
               const label =
                 isSel && slot.status === "short" && b.unplaced.length > 0
@@ -382,10 +392,10 @@ function ControlRoomInner({
       </section>
 
       <section aria-label="Holes" className="grid gap-2 px-4 pt-4 sm:hidden">
-        <h2 className="text-base">Holes{shotgun ? ` · Wave ${wave}` : ""}</h2>
+        <h2 className="text-base">Holes{shotgun && start ? ` · ${fmtTime(start)}` : ""}</h2>
         <div className="flex flex-wrap gap-2">
           {holes.map(({ h, slot }) => {
-            const code = `${h.hole}${shotgun && slot.wave ? slot.wave : ""}`;
+            const code = `${h.hole}`;
             return (
               <Popover key={h.hole}>
                 <PopoverAnchor asChild>

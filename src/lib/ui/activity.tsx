@@ -24,7 +24,7 @@ export interface ActivityEntry {
 
 const Ctx = createContext<ActivityEntry[]>([]);
 
-const holeCode = (g: DrawGroup) => `${g.startHole}${g.wave ?? ""}`;
+const holeCode = (g: DrawGroup) => `${g.startHole}`;
 
 /**
  * What happened on the desk during this browser session, worked out by comparing the store before

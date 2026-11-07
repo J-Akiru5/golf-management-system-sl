@@ -2,7 +2,6 @@
 
 import { fmtHcp, fmtIndex, fmtTime } from "@/lib/format";
 import { groupStartGroups, type PrintStartFormat } from "@/lib/print/start-sheet";
-import { flightName, waveHeading } from "@/lib/ui/labels";
 import styles from "./print.module.css";
 import type { CourseDataStatus, PrintGroup } from "./types";
 
@@ -46,18 +45,10 @@ export function StartSheet({
 
       {sections.map((section) => (
         <section key={section.key} className={styles.startSection}>
-          <h3 className={styles.sectionHeading}>
-            {startFormat === "shotgun"
-              ? `${waveHeading(section.wave)} · ${flightName(section.wave)}`
-              : `Tee time ${fmtTime(section.time)}`}
-            {startFormat === "shotgun" && section.time && <span>{fmtTime(section.time)}</span>}
-          </h3>
+          <h3 className={styles.sectionHeading}>Tee time {fmtTime(section.time)}</h3>
           <div className={styles.startGrid}>
             {section.groups.map((group) => (
-              <article
-                className={styles.startGroup}
-                key={`${group.wave ?? "two-tee"}-${group.number}`}
-              >
+              <article className={styles.startGroup} key={`${group.startHole}-${group.number}`}>
                 <header className={styles.groupHeader}>
                   <b>
                     {startFormat === "shotgun"

@@ -8,14 +8,7 @@ import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
 import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
-import {
-  dayWaveStartTimes,
-  MAX_WAVES,
-  sessionWaveTime,
-  teeAssignmentProblem,
-  type WaveStart,
-  waveProblem,
-} from "@/lib/data/tee-time";
+import { teeAssignmentProblem } from "@/lib/data/tee-time";
 import type {
   Caddie,
   DayTeeAssignment,
@@ -65,7 +58,7 @@ export default function TeeTimesPage() {
     () => new Map(players.map((player) => [player.id, player])),
     [players],
   );
-  // Where the draw put each player: their wave and their hole. The clock comes from the session.
+  // Where the draw put each player: the time and hole the draw's group starts with.
   const placements = useMemo(() => placementsFromDraw(draw ?? []), [draw]);
   const rows = useMemo(() => {
     if (!day) return [];
@@ -95,24 +88,16 @@ export default function TeeTimesPage() {
   /** Players on this day whose group is on the board, so the draw can give them a time. */
   const fromDraw = rows.filter(({ player }) => placements.has(player.id)).length;
   const config = tournament.config;
-  // The club plays two waves a day and never a third, each one interval after the one before it. A
-  // wave already written on a player stays in that player's own list, so nothing is invented.
-  const waveCount = MAX_WAVES;
-  const waves =
-    config.startFormat === "shotgun" && day
-      ? dayWaveStartTimes(day, config.firstTeeTime, config.waveGapMinutes, waveCount)
-      : [];
-  // The operator types the batch time. A wave never fills it in: the wave letters come from the
-  // draw, and the times from the event's first tee time and its interval.
+  // The operator types the batch time. A group's own start comes from the draw.
   const chosenTime = batchTime || config.firstTeeTime;
   const dayStart = dayStartDraft?.key === dayKey ? dayStartDraft.value : (day?.startTime ?? "");
   const dayStartMessage = dayStartResult?.key === dayKey ? dayStartResult : null;
 
   /**
-   * Writes one wave time to the day, in small parallel batches.
+   * Writes one start time to the day, in small parallel batches.
    *
    * "missing" fills only players with no time yet, which is the normal start of a shotgun day.
-   * "all" overwrites every time but keeps each player's start hole and confirmation, so a wave
+   * "all" overwrites every time but keeps each player's start hole and confirmation, so a start
    * moved from 06:30 to 12:30 does not lose the work already done on holes.
    */
   async function applyBatch(mode: "missing" | "all") {
@@ -143,7 +128,7 @@ export default function TeeTimesPage() {
           await adapters.registrations.assignDayTee(row.entry.id, day.dayNumber, {
             teeTime: time,
             startHole: existing?.startHole ?? null,
-            wave: existing?.wave ?? null,
+            wave: null,
             confirmed: Boolean(existing?.confirmed && existing.startHole),
           });
           saved += 1;
@@ -162,18 +147,16 @@ export default function TeeTimesPage() {
           }
         : {
             tone: "ok",
-            text: `Set ${time} for ${saved} player${saved === 1 ? "" : "s"}. Each player keeps the wave the draw gave them; a time can be confirmed once its hole is set.`,
+            text: `Set ${time} for ${saved} player${saved === 1 ? "" : "s"}. Each player keeps their start hole; a time can be confirmed once its hole is set.`,
           },
     );
   }
 
   /**
-   * Copies the draw onto this day: each player's wave letter and start hole come from the group they
-   * were drawn into, and the time is that day's own session start moved by the wave interval. A
-   * morning wave B player therefore goes off 15 minutes after the morning start, and an afternoon
-   * wave B player 15 minutes after that day's afternoon start. Nothing is invented for a player the
-   * board has no group for; those stay without a time and are counted in the message. Times are
-   * saved unconfirmed, so the desk still ticks each one after looking at it.
+   * Copies the draw onto this day: each player's start time and start hole come from the group they
+   * were drawn into. Nothing is invented for a player the board has no group for; those stay without
+   * a time and are counted in the message. Times are saved unconfirmed, so the desk still ticks each
+   * one after looking at it.
    */
   async function applyFromDraw() {
     if (!day || batching) return;
@@ -190,15 +173,7 @@ export default function TeeTimesPage() {
         entry,
         player,
         placed,
-        teeTime: sessionWaveTime({
-          session: entry.daySessions?.[day.dayNumber] ?? null,
-          wave: placed.wave,
-          day,
-          dayIndex,
-          dayCount: days.length,
-          firstTeeTime: config.firstTeeTime,
-          intervalMinutes: config.waveGapMinutes,
-        }),
+        teeTime: placed.time,
       });
     }
     if (targets.length === 0) {
@@ -221,7 +196,7 @@ export default function TeeTimesPage() {
           await adapters.registrations.assignDayTee(item.entry.id, day.dayNumber, {
             teeTime: item.teeTime,
             startHole: item.placed.startHole,
-            wave: item.placed.wave,
+            wave: null,
             confirmed: false,
           });
           saved += 1;
@@ -237,18 +212,18 @@ export default function TeeTimesPage() {
       failed.length > 0
         ? {
             tone: "bad",
-            text: `Took the draw's wave for ${saved} player${saved === 1 ? "" : "s"}. ${failed.length} could not be saved: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}.`,
+            text: `Took the draw's start time and hole for ${saved} player${saved === 1 ? "" : "s"}. ${failed.length} could not be saved: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}.`,
           }
         : {
             tone: "ok",
-            text: `Took the draw's wave and hole for ${saved} player${saved === 1 ? "" : "s"}${
+            text: `Took the draw's start time and hole for ${saved} player${saved === 1 ? "" : "s"}${
               left > 0 ? `; ${left} on this day ${left === 1 ? "has" : "have"} no group yet` : ""
-            }. Each time is their own AM or PM start moved by their wave, saved unconfirmed so the desk still ticks it.`,
+            }. Each time is the start their group was drawn into, saved unconfirmed so the desk still ticks it.`,
           },
     );
   }
 
-  /** Saves this day's own opening time, which is what Wave A uses on this day only. */
+  /** Saves this day's own opening time, which the morning start uses on this day only. */
   async function saveDayStart(time: string) {
     if (!day || dayStartSaving) return;
     const event = tournament;
@@ -261,7 +236,7 @@ export default function TeeTimesPage() {
         key: dayKey,
         tone: "ok",
         text: time
-          ? `Saved. Wave A on this day starts at ${time}.`
+          ? `Saved. This day starts at ${time}.`
           : "Cleared. This day starts at the event's first tee time.",
       });
     } catch (error) {
@@ -379,14 +354,13 @@ export default function TeeTimesPage() {
               {config.startFormat === "shotgun" && rows.length > 0 && (
                 <div className="grid gap-3 rounded-[12px] border border-line bg-surface-sunken p-3">
                   <div>
-                    <b className="text-[14px]">Waves and the batch time</b>
+                    <b className="text-[14px]">Start times and the batch time</b>
                     <p className="hint mt-0.5">
-                      A shotgun wave sends every player off at once. Wave A starts at this
-                      day&apos;s own start time and Wave B starts the event&apos;s interval after
-                      it: A {fmtTime(waves[0]?.time ?? config.firstTeeTime)} and B{" "}
-                      {fmtTime(waves[1]?.time ?? config.firstTeeTime)}. This day holds {rows.length}{" "}
-                      players. A batch time is typed below, or each player&apos;s wave and hole are
-                      taken from the draw and timed at their own AM or PM session.{" "}
+                      A shotgun start sends every player off at once. When the {config.holes} holes
+                      are full, the rest go off one interval later in the same session, so this day
+                      can have more than one start. This day holds {rows.length} players. A batch
+                      time is typed below, or each player&apos;s start time and hole are taken from
+                      the draw.{" "}
                       <Link href="/setup#start" className="underline">
                         Change the event times in Settings
                       </Link>
@@ -459,7 +433,6 @@ export default function TeeTimesPage() {
                         <th>Player</th>
                         <th>Index</th>
                         <th>Membership</th>
-                        <th>Wave</th>
                         <th>Session</th>
                         <th>Tee time</th>
                         <th>Start hole</th>
@@ -479,7 +452,6 @@ export default function TeeTimesPage() {
                           dayCount={days.length}
                           caddies={caddies.filter((caddie) => caddie.active)}
                           courseHoles={tournament.config.holes}
-                          waves={waves}
                           onSave={(assignment) =>
                             adapters.registrations.assignDayTee(entry.id, day.dayNumber, assignment)
                           }
@@ -508,7 +480,6 @@ function TeeRow({
   dayCount,
   caddies,
   courseHoles,
-  waves,
   onSave,
   onAssignCaddie,
 }: {
@@ -520,18 +491,14 @@ function TeeRow({
   dayCount: number;
   caddies: Caddie[];
   courseHoles: number;
-  /** The day's waves, from the field size and the draw. A player may sit in any of them. */
-  waves: WaveStart[];
+
   onSave: (assignment: DayTeeAssignment) => Promise<void>;
   onAssignCaddie: (caddieId: string | null) => Promise<void>;
 }) {
   const saved = entry.dayTee?.[day.dayNumber];
   const [teeTime, setTeeTime] = useState(saved?.teeTime ?? "");
   const [startHole, setStartHole] = useState(saved?.startHole ? String(saved.startHole) : "");
-  const [wave, setWave] = useState(saved?.wave ?? "");
   const [confirmed, setConfirmed] = useState(saved?.confirmed ?? false);
-  // A wave already on this player stays selectable even if the field now needs fewer waves.
-  const waveOptions = [...new Set([...waves.map((item) => item.wave), ...(wave ? [wave] : [])])];
   const [caddieId, setCaddieId] = useState(entry.caddieByDay?.[day.dayNumber]?.caddieId ?? "");
   const [saving, setSaving] = useState(false);
   const [caddieSaving, setCaddieSaving] = useState(false);
@@ -545,12 +512,8 @@ function TeeRow({
     timeText: string,
     holeText: string,
     isConfirmed: boolean,
-    waveText: string,
   ): { assignment: DayTeeAssignment } | { error: string } {
     const hole = holeText ? Number(holeText) : null;
-    if (waveProblem(waveText || null) === "wave_format") {
-      return { error: "A wave is one letter, for example A." };
-    }
     const problem = teeAssignmentProblem({
       teeTime: timeText || null,
       startHole: hole,
@@ -570,7 +533,7 @@ function TeeRow({
       assignment: {
         teeTime: timeText || null,
         startHole: hole,
-        wave: waveText ? waveText.trim().toUpperCase() : null,
+        wave: null,
         confirmed: isConfirmed,
       },
     };
@@ -580,7 +543,7 @@ function TeeRow({
     setMessage(null);
     const resolved = next
       ? { assignment: next }
-      : resolveAssignment(teeTime.trim(), startHole.trim(), confirmed, wave);
+      : resolveAssignment(teeTime.trim(), startHole.trim(), confirmed);
     if ("error" in resolved) {
       setMessage({ tone: "bad", text: resolved.error });
       return;
@@ -592,7 +555,6 @@ function TeeRow({
       await onSave(assignment);
       setTeeTime(assignment.teeTime ?? "");
       setStartHole(assignment.startHole ? String(assignment.startHole) : "");
-      setWave(assignment.wave ?? "");
       setConfirmed(assignment.confirmed);
       setMessage({ tone: "ok", text: assignment.confirmed ? "Confirmed." : "Saved." });
     } catch (error) {
@@ -613,7 +575,7 @@ function TeeRow({
   async function toggleConfirmed(next: boolean) {
     if (saving) return;
     const previous = confirmed;
-    const resolved = resolveAssignment(teeTime.trim(), startHole.trim(), next, wave);
+    const resolved = resolveAssignment(teeTime.trim(), startHole.trim(), next);
     if ("error" in resolved) {
       setMessage({ tone: "bad", text: resolved.error });
       return;
@@ -647,30 +609,6 @@ function TeeRow({
       <td className="num">{fmtIndex(entry.frozen.index)}</td>
       <td>
         <span className="pill">{entry.role}</span>
-      </td>
-      <td>
-        <select
-          value={wave}
-          disabled={saving}
-          aria-label={`Wave for ${player.name} on ${day.label}`}
-          className="w-24"
-          onChange={(e) => {
-            const next = e.target.value;
-            setWave(next);
-            // A wave is a time: picking one puts that wave's start in the time field, so the row
-            // cannot be saved with a wave and no time. "No wave" leaves the typed time alone.
-            const start = waves.find((item) => item.wave === next);
-            if (start) setTeeTime(start.time);
-            setMessage(null);
-          }}
-        >
-          <option value="">No wave</option>
-          {waveOptions.map((letter) => (
-            <option key={letter} value={letter}>
-              Wave {letter}
-            </option>
-          ))}
-        </select>
       </td>
       <td>
         <span className="pill">
@@ -756,7 +694,7 @@ function TeeRow({
           <Button variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
             <Check aria-hidden="true" /> {saving ? "Saving…" : "Save"}
           </Button>
-          {(saved?.teeTime || saved?.startHole || saved?.wave) && (
+          {(saved?.teeTime || saved?.startHole) && (
             <Button
               variant="ghost"
               size="sm"

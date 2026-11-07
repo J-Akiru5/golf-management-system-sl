@@ -55,7 +55,6 @@ export function useStaffRows(): StaffRows {
     return (draw ?? []).map((group) => ({
       id: staffGroupId(day.number, group.number),
       number: group.number,
-      wave: group.wave,
       time: group.time,
       startHole: group.startHole,
       flightId: group.flightId,

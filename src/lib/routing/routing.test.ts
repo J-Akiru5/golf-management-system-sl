@@ -195,7 +195,7 @@ describe("schedule", () => {
     expect(s.map((x) => x.time)).toEqual(["07:00", "07:00", "07:12", "07:12", "07:24"]);
   });
 
-  it("keeps a flight whole by moving it to the next wave", () => {
+  it("keeps a flight whole by moving it to the next start", () => {
     const plan = planShotgun(
       [
         { flightName: "A", groups: 15 },
@@ -206,28 +206,27 @@ describe("schedule", () => {
       300,
     );
     const b = plan.slots.slice(15);
-    expect(b.every((s) => s.wave === "B")).toBe(true);
+    expect(b.every((s) => s.time === "12:00")).toBe(true);
     expect(b.map((s) => s.startHole)).toEqual([1, 2, 3, 4, 5]);
-    expect(b[0]?.time).toBe("12:00");
-    expect(plan.slots.slice(0, 15).every((s) => s.wave === "A")).toBe(true);
+    expect(plan.slots.slice(0, 15).every((s) => s.time === "07:00")).toBe(true);
   });
 
-  it("splits and flags a flight that cannot fit in one wave", () => {
+  it("splits and flags a flight that cannot fit in one start", () => {
     const plan = planShotgun([{ flightName: "Big", groups: 20 }], 18, "07:00", 300);
     expect(plan.warnings).toHaveLength(1);
-    expect(plan.slots.filter((s) => s.wave === "B")).toHaveLength(2);
+    expect(plan.slots.filter((s) => s.time === "12:00")).toHaveLength(2);
   });
 });
 
 describe("route", () => {
-  it("never places a group on a hole twice in one wave and honors max group size", () => {
+  it("never places a group on a hole twice at one start and honors max group size", () => {
     const players = Array.from({ length: 100 }, (_, i) =>
       player({ index: 1 + (i % 28), birthdate: i % 3 === 0 ? "1960-01-01" : "1985-01-01" }),
     );
     const out = route(input(players));
     const seen = new Set<string>();
     for (const g of out.groups) {
-      const key = `${g.wave}-${g.startHole}`;
+      const key = `${g.time}-${g.startHole}`;
       expect(seen.has(key)).toBe(false);
       seen.add(key);
       expect(g.playerIds.length).toBeLessThanOrEqual(4);
@@ -298,6 +297,6 @@ describe("route", () => {
     const players = Array.from({ length: 16 }, () => player({ index: 8 }));
     const out = route(input(players, { startFormat: "two_tee" }));
     expect(out.groups.map((g) => g.startHole)).toEqual([1, 10, 1, 10]);
-    expect(out.groups.every((g) => g.wave === null)).toBe(true);
+    expect(out.groups.map((g) => g.time)).toEqual(["07:00", "07:00", "07:12", "07:12"]);
   });
 });

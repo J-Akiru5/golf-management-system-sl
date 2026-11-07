@@ -242,10 +242,7 @@ export function HoleView({ hole: initial }: { hole: number }) {
                 {groups.map((g) => (
                   <article key={g.number} className="rounded-[14px] border border-line">
                     <div className="flex items-center gap-2.5 border-b border-line px-3 py-2.5">
-                      <span className="hole !size-8 !text-[11px]">
-                        {g.startHole}
-                        {g.wave ?? ""}
-                      </span>
+                      <span className="hole !size-8 !text-[11px]">{g.startHole}</span>
                       <div className="min-w-0 flex-1">
                         <b className="block text-sm">
                           {fmtTime(g.time)} · {names.flight(g.flightId)}

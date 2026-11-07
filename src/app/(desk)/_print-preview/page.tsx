@@ -43,7 +43,6 @@ const PREVIEW_GROUPS: PrintGroup[] = [
     number: 1,
     flight: "Preview Flight A",
     startHole: 1,
-    wave: "A",
     time: "07:00",
     players: PREVIEW_PLAYERS,
   },
@@ -51,7 +50,6 @@ const PREVIEW_GROUPS: PrintGroup[] = [
     number: 2,
     flight: "Preview Flight A",
     startHole: 10,
-    wave: "A",
     time: "07:00",
     players: PREVIEW_PLAYERS.slice(0, 2),
   },
@@ -59,7 +57,6 @@ const PREVIEW_GROUPS: PrintGroup[] = [
     number: 3,
     flight: "Preview Flight B",
     startHole: 1,
-    wave: "B",
     time: "12:00",
     players: PREVIEW_PLAYERS.slice(2),
   },
@@ -94,7 +91,6 @@ const PREVIEW_PAIRINGS: PublicPairings = {
   groups: PREVIEW_GROUPS.map((group) => ({
     number: group.number,
     startHole: group.startHole,
-    wave: group.wave,
     time: group.time,
     flight: group.flight,
     players: group.players.map((player) => ({

@@ -5,7 +5,7 @@
  * it carries the work a person does while standing up, and the drawer keeps the rest.
  *
  * Desk (staff walking the course with a phone):
- *   Today        what needs attention now, before the next wave
+ *   Today        what needs attention now, before the next start
  *   Draw         the live board is the reason to carry the phone
  *   Register     entries, withdrawals and changes on the day (the raised centre action)
  *   Players      find a member, their index and their contact number

@@ -280,7 +280,6 @@ export function SidePanel(props: {
                   <h3>{groupLabel(g)}</h3>
                   <p className="muted">
                     {flightLabel(g)} · {g.playerIds.length} players
-                    {g.wave ? ` · Flight ${g.wave.split("-").pop()}` : ""}
                   </p>
                   <dl className="facts">
                     <div>

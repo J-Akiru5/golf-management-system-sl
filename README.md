@@ -63,7 +63,7 @@ with a display name and role, add the course and tee rows, and wire the data lay
 3. An NGAP index above the maximum (30) is marked `ineligible`. Missing index, no matching
    category, or overlapping or missing flight ranges are marked `needs_review`. Nothing is guessed.
 4. Players in a flight are sorted by handicap and split into even groups of up to 4.
-5. Shotgun: one group per hole per wave. A flight is never split across waves, except a flight with
+5. Shotgun: one group per hole per start. A flight is never split across starts, except a flight with
    more groups than holes, which is split and flagged.
 6. Two-tee start: groups alternate hole 1 and hole 10, one pair per interval.
 7. Locked groups are passed back in as `options.lockedGroups`: their players and slots are kept,

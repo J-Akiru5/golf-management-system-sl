@@ -12,8 +12,8 @@ export interface PairingsSheetProps {
 }
 
 /**
- * The pairing sheet the club posts: one page per wave, the event name and its tee-off time across the
- * top, then a row per group — the hole on the left and one name per column, exactly as the club's own
+ * The pairing sheet the club posts: one page per start time, the event name and its tee-off time
+ * across the top, then a row per group — the hole on the left and one name per column, exactly as the club's own
  * sheet is laid out. A second group sent to the same hole is the "HOLE 3B" row.
  *
  * Print view accepts only the public allow-list projection, never player or registration records.
@@ -55,7 +55,6 @@ export function PairingsSheet({ pairings, title = "Pairings" }: PairingsSheetPro
                 <p className={styles.pairingDate}>{pairings.dateLabel}</p>
                 <p className={styles.teeOff}>
                   TEE-OFF TIME {fmtTime(section.time)} {shotgun ? "SHOTGUN" : "TWO-TEE"}
-                  {shotgun && section.wave ? ` · WAVE ${section.wave}` : ""}
                 </p>
               </div>
             </header>

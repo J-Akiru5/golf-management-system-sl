@@ -320,7 +320,7 @@ export default async function HomePage() {
           <h2>Tournament management for golf clubs in the Philippines.</h2>
           <p>
             TeeLine Golf runs a tournament from the first entry to the printed sheet: player
-            registration, handicap-based categories and flights, the draw with its start waves,
+            registration, handicap-based categories and flights, the draw with its start times,
             published pairings that players can open without an account, and the start sheets and
             scorecards the desk prints. It works on a phone at the course and on a laptop in the
             office.

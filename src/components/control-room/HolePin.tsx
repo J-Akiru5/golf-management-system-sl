@@ -68,7 +68,7 @@ export const HolePin = forwardRef<
 export function HoleCard({ b, slot }: { b: Board; slot: HoleSlot }) {
   const { dispatch, regById, playerById, unplaced, names, draw, tournament } = b;
   const { group } = slot;
-  const code = `${slot.hole}${slot.wave ?? ""}`;
+  const code = `${slot.hole}`;
   const config = tournament?.config;
   const size = config?.groupSize ?? 4;
   const [pick, setPick] = useState("");

@@ -15,7 +15,7 @@ export function GET(): Response {
 
 TeeLine Golf is a web application for golf clubs and tournament organizers. It takes player entries,
 imports the club's NGAP handicap export, sorts players into categories and flights, runs the draw
-with start waves, publishes pairings that players can read without an account, and prints the start
+with start times, publishes pairings that players can read without an account, and prints the start
 sheet, pairings and scorecards. It runs in the browser on a phone or a laptop.
 
 ## Who it is for

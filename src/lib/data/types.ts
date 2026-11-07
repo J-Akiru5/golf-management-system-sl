@@ -398,7 +398,6 @@ export interface PublicPairingPlayer {
 export interface PublicPairingGroup {
   number: number;
   startHole: number;
-  wave: string | null;
   time: string;
   flight: string;
   players: PublicPairingPlayer[];

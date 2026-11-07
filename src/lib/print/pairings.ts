@@ -1,6 +1,6 @@
 /**
  * The row labels the club writes on its pairing sheet: one row per group, "HOLE 3" for the first
- * group on a hole and "HOLE 3B", "HOLE 3C" for the second and third when a wave sends more than one
+ * group on a hole and "HOLE 3B", "HOLE 3C" for the second and third when a start sends more than one
  * group to the same hole. Pure: it only reads the start holes it is given, in the order it is given.
  */
 export function groupRowLabels(

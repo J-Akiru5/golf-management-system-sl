@@ -5,8 +5,8 @@
  * Everything is derived from what the desk already holds. Nothing is invented:
  *   - a day the player did not select is not on the list;
  *   - a player without a group is kept, and shown as not placed;
- *   - the session comes from the desk's own AM/PM choice, then the draw's wave label, then the
- *     assigned tee time, and is null when none of those exist.
+ *   - the session comes from the desk's own AM/PM choice, then the assigned tee time, and is null
+ *     when neither exists.
  */
 import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
 import type { RegistrationEntry } from "@/lib/data/types";
@@ -28,7 +28,6 @@ export function parseStaffGroupId(id: string): { dayNumber: number; groupNumber:
 export interface StaffGroup {
   id: string;
   number: number;
-  wave: string | null;
   /** "HH:MM" as stored. */
   time: string;
   startHole: number;
@@ -76,13 +75,6 @@ const minutesOf = (time: string | null): number | null => {
   return Number(match[1]) * 60 + Number(match[2]);
 };
 
-/** The wave label carries the session when the draw was made with named shotguns (D3-AM-A). */
-function sessionOfWave(wave: string | null): SessionKey | null {
-  if (!wave) return null;
-  const match = /(?:^|[-_])(AM|PM)(?:[-_]|$)/.exec(wave.toUpperCase());
-  return match?.[1] === "AM" ? "AM" : match?.[1] === "PM" ? "PM" : null;
-}
-
 export function buildRows(input: BuildRowsInput): StaffRow[] {
   const groupByPlayer = new Map<string, StaffGroup>();
   for (const group of input.groups) {
@@ -99,11 +91,7 @@ export function buildRows(input: BuildRowsInput): StaffRow[] {
     const teeTime = stored?.teeTime ?? group?.time ?? null;
     const startHole = stored?.startHole ?? group?.startHole ?? null;
     const chosen = entry.daySessions?.[input.dayNumber] ?? null;
-    const session =
-      chosen ??
-      sessionOfWave(group?.wave ?? null) ??
-      sessionForTime(teeTime, input.dayIndex, input.dayCount)?.key ??
-      null;
+    const session = chosen ?? sessionForTime(teeTime, input.dayIndex, input.dayCount)?.key ?? null;
     const checkIn = entry.dayCheckIn?.[input.dayNumber] ?? null;
     rows.push({
       entryId: entry.id,

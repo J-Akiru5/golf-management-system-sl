@@ -36,7 +36,7 @@ import {
 } from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
 import { SETUP_SECTIONS, type SetupSection } from "@/lib/data/setup-payload";
-import { waveCountForField, waveStartTimes } from "@/lib/data/tee-time";
+import { startCountForField, startTimesFrom } from "@/lib/data/tee-time";
 import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
 import type { CategoryRule, FlightRule, StartFormat, Tee, TournamentConfig } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -125,7 +125,7 @@ function SetupWizard({
   holes: ReturnType<typeof useDesk>["holes"];
   status: ReturnType<typeof useDesk>["status"];
   canEdit: boolean;
-  /** Entries for this event. The field size is what decides how many waves a day needs. */
+  /** Entries for this event. The field size is what decides how many start times a day needs. */
   fieldSize: number;
   /** An existing board was routed against the numbers this screen edits. */
   hasDraw: boolean;
@@ -409,11 +409,11 @@ function SetupWizard({
 
   // The schedule these settings produce. The Start & groups section shows it, so the club sees what
   // the first tee time and the gap mean instead of only reading the minutes between them.
-  const waveCount = Math.max(
+  const startCount = Math.max(
     1,
-    waveCountForField(fieldSize, draft.config.holes, draft.config.groupSize),
+    startCountForField(fieldSize, draft.config.holes, draft.config.groupSize),
   );
-  const waves = waveStartTimes(draft.config.firstTeeTime, draft.config.waveGapMinutes, waveCount);
+  const starts = startTimesFrom(draft.config.firstTeeTime, draft.config.waveGapMinutes, startCount);
 
   const dirtyCount = dirty.length;
   const saveState = !canEdit
@@ -1228,7 +1228,7 @@ function SetupWizard({
                         updateConfig({ startFormat: e.target.value as StartFormat }, "start")
                       }
                     >
-                      <option value="shotgun">Shotgun (18 holes, 4 per hole, waves)</option>
+                      <option value="shotgun">Shotgun (18 holes, 4 per hole, start times)</option>
                       <option value="two_tee">Two-tee start (holes 1 and 10, timed)</option>
                     </select>
                   </label>
@@ -1258,7 +1258,7 @@ function SetupWizard({
                     </label>
                   ) : (
                     <label className="field">
-                      <span>Minutes between waves (interval)</span>
+                      <span>Minutes between start times (interval)</span>
                       <input
                         type="number"
                         min={1}
@@ -1270,8 +1270,8 @@ function SetupWizard({
                         }}
                       />
                       <span className="hint">
-                        Wave A starts at the first tee time. Each later wave starts this many
-                        minutes after the one before it.
+                        The first start is the first tee time. Each later start is this many minutes
+                        after the one before it, inside the same morning or afternoon session.
                       </span>
                     </label>
                   )}
@@ -1324,33 +1324,32 @@ function SetupWizard({
                 {draft.config.startFormat === "shotgun" && (
                   <div className="grid gap-2.5 rounded-[12px] border border-line bg-surface-sunken p-3">
                     <div>
-                      <b className="text-[14px]">Waves for this field</b>
+                      <b className="text-[14px]">Start times for this field</b>
                       <p className="hint mt-0.5">
-                        {fieldSize} {fieldSize === 1 ? "player" : "players"} entered. This event
-                        plays two shotgun waves at most, A and B: Wave A starts at the first tee
-                        time and Wave B starts the interval above after it, so those two numbers are
-                        what move them.{" "}
-                        {waveCount === 1
-                          ? "This field fits in Wave A alone."
-                          : "This field plays both waves."}{" "}
-                        The draw places the groups on the holes and the tee-times screen assigns the
-                        letters.
+                        {fieldSize} {fieldSize === 1 ? "player" : "players"} entered. A shotgun
+                        start puts one group on every hole, so the first start holds{" "}
+                        {draft.config.holes * draft.config.groupSize} players and each later start
+                        follows one interval after it.{" "}
+                        {startCount === 1
+                          ? "This field fits in one start."
+                          : `This field needs ${startCount} start times.`}{" "}
+                        The draw places the groups on the holes and assigns their start time.
                       </p>
                     </div>
-                    <div className="chips" aria-label="Wave start times">
-                      {waves.map((wave) => (
-                        <span key={wave.wave} className="chip inline-flex items-center">
-                          Wave {wave.wave} · {wave.time}
+                    <div className="chips" aria-label="Start times">
+                      {starts.map((start) => (
+                        <span key={start.time} className="chip inline-flex items-center">
+                          Start · {start.time}
                         </span>
                       ))}
                     </div>
                   </div>
                 )}
                 <p className="hint">
-                  Shotgun: a group starts on every hole, and each wave starts the interval after the
-                  one before it. A flight is never split unless it is larger than a wave, and that
-                  is flagged. Two-tee: slot n starts at the first time plus floor(n ÷ 2) × the
-                  interval, alternating holes 1 and 10.
+                  Shotgun: a group starts on every hole, and when the holes are full the next start
+                  follows one interval later in the same session. A flight is never split unless it
+                  is larger than one start, and that is flagged. Two-tee: slot n starts at the first
+                  time plus floor(n ÷ 2) × the interval, alternating holes 1 and 10.
                 </p>
               </SectionCard>
             )}

@@ -32,7 +32,7 @@ Next.js 16 App Router, React 19, strict TypeScript (`noUncheckedIndexedAccess`),
 
 ## Rules
 
-- Golf rules (allowance, max index, age bands, wave gap, group size) are **tournament settings**. Never hard-code them in the engine.
+- Golf rules (allowance, max index, age bands, gap between start times, group size) are **tournament settings**. Never hard-code them in the engine.
 - `src/lib/routing` and `src/lib/draw` are pure functions. No I/O there. Add tests with every change.
 - Never guess data. A player who cannot be routed is `needs_review`, not given a default.
 - Players only see the frozen `Published` snapshot, never the live board.

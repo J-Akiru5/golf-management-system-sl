@@ -93,7 +93,7 @@ Full table is in the spec. The ones that drive the code:
 | Max handicap | 30, checked on the **NGAP index** (not the course handicap). Above 30 cannot register. |
 | Categories | Regular, Senior 60–69, Super Senior 70+ (Silver tee), Ladies (own category and own tees). Age is taken on tournament day. |
 | Flights | Fixed handicap ranges per category. Basis defaults to index. |
-| Shotgun | 18 holes × max 4 per hole = 72 per wave. Wave 2 starts at wave 1 + gap (default 300 min). A flight is never split across waves unless it exceeds the holes in a wave, and then it is flagged. |
+| Shotgun | 18 holes × max 4 per hole = 72 per start. The rest of a session goes off one gap later (default 300 min) in the same session. A flight is never split across starts unless it exceeds the holes in one start, and then it is flagged. |
 | Two-tee ("barrel") | Holes 1 and 10, one pair of groups per interval (default 12 min). |
 | Scoring | Paper cards. No live scoring. |
 | Photos | Taken or uploaded with recorded internal consent. A separate public-display consent is required for a copy to appear on public pairings, the leaderboard or printed start sheets. |
@@ -122,7 +122,7 @@ flowchart LR
   E --> F[Flight<br/>fixed ranges]
   F -->|no / overlapping range| R[Needs review<br/>never guessed]
   F -->|ok| G[Groups<br/>even split, sorted by handicap]
-  G --> H[Start slots<br/>shotgun waves or two-tee]
+  G --> H[Start slots<br/>shotgun start times or two-tee]
   H --> I[Organizer review<br/>move · lock · publish]
 ```
 
@@ -135,8 +135,9 @@ marks the player `needs_review`, not a silent default.
 
 ### Start formats
 
-- **Shotgun:** groups fill holes 1–18 in flight order. If the next flight does not fit in the holes
-  left in wave 1, the whole flight moves to wave 2 (labels 1A…18A, 1B…). Wave 2 start = wave 1 start + gap.
+- **Shotgun:** groups fill the holes in flight order. If the next flight does not fit in the holes
+  left at the current start, the whole flight moves to the next start one gap later. A group is named
+  by its start time and hole; there are no wave letters.
 - **Two-tee:** slot `n` starts at `first tee + floor(n ÷ 2) × interval`, hole 1 if `n` is even, hole 10 if odd.
   Capacity depends on pace of play (spec assumes ~2 h per nine, which the club has not confirmed).
 
@@ -300,7 +301,7 @@ These are places where the spec promises something the code does not do yet. Che
 
 1. **Re-run and locked groups.** *Fixed in the demo shell*: `route()` takes locked groups, keeps
    their players and slots, releases a lock that no longer makes sense with the reason, and warns
-   when a locked slot pushes a flight across waves. Covered by `src/lib/routing/locks.test.ts`.
+   when a locked slot pushes a flight across start times. Covered by `src/lib/routing/locks.test.ts`.
 2. **Persistence is wired but unproven.** The store picks the Supabase adapters and loads the real
    desk when `NEXT_PUBLIC_SUPABASE_URL` is set, and falls back to the in-memory demo when it is not
    (merged 18 Oct). The write path has not been exercised end to end, because the project still has
@@ -330,11 +331,12 @@ These are places where the spec promises something the code does not do yet. Che
    state, cut-off, config rules, registration wording) update the screen only and revert on reload.
    See gap 14.
 6. **Tee data is placeholder.** Demo and test numbers (e.g. White 71.5 / 128 / 72) are invented.
-7. **Wave rule vs. small flights.** Keeping flights whole can push a small flight to wave 2; an
-   organizer decision is still needed (section 10). The 24th Bamboo Tee showed the real shape on
-   6 November 2026: a playing day runs a morning and an afternoon shotgun, each filled from its own
-   start time, which is what keeps the board at waves A and B. `route` now draws that way through
-   its `sessions` input. The board still cannot be saved per playing day: `groups` holds one board
+7. **Keeping flights whole vs. small flights.** Keeping flights whole can push a small flight to a
+   later start; an organizer decision is still needed (section 10). The 24th Bamboo Tee showed the
+   real shape on 6 November 2026: a playing day runs a morning and an afternoon shotgun, each filled
+   from its own start time, and a session that overflows gets a second start inside itself. `route`
+   draws that way through its `sessions` input. Waves were removed on 7 November 2026: a group is
+   described by its start time and hole, and no letter is written anywhere. The board still cannot be saved per playing day: `groups` holds one board
    per event and `save_draw` does not name a playing day,so a per-day save needs the save call to take the day first. Migration 20261106000100 now gives
    `save_draw` the playing day and numbers groups per day, so a per-day board can be stored; the
    desk does not pass a day yet, so the draft is drawn per day into `docs/draft-24th-bamboo-tee.md`.
@@ -407,7 +409,7 @@ These are places where the spec promises something the code does not do yet. Che
       had `saveTournamentRow()`, which upserts the `tournaments` row (name, dates, state, cut-off,
       config, registration JSON), but `setup.save` never called it. The event name, days, registered
       state, cut-off, max index, allowance, stale days, flight basis, start format, first tee time,
-      interval, wave gap, holes count, sponsor question, response email, desk instructions and
+      interval, gap between start times, holes count, sponsor question, response email, desk instructions and
       registration fields changed on screen and were lost on reload. `save_event_setup` now takes
       them as optional parameters, so they land in the same manager-only, revision-guarded
       transaction.
@@ -602,7 +604,7 @@ versioned publish and the public page have never been exercised with real names 
    removed); it only says whether anything changed.
 4. **Public page.** `/pairings` becomes a server-rendered page that calls `public_pairings` with the
    anon key, cached with ISR (about 60 seconds) and revalidated on publish. It shows the full list by
-   wave, hole and time, plus a name search and a flight filter (the data is about 100 players, so the
+   start time, hole and name, plus a flight filter (the data is about 100 players, so the
    filter runs in the browser). Mobile first, print friendly, shows "Pairings v3, updated 14 Nov 07:10",
    and "Pairings are not out yet" before the first publish. Optional: a QR code on printed sheets.
 5. **Harden.** Tests that the anon function returns nothing for an unpublished tournament, never returns
@@ -813,7 +815,7 @@ Decisions that belong to the people named, not to an agent.
 | 6 | Ordering inside a flight | Organizer | Groups | By handicap |
 | 7 | Photo visibility | Organizer | Privacy copy | Desk and organizer only |
 | 8 | Results and tie-break rule | Organizer | Phase 2 official results; the engine is built, but finalization stays blocked without it | None; scoring dependencies S2, S5 and S8 in [`docs/spec/SCORING_IMPLEMENTATION.md`](spec/SCORING_IMPLEMENTATION.md) |
-| 9 | Small flight near the end of wave 1 (e.g. 3-group Ladies): split, fill from another flight, or move to wave 2 | Organizer | Shotgun layout | Keep whole, flag |
+| 9 | Small flight near the end of a start (e.g. 3-group Ladies): split, fill from another flight, or move to the next start | Organizer | Shotgun layout | Keep whole, flag |
 | 24 | **Who may create a club, and how a first-run account gets one** | Jeff | Every new club; the shape of tenancy | Settled 19 Oct 2026: **only a super admin creates clubs.** A brand-new account cannot, and IGCC remains the only club. The intuitive end state is self-service creation, and it is deliberately not built yet. Because no super-admin concept exists today (`club_members.role` is owner/organizer/desk, and the init migration says clubs and memberships are made with the service role), this needs a platform-admin concept that is **not** a club role: a super admin is above clubs, so a row in `club_members` would be the wrong home for one |
 | 25 | **How the client gets its session after signing in** | Jeff | Whether the desk loads at all | Settled 19 Oct 2026: **subscribe to auth state.** The desk store reads the session once on mount and never again, so the first render after a server-side sign-in finds none and gives up (gap 16). It will subscribe to `onAuthStateChange` as well, and retry once, rather than resolving the session on the server and passing it down: the connected desk is a client store that writes through the browser client, so handing it a server session would split the thing that owns the session in two |
 | 10 | Product name and legal clearance | Jeff | Public branding | TeeLine Golf approved as the product direction; not represented as legally cleared |
@@ -1000,7 +1002,7 @@ Agent ground rules:
 - **Playing handicap:** course handicap × allowance (100% for now), rounded.
 - **Category:** Regular, Senior, Super Senior, Ladies. Decides the tee.
 - **Flight:** a handicap band inside a category; players in a flight play together.
-- **Shotgun start:** everyone tees off at once from different holes. **Wave:** a full set of 18 holes; the second wave (B) starts after a gap.
+- **Shotgun start:** everyone at one start tees off at once from different holes. **Start time:** a group is described by the time it tees off and its hole; a session that overflows its 18 holes gets a second start time one gap later.
 - **Two-tee ("barrel") start:** groups start from holes 1 and 10 at timed intervals.
 - **Cut-off date:** the date whose index is frozen for the event.
 - **Draw:** the set of groups and start slots; **published** means players can see it.

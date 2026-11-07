@@ -30,7 +30,7 @@ Answers from the organizer, 17 Oct 2026. These go into the system as tournament 
 | Team net prize | Highest Scoring Team NET: aggregate Stableford, both partners' points added on every hole, counted on the team handicap. The higher 36-hole total wins. | Per tournament |
 | Team gross prize | Over-All Champion Team on gross, the pair's actual strokes with no pick-up scores. The lower total wins. | Per tournament |
 | Holes | 18 by default | Per course |
-| Shotgun | Max 4 players per hole. When all 18 holes are full, a second wave starts a set gap after wave 1 (1A = wave 1, 1B = wave 2). A class continues into the next wave when the current wave's holes run out, so a day uses only the waves it needs. Every playing day runs a morning and an afternoon shotgun. | Per tournament |
+| Shotgun | Max 4 players per hole, so one start holds 72 players on 18 holes. When the holes are full, the rest of the session goes off one gap later, in the same session. A class continues into the next start when the current start's holes run out, so a day uses only the start times it needs. Every playing day runs a morning and an afternoon shotgun. | Per tournament |
 | Two-tee start ("barrel") | Holes 1 and 10, groups queue at an interval | Per tournament |
 | Tee interval | 12 min default, editable | Per tournament |
 | Scoring | Paper cards, players mark each other's card | Fixed |
@@ -49,7 +49,7 @@ In the desk a class is a stored flight. The flights table still hangs a row off 
 
 **Teams, confirmed 5 November 2026.** A team is one member and one guest. The team handicap is the rounded average of the two players, and that average is what puts the pair in its class. Team NET is aggregate Stableford: both partners play their own ball, each off their own handicap, and their points are added on every hole over 36 holes. The higher team total wins. The Over-All Champion Team is on gross, the pair's actual strokes with no pick-up, lowest total. The pairing and the averaged class are drawn from the pair number on the entry. The team scores (team net and team gross) are not modelled yet.
 
-**Playing days and sessions, confirmed 6 November 2026.** Every playing day runs two shotguns, one in the morning and one in the afternoon, and each fills its own 18 holes from its own start time. A player sits on a day's list in the session the desk recorded for that day, so the morning and afternoon fields are drawn separately, and a group is labelled D3-AM-A: day, session, wave. A second wave starts only when that session still has groups left, which is why the club's board reaches A and B and no further. In the 24th Bamboo Tee the largest session is Day 3 morning with 138 players, 35 groups, which fills wave A and a short wave B; the lightest is Day 1 afternoon with 26 players, one wave. The real gap between waves is whatever the first wave's pace allows, so the desk stores a nominal 9 minutes only to have a time to print, and the afternoon starts at 12:30. Waves fill in class order from hole 1, and a class that no longer fits the holes left continues into the next wave, which is named in the warnings. That is why the 24th Bamboo Tee's board reaches A and B and no further.
+**Playing days and sessions, confirmed 6 November 2026; waves removed 7 November 2026.** Every playing day runs two shotguns, one in the morning and one in the afternoon, and each fills its own 18 holes from its own start time. A player sits on a day's list in the session the desk recorded for that day, so the morning and afternoon fields are drawn separately. There are no wave letters: a group is described by its start time and the hole it starts on. A session that still has groups after its 18 holes are full gets a second start time one gap later in the same session, so nothing is moved to another session and a day uses only the start times it needs. In the 24th Bamboo Tee the largest session is Day 3 morning with 138 players, 35 groups, which needs two start times; the lightest is Day 1 afternoon with 26 players, one start. The real gap between starts is whatever the first start's pace allows, so the desk stores a nominal 9 minutes only to have a time to print, and the afternoon starts at 12:30. Starts fill in class order, and a class that no longer fits the holes left continues into the next start, which is named in the warnings.
 
 Known limit, 6 November 2026: migration 20261106000100 gives `save_draw` a playing day, numbers groups per day and puts the afternoon start on the event, so a board can now be stored per day. The desk does not pass a day yet. Until it does, the draft is drawn and checked per day and written out as a document rather than saved into a board.
 
@@ -137,22 +137,22 @@ Flight            B (example range 11–18)
 
 ### Shotgun
 
-All groups in a wave start at the same time on different holes. With 4 players per hole on 18 holes, one wave holds 72 players. Groups fill hole 1 to 18 in flight order. When the next flight will not fit in what is left of wave 1, the whole flight moves to wave 2, which tees off from hole 1 again (1B, 2B…).
+All groups at one start tee off at the same time on different holes. With 4 players per hole on 18 holes, one start holds 72 players. Groups fill the holes in flight order. When the next flight will not fit in what is left of the current start, the whole flight moves to the next start, which tees off from hole 1 again one gap later.
 
 ```text
-Wave 2 start = wave 1 start + gap
+Next start = this start + gap
 Example: 7:00 AM + 5 h = 12:00 PM
 ```
 
-| Wave 1 (green) | Flight | | Wave 2 (yellow) | Flight |
+| Hole | Flight | | Hole | Flight |
 | --- | --- | --- | --- | --- |
-| 1A | Flt A | | 1B | Flt C |
-| 2A | Flt A | | 2B | Flt D |
-| 3A | Flt A | | 3B | Flt D |
+| 1 | Flt A | | 1 | Flt C |
+| 2 | Flt A | | 2 | Flt D |
+| 3 | Flt A | | 3 | Flt D |
 | … | | | … | |
-| 18A | Flt C | | | |
+| 18 | Flt C | | | |
 
-Keeping flights whole can leave a few wave 1 holes empty; the organizer can fill them by hand. A flight larger than 72 players cannot fit in one wave, so only then does the router split it, and it flags the split.
+Keeping flights whole can leave a few holes empty at a start; the organizer can fill them by hand. A flight larger than 72 players cannot fit in one start, so only then does the router split it, and it flags the split.
 
 ### Two-tee start
 
@@ -189,12 +189,12 @@ Every table carries `club_id` with row-level security from day one. Adding it no
 | holes | Hole number, par, stroke index (for printing handicap dots on cards) |
 | players | Name, birthdate, gender, NGAP ID, contact, photo, internal photo consent date, separate public-display consent date and public copy path |
 | handicap_records | Player, index, effective date, source (NGAP export upload or manual fix) |
-| tournaments | Date, course, cut-off date, start format, interval, first tee time, wave gap, max handicap, allowance |
+| tournaments | Date, course, cut-off date, start format, interval, first tee time, gap between start times, max handicap, allowance |
 | categories | Tournament, name, gender, age range, tee |
 | flights | Class: name and handicap range, spanning the whole field. A carrier category is still required by the table, but the class is not scoped to it. |
 | registration_fields | Extra questions per tournament, e.g. T-shirt size |
 | registrations | Player, frozen index, category, tee, course handicap, flight, payment status, extra answers, overrides |
-| groups | Flight, start hole, wave (A/B) or tee time, locked flag |
+| groups | Flight, start hole, tee time, locked flag |
 | group_members | Group, registration, position |
 | scores | Registration, hole, strokes, encoded by, checked (Phase 2) |
 

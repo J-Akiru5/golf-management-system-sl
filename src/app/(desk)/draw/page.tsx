@@ -15,7 +15,6 @@ import { fmtTime } from "@/lib/format";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
-import { flightName, waveHeading } from "@/lib/ui/labels";
 
 const REASONS = [
   "Organizer request",
@@ -246,15 +245,13 @@ export default function DrawPage() {
     setSelection(null);
   }
 
-  // Cards under one heading per wave (shotgun) or per start time (two-tee). Confirmed provisional
-  // players get one clearly labelled heading of their own instead of a made-up flight.
+  // Cards under one heading per start time. Confirmed provisional players get one clearly labelled
+  // heading of their own instead of a made-up flight.
   const sections = new Map<string, NonNullable<typeof draw>>();
   for (const g of visibleDraw ?? []) {
     const key = isUnclassifiedGroup(g.playerIds, regById)
       ? UNCLASSIFIED_LABEL
-      : shotgun
-        ? `${waveHeading(g.wave)} · ${flightName(g.wave)}`
-        : fmtTime(g.time);
+      : `${fmtTime(g.time)} · ${names.flight(g.flightId)}`;
     sections.set(key, [...(sections.get(key) ?? []), g]);
   }
 
