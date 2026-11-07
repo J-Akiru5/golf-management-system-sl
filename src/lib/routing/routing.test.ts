@@ -300,3 +300,41 @@ describe("route", () => {
     expect(out.groups.map((g) => g.time)).toEqual(["07:00", "07:00", "07:12", "07:12"]);
   });
 });
+
+describe("walk-up shapes from the staff add screen", () => {
+  // The add screen can only send two shapes. A guest is a new record with a name and a phone, and the
+  // directory can only offer a player who has no entry yet. Both reach the engine with no birthdate,
+  // no gender and no handicap record, so both are classified the same way: the open division, a
+  // handicap of 0 and the class that covers it. Nothing is left for the desk to review.
+
+  it("places a walk-up with no birthdate, gender or index in the open division", () => {
+    const walkUp = player({ birthdate: null, gender: null, index: null });
+    const reg = classifyPlayer(walkUp, input([]));
+
+    expect(reg.status).toBe("ok");
+    expect(reg.categoryId).toBe("regular");
+    expect(reg.teeId).toBe("white");
+    expect(reg.flightId).toBe("a");
+    expect(reg.reasons.join(" ")).toContain("0 is used");
+
+    const out = route(input([walkUp]));
+    expect(out.groups.flatMap((group) => group.playerIds)).toEqual([walkUp.id]);
+  });
+
+  it("leaves a registration the event cannot classify out of every group", () => {
+    // A shape the add screen cannot send: an event with no category for the player. The engine still
+    // refuses to invent a category, a tee or a flight, and gives the player no group at all.
+    const woman = player({ gender: "F", index: 5 });
+    const out = route({
+      ...input([woman]),
+      categories: categories.filter((category) => category.id !== "ladies"),
+    });
+    const reg = out.registrations.find((candidate) => candidate.playerId === woman.id);
+
+    expect(reg?.status).toBe("needs_review");
+    expect(reg?.categoryId).toBeNull();
+    expect(reg?.teeId).toBeNull();
+    expect(reg?.flightId).toBeNull();
+    expect(out.groups.flatMap((group) => group.playerIds)).not.toContain(woman.id);
+  });
+});
