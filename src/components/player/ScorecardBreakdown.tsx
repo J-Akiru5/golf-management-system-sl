@@ -28,30 +28,87 @@ const publishedText = (date: string): string => {
       });
 };
 
-function ScoreRow({ number, hole }: { number: number; hole: PortalScorecardHole | null }) {
+/**
+ * The column names, handed to every row. The table prints them once in its head; below 640px each
+ * hole becomes its own block, and every value needs the heading beside it again.
+ */
+interface ScorecardLabels {
+  hole: string;
+  par: string;
+  si: string;
+  score: string;
+  hcp: string;
+  net: string;
+  grossPoints: string;
+  netPoints: string;
+}
+
+function ScoreRow({
+  number,
+  hole,
+  labels,
+}: {
+  number: number;
+  hole: PortalScorecardHole | null;
+  labels: ScorecardLabels;
+}) {
   return (
-    <tr>
-      <td className="num font-semibold">{number}</td>
-      <td className="num">{hole ? hole.par : "-"}</td>
-      <td className="num">{hole ? hole.strokeIndex : "-"}</td>
-      <td className="num font-semibold">{hole ? hole.grossStrokes : "-"}</td>
-      <td className="num">{hole ? handicapStrokeLabel(hole.handicapStrokes) : "-"}</td>
-      <td className="num">{hole ? numberText(hole.netStrokes) : "-"}</td>
-      <td className="num">{hole ? hole.grossPoints : "-"}</td>
-      <td className="num">{hole ? numberText(hole.netPoints) : "-"}</td>
+    <tr className="score-hole">
+      <td className="num font-semibold" data-label={labels.hole}>
+        {number}
+      </td>
+      <td className="num" data-label={labels.par}>
+        {hole ? hole.par : "-"}
+      </td>
+      <td className="num" data-label={labels.si}>
+        {hole ? hole.strokeIndex : "-"}
+      </td>
+      <td className="num font-semibold" data-label={labels.score}>
+        {hole ? hole.grossStrokes : "-"}
+      </td>
+      <td className="num" data-label={labels.hcp}>
+        {hole ? handicapStrokeLabel(hole.handicapStrokes) : "-"}
+      </td>
+      <td className="num" data-label={labels.net}>
+        {hole ? numberText(hole.netStrokes) : "-"}
+      </td>
+      <td className="num" data-label={labels.grossPoints}>
+        {hole ? hole.grossPoints : "-"}
+      </td>
+      <td className="num" data-label={labels.netPoints}>
+        {hole ? numberText(hole.netPoints) : "-"}
+      </td>
     </tr>
   );
 }
 
-function TotalRow({ label, totals }: { label: string; totals: ScorecardTotals }) {
+function TotalRow({
+  label,
+  totals,
+  labels,
+}: {
+  label: string;
+  totals: ScorecardTotals;
+  labels: ScorecardLabels;
+}) {
   return (
-    <tr className="font-semibold">
+    <tr className="score-total font-semibold">
       <td colSpan={3}>{label}</td>
-      <td className="num">{totals.holes === 0 ? "-" : totals.grossStrokes}</td>
-      <td className="num">-</td>
-      <td className="num">{numberText(totals.netStrokes)}</td>
-      <td className="num">{totals.grossPoints}</td>
-      <td className="num">{numberText(totals.netPoints)}</td>
+      <td className="num" data-label={labels.score}>
+        {totals.holes === 0 ? "-" : totals.grossStrokes}
+      </td>
+      <td className="num" data-label={labels.hcp}>
+        -
+      </td>
+      <td className="num" data-label={labels.net}>
+        {numberText(totals.netStrokes)}
+      </td>
+      <td className="num" data-label={labels.grossPoints}>
+        {totals.grossPoints}
+      </td>
+      <td className="num" data-label={labels.netPoints}>
+        {numberText(totals.netPoints)}
+      </td>
     </tr>
   );
 }
@@ -60,6 +117,10 @@ function TotalRow({ label, totals }: { label: string; totals: ScorecardTotals })
  * The player's own published card, hole by hole. It is rendered from the frozen publication
  * snapshot, so it never reads the live scoring board. The table follows the paper card: gross
  * score, the stroke received, net score, and both points columns.
+ *
+ * The card is eight columns wide. On a phone it is redrawn as one four-across block per hole, so
+ * every value is on screen instead of waiting behind a sideways scroll; from 640px up the table is
+ * unchanged.
  */
 export function ScorecardBreakdown({ card, t }: { card: PortalScorecard; t: Translate }) {
   const rows = scorecardRows(card);
@@ -70,6 +131,16 @@ export function ScorecardBreakdown({ card, t }: { card: PortalScorecard; t: Tran
   const backTotal = totalsFor(card, 10, card.holesTotal);
   const stateLabel =
     card.state === "final" ? t("player.scorecard.final") : t("player.scorecard.provisional");
+  const labels: ScorecardLabels = {
+    hole: t("player.scorecard.hole"),
+    par: t("player.scorecard.par"),
+    si: t("player.scorecard.strokeIndex"),
+    score: t("player.scorecard.score"),
+    hcp: t("player.scorecard.hcp"),
+    net: t("player.scorecard.net"),
+    grossPoints: t("player.scorecard.grossPoints"),
+    netPoints: t("player.scorecard.netPoints"),
+  };
 
   return (
     <section className="grid gap-3" aria-labelledby={`scorecard-${card.roundId}`}>
@@ -106,7 +177,7 @@ export function ScorecardBreakdown({ card, t }: { card: PortalScorecard; t: Tran
         </dl>
       </header>
 
-      <div className="table-wrap">
+      <div className="table-wrap scorecard-table">
         <table>
           <caption className="sr-only">{t("player.scorecard.heading")}</caption>
           <thead>
@@ -123,14 +194,18 @@ export function ScorecardBreakdown({ card, t }: { card: PortalScorecard; t: Tran
           </thead>
           <tbody>
             {front.map((hole, index) => (
-              <ScoreRow key={index + 1} number={index + 1} hole={hole} />
+              <ScoreRow key={index + 1} number={index + 1} hole={hole} labels={labels} />
             ))}
-            {back.length > 0 && <TotalRow label={t("player.scorecard.out")} totals={out} />}
+            {back.length > 0 && (
+              <TotalRow label={t("player.scorecard.out")} totals={out} labels={labels} />
+            )}
             {back.map((hole, index) => (
-              <ScoreRow key={index + 10} number={index + 10} hole={hole} />
+              <ScoreRow key={index + 10} number={index + 10} hole={hole} labels={labels} />
             ))}
-            {back.length > 0 && <TotalRow label={t("player.scorecard.in")} totals={backTotal} />}
-            <TotalRow label={t("player.scorecard.total")} totals={total} />
+            {back.length > 0 && (
+              <TotalRow label={t("player.scorecard.in")} totals={backTotal} labels={labels} />
+            )}
+            <TotalRow label={t("player.scorecard.total")} totals={total} labels={labels} />
           </tbody>
         </table>
       </div>

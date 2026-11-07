@@ -1094,6 +1094,73 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* The published card is eight columns wide. On a phone that only fits behind a sideways scroll
+     inside the card, which hides the rightmost columns from anyone who does not discover it, so
+     each hole becomes its own four-across block with the column name above every value. From 640px
+     up the table is exactly what it was. */
+  @media (max-width: 639px) {
+    .scorecard-table {
+      overflow: visible;
+    }
+    .scorecard-table table,
+    .scorecard-table tbody,
+    .scorecard-table tr,
+    .scorecard-table td {
+      display: block;
+    }
+    .scorecard-table thead {
+      display: none;
+    }
+    .scorecard-table tbody {
+      display: grid;
+    }
+    .scorecard-table tr {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .scorecard-table tr:last-child {
+      border-bottom: 0;
+      border-bottom-left-radius: 13px;
+      border-bottom-right-radius: 13px;
+    }
+    .scorecard-table td,
+    .scorecard-table td.num {
+      display: grid;
+      gap: 1px;
+      padding: 0;
+      border: 0;
+      text-align: left;
+    }
+    .scorecard-table td::before {
+      content: attr(data-label);
+      color: var(--ink-muted);
+      font-size: 9.5px;
+      line-height: 1.2;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .scorecard-table tr.score-total {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      background: var(--surface-sunken);
+    }
+    .scorecard-table tr.score-total td[colspan] {
+      grid-column: 1 / -1;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .scorecard-table tr.score-total td[colspan]::before {
+      content: none;
+    }
+    .scorecard-table tbody tr:hover td {
+      background: transparent;
+    }
+  }
+
   /* ---------- Avatars and player rows ---------- */
   .avatar {
     width: 36px;
