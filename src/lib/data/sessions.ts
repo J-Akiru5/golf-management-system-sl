@@ -47,9 +47,10 @@ function minutesOf(time: string | null): number | null {
 }
 
 /**
- * The session an assigned tee time belongs to: the day's nearest default. A 06:10 shot is still the
- * morning and a 12:40 start is still the afternoon, which a fixed midday cut would get wrong once
- * the club moves a session. Null when there is no readable time.
+ * The session an assigned tee time belongs to. The afternoon starts at its own default when that is
+ * before noon (Sunday's 11:30 start) and at noon otherwise, so 11:59 is still the morning on an
+ * ordinary day, 12:00 is the afternoon, and Sunday's 11:45 wave start is still the afternoon. Null
+ * when there is no readable time.
  */
 export function sessionForTime(
   time: string | null,
@@ -57,19 +58,15 @@ export function sessionForTime(
   dayCount: number,
 ): DaySession | null {
   const assigned = minutesOf(time);
+  if (assigned === null) return null;
   const sessions = daySessions(dayIndex, dayCount);
   const first = sessions[0];
-  if (!first || assigned === null) return null;
-  let best = first;
-  let bestGap = Math.abs((minutesOf(first.time) ?? 0) - assigned);
-  for (const session of sessions.slice(1)) {
-    const gap = Math.abs((minutesOf(session.time) ?? 0) - assigned);
-    if (gap < bestGap) {
-      best = session;
-      bestGap = gap;
-    }
-  }
-  return best;
+  if (!first) return null;
+  const afternoon = sessions[1] ?? first;
+  const afternoonStart = minutesOf(afternoon.time) ?? 12 * 60;
+  // Sunday's second session starts before noon, so the turn-over has to move with it.
+  const turn = Math.min(12 * 60, afternoonStart);
+  return assigned < turn ? first : afternoon;
 }
 
 /** "AM 06:30 · PM 12:30" for Thursday to Saturday, "AM 06:30 · PM 11:30" for Sunday. */
@@ -86,4 +83,115 @@ export function sessionLabelForTime(
   dayCount: number,
 ): string | null {
   return sessionForTime(time, dayIndex, dayCount)?.label ?? null;
+}
+
+/** Where a day's AM/PM label came from: the desk's choice, a stored tee time, or the default. */
+export type DaySessionSource = "chosen" | "stored" | "default";
+
+/** One registered day's AM/PM indicator, with the time it stands for. */
+export interface DaySessionBadge {
+  session: SessionKey;
+  /** "AM" or "PM", for a table cell. */
+  label: string;
+  /** "HH:MM" in 24-hour time: the stored time when there is one, otherwise the session default. */
+  time: string;
+  source: DaySessionSource;
+}
+
+/** A stored time as HH:MM, or null when it is not a readable clock time. */
+function clockText(time: string | null | undefined): string | null {
+  const minutes = minutesOf(time ?? null);
+  if (minutes === null) return null;
+  const hours = Math.floor(minutes / 60);
+  return `${String(hours).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+/**
+ * The AM/PM indicator for one registered day.
+ *
+ * The desk's own session wins, because that is the record. Without one, a stored tee time decides
+ * the session and supplies the time. A day with neither falls back to the day's morning, so every
+ * registered day can say AM or PM; the fallback is a display default, not a stored choice. The last
+ * day's afternoon default is 11:30, the rest are 12:30, and the morning is 06:30 throughout.
+ */
+export function daySessionBadge(input: {
+  dayIndex: number;
+  dayCount: number;
+  session?: SessionKey | null;
+  teeTime?: string | null;
+}): DaySessionBadge {
+  const sessions = daySessions(input.dayIndex, input.dayCount);
+  const stored = clockText(input.teeTime ?? null);
+  const chosen = input.session === "AM" || input.session === "PM" ? input.session : null;
+  const morning = sessions[0] ?? { key: "AM" as const, label: "AM", time: AM_TEE_TIME };
+
+  if (chosen) {
+    const picked = sessions.find((session) => session.key === chosen) ?? morning;
+    // A stored time only answers for the chosen session. If the two disagree, the choice is the
+    // record and the day shows the choice's own start time rather than a contradictory label.
+    const storedFits =
+      stored !== null && sessionForTime(stored, input.dayIndex, input.dayCount)?.key === picked.key;
+    return {
+      session: picked.key,
+      label: picked.label,
+      time: stored !== null && storedFits ? stored : picked.time,
+      source: "chosen",
+    };
+  }
+
+  if (stored) {
+    const resolved = sessionForTime(stored, input.dayIndex, input.dayCount);
+    if (resolved) {
+      return { session: resolved.key, label: resolved.label, time: stored, source: "stored" };
+    }
+  }
+
+  return {
+    session: morning.key,
+    label: morning.label,
+    time: morning.time,
+    source: "default",
+  };
+}
+
+/** The part of a registration this module reads when listing a player's days. */
+export interface RegistrationDayFields {
+  selectedDays?: number[];
+  daySessions?: Record<number, SessionKey>;
+  dayTee?: Record<number, { teeTime: string | null } | undefined>;
+}
+
+/** One of a player's registered days with its AM/PM indicator. */
+export interface RegisteredDayBadge extends DaySessionBadge {
+  dayNumber: number;
+  dayLabel: string;
+}
+
+/**
+ * The AM/PM indicator for every day a player is registered for, in day order. A selected day the
+ * event does not list is left out rather than guessed. The returned labels are display strings; the
+ * stored choice stays on the entry.
+ */
+export function registeredDayBadges(
+  entry: RegistrationDayFields,
+  days: readonly { dayNumber: number; label?: string }[],
+): RegisteredDayBadge[] {
+  const selected = [...new Set(entry.selectedDays ?? [])]
+    .filter((dayNumber) => days.some((day) => day.dayNumber === dayNumber))
+    .sort((a, b) => a - b);
+  return selected.map((dayNumber) => {
+    const index = days.findIndex((day) => day.dayNumber === dayNumber);
+    const day = days[index];
+    const badge = daySessionBadge({
+      dayIndex: index,
+      dayCount: days.length,
+      session: entry.daySessions?.[dayNumber] ?? null,
+      teeTime: entry.dayTee?.[dayNumber]?.teeTime ?? null,
+    });
+    return {
+      ...badge,
+      dayNumber,
+      dayLabel: day?.label?.trim() || `Day ${dayNumber}`,
+    };
+  });
 }

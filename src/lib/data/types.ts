@@ -301,8 +301,9 @@ export interface RegistrationEntry {
   /** Selected tournament day numbers. Structured; never a display string. */
   selectedDays?: number[];
   /**
-   * The session the desk put the player in, per day number: AM or PM. The final playing day runs one
-   * tee time, so it is never stored here. Missing means the desk has not chosen yet.
+   * The session the desk put the player in, per day number: AM or PM. Every playing day runs a
+   * morning and an afternoon; the last day's afternoon starts at 11:30 rather than 12:30. Missing
+   * means the desk has not chosen yet.
    */
   daySessions?: Record<number, "AM" | "PM">;
   /** Confirmed tee-time assignments, keyed by tournament day number. */
