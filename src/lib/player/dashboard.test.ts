@@ -20,6 +20,7 @@ const entry = (over: Partial<PortalEntry>): PortalEntry => ({
   paymentStatus: "paid",
   published: true,
   start: null,
+  starts: [],
   scorecards: [],
   ...over,
 });

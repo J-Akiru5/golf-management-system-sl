@@ -153,8 +153,24 @@ function mapPublishedGroup(value: unknown): PublishedGroup {
   ) {
     throw new Error("The saved published-pairings snapshot has an invalid group.");
   }
+  // Days are optional: snapshots written before 20261108000300 have none, and they still parse.
+  const rawDayNumber = value.dayNumber;
+  const dayNumber =
+    typeof rawDayNumber === "number" && Number.isInteger(rawDayNumber) && rawDayNumber > 0
+      ? rawDayNumber
+      : undefined;
+  const rawDayLabel = value.dayLabel;
+  const dayLabel =
+    typeof rawDayLabel === "string" && rawDayLabel.trim() !== "" ? rawDayLabel : undefined;
+  const rawPlayDate = value.playDate;
+  const playDate =
+    typeof rawPlayDate === "string" && rawPlayDate.trim() !== "" ? rawPlayDate : undefined;
+
   return {
     number: value.number,
+    ...(dayNumber === undefined ? {} : { dayNumber }),
+    ...(dayLabel === undefined ? {} : { dayLabel }),
+    ...(playDate === undefined ? {} : { playDate }),
     startHole: value.startHole,
     wave: value.wave,
     time: value.time,
@@ -202,6 +218,11 @@ export interface PublicPairingsData {
    * group. They are left out of `published`; the page shows the rest and notes the gap.
    */
   skippedRows: number;
+  /**
+   * The playing days found in the rows, oldest number first. A one-day event has one entry. Rows
+   * from the older function carry no day and are treated as day 1.
+   */
+  days: { dayNumber: number; label: string; playDate: string }[];
 }
 
 export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData | null {
@@ -211,7 +232,9 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
     throw new Error("The public pairings have an unsupported start format.");
   }
 
-  const groups = new Map<number, PublishedGroup>();
+  // The day is part of the key: two days of one event can both have group number 1.
+  const groups = new Map<string, PublishedGroup>();
+  const days = new Map<number, { dayNumber: number; label: string; playDate: string }>();
   const photoByPlayerId: Record<string, string> = {};
   // A published snapshot is written by the app, but a historical row can still be incomplete or
   // disagree with its group after a manual repair. Skipping the bad row keeps the rest of the
@@ -221,7 +244,6 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
     if (
       row.tournament_id !== first.tournament_id ||
       row.tournament_name !== first.tournament_name ||
-      row.play_date !== first.play_date ||
       row.start_format !== first.start_format ||
       row.first_tee_time !== first.first_tee_time ||
       row.published_at !== first.published_at
@@ -249,8 +271,13 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
       skippedRows += 1;
       continue;
     }
-    const group = groups.get(row.group_number) ?? {
+    const dayNumber = row.day_number ?? 1;
+    const key = `${dayNumber}:${row.group_number}`;
+    const group = groups.get(key) ?? {
       number: row.group_number,
+      dayNumber,
+      ...(row.day_label ? { dayLabel: row.day_label } : {}),
+      playDate: row.play_date,
       startHole: row.start_hole,
       wave: row.wave,
       time: row.tee_time.slice(0, 5),
@@ -262,7 +289,10 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
       group.startHole !== row.start_hole ||
       group.wave !== row.wave ||
       group.time !== row.tee_time.slice(0, 5) ||
-      group.flight !== row.flight_name
+      group.flight !== row.flight_name ||
+      group.dayNumber !== dayNumber ||
+      group.playDate !== row.play_date ||
+      group.dayLabel !== (row.day_label ?? undefined)
     ) {
       skippedRows += 1;
       continue;
@@ -271,7 +301,14 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
     // Keep the ids aligned with the names even when an old snapshot has no id for this row.
     group.playerIds?.push(row.player_id ?? "");
     if (row.player_id && row.photo_path) photoByPlayerId[row.player_id] = row.photo_path;
-    groups.set(row.group_number, group);
+    groups.set(key, group);
+    if (!days.has(dayNumber)) {
+      days.set(dayNumber, {
+        dayNumber,
+        label: row.day_label ?? `Day ${dayNumber}`,
+        playDate: row.play_date,
+      });
+    }
   }
 
   // Nothing usable survived. The page should show its failure state, not an empty draw.
@@ -289,7 +326,9 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
           date: first.play_date,
           startFormat: first.start_format,
           firstTeeTime: first.first_tee_time.slice(0, 5),
-          groups: [...groups.values()].sort((a, b) => a.number - b.number),
+          groups: [...groups.values()].sort(
+            (a, b) => (a.dayNumber ?? 1) - (b.dayNumber ?? 1) || a.number - b.number,
+          ),
         }
       : null;
   return {
@@ -301,5 +340,6 @@ export function mapPublicPairingRows(rows: PublicPairing[]): PublicPairingsData 
     published,
     photoByPlayerId,
     skippedRows,
+    days: [...days.values()].sort((a, b) => a.dayNumber - b.dayNumber),
   };
 }

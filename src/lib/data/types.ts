@@ -402,6 +402,19 @@ export interface PublicPairingGroup {
   time: string;
   flight: string;
   players: PublicPairingPlayer[];
+  /** The playing day, when the snapshot was published with days. */
+  dayNumber?: number;
+  dayLabel?: string;
+  /** ISO date of the playing day. */
+  playDate?: string;
+}
+
+/** One playing day of the published list, so the page can show a day at a time. */
+export interface PublicPairingDay {
+  dayNumber: number;
+  label: string;
+  playDate: string;
+  groups: PublicPairingGroup[];
 }
 
 export interface PublicPairings {
@@ -409,7 +422,10 @@ export interface PublicPairings {
   dateLabel: string;
   startFormat: TournamentConfig["startFormat"];
   firstTeeTime: string;
+  /** Every group, in day and tee order. Kept so a one-day list needs no day logic. */
   groups: PublicPairingGroup[];
+  /** One entry per playing day. Empty for a snapshot written before days existed. */
+  days?: PublicPairingDay[];
 }
 
 /**

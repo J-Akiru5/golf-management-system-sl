@@ -226,6 +226,49 @@ describe("database row mappers", () => {
     expect(() => mapPublishedSnapshot({ groups: [] })).toThrow("snapshot is invalid");
   });
 
+  it("keeps the day fields a snapshot carries and still reads one without them", () => {
+    const withDays = mapPublishedSnapshot({
+      at: "2026-10-17T10:00:00Z",
+      signature: "1:player-1",
+      eventName: "October Medal",
+      date: "2026-10-31",
+      startFormat: "shotgun",
+      firstTeeTime: "07:00",
+      groups: [
+        {
+          number: 1,
+          dayNumber: 2,
+          dayLabel: "Round 2",
+          playDate: "2026-11-01",
+          startHole: 1,
+          wave: "A",
+          time: "07:00",
+          flight: "A",
+          players: ["Carmela"],
+        },
+      ],
+    });
+    expect(withDays?.groups[0]).toMatchObject({
+      dayNumber: 2,
+      dayLabel: "Round 2",
+      playDate: "2026-11-01",
+    });
+
+    const withoutDays = mapPublishedSnapshot({
+      at: "2026-10-17T10:00:00Z",
+      signature: "1:player-1",
+      eventName: "October Medal",
+      date: "2026-10-31",
+      startFormat: "shotgun",
+      firstTeeTime: "07:00",
+      groups: [
+        { number: 1, startHole: 1, wave: "A", time: "07:00", flight: "A", players: ["Carmela"] },
+      ],
+    });
+    expect(withoutDays?.groups[0]).not.toHaveProperty("dayNumber");
+    expect(withoutDays?.groups[0]?.number).toBe(1);
+  });
+
   it("maps public RPC rows without exposing a live board", () => {
     const rows: PublicPairing[] = [
       {
@@ -274,6 +317,87 @@ describe("database row mappers", () => {
       },
       photoByPlayerId: { "player-1": "club-1/player-1.jpg" },
     });
+  });
+
+  it("keeps two days' group number one apart and lists both days", () => {
+    const rows: PublicPairing[] = [
+      {
+        tournament_id: "tournament-1",
+        tournament_name: "October Medal",
+        play_date: "2026-10-31",
+        start_format: "shotgun",
+        first_tee_time: "07:00:00",
+        published_at: "2026-10-17T10:00:00Z",
+        version: 3,
+        group_number: 1,
+        day_number: 1,
+        day_label: "Round 1",
+        wave: "A",
+        start_hole: 1,
+        tee_time: "07:00:00",
+        flight_name: "Ladies A",
+        player_id: "player-1",
+        player_name: "Carmela Reyes",
+        photo_path: null,
+      },
+      {
+        tournament_id: "tournament-1",
+        tournament_name: "October Medal",
+        play_date: "2026-11-01",
+        start_format: "shotgun",
+        first_tee_time: "07:00:00",
+        published_at: "2026-10-17T10:00:00Z",
+        version: 3,
+        group_number: 1,
+        day_number: 2,
+        day_label: "Round 2",
+        wave: "A",
+        start_hole: 1,
+        tee_time: "07:00:00",
+        flight_name: "Ladies A",
+        player_id: "player-2",
+        player_name: "Elena Tan",
+        photo_path: null,
+      },
+    ];
+
+    const mapped = mapPublicPairingRows(rows);
+    expect(mapped?.published?.groups).toHaveLength(2);
+    expect(mapped?.published?.groups?.map((group) => [group.dayNumber, group.number])).toEqual([
+      [1, 1],
+      [2, 1],
+    ]);
+    expect(mapped?.published?.groups?.[1]?.players).toEqual(["Elena Tan"]);
+    expect(mapped?.days).toEqual([
+      { dayNumber: 1, label: "Round 1", playDate: "2026-10-31" },
+      { dayNumber: 2, label: "Round 2", playDate: "2026-11-01" },
+    ]);
+  });
+
+  it("treats an old response without day columns as day one", () => {
+    const rows: PublicPairing[] = [
+      {
+        tournament_id: "tournament-1",
+        tournament_name: "October Medal",
+        play_date: "2026-10-31",
+        start_format: "shotgun",
+        first_tee_time: "07:00:00",
+        published_at: "2026-10-17T10:00:00Z",
+        version: 3,
+        group_number: 1,
+        wave: "A",
+        start_hole: 1,
+        tee_time: "07:00:00",
+        flight_name: "Ladies A",
+        player_id: "player-1",
+        player_name: "Carmela Reyes",
+        photo_path: null,
+      },
+    ];
+
+    const mapped = mapPublicPairingRows(rows);
+    expect(mapped?.published?.groups?.[0]).toMatchObject({ number: 1, dayNumber: 1 });
+    expect(mapped?.days).toEqual([{ dayNumber: 1, label: "Day 1", playDate: "2026-10-31" }]);
   });
 
   it("returns event metadata but no public list before publishing", () => {

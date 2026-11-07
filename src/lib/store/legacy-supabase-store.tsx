@@ -51,6 +51,12 @@ export interface PublishedGroup {
   players: string[];
   /** Parallel to `players` after 20261039000000. */
   playerIds?: string[];
+  /** Which playing day the group belongs to. Absent on snapshots written before days. */
+  dayNumber?: number;
+  /** The day's label, such as "Round 2". Absent when the organizer set none. */
+  dayLabel?: string;
+  /** The day's play date (YYYY-MM-DD). Absent on snapshots written before days. */
+  playDate?: string;
 }
 export interface Published {
   at: string;
