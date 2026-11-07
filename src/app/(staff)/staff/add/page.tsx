@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useStaffDay } from "@/components/staff/day-context";
+import { StaffLoading } from "@/components/staff/StaffLoading";
+import { useStaffToast } from "@/components/staff/StaffToast";
 import styles from "@/components/staff/staff.module.css";
-import { useToast } from "@/components/ui/toast";
 import type { RegistrationEntry } from "@/lib/data/types";
+import { fmtDayDate } from "@/lib/staff/day";
 import { placeWalkUp } from "@/lib/staff/place";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -17,9 +19,21 @@ import { useDesk } from "@/lib/store/desk-store";
  * cannot place is left for review; nothing is defaulted here.
  */
 export default function StaffAddPage() {
-  const { tournament, players, entries, adapters, dispatch, draw, classifyDraft } = useDesk();
+  const {
+    tournament,
+    players,
+    entries,
+    adapters,
+    dispatch,
+    draw,
+    classifyDraft,
+    status,
+    error: deskError,
+    offline,
+    reload,
+  } = useDesk();
   const { days, day, dayIndex, dayCount } = useStaffDay();
-  const toast = useToast();
+  const toast = useStaffToast();
   const router = useRouter();
 
   const [query, setQuery] = useState("");
@@ -54,6 +68,7 @@ export default function StaffAddPage() {
   }
 
   async function save() {
+    if (busy) return;
     setError("");
     if (!tournament) {
       setError("No event is selected.");
@@ -172,6 +187,22 @@ export default function StaffAddPage() {
     }
   }
 
+  if (status === "loading") {
+    return <StaffLoading title="Add walk-up" label="Loading the player directory" />;
+  }
+
+  if (deskError && !offline) {
+    return (
+      <div className={styles.blockError} role="alert">
+        <b>The desk did not load.</b>
+        <p>{deskError}</p>
+        <button type="button" className={styles.secondary} onClick={reload}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   if (!tournament) {
     return (
       <p className={styles.notice}>
@@ -181,168 +212,223 @@ export default function StaffAddPage() {
   }
 
   return (
-    <div>
+    <div className={styles.pageWithAction}>
       <h1 className={styles.h1}>Add walk-up</h1>
       <p className={styles.sub}>For a player at the club who did not send an entry.</p>
 
-      <div className={styles.tabs} role="tablist" aria-label="Who is the walk-up">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={!guestMode}
-          className={styles.tab}
-          onClick={() => setGuestMode(false)}
-        >
-          In the directory
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={guestMode}
-          className={styles.tab}
-          onClick={() => setGuestMode(true)}
-        >
-          New guest
-        </button>
-      </div>
-
-      {!guestMode ? (
-        <>
-          <div className={styles.search}>
-            <input
-              className={styles.input}
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search the club directory"
-              aria-label="Search the player directory"
-            />
-          </div>
-          {selected && (
-            <p className={styles.notice}>
-              Adding <b>{selected.name}</b>
-              {selected.contactNumber ? ` · ${selected.contactNumber}` : ""}.{" "}
-              <button
-                type="button"
-                className={styles.filter}
-                onClick={() => setPlayerId("")}
-                style={{ marginLeft: 8 }}
-              >
-                Change
-              </button>
-            </p>
-          )}
-          {!selected && (
-            <ul className={styles.list}>
-              {matches.map((player) => (
-                <li key={player.id} className={styles.row}>
-                  <button
-                    type="button"
-                    className={styles.rowMain}
-                    onClick={() => setPlayerId(player.id)}
-                  >
-                    <b>{player.name}</b>
-                    <span className={styles.rowMeta}>
-                      <span>{player.contactNumber ?? "No phone on file"}</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-              {matches.length === 0 && (
-                <li>
-                  <p className={styles.notice}>
-                    Nobody in the directory matches. If the player is new to the club, add them as a
-                    guest instead.
-                  </p>
-                </li>
-              )}
-            </ul>
-          )}
-        </>
-      ) : (
-        <div className={styles.card} style={{ display: "grid", gap: 10 }}>
-          <label className={styles.sub} style={{ margin: 0 }}>
-            First name
-            <input
-              className={styles.input}
-              value={guestFirst}
-              onChange={(event) => setGuestFirst(event.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <label className={styles.sub} style={{ margin: 0 }}>
-            Last name
-            <input
-              className={styles.input}
-              value={guestLast}
-              onChange={(event) => setGuestLast(event.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <label className={styles.sub} style={{ margin: 0 }}>
-            Phone (optional)
-            <input
-              className={styles.input}
-              type="tel"
-              value={guestPhone}
-              onChange={(event) => setGuestPhone(event.target.value)}
-              inputMode="tel"
-            />
-          </label>
-        </div>
-      )}
-
-      <section className={styles.sectionHead}>
-        <h2>Days</h2>
-        <span>{chosenDays.length} chosen</span>
-      </section>
-      <div className={styles.filters} role="group" aria-label="Playing days">
-        {days.map((entry) => (
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save();
+        }}
+      >
+        <div className={styles.tabs} role="tablist" aria-label="Who is the walk-up">
           <button
-            key={entry.number}
-            type="button"
-            className={styles.filter}
-            aria-pressed={chosenDays.includes(entry.number)}
-            onClick={() => toggleDay(entry.number)}
-          >
-            Day {entry.number} · {entry.label}
-          </button>
-        ))}
-      </div>
-
-      <section className={styles.sectionHead}>
-        <h2>Session</h2>
-        <span>applied to the chosen days</span>
-      </section>
-      <div className={styles.tabs} role="tablist" aria-label="Session">
-        {(["AM", "PM"] as const).map((value) => (
-          <button
-            key={value}
             type="button"
             role="tab"
-            aria-selected={session === value}
+            aria-selected={!guestMode}
             className={styles.tab}
-            onClick={() => setSession(value)}
+            onClick={() => setGuestMode(false)}
           >
-            {value}
+            Club directory
           </button>
-        ))}
-      </div>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={guestMode}
+            className={styles.tab}
+            onClick={() => setGuestMode(true)}
+          >
+            New guest
+          </button>
+        </div>
 
-      {error && (
-        <p className={`${styles.notice} ${styles.noticeBad}`} role="alert">
-          {error}
+        {!guestMode ? (
+          <>
+            <label
+              className={styles.sub}
+              htmlFor="walkup-search"
+              style={{ display: "block", margin: "0 0 6px" }}
+            >
+              Find a player in the club directory
+            </label>
+            <div className={styles.search}>
+              <input
+                id="walkup-search"
+                className={styles.input}
+                type="search"
+                inputMode="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }}
+                placeholder="Name, for example Cruz"
+                autoComplete="off"
+                enterKeyHint="search"
+              />
+            </div>
+            {selected && (
+              <p className={styles.notice}>
+                Adding <b>{selected.name}</b>
+                {selected.contactNumber ? ` · ${selected.contactNumber}` : ""}.{" "}
+                <button
+                  type="button"
+                  className={styles.filter}
+                  onClick={() => setPlayerId("")}
+                  style={{ marginLeft: 8 }}
+                >
+                  Change
+                </button>
+              </p>
+            )}
+            {!selected && matches.length > 0 && (
+              <ul className={styles.list}>
+                {matches.map((player) => (
+                  <li key={player.id} className={styles.row}>
+                    <button
+                      type="button"
+                      className={styles.rowMain}
+                      onClick={() => setPlayerId(player.id)}
+                    >
+                      <b>{player.name}</b>
+                      <span className={styles.rowMeta}>
+                        <span>{player.contactNumber ?? "No phone on file"}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!selected && matches.length === 0 && (
+              <div className={styles.empty} style={{ marginBottom: 12 }}>
+                <p className={styles.emptyTitle}>
+                  {query.trim() === ""
+                    ? "Everyone in the directory is already entered"
+                    : "No player matches that name"}
+                </p>
+                <p>
+                  {query.trim() === ""
+                    ? "If this player is new to the club, add them as a guest."
+                    : "Check the spelling, or add them as a new guest."}
+                </p>
+                <button
+                  type="button"
+                  className={`${styles.secondary} ${styles.emptyAction}`}
+                  onClick={() => setGuestMode(true)}
+                >
+                  Add them as a guest
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className={styles.fieldGrid}>
+            <label className={styles.sub} style={{ display: "grid", gap: 6, margin: 0 }}>
+              First name
+              <input
+                className={styles.input}
+                type="text"
+                value={guestFirst}
+                onChange={(event) => setGuestFirst(event.target.value)}
+                autoComplete="given-name"
+                enterKeyHint="next"
+                style={{ width: "100%" }}
+              />
+            </label>
+            <label className={styles.sub} style={{ display: "grid", gap: 6, margin: 0 }}>
+              Last name
+              <input
+                className={styles.input}
+                type="text"
+                value={guestLast}
+                onChange={(event) => setGuestLast(event.target.value)}
+                autoComplete="family-name"
+                enterKeyHint="next"
+                style={{ width: "100%" }}
+              />
+            </label>
+            <label className={styles.sub} style={{ display: "grid", gap: 6, margin: 0 }}>
+              Phone (optional)
+              <input
+                className={styles.input}
+                type="tel"
+                inputMode="tel"
+                value={guestPhone}
+                onChange={(event) => setGuestPhone(event.target.value)}
+                autoComplete="tel"
+                enterKeyHint="done"
+                style={{ width: "100%" }}
+              />
+            </label>
+          </div>
+        )}
+
+        <section className={styles.sectionHead}>
+          <h2>Days</h2>
+          <span>{chosenDays.length} chosen</span>
+        </section>
+        {days.length === 0 ? (
+          <p className={styles.notice}>
+            This event has no playing days yet. The organizers set them from the full desk.
+          </p>
+        ) : (
+          <div className={styles.filters} role="group" aria-label="Playing days">
+            {days.map((entry) => (
+              <button
+                key={entry.number}
+                type="button"
+                className={styles.filter}
+                aria-pressed={chosenDays.includes(entry.number)}
+                onClick={() => toggleDay(entry.number)}
+              >
+                Day {entry.number} · {fmtDayDate(entry.date)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <section className={styles.sectionHead}>
+          <h2>Session</h2>
+          <span>applied to the chosen days</span>
+        </section>
+        <div className={styles.tabs} role="tablist" aria-label="Session">
+          {(["AM", "PM"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={session === value}
+              className={styles.tab}
+              onClick={() => setSession(value)}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+
+        <p className={styles.notice} style={{ marginBottom: 12 }}>
+          The organizers review the entry before it counts. A player the draw cannot place waits in
+          review; the app never guesses a flight, tee or group.
         </p>
-      )}
 
-      <p className={styles.notice} style={{ marginBottom: 12 }}>
-        The organizers review the entry before it counts. A player the draw cannot place waits in
-        review; the app never guesses a flight, tee or group.
-      </p>
-
-      <button type="button" className={styles.primary} disabled={busy} onClick={() => void save()}>
-        {busy ? "Saving…" : "Add the walk-up"}
-      </button>
+        <div className={styles.stickyActionBar}>
+          {error ? (
+            <p
+              className={`${styles.notice} ${styles.noticeBad}`}
+              role="alert"
+              style={{ margin: 0 }}
+            >
+              {error}
+            </p>
+          ) : null}
+          <button type="submit" className={styles.primary} disabled={busy}>
+            {busy ? "Saving…" : "Add the walk-up"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
