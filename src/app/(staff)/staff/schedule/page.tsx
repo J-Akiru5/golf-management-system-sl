@@ -88,6 +88,16 @@ export default function StaffSchedulePage() {
                 <span>
                   {group.flightName} · {group.players.length} players · {group.arrived} arrived
                 </span>
+                <span className={styles.arrivalTicks} aria-hidden="true">
+                  {group.players.map((player, index) => (
+                    <i
+                      key={player.playerId}
+                      className={`${styles.arrivalTick} ${
+                        group.arrivals[index] ? styles.arrivalTickOn : ""
+                      }`}
+                    />
+                  ))}
+                </span>
               </span>
               <span
                 className={`${styles.pill} ${

@@ -332,9 +332,14 @@ export function GroupScore({ groupId }: { groupId: string }) {
           </ul>
 
           {submitError && (
-            <p className={`${styles.notice} ${styles.noticeBad}`} role="alert">
-              {submitError}
-            </p>
+            <>
+              <p className={`${styles.notice} ${styles.noticeBad}`} role="alert">
+                {submitError}
+              </p>
+              <p className={styles.notice}>
+                The scores are still on this phone. Fix what the message says, then submit again.
+              </p>
+            </>
           )}
 
           <div className={styles.buttonRow}>
@@ -346,7 +351,9 @@ export function GroupScore({ groupId }: { groupId: string }) {
             >
               {submitting
                 ? progressLabel || "Submitting…"
-                : `Submit ${readyToSubmit.length} ${readyToSubmit.length === 1 ? "card" : "cards"}`}
+                : submitError && readyToSubmit.length > 0
+                  ? `Retry submitting ${readyToSubmit.length}`
+                  : `Submit ${readyToSubmit.length} ${readyToSubmit.length === 1 ? "card" : "cards"}`}
             </button>
             <button
               type="button"

@@ -455,6 +455,28 @@
   font-size: 14px;
 }
 
+/* One mark per player in the group: filled when they are here, outlined when still expected.
+   Decorative to a screen reader; the count beside it carries the same fact as text. */
+.groupMain .arrivalTicks {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.arrivalTick {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid var(--s-muted);
+  background: #ffffff;
+}
+
+.arrivalTickOn {
+  background: var(--s-forest);
+  border-color: var(--s-forest);
+}
+
 .stepper {
   display: flex;
   align-items: center;

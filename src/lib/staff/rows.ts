@@ -198,25 +198,33 @@ export function rowsInGroup(rows: readonly StaffRow[], groupId: string): StaffRo
 export interface ScheduleGroup extends StaffGroup {
   flightName: string;
   arrived: number;
+  /** One flag per player, in roster order, so a row can show a tick for every spot. */
+  arrivals: boolean[];
 }
 
-/** Groups in tee order with how many of their players have arrived. */
+/** Groups in tee order with their arrival state, player by player. */
 export function buildSchedule(
   groups: readonly StaffGroup[],
   rows: readonly StaffRow[],
   flightName: (id: string | null) => string,
 ): ScheduleGroup[] {
-  const arrivedByEntryGroup = new Map<string, number>();
+  const arrivedByGroup = new Map<string, Set<string>>();
   for (const row of rows) {
     if (!row.group || !row.arrived) continue;
-    arrivedByEntryGroup.set(row.group.id, (arrivedByEntryGroup.get(row.group.id) ?? 0) + 1);
+    const arrived = arrivedByGroup.get(row.group.id) ?? new Set<string>();
+    arrived.add(row.playerId);
+    arrivedByGroup.set(row.group.id, arrived);
   }
   return groups
-    .map((group) => ({
-      ...group,
-      flightName: flightName(group.flightId),
-      arrived: arrivedByEntryGroup.get(group.id) ?? 0,
-    }))
+    .map((group) => {
+      const arrivedPlayers = arrivedByGroup.get(group.id) ?? new Set<string>();
+      return {
+        ...group,
+        flightName: flightName(group.flightId),
+        arrived: group.players.filter((player) => arrivedPlayers.has(player.playerId)).length,
+        arrivals: group.players.map((player) => arrivedPlayers.has(player.playerId)),
+      };
+    })
     .sort((a, b) => {
       const at = minutesOf(a.time);
       const bt = minutesOf(b.time);

@@ -30,6 +30,24 @@ type Phase = "idle" | "hashing" | "uploading" | "reading" | "ready" | "error";
 
 const MAX_BYTES = 12 * 1024 * 1024;
 const MIME_EXTENSIONS = ["image/jpeg", "image/png", "image/webp"];
+const REQUEST_TIMEOUT_MS = 20_000;
+
+/**
+ * A scan request that never answers must not leave the screen on "Reading card…" forever. Every
+ * call is bounded, and a timeout becomes an ordinary error the volunteer can retry.
+ */
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function sha256Hex(buffer: ArrayBuffer): Promise<string> {
   return crypto.subtle.digest("SHA-256", buffer).then((digest) =>
@@ -150,7 +168,7 @@ export function ScorecardScan({
     setPhase("uploading");
     setMessage("");
     try {
-      const presign = await fetch("/api/scoring/scan/presign", {
+      const presign = await fetchWithTimeout("/api/scoring/scan/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -173,7 +191,7 @@ export function ScorecardScan({
         return;
       }
 
-      const put = await fetch(upload.uploadUrl, {
+      const put = await fetchWithTimeout(upload.uploadUrl, {
         method: "PUT",
         headers: upload.headers,
         body: file,
@@ -194,8 +212,9 @@ export function ScorecardScan({
       setImage(uploaded);
       setCaptureKey(crypto.randomUUID());
       setPhase("reading");
+      setMessage("Reading card…");
 
-      const extract = await fetch("/api/scoring/scan/extract", {
+      const extract = await fetchWithTimeout("/api/scoring/scan/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -228,7 +247,13 @@ export function ScorecardScan({
       setPhase("ready");
     } catch (error) {
       setPhase("error");
-      setMessage(error instanceof Error ? error.message : "The scan failed.");
+      setMessage(
+        error instanceof DOMException && error.name === "AbortError"
+          ? "The scanner did not answer in time. Check the signal, then retry."
+          : error instanceof Error
+            ? error.message
+            : "The scan failed.",
+      );
     }
   }
 
@@ -322,6 +347,17 @@ export function ScorecardScan({
               )}
               {phase === "reading" ? "Reading card…" : "Upload and read"}
             </Button>
+            {phase === "error" && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void uploadAndRead()}
+                disabled={busy || disabled || !sha256}
+              >
+                Retry
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -342,7 +378,10 @@ export function ScorecardScan({
       </div>
 
       {message && (
-        <p className={phase === "error" ? "notice bad" : "notice info"} role="status">
+        <p
+          className={phase === "error" ? "notice bad" : "notice info"}
+          role={phase === "error" ? "alert" : "status"}
+        >
           {message}
         </p>
       )}

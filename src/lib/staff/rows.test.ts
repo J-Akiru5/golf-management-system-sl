@@ -184,6 +184,9 @@ describe("staff rows", () => {
     );
     expect(schedule.map((group) => group.number)).toEqual([2, 10]);
     expect(schedule[1]).toMatchObject({ flightName: "Class A", arrived: 1 });
+    // One tick per roster spot, in the same order the group screen lists the players.
+    expect(schedule[0]?.arrivals).toEqual([false]);
+    expect(schedule[1]?.arrivals).toEqual([false, true]);
   });
 
   it("walks a placed player to the group's tee, not a stale tee left on the entry", () => {
