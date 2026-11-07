@@ -9,7 +9,12 @@ import {
   pruneDaySessions,
 } from "@/lib/data/day-selection";
 import { fmtIso } from "@/lib/data/labels";
-import { daySessionSummary, daySessions, sessionLabelForTime } from "@/lib/data/sessions";
+import {
+  daySessionBadge,
+  daySessionSummary,
+  daySessions,
+  sessionLabelForTime,
+} from "@/lib/data/sessions";
 import type { RegistrationEntry, TournamentDay } from "@/lib/data/types";
 import { cn } from "@/lib/ui/cn";
 
@@ -42,6 +47,9 @@ export function RegistrationDaysEditor({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // A non-playing day in the middle leaves gaps in the day numbers. Pruning checks the number, not
+  // the position in the list, so it needs the highest number rather than how many days there are.
+  const maxDayNumber = days.reduce((max, day) => Math.max(max, day.dayNumber), 0);
 
   if (!open) {
     return (
@@ -69,6 +77,14 @@ export function RegistrationDaysEditor({
           const picked =
             sessions[day.dayNumber] ??
             sessionLabelForTime(entry.dayTee?.[day.dayNumber]?.teeTime ?? null, index, days.length);
+          // The badge says which session this day is on. Its "default" source means nothing has been
+          // stored yet, so it is labelled as the default rather than as the player's choice.
+          const badge = daySessionBadge({
+            dayIndex: index,
+            dayCount: days.length,
+            session: sessions[day.dayNumber],
+            teeTime: entry.dayTee?.[day.dayNumber]?.teeTime ?? null,
+          });
           const options = daySessions(index, days.length);
           return (
             <span key={day.id} className="grid gap-1">
@@ -91,7 +107,21 @@ export function RegistrationDaysEditor({
                   }}
                 />
                 <span>
-                  {day.label} · {fmtIso(day.playDate)}
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span>
+                      {day.label} · {fmtIso(day.playDate)}
+                    </span>
+                    {checked &&
+                      (badge.source === "default" ? (
+                        <span className="pill warn">
+                          Default {badge.label} {badge.time}
+                        </span>
+                      ) : (
+                        <span className="pill">
+                          {badge.label} {badge.time}
+                        </span>
+                      ))}
+                  </span>
                   <span className="hint block">{daySessionSummary(index, days.length)}</span>
                 </span>
               </label>
@@ -143,7 +173,7 @@ export function RegistrationDaysEditor({
             }
             setSaving(true);
             try {
-              await onSave(selected, pruneDaySessions(selected, sessions, days.length));
+              await onSave(selected, pruneDaySessions(selected, sessions, maxDayNumber));
               setOpen(false);
             } catch (e) {
               setError(e instanceof Error ? e.message : "Could not save the days.");

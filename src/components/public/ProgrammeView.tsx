@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Avatar } from "@/components/bits";
 import { fmtIso } from "@/lib/data/labels";
+import { daySessionBadge, daySessionSummary } from "@/lib/data/sessions";
 import type { PublicProgramme, PublicTeeTimeDay } from "@/lib/data/types";
 import { fmtIndex, fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
@@ -41,21 +42,26 @@ interface TimeGroup {
   key: string;
   teeTime: string | null;
   startHole: number | null;
+  session: "AM" | "PM" | null;
   names: string[];
 }
 
 /** One card per confirmed time and hole; everyone not confirmed shares a final card. */
-function groupByTime(day: PublicTeeTimeDay): TimeGroup[] {
+function groupByTime(day: PublicTeeTimeDay, dayIndex: number, dayCount: number): TimeGroup[] {
   const groups = new Map<string, TimeGroup>();
   for (const player of day.players) {
     const key =
       player.teeTime === null
         ? "to-be-confirmed"
         : `${player.teeTime}|${player.startHole ?? "no-hole"}`;
+    const session = player.teeTime
+      ? daySessionBadge({ dayIndex, dayCount, teeTime: player.teeTime }).session
+      : null;
     const group = groups.get(key) ?? {
       key,
       teeTime: player.teeTime,
       startHole: player.startHole,
+      session,
       names: [],
     };
     group.names.push(player.name);
@@ -69,7 +75,11 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
   const firstDay = programme.days[0]?.dayNumber ?? 1;
   const [selected, setSelected] = useState(firstDay);
   const day = programme.days.find((item) => item.dayNumber === selected) ?? programme.days[0];
-  const groups = useMemo(() => (day ? groupByTime(day) : []), [day]);
+  const dayIndex = day ? programme.days.findIndex((item) => item.dayNumber === day.dayNumber) : -1;
+  const groups = useMemo(
+    () => (day ? groupByTime(day, dayIndex, programme.days.length) : []),
+    [day, dayIndex, programme.days.length],
+  );
 
   return (
     <section className="card grid gap-3" id="tee-times">
@@ -102,9 +112,10 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
               {day.label} · {fmtIso(day.playDate)}
             </h3>
             <span className="hint m-0">
+              {daySessionSummary(dayIndex, programme.days.length)}
               {day.startTime
-                ? t("programme.dayStart", { time: fmtTime(day.startTime) })
-                : t("programme.dayStartUnknown")}
+                ? ` · ${t("programme.dayStart", { time: fmtTime(day.startTime) })}`
+                : ` · ${t("programme.dayStartUnknown")}`}
             </span>
           </div>
 
@@ -118,6 +129,7 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
                     <b className={group.teeTime ? "mono" : "muted"}>
                       {group.teeTime ? fmtTime(group.teeTime) : t("programme.toBeConfirmed")}
                     </b>
+                    {group.session && <span className="pill">{group.session}</span>}
                     {group.teeTime && group.startHole !== null && (
                       <span className="pill">{t("programme.hole", { hole: group.startHole })}</span>
                     )}

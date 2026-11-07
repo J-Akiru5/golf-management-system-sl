@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
 import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
+import { daySessionSummary } from "@/lib/data/sessions";
 import { buildXlsx, type Cell } from "@/lib/export/xlsx";
 import { photoOf } from "@/lib/format";
 import { buildDayCountBlocks, buildGroupBlocks } from "@/lib/print/day-counts";
@@ -334,9 +335,10 @@ export default function PrintCenter() {
                   className="!w-auto"
                   data-help="print-day"
                 >
-                  {playingDays.map((d) => (
+                  {playingDays.map((d, index) => (
                     <option key={d.id} value={d.dayNumber}>
-                      {d.label} · {fmtIso(d.playDate)}
+                      {d.label} · {fmtIso(d.playDate)} ·{" "}
+                      {daySessionSummary(index, playingDays.length)}
                     </option>
                   ))}
                 </select>

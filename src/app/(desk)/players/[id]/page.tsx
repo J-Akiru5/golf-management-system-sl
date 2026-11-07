@@ -25,6 +25,7 @@ import { type PosterFactOption, PosterStudio } from "@/components/PosterStudio";
 import { PlayerDetailsForm } from "@/components/player/PlayerDetailsForm";
 import { Button } from "@/components/ui/button";
 import { fmtIso } from "@/lib/data/labels";
+import { registeredDayBadges } from "@/lib/data/sessions";
 import { PAYMENT_LABEL } from "@/lib/data/types";
 import { displayName, fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
 import { shrinkPhoto } from "@/lib/photo";
@@ -59,6 +60,7 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
     names,
     adapters,
     tees,
+    days,
     member,
     status,
   } = useDesk();
@@ -104,6 +106,12 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
 
   const shotgun = tournament.config.startFormat === "shotgun";
   const group = draw?.find((g) => g.playerIds.includes(player.id)) ?? null;
+  const dayBadges = entry
+    ? registeredDayBadges(
+        entry,
+        days.filter((day) => day.isPlayingDay),
+      )
+    : [];
   const photo = photoOf(player);
   const playerId = player.id;
   const dateLabel = new Date(`${tournament.config.date}T00:00:00`).toLocaleDateString("en-PH", {
@@ -310,6 +318,20 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
                 <p>
                   <b>{tournament.registration.sponsorQuestion}</b>{" "}
                   {entry.sponsor === null ? "Not asked yet." : entry.sponsor ? "Yes." : "No."}
+                </p>
+                <p>
+                  <b>Playing days.</b>{" "}
+                  {dayBadges.length > 0 ? (
+                    <span className="inline-flex flex-wrap gap-1 align-middle">
+                      {dayBadges.map((day) => (
+                        <span key={day.dayNumber} className="pill">
+                          {day.dayLabel} · {day.label} {day.time}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    "No playing days selected."
+                  )}
                 </p>
                 <p>
                   <b>Tee-time preferences.</b>{" "}

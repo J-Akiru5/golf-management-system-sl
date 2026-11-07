@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { daySelectionProblem } from "@/lib/data/day-selection";
 import { instructionText } from "@/lib/data/instructions";
+import { daySessionSummary } from "@/lib/data/sessions";
 import type {
   RegistrationFormConfig,
   SubmissionAnswers,
@@ -212,7 +213,7 @@ export function RegistrationForm({
           <h2>{t("enter.form.playingDays")}</h2>
           <p className="hint">{t("enter.form.playingDaysHelp")}</p>
           <div className="form-grid">
-            {config.days.map((day) => {
+            {config.days.map((day, index) => {
               const checked = selectedDays.includes(day.dayNumber);
               return (
                 <label key={day.dayNumber} className="check">
@@ -233,6 +234,9 @@ export function RegistrationForm({
                     {day.startTime
                       ? ` · ${t("enter.form.startsAt", { time: day.startTime.slice(0, 5) })}`
                       : ""}
+                    <span className="hint block">
+                      {daySessionSummary(index, config.days.length)}
+                    </span>
                   </span>
                 </label>
               );
