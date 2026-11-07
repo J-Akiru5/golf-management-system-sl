@@ -14,6 +14,8 @@
   --s-ok: #1c6b3a;
   --s-warn: #8a5a00;
   --s-bad: #a32118;
+  --staff-bar-h: 60px;
+  --staff-header-h: 56px;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -34,7 +36,8 @@
   z-index: 20;
   background: var(--s-forest);
   color: #f7f5ee;
-  padding: 10px 16px calc(10px + env(safe-area-inset-top, 0px));
+  min-height: calc(var(--staff-header-h) + env(safe-area-inset-top, 0px));
+  padding: 8px 12px calc(8px + env(safe-area-inset-top, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -90,16 +93,18 @@
   grid-template-columns: repeat(4, 1fr);
   background: #ffffff;
   border-top: 1px solid var(--s-line);
+  box-shadow: 0 -6px 18px rgba(16, 20, 15, 0.06);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .barItem {
-  min-height: 60px;
+  min-height: var(--staff-bar-h);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
+  padding: 4px 2px 6px;
   color: var(--s-muted);
   font-size: 13px;
   font-weight: 600;
@@ -215,7 +220,7 @@
   justify-content: space-between;
   gap: 12px;
   min-height: 72px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 1px solid var(--s-line);
   border-radius: 14px;
   background: #ffffff;
@@ -323,6 +328,13 @@
   margin: 0;
   padding: 0;
   border-top: 1px solid var(--s-line);
+}
+
+/* A 280-player day is 280 rows. The browser only paints the rows in view; the intrinsic size keeps
+   the scrollbar honest. */
+.list .row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
 }
 
 .row {
@@ -957,6 +969,7 @@
 @media print {
   .header,
   .bar,
+  .stickyActionBar,
   .noPrint {
     display: none !important;
   }
@@ -1005,6 +1018,13 @@
   }
 }
 
+@media (min-width: 820px) {
+  .bar {
+    padding-left: calc((100% - 760px) / 2);
+    padding-right: calc((100% - 760px) / 2);
+  }
+}
+
 @media print {
   .bar,
   .header {
@@ -1013,5 +1033,1164 @@
   .main {
     max-width: none;
     padding: 0;
+  }
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Mobile-native layer (stream S1).
+ *
+ * The staff app is used one-handed, in the sun, on a phone. These rules add the account sheet, the
+ * session switch, the sticky actions, skeletons and the tee-sheet cards. Nothing here hard-codes a
+ * golf rule or a brand colour outside the staff tokens above.
+ * ---------------------------------------------------------------------------------------------- */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.accountButton {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(247, 245, 238, 0.4);
+  background: transparent;
+  color: #f7f5ee;
+  font: inherit;
+  cursor: pointer;
+}
+
+.accountButton:focus-visible {
+  outline: 3px solid #f0c75e;
+  outline-offset: 2px;
+}
+
+.accountButtonInitials {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--s-gold);
+  color: var(--s-gold-ink);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.demoStrip {
+  margin: 0;
+  padding: 5px 16px;
+  background: #fdf6e4;
+  border-bottom: 1px solid #e7cf95;
+  color: #6a4700;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.offlineBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fdf6e4;
+  border-bottom: 1px solid #e7cf95;
+  color: #5c3f00;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.offlineBanner span {
+  flex: 1;
+  min-width: 0;
+}
+
+.offlineRetry {
+  flex: 0 0 auto;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #d5b46a;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #5c3f00;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.shellAlert {
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  border: 1px solid #e7b3ad;
+  border-radius: 12px;
+  background: #fdf0ee;
+  color: #6d1710;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.main {
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+/* A page with a sticky primary action reserves room for it above the tab bar. */
+.pageWithAction {
+  padding-bottom: 148px;
+}
+
+.stickyTop {
+  position: sticky;
+  top: calc(var(--staff-header-h) + env(safe-area-inset-top, 0px));
+  z-index: 12;
+  margin: 0 -16px;
+  padding: 8px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--s-line);
+}
+
+.stickyTop::after {
+  content: "";
+  position: absolute;
+  inset: 100% 0 auto;
+  height: 8px;
+  background: linear-gradient(rgba(16, 20, 15, 0.08), transparent);
+  pointer-events: none;
+}
+
+.stickyActionBar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 760px);
+  bottom: calc(var(--staff-bar-h) + env(safe-area-inset-bottom, 0px));
+  z-index: 14;
+  display: grid;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-top: 1px solid var(--s-line);
+  box-shadow: 0 -8px 18px rgba(16, 20, 15, 0.07);
+}
+
+.stickyActionBar > * {
+  min-height: 52px;
+}
+
+/* The day pills and the session switch share one sticky-friendly block. */
+.dayBar {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.sessionBar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--s-line);
+  border-radius: 12px;
+  background: var(--s-soft);
+}
+
+.sessionChip {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--s-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sessionChip small {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
+.sessionChip[aria-pressed="true"] {
+  background: #ffffff;
+  border-color: var(--s-line);
+  color: var(--s-forest);
+  box-shadow: 0 1px 2px rgba(16, 20, 15, 0.08);
+}
+
+.sessionChip:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 1px;
+}
+
+/* Tee sheet cards. The whole card is the link, so a thumb does not have to aim at a number. */
+.groupCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--s-line);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--s-ink);
+  text-decoration: none;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 118px;
+}
+
+.groupCard + .groupCard {
+  margin-top: 8px;
+}
+
+.groupCard:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.groupCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.groupCardTime {
+  display: block;
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.groupCardMeta {
+  display: block;
+  margin-top: 2px;
+  color: var(--s-muted);
+  font-size: 13px;
+}
+
+.groupCardSide {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.holeChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--s-soft);
+  border: 1px solid var(--s-line);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.groupPlayers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 6px;
+}
+
+.playerChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--s-line);
+  background: #ffffff;
+  color: var(--s-muted);
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 100%;
+}
+
+.playerChip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playerChip[data-in="true"] {
+  border-color: #a9d3b4;
+  background: #e7f4ea;
+  color: #14512b;
+}
+
+.playerChip i {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
+.playerChip[data-in="true"] i {
+  background: var(--s-ok);
+  border-color: var(--s-ok);
+}
+
+.groupCardNext {
+  border-color: var(--s-forest);
+  box-shadow: 0 0 0 1px var(--s-forest);
+}
+
+.nextUpBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--s-gold);
+  color: var(--s-gold-ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.groupCardFlash {
+  animation: cardFlash 900ms ease-out;
+}
+
+@keyframes cardFlash {
+  0% {
+    background: #fdf6e4;
+  }
+  100% {
+    background: #ffffff;
+  }
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchRow .input {
+  min-width: 0;
+}
+
+.searchCount {
+  margin: 6px 0 0;
+  color: var(--s-muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.jumpInline {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--s-line);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--s-forest);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.jumpHint {
+  margin: 0;
+  color: var(--s-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.playerChip[data-match="true"] {
+  border-color: var(--s-forest);
+  box-shadow: 0 0 0 1px var(--s-forest);
+  color: var(--s-ink);
+  font-weight: 800;
+}
+
+/* Skeletons shaped like the content they replace, so the page does not jump when data arrives. */
+.skeleton {
+  border-radius: 10px;
+  background: linear-gradient(90deg, #eef1ea 25%, #f7f8f4 37%, #eef1ea 63%);
+  background-size: 400% 100%;
+  animation: skeletonSweep 1.4s ease infinite;
+}
+
+.skeletonLine {
+  height: 14px;
+}
+
+.skeletonTitle {
+  height: 22px;
+  width: 55%;
+}
+
+.skeletonCard {
+  height: 112px;
+  border-radius: 14px;
+  margin-top: 10px;
+}
+
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--s-line);
+}
+
+.skeletonRow .skeleton:first-child {
+  flex: 1;
+  height: 18px;
+}
+
+.skeletonRow .skeleton:last-child {
+  width: 96px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.skeletonStack {
+  display: grid;
+  gap: 10px;
+}
+
+@keyframes skeletonSweep {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.empty {
+  display: grid;
+  gap: 6px;
+  padding: 22px 16px;
+  border: 1px dashed var(--s-line);
+  border-radius: 14px;
+  background: var(--s-soft);
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.empty p {
+  margin: 0;
+  color: var(--s-muted);
+  font-size: 14px;
+}
+
+.emptyAction {
+  margin-top: 8px;
+}
+
+.blockError {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e7b3ad;
+  border-radius: 14px;
+  background: #fdf0ee;
+  color: #6d1710;
+}
+
+.blockError b {
+  font-size: 16px;
+}
+
+.blockError p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* The big arrival answer on Today. */
+.hero {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--s-forest);
+  color: #f7f5ee;
+}
+
+.heroEyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #cfe0d6;
+}
+
+.heroCount {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroCount small {
+  font-size: 15px;
+  font-weight: 600;
+  color: #d7e5dc;
+}
+
+.heroProgress {
+  height: 8px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgba(247, 245, 238, 0.24);
+  overflow: hidden;
+}
+
+.heroProgressBar {
+  height: 100%;
+  background: var(--s-gold);
+  border-radius: 999px;
+  transition: width 200ms ease;
+}
+
+.heroFoot {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #d7e5dc;
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 16px;
+}
+
+.bigAction {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 96px;
+  padding: 12px;
+  border: 1px solid var(--s-line);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--s-ink);
+  text-decoration: none;
+  font: inherit;
+  text-align: left;
+}
+
+.bigAction b {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.bigAction span {
+  color: var(--s-muted);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.bigAction svg,
+.bigAction .bigActionIcon {
+  color: var(--s-forest);
+}
+
+.bigAction:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.bigActionPrimary {
+  background: var(--s-gold);
+  border-color: var(--s-gold);
+  color: var(--s-gold-ink);
+}
+
+.bigActionPrimary span {
+  color: #4a3a08;
+}
+
+.bigActionPrimary svg {
+  color: #4a3a08;
+}
+
+/* A roster row that is itself the arrive control. */
+.tapRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--s-line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tapRow:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.tapRowMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.tapRowMain b {
+  display: block;
+  font-size: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tapRowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  color: var(--s-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tapRowState {
+  flex: 0 0 auto;
+  min-width: 84px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid var(--s-line);
+  background: #ffffff;
+  color: var(--s-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tapRow[data-arrived="true"] .tapRowState {
+  background: #e7f4ea;
+  border-color: #a9d3b4;
+  color: var(--s-ok);
+}
+
+.tapRow[data-busy="true"] {
+  opacity: 0.6;
+}
+
+.infoButton {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--s-line);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--s-muted);
+}
+
+.infoButton:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.claimBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #a9d3b4;
+  border-radius: 12px;
+  background: #e7f4ea;
+  color: #14512b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.detailList {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 15px;
+}
+
+.detailList dt {
+  color: var(--s-muted);
+}
+
+.detailList dd {
+  margin: 0;
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.detailLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--s-forest);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.muted {
+  color: var(--s-muted);
+  font-size: 14px;
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.danger:focus-visible,
+.dangerSolid:focus-visible,
+.linkButton:focus-visible,
+.toolLink:focus-visible,
+.filter:focus-visible,
+.accountLink:focus-visible,
+.accountEventButton:focus-visible,
+.jumpInline:focus-visible,
+.offlineRetry:focus-visible,
+.toastAction:focus-visible,
+.toastClose:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+/* Account sheet. */
+.sheetOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(12, 18, 15, 0.56);
+  animation: sheetFade 180ms ease-out;
+}
+
+.bottomSheetPanel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 81;
+  display: flex;
+  flex-direction: column;
+  max-height: 88dvh;
+  padding: 6px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-radius: 20px 20px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -18px 40px rgba(12, 18, 15, 0.28);
+  animation: sheetUp 220ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  outline: none;
+}
+
+.sheetSurface {
+  --s-ink: #10140f;
+  --s-muted: #56615a;
+  --s-line: #dfe4d9;
+  --s-soft: #f3f5ee;
+  --s-forest: #073d2e;
+  --s-gold: #f0c75e;
+  --s-gold-ink: #231a04;
+  --s-ok: #1c6b3a;
+  --s-warn: #8a5a00;
+  --s-bad: #a32118;
+  background: #ffffff;
+  color: var(--s-ink);
+  color-scheme: light;
+}
+
+.sheetGrab {
+  width: 40px;
+  height: 5px;
+  margin: 4px auto 8px;
+  border-radius: 999px;
+  background: #c9d0c6;
+}
+
+.sheetHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.sheetHeadText {
+  min-width: 0;
+}
+
+.sheetTitle {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--s-ink);
+}
+
+.sheetDescription {
+  margin: 3px 0 0;
+  color: var(--s-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.sheetClose {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--s-line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--s-ink);
+}
+
+.sheetClose:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.sheetScroll {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 4px;
+}
+
+.accountIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--s-line);
+  border-radius: 14px;
+  background: var(--s-soft);
+}
+
+.accountAvatar {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--s-forest);
+  color: var(--s-gold);
+}
+
+.accountText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.accountText b {
+  font-size: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountText span {
+  color: var(--s-muted);
+  font-size: 14px;
+}
+
+.accountSection {
+  display: grid;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--s-line);
+}
+
+.accountSectionHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--s-muted);
+}
+
+.accountEvent {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.accountHint {
+  margin: 0;
+  color: var(--s-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.accountEventList {
+  display: grid;
+  gap: 6px;
+}
+
+.accountEventButton {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--s-line);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--s-ink);
+  font: inherit;
+  text-align: left;
+}
+
+.accountEventButton b {
+  font-size: 15px;
+}
+
+.accountEventButton span {
+  color: var(--s-muted);
+  font-size: 13px;
+}
+
+.accountEventButton[aria-pressed="true"] {
+  border-color: var(--s-forest);
+  box-shadow: 0 0 0 1px var(--s-forest);
+}
+
+.accountLink {
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--s-line);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--s-ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.accountVersion {
+  margin: 4px 0 0;
+  color: #7a847c;
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (min-width: 700px) {
+  .bottomSheetPanel {
+    left: 50%;
+    right: auto;
+    bottom: 24px;
+    width: min(560px, calc(100vw - 48px));
+    transform: translateX(-50%);
+    border-radius: 20px;
+    max-height: 82dvh;
+    padding-bottom: 16px;
+    animation: none;
+  }
+}
+
+@keyframes sheetFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheetUp {
+  from {
+    transform: translateY(18px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Confirmations above the tab bar, not over it. */
+.toastViewport {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--staff-bar-h, 60px) + env(safe-area-inset-bottom, 0px) + 10px);
+  z-index: 78;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  pointer-events: none;
+}
+
+/* A page with a sticky action bar already owns the space above the tab bar. Lift the toast above
+   it so the confirmation never covers the control it is confirming. */
+.shell:has(.stickyActionBar) + .toastViewport {
+  bottom: calc(var(--staff-bar-h, 60px) + env(safe-area-inset-bottom, 0px) + 150px);
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: min(420px, 100%);
+  padding: 10px 12px;
+  border: 1px solid #2c3a31;
+  border-radius: 12px;
+  background: #101a14;
+  color: #f3f5ee;
+  box-shadow: 0 10px 26px rgba(12, 18, 15, 0.3);
+  animation: toastIn 180ms ease-out;
+}
+
+.toast[data-tone="ok"] {
+  border-color: #4f8b62;
+}
+
+.toast[data-tone="bad"] {
+  border-color: #b3564c;
+}
+
+.toastIcon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(243, 245, 238, 0.14);
+}
+
+.toast[data-tone="ok"] .toastIcon {
+  background: #1c6b3a;
+}
+
+.toast[data-tone="bad"] .toastIcon {
+  background: #a32118;
+}
+
+.toastMain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.toastMain b {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.toastMain span {
+  font-size: 12px;
+  line-height: 1.3;
+  color: #ced7d0;
+}
+
+.toastAction {
+  flex: 0 0 auto;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #f0c75e;
+  border-radius: 10px;
+  background: #f0c75e;
+  color: #231a04;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.toastClose {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin: -8px -8px -8px 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #ced7d0;
+}
+
+@keyframes toastIn {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+  .sheetOverlay,
+  .bottomSheetPanel,
+  .toast,
+  .groupCardFlash {
+    animation: none;
+  }
+  .heroProgressBar {
+    transition: none;
   }
 }

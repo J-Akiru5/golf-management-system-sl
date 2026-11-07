@@ -1,0 +1,9 @@
+/* The name and its meta fill the row's full height, so a thumb does not have to aim at the text. */
+.rowMainTap {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-height: 44px;
+}

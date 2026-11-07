@@ -17,6 +17,7 @@ import {
   type StaffDay,
   toStaffDays,
 } from "@/lib/staff/day";
+import type { SessionFilter } from "@/lib/staff/schedule";
 import { useDesk } from "@/lib/store/desk-store";
 
 interface StaffDayState {
@@ -25,6 +26,9 @@ interface StaffDayState {
   /** What the header should say when the day shown is not today. */
   notice: string | null;
   setDayNumber: (dayNumber: number) => void;
+  /** Which session the tee sheet is showing: AM, PM, or the whole day. */
+  session: SessionFilter;
+  setSession: (session: SessionFilter) => void;
   /** The repeatable position of the day, for the AM/PM session cut. */
   dayIndex: number;
   dayCount: number;
@@ -45,6 +49,7 @@ export function StaffDayProvider({ children }: { children: ReactNode }) {
   const { tournament, status, days: eventDays } = useDesk();
   const days = useMemo(() => toStaffDays(eventDays), [eventDays]);
   const [chosen, setChosen] = useState<number | null>(null);
+  const [session, setSession] = useState<SessionFilter>("all");
 
   const auto = useMemo(() => chooseDay(days, isoToday(new Date())), [days]);
   const day = useMemo(
@@ -57,9 +62,11 @@ export function StaffDayProvider({ children }: { children: ReactNode }) {
 
   const setDayNumber = useCallback((dayNumber: number) => setChosen(dayNumber), []);
 
-  // A new event starts on its own day, not on the number the last event was on.
+  // A new event starts on its own day, not on the number the last event was on, and opens on the
+  // whole day rather than the session the last event's starter happened to be watching.
   useEffect(() => {
     setChosen(null);
+    setSession("all");
   }, [tournament?.id]);
 
   const dayIndex = day ? days.findIndex((entry) => entry.number === day.number) : -1;
@@ -70,12 +77,14 @@ export function StaffDayProvider({ children }: { children: ReactNode }) {
       day,
       notice,
       setDayNumber,
+      session,
+      setSession,
       dayIndex: dayIndex < 0 ? 0 : dayIndex,
       dayCount: days.length,
       tournamentId: tournament?.id ?? null,
       ready: status === "demo" || status === "ready",
     }),
-    [days, day, notice, setDayNumber, dayIndex, tournament?.id, status],
+    [days, day, notice, setDayNumber, session, dayIndex, tournament?.id, status],
   );
 
   // `reason` is computed for the initial pick; it is part of the testable helper's contract and

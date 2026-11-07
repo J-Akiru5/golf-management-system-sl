@@ -8,6 +8,7 @@ import { StartSheet } from "@/components/print/StartSheet";
 import type { PrintGroup } from "@/components/print/types";
 import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
+import { StaffLoading } from "@/components/staff/StaffLoading";
 import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
 import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
@@ -23,7 +24,19 @@ type SheetKind = "start" | "scorecards";
  * the published pairings page and multi-day runs.
  */
 export default function StaffPrintPage() {
-  const { tournament, draw, players, regById, names, tees, holes } = useDesk();
+  const {
+    tournament,
+    draw,
+    players,
+    regById,
+    names,
+    tees,
+    holes,
+    status,
+    error: deskError,
+    offline,
+    reload,
+  } = useDesk();
   const { day, days, notice, setDayNumber } = useStaffDay();
   const { schedule } = useStaffRows();
   const [kind, setKind] = useState<SheetKind>("start");
@@ -99,6 +112,22 @@ export default function StaffPrintPage() {
     window.print();
   }
 
+  if (status === "loading") {
+    return <StaffLoading title="Print" label="Loading the print sheet" />;
+  }
+
+  if (deskError && !offline) {
+    return (
+      <div className={styles.blockError} role="alert">
+        <b>The print sheet did not load.</b>
+        <p>{deskError}</p>
+        <button type="button" className={styles.secondary} onClick={reload}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   if (!tournament) {
     return (
       <p className={styles.notice}>
@@ -108,7 +137,7 @@ export default function StaffPrintPage() {
   }
 
   return (
-    <div>
+    <div className={styles.pageWithAction}>
       <h1 className={`${styles.h1} ${styles.noPrint}`}>Print</h1>
       <p className={`${styles.sub} ${styles.noPrint}`}>
         {tournament.name} · live board · {selectedGroups.length} of {printGroups.length} groups
@@ -233,22 +262,32 @@ export default function StaffPrintPage() {
                 Choose at least one group above, or use Select all.
               </p>
             )}
+          </section>
+
+          <div className={`${styles.stickyActionBar} ${styles.noPrint}`}>
             <button
               type="button"
               className={styles.primary}
-              style={{ marginTop: 14 }}
               disabled={selectedGroups.length === 0}
               onClick={printNow}
             >
               <Printer aria-hidden="true" size={20} style={{ marginRight: 8 }} />
               Print {selectedGroups.length} group{selectedGroups.length === 1 ? "" : "s"}
             </button>
-            <p className={styles.saving} style={{ margin: "8px 0 0" }}>
-              The browser print dialog handles paper size, orientation and copies.
-            </p>
-          </section>
+          </div>
+          <p className={`${styles.saving} ${styles.noPrint}`} style={{ margin: "8px 0 0" }}>
+            The browser print dialog handles paper size, orientation and copies.
+          </p>
 
-          <div className={`${styles.printArea} print-sheet-scope`}>
+          <p className={`${styles.muted} ${styles.noPrint}`} style={{ margin: "14px 0 6px" }}>
+            The sheet is wider than the phone. Scroll sideways to read the whole page.
+          </p>
+          <div
+            className={`${styles.printArea} print-sheet-scope`}
+            role="region"
+            aria-label="Print preview. Scroll sideways to see the whole sheet."
+            tabIndex={0}
+          >
             {kind === "start" ? (
               <StartSheet
                 title="Start sheet"

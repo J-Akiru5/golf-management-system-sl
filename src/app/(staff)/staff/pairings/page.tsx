@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
+import { StaffLoading } from "@/components/staff/StaffLoading";
+import { useStaffToast } from "@/components/staff/StaffToast";
 import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
-import { useToast } from "@/components/ui/toast";
 import { dropCheck } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
 import { unplacedRows } from "@/lib/staff/rows";
@@ -32,10 +33,11 @@ export default function StaffPairingsPage() {
     error: deskError,
     lastSavedAt,
     reload,
+    offline,
   } = useDesk();
   const { day, days, notice, setDayNumber } = useStaffDay();
   const { rows, schedule } = useStaffRows();
-  const toast = useToast();
+  const toast = useStaffToast();
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("Staff pairing edit");
   const [error, setError] = useState("");
@@ -160,6 +162,22 @@ export default function StaffPairingsPage() {
     });
   }
 
+  if (status === "loading") {
+    return <StaffLoading title="Pairings" label="Loading the pairings" />;
+  }
+
+  if (deskError && !offline) {
+    return (
+      <div className={styles.blockError} role="alert">
+        <b>The pairings did not load.</b>
+        <p>{deskError}</p>
+        <button type="button" className={styles.secondary} onClick={reload}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   if (!tournament) {
     return (
       <p className={styles.notice}>
@@ -210,9 +228,11 @@ export default function StaffPairingsPage() {
             </span>
             <input
               className={styles.input}
+              type="text"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              aria-label="Reason for the pairing changes"
+              autoComplete="off"
+              enterKeyHint="done"
             />
           </label>
           <div
@@ -246,10 +266,13 @@ export default function StaffPairingsPage() {
             <input
               className={styles.input}
               type="search"
+              inputMode="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Find a player or group"
               aria-label="Find a player or group in the pairings"
+              autoComplete="off"
+              enterKeyHint="search"
             />
           </div>
 
@@ -277,6 +300,7 @@ export default function StaffPairingsPage() {
                     </span>
                     <select
                       className={styles.select}
+                      style={{ fontSize: 16 }}
                       value=""
                       aria-label={`Add ${row.name} to a group`}
                       onChange={(event) => {
@@ -367,6 +391,7 @@ export default function StaffPairingsPage() {
                             <div style={{ display: "grid", gap: 6 }}>
                               <select
                                 className={styles.select}
+                                style={{ fontSize: 16 }}
                                 value=""
                                 disabled={locked}
                                 aria-label={`Move ${player.playerName} to another group`}

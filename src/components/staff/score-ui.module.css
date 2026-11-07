@@ -1,0 +1,164 @@
+/* Layout for the two scoring screens only: the group picker and the group score sheet.
+ *
+ * The scoring rules, the stepper and the staff shell live elsewhere and are untouched. This file
+ * only tightens the sheet so the hole and the first player fit on a 390x844 phone, reserves room
+ * for the sticky action bar, and keeps a player row on one line at 360px. Colours come from the
+ * staff tokens on .shell; nothing here hard-codes a brand colour.
+ */
+
+/* Room for the sticky action bar (primary plus secondary) above the tab bar. */
+.sheetPage {
+  padding-bottom: 152px;
+}
+
+/* Compact sheet header: back control, group number and one meta line, all on one row. */
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.back {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--s-line);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--s-ink);
+  text-decoration: none;
+}
+
+.back:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.headText {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 800;
+  color: var(--s-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  margin: 2px 0 0;
+  color: var(--s-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The hole band: number, par and position in one short line, progress underneath. */
+.holeBand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 42px;
+  margin: 2px 0 6px;
+}
+
+.holeNumber {
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.holeMeta {
+  min-width: 0;
+  color: var(--s-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress {
+  height: 6px;
+  margin: 0 0 10px;
+  border-radius: 999px;
+  background: var(--s-soft);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--s-forest);
+  transition: width 180ms ease;
+}
+
+/* One player, one line: the name truncates, the stepper and par control keep their 44px targets. */
+.playerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--s-line);
+}
+
+.playerName {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A surname is how a scorer tells two players apart, so let the name use two lines on a phone
+   instead of cutting it to "ANTONIO BAU...". */
+@media (max-width: 480px) {
+  .playerName {
+    font-size: 15px;
+    line-height: 1.15;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+}
+
+.playerState {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* The one-line status inside the sticky bar: not a 52px control. */
+.barStatus {
+  margin: 0;
+  min-height: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--s-muted);
+  text-align: center;
+}
+
+/* Round-loading skeleton: the same shape as the hole band and a few player rows. */
+.skeletonBand {
+  height: 42px;
+  margin: 2px 0 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressBar {
+    transition: none;
+  }
+}

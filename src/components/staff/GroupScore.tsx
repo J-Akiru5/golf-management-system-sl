@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { useStaffDay } from "@/components/staff/day-context";
+import { useStaffToast } from "@/components/staff/StaffToast";
 import { Stepper } from "@/components/staff/Stepper";
+import ui from "@/components/staff/score-ui.module.css";
 import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
-import { useToast } from "@/components/ui/toast";
 import type { ScoringRoundView } from "@/lib/data/scoring";
 import { fmtTime } from "@/lib/format";
 import { scanReview, WEAK_CONFIDENCE } from "@/lib/scoring/scan/review";
@@ -42,12 +43,16 @@ interface ScanMeta {
  * card, review the reading with weak values flagged, then submit. Both paths end at the same review
  * step, and both submit through the desk's guarded card function. A card already in is shown as In
  * and never overwritten here: corrections are the desk's job.
+ *
+ * The hole band is deliberately short and the primary action sits in a sticky bar above the tab
+ * bar, so a volunteer sees the first player row without scrolling and never has to hunt for the
+ * next action with a thumb.
  */
 export function GroupScore({ groupId }: { groupId: string }) {
   const { tournament, scoring } = useDesk();
   const { day } = useStaffDay();
   const { schedule } = useStaffRows();
-  const toast = useToast();
+  const toast = useStaffToast();
 
   const group = schedule.find((candidate) => candidate.id === groupId) ?? null;
   const players = useMemo(() => group?.players ?? [], [group]);
@@ -56,6 +61,8 @@ export function GroupScore({ groupId }: { groupId: string }) {
   const [viewError, setViewError] = useState("");
   /** A round that does not exist is a different thing from one still loading. */
   const [loaded, setLoaded] = useState(false);
+  /** A rejected read is retried by bumping this, not by reloading the page. */
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [tab, setTab] = useState<Tab>("tap");
   const [scores, setScores] = useState<Record<string, HoleScores>>({});
   const [holeIndex, setHoleIndex] = useState(0);
@@ -67,6 +74,8 @@ export function GroupScore({ groupId }: { groupId: string }) {
   const [progressLabel, setProgressLabel] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submittedNow, setSubmittedNow] = useState<string[]>([]);
+  /** The in-place confirmation after a save. */
+  const [saveStatus, setSaveStatus] = useState("");
 
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("tab");
@@ -76,6 +85,8 @@ export function GroupScore({ groupId }: { groupId: string }) {
   useEffect(() => {
     if (!tournament) return;
     let cancelled = false;
+    setLoaded(false);
+    setViewError("");
     scoring
       .loadRound(tournament.id)
       .then((next) => {
@@ -91,7 +102,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [tournament, scoring]);
+  }, [tournament, scoring, loadAttempt]);
 
   const holes = view?.course.holes ?? [];
   const cards = view?.cards ?? [];
@@ -160,6 +171,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
     setHoleIndex(0);
     setReviewing(false);
     setSubmitError("");
+    setSaveStatus("");
     toast.push({
       title: "Card read",
       detail: "Amber cells need a check against the photo. Tap one to fix it.",
@@ -170,6 +182,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
   async function submit() {
     if (!tournament || !view) return;
     setSubmitError("");
+    setSaveStatus("");
     if (players.length < 2) {
       setSubmitError("A card needs a marker. This group has fewer than two players.");
       return;
@@ -183,7 +196,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
     try {
       let next: ScoringRoundView | null = null;
       for (const row of readyToSubmit) {
-        setProgressLabel(`Submitting ${done + 1} of ${readyToSubmit.length}…`);
+        setProgressLabel(`Saving card ${done + 1} of ${readyToSubmit.length}…`);
         const playerScores = scores[row.playerId] ?? {};
         const meta = scanMeta[row.playerId];
         const key = meta?.captureKey ?? captureKeys[row.playerId] ?? crypto.randomUUID();
@@ -222,6 +235,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
       if (next) setView(next);
       setProgressLabel("");
       setReviewing(false);
+      setSaveStatus(`${done} ${done === 1 ? "card" : "cards"} saved and sent to the desk.`);
       toast.push({
         title: `${done} ${done === 1 ? "card" : "cards"} submitted`,
         detail: "The desk still checks and approves them.",
@@ -250,26 +264,38 @@ export function GroupScore({ groupId }: { groupId: string }) {
     );
   }
 
-  return (
-    <div>
-      <Link
-        href={`/staff/schedule/${group.id}`}
-        className={styles.linkButton}
-        style={{ marginBottom: 12 }}
-      >
-        <ArrowLeft aria-hidden="true" size={18} style={{ marginRight: 6 }} />
-        Group {group.number}
-      </Link>
+  const withActionBar = Boolean(view) && tab === "tap" && (reviewing || hole !== null);
 
-      <h1 className={styles.h1}>Group {group.number}</h1>
-      <p className={styles.sub}>
-        {fmtTime(group.time)} · hole {group.startHole} · {group.flightName}
-      </p>
+  return (
+    <div className={withActionBar ? ui.sheetPage : undefined}>
+      <div className={ui.head}>
+        <Link
+          href={`/staff/schedule/${group.id}`}
+          className={ui.back}
+          aria-label={`Back to group ${group.number}`}
+        >
+          <ArrowLeft aria-hidden="true" size={20} />
+        </Link>
+        <div className={ui.headText}>
+          <h1 className={ui.title}>Group {group.number}</h1>
+          <p className={ui.meta}>
+            {fmtTime(group.time)} · hole {group.startHole} · {group.flightName}
+          </p>
+        </div>
+      </div>
 
       {viewError && (
-        <p className={`${styles.notice} ${styles.noticeWarn}`} role="status">
-          {viewError}
-        </p>
+        <div className={styles.blockError} role="alert">
+          <b>The round did not load.</b>
+          <p>{viewError}</p>
+          <button
+            type="button"
+            className={styles.secondary}
+            onClick={() => setLoadAttempt((n) => n + 1)}
+          >
+            Retry
+          </button>
+        </div>
       )}
 
       <div className={styles.tabs} role="tablist" aria-label="How to score">
@@ -301,9 +327,17 @@ export function GroupScore({ groupId }: { groupId: string }) {
             sets up the round and its holes first. Check-in and arrival still work.
           </p>
         ) : (
-          <p className={styles.notice} role="status">
-            Loading the round…
-          </p>
+          <div aria-label="Loading the round" role="status">
+            <div className={`${styles.skeleton} ${ui.skeletonBand}`} />
+            <div className={styles.skeletonStack}>
+              {[0, 1, 2].map((row) => (
+                <div key={row} className={styles.skeletonRow}>
+                  <span className={styles.skeleton} />
+                  <span className={styles.skeleton} />
+                </div>
+              ))}
+            </div>
+          </div>
         )
       ) : tab === "scan" ? (
         <>
@@ -390,36 +424,24 @@ export function GroupScore({ groupId }: { groupId: string }) {
           {submitError && (
             <>
               <p className={`${styles.notice} ${styles.noticeBad}`} role="alert">
-                {submitError}
+                <b>Not saved.</b> {submitError}
               </p>
               <p className={styles.notice}>
-                The scores are still on this phone. Fix what the message says, then submit again.
+                The scores are still on this phone. Nothing was sent and nothing is queued to send
+                later. Fix what the message says, then retry.
               </p>
+              <button
+                type="button"
+                className={styles.secondary}
+                style={{ marginTop: 10 }}
+                disabled={submitting || readyToSubmit.length === 0}
+                onClick={() => void submit()}
+              >
+                Retry saving
+              </button>
             </>
           )}
 
-          <div className={styles.buttonRow}>
-            <button
-              type="button"
-              className={styles.primary}
-              disabled={submitting || readyToSubmit.length === 0}
-              onClick={() => void submit()}
-            >
-              {submitting
-                ? progressLabel || "Submitting…"
-                : submitError && readyToSubmit.length > 0
-                  ? `Retry submitting ${readyToSubmit.length}`
-                  : `Submit ${readyToSubmit.length} ${readyToSubmit.length === 1 ? "card" : "cards"}`}
-            </button>
-            <button
-              type="button"
-              className={styles.secondary}
-              onClick={() => setReviewing(false)}
-              disabled={submitting}
-            >
-              Back to the scores
-            </button>
-          </div>
           <p className={styles.notice} style={{ marginTop: 14 }}>
             Submitting sends the cards for the desk to check and approve. Nothing is published from
             this phone.
@@ -471,38 +493,45 @@ export function GroupScore({ groupId }: { groupId: string }) {
               </button>
             </div>
           )}
-          <div className={styles.holeHead}>
-            <b>{hole.number}</b>
-            <span>
+
+          <div className={ui.holeBand}>
+            <b className={ui.holeNumber}>{hole.number}</b>
+            <span className={ui.holeMeta}>
               Hole · Par {hole.par} · SI {hole.strokeIndex} · {holeIndex + 1} of {holes.length}
             </span>
           </div>
-          <div className={styles.progress}>
+          <div className={ui.progress}>
             <div
-              className={styles.progressBar}
+              className={ui.progressBar}
               style={{ width: `${((holeIndex + 1) / holes.length) * 100}%` }}
             />
           </div>
 
-          {players.map((player) => {
-            const isIn = inPlayers.has(player.playerId);
-            return (
-              <div key={player.playerId} className={styles.playerRow}>
-                <b>{player.playerName}</b>
-                {isIn ? (
-                  <span className={styles.pillOk}>{stateLabel("in")}</span>
-                ) : (
-                  <Stepper
-                    label={player.playerName}
-                    value={scoresFor(player.playerId)[hole.number] ?? null}
-                    par={hole.par}
-                    disabled={submitting}
-                    onChange={(value) => setScore(player.playerId, hole.number, value)}
-                  />
-                )}
-              </div>
-            );
-          })}
+          <div>
+            {players.map((player) => {
+              const isIn = inPlayers.has(player.playerId);
+              return (
+                <div key={player.playerId} className={ui.playerRow}>
+                  <b className={ui.playerName} title={player.playerName}>
+                    {player.playerName}
+                  </b>
+                  {isIn ? (
+                    <span className={ui.playerState}>
+                      <span className={styles.pillOk}>{stateLabel("in")}</span>
+                    </span>
+                  ) : (
+                    <Stepper
+                      label={player.playerName}
+                      value={scoresFor(player.playerId)[hole.number] ?? null}
+                      par={hole.par}
+                      disabled={submitting}
+                      onChange={(value) => setScore(player.playerId, hole.number, value)}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
           <p className={styles.saving} style={{ marginTop: 10 }}>
             {players
@@ -514,41 +543,88 @@ export function GroupScore({ groupId }: { groupId: string }) {
               .join(" · ")}
           </p>
 
-          <div className={styles.buttonRow}>
-            <button
-              type="button"
-              className={styles.primary}
-              onClick={() => {
-                const nextBlank = nextBlankHole(
-                  holes,
-                  scoresFor(players[0]?.playerId ?? ""),
-                  hole.number,
-                );
-                if (holeIndex === holes.length - 1 || nextBlank === null) {
-                  setReviewing(true);
-                  return;
-                }
-                setHoleIndex(holes.findIndex((definition) => definition.number === nextBlank));
-              }}
-            >
-              {holeIndex === holes.length - 1 ? "Review the cards" : "Next hole"}
-            </button>
-            <button
-              type="button"
-              className={styles.secondary}
-              onClick={() => (holeIndex === 0 ? setReviewing(true) : setHoleIndex(holeIndex - 1))}
-              disabled={submitting}
-            >
-              {holeIndex === 0 ? "Review now" : "Previous hole"}
-            </button>
-          </div>
-
           <p className={styles.notice} style={{ marginTop: 14 }}>
             <CheckCircle2 aria-hidden="true" size={16} style={{ marginRight: 6 }} />
             {cardProgress(holes, scoresFor(players[0]?.playerId ?? "")).filled} of {holes.length}{" "}
             holes filled on the first card. Every player's card is submitted from the review step.
           </p>
         </section>
+      )}
+
+      {withActionBar && !reviewing && hole && (
+        <div className={styles.stickyActionBar}>
+          <button
+            type="button"
+            className={styles.primary}
+            data-onboard="score-entry"
+            onClick={() => {
+              setSaveStatus("");
+              const nextBlank = nextBlankHole(
+                holes,
+                scoresFor(players[0]?.playerId ?? ""),
+                hole.number,
+              );
+              if (holeIndex === holes.length - 1 || nextBlank === null) {
+                setReviewing(true);
+                return;
+              }
+              setHoleIndex(holes.findIndex((definition) => definition.number === nextBlank));
+            }}
+          >
+            {holeIndex === holes.length - 1 ? "Review the cards" : "Next hole"}
+          </button>
+          <button
+            type="button"
+            className={styles.secondary}
+            onClick={() => {
+              setSaveStatus("");
+              if (holeIndex === 0) {
+                setReviewing(true);
+                return;
+              }
+              setHoleIndex(holeIndex - 1);
+            }}
+            disabled={submitting}
+          >
+            {holeIndex === 0 ? "Review now" : "Previous hole"}
+          </button>
+          {saveStatus ? (
+            <p className={ui.barStatus} style={{ minHeight: 0 }} role="status">
+              {saveStatus}
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      {withActionBar && reviewing && view && (
+        <div className={styles.stickyActionBar}>
+          {submitting || saveStatus ? (
+            <p className={ui.barStatus} style={{ minHeight: 0 }} role="status">
+              {submitting ? progressLabel || "Saving…" : saveStatus}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className={styles.primary}
+            data-onboard="score-entry"
+            disabled={submitting || readyToSubmit.length === 0}
+            onClick={() => void submit()}
+          >
+            {submitting
+              ? "Saving…"
+              : submitError && readyToSubmit.length > 0
+                ? `Retry saving ${readyToSubmit.length}`
+                : `Submit ${readyToSubmit.length} ${readyToSubmit.length === 1 ? "card" : "cards"}`}
+          </button>
+          <button
+            type="button"
+            className={styles.secondary}
+            onClick={() => setReviewing(false)}
+            disabled={submitting}
+          >
+            Back to the scores
+          </button>
+        </div>
       )}
     </div>
   );
