@@ -179,6 +179,9 @@ export const hil: Dictionary = {
     demo: {
       body: "Demo data ang build nga ini kag wala sang account, gani wala sang player area diri.",
       link: "Ara ang ginpahayag nga pairing",
+      sampleEvent: "Bamboo Tee Invitational (halimbawa)",
+      sampleBody:
+        "Sample nga card. Placeholder ang par kag stroke index, indi ini ang card sang IGCC.",
     },
   },
   pairings: {

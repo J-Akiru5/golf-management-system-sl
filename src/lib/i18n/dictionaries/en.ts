@@ -181,6 +181,8 @@ export const en = {
     demo: {
       body: "This build runs on demo data with no accounts, so there is no player area here.",
       link: "The published pairings are this way",
+      sampleEvent: "Bamboo Tee Invitational (sample)",
+      sampleBody: "Sample card. The pars and stroke indexes are placeholders, not IGCC's card.",
     },
   },
   pairings: {

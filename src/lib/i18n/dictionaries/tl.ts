@@ -179,6 +179,9 @@ export const tl: Dictionary = {
     demo: {
       body: "Demo data ang build na ito at walang account, kaya walang player area dito.",
       link: "Naroon ang nailathalang pairings",
+      sampleEvent: "Bamboo Tee Invitational (sample)",
+      sampleBody:
+        "Sample na card. Placeholder ang mga par at stroke index, hindi ito ang card ng IGCC.",
     },
   },
   pairings: {
