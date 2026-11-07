@@ -49,7 +49,7 @@ function minutesOf(time: string | null): number | null {
 /**
  * The session an assigned tee time belongs to. The afternoon starts at its own default when that is
  * before noon (Sunday's 11:30 start) and at noon otherwise, so 11:59 is still the morning on an
- * ordinary day, 12:00 is the afternoon, and Sunday's 11:45 wave start is still the afternoon. Null
+ * ordinary day, 12:00 is the afternoon, and Sunday's 11:45 second-session start is still the afternoon. Null
  * when there is no readable time.
  */
 export function sessionForTime(
