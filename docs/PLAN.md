@@ -244,8 +244,10 @@ the calculations and gates; the live negative tests remain to be added.
 
 ### Git workflow
 
-- Base branch `develop`. Multi-file work goes on a dedicated branch and a pull request into `develop`.
-- `main` carries production and is kept level with `develop`; only tagged releases go on it, plus docs-only commits that do not change the build. See "Versioning and production" below; **`staging` is skipped on purpose** because Jeff is a solo dev (decision 12).
+- **Changed 8 Nov 2026 (owner's call).** `develop` is the integration branch and no longer deploys. Each issue is built on its own branch in its own worktree (inside it, an opencode master agent on `opencode-go/deepseek-v4.1-flash` assembles the work of its sub-agents). The orchestrator reviews the diff, runs `pnpm typecheck && pnpm lint && pnpm test && pnpm build`, then merges straight into `develop` with no pull request. When a batch on `develop` is stable it is promoted to `staging`, the preview deployment.
+- `main` carries production and moves only on a tagged release, plus docs-only commits that do not change the build. See "Versioning and production" below. `staging` now exists (created 8 Nov 2026 from `develop`), which supersedes the earlier decision 12 to skip it.
+- Only `main` (production) and `staging` (preview) auto-deploy; `vercel.json` disables every other branch, `develop` included.
+- Migrations: the orchestrator may apply them to the live project after reviewing the SQL, and reports each one afterward. A migration that would drop or delete existing data is still reported before it is applied.
 - Commit messages and PR descriptions carry the attribution lines required by the tooling in use.
 - A repo-state claim ("it is merged", "it is deployed", "it is in production") must be checked against the remote or the tag, not memory.
 
