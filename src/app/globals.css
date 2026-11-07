@@ -5706,10 +5706,21 @@ html[data-textsize="large"] {
   .p-toolbar {
     position: sticky;
     top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
   }
   .p-toolbar-row {
     display: flex;
     flex-wrap: nowrap;
+    flex: 0 1 360px;
+  }
+  .p-toolbar-tools {
+    flex: 1 1 auto;
+  }
+  .p-toolbar-meta {
+    margin-left: auto;
   }
   .p-toolbar-actions {
     display: flex;
