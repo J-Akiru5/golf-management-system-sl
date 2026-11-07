@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { HelpButton } from "@/components/help";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
-import { PairingsView } from "@/components/PairingsView";
+import { PairingsView, type PairingsYou } from "@/components/PairingsView";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
 import {
   PlayerDirectory,
@@ -17,9 +18,11 @@ import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
 import { loadPublicProgramme } from "@/lib/data/supabase/public-programme";
 import { fmtTime } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { loadPortal } from "@/lib/player/portal";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DemoPairings } from "./DemoPairings";
 
 export const metadata: Metadata = {
@@ -59,11 +62,29 @@ const manila = new Intl.DateTimeFormat("en-PH", {
   timeZone: "Asia/Manila",
 });
 
+/**
+ * Who is reading, when they are signed in. The page is public, so a failed lookup is silent: it
+ * only costs the "You" marker, never the pairings.
+ */
+async function loadSignedInPlayer(): Promise<PairingsYou | null> {
+  try {
+    const client = await createSupabaseServerClient();
+    const { data } = await client.auth.getUser();
+    if (!data.user) return null;
+    const portal = await loadPortal(client);
+    return portal.player ? { id: portal.player.id, name: portal.player.name } : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function PublicPairingsPage() {
   const { t } = await getI18n();
   if (!isSupabaseConfigured()) return <DemoPairings />;
 
   const client = createSupabasePublicClient();
+  // The signed-in lookup runs alongside the public reads: it never delays the pairings.
+  const signedIn = loadSignedInPlayer();
   let data: Awaited<ReturnType<typeof loadPublicPairings>> = null;
   let programme: Awaited<ReturnType<typeof loadPublicProgramme>> = null;
   let failed = false;
@@ -76,6 +97,7 @@ export default async function PublicPairingsPage() {
   if (pairingsResult.status === "fulfilled") data = pairingsResult.value;
   else failed = true;
   if (programmeResult.status === "fulfilled") programme = programmeResult.value;
+  const you = await signedIn;
 
   const published = data?.published ?? null;
   const dates = programme?.days.length
@@ -102,7 +124,7 @@ export default async function PublicPairingsPage() {
     <main className="public public-pairings mobile-bar-space">
       <PlayerOfflineNotice path="/pairings" />
       <header className="public-head">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={172} />
             <span className="leading-tight">
@@ -110,7 +132,10 @@ export default async function PublicPairingsPage() {
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <HelpButton audience="player" screen="pairings" />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher tone="on-forest" />
+            <HelpButton audience="player" screen="pairings" />
+          </div>
         </div>
         {data && (
           <>
@@ -127,13 +152,26 @@ export default async function PublicPairingsPage() {
       </header>
 
       {failed ? (
-        <div className="notice" role="status">
-          <b>{t("pairings.failedTitle")}</b> {t("pairings.failedBody")}
+        <div className="notice grid gap-3" role="status">
+          <p className="m-0">
+            <b>{t("pairings.failedTitle")}</b> {t("pairings.failedBody")}
+          </p>
+          <a className="btn ghost no-print justify-self-start" href="/pairings">
+            {t("pairings.retry")}
+          </a>
         </div>
       ) : !pairings || !published ? (
         <section className="pairings-empty" role="status">
           <h2>{t("pairings.notOutTitle")}</h2>
           <p>{t("pairings.notOutBody")}</p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Link className="btn ghost no-print" href="/pairings#tee-times">
+              {t("programme.navTeeTimes")}
+            </Link>
+            <Link className="btn ghost no-print" href="/">
+              {t("pairings.home")}
+            </Link>
+          </div>
         </section>
       ) : (
         <>
@@ -145,7 +183,11 @@ export default async function PublicPairingsPage() {
             </>
           )}
 
-          <section className="grid gap-3" id="pairings">
+          <section
+            className="grid gap-3"
+            id="pairings"
+            style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
+          >
             <div>
               <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
               <p className="hint no-print" data-testid="pairings-version">
@@ -165,7 +207,7 @@ export default async function PublicPairingsPage() {
                 {skippedRows === 1 ? "1 row is" : `${skippedRows} rows are`} not shown.
               </p>
             )}
-            <PairingsView pairings={pairings} headingLevel="section" flightFilter />
+            <PairingsView pairings={pairings} headingLevel="section" flightFilter you={you} />
           </section>
 
           {showProgramme && programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}

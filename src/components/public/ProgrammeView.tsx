@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/bits";
 import { fmtIso } from "@/lib/data/labels";
 import { daySessionBadge, daySessionSummary } from "@/lib/data/sessions";
@@ -17,7 +17,15 @@ import { useI18n } from "@/lib/i18n/context";
  *
  * The pairings stay separate (`PairingsView`) so the page can put them between the player cards and
  * the rules, in the order players asked for.
+ *
+ * Everything here is read one-handed on a phone: the jump links and the day chips scroll sideways
+ * instead of wrapping into several rows, and every control is at least 44px tall.
  */
+
+const NAV_LINK =
+  "inline-flex min-h-11 shrink-0 items-center rounded-full border border-line bg-surface-raised px-3.5 text-sm font-semibold whitespace-nowrap text-ink no-underline hover:bg-fairway-soft";
+const PILL =
+  "inline-flex min-h-6 shrink-0 items-center rounded-full border border-line bg-surface-raised px-2 text-[12px] font-semibold whitespace-nowrap text-ink-muted";
 
 export function ProgrammeNav({
   programme,
@@ -29,11 +37,30 @@ export function ProgrammeNav({
   const { t } = useI18n();
   const showRules = programme.rulesOfPlay !== null;
   return (
-    <nav className="programme-nav no-print" aria-label={t("programme.navLabel")}>
-      {programme.days.length > 0 && <a href="#tee-times">{t("programme.navTeeTimes")}</a>}
-      {programme.players.length > 0 && <a href="#players">{t("programme.navPlayers")}</a>}
-      {hasPairings && <a href="#pairings">{t("programme.navPairings")}</a>}
-      {showRules && <a href="#rules">{t("programme.navRules")}</a>}
+    <nav
+      className="no-print flex w-full min-w-0 gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible"
+      aria-label={t("programme.navLabel")}
+    >
+      {programme.days.length > 0 && (
+        <a className={NAV_LINK} href="#tee-times">
+          {t("programme.navTeeTimes")}
+        </a>
+      )}
+      {programme.players.length > 0 && (
+        <a className={NAV_LINK} href="#players">
+          {t("programme.navPlayers")}
+        </a>
+      )}
+      {hasPairings && (
+        <a className={NAV_LINK} href="#pairings">
+          {t("programme.navPairings")}
+        </a>
+      )}
+      {showRules && (
+        <a className={NAV_LINK} href="#rules">
+          {t("programme.navRules")}
+        </a>
+      )}
     </nav>
   );
 }
@@ -80,6 +107,27 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
     () => (day ? groupByTime(day, dayIndex, programme.days.length) : []),
     [day, dayIndex, programme.days.length],
   );
+  const chipRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  // Arrow keys move between day chips, as a tab list should.
+  const onChipKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const keys = ["ArrowRight", "ArrowLeft", "Home", "End"];
+    if (!keys.includes(event.key)) return;
+    event.preventDefault();
+    const index = programme.days.findIndex((item) => item.dayNumber === selected);
+    if (index < 0) return;
+    const count = programme.days.length;
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? count - 1
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + count) % count;
+    const target = programme.days[next];
+    if (!target) return;
+    setSelected(target.dayNumber);
+    chipRefs.current[next]?.focus();
+  };
 
   return (
     <section className="card grid gap-3" id="tee-times">
@@ -92,23 +140,39 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
         <p className="muted">{t("programme.noDays")}</p>
       ) : (
         <>
-          <div className="seg no-print" role="tablist" aria-label={t("programme.daysLabel")}>
-            {programme.days.map((item) => (
-              <button
-                key={item.dayNumber}
-                type="button"
-                role="tab"
-                aria-selected={item.dayNumber === day.dayNumber}
-                aria-pressed={item.dayNumber === day.dayNumber}
-                onClick={() => setSelected(item.dayNumber)}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div
+            className="no-print flex w-full min-w-0 gap-2 overflow-x-auto pb-1"
+            role="tablist"
+            aria-label={t("programme.daysLabel")}
+          >
+            {programme.days.map((item, index) => {
+              const active = item.dayNumber === day.dayNumber;
+              return (
+                <button
+                  key={item.dayNumber}
+                  ref={(element) => {
+                    chipRefs.current[index] = element;
+                  }}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-pressed={active}
+                  onKeyDown={onChipKeyDown}
+                  onClick={() => setSelected(item.dayNumber)}
+                  className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-semibold whitespace-nowrap ${
+                    active
+                      ? "border-forest bg-forest text-on-forest"
+                      : "border-line bg-surface-raised text-ink"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
 
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h3 className="text-[17px] leading-6">
+            <h3 className="m-0 text-[17px] leading-6">
               {day.label} · {fmtIso(day.playDate)}
             </h3>
             <span className="hint m-0">
@@ -124,19 +188,34 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
           ) : (
             <div className="tee-slots">
               {groups.map((group) => (
-                <article key={group.key} className="tee-slot">
-                  <div className="tee-slot-head">
-                    <b className={group.teeTime ? "mono" : "muted"}>
+                <article key={group.key} className="tee-slot" data-testid="tee-time-group">
+                  <div className="tee-slot-head flex-wrap">
+                    <b
+                      className={
+                        group.teeTime
+                          ? "font-display text-[22px] leading-7 font-bold tabular-nums text-ink"
+                          : "font-display text-[15px] leading-6 font-semibold text-ink-muted"
+                      }
+                    >
                       {group.teeTime ? fmtTime(group.teeTime) : t("programme.toBeConfirmed")}
                     </b>
-                    {group.session && <span className="pill">{group.session}</span>}
-                    {group.teeTime && group.startHole !== null && (
-                      <span className="pill">{t("programme.hole", { hole: group.startHole })}</span>
-                    )}
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {group.session && <span className={PILL}>{group.session}</span>}
+                      {group.teeTime && group.startHole !== null && (
+                        <span className={PILL}>
+                          {t("programme.hole", { hole: group.startHole })}
+                        </span>
+                      )}
+                    </span>
                   </div>
-                  <ul className="plain">
+                  <ul className="plain space-y-1">
                     {group.names.map((name, index) => (
-                      <li key={`${name}-${index}`}>{name}</li>
+                      <li
+                        key={`${name}-${index}`}
+                        className="flex min-h-11 items-center text-[16px] leading-6 text-ink"
+                      >
+                        <span className="min-w-0 break-words">{name}</span>
+                      </li>
                     ))}
                   </ul>
                 </article>
@@ -191,7 +270,7 @@ export function PlayerDirectory({ programme }: { programme: PublicProgramme }) {
             <li key={`${player.name}-${index}`} className="player-card">
               <span className="who">
                 <Avatar name={player.name} />
-                <b>{player.name}</b>
+                <b className="min-w-0 break-words">{player.name}</b>
               </span>
               <span className="muted text-[13px]">
                 {[player.category, player.flight].filter(Boolean).join(" · ") ||
@@ -205,7 +284,7 @@ export function PlayerDirectory({ programme }: { programme: PublicProgramme }) {
                 {player.homeCourse && (
                   <div>
                     <dt>{t("programme.homeCourse")}</dt>
-                    <dd>{player.homeCourse}</dd>
+                    <dd className="min-w-0 break-words text-right">{player.homeCourse}</dd>
                   </div>
                 )}
               </dl>
