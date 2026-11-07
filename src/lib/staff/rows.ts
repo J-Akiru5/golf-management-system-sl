@@ -51,6 +51,8 @@ export interface StaffRow {
   teeTime: string | null;
   startHole: number | null;
   session: SessionKey | null;
+  /** The frozen handicap index on the entry, or null when the desk has none. */
+  index: number | null;
   arrived: boolean;
   arrivedAt: string | null;
   arrivedBy: string | null;
@@ -116,6 +118,7 @@ export function buildRows(input: BuildRowsInput): StaffRow[] {
       teeTime,
       startHole,
       session,
+      index: entry.frozen?.index ?? null,
       arrived: Boolean(checkIn?.at),
       arrivedAt: checkIn?.at ?? null,
       arrivedBy: checkIn?.byName ?? null,
@@ -233,9 +236,10 @@ export function buildSchedule(
   return groups
     .map((group) => {
       const arrivedPlayers = arrivedByGroup.get(group.id) ?? new Set<string>();
+      const name = flightName(group.flightId).trim();
       return {
         ...group,
-        flightName: flightName(group.flightId),
+        flightName: /^[-–—\s]*$/.test(name) ? "Flight not set" : name,
         arrived: group.players.filter((player) => arrivedPlayers.has(player.playerId)).length,
         arrivals: group.players.map((player) => arrivedPlayers.has(player.playerId)),
       };
