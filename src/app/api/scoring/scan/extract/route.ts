@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  demoObjectKeyIsOurs,
+  demoScanEnabled,
+  demoScanResult,
+  readDemoScorecard,
+} from "@/lib/scoring/scan/demo";
 import { normalizeScanResult } from "@/lib/scoring/scan/normalize";
 import { readScorecardObject, scorecardObjectBelongsToClub } from "@/lib/scoring/scan/r2";
 import { scanSession, tournamentForClub } from "@/lib/scoring/scan/session";
@@ -12,9 +18,6 @@ function jsonError(status: number, message: string) {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const session = await scanSession();
-  if (!session.ok) return jsonError(session.status, session.message);
-
   let body: {
     tournamentId?: unknown;
     key?: unknown;
@@ -33,12 +36,28 @@ export async function POST(request: Request): Promise<NextResponse> {
   const template = typeof body.template === "string" ? body.template : "igcc-paper";
 
   if (!tournamentId) return jsonError(400, "Choose the tournament first.");
-  if (!scorecardObjectBelongsToClub(key, session.member.clubId)) {
+
+  const demo = demoScanEnabled();
+  const session = demo ? null : await scanSession();
+  if (session && !session.ok) return jsonError(session.status, session.message);
+
+  if (demo) {
+    if (!demoObjectKeyIsOurs(key)) {
+      return jsonError(400, "That photo is not in the demo storage.");
+    }
+  } else if (!session || !scorecardObjectBelongsToClub(key, session.member.clubId)) {
     return jsonError(400, "That photo is not in this club's storage.");
   }
 
   const serviceUrl = process.env.SCAN_INFERENCE_URL?.trim();
   if (!serviceUrl) {
+    if (demo) {
+      const image = readDemoScorecard(key);
+      if (!image) return jsonError(404, "The demo photo has expired. Take it again.");
+      const result = normalizeScanResult(demoScanResult(image.bytes));
+      if (!result) return jsonError(500, "The demo card could not be read.");
+      return NextResponse.json({ ok: true, available: true, demo: true, result });
+    }
     return NextResponse.json({
       ok: true,
       available: false,
@@ -48,10 +67,17 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   try {
-    const tournament = await tournamentForClub(session.client, session.member.clubId, tournamentId);
-    if (!tournament) return jsonError(404, "That tournament is not in your club.");
+    if (session) {
+      const tournament = await tournamentForClub(
+        session.client,
+        session.member.clubId,
+        tournamentId,
+      );
+      if (!tournament) return jsonError(404, "That tournament is not in your club.");
+    }
 
-    const image = await readScorecardObject(key);
+    const image = demo ? readDemoScorecard(key) : await readScorecardObject(key);
+    if (!image) return jsonError(404, "The photo has expired. Take it again.");
     const form = new FormData();
     form.append(
       "image",

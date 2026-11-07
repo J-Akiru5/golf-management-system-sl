@@ -11,6 +11,7 @@ import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
+import { dropCheck } from "@/lib/draw/validate";
 import { placementOf } from "@/lib/draw/withdraw";
 import { fmtTime } from "@/lib/format";
 import {
@@ -48,6 +49,7 @@ function StaffPlayers() {
     draw,
     member,
     names,
+    registrations,
   } = useDesk();
   const { day, days, notice, setDayNumber } = useStaffDay();
   const { rows, schedule } = useStaffRows();
@@ -197,9 +199,23 @@ function StaffPlayers() {
   }
 
   function moveTo(toGroup: number) {
-    if (!selected) return;
+    if (!selected || !tournament || !draw) return;
     if (moveReason.trim().length < 3) {
       setSheetError("Write a short reason for the move.");
+      return;
+    }
+    // The board's reducer refuses a move into a full or locked group without telling this screen.
+    // Check the same rule here so the volunteer sees why nothing happened instead of a false toast.
+    const check = dropCheck(
+      draw,
+      tournament.config,
+      new Map(registrations.map((registration) => [registration.playerId, registration])),
+      selected.playerId,
+      toGroup,
+      names,
+    );
+    if (!check.ok) {
+      setSheetError(check.reason);
       return;
     }
     dispatch({ type: "move", playerId: selected.playerId, toGroup, reason: moveReason.trim() });

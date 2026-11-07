@@ -22,6 +22,26 @@ export function blankScores(holes: readonly HoleDefinition[]): HoleScores {
   return Object.fromEntries(holes.map((hole) => [hole.number, null]));
 }
 
+/**
+ * Turn the card reader's strings into the sheet's numbers without guessing. A cell that is blank,
+ * fractional, out of range or not a number stays null; the volunteer fills it with the stepper.
+ */
+export function parseScannedScores(
+  holes: readonly HoleDefinition[],
+  strokes: Readonly<Record<number, string>>,
+): HoleScores {
+  const scores = blankScores(holes);
+  for (const hole of holes) {
+    const raw = (strokes[hole.number] ?? "").trim();
+    if (raw === "") continue;
+    const value = Number(raw);
+    if (Number.isInteger(value) && value >= MIN_STROKES && value <= MAX_STROKES) {
+      scores[hole.number] = value;
+    }
+  }
+  return scores;
+}
+
 export function filledCount(holes: readonly HoleDefinition[], scores: HoleScores): number {
   return holes.filter((hole) => typeof scores[hole.number] === "number").length;
 }

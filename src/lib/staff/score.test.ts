@@ -10,6 +10,7 @@ import {
   MIN_STROKES,
   markerFor,
   nextBlankHole,
+  parseScannedScores,
   reviewRows,
   stateLabel,
 } from "./score";
@@ -33,6 +34,19 @@ describe("staff score sheet", () => {
     expect(scores).toEqual({ 1: null, 2: null, 3: null });
     expect(filledCount(holes, scores)).toBe(0);
     expect(cardProgress(holes, scores).total).toBe(0);
+  });
+
+  it("keeps a scanned cell only when it is a whole score in range", () => {
+    expect(parseScannedScores(holes, { 1: "5", 2: "4.5", 3: "21" })).toEqual({
+      1: 5,
+      2: null,
+      3: null,
+    });
+    expect(parseScannedScores(holes, { 1: "", 2: "  ", 3: "3" })).toEqual({
+      1: null,
+      2: null,
+      3: 3,
+    });
   });
 
   it("counts what is filled and against par", () => {

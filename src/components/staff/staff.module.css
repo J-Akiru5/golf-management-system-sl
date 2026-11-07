@@ -613,6 +613,64 @@
   margin: 4px 0 16px;
 }
 
+.scanReview {
+  border: 1px solid #e7cf95;
+  background: #fffdf7;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.hint {
+  color: var(--s-muted);
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+
+.scanGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.scanCell {
+  min-height: 56px;
+  border: 1px solid var(--s-line);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--s-ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 9px;
+  font: inherit;
+  text-align: left;
+}
+
+.scanCell span {
+  color: var(--s-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.scanCell b {
+  font-size: 28px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.scanCellWeak {
+  border-color: #d79b1f;
+  background: #fdf6e4;
+}
+
+@media (min-width: 520px) {
+  .scanGrid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 .tab {
   min-height: 52px;
   border-radius: 12px;

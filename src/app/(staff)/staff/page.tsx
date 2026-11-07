@@ -112,7 +112,7 @@ export default function StaffTodayPage() {
         nextGroup && (
           <Link className={styles.actionCard} href={`/staff/schedule/${nextGroup.id}`}>
             <span>
-              <b>Next group: {nextGroup.number}</b>
+              <b>Next wave: group {nextGroup.number}</b>
               <span>
                 {fmtTime(nextGroup.time)} · hole {nextGroup.startHole} · {nextGroup.arrived}/
                 {nextGroup.players.length} arrived
