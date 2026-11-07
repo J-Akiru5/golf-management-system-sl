@@ -1,0 +1,221 @@
+/* The group roster's own surface. It inherits the staff tokens from .shell, and the sheet content
+   inherits the same tokens from the sheet panel, so no colour is declared here. */
+
+.back {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 2px -2px;
+  padding: 0 2px;
+  color: var(--s-forest);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.back:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 0 0 14px;
+  color: var(--s-muted);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.facts span {
+  white-space: nowrap;
+}
+
+.roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--s-line);
+}
+
+.item {
+  border-bottom: 1px solid var(--s-line);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 68px;
+}
+
+.arrive {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.arrive:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.arrive[data-busy="true"] {
+  opacity: 0.65;
+}
+
+.tick {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--s-line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: transparent;
+}
+
+.arrive[data-arrived="true"] .tick {
+  border-color: var(--s-ok);
+  background: var(--s-ok);
+  color: #ffffff;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.name {
+  display: block;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: block;
+  color: var(--s-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.state {
+  flex: 0 0 auto;
+  min-width: 64px;
+  color: var(--s-muted);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.arrive[data-arrived="true"] .state {
+  color: var(--s-ok);
+}
+
+.info {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--s-line);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--s-muted);
+}
+
+.info:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.rowError {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 0 0 10px;
+  color: var(--s-bad);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.retry {
+  min-height: 44px;
+  min-width: 68px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--s-bad);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.retry:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.quietButton {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--s-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.quietButton:focus-visible {
+  outline: 3px solid #2f6fed;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--s-forest);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cardNote {
+  margin: 0;
+  color: var(--s-muted);
+  font-size: 13px;
+}
+
+.scoringNote {
+  margin: 14px 0 0;
+}
