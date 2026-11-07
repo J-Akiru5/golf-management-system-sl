@@ -10,6 +10,20 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **A scoring round can be opened from the published draw (issue #149).** New migration
+  `20261108000100_open_round.sql` adds one function, `open_round`, owner and organizer only. It
+  creates a draft round for every playing day, opens the day named, copies the published draw into
+  round entries and handicap snapshots in one transaction, refuses a stale revision or a draw that
+  moved after publish, and names any setting it cannot resolve instead of guessing. `/scores` gets a
+  Round setup panel. **Migration written and merged to `develop`, NOT applied to the live project**
+  (the CLI account here gets 403); apply it before the first card on 12 Nov.
+- **AM or PM beside every registered day (issue #165).** The registration list and Days editor, the
+  player profile, the public programme and entry form, and the print day picker show AM or PM with
+  the time. A day with no stored choice shows the default (06:30, 12:30, and 11:30 on the last day)
+  marked as a default. No migration.
+- **The calendar month fits the screen (issue #173).** The month view fills the desk height with no
+  page scroll at common desktop sizes, a busy day scrolls inside its cell with a "+n more" sheet,
+  and the grid uses a darker `--grid-line` colour guarded by the contrast test. No migration.
 - **The card is found by matching the printed card, not by guessing a rectangle.** The photo is
   matched against one stored reference card with SIFT and a RANSAC homography, and the result is
   validated against the printed table before any cell is cropped. On the 111 raw photos the old
