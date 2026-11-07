@@ -2,11 +2,11 @@
  * Reading and syncing the desk's stored alerts.
  *
  * The bell is a pointer, not the source of truth: draw rules stay in `validateDraw`. This module
- * only handles the notifications table and the two functions that maintain it.
+ * only handles the notifications table and the functions that maintain it.
  *
- * Every call is club-scoped and relies on RLS rather than bypassing it. `sync_notifications` and
- * `mark_notifications_read` are SECURITY DEFINER, so a desk member can run them without any write
- * policy on the tables themselves.
+ * Every call is club-scoped and relies on RLS rather than bypassing it. `sync_notifications`,
+ * `mark_notifications_read` and `mark_notification_read` are SECURITY DEFINER, so a desk member can
+ * run them without any write policy on the tables themselves.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { StoredNotification } from "@/components/notifications/alerts";
@@ -60,6 +60,18 @@ export async function markNotificationsRead(
     p_tournament: tournamentId,
   });
   if (error) throw new Error(`Could not dismiss notices: ${error.message}`);
+  return typeof data === "number" ? data : 0;
+}
+
+/** Marks one alert as read for the caller. Returns how many rows that touched. */
+export async function markNotificationRead(
+  client: SupabaseClient<Database>,
+  notificationId: string,
+): Promise<number> {
+  const { data, error } = await client.rpc("mark_notification_read", {
+    p_notification: notificationId,
+  });
+  if (error) throw new Error(`Could not mark the alert as read: ${error.message}`);
   return typeof data === "number" ? data : 0;
 }
 

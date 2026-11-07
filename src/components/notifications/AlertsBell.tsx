@@ -5,20 +5,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  type Alert,
   type AlertCheckState,
+  applyReadState,
   badgeCount,
   bellLabel,
   buildAlerts,
-  dismissableCount,
+  canMarkRead,
   groupAlerts,
+  isUnreadMarkable,
+  markableCount,
   registrationAlerts,
   type StoredNotification,
   shouldCheckAlerts,
   showsAllClear,
+  storedIdOf,
 } from "@/components/notifications/alerts";
 import { Button } from "@/components/ui/button";
 import {
   loadNotifications,
+  markNotificationRead,
   markNotificationsRead,
   pendingRegistrationCount,
   syncNotifications,
@@ -56,6 +62,9 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
 
   const [open, setOpen] = useState(false);
   const [stored, setStored] = useState<StoredNotification[]>([]);
+  // Demo mode keeps read marks in memory. Connected mode writes a per-user row for a stored alert,
+  // but a live info item has no row anywhere, so its mark is local and goes when the issue does.
+  const [localRead, setLocalRead] = useState<ReadonlySet<string>>(() => new Set());
   // Connected mode starts in "checking": until the first check returns, the panel must not claim
   // there is nothing to do.
   const [sync, setSync] = useState<AlertCheckState>(connected ? "checking" : "idle");
@@ -77,7 +86,7 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     [draw, registrations, tournament, names, state.boards, state.activeTournamentId],
   );
 
-  const alerts = useMemo(() => {
+  const allAlerts = useMemo(() => {
     // One alert per entry waiting at the desk, named after the player. Derived from the loaded
     // registrations, so it clears itself the moment the entry is confirmed; no migration, no
     // stored row to go stale. Demo mode has no public form, so it keeps the bell it had.
@@ -87,9 +96,10 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
       : [];
     return buildAlerts(stored, issues, pending);
   }, [stored, issues, players, registrations, connected]);
+  const alerts = useMemo(() => applyReadState(allAlerts, localRead), [allAlerts, localRead]);
   const count = badgeCount(alerts);
   const groups = groupAlerts(alerts);
-  const dismissable = dismissableCount(alerts);
+  const markable = markableCount(alerts);
 
   /**
    * A signature of the things that can create or clear an alert. Watching this and debouncing means
@@ -185,6 +195,25 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     if (connected && status === "error") setSync("error");
   }, [connected, status]);
 
+  // A route change closes the panel. A link inside the panel is about to unmount, so focus lands
+  // on the bell; a rail or nav click keeps its own focus, which is where the desk just went.
+  useEffect(() => {
+    if (panelRef.current?.contains(document.activeElement)) bellRef.current?.focus();
+    setOpen(false);
+  }, [pathname]);
+
+  // The panel covers the page while it is open, so the page behind it must not scroll. The cleanup
+  // runs on every close path, including a navigation, so the lock can never outlive the panel.
+  useEffect(() => {
+    if (!open) return;
+    const body = document.body;
+    const previous = body.style.overflow;
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = previous;
+    };
+  }, [open]);
+
   // Escape closes, and focus goes back to the bell rather than being lost.
   useEffect(() => {
     if (!open) return;
@@ -214,14 +243,52 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  async function dismissNotices() {
-    if (!tournamentId || !connected) return;
+  function markLocally(ids: string[]) {
+    setLocalRead((current) => {
+      const next = new Set(current);
+      for (const id of ids) next.add(id);
+      return next;
+    });
+  }
+
+  /**
+   * Marks one alert read. A stored row gets a per-user read row so the mark survives a refresh; a
+   * live info item has no row, so the mark is local and goes when the issue does. Live blocking
+   * and warning items never reach here: they clear only when the cause is fixed.
+   */
+  async function markRead(alert: Alert) {
+    if (alert.read || !canMarkRead(alert)) return;
+    const notificationId = storedIdOf(alert);
+    if (!notificationId || !connected || !tournamentId) {
+      markLocally([alert.id]);
+      return;
+    }
     try {
-      await markNotificationsRead(createSupabaseBrowserClient(), tournamentId);
-      setStored((current) => current.map((n) => ({ ...n, read: true })));
+      await markNotificationRead(createSupabaseBrowserClient(), notificationId);
+      setStored((current) =>
+        current.map((row) => (row.id === notificationId ? { ...row, read: true } : row)),
+      );
     } catch {
       setSync("error");
     }
+  }
+
+  /** Marks every alert that can be read. Live blocking and warning issues are left alone. */
+  async function markAllRead() {
+    const targets = alerts.filter(isUnreadMarkable);
+    if (targets.length === 0) return;
+    const localIds = targets.filter((alert) => storedIdOf(alert) === null).map((alert) => alert.id);
+    const hasStored = targets.some((alert) => storedIdOf(alert) !== null);
+    if (hasStored && connected && tournamentId) {
+      try {
+        await markNotificationsRead(createSupabaseBrowserClient(), tournamentId);
+        setStored((current) => current.map((row) => ({ ...row, read: true })));
+      } catch {
+        setSync("error");
+        return;
+      }
+    }
+    if (localIds.length > 0) markLocally(localIds);
   }
 
   return (
@@ -256,18 +323,25 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
         >
           <div className="flex items-center justify-between gap-2 pb-2">
             <b className="text-[15px]">Alerts</b>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Close alerts"
-              onClick={() => {
-                setOpen(false);
-                bellRef.current?.focus();
-              }}
-            >
-              <X aria-hidden="true" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {markable > 0 && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => void markAllRead()}>
+                  <Check aria-hidden="true" /> Mark all as read
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Close alerts"
+                onClick={() => {
+                  setOpen(false);
+                  bellRef.current?.focus();
+                }}
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </div>
           </div>
 
           {/* Polite, never assertive: this must not interrupt what the desk is typing. */}
@@ -316,35 +390,51 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
                 {group.heading}
               </h3>
               {group.alerts.map((alert) => (
-                <Link
+                <div
                   key={alert.id}
-                  href={alert.href}
-                  onClick={() => setOpen(false)}
-                  className="grid min-h-11 gap-0.5 rounded-[10px] border border-line px-3 py-2 no-underline hover:bg-surface-sunken"
+                  className="grid gap-1 rounded-[10px] border border-line px-3 py-2"
                 >
-                  <b className="text-[14px] text-ink">{alert.title}</b>
-                  {alert.detail && <span className="hint">{alert.detail}</span>}
-                  <span className="text-[12px] font-semibold text-link">Fix</span>
-                </Link>
+                  <Link
+                    href={alert.href}
+                    onClick={() => {
+                      // The panel link is about to unmount, so without this focus falls to the page
+                      // body. The bell stays in the shell on every desk screen.
+                      setOpen(false);
+                      bellRef.current?.focus();
+                    }}
+                    className="grid min-h-11 gap-0.5 no-underline"
+                  >
+                    <b className="text-[14px] text-ink">{alert.title}</b>
+                    {alert.detail && <span className="hint">{alert.detail}</span>}
+                    <span className="text-[12px] font-semibold text-link">Fix</span>
+                  </Link>
+                  {alert.read ? (
+                    <span className="hint inline-flex items-center gap-1">
+                      <Check className="size-3.5" aria-hidden="true" /> Read
+                    </span>
+                  ) : canMarkRead(alert) ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="justify-self-start"
+                      onClick={() => void markRead(alert)}
+                    >
+                      Mark as read
+                    </Button>
+                  ) : (
+                    <span className="hint">Stays until the problem is fixed.</span>
+                  )}
+                </div>
               ))}
             </section>
           ))}
 
-          {dismissable > 0 && (
-            <div className="border-t border-line pt-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void dismissNotices()}
-              >
-                <Check aria-hidden="true" /> Dismiss {dismissable} notice
-                {dismissable === 1 ? "" : "s"}
-              </Button>
-              <p className="hint mt-1">
-                Notices are information only. Blocking and warning items stay until they are fixed.
-              </p>
-            </div>
+          {markable > 0 && (
+            <p className="hint border-t border-line pt-2">
+              Read marks are per person. Blocking and warning issues from the draw stay in the badge
+              until they are fixed.
+            </p>
           )}
         </div>
       )}

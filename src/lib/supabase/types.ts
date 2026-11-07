@@ -1041,6 +1041,7 @@ export interface Database {
       publish_course_map: { Args: { p_map: string }; Returns: string };
       sync_notifications: { Args: { p_tournament: string }; Returns: number };
       mark_notifications_read: { Args: { p_tournament: string }; Returns: number };
+      mark_notification_read: { Args: { p_notification: string }; Returns: number };
       has_club_role: { Args: { p_club: string; p_roles: string[] }; Returns: boolean };
       save_event_setup: {
         Args: {

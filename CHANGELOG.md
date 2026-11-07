@@ -86,6 +86,15 @@ Supabase project, because the code and the database are released separately.
   when that section has unsaved changes.
 
 ### Fixed
+- **Alerts can be marked as read one at a time (issue #171).** Every stored notification and every
+  info item now carries a Mark as read control, and the panel header carries Mark all as read. Live
+  blocking and warning issues from the draw keep no read control and say why: they clear when the
+  cause is fixed, and the badge must keep counting them whatever anyone has read. Read state is per
+  person, so two desk members do not read each other's alerts. The panel now also closes when the
+  route changes, including a click on the rail or the mobile menu, and it releases the page scroll
+  lock when it closes. New migration `20261108000200_notification_single_read.sql` adds one
+  function, `mark_notification_read(notification)`, for a single per-user read row. **Migration
+  written, NOT applied to the live project**; it is additive (a new function only).
 - **The reader no longer warps a card into portrait.** The orientation step tried all four right
   angles; on an 1800x1000 card a 90 degree turn makes the image portrait, its row scores are noise,
   and it could win, after which every cell box (x up to 1733) fell outside the card and the scan
