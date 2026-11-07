@@ -72,6 +72,7 @@ const isCurrent = (path: string, href: string) =>
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const overlay = path === "/admin";
+  const calendarRoute = path === "/calendar";
   const desk = useDesk();
   const { registrations, draw, warnings, tournament, deferred, member, status } = desk;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -227,7 +228,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <header
           className={cn(
-            "shell-chrome z-30 flex h-[84px] items-center gap-3 px-4 lg:gap-4 lg:px-6",
+            "shell-chrome z-30 flex h-[var(--shell-header)] items-center gap-3 px-4 lg:gap-4 lg:px-6",
             overlay ? "absolute inset-x-0 top-0 pt-2" : "band sticky top-0 shadow-card",
           )}
         >
@@ -381,6 +382,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           className={cn(
             "mobile-bar-space",
             !overlay && "px-4 pt-6 pb-16 sm:px-6 lg:pr-8 lg:pl-[var(--rail-pad)]",
+            // The calendar's month grid owns the remaining viewport, so the page itself must not
+            // scroll on desktop. Phones keep normal document flow.
+            calendarRoute &&
+              "lg:flex lg:h-[calc(100dvh_-_var(--shell-header))] lg:min-h-0 lg:flex-col lg:overflow-hidden lg:pb-4",
           )}
         >
           {children}
