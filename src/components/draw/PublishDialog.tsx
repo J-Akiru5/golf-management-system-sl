@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PairingsView } from "@/components/PairingsView";
 import { fmtDateLabel } from "@/lib/data/labels";
@@ -32,6 +33,8 @@ export function PublishDialog({
     publishState,
     publishError,
     status,
+    saveFailed,
+    saving,
   } = useDesk();
   const ref = useRef<HTMLDialogElement>(null);
   const [ack, setAck] = useState(false);
@@ -79,13 +82,26 @@ export function PublishDialog({
       firstTeeTime: tournament.config.firstTeeTime,
     });
   }, [open, draw, players, tournament, regById]);
-  const canPublish = blocking.length === 0 && (warnings.length === 0 || ack);
+  const canPublish =
+    blocking.length === 0 && (warnings.length === 0 || ack) && !saveFailed && !saving;
   const nothingNew = isPublished && !changedSincePublish;
 
   return (
     <dialog ref={ref} className="wide" aria-labelledby="pub-title" onClose={onClose}>
       <div className="dialog-body">
-        <h2 id="pub-title">{isPublished ? "Publish changes" : "Publish pairings"}</h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 id="pub-title">{isPublished ? "Publish changes" : "Publish pairings"}</h2>
+          {/* A visible close at the top, so a phone can leave without scrolling the preview. */}
+          <button
+            type="button"
+            className="btn ghost small shrink-0"
+            aria-label="Close"
+            onClick={onClose}
+            disabled={busy}
+          >
+            <X aria-hidden="true" />
+          </button>
+        </div>
         <p className="muted">
           Players will see the published pairings below. The public page also shows the confirmed
           tee times for each playing day, the player list and the organizers&apos; rules of play. A
@@ -127,6 +143,15 @@ export function PublishDialog({
           </div>
         )}
 
+        {(saveFailed || saving) && (
+          <div className="notice warn" role="status">
+            <b>{saving ? "Still saving this change." : "The last change was not saved."}</b>{" "}
+            {saving
+              ? "Wait for the save to finish, then publish."
+              : "The board was put back to what the database holds. Make the change again and save it before publishing."}
+          </div>
+        )}
+
         {sent && publishState === "failed" && (
           <div className="notice bad" role="alert">
             <b>Not published.</b>{" "}
@@ -139,7 +164,8 @@ export function PublishDialog({
           {preview && <PairingsView pairings={preview} searchable={false} />}
         </section>
 
-        <div className="row between">
+        {/* The actions stay in thumb reach while the long preview scrolls under them. */}
+        <div className="sticky bottom-0 -mx-5 -mb-5 row between border-t border-line bg-surface-raised px-5 py-3">
           <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
             Not yet
           </button>

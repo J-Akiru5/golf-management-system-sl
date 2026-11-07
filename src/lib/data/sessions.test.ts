@@ -55,6 +55,17 @@ describe("sessionForTime", () => {
     expect(sessionForTime("15:00", 0, 4)?.label).toBe("PM");
   });
 
+  it("keeps the last day's 09:15 in the morning", () => {
+    // A morning start can move later on the final day; it is still the morning.
+    expect(sessionForTime("09:15", 3, 4)?.label).toBe("AM");
+  });
+
+  it("keeps a 10:00 opening in the morning", () => {
+    // The desk can move a day's opening time; the label follows the day, not a fixed 06:30.
+    expect(sessionForTime("10:00", 0, 4)?.label).toBe("AM");
+    expect(sessionForTime("10:00", 3, 4)?.label).toBe("AM");
+  });
+
   it("turns over at Sunday's 11:30 second-session start", () => {
     expect(sessionForTime("11:15", 3, 4)?.label).toBe("AM");
     expect(sessionForTime("11:30", 3, 4)?.label).toBe("PM");

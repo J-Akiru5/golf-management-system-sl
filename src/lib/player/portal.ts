@@ -17,6 +17,8 @@ export type PortalPayment = "unpaid" | "paid" | "waived";
 export type PortalStartFormat = "shotgun" | "two_tee";
 
 export interface PortalStart {
+  /** 1 for a one-day event, and for snapshots written before days. */
+  dayNumber: number;
   hole: number | null;
   wave: string | null;
   time: string | null;
@@ -71,7 +73,10 @@ export interface PortalEntry {
   flight: string | null;
   paymentStatus: PortalPayment;
   published: boolean;
+  /** The first start, kept for clients that show one. Equal to `starts[0]`. */
   start: PortalStart | null;
+  /** Every published start, one per playing day, ordered by day and start hole. */
+  starts: PortalStart[];
   /** The player's own published cards. Empty until the organizer publishes results. */
   scorecards: PortalScorecard[];
 }
@@ -219,6 +224,17 @@ const asStatus = (value: unknown): PortalStatus =>
 const asPayment = (value: unknown): PortalPayment =>
   value === "paid" || value === "waived" ? value : "unpaid";
 
+/** One published start. Rows written before days carry no day number and are day 1. */
+function mapStart(value: unknown): PortalStart {
+  const raw = asRecord(value);
+  return {
+    dayNumber: asWholeNumber(raw.dayNumber) ?? 1,
+    hole: asNumber(raw.hole),
+    wave: asString(raw.wave),
+    time: asString(raw.time),
+  };
+}
+
 /** The jsonb the RPC returns, turned into typed values. Never throws; missing keys stay null. */
 export function mapPortalState(raw: unknown): PortalState {
   const root = asRecord(raw);
@@ -229,7 +245,13 @@ export function mapPortalState(raw: unknown): PortalState {
   const entries = asArray(root.entries).map((item): PortalEntry => {
     const entry = asRecord(item);
     const start = asRecord(entry.start);
-    const hasStart = Object.keys(start).length > 0;
+
+    // New payloads list every day. Older ones only have the single `start` object.
+    const starts = asArray(entry.starts)
+      .map(asRecord)
+      .filter((value) => Object.keys(value).length > 0)
+      .map(mapStart);
+    if (starts.length === 0 && Object.keys(start).length > 0) starts.push(mapStart(start));
 
     return {
       tournamentId: asString(entry.tournamentId) ?? "",
@@ -252,13 +274,8 @@ export function mapPortalState(raw: unknown): PortalState {
       flight: asString(entry.flight),
       paymentStatus: asPayment(entry.paymentStatus),
       published: asBoolean(entry.published),
-      start: hasStart
-        ? {
-            hole: asNumber(start.hole),
-            wave: asString(start.wave),
-            time: asString(start.time),
-          }
-        : null,
+      start: starts[0] ?? null,
+      starts,
       scorecards: asArray(entry.scorecards)
         .map(mapScorecard)
         .filter((card): card is PortalScorecard => card !== null),

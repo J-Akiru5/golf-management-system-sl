@@ -6,9 +6,10 @@ import { useMemo, useState } from "react";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { playingDaysOf } from "@/lib/data/dates";
 import { fmtIso } from "@/lib/data/labels";
 import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
-import { teeAssignmentProblem } from "@/lib/data/tee-time";
+import { batchAssignment, teeAssignmentProblem } from "@/lib/data/tee-time";
 import type {
   Caddie,
   DayTeeAssignment,
@@ -33,13 +34,16 @@ export default function TeeTimesPage() {
   const [batchMessage, setBatchMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(
     null,
   );
-  const day = days.find((d) => d.dayNumber === selectedDay) ?? days[0] ?? null;
-  // 0-based position, which is what the session defaults read: every day but the last runs a
-  // morning and an afternoon, and the last day runs one tee time.
+  // Playing days only, in day order: the position names the day's sessions, and the print center
+  // reads the same list. A trailing non-playing day must not move the last playing day's afternoon.
+  const playingDays = useMemo(() => playingDaysOf(days), [days]);
+  const day = playingDays.find((d) => d.dayNumber === selectedDay) ?? playingDays[0] ?? null;
+  // 0-based position in the playing days, which is what the session defaults read: every day but the
+  // last runs a morning and an afternoon, and the last day runs one tee time.
   const dayIndex = day
     ? Math.max(
         0,
-        days.findIndex((d) => d.dayNumber === day.dayNumber),
+        playingDays.findIndex((d) => d.dayNumber === day.dayNumber),
       )
     : 0;
 
@@ -97,8 +101,8 @@ export default function TeeTimesPage() {
    * Writes one start time to the day, in small parallel batches.
    *
    * "missing" fills only players with no time yet, which is the normal start of a shotgun day.
-   * "all" overwrites every time but keeps each player's start hole and confirmation, so a start
-   * moved from 06:30 to 12:30 does not lose the work already done on holes.
+   * "all" overwrites every time but keeps each player's start hole. A confirmation survives only
+   * when the time did not change: a start moved from 06:30 to 12:30 needs the desk to look again.
    */
   async function applyBatch(mode: "missing" | "all") {
     if (!day || batching) return;
@@ -125,12 +129,11 @@ export default function TeeTimesPage() {
         if (!row) return;
         const existing = row.entry.dayTee?.[day.dayNumber];
         try {
-          await adapters.registrations.assignDayTee(row.entry.id, day.dayNumber, {
-            teeTime: time,
-            startHole: existing?.startHole ?? null,
-            wave: null,
-            confirmed: Boolean(existing?.confirmed && existing.startHole),
-          });
+          await adapters.registrations.assignDayTee(
+            row.entry.id,
+            day.dayNumber,
+            batchAssignment(existing, time),
+          );
           saved += 1;
         } catch {
           failed.push(row.player.name);
@@ -147,7 +150,7 @@ export default function TeeTimesPage() {
           }
         : {
             tone: "ok",
-            text: `Set ${time} for ${saved} player${saved === 1 ? "" : "s"}. Each player keeps their start hole; a time can be confirmed once its hole is set.`,
+            text: `Set ${time} for ${saved} player${saved === 1 ? "" : "s"}. Each player keeps their start hole. A new time is saved unconfirmed, so the desk ticks it again.`,
           },
     );
   }
@@ -263,14 +266,14 @@ export default function TeeTimesPage() {
         preference. A time appears on the public page only after it is ticked as confirmed.
       </PageHeader>
 
-      {days.length === 0 ? (
+      {playingDays.length === 0 ? (
         <div className="notice warn" role="status">
           This event has no playing days. Save the event dates in Settings first.
         </div>
       ) : (
         <>
           <div className="seg" role="tablist" aria-label="Playing day">
-            {days.map((item) => {
+            {playingDays.map((item) => {
               const count = entries.filter((entry) =>
                 (entry.selectedDays ?? []).includes(item.dayNumber),
               ).length;
@@ -281,6 +284,7 @@ export default function TeeTimesPage() {
                   role="tab"
                   aria-selected={day?.dayNumber === item.dayNumber}
                   aria-pressed={day?.dayNumber === item.dayNumber}
+                  className="min-h-11"
                   onClick={() => setSelectedDay(item.dayNumber)}
                 >
                   {item.label} · {fmtIso(item.playDate)} ({count})
@@ -294,7 +298,7 @@ export default function TeeTimesPage() {
               id="tee-times"
               icon={<CalendarClock />}
               title={`${day.label} · ${fmtIso(day.playDate)}`}
-              subtitle={`${daySessionSummary(dayIndex, days.length)}. ${
+              subtitle={`${daySessionSummary(dayIndex, playingDays.length)}. ${
                 day.startTime
                   ? `The day opens at ${day.startTime}, and times before that are refused.`
                   : "No day start time is set, so the event's first tee time is the floor."
@@ -307,6 +311,7 @@ export default function TeeTimesPage() {
                     type="time"
                     value={dayStart}
                     disabled={dayStartSaving}
+                    className="text-[16px] md:text-sm"
                     onChange={(event) => {
                       setDayStartDraft({ key: dayKey, value: event.target.value });
                       setDayStartResult(null);
@@ -317,6 +322,7 @@ export default function TeeTimesPage() {
                 <Button
                   variant="secondary"
                   size="sm"
+                  className="min-h-11 md:min-h-0"
                   disabled={dayStartSaving || dayStart === (day.startTime ?? "")}
                   onClick={() => void saveDayStart(dayStart)}
                 >
@@ -374,6 +380,7 @@ export default function TeeTimesPage() {
                         type="time"
                         value={chosenTime}
                         disabled={batching !== null}
+                        className="text-[16px] md:text-sm"
                         onChange={(event) => {
                           setBatchTime(event.target.value);
                           setBatchMessage(null);
@@ -383,6 +390,7 @@ export default function TeeTimesPage() {
                     <Button
                       variant="primary"
                       size="sm"
+                      className="min-h-11 md:min-h-0"
                       disabled={batching !== null || untimed === 0}
                       onClick={() => void applyBatch("missing")}
                     >
@@ -393,6 +401,7 @@ export default function TeeTimesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="min-h-11 md:min-h-0"
                       disabled={batching !== null}
                       onClick={() => void applyBatch("all")}
                     >
@@ -401,6 +410,7 @@ export default function TeeTimesPage() {
                     <Button
                       variant="secondary"
                       size="sm"
+                      className="min-h-11 md:min-h-0"
                       disabled={batching !== null || fromDraw === 0}
                       onClick={() => void applyFromDraw()}
                     >
@@ -449,7 +459,7 @@ export default function TeeTimesPage() {
                           player={player}
                           day={day}
                           dayIndex={dayIndex}
-                          dayCount={days.length}
+                          dayCount={playingDays.length}
                           caddies={caddies.filter((caddie) => caddie.active)}
                           courseHoles={tournament.config.holes}
                           onSave={(assignment) =>
@@ -465,6 +475,39 @@ export default function TeeTimesPage() {
                 </div>
               )}
             </SectionCard>
+          )}
+
+          {/* Phone only: the batch controls sit below a long table, so the time and the draw's
+              times stay within reach above the app's bottom tab bar. The card's own controls
+              remain. */}
+          {day && config.startFormat === "shotgun" && rows.length > 0 && (
+            <div className="no-print sticky bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-line bg-surface/95 px-4 py-2 backdrop-blur md:hidden">
+              <label className="field w-32">
+                <span className="sr-only">Batch time</span>
+                <input
+                  type="time"
+                  value={chosenTime}
+                  disabled={batching !== null}
+                  className="text-[16px] md:text-sm"
+                  aria-label="Batch time for the phone action bar"
+                  onChange={(event) => {
+                    setBatchTime(event.target.value);
+                    setBatchMessage(null);
+                  }}
+                />
+              </label>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="min-h-11 flex-1"
+                disabled={batching !== null || fromDraw === 0}
+                onClick={() => void applyFromDraw()}
+              >
+                {batching === "draw"
+                  ? "Taking the draw…"
+                  : `Take the draw's times (${fromDraw})`}
+              </Button>
+            </div>
           )}
         </>
       )}
@@ -620,6 +663,7 @@ function TeeRow({
           type="time"
           value={teeTime}
           disabled={saving}
+          className="text-[16px] md:text-sm"
           aria-label={`Tee time for ${player.name} on ${day.label}`}
           onChange={(e) => {
             setTeeTime(e.target.value);
@@ -636,7 +680,7 @@ function TeeRow({
           value={startHole}
           disabled={saving}
           aria-label={`Start hole for ${player.name} on ${day.label}`}
-          className="w-20"
+          className="w-20 text-[16px] md:text-sm"
           onChange={(e) => {
             setStartHole(e.target.value);
             setMessage(null);
@@ -644,13 +688,17 @@ function TeeRow({
         />
       </td>
       <td>
-        <input
-          type="checkbox"
-          checked={confirmed}
-          disabled={saving}
-          aria-label={`Confirm the tee time for ${player.name} on ${day.label}`}
-          onChange={(e) => void toggleConfirmed(e.target.checked)}
-        />
+        {/* The box itself is small; the label gives it a 44px thumb target on a phone. */}
+        <label className="grid min-h-11 min-w-11 cursor-pointer place-items-center">
+          <input
+            type="checkbox"
+            className="size-5"
+            checked={confirmed}
+            disabled={saving}
+            aria-label={`Confirm the tee time for ${player.name} on ${day.label}`}
+            onChange={(e) => void toggleConfirmed(e.target.checked)}
+          />
+        </label>
       </td>
       {/* Optional: a caddie is never needed to time, hole or confirm a player, so the column sits
           after the confirmation and says so. Empty is a normal, finished state. */}
@@ -660,7 +708,7 @@ function TeeRow({
           disabled={caddieSaving}
           title="Optional. A player can be timed and confirmed without a caddie."
           aria-label={`Caddie for ${player.name} on ${day.label} (optional)`}
-          className="w-36"
+          className="w-36 text-[16px] md:text-sm"
           onChange={async (e) => {
             const next = e.target.value;
             setCaddieId(next);
@@ -691,13 +739,20 @@ function TeeRow({
       </td>
       <td>
         <span className="flex flex-wrap items-center gap-1.5">
-          <Button variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
+          <Button
+            variant="primary"
+            size="sm"
+            className="min-h-11 md:min-h-0"
+            disabled={saving}
+            onClick={() => void save()}
+          >
             <Check aria-hidden="true" /> {saving ? "Saving…" : "Save"}
           </Button>
           {(saved?.teeTime || saved?.startHole) && (
             <Button
               variant="ghost"
               size="sm"
+              className="min-h-11 md:min-h-0"
               disabled={saving}
               title="Clear the time and hole for this day"
               onClick={() =>

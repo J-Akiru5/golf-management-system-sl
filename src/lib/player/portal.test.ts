@@ -43,8 +43,33 @@ describe("mapPortalState", () => {
       playingHandicap: 12,
       flight: "Ladies A",
       published: true,
-      start: { hole: 10, wave: "A", time: "06:30" },
+      start: { dayNumber: 1, hole: 10, wave: "A", time: "06:30" },
     });
+  });
+
+  it("maps one start per playing day and keeps the first as start", () => {
+    const state = mapPortalState({
+      linked: true,
+      player: { id: "p1", name: "Ana" },
+      entries: [
+        {
+          tournamentId: "t1",
+          startFormat: "shotgun",
+          published: true,
+          starts: [
+            { dayNumber: 1, hole: 1, wave: "A", time: "06:30", dayLabel: "Round 1" },
+            { dayNumber: 2, hole: 10, wave: "B", time: "07:40", dayLabel: "Round 2" },
+          ],
+        },
+      ],
+    });
+
+    const entry = state.entries[0];
+    expect(entry?.starts).toEqual([
+      { dayNumber: 1, hole: 1, wave: "A", time: "06:30" },
+      { dayNumber: 2, hole: 10, wave: "B", time: "07:40" },
+    ]);
+    expect(entry?.start).toEqual(entry?.starts[0]);
   });
 
   it("treats a null payload as an unlinked account rather than throwing", () => {
@@ -209,7 +234,7 @@ describe("portal wording", () => {
     const twoTee = {
       ...entry,
       startFormat: "two_tee" as const,
-      start: { hole: 1, wave: null, time: "12:00" },
+      start: { dayNumber: 1, hole: 1, wave: null, time: "12:00" },
     };
     expect(startLabel(twoTee, t, (time) => time)).toBe("Tee 1 · 12:00");
   });

@@ -36,6 +36,27 @@ export function teeAssignmentProblem(input: {
   return null;
 }
 
+/**
+ * The write a batch time makes for one player. The batch only changes the clock time: the start hole
+ * is kept, and a confirmation survives only when the time is the one that was already confirmed with
+ * a hole. A changed time is saved unconfirmed, because the desk has not looked at it again.
+ */
+export function batchAssignment(
+  existing:
+    | { teeTime: string | null; startHole: number | null; confirmed: boolean; wave?: string | null }
+    | undefined,
+  teeTime: string,
+): { teeTime: string; startHole: number | null; wave: string | null; confirmed: boolean } {
+  return {
+    teeTime,
+    startHole: existing?.startHole ?? null,
+    wave: null,
+    confirmed: Boolean(
+      existing && existing.teeTime === teeTime && existing.confirmed && existing.startHole,
+    ),
+  };
+}
+
 export interface StartTime {
   time: string;
 }

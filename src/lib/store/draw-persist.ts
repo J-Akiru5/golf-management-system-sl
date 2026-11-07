@@ -8,7 +8,17 @@ import type { Action, DeskState, Published } from "./state";
  * makes the rules testable without a database.
  */
 export type DrawJob =
-  | { kind: "save"; tournamentId: string; draw: DrawGroup[]; overrides: ManualOverride[] }
+  | {
+      kind: "save";
+      tournamentId: string;
+      draw: DrawGroup[];
+      overrides: ManualOverride[];
+      /**
+       * The playing day's round the board was planned for. Captured when the job is queued, so a
+       * day switch before the queue drains cannot write this board into another day.
+       */
+      roundId: string | null;
+    }
   | { kind: "publish"; tournamentId: string; published: Published }
   | { kind: "unpublish"; tournamentId: string };
 
@@ -27,6 +37,28 @@ const boardSignature = (draw: DrawGroup[]) =>
 const overrideKey = (overrides: ManualOverride[]) => overrides.map((o) => o.id).join(",");
 
 /**
+ * Drops players who chose other playing days from a board before it is saved. A missing day is
+ * "plays every day", so only a player who named other days is removed. Groups left with nobody go
+ * too, so an empty group is never written for a day.
+ */
+export function drawForDay(draw: DrawGroup[], dayExcluded: ReadonlySet<string>): DrawGroup[] {
+  if (dayExcluded.size === 0) return draw;
+  return draw
+    .map((group) => ({
+      ...group,
+      playerIds: group.playerIds.filter((id) => !dayExcluded.has(id)),
+    }))
+    .filter((group) => group.playerIds.length > 0);
+}
+
+export interface PlanOptions {
+  /** The round id the board belongs to, captured when the action was planned. */
+  roundId?: string | null;
+  /** Players who chose another playing day, so they must not be written onto this one. */
+  dayExcluded?: ReadonlySet<string>;
+}
+
+/**
  * The published copy a screen may show while the planned writes are still in flight. A takedown
  * that is queued but not written yet must not make the desk claim players can no longer see a list
  * that is still up: the old snapshot goes only when the write lands.
@@ -39,7 +71,12 @@ export function publishedWhileWritesPending(
   return jobs.some((job) => job.kind === "unpublish") ? was : now;
 }
 
-export function planDrawJobs(action: Action, before: DeskState, after: DeskState): DrawJob[] {
+export function planDrawJobs(
+  action: Action,
+  before: DeskState,
+  after: DeskState,
+  options: PlanOptions = {},
+): DrawJob[] {
   const tournamentId = after.activeTournamentId;
   if (!tournamentId) return [];
   const was = before.boards[tournamentId];
@@ -48,19 +85,31 @@ export function planDrawJobs(action: Action, before: DeskState, after: DeskState
 
   const save = (): DrawJob[] => {
     if (!now.draw) return [];
+    const draw = options.dayExcluded ? drawForDay(now.draw, options.dayExcluded) : now.draw;
+    // Compared with the stored board as it is: if it still holds a player who chose another day,
+    // the filtered board differs and must be written.
     if (
       was?.draw &&
-      boardSignature(now.draw) === boardSignature(was.draw) &&
+      boardSignature(draw) === boardSignature(was.draw) &&
       overrideKey(now.overrides) === overrideKey(was.overrides)
     ) {
       return [];
     }
-    return [{ kind: "save", tournamentId, draw: now.draw, overrides: now.overrides }];
+    return [
+      {
+        kind: "save",
+        tournamentId,
+        draw,
+        overrides: now.overrides,
+        roundId: options.roundId ?? null,
+      },
+    ];
   };
 
   switch (action.type) {
     case "generate": {
-      // A fresh proposal that drops the published copy also takes the public page down.
+      // The reducer keeps the published copy while another day is still on it. It clears every
+      // day only when no other day was published, and that is the only case that goes down.
       const jobs = save();
       if (was?.published && !now.published) jobs.push({ kind: "unpublish", tournamentId });
       return jobs;

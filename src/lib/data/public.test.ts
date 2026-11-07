@@ -79,6 +79,46 @@ describe("toPublicPairings", () => {
     expect(JSON.stringify(out)).not.toContain("photo_consent_at");
   });
 
+  it("lists two playing days apart, each with its own group 1", () => {
+    const out = toPublicPairings({
+      published: {
+        groups: [
+          {
+            number: 1,
+            startHole: 1,
+            time: "06:30",
+            flight: "Class A",
+            players: ["Day One Player"],
+            dayNumber: 1,
+            dayLabel: "Day 1",
+            playDate: "2026-11-12",
+          },
+          {
+            number: 1,
+            startHole: 10,
+            time: "12:30",
+            flight: "Class A",
+            players: ["Day Three Player"],
+            dayNumber: 3,
+            dayLabel: "Day 3",
+            playDate: "2026-11-14",
+          },
+        ],
+      },
+      tournamentName: "Sample",
+      dateLabel: "12 to 14 November",
+      startFormat: "shotgun",
+      firstTeeTime: "06:30",
+    });
+
+    expect(out.groups).toHaveLength(2);
+    expect(out.days?.map((day) => day.dayNumber)).toEqual([1, 3]);
+    expect(out.days?.[0]?.groups).toHaveLength(1);
+    expect(out.days?.[1]?.groups).toHaveLength(1);
+    expect(out.days?.[1]?.groups[0]?.number).toBe(1);
+    expect(out.days?.[1]?.label).toBe("Day 3");
+  });
+
   it("drops empty names rather than printing blanks", () => {
     const out = toPublicPairings({
       published: {

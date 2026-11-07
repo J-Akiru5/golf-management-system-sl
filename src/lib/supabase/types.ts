@@ -468,6 +468,15 @@ type PublicPairingRow = {
   player_id?: string | null;
   player_name: string | null;
   photo_path?: string | null;
+  /** Absent from the older public_pairings(); those rows are day 1. */
+  day_number?: number | null;
+  day_label?: string | null;
+};
+
+/** The row returned by public_pairings_by_day(), with the playing day always present. */
+type PublicPairingByDayRow = PublicPairingRow & {
+  day_number: number;
+  day_label: string | null;
 };
 
 export interface Database {
@@ -1080,6 +1089,15 @@ export interface Database {
         Args: { p_tournament?: string | null };
         Returns: PublicPairingRow[];
       };
+      /**
+       * The same rows as public_pairings, split by playing day. Added by hand with
+       * 20261108000300_public_pairings_by_day.sql, which is not applied yet, so
+       * `supabase gen types typescript` cannot produce it.
+       */
+      public_pairings_by_day: {
+        Args: { p_tournament?: string | null };
+        Returns: PublicPairingByDayRow[];
+      };
       /** The day schedule, public player cards and rules of play. Added by 20261041000000. */
       public_programme: {
         Args: { p_tournament?: string | null };
@@ -1125,3 +1143,4 @@ export type TableRow<T extends TableName> = Database["public"]["Tables"][T]["Row
 export type TableInsert<T extends TableName> = Database["public"]["Tables"][T]["Insert"];
 export type TableUpdate<T extends TableName> = Database["public"]["Tables"][T]["Update"];
 export type PublicPairing = PublicPairingRow;
+export type PublicPairingByDay = PublicPairingByDayRow;

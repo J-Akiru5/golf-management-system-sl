@@ -125,6 +125,75 @@ describe("a playing day drawn in a morning and an afternoon session", () => {
     expect(result.groups.map((g) => g.time)).toEqual(["06:30"]);
   });
 
+  it("leaves out a player who is not in the day's map", () => {
+    // The map is the day's own registrations. A player missing from it chose another day, so they
+    // are not drawn here and are not warned about a missing session either.
+    const field = players(4, 5);
+    const result = route(
+      {
+        players: field,
+        config,
+        tees: [tee],
+        categories: [category],
+        flights,
+        sessions: {
+          byPlayer: new Map(
+            field.slice(0, 2).map((player) => [player.id, "AM" as const]),
+          ),
+          starts: { AM: "06:30", PM: "12:30" },
+          dayNumber: 1,
+        },
+      },
+      { seed: 7 },
+    );
+    expect(new Set(result.groups.flatMap((group) => group.playerIds))).toEqual(
+      new Set(["p1", "p2"]),
+    );
+    expect(result.warnings.some((w) => w.includes("no morning or afternoon session"))).toBe(false);
+  });
+
+  it("places a confirmed provisional player in the session they chose", () => {
+    const result = route(
+      {
+        players: [],
+        provisional: [{ id: "prov", name: "Provisional Player", index: 20, missing: ["gender"] }],
+        config,
+        tees: [tee],
+        categories: [category],
+        flights,
+        sessions: {
+          byPlayer: new Map([["prov", "PM" as const]]),
+          starts: { AM: "06:30", PM: "12:30" },
+          dayNumber: 2,
+        },
+      },
+      { seed: 7 },
+    );
+    const group = result.groups.find((g) => g.playerIds.includes("prov"));
+    expect(group?.time).toBe("12:30");
+  });
+
+  it("spaces a second start in a session by the batch interval, not the session gap", () => {
+    const field = players(80, 5);
+    const result = route(
+      {
+        players: field,
+        config: { ...config, waveGapMinutes: 300 },
+        tees: [tee],
+        categories: [category],
+        flights,
+        sessions: {
+          byPlayer: new Map(field.map((player) => [player.id, "AM" as const])),
+          starts: { AM: "06:30", PM: "12:30" },
+          dayNumber: 2,
+          batchGapMinutes: 9,
+        },
+      },
+      { seed: 7 },
+    );
+    expect(startsOf(result)).toEqual({ "06:30": 18, "06:39": 2 });
+  });
+
   it("keeps filling a start and lets a class continue into the next one", () => {
     // 13 Class A groups fill 13 holes; Class B has 10 groups and does not fit the 5 holes left.
     const field = [...players(52, 5), ...players(40, 20, 100)];

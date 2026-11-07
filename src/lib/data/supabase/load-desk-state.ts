@@ -48,6 +48,21 @@ function missingObject(error: { code?: string; message?: string } | null): boole
   );
 }
 
+/**
+ * Picks the round a tournament's board is read from.
+ *
+ * A round belongs to one playing day, so asking for day 3 must return day 3. It used to fall back to
+ * the first round, which showed day 1's board for every day of a multi-day event (audit finding A1).
+ * No day asked for keeps the old behaviour and returns the first round, or null when there is none.
+ */
+export function pickRoundForDay(
+  rows: { id: string; day_number: number }[],
+  dayNumber: number | null,
+): { id: string; day_number: number } | null {
+  if (dayNumber === null) return rows[0] ?? null;
+  return rows.find((row) => row.day_number === dayNumber) ?? null;
+}
+
 function toPublished(value: Json | null, tournamentId: string): Published | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
@@ -119,7 +134,10 @@ export async function loadDeskState(
   options: {
     /** Keep this event selected across a reload (for example right after creating it). */
     preferTournamentId?: string | null;
-    /** The playing day whose board to load. Left out, the first playing day is used. */
+    /**
+     * The playing day whose board to load. Left out, the first playing day is used. A day the
+     * opened event has no round for is an error, not a quiet fall back to the first day.
+     */
     dayNumber?: number | null;
   } = {},
 ): Promise<LoadedDesk> {
@@ -283,6 +301,22 @@ export async function loadDeskState(
   const tournamentIds = tournaments.map((t) => t.id);
   const boards: Record<string, BoardState> = {};
   const revisions: Record<string, number> = {};
+  // The event the desk opens with: the one asked for, then the first open event, then the first
+  // event. It is decided here so a named day only has to exist on that event; another event missing
+  // the day must not fail the load.
+  const preferred = options.preferTournamentId
+    ? tournaments.find((t) => t.id === options.preferTournamentId)?.id
+    : undefined;
+  const active =
+    preferred ?? tournaments.find((t) => t.state === "open")?.id ?? tournaments[0]?.id ?? null;
+  // A day is only honoured when it is a whole number above zero. Anything else is treated as no day
+  // asked for, which keeps the old behaviour of showing the first round.
+  const requestedDay =
+    typeof options.dayNumber === "number" &&
+    Number.isInteger(options.dayNumber) &&
+    options.dayNumber > 0
+      ? options.dayNumber
+      : null;
   // A board belongs to one playing day. Only the selected day's round is read, so the desk shows
   // that day's groups alone; without a selection the first playing day is used.
   const roundRows = await client
@@ -299,8 +333,17 @@ export async function loadDeskState(
     const rows = asArray(roundRows.data)
       .filter((row) => row.tournament_id === tournament.id)
       .sort((a, b) => a.day_number - b.day_number);
-    const picked = rows.find((row) => row.day_number === options.dayNumber) ?? rows[0];
-    if (!picked) continue;
+    // The named day applies to the opened event. Other events keep their first round, so nothing
+    // else on the desk has to have that day on file.
+    const picked = pickRoundForDay(rows, tournament.id === active ? requestedDay : null);
+    if (!picked) {
+      if (tournament.id === active && requestedDay !== null) {
+        throw new Error(
+          `Day ${requestedDay} has no round on file for this event. Open the draw again after the event days are saved.`,
+        );
+      }
+      continue;
+    }
     rounds[tournament.id] = picked.id;
     roundDays[tournament.id] = picked.day_number;
   }
@@ -508,11 +551,6 @@ export async function loadDeskState(
       caddieByDay,
     };
   });
-  const preferred = options.preferTournamentId
-    ? tournaments.find((t) => t.id === options.preferTournamentId)?.id
-    : undefined;
-  const active =
-    preferred ?? tournaments.find((t) => t.state === "open")?.id ?? tournaments[0]?.id ?? null;
 
   const records = asArray(recordRows.data).map(toHandicapRecord);
 

@@ -26,13 +26,38 @@ export function nextPlayDay(dates: string[], fallback: string): string {
 }
 
 /**
+ * Stored days in day order, with one row per day number. The order is what names a day's session,
+ * so an unsorted or sparse list must not put Sunday's afternoon on the wrong date. The date breaks
+ * a tie between two rows that claim the same number.
+ */
+function orderedDays(days: readonly TournamentDay[]): TournamentDay[] {
+  const seen = new Set<number>();
+  return [...days]
+    .sort((a, b) => a.dayNumber - b.dayNumber || a.playDate.localeCompare(b.playDate))
+    .filter((day) => {
+      if (seen.has(day.dayNumber)) return false;
+      seen.add(day.dayNumber);
+      return true;
+    });
+}
+
+/**
+ * The playing days a screen should show, in day order, with one row per day number. A trailing
+ * non-playing day would otherwise count towards the number of days and make the last playing day's
+ * afternoon read as an ordinary day.
+ */
+export function playingDaysOf(days: readonly TournamentDay[]): TournamentDay[] {
+  return orderedDays(days.filter((day) => day.isPlayingDay));
+}
+
+/**
  * The structured day list a screen should show. A connected desk provides `days` from the
  * `tournament_days` table; the demo, and a connected database before migration 20261037000000,
  * derive the same shape from the dates (and the old tee-time preferences) so the UI has one
  * contract either way.
  */
 export function daysOfTournament(t: Tournament): TournamentDay[] {
-  if (t.days && t.days.length) return t.days;
+  if (t.days && t.days.length) return orderedDays(t.days);
   const preferences = t.registration.teeTimes ?? [];
   const byDate = new Map(preferences.map((d) => [d.date, d]));
   const dates = (t.dates.length ? t.dates : [t.config.date]).filter(Boolean);

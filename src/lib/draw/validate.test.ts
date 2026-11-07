@@ -77,6 +77,19 @@ describe("validateDraw", () => {
     expect(issues[1]?.message).toContain("marked Needs review");
   });
 
+  it("does not call a player unplaced on a day they did not choose", () => {
+    const issues = validateDraw({
+      draw: [grp(1, ["a", "b", "c"])],
+      registrations: four,
+      config,
+      engineWarnings: [],
+      names,
+      dayNumber: 1,
+      dayMembers: new Set(["a", "b", "c"]),
+    });
+    expect(issues).toEqual([]);
+  });
+
   it("does not demand a group for players who are not ready", () => {
     const regs = [...four.slice(0, 3), reg("z", { status: "ineligible" })];
     expect(check([grp(1, ["a", "b", "c"])], regs)).toEqual([]);

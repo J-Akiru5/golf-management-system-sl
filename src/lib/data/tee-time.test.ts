@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  batchAssignment,
   dayStartTimes,
   sessionStartTime,
   startCountForField,
@@ -42,6 +43,35 @@ describe("teeAssignmentProblem", () => {
     expect(
       teeAssignmentProblem({ ...base, teeTime: "06:30", startHole: null, confirmed: true }),
     ).toBe("confirmed_needs_both");
+  });
+});
+
+describe("batchAssignment", () => {
+  it("a changed time drops the confirmation", () => {
+    expect(
+      batchAssignment({ teeTime: "06:30", startHole: 4, confirmed: true }, "12:30"),
+    ).toEqual({ teeTime: "12:30", startHole: 4, wave: null, confirmed: false });
+  });
+
+  it("the same time keeps a confirmed row", () => {
+    expect(
+      batchAssignment({ teeTime: "06:30", startHole: 4, confirmed: true }, "06:30"),
+    ).toEqual({ teeTime: "06:30", startHole: 4, wave: null, confirmed: true });
+  });
+
+  it("a new row is unconfirmed", () => {
+    expect(batchAssignment(undefined, "06:30")).toEqual({
+      teeTime: "06:30",
+      startHole: null,
+      wave: null,
+      confirmed: false,
+    });
+  });
+
+  it("does not keep a confirmation without a start hole", () => {
+    expect(
+      batchAssignment({ teeTime: "06:30", startHole: null, confirmed: true }, "06:30"),
+    ).toEqual({ teeTime: "06:30", startHole: null, wave: null, confirmed: false });
   });
 });
 

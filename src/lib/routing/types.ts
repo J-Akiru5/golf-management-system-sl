@@ -82,6 +82,11 @@ export interface SessionInput {
   starts: SessionStarts;
   /** Playing-day number, so one board can hold every day. */
   dayNumber?: number;
+  /**
+   * Minutes between two starts inside one session, when a session has more groups than the holes
+   * can hold. Left out, the event's long gap setting is used.
+   */
+  batchGapMinutes?: number;
 }
 
 export interface TournamentConfig {

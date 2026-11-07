@@ -225,6 +225,50 @@ describe("buildGroupBlocks", () => {
     expect(day3?.groups[0]?.flight).toBe("Class A");
   });
 
+  it("counts a 09:15 group on the last day as the morning", () => {
+    // Sunday's afternoon starts at 11:30, so a 09:15 start is still the morning session.
+    const blocks = buildGroupBlocks({
+      days,
+      boards: [
+        {
+          day: 4,
+          groups: [
+            {
+              number: 1,
+              startHole: 1,
+              time: "09:15",
+              flight: "Class A",
+              players: [{ id: "z", name: "Late Morning Player" }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(blocks[3]?.groups[0]?.session).toBe("AM");
+  });
+
+  it("renders a stored HH:MM:SS time as HH:MM", () => {
+    const blocks = buildGroupBlocks({
+      days,
+      boards: [
+        {
+          day: 3,
+          groups: [
+            {
+              number: 1,
+              startHole: 4,
+              time: "06:30:00",
+              flight: "Class A",
+              players: [{ id: "y", name: "Morning Player" }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(blocks[2]?.groups[0]?.time).toBe("06:30");
+    expect(blocks[2]?.groups[0]?.session).toBe("AM");
+  });
+
   it("returns an empty day when the board is not loaded", () => {
     expect(buildGroupBlocks({ days }).every((block) => block.groups.length === 0)).toBe(true);
   });

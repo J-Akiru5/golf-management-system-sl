@@ -4,6 +4,7 @@ import { selectedDaysOf } from "./dates";
 import type {
   DeskRegistration,
   PlayerRecord,
+  PublicPairingDay,
   PublicPairingGroup,
   PublicPairingPlayer,
   PublicPairings,
@@ -36,6 +37,9 @@ export interface PublishedLike {
     flight: string;
     players: string[];
     playerIds?: string[];
+    dayNumber?: number;
+    dayLabel?: string;
+    playDate?: string;
   }[];
 }
 
@@ -78,9 +82,42 @@ export function toPublicPairings({
       time: g.time,
       flight: g.flight,
       players,
+      ...(typeof g.dayNumber === "number"
+        ? {
+            dayNumber: g.dayNumber,
+            ...(g.dayLabel ? { dayLabel: g.dayLabel } : {}),
+            ...(g.playDate ? { playDate: g.playDate } : {}),
+          }
+        : {}),
     };
   });
-  return { tournamentName, dateLabel, startFormat, firstTeeTime, groups };
+  // A snapshot published with days is listed day by day, so the page can show one day at a time
+  // and two days' group 1 never read as one group. An old snapshot stays a single flat list.
+  const dayAware = groups.length > 0 && groups.every((g) => typeof g.dayNumber === "number");
+  const byDay = new Map<number, PublicPairingDay>();
+  if (dayAware) {
+    for (const group of groups) {
+      const dayNumber = group.dayNumber as number;
+      const day =
+        byDay.get(dayNumber) ??
+        ({
+          dayNumber,
+          label: group.dayLabel?.trim() || `Day ${dayNumber}`,
+          playDate: group.playDate ?? "",
+          groups: [],
+        } satisfies PublicPairingDay);
+      day.groups.push(group);
+      byDay.set(dayNumber, day);
+    }
+  }
+  return {
+    tournamentName,
+    dateLabel,
+    startFormat,
+    firstTeeTime,
+    groups,
+    days: [...byDay.values()].sort((a, b) => a.dayNumber - b.dayNumber),
+  };
 }
 
 /* -------------------------------------------------------------------------------------------------

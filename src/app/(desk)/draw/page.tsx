@@ -110,6 +110,22 @@ export default function DrawPage() {
     .join(", ");
   const placed = visibleDraw?.reduce((n, g) => n + g.playerIds.filter(onDay).length, 0) ?? 0;
 
+  // The players who chose this day. A player who chose another day is not "unplaced" here, so a
+  // day-filtered board never blocks publishing for a name the day does not hold.
+  const dayMembers = useMemo(
+    () =>
+      day === null
+        ? undefined
+        : new Set(
+            entries
+              .filter((entry) => {
+                const chosen = entry.selectedDays ?? [];
+                return chosen.length === 0 || chosen.includes(day);
+              })
+              .map((entry) => entry.playerId),
+          ),
+    [entries, day],
+  );
   const issues = useMemo(
     () =>
       draw && config
@@ -120,9 +136,11 @@ export default function DrawPage() {
             engineWarnings: desk.warnings,
             flags,
             names,
+            dayNumber: day,
+            dayMembers,
           })
         : [],
-    [draw, registrations, config, desk.warnings, flags, names],
+    [draw, registrations, config, desk.warnings, flags, names, day, dayMembers],
   );
   const issuesByGroup = useMemo(() => {
     const m = new Map<number, Issue[]>();
@@ -375,7 +393,11 @@ export default function DrawPage() {
         <div className="card flex flex-wrap items-center gap-x-4 gap-y-2 !py-3">
           <label className="field !gap-1">
             <span className="overline !text-[10px]">Override reason for the next move or lock</span>
-            <select value={reason} onChange={(e) => setReason(e.target.value)} className="!w-auto">
+            <select
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="!w-auto max-w-full text-[16px] md:text-sm"
+            >
               {REASONS.map((r) => (
                 <option key={r}>{r}</option>
               ))}
@@ -387,9 +409,12 @@ export default function DrawPage() {
               <select
                 value={day ?? ""}
                 onChange={(e) => setDay(e.target.value === "" ? null : Number(e.target.value))}
-                className="!w-auto"
+                className="!w-auto max-w-full text-[16px] md:text-sm"
                 data-help="draw-day"
               >
+                {/* The demo has one in-memory board and no saved rounds, so it shows the whole
+                    event. A connected desk always has a day selected. */}
+                {desk.status === "demo" && <option value="">All playing days</option>}
                 {playingDays.map((d) => (
                   <option key={d.id} value={d.dayNumber}>
                     {d.label} · {fmtIso(d.playDate)}
@@ -711,6 +736,34 @@ export default function DrawPage() {
           </ul>
         </details>
       )}
+
+      {/* Phone thumb bar: the one action this screen is for, kept above the desk tab bar. */}
+      <div className="no-print sticky bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-20 -mx-4 flex items-center gap-2 border-t border-line bg-surface/95 px-4 py-2 backdrop-blur md:hidden">
+        <span className="min-w-0 flex-1 truncate text-[12px] text-ink-muted">
+          {chosenDay ? `${chosenDay.label} · ${fmtIso(chosenDay.playDate)}` : "Draw & pairings"}
+        </span>
+        {!draw ? (
+          <button
+            type="button"
+            className="btn gold"
+            disabled={ready === 0}
+            onClick={() => makeDraw(true)}
+          >
+            Make the draw
+          </button>
+        ) : (
+          <RoleGate
+            role={member?.role}
+            allow={["owner", "organizer"]}
+            mode="disable"
+            disabledReason="Only the owner or an organizer can publish pairings."
+          >
+            <button type="button" className="btn gold" onClick={() => setPubOpen(true)}>
+              {isPublished && !changedSincePublish ? "Published list" : "Review and publish"}
+            </button>
+          </RoleGate>
+        )}
+      </div>
 
       <PublishDialog open={pubOpen} issues={issues} onClose={() => setPubOpen(false)} />
     </div>
