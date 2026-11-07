@@ -20,6 +20,24 @@ Cloudflare R2 and the normal scoring approval rules still apply.
 If no card reader is configured, the photo is still attached and the scores are entered by hand.
 The screen says so; it does not invent scores.
 
+## Open the round before the first card
+
+A scanned card needs a round that already exists. Publish the day's pairings, open **Scores**, then
+use **Round setup**:
+
+1. Enter the required cards per player.
+2. Choose the final approval authority and the confirmed tie-break policy.
+3. Enter the rules version, then press **Open the round**.
+
+Opening copies the published draw into the round: the round, a round entry for each player and a
+handicap snapshot for each player with a frozen index. The screen refuses and names what is missing:
+an unpublished draw, a draw that moved after the publish, an old publish with no player ids, a
+missing setting, or a tie-break policy that is not confirmed. Opening twice with the same draw is
+safe.
+
+If no confirmed tie-break policy is on file, the round cannot be opened yet. Record the organizer's
+written rule first.
+
 ## Autofill and the review flags
 
 When the reader is connected, **Use with card** copies the draft into the card form and carries each

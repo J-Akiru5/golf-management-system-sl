@@ -16,11 +16,13 @@ import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { HandicapSummary } from "@/components/scoring/HandicapSummary";
+import { OpenRoundPanel } from "@/components/scoring/OpenRoundPanel";
 import { ReaderAccuracyLine } from "@/components/scoring/ReaderAccuracy";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
-import type { ScoringRoundView } from "@/lib/data/scoring";
+import { type OpenRoundSnapshot, openRoundErrorMessage } from "@/lib/data/open-round";
+import type { OpenRoundInput, ScoringRoundView } from "@/lib/data/scoring";
 import { fmtHcp, fmtIndex } from "@/lib/format";
 import {
   type CardIssue,
@@ -53,6 +55,7 @@ export default function ScoresPage() {
   const { member, tournament, scoring, status } = useDesk();
   const tournamentId = tournament?.id ?? "";
   const [view, setView] = useState<ScoringRoundView | null>(null);
+  const [roundState, setRoundState] = useState<OpenRoundSnapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -110,6 +113,25 @@ export default function ScoresPage() {
   }, [scoring, tournamentId]);
 
   useEffect(() => {
+    if (!tournamentId) return;
+    let cancelled = false;
+    setRoundState(null);
+    scoring
+      .loadOpenRoundState(tournamentId)
+      .then((next) => {
+        if (cancelled) return;
+        setRoundState(next);
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        setError(reason instanceof Error ? reason.message : String(reason));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scoring, tournamentId]);
+
+  useEffect(() => {
     if (!view) return;
     setStrokes(strokesFor(view.course.holes));
     setEditingCard(null);
@@ -157,6 +179,33 @@ export default function ScoresPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function openRound(input: OpenRoundInput) {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await scoring.openRound(tournamentId, input);
+      setView(next);
+      try {
+        setRoundState(await scoring.loadOpenRoundState(tournamentId));
+      } catch (reason) {
+        setError(openRoundErrorMessage(reason instanceof Error ? reason.message : String(reason)));
+      }
+    } catch (reason) {
+      setError(openRoundErrorMessage(reason instanceof Error ? reason.message : String(reason)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function reloadRoundState() {
+    void scoring
+      .loadOpenRoundState(tournamentId)
+      .then(setRoundState)
+      .catch((reason: unknown) =>
+        setError(reason instanceof Error ? reason.message : String(reason)),
+      );
   }
 
   function applyScan(apply: ScorecardScanApply) {
@@ -342,6 +391,17 @@ export default function ScoresPage() {
         </div>
       )}
 
+      {roundState && (
+        <OpenRoundPanel
+          key={`${roundState.roundStatus ?? "none"}:${roundState.draw.revision}`}
+          snapshot={roundState}
+          role={member?.role}
+          busy={busy}
+          onOpen={openRound}
+          onReload={reloadRoundState}
+        />
+      )}
+
       {error && (
         <div className="notice bad" role="alert">
           {error}
@@ -353,8 +413,9 @@ export default function ScoresPage() {
           <div className="card grid gap-2">
             <h2>No scoring round configured</h2>
             <p className="muted">
-              This event has no daily scoring round yet, or its course and tee data are incomplete.
-              Set up the course, holes and round first; then this screen can load the field.
+              This event has no daily scoring round yet, or its course, holes and event days are
+              incomplete. Round setup above opens the round from the published draw, so the pairings
+              are never guessed. Set up the course, holes and event days first.
             </p>
           </div>
         ) : (

@@ -45,6 +45,18 @@ export const DESK_GUIDES: HelpGuide[] = [
     steps: [
       {
         text: literal(
+          "Open the round from the published draw before the first card. Round setup names the card count, the approval authority, the tie-break policy and the rules version.",
+        ),
+        anchor: "scores-round",
+      },
+      {
+        text: literal(
+          "The round opens only when the draw is published and has not moved, and when every setting is present. The screen names the setting that is missing.",
+        ),
+        anchor: "scores-round-open",
+      },
+      {
+        text: literal(
           "Take a photo of the paper card. A reader can propose scores, but the desk checks every value before submitting.",
         ),
         anchor: "scores-scan",
