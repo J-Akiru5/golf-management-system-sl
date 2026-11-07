@@ -3,42 +3,55 @@ import Link from "next/link";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { resendConfirmation, signInWithPassword } from "@/lib/auth/actions";
+import type { TranslationKey } from "@/lib/i18n";
+import { getI18n } from "@/lib/i18n/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-export const metadata: Metadata = { title: "Sign in" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t("auth.title") };
+}
 
-const ERRORS: Record<string, string> = {
-  credentials_required: "Enter your email and password.",
-  sign_in_failed: "Sign-in failed. Check your details and try again.",
-  invalid_credentials:
-    "That email and password do not match an account. Use the email address on the account, not a username.",
-  email_not_confirmed:
-    "This account exists, but its email address has not been confirmed. Open the confirmation email, or send a new link below.",
-  rate_limited: "Too many attempts. Wait a few minutes, then try again.",
-  sign_in_disabled: "Sign-in is not available for this account. Ask the club owner to check it.",
-  email_required: "Enter the email address on the account.",
-  link_invalid: "That link is invalid or has expired. Request a new one.",
-  sign_in_required: "Sign in to continue.",
-  sign_up_credentials_required: "Enter an email address and a password to create an account.",
-  sign_up_password_short: "Use at least 8 characters for your password.",
-  sign_up_failed: "That account could not be created. If you already have one, sign in instead.",
+/**
+ * Query-string codes mapped to dictionary keys. The codes come from the auth actions and the route
+ * guards, so a redirect never prints a raw code on the page.
+ */
+const ERROR_KEYS: Record<string, TranslationKey> = {
+  credentials_required: "auth.errors.credentialsRequired",
+  sign_in_failed: "auth.errors.signInFailed",
+  invalid_credentials: "auth.errors.invalidCredentials",
+  email_not_confirmed: "auth.errors.emailNotConfirmed",
+  rate_limited: "auth.errors.rateLimited",
+  sign_in_disabled: "auth.errors.signInDisabled",
+  email_required: "auth.errors.emailRequired",
+  link_invalid: "auth.errors.linkInvalid",
+  sign_in_required: "auth.errors.signInRequired",
+  sign_up_credentials_required: "auth.errors.signUpRequired",
+  sign_up_password_short: "auth.errors.passwordShort",
+  sign_up_failed: "auth.errors.signUpFailed",
+};
+
+/** A code with no dictionary key yet. Kept in English rather than inventing a key. */
+const ERROR_TEXT: Record<string, string> = {
   supabase_not_configured: "Supabase is not configured. The app is running in demo mode.",
 };
 
-const MESSAGES: Record<string, string> = {
-  signed_out: "You have signed out.",
-  check_email: "Check your email to confirm the account, then sign in here.",
-  confirmation_sent:
-    "If that address needs confirmation, a new link is on its way. Check the inbox and the spam folder.",
-  reset_sent:
-    "If that address has an account, we sent a reset link. Check your email and follow it on this device.",
-  password_updated: "Your password was updated. Sign in with the new one.",
+const MESSAGE_KEYS: Record<string, TranslationKey> = {
+  signed_out: "auth.messages.signedOut",
+  check_email: "auth.messages.checkEmail",
+  confirmation_sent: "auth.messages.confirmationSent",
+  reset_sent: "auth.messages.resetSent",
+  password_updated: "auth.messages.passwordUpdated",
 };
 
 /**
  * One sign-in page for both audiences, because an account's area is decided by what it is: a
  * club_members row opens the desk, a linked member record opens the player area. See
  * `landingFor()` in src/lib/auth/routes.ts for the rule.
+ *
+ * The form is built for a phone: one column, 16px fields so iOS does not zoom, and the submit
+ * button pinned above the home indicator. A notice shares that pinned block, directly above the
+ * button, so the button can never cover it.
  */
 export default async function LoginPage({
   searchParams,
@@ -46,97 +59,141 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; message?: string; next?: string }>;
 }) {
   const params = await searchParams;
-  const error = params.error ? ERRORS[params.error] : undefined;
-  const message = params.message ? MESSAGES[params.message] : undefined;
+  const { t } = await getI18n();
+  const errorKey = params.error ? ERROR_KEYS[params.error] : undefined;
+  const error = errorKey ? t(errorKey) : params.error ? ERROR_TEXT[params.error] : undefined;
+  const messageKey = params.message ? MESSAGE_KEYS[params.message] : undefined;
+  const message = messageKey ? t(messageKey) : undefined;
   const configured = isSupabaseConfigured();
   const next = params.next ?? "/";
 
   return (
     <AuthShell
-      title="Sign in"
+      title={t("auth.title")}
+      clubHomeLabel={t("auth.clubHome")}
       intro={
-        <>
-          Players see their own entry and start. Club staff open the tournament desk. The published{" "}
-          <Link href="/pairings" className="underline underline-offset-2">
-            pairings
-          </Link>{" "}
-          are open to everyone.
-        </>
+        <div className="grid gap-1.5">
+          <p>{t("auth.intro")}</p>
+          <p>
+            {t("auth.pairingsLine")}{" "}
+            <Link href="/pairings" className="font-semibold underline underline-offset-2">
+              {t("auth.openPairings")}
+            </Link>
+          </p>
+        </div>
       }
     >
-      <div className="card grid gap-4 sm:p-5">
-        <form action={signInWithPassword} className="grid gap-3.5">
+      <div className="card grid gap-4 p-4 sm:p-5">
+        <form action={signInWithPassword} className="grid gap-3">
           <input type="hidden" name="next" value={next} />
-          <label className="field">
-            <span>Email</span>
-            <input id="email" name="email" type="email" autoComplete="username" required />
+
+          <label className="field" htmlFor="email">
+            <span>{t("auth.email")}</span>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="next"
+              className="scroll-mb-24 text-[16px]"
+              required
+            />
           </label>
+
           <PasswordField
             id="password"
             name="password"
-            label="Password"
+            label={t("auth.password")}
             autoComplete="current-password"
+            enterKeyHint="go"
+            showLabel={t("auth.show")}
+            hideLabel={t("auth.hide")}
           />
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <label className="flex items-center gap-2.5 text-[13px]">
+
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <label className="flex min-h-11 items-center gap-2.5 text-[13px]">
               <input type="checkbox" name="remember" />
-              <span>Remember me on this device</span>
+              <span>{t("auth.remember")}</span>
             </label>
             <Link
               href="/forgot-password"
-              className="text-[13px] font-semibold underline underline-offset-2"
+              className="inline-flex min-h-11 items-center text-[13px] font-semibold underline underline-offset-2"
             >
-              Forgot password?
+              {t("auth.forgot")}
             </Link>
           </div>
-          {error && (
-            <p className="notice bad" role="alert">
-              {error}
-            </p>
-          )}
-          {message && (
-            <p className="notice ok" role="status">
-              {message}
-            </p>
-          )}
-          <button type="submit" className="btn">
-            Sign in
-          </button>
+
+          <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-10 -mx-1 grid gap-2 rounded-xl bg-surface-raised/90 px-1 py-1.5 backdrop-blur-sm sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+            {error && (
+              <p className="notice bad" role="alert">
+                {error}
+              </p>
+            )}
+            {message && (
+              <p className="notice ok" role="status">
+                {message}
+              </p>
+            )}
+
+            {/* The shared .btn is 44px; the submit keeps a full 48px for a thumb. */}
+            <button type="submit" className="btn w-full" style={{ minHeight: 48 }}>
+              {t("auth.signIn")}
+            </button>
+          </div>
         </form>
 
         {params.error === "email_not_confirmed" && (
           <form action={resendConfirmation} className="grid gap-2.5 border-t border-line pt-4">
-            <p className="hint">
-              Send a new confirmation link to the address on the account. The reply is the same
-              whether or not the address needs one.
-            </p>
-            <label className="field">
-              <span>Email</span>
-              <input name="email" type="email" autoComplete="email" required />
+            <p className="hint m-0">{t("auth.resendBody")}</p>
+            <label className="field" htmlFor="resend-email">
+              <span>{t("auth.email")}</span>
+              <input
+                id="resend-email"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="send"
+                className="scroll-mb-24 text-[16px]"
+                required
+              />
             </label>
             <button type="submit" className="btn ghost">
-              Send a new confirmation link
+              {t("auth.resend")}
             </button>
           </form>
         )}
 
         <p className="border-t border-line pt-4 text-[13px]">
-          New here?{" "}
+          {t("auth.newHere")}{" "}
           <Link href="/signup" className="font-semibold underline underline-offset-2">
-            Create an account
+            {t("auth.createAccount")}
           </Link>
         </p>
       </div>
 
       {!configured && (
         <p className="hint">
-          Supabase is not configured in this build, so sign-in is off and the desk runs on demo
-          data. <Link href="/admin">Open the desk in demo mode</Link>.
+          {t("auth.demoNote")}{" "}
+          <Link href="/admin" className="font-semibold underline underline-offset-2">
+            {t("auth.demoDesk")}
+          </Link>
+          .
         </p>
       )}
 
       <p className="hint text-center">
-        By Syntaxure Labs. <Link href="/">Club home</Link>
+        By Syntaxure Labs.{" "}
+        <Link href="/" className="font-semibold underline underline-offset-2">
+          {t("auth.clubHome")}
+        </Link>
       </p>
     </AuthShell>
   );

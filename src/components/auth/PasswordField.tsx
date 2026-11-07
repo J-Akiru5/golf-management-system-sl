@@ -5,6 +5,9 @@ import { useState } from "react";
 /**
  * A password input with a Show/Hide control. The button sits outside the label so pressing it never
  * activates the field, and `aria-controls` ties it to the input it changes.
+ *
+ * The toggle keeps the 44px target the auth stylesheet gives `.password-toggle`. Other pages can
+ * hand in their own words; the defaults stay English so nothing that does not pass them changes.
  */
 export function PasswordField({
   id,
@@ -13,6 +16,9 @@ export function PasswordField({
   autoComplete,
   minLength,
   hint,
+  enterKeyHint,
+  showLabel = "Show",
+  hideLabel = "Hide",
 }: {
   id: string;
   name: string;
@@ -20,8 +26,12 @@ export function PasswordField({
   autoComplete?: string;
   minLength?: number;
   hint?: string;
+  enterKeyHint?: "go" | "next" | "done";
+  showLabel?: string;
+  hideLabel?: string;
 }) {
   const [visible, setVisible] = useState(false);
+  const action = visible ? hideLabel : showLabel;
 
   return (
     <div className="field">
@@ -32,8 +42,13 @@ export function PasswordField({
           name={name}
           type={visible ? "text" : "password"}
           autoComplete={autoComplete}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint={enterKeyHint}
           minLength={minLength}
           required
+          className="scroll-mb-24"
           data-testid={`${id}-input`}
         />
         <button
@@ -41,11 +56,11 @@ export function PasswordField({
           className="password-toggle"
           aria-controls={id}
           aria-pressed={visible}
-          aria-label={visible ? "Hide password" : "Show password"}
+          aria-label={`${action} ${label.toLowerCase()}`}
           onClick={() => setVisible((current) => !current)}
           data-testid={`${id}-toggle`}
         >
-          {visible ? "Hide" : "Show"}
+          {action}
         </button>
       </div>
       {hint && <span className="hint">{hint}</span>}

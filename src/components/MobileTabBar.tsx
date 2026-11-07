@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "@/lib/i18n/context";
+import type { TranslationKey } from "@/lib/i18n/t";
 import { cn } from "@/lib/ui/cn";
 import {
   DESK_MOBILE_ITEMS,
@@ -54,11 +56,22 @@ function TabBar({
   onMore?: () => void;
 }) {
   const path = usePathname();
+  const { t } = useI18n();
+  const labelOf = (item: MobileNavItem): string =>
+    item.labelKey ? t(item.labelKey as TranslationKey) : item.label;
 
   return (
-    <nav aria-label={label} className="mobile-tabbar" data-testid={testId}>
+    <nav
+      aria-label={label}
+      className="mobile-tabbar"
+      data-testid={testId}
+      data-onboard={testId === "player-bottom-bar" ? "tab-bar" : undefined}
+    >
       {items.map((item) => {
         const Icon = ICONS[item.icon];
+        const onboard = item.testId.startsWith("player-bar-")
+          ? `tab-${item.testId.slice("player-bar-".length)}`
+          : undefined;
         if (item.kind === "more") {
           return (
             <button
@@ -67,11 +80,12 @@ function TabBar({
               className="mobile-tabbar-item"
               onClick={onMore}
               data-testid={item.testId}
+              data-onboard={onboard}
             >
               <span className="mobile-tabbar-icon">
                 <Icon className="size-5" aria-hidden="true" />
               </span>
-              <span>{item.label}</span>
+              <span>{labelOf(item)}</span>
             </button>
           );
         }
@@ -87,11 +101,12 @@ function TabBar({
               on && "is-current",
             )}
             data-testid={item.testId}
+            data-onboard={onboard}
           >
             <span className={cn("mobile-tabbar-icon", item.action && "mobile-tabbar-action")}>
               <Icon className="size-5" aria-hidden="true" />
             </span>
-            <span>{item.label}</span>
+            <span>{labelOf(item)}</span>
           </Link>
         );
       })}

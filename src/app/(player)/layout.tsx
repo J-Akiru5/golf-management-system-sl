@@ -21,15 +21,19 @@ export const metadata: Metadata = {
  * The player area. No desk chrome and no desk data: everything on these pages comes from the
  * signed-in player's own record through the portal functions. The language is read once here and
  * handed to the provider, so the header and the page inside speak the same language.
+ *
+ * The phone header is one short row: wordmark, help and language. Everything else moved out of it
+ * on purpose. Pairings has a tab, and signing out lives on Me, so the header never wraps and never
+ * pushes the page down. Sign-out deliberately stays reachable to a player whose record is not
+ * linked: Me still renders for them.
  */
 export default async function PlayerLayout({ children }: { children: ReactNode }) {
   const { locale, t } = await getI18n();
   return (
     <I18nProvider locale={locale}>
-      <div lang={locale} className="grid min-h-dvh content-start">
+      <div lang={locale} className="player-shell grid min-h-dvh content-start">
         {/* One 56px row on a phone: logo left, help and language right. The page title, "All
-            pairings" and sign-out only appear where there is room, because the bottom tab bar and
-            the Profile page already cover them on a phone. */}
+            pairings" and sign-out only appear where there is room. */}
         <header className="band sticky top-0 z-30 flex min-h-14 items-center gap-2 px-3 pt-[env(safe-area-inset-top)] sm:gap-5 sm:px-6">
           <Link
             href="/"
@@ -49,13 +53,15 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
               {t("player.nav.allPairings")}
             </Link>
             <HelpButton audience="player" screen="my" />
-            <LanguageSwitcher tone="on-forest" compact />
+            <span data-onboard="language">
+              <LanguageSwitcher tone="on-forest" compact />
+            </span>
             {isSupabaseConfigured() && (
               <SignOutForm className="btn small ghost hidden !border-on-forest-muted lg:inline-flex" />
             )}
           </nav>
         </header>
-        <main className="public mobile-bar-space">{children}</main>
+        <main className="public player-main mobile-bar-space">{children}</main>
         <OnboardingGate role="player" />
         <PlayerBottomBar />
         <InstallPrompt />

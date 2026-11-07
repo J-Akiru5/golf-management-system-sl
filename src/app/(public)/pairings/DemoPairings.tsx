@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { HelpButton } from "@/components/help";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
@@ -16,6 +17,7 @@ import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings, toPublicProgramme } from "@/lib/data/public";
 import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
+import { demoPairings, demoProgramme } from "@/lib/player/demo";
 import { useDesk } from "@/lib/store/desk-store";
 
 /**
@@ -31,35 +33,37 @@ export function DemoPairings() {
 
   if (!tournament) return <NeedsTournament what="The player view" />;
 
-  const programme = published
-    ? toPublicProgramme({
-        days,
-        entries,
-        registrations,
-        players,
-        categories: tournament.categories,
-        flights: tournament.flights,
-        rulesOfPlay: tournament.rulesOfPlay,
-      })
-    : null;
-  const dates = programme?.days.length
+  const programme =
+    (published
+      ? toPublicProgramme({
+          days,
+          entries,
+          registrations,
+          players,
+          categories: tournament.categories,
+          flights: tournament.flights,
+          rulesOfPlay: tournament.rulesOfPlay,
+        })
+      : null) ?? demoProgramme();
+  const dates = programme.days.length
     ? programme.days.map((day) => day.playDate)
     : tournament.dates;
   const dateLabel = dates.length > 1 ? fmtRange(dates) : fmtDateLabel(dates);
-  const pairings = published
-    ? toPublicPairings({
-        published,
-        tournamentName: tournament.name,
-        dateLabel,
-        startFormat: tournament.config.startFormat,
-        firstTeeTime: tournament.config.firstTeeTime,
-      })
-    : null;
+  const pairings =
+    (published
+      ? toPublicPairings({
+          published,
+          tournamentName: tournament.name,
+          dateLabel,
+          startFormat: tournament.config.startFormat,
+          firstTeeTime: tournament.config.firstTeeTime,
+        })
+      : null) ?? demoPairings();
 
   return (
     <main className="public public-pairings mobile-bar-space">
       <header className="public-head">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={172} />
             <span className="leading-tight">
@@ -67,7 +71,10 @@ export function DemoPairings() {
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <HelpButton audience="player" screen="pairings" />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher tone="on-forest" />
+            <HelpButton audience="player" screen="pairings" />
+          </div>
         </div>
         <p className="overline mt-3 !text-gold">
           {tournament.config.startFormat === "shotgun"
@@ -82,23 +89,33 @@ export function DemoPairings() {
       </header>
 
       {!pairings ? (
-        <div className="notice" role="status">
-          <b>{t("pairings.notOutTitle")}</b> {t("pairings.notOutBody")}
-        </div>
+        <section className="pairings-empty" role="status">
+          <h2>{t("pairings.notOutTitle")}</h2>
+          <p>{t("pairings.notOutBody")}</p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Link className="btn ghost no-print" href="/pairings#tee-times">
+              {t("programme.navTeeTimes")}
+            </Link>
+            <Link className="btn ghost no-print" href="/">
+              {t("pairings.home")}
+            </Link>
+          </div>
+        </section>
       ) : (
         <>
-          {programme && (
-            <>
-              <ProgrammeNav programme={programme} hasPairings />
-              <TeeTimesBoard programme={programme} />
-              <PlayerDirectory programme={programme} />
-            </>
-          )}
+          {programme && <ProgrammeNav programme={programme} hasPairings />}
 
-          <section className="grid gap-3" id="pairings">
+          <section
+            className="grid gap-3"
+            id="pairings"
+            style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
+          >
             <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
-            <PairingsView pairings={pairings} headingLevel="section" />
+            <PairingsView pairings={pairings} headingLevel="section" flightFilter />
           </section>
+
+          <TeeTimesBoard programme={programme} />
+          <PlayerDirectory programme={programme} />
 
           {programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
         </>

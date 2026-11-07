@@ -21,15 +21,22 @@ const POINTS = [
 /**
  * The shared frame for sign-in, password reset and the recovery landing: a brand panel on wide
  * screens, a compact header above the form on phones, and one "back to club home" exit.
+ *
+ * On a phone the frame stays short so the form is above the fold, and it respects the safe areas so
+ * the logo is not under the notch and the last line is not under the home indicator.
  */
 export function AuthShell({
   title,
   intro,
   children,
+  clubHomeLabel = "Club home",
+  backHomeLabel = "Back to club home",
 }: {
   title: string;
   intro?: ReactNode;
   children: ReactNode;
+  clubHomeLabel?: string;
+  backHomeLabel?: string;
 }) {
   return (
     <main
@@ -76,32 +83,40 @@ export function AuthShell({
         <p className="text-[12px] text-[#8db39b]">TeeLine Golf · a Syntaxure Labs product</p>
       </section>
 
-      <section className="grid place-items-center px-5 py-10 sm:py-14">
-        <div className="grid w-full max-w-[26rem] gap-5">
-          <div className="flex items-center justify-between gap-4 lg:hidden">
-            <Link href="/" aria-label="TeeLine Golf home">
+      <section className="grid place-items-center px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-[calc(env(safe-area-inset-bottom)+1.25rem)] sm:px-6 sm:py-10 lg:py-14">
+        <div className="grid w-full max-w-[26rem] gap-4 sm:gap-5">
+          <div className="flex items-center justify-between gap-3 lg:hidden">
+            <Link
+              href="/"
+              aria-label="TeeLine Golf home"
+              className="inline-flex min-h-11 items-center"
+            >
               <TeeLineLogo variant="light" width={152} />
             </Link>
             <Link
               href="/"
-              className="text-[13px] text-ink-muted hover:text-ink"
+              className="inline-flex min-h-11 items-center px-1 text-[13px] font-semibold text-ink-muted hover:text-ink"
               data-testid="club-home"
             >
-              Club home
+              {clubHomeLabel}
             </Link>
           </div>
 
           <Link
             href="/"
-            className="hidden w-fit items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink lg:inline-flex"
+            className="hidden w-fit items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink lg:inline-flex lg:min-h-11"
             data-testid="back-home"
           >
-            <span aria-hidden="true">←</span> Back to club home
+            <span aria-hidden="true">←</span> {backHomeLabel}
           </Link>
 
-          <header className="grid gap-2">
-            <h1 className="text-[26px] leading-8">{title}</h1>
-            {intro && <div className="text-[13px] leading-[19px] text-ink-muted">{intro}</div>}
+          <header className="grid gap-1.5 sm:gap-2">
+            <h1 className="text-[24px] leading-7 sm:text-[26px] sm:leading-8">{title}</h1>
+            {intro && (
+              <div className="text-[14px] leading-5 text-ink-muted sm:text-[13px] sm:leading-[19px]">
+                {intro}
+              </div>
+            )}
           </header>
 
           {children}

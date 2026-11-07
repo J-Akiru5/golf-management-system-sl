@@ -1,6 +1,7 @@
+import type { TranslationKey } from "@/lib/i18n/t";
+
 /**
  * What goes in each phone bottom bar, and the rule for which item is current.
- *
  * The bar has room for four destinations plus an escape. It is not a smaller copy of the drawer:
  * it carries the work a person does while standing up, and the drawer keeps the rest.
  *
@@ -41,6 +42,8 @@ interface MobileItemBase {
   icon: MobileIcon;
   /** Stable target for the "Show me" tour and the browser harness. */
   testId: string;
+  /** Player items are translated; the desk stays English (decision 18). */
+  labelKey?: TranslationKey;
 }
 
 export interface MobileLinkItem extends MobileItemBase {
@@ -87,44 +90,41 @@ export const DESK_MOBILE_ITEMS: readonly MobileNavItem[] = [
 ] as const;
 
 /**
- * The player app's five destinations: the dashboard, the live board, the cards, the pairings and
- * the player's own record. Club home moves into the header (the wordmark already goes there) to
- * make room: five is what the bar holds without shrinking the labels below a readable size.
+ * The player app's four destinations. The scorecard lives in the home hero's quick actions
+ * instead of taking a tab: four labels stay readable on a 360px phone, and the card is one tap
+ * from the start time it belongs to.
  */
 export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
   {
     kind: "link",
     href: "/my",
     label: "Home",
+    labelKey: "player.tab.home",
     icon: "home",
     testId: "player-bar-home",
     exact: true,
   },
   {
     kind: "link",
-    href: "/my/board",
-    label: "Board",
-    icon: "trophy",
-    testId: "player-bar-board",
-  },
-  {
-    kind: "link",
-    href: "/my/card",
-    label: "Card",
-    icon: "clipboard",
-    testId: "player-bar-card",
-  },
-  {
-    kind: "link",
     href: "/pairings",
     label: "Pairings",
+    labelKey: "player.tab.pairings",
     icon: "list",
     testId: "player-bar-pairings",
   },
   {
     kind: "link",
+    href: "/my/board",
+    label: "Board",
+    labelKey: "player.tab.board",
+    icon: "trophy",
+    testId: "player-bar-board",
+  },
+  {
+    kind: "link",
     href: "/my/profile",
-    label: "Profile",
+    label: "Me",
+    labelKey: "player.tab.me",
     icon: "player",
     testId: "player-bar-profile",
   },

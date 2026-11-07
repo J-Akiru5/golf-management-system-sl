@@ -48,20 +48,18 @@ describe("desk bottom bar", () => {
 });
 
 describe("player bottom bar", () => {
-  it("carries the player app's five destinations", () => {
+  it("carries the player app's four destinations, Home first", () => {
     expect(links(PLAYER_MOBILE_ITEMS).map((item) => item.href)).toEqual([
       "/my",
-      "/my/board",
-      "/my/card",
       "/pairings",
+      "/my/board",
       "/my/profile",
     ]);
     expect(PLAYER_MOBILE_ITEMS.map((item) => item.label)).toEqual([
       "Home",
-      "Board",
-      "Card",
       "Pairings",
-      "Profile",
+      "Board",
+      "Me",
     ]);
   });
 
