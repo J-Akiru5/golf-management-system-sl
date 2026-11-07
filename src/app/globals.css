@@ -13,6 +13,7 @@
   --surface-sunken: #efeee7;
   --line: #e2e4dc;
   --line-strong: #747d75;
+  --grid-line: #79847c;
   --ink: #202522;
   --ink-muted: #626b64;
   /* The page's ink pair, kept apart from --ink. A page-coloured popup inside the dark chrome (the
@@ -81,6 +82,7 @@
     --surface-sunken: #111713;
     --line: #303a34;
     --line-strong: #87948b;
+    --grid-line: #8a948c;
     --ink: #eef1ec;
     --ink-muted: #b1bbb3;
     --ink-page: #eef1ec;
@@ -121,6 +123,7 @@
   --surface-sunken: #111713;
   --line: #303a34;
   --line-strong: #87948b;
+  --grid-line: #8a948c;
   --ink: #eef1ec;
   --ink-muted: #b1bbb3;
   --ink-page: #eef1ec;
@@ -162,6 +165,7 @@
   --surface-sunken: #111713;
   --line: #303a34;
   --line-strong: #87948b;
+  --grid-line: #8a948c;
   --ink: #eef1ec;
   --ink-muted: #b1bbb3;
   --ink-page: #eef1ec;
@@ -204,6 +208,7 @@
   --color-surface-sunken: var(--surface-sunken);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+  --color-grid-line: var(--grid-line);
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
   --color-forest: var(--forest);
@@ -3130,11 +3135,21 @@
 :root {
   --rail-width: 60px;
   --rail-pad: 112px;
+  /* Matches the shell header height. */
+  --shell-header: 84px;
 }
 
 :root[data-rail="expanded"] {
   --rail-width: 212px;
   --rail-pad: 264px;
+}
+
+/* The desktop calendar is a full-height workspace. The build label would otherwise take a slice
+   of the height the month grid needs, so it steps out at the rail breakpoint. Phones keep it. */
+@media (min-width: 1024px) {
+  main:has(.calendar-page) [data-testid="app-version"] {
+    display: none;
+  }
 }
 
 /* ------------------------------------------------------------------------------- help centre */

@@ -19,16 +19,18 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   calendarEvent,
+  DAY_CELL_EVENT_LIMIT,
   eventsOnDate,
   findCalendarConflicts,
   manilaToday,
   monthCells,
   monthLabel,
   monthOf,
+  splitDayEvents,
 } from "@/lib/calendar/calendar";
 import { buildIcs, googleCalendarUrl } from "@/lib/calendar/ics";
 import type { EmailOutboxMessage } from "@/lib/data/email";
-import { fmtRange } from "@/lib/data/labels";
+import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import type { Tournament } from "@/lib/data/types";
 import { shrinkLogo } from "@/lib/photo";
 import { useDesk } from "@/lib/store/desk-store";
@@ -103,6 +105,8 @@ export default function CalendarPage() {
   const [drawWentStale, setDrawWentStale] = useState(false);
   const [emails, setEmails] = useState<EmailOutboxMessage[]>([]);
   const [emailBusy, setEmailBusy] = useState(false);
+  // The date whose day sheet is open; the cell's "+n more" control sets it.
+  const [dayPeek, setDayPeek] = useState<string | null>(null);
   const canManage = !member || member.role === "owner" || member.role === "organizer";
   const editing = draft?.id ? (tournaments.find((t) => t.id === draft.id) ?? null) : null;
   const calendarLink = editing
@@ -357,7 +361,7 @@ export default function CalendarPage() {
   const sameDayConflicts = conflicts.filter((conflict) => conflict.kind === "same-day");
 
   return (
-    <div className="grid gap-6">
+    <div className="calendar-page grid gap-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-3">
       <PageHeader overline="Events" title="Calendar">
         Every event in one place. The same course and tee time cannot be booked twice; two events on
         the same day are allowed but shown as a warning.
@@ -408,8 +412,11 @@ export default function CalendarPage() {
       )}
 
       {view === "month" ? (
-        <section className="card overflow-hidden p-0" aria-label="Event month">
-          <div className="flex items-center justify-between gap-3 border-b border-line p-3">
+        <section
+          className="card overflow-hidden p-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col"
+          aria-label="Event month"
+        >
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-grid-line p-3 lg:py-2">
             <Button
               variant="ghost"
               size="icon-sm"
@@ -440,35 +447,36 @@ export default function CalendarPage() {
               <ChevronRight aria-hidden="true" />
             </Button>
           </div>
-          <div className="grid grid-cols-7 border-b border-line bg-surface-sunken">
+          <div className="grid shrink-0 grid-cols-7 border-b border-grid-line bg-surface-sunken py-2 lg:py-1">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
               <div
                 key={day}
-                className="px-2 py-2 text-center text-[10px] font-bold tracking-[.08em] text-ink-muted uppercase"
+                className="px-2 text-center text-[10px] font-bold tracking-[.08em] text-ink-muted uppercase"
               >
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 lg:min-h-0 lg:flex-1 lg:grid-rows-6">
             {cells.map((cell) => {
               const dayEvents = eventsOnDate(events, cell.date);
+              const { visible, hidden } = splitDayEvents(dayEvents, DAY_CELL_EVENT_LIMIT);
               const isToday = cell.date === todayIso;
               return (
                 <div
                   key={cell.date}
                   aria-current={isToday ? "date" : undefined}
                   className={cn(
-                    "min-h-28 border-r border-b border-line p-1.5 last:border-r-0",
+                    "flex min-h-28 flex-col border-r border-b border-grid-line p-1.5 last:border-r-0 lg:min-h-0 lg:p-1",
                     cell.inMonth ? "bg-surface" : "bg-surface-sunken/55 text-ink-muted",
                     isToday && "bg-gold-soft/45 ring-2 ring-gold ring-inset",
                   )}
                 >
-                  <div className="mb-1 flex items-center gap-1.5">
+                  <div className="mb-1 flex shrink-0 items-center gap-1.5 lg:mb-0.5">
                     <button
                       type="button"
                       className={cn(
-                        "grid size-6 place-items-center rounded-full text-[11px] font-bold hover:bg-fairway-soft",
+                        "grid size-6 place-items-center rounded-full text-[11px] font-bold hover:bg-fairway-soft lg:size-5",
                         isToday && "bg-gold text-on-gold hover:bg-gold",
                       )}
                       onClick={() => canManage && openCreate(cell.date)}
@@ -481,17 +489,29 @@ export default function CalendarPage() {
                       {Number(cell.date.slice(-2))}
                     </button>
                     {isToday && (
-                      <span className="text-[9px] font-bold tracking-[.08em] text-gold-ink uppercase">
+                      <span className="hidden text-[9px] font-bold tracking-[.08em] text-gold-ink uppercase sm:inline">
                         Today
                       </span>
                     )}
+                    {hidden.length > 0 && (
+                      <button
+                        type="button"
+                        className="ml-auto inline-flex min-h-6 shrink-0 items-center rounded px-1.5 text-[10px] font-semibold text-ink-muted hover:bg-fairway-soft hover:text-fairway"
+                        onClick={() => setDayPeek(cell.date)}
+                        aria-haspopup="dialog"
+                        aria-label={`+${hidden.length} more: show all ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"} on ${fmtDateLabel([cell.date])}`}
+                      >
+                        +{hidden.length}
+                        <span className="hidden sm:inline"> more</span>
+                      </button>
+                    )}
                   </div>
-                  <div className="grid gap-1">
-                    {dayEvents.slice(0, 3).map((event) => (
+                  <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+                    {visible.map((event) => (
                       <button
                         key={`${event.id}-${cell.date}`}
                         type="button"
-                        className="flex min-w-0 items-center gap-1.5 rounded-md border border-line bg-surface-raised px-1.5 py-1 text-left text-[11px] hover:border-fairway"
+                        className="flex min-w-0 items-center gap-1.5 rounded-md border border-line bg-surface-raised px-1.5 py-1 text-left text-[11px] hover:border-fairway lg:py-0.5 lg:text-[10px] lg:leading-3"
                         onClick={() =>
                           canManage &&
                           openEdit(tournaments.find((t) => t.id === event.id) as Tournament)
@@ -515,11 +535,6 @@ export default function CalendarPage() {
                         <span className="min-w-0 truncate font-semibold">{event.name}</span>
                       </button>
                     ))}
-                    {dayEvents.length > 3 && (
-                      <span className="text-[10px] text-ink-muted">
-                        +{dayEvents.length - 3} more
-                      </span>
-                    )}
                   </div>
                 </div>
               );
@@ -527,7 +542,7 @@ export default function CalendarPage() {
           </div>
         </section>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:content-start">
           {[...events]
             .sort((a, b) => (a.dates[0] ?? "").localeCompare(b.dates[0] ?? ""))
             .map((event) => (
@@ -821,6 +836,67 @@ export default function CalendarPage() {
                   {busy ? "Saving…" : error ? "Try save again" : "Save event"}
                 </Button>
               </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={dayPeek !== null} onOpenChange={(open) => !open && setDayPeek(null)}>
+        <SheetContent
+          title={dayPeek ? fmtDateLabel([dayPeek]) : "Day"}
+          description="Every event on this day."
+        >
+          {dayPeek && (
+            <div className="grid gap-2">
+              {eventsOnDate(events, dayPeek).map((event) => (
+                <button
+                  key={event.id}
+                  type="button"
+                  disabled={!canManage}
+                  className="flex min-w-0 items-center gap-2.5 rounded-lg border border-line bg-surface-raised px-2.5 py-2 text-left hover:border-fairway disabled:cursor-default disabled:hover:border-line"
+                  onClick={() => {
+                    if (!canManage) return;
+                    const tournament = tournaments.find((t) => t.id === event.id);
+                    if (!tournament) return;
+                    setDayPeek(null);
+                    openEdit(tournament);
+                  }}
+                >
+                  {event.logoUrl ? (
+                    <img
+                      src={event.logoUrl}
+                      alt=""
+                      className="size-7 shrink-0 rounded object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <CalendarDays className="size-4 shrink-0 text-fairway" aria-hidden="true" />
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{event.name}</span>
+                    <span className="block truncate text-[11px] text-ink-muted">
+                      {event.hostName ?? "No host recorded"} · {STATUS_LABEL[event.status]}
+                    </span>
+                  </span>
+                </button>
+              ))}
+              {canManage && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="justify-self-start"
+                  onClick={() => {
+                    if (!canManage || !dayPeek) return;
+                    const date = dayPeek;
+                    setDayPeek(null);
+                    openCreate(date);
+                  }}
+                >
+                  <Plus aria-hidden="true" /> New event on this date
+                </Button>
+              )}
             </div>
           )}
         </SheetContent>

@@ -780,6 +780,124 @@ check(
   "the exact course/time overlap is refused",
   (await calendarPage.getByText(/both start at|already booked|Double booking/).count()) > 0,
 );
+
+// --------------------------------------------------------------- calendar sizing and grid line
+// Issue #173: the month grid must fill a typical desk viewport without the page scrolling, the day
+// dividers must stay visible in both themes, and the month/list switch must still work on a phone.
+// The switcher matches on exact names: getByRole matches substrings by default, so "Month" would
+// also catch "Previous month" and "Next month". Nothing is created or saved in this block.
+
+// The conflict check above leaves the edit sheet open. Close it before measuring layout, or its
+// overlay intercepts the Month button.
+await calendarPage.keyboard.press("Escape");
+await expect(calendarPage.getByRole("dialog")).toBeHidden({ timeout: 8000 });
+const viewButton = (name) => calendarPage.getByRole("button", { name, exact: true });
+const setCalendarTheme = async (theme) => {
+  await calendarPage.evaluate((choice) => {
+    localStorage.setItem("starter-theme", choice);
+    document.documentElement.dataset.theme = choice;
+  }, theme);
+  await calendarPage.waitForTimeout(150);
+};
+
+section("calendar fills the viewport");
+await viewButton("Month").click();
+for (const size of [
+  { width: 1366, height: 768 },
+  { width: 1536, height: 864 },
+  { width: 1729, height: 834 },
+  { width: 1920, height: 1080 },
+]) {
+  for (const theme of ["light", "dark"]) {
+    await setCalendarTheme(theme);
+    await calendarPage.setViewportSize(size);
+    await calendarPage.waitForTimeout(150);
+    // A clipped page reports the same scrollHeight as a page that fits, so also check the month
+    // section and its last cell are actually on screen and that the six rows share the height.
+    const layout = await calendarPage.evaluate(() => {
+      const section = document.querySelector("section[aria-label='Event month']");
+      const grids = section?.querySelectorAll(".grid.grid-cols-7");
+      const cells = [...(grids[grids.length - 1]?.children ?? [])];
+      const rowHeights = [0, 7, 14, 21, 28, 35].map(
+        (index) => cells[index]?.getBoundingClientRect().height ?? 0,
+      );
+      return {
+        scroll: document.documentElement.scrollHeight,
+        inner: window.innerHeight,
+        sectionBottom: section?.getBoundingClientRect().bottom ?? -1,
+        lastCellBottom: cells.at(-1)?.getBoundingClientRect().bottom ?? -1,
+        rowHeights,
+      };
+    });
+    const rowsEqual =
+      Math.max(...layout.rowHeights) - Math.min(...layout.rowHeights) <= 1 &&
+      layout.rowHeights.every((height) => height > 0);
+    const onScreen = (value) => value <= layout.inner + 0.5;
+    check(
+      `${size.width}x${size.height} ${theme} fits without a page scroll`,
+      layout.scroll <= layout.inner &&
+        onScreen(layout.sectionBottom) &&
+        onScreen(layout.lastCellBottom) &&
+        rowsEqual,
+      `${layout.scroll}/${layout.inner}, grid ends ${Math.round(layout.sectionBottom)}, rows ${layout.rowHeights.map(Math.round).join("/")}`,
+    );
+  }
+}
+
+section("calendar grid line");
+for (const theme of ["light", "dark"]) {
+  await setCalendarTheme(theme);
+  // `section[aria-label='Event month']` holds two `.grid.grid-cols-7` boxes: the weekday header
+  // comes first and the day cells come last, so the sample comes from the last one. Cell 10 of that
+  // grid is always inside the month (there are at most six leading blanks), and today's cell is
+  // skipped because its gold ring tints the surface behind the divider.
+  const sample = await calendarPage.evaluate(() => {
+    const grids = document.querySelectorAll("section[aria-label='Event month'] .grid.grid-cols-7");
+    const cells = [...(grids[grids.length - 1]?.children ?? [])];
+    let cell = cells[10];
+    if (cell?.getAttribute("aria-current") === "date") cell = cells[11];
+    if (!cell) return null;
+    const style = getComputedStyle(cell);
+    // The divider is the cell's own right border; the surface behind it is the cell background,
+    // walking up the tree only if the cell itself paints nothing.
+    let background = style.backgroundColor;
+    for (let node = cell.parentElement; node; node = node.parentElement) {
+      if (background !== "rgba(0, 0, 0, 0)") break;
+      background = getComputedStyle(node).backgroundColor;
+    }
+    return { border: style.borderRightColor, background, width: style.borderRightWidth };
+  });
+  const ratio = sample ? contrast(sample.border, sample.background) : 0;
+  check(
+    `${theme} day cell divider clears 3:1`,
+    ratio >= 3,
+    `(${ratio.toFixed(2)}:1, ${sample?.width ?? "no cell"}, ${sample?.background ?? "-"})`,
+  );
+}
+
+section("calendar on a phone");
+await calendarPage.setViewportSize({ width: 390, height: 844 });
+await viewButton("Month").click();
+check(
+  "the month grid survives a phone",
+  await calendarPage.locator("section[aria-label='Event month']").isVisible(),
+);
+// A phone may scroll; only the view switch is asserted here. Click and poll because a click that
+// lands before hydration is swallowed rather than queued.
+await viewButton("List").click();
+let visibleArticles = 0;
+for (let attempt = 0; attempt < 10; attempt += 1) {
+  visibleArticles = await calendarPage.getByRole("article").filter({ visible: true }).count();
+  if (visibleArticles > 0) break;
+  await calendarPage.waitForTimeout(200);
+}
+check("the list view shows an event on a phone", visibleArticles >= 1, `(${visibleArticles})`);
+await viewButton("Month").click();
+
+// Leave the page where the rest of the run expects it: desktop size, light theme.
+await calendarPage.setViewportSize({ width: 1440, height: 950 });
+await setCalendarTheme("light");
+
 await calendarContext.close();
 
 console.log(`\nconsole errors: ${errors.length}`);

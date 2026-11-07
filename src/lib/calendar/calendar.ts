@@ -78,6 +78,29 @@ export function eventsOnDate(events: readonly CalendarEvent[], date: string): Ca
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** Event chips a month cell shows before the "+n more" control. */
+export const DAY_CELL_EVENT_LIMIT = 3;
+
+export interface DayCellEvents {
+  visible: CalendarEvent[];
+  hidden: CalendarEvent[];
+}
+
+/**
+ * Splits a day's events into the ones a month cell renders inline and the rest, which the cell
+ * reports through "+n more". Pure: keeps input order, never mutates.
+ */
+export function splitDayEvents(events: readonly CalendarEvent[], limit?: number): DayCellEvents {
+  const requested = limit ?? DAY_CELL_EVENT_LIMIT;
+  const safeLimit = Number.isFinite(requested)
+    ? Math.max(0, Math.floor(requested))
+    : DAY_CELL_EVENT_LIMIT;
+  return {
+    visible: events.slice(0, safeLimit),
+    hidden: events.slice(safeLimit),
+  };
+}
+
 export interface MonthCell {
   date: string;
   inMonth: boolean;
