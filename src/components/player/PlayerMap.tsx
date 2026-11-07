@@ -78,6 +78,7 @@ export function PlayerMap() {
             key={hole.hole}
             type="button"
             className="hole-chip tnum flex min-h-11 items-center justify-center text-[15px]"
+            aria-label={t("player.course.hole", { hole: hole.hole })}
             aria-pressed={selected === hole.hole}
             onClick={() => pick(hole.hole)}
           >

@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "@/lib/i18n/context";
+import type { TranslationKey } from "@/lib/i18n/t";
 import { cn } from "@/lib/ui/cn";
 import {
   DESK_MOBILE_ITEMS,
@@ -54,6 +56,9 @@ function TabBar({
   onMore?: () => void;
 }) {
   const path = usePathname();
+  const { t } = useI18n();
+  const labelOf = (item: MobileNavItem): string =>
+    item.labelKey ? t(item.labelKey as TranslationKey) : item.label;
 
   return (
     <nav
@@ -80,7 +85,7 @@ function TabBar({
               <span className="mobile-tabbar-icon">
                 <Icon className="size-5" aria-hidden="true" />
               </span>
-              <span>{item.label}</span>
+              <span>{labelOf(item)}</span>
             </button>
           );
         }
@@ -101,7 +106,7 @@ function TabBar({
             <span className={cn("mobile-tabbar-icon", item.action && "mobile-tabbar-action")}>
               <Icon className="size-5" aria-hidden="true" />
             </span>
-            <span>{item.label}</span>
+            <span>{labelOf(item)}</span>
           </Link>
         );
       })}

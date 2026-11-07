@@ -78,8 +78,7 @@ export const tl: Dictionary = {
       noHandicap:
         "Walang nakatalang handicap para sa round na ito, kaya hindi ipinapakita ang net points.",
       help: "Ang Hcp ay ang stroke na natanggap sa hole. Ang Net ay score na binawasan ng Hcp. Points: 2 para sa net par, 3 para sa net birdie, 1 para sa net bogey.",
-      swipe:
-        "I-swipe pahiga ang card para makita ang lahat ng column. Nananatili ang hole number.",
+      swipe: "I-swipe pahiga ang card para makita ang lahat ng column. Nananatili ang hole number.",
       empty:
         "Lalabas dito ang hole-by-hole scorecard mo pagkatapos ilathala ng organizer ang resulta ng araw.",
     },
@@ -178,7 +177,7 @@ export const tl: Dictionary = {
       generic: "Hindi nag-load ang player area: {message}",
     },
     demo: {
-      body: "Demo data ang build na ito at walang account, kaya walang player area dito.",
+      body: "Sample data ang build na ito at walang account. Halimbawa lang ang nasa screen, hindi ang live na draw ng club.",
       link: "Naroon ang nailathalang pairings",
     },
     // Idinagdag para sa mobile player app (stream S2).
@@ -215,6 +214,12 @@ export const tl: Dictionary = {
       dayNotOut: "Wala pa ang oras ng simula para sa araw na ito.",
       demoBanner: "Demo view: sample data, hindi ang live na draw ng club.",
       loading: "Nilo-load ang oras ng simula mo…",
+    },
+    tab: {
+      home: "Home",
+      pairings: "Pairings",
+      board: "Board",
+      me: "Ako",
     },
   },
   pairings: {
@@ -419,7 +424,8 @@ export const tl: Dictionary = {
     messages: {
       signedOut: "Naka-sign out ka na.",
       checkEmail: "Tingnan ang email para kumpirmahin ang account, tapos mag-sign in dito.",
-      confirmationSent: "Kung kailangan ng confirmation ang email na iyon, paparating na ang bagong link.",
+      confirmationSent:
+        "Kung kailangan ng confirmation ang email na iyon, paparating na ang bagong link.",
       resetSent: "Kung may account ang email na iyon, nagpadala kami ng reset link.",
       passwordUpdated: "Na-update ang password mo. Mag-sign in gamit ang bago.",
     },

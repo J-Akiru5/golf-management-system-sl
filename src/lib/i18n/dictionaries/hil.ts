@@ -178,7 +178,7 @@ export const hil: Dictionary = {
       generic: "Wala nag-load ang player area: {message}",
     },
     demo: {
-      body: "Demo data ang build nga ini kag wala sang account, gani wala sang player area diri.",
+      body: "Sample data ang build nga ini kag wala sang account. Halimbawa lamang ang yara sa screen, indi ang live nga draw sang club.",
       link: "Ara ang ginpahayag nga pairing",
     },
     // Gindugang para sa mobile player app (stream S2).
@@ -215,6 +215,12 @@ export const hil: Dictionary = {
       dayNotOut: "Wala pa ang oras sang pagsugod para sa sini nga adlaw.",
       demoBanner: "Demo view: sample data, indi ang live nga draw sang club.",
       loading: "Ginaga-load ang oras sang pagsugod mo…",
+    },
+    tab: {
+      home: "Home",
+      pairings: "Pairing",
+      board: "Board",
+      me: "Ako",
     },
   },
   pairings: {
@@ -385,7 +391,8 @@ export const hil: Dictionary = {
   // Gindugang para sa sign-in page sa phone (stream S2).
   auth: {
     title: "Mag-sign in",
-    intro: "Makita sang players ang ila kaugalingon nga pagsugod. Ang club staff ang nagabukas sang desk.",
+    intro:
+      "Makita sang players ang ila kaugalingon nga pagsugod. Ang club staff ang nagabukas sang desk.",
     pairingsLine: "Bukas ang pairing para sa tanan.",
     openPairings: "Bukasa ang pairing",
     email: "Email",
@@ -420,7 +427,8 @@ export const hil: Dictionary = {
     messages: {
       signedOut: "Naka-sign out ka na.",
       checkEmail: "Tan-awa ang email agod makumpirma ang account, dayon mag-sign in diri.",
-      confirmationSent: "Kon kinahanglan sang confirmation ang amo nga email, padulong na ang bag-o nga link.",
+      confirmationSent:
+        "Kon kinahanglan sang confirmation ang amo nga email, padulong na ang bag-o nga link.",
       resetSent: "Kon may account ang amo nga email, nagpadala kami sang reset link.",
       passwordUpdated: "Na-update ang password mo. Mag-sign in gamit ang bag-o.",
     },

@@ -103,7 +103,7 @@ export default async function PlayerBoardPage({
               key={round.roundId}
               href={`/my/board?round=${round.roundId}`}
               aria-current={selected?.roundId === round.roundId ? "page" : undefined}
-              className="pill inline-flex min-h-11 shrink-0 items-center whitespace-nowrap px-3 no-underline"
+              className="pill inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-[13px] whitespace-nowrap no-underline"
             >
               {t("player.scorecard.day", { day: round.dayNumber })} · {dayText(round.playDate)}
             </Link>

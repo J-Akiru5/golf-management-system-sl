@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  CalendarPlus,
-  Check,
-  ClipboardList,
-  Flag,
-  MapPin,
-  Share2,
-  Users,
-} from "lucide-react";
+import { CalendarPlus, Check, ClipboardList, MapPin, Share2, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { fmtTime } from "@/lib/format";
@@ -85,6 +77,7 @@ export function PlayerHomeHero({
 
   const chooseDay = (date: string) => {
     setSelectedDate(date);
+    setNotice(null);
     try {
       window.localStorage.setItem(storageKey, date);
     } catch {
@@ -178,7 +171,7 @@ export function PlayerHomeHero({
       className="grid grid-cols-2 gap-2 sm:grid-cols-4"
       data-testid="hero-actions"
     >
-      {started ? (
+      {started && (
         <button
           type="button"
           className="btn gold min-h-12 justify-start gap-2"
@@ -188,11 +181,6 @@ export function PlayerHomeHero({
           <CalendarPlus className="size-[18px] shrink-0" aria-hidden="true" />
           <span>{t("player.home.addCalendar")}</span>
         </button>
-      ) : (
-        <Link href="/pairings" className="btn gold min-h-12 justify-start gap-2 no-underline">
-          <Flag className="size-[18px] shrink-0" aria-hidden="true" />
-          <span>{t("player.home.notOutAction")}</span>
-        </Link>
       )}
       <button
         type="button"
@@ -284,11 +272,7 @@ export function PlayerHomeHero({
                   <Users className="size-4" aria-hidden="true" />
                   {t("player.home.yourGroup")}
                 </p>
-                <ul className="plain">
-                  {groupMates.map((name) => (
-                    <li key={name}>{name}</li>
-                  ))}
-                </ul>
+                <p className="hero-mates">{groupMates.join(", ")}</p>
                 <p className="hero-meta">
                   {t("player.home.groupCount", { count: groupMates.length + 1 })}
                 </p>
@@ -304,9 +288,6 @@ export function PlayerHomeHero({
             <div className="flex flex-wrap gap-2">
               <Link href="/pairings" className="btn gold no-underline">
                 {t("player.home.notOutAction")}
-              </Link>
-              <Link href="/pairings#tee-times" className="btn ghost no-underline">
-                {t("player.home.notOutProgramme")}
               </Link>
             </div>
           </div>

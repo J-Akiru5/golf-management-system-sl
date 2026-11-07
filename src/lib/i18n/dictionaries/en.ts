@@ -179,7 +179,7 @@ export const en = {
       generic: "The player area could not load: {message}",
     },
     demo: {
-      body: "This build runs on demo data with no accounts, so there is no player area here.",
+      body: "This build runs on sample data with no accounts. The screen shows an example, not the club's live draw.",
       link: "The published pairings are this way",
     },
     // Added for the mobile player app (stream S2). Appended, so existing keys keep their order.
@@ -216,6 +216,12 @@ export const en = {
       dayNotOut: "The start for this day is not out yet.",
       demoBanner: "Demo view: sample data, not the club's live draw.",
       loading: "Loading your start…",
+    },
+    tab: {
+      home: "Home",
+      pairings: "Pairings",
+      board: "Board",
+      me: "Me",
     },
   },
   pairings: {

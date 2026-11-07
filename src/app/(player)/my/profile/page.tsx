@@ -35,7 +35,6 @@ function SettingsCard({ t }: { t: Translate }) {
   );
 }
 
-
 /**
  * Who the account is in the club's books. A photo is shown only from the public bucket, which the
  * club fills for players who agreed to a public copy; the private photo never reaches this page.
@@ -58,12 +57,36 @@ export default async function PlayerProfilePage() {
             <Avatar name={sample.player?.name ?? "Player"} large />
             <div className="grid min-w-0 flex-1 gap-0.5">
               <h2 className="text-[18px] leading-6 break-words">{sample.player?.name}</h2>
-              <p className="hint">
-                {t("player.profile.ngap")} {sample.player?.ngapId}
-              </p>
             </div>
           </div>
+          <dl className="m-0 grid gap-2 border-t border-line pt-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="small-h">{t("player.profile.ngap")}</dt>
+              <dd className="m-0 text-right text-[14px] font-semibold tnum">
+                {sample.player?.ngapId ?? t("player.profile.noNgap")}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="small-h">{t("player.profile.entries")}</dt>
+              <dd className="m-0 text-right text-[14px] font-semibold tnum">
+                {sample.entries.length}
+              </dd>
+            </div>
+          </dl>
         </section>
+        <nav aria-label={t("player.app.tiles")} className="app-tiles">
+          {[
+            { href: "/my/board", label: t("player.app.openBoard"), Icon: Trophy },
+            { href: "/my/card", label: t("player.app.openCard"), Icon: ClipboardList },
+            { href: "/my/course", label: t("player.app.openCourse"), Icon: Map },
+            { href: "/pairings", label: t("player.app.openPairings"), Icon: List },
+          ].map(({ href, label, Icon }) => (
+            <Link key={href} href={href} className="app-tile no-underline">
+              <Icon className="size-[18px] shrink-0" aria-hidden="true" />
+              <span className="min-w-0">{label}</span>
+            </Link>
+          ))}
+        </nav>
         <p className="notice" role="status">
           {t("player.demo.body")}{" "}
           <Link href="/pairings" className="font-semibold underline">

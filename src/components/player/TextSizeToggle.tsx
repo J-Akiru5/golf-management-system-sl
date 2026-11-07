@@ -15,7 +15,14 @@ import { cn } from "@/lib/ui/cn";
 const KEY = "teeline.text-size";
 const ATTR = "data-textsize";
 
-export function TextSizeToggle({ className }: { className?: string }) {
+export function TextSizeToggle({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  /** Icon only on phones, for a crowded toolbar. The accessible name stays. */
+  compact?: boolean;
+}) {
   const { t } = useI18n();
   const [large, setLarge] = useState(false);
   const [ready, setReady] = useState(false);
@@ -56,7 +63,7 @@ export function TextSizeToggle({ className }: { className?: string }) {
       suppressHydrationWarning
     >
       <Type className="size-4 shrink-0" aria-hidden="true" />
-      <span>{t("pairings.largeText")}</span>
+      <span className={compact ? "hidden sm:inline" : undefined}>{t("pairings.largeText")}</span>
       <span className="sr-only">{ready && large ? t("pairings.largeTextOn") : ""}</span>
     </button>
   );

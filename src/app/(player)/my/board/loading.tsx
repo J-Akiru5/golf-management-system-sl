@@ -15,7 +15,7 @@ export default function BoardLoading() {
 
         <div className="flex gap-2 overflow-hidden py-1">
           {PILL_WIDTHS.map((width) => (
-            <div key={width} className={`h-11 shrink-0 rounded-md bg-surface-sunken ${width}`} />
+            <div key={width} className={`h-11 shrink-0 rounded-full bg-surface-sunken ${width}`} />
           ))}
         </div>
 

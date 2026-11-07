@@ -894,12 +894,15 @@
      the shared field rule paints the page surface while the band's ink is ivory: the closed control
      read ivory on white. The option list is a browser-drawn popup, so the options carry page
      colours of their own instead of inheriting the band's ivory on its light background. */
-  .band .lang-select {
+  .band .lang-select,
+  .public-head .lang-select {
     width: auto;
     padding: 0 10px;
+    min-height: 44px;
     border-color: var(--on-forest-muted);
     background: transparent;
     color: var(--on-forest);
+    color-scheme: dark;
   }
   .lang-select option {
     background: var(--surface-raised);
@@ -4386,11 +4389,9 @@ html[data-textsize="large"] {
 @keyframes player-page-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
@@ -4402,8 +4403,8 @@ html[data-textsize="large"] {
 
 .hero-card {
   display: grid;
-  gap: 10px;
-  padding: 18px;
+  gap: 8px;
+  padding: 16px;
   border-radius: 20px;
   background: linear-gradient(150deg, #073d2e 0%, #0b4d3a 58%, #0e5a44 100%);
   color: var(--on-forest);
@@ -4413,8 +4414,8 @@ html[data-textsize="large"] {
 
 .hero-event {
   font-family: var(--f-serif);
-  font-size: 24px;
-  line-height: 30px;
+  font-size: 23px;
+  line-height: 29px;
   font-weight: 600;
   color: var(--on-forest);
   overflow-wrap: anywhere;
@@ -4486,6 +4487,13 @@ html[data-textsize="large"] {
   line-height: 20px;
 }
 
+.hero-mates {
+  font-size: 15px;
+  line-height: 21px;
+  color: var(--on-forest);
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Day chips ---------- */
 .day-chips {
   display: flex;
@@ -4549,7 +4557,7 @@ html[data-textsize="large"] {
 .sticky-start {
   position: fixed;
   inset-inline: 0;
-  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(57px + env(safe-area-inset-bottom, 0px));
   z-index: 35;
   padding: 8px max(12px, env(safe-area-inset-left, 0px)) 8px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);

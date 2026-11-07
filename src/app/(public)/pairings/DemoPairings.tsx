@@ -103,13 +103,7 @@ export function DemoPairings() {
         </section>
       ) : (
         <>
-          {programme && (
-            <>
-              <ProgrammeNav programme={programme} hasPairings />
-              <TeeTimesBoard programme={programme} />
-              <PlayerDirectory programme={programme} />
-            </>
-          )}
+          {programme && <ProgrammeNav programme={programme} hasPairings />}
 
           <section
             className="grid gap-3"
@@ -119,6 +113,9 @@ export function DemoPairings() {
             <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
             <PairingsView pairings={pairings} headingLevel="section" flightFilter />
           </section>
+
+          <TeeTimesBoard programme={programme} />
+          <PlayerDirectory programme={programme} />
 
           {programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
         </>

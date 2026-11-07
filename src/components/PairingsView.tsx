@@ -136,26 +136,29 @@ export function PairingsView({
           className="no-print sticky top-0 z-30 grid gap-2 border-b border-line bg-surface-raised/95 px-2 pb-2 backdrop-blur-sm [padding-top:max(env(safe-area-inset-top,0px),8px)]"
           data-testid="pairings-toolbar"
         >
-          <input
-            ref={searchRef}
-            type="search"
-            className="w-full text-[16px]"
-            data-help="pairings-search"
-            placeholder={t("pairings.findName")}
-            aria-label={t("pairings.findName")}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setFocusRequest(null);
-              setNotListed(false);
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              ref={searchRef}
+              type="search"
+              className="min-w-0 flex-1 text-[16px]"
+              data-help="pairings-search"
+              placeholder={t("pairings.findName")}
+              aria-label={t("pairings.findName")}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setFocusRequest(null);
+                setNotListed(false);
+              }}
+            />
+            <TextSizeToggle className="min-h-11 shrink-0" compact />
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             {flightFilter && flights.length > 1 && (
               <select
                 aria-label={t("pairings.filterFlight")}
                 data-help="pairings-flight"
-                className="h-11 min-w-0 flex-1 basis-40"
+                className="h-11 min-w-0 flex-1"
                 value={flight}
                 onChange={(e) => {
                   setFlight(e.target.value);
@@ -182,7 +185,6 @@ export function PairingsView({
             >
               {t("common.print")}
             </button>
-            <TextSizeToggle className="min-h-11" />
           </div>
           {notListed && (
             <p className="m-0 text-[13px] leading-5 text-ink-muted" role="status">

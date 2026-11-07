@@ -175,13 +175,7 @@ export default async function PublicPairingsPage() {
         </section>
       ) : (
         <>
-          {showProgramme && programme && (
-            <>
-              <ProgrammeNav programme={programme} hasPairings />
-              <TeeTimesBoard programme={programme} />
-              <PlayerDirectory programme={programme} />
-            </>
-          )}
+          {showProgramme && programme && <ProgrammeNav programme={programme} hasPairings />}
 
           <section
             className="grid gap-3"
@@ -209,6 +203,13 @@ export default async function PublicPairingsPage() {
             )}
             <PairingsView pairings={pairings} headingLevel="section" flightFilter you={you} />
           </section>
+
+          {showProgramme && programme && (
+            <>
+              <TeeTimesBoard programme={programme} />
+              <PlayerDirectory programme={programme} />
+            </>
+          )}
 
           {showProgramme && programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
         </>

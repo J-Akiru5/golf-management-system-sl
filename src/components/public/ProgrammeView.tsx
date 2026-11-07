@@ -41,6 +41,11 @@ export function ProgrammeNav({
       className="no-print flex w-full min-w-0 gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible"
       aria-label={t("programme.navLabel")}
     >
+      {hasPairings && (
+        <a className={NAV_LINK} href="#pairings">
+          {t("programme.navPairings")}
+        </a>
+      )}
       {programme.days.length > 0 && (
         <a className={NAV_LINK} href="#tee-times">
           {t("programme.navTeeTimes")}
@@ -49,11 +54,6 @@ export function ProgrammeNav({
       {programme.players.length > 0 && (
         <a className={NAV_LINK} href="#players">
           {t("programme.navPlayers")}
-        </a>
-      )}
-      {hasPairings && (
-        <a className={NAV_LINK} href="#pairings">
-          {t("programme.navPairings")}
         </a>
       )}
       {showRules && (
