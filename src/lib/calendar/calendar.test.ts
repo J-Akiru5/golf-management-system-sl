@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   type CalendarEvent,
   calendarEvent,
+  DAY_CELL_EVENT_LIMIT,
   eventsOnDate,
   findCalendarConflicts,
   manilaToday,
   monthCells,
   monthLabel,
+  splitDayEvents,
 } from "./calendar";
 
 const event = (overrides: Partial<CalendarEvent> = {}): CalendarEvent => ({
@@ -124,5 +126,47 @@ describe("event calendar", () => {
       { playDate: "2026-11-12", startTime: "06:30", label: "Day 1" },
       { playDate: "2026-11-13", startTime: null, label: "Day 2" },
     ]);
+  });
+});
+
+describe("splitDayEvents", () => {
+  const many = (count: number): CalendarEvent[] =>
+    Array.from({ length: count }, (_, index) => event({ id: `event-${index + 1}` }));
+
+  it("hides the events past the limit and keeps input order", () => {
+    const events = many(5);
+    const { visible, hidden } = splitDayEvents(events);
+    expect(visible).toHaveLength(DAY_CELL_EVENT_LIMIT);
+    expect(visible.map((item) => item.id)).toEqual(["event-1", "event-2", "event-3"]);
+    expect(hidden.map((item) => item.id)).toEqual(["event-4", "event-5"]);
+  });
+
+  it("shows everything when the day has exactly the limit", () => {
+    const { visible, hidden } = splitDayEvents(many(DAY_CELL_EVENT_LIMIT));
+    expect(visible).toHaveLength(DAY_CELL_EVENT_LIMIT);
+    expect(hidden).toEqual([]);
+  });
+
+  it("returns empty arrays for a day with no events", () => {
+    expect(splitDayEvents([])).toEqual({ visible: [], hidden: [] });
+  });
+
+  it("shows nothing when the limit is 0", () => {
+    const { visible, hidden } = splitDayEvents(many(2), 0);
+    expect(visible).toEqual([]);
+    expect(hidden).toHaveLength(2);
+  });
+
+  it("treats a negative limit as 0", () => {
+    const { visible, hidden } = splitDayEvents(many(2), -5);
+    expect(visible).toEqual([]);
+    expect(hidden).toHaveLength(2);
+  });
+
+  it("does not mutate the input", () => {
+    const events = many(4);
+    const before = events.map((item) => item.id);
+    splitDayEvents(events, 1);
+    expect(events.map((item) => item.id)).toEqual(before);
   });
 });

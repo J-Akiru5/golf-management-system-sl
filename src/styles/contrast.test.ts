@@ -45,6 +45,7 @@ const PAIRS: [string, string, number][] = [
     ["danger", bg, 4.5],
     ["info", bg, 4.5],
     ["line-strong", bg, 3],
+    ["grid-line", bg, 3],
     ["focus", bg, 3],
   ]),
   ["ink", "fairway-soft", 4.5],
