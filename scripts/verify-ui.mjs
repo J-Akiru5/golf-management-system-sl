@@ -782,8 +782,291 @@ check(
 );
 await calendarContext.close();
 
+// ------------------------------------------------- player screens: layout and headings
+section("player screens: layout, targets and headings");
+
+// What every player screen has to hold, measured rather than trusted: one h1 and no skipped level,
+// an alt on every image, a name on every control, no duplicate ids, no sideways scroll, 44px targets
+// outside prose, readable text, and a scorecard whose eight column headings stay in the
+// accessibility tree while the phone layout stacks the holes into blocks. These ran in a throwaway
+// harness first; without them a hidden header, a skipped level or an unlabelled control could ship.
+const layoutAudit = () => {
+  const problems = [];
+  const parse = (value) => {
+    if (!value) return null;
+    const match = value.match(/rgba?\(([^)]+)\)/);
+    if (!match) return null;
+    const parts = match[1].split(/[ ,/]+/).filter(Boolean).map(Number);
+    if (parts.length < 3) return null;
+    return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
+  };
+  const luminance = ({ r, g, b }) => {
+    const channel = (value) => {
+      const c = value / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  };
+  const ratio = (a, b) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const over = (top, under) => ({
+    r: top.r * top.a + under.r * (1 - top.a),
+    g: top.g * top.a + under.g * (1 - top.a),
+    b: top.b * top.a + under.b * (1 - top.a),
+    a: 1,
+  });
+  const pageBase = () => {
+    const body = parse(getComputedStyle(document.body).backgroundColor);
+    return body && body.a >= 0.999 ? body : { r: 255, g: 255, b: 255, a: 1 };
+  };
+  const backgroundsFor = (el) => {
+    const overlays = [];
+    let base = null;
+    let node = el;
+    while (node && node !== document.documentElement) {
+      const style = getComputedStyle(node);
+      if (style.backgroundImage.includes("gradient")) {
+        const colors = [...style.backgroundImage.matchAll(/rgba?\([^)]+\)/g)]
+          .map((match) => parse(match[0]))
+          .filter(Boolean)
+          .filter((color) => color.a >= 0.99);
+        if (colors.length) {
+          base = colors;
+          break;
+        }
+      }
+      const color = parse(style.backgroundColor);
+      if (color && color.a > 0.001) {
+        if (color.a >= 0.99) {
+          base = [color];
+          break;
+        }
+        overlays.push(color);
+      }
+      node = node.parentElement;
+    }
+    const bases = base ?? [pageBase()];
+    const bottomUp = [...overlays].reverse();
+    return bases.map((bg) => bottomUp.reduce((acc, layer) => over(layer, acc), bg));
+  };
+
+  const h1s = document.querySelectorAll("h1");
+  if (h1s.length !== 1) problems.push(`h1 count ${h1s.length}`);
+  const levels = [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")].map((heading) =>
+    Number(heading.tagName[1]),
+  );
+  for (let index = 1; index < levels.length; index += 1) {
+    if (levels[index] - levels[index - 1] > 1) {
+      problems.push(`heading jump h${levels[index - 1]} to h${levels[index]}`);
+    }
+  }
+  for (const image of document.querySelectorAll("img")) {
+    if (!image.hasAttribute("alt")) problems.push(`image without alt ${image.getAttribute("src")}`);
+  }
+  const name = (el) => {
+    const text = (el.textContent || "").trim();
+    if (text) return text;
+    const label = el.getAttribute("aria-label") || el.getAttribute("title");
+    if (label) return label;
+    const inner = el.querySelector("[aria-label]");
+    if (inner) return inner.getAttribute("aria-label") || "";
+    const image = el.querySelector("img");
+    return image ? image.getAttribute("alt") || "" : "";
+  };
+  for (const control of document.querySelectorAll("button, a")) {
+    if (!name(control)) problems.push(`${control.tagName.toLowerCase()} without a name`);
+  }
+  for (const field of document.querySelectorAll("select, input, textarea")) {
+    if (field.tagName === "INPUT" && ["hidden", "submit", "button", "reset"].includes(field.type)) {
+      continue;
+    }
+    if (!name(field) && !field.labels?.length) {
+      problems.push(`${field.tagName.toLowerCase()} without a label`);
+    }
+  }
+  const ids = [...document.querySelectorAll("[id]")].map((el) => el.id);
+  const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+  if (duplicates.length) problems.push(`duplicate ids ${duplicates.join(",")}`);
+
+  const doc = document.documentElement;
+  if (doc.scrollWidth > doc.clientWidth + 1) {
+    problems.push(`page scrolls sideways ${doc.scrollWidth} over ${doc.clientWidth}`);
+  }
+
+  for (const control of document.querySelectorAll('a, button, select, input, summary, [role="button"]')) {
+    const style = getComputedStyle(control);
+    if (style.display === "none" || style.visibility === "hidden" || style.pointerEvents === "none") {
+      continue;
+    }
+    // A link inside a sentence is prose, not a target a thumb has to hit.
+    if (style.display === "inline" && control.closest("p")) continue;
+    const box = control.getBoundingClientRect();
+    if (box.width < 1 || box.height < 1) continue;
+    // 44px where a thumb lands, and the 24px WCAG minimum where a pointer does. The desk is dense
+    // and desktop-only chips are not thumb targets.
+    const minimum = window.innerWidth < 640 ? 44 : 24;
+    // The skip link is invisible until it takes focus; prove it is a full target when it does.
+    if (box.width <= 2 && box.height <= 2) {
+      control.focus();
+      const focused = control.getBoundingClientRect();
+      control.blur();
+      if (focused.height < minimum || focused.width < minimum) {
+        problems.push(
+          `skip control stays ${Math.round(focused.width)}x${Math.round(focused.height)} when focused`,
+        );
+      }
+      continue;
+    }
+    if (box.height < minimum || box.width < minimum) {
+      const label =
+        (control.textContent || "").trim().slice(0, 24) ||
+        control.getAttribute("aria-label") ||
+        control.tagName;
+      problems.push(`target ${Math.round(box.width)}x${Math.round(box.height)} "${label}"`);
+    }
+  }
+
+  const samples = [...document.querySelectorAll("body *")]
+    .filter((el) => {
+      if (["SCRIPT", "STYLE", "SVG", "PATH", "CIRCLE", "RECT"].includes(el.tagName)) return false;
+      if (![...el.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim())) {
+        return false;
+      }
+      const box = el.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) return false;
+      const style = getComputedStyle(el);
+      return (
+        style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) >= 0.5
+      );
+    })
+    .slice(0, 300);
+  for (const el of samples) {
+    const style = getComputedStyle(el);
+    const fill = el.ownerSVGElement ? style.fill : style.color;
+    if (!fill || fill === "none") continue;
+    const foreground = parse(fill);
+    if (!foreground) continue;
+    const backgrounds = backgroundsFor(el);
+    const worst = Math.min(
+      ...backgrounds.map((bg) => ratio(foreground.a < 1 ? over(foreground, bg) : foreground, bg)),
+    );
+    const size = Number.parseFloat(style.fontSize);
+    const weight = Number.parseInt(style.fontWeight, 10) || 400;
+    const need = size >= 24 || (size >= 18.66 && weight >= 700) ? 3 : 4.5;
+    if (worst < need) {
+      problems.push(
+        `contrast ${worst.toFixed(2)} under ${need} "${(el.textContent || "").trim().slice(0, 30)}"`,
+      );
+    }
+  }
+
+  const scorecards = [...document.querySelectorAll(".scorecard-table")].map((wrap) => {
+    const frame = wrap.getBoundingClientRect();
+    const cells = [...wrap.querySelectorAll("tbody td")].map((td) => {
+      const box = td.getBoundingClientRect();
+      return {
+        left: box.left - frame.left,
+        right: box.right - frame.left,
+        clipped: td.scrollWidth > td.clientWidth + 1,
+      };
+    });
+    const head = wrap.querySelector("thead");
+    const headStyle = head ? getComputedStyle(head) : null;
+    return {
+      headers: wrap.querySelectorAll("thead th").length,
+      scopes: [...wrap.querySelectorAll("thead th")].every((th) => th.getAttribute("scope") === "col"),
+      headerHidden: headStyle
+        ? headStyle.display === "none" || headStyle.visibility === "hidden"
+        : true,
+      tableDisplay: getComputedStyle(wrap.querySelector("table")).display,
+      scrolls: wrap.scrollWidth > wrap.clientWidth + 1,
+      outside: cells.filter((cell) => cell.right > wrap.clientWidth + 1 || cell.left < -1).length,
+      clipped: cells.filter((cell) => cell.clipped).length,
+    };
+  });
+
+  return { problems, scorecards };
+};
+
+// The real routes, in both card shapes: the demo build renders a sample card on /my/card, so the
+// phone check has an actual table to measure rather than a promise.
+const playerRoutes = [
+  "/my",
+  "/my/board",
+  "/my/card",
+  "/my/course",
+  "/my/profile",
+  "/pairings",
+  "/admin",
+];
+const playerViewports = [
+  { label: "phone", width: 390, height: 844 },
+  { label: "desktop", width: 1280, height: 900 },
+];
+
+for (const theme of ["light", "dark"]) {
+  for (const viewport of playerViewports) {
+    const layoutContext = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      colorScheme: theme,
+    });
+    await layoutContext.addInitScript(() => {
+      try {
+        window.localStorage.setItem(
+          "teeline-help-seen",
+          JSON.stringify(["welcome.desk", "welcome.player"]),
+        );
+      } catch {
+        // Storage off: the welcome would cover the page, and the audit would say so.
+      }
+    });
+    const layoutPage = await layoutContext.newPage();
+    watch(layoutPage);
+    for (const route of playerRoutes) {
+      await layoutPage.goto(`${BASE}${route}`, { waitUntil: "load", timeout: 120000 });
+      await layoutPage.waitForTimeout(300);
+      const audit = await layoutPage.evaluate(layoutAudit);
+      const phone = viewport.width < 640;
+      if (route === "/my/card" && audit.scorecards.length !== 1) {
+        audit.problems.push(`scorecards ${audit.scorecards.length}`);
+      }
+      for (const card of audit.scorecards) {
+        if (card.headers !== 8) audit.problems.push(`card headings ${card.headers}`);
+        if (!card.scopes) audit.problems.push("card heading without scope=col");
+        if (card.headerHidden) audit.problems.push("card heading hidden from screen readers");
+        if (phone) {
+          if (card.tableDisplay !== "block") {
+            audit.problems.push(`phone card table ${card.tableDisplay}`);
+          }
+          if (card.scrolls) audit.problems.push("phone card scrolls sideways");
+          if (card.outside) audit.problems.push(`${card.outside} card cells outside the card`);
+          if (card.clipped) audit.problems.push(`${card.clipped} clipped card cells`);
+        } else if (card.tableDisplay !== "table") {
+          audit.problems.push(`desktop card table ${card.tableDisplay}`);
+        }
+      }
+      check(
+        `${route} ${theme} ${viewport.label}`,
+        audit.problems.length === 0,
+        audit.problems.slice(0, 3).join(" | "),
+      );
+      if (route === "/my/card") {
+        const card = audit.scorecards[0];
+        check(
+          `eight scoped column headings, ${theme} ${viewport.label}`,
+          Boolean(card) && card.headers === 8 && card.scopes && !card.headerHidden,
+          card ? `(${card.headers} headings)` : "(no card)",
+        );
+      }
+    }
+    await layoutContext.close();
+  }
+}
+
 console.log(`\nconsole errors: ${errors.length}`);
-for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 200));
+for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 600));
 console.log(`screenshots in ${SHOTS}`);
 console.log(`\n${pass} passed, ${fail} failed`);
 

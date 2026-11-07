@@ -20,7 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { PublishDialog } from "@/components/draw/PublishDialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -53,17 +53,21 @@ export function Panel({
   labelledBy?: string;
   dataHelp?: string;
 }) {
+  // The same panel can be on screen twice (the desktop rail and the phone cards), so the heading id
+  // has to be unique per instance. The label passed in stays the readable prefix.
+  const autoId = useId();
+  const headingId = labelledBy ? `${labelledBy}-${autoId.replace(/:/g, "")}` : undefined;
   return (
     <section
-      aria-labelledby={labelledBy}
+      aria-labelledby={headingId}
       data-help={dataHelp}
       className={cn(variant === "glass" ? "glass glass-panel p-4" : "card", "min-w-0", className)}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 id={labelledBy} className="text-[17px]">
+          <h2 id={headingId} className="text-[17px] leading-[22px]">
             {title}
-          </h3>
+          </h2>
           {subtitle && <p className="mt-0.5 text-[12.5px] text-ink-muted">{subtitle}</p>}
         </div>
         {action}
@@ -78,7 +82,7 @@ function GoLink({ href, label }: { href: string; label: string }) {
     <Link
       href={href}
       aria-label={label}
-      className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[color-mix(in_srgb,var(--ink)_30%,transparent)] text-ink no-underline hover:bg-[color-mix(in_srgb,var(--ink)_10%,transparent)]"
+      className="grid size-[34px] shrink-0 place-items-center rounded-[10px] max-sm:size-11 border border-[color-mix(in_srgb,var(--ink)_30%,transparent)] text-ink no-underline hover:bg-[color-mix(in_srgb,var(--ink)_10%,transparent)]"
     >
       <ArrowUpRight className="size-4" aria-hidden="true" />
     </Link>
@@ -845,7 +849,7 @@ export function AttentionPanel({
                 </span>
                 <Link
                   href={i.href}
-                  className="-my-1 inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-semibold whitespace-nowrap no-underline hover:bg-[color-mix(in_srgb,var(--ink)_10%,transparent)]"
+                  className="-my-1 inline-flex min-h-8 shrink-0 items-center max-sm:min-h-11 gap-1 rounded-md px-2 text-xs font-semibold whitespace-nowrap no-underline hover:bg-[color-mix(in_srgb,var(--ink)_10%,transparent)]"
                 >
                   {i.cta}
                   <ArrowRight className="size-3.5" aria-hidden="true" />
@@ -887,7 +891,7 @@ export function AttentionPanel({
         </p>
       ) : (
         <details className="mt-3 border-t border-glass-line pt-3">
-          <summary className="flex min-h-8 cursor-pointer flex-wrap items-center gap-2 text-[13px] font-semibold">
+          <summary className="flex min-h-8 cursor-pointer flex-wrap max-sm:min-h-11 items-center gap-2 text-[13px] font-semibold">
             <Trophy className="size-4 text-gold-ink" aria-hidden="true" />
             Settings to check before publish
             <span className={cn("pill", todo.some((c) => c.level === "bad") ? "bad" : "warn")}>
@@ -900,7 +904,10 @@ export function AttentionPanel({
                 <b className="font-semibold">{c.label}</b>
                 <span className="block text-ink-muted">
                   {c.detail}{" "}
-                  <Link href={`/setup#${sectionOf(c.id)}`} className="whitespace-nowrap">
+                  <Link
+                    href={`/setup#${sectionOf(c.id)}`}
+                    className="inline-flex min-h-6 items-center whitespace-nowrap max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center"
+                  >
                     Open
                   </Link>
                 </span>

@@ -220,7 +220,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <a
           href="#main"
-          className="sr focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-gold focus:px-3 focus:py-2 focus:text-on-gold"
+          className="sr focus:not-sr-only focus:inline-flex focus:min-h-11 focus:items-center focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-gold focus:px-3 focus:py-2 focus:text-on-gold"
         >
           Skip to content
         </a>
@@ -234,7 +234,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger
               className={cn(
-                "grid size-11 place-items-center rounded-full lg:hidden",
+                "grid size-11 shrink-0 place-items-center rounded-full lg:hidden",
                 overlay ? "glass" : "border border-[rgba(238,240,234,0.25)]",
               )}
               aria-label="Open menu"
@@ -277,7 +277,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <Link
             href="/admin"
-            className="on-photo flex min-w-0 items-center gap-3 no-underline lg:w-[318px]"
+            className="on-photo flex min-h-11 min-w-0 items-center gap-3 no-underline lg:w-[318px]"
           >
             <TeeLineLogo variant="reverse" width={206} className="shrink-0" />
           </Link>
@@ -419,7 +419,7 @@ function ShellSearch({ overlay }: { overlay: boolean }) {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search players…"
-        className="!h-auto !border-0 !bg-transparent !p-0 text-sm !text-ink outline-none"
+        className="min-h-6 !h-auto !border-0 !bg-transparent !p-0 text-sm !text-ink outline-none"
       />
     </form>
   );

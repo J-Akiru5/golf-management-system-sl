@@ -43,7 +43,7 @@ export const HolePin = forwardRef<
       {...props}
       className={cn(
         inline ? "relative" : "absolute -translate-x-1/2 -translate-y-1/2",
-        "flex items-center gap-1.5 rounded-full border py-0 pr-2.5 pl-1 text-xs font-semibold whitespace-nowrap backdrop-blur-[8px] transition-shadow",
+        "flex items-center gap-1.5 rounded-full border py-0 pr-2.5 pl-1 text-xs font-semibold whitespace-nowrap backdrop-blur-[8px] transition-shadow max-sm:min-h-11",
         sel
           ? "z-10 h-[34px] border-[#d7b568] bg-[#d7b568] text-[#171c19] shadow-lift"
           : "h-[30px] border-[rgba(238,240,234,.18)] bg-[rgba(14,22,18,.66)] text-[#eef0ea] hover:border-[rgba(238,240,234,.45)]",

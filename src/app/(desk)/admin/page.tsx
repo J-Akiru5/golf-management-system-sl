@@ -407,7 +407,13 @@ function ControlRoomInner({
         </div>
       </section>
 
-      <div className={cn("grid gap-4 p-4 sm:p-6 md:grid-cols-2 lg:pl-[var(--rail-pad)] xl:hidden")}>
+      {/* The shell is dark over the map, so the phone cards re-point the tokens at the page
+          surface instead of painting the desk's dark ink on a dark card. */}
+      <div
+        className={cn(
+          "on-surface grid gap-4 p-4 sm:p-6 md:grid-cols-2 lg:pl-[var(--rail-pad)] xl:hidden",
+        )}
+      >
         <AttentionPanel b={b} variant="card" className="md:col-span-2" />
         <DivisionsPanel b={b} variant="card" />
         <HandicapHistogram b={b} variant="card" />
