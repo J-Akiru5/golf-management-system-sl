@@ -155,7 +155,7 @@ export default function StaffAddPage() {
           detail: `${placement.reason} The organizers place this player from the full desk.`,
           tone: "info",
         });
-        router.push("/staff/players");
+        router.push("/staff/players?filter=needs-review");
         return;
       }
 

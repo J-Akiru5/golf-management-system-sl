@@ -2,6 +2,7 @@
 
 import { ArrowRight, Phone } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArriveButton } from "@/components/staff/ArriveButton";
 import { DayPills } from "@/components/staff/DayPills";
@@ -14,6 +15,7 @@ import { placementOf } from "@/lib/draw/withdraw";
 import { fmtTime } from "@/lib/format";
 import {
   type ArrivalFilter,
+  arrivalFilterFromQuery,
   FILTER_LABELS,
   filterRows,
   type StaffRow,
@@ -50,8 +52,12 @@ export default function StaffPlayersPage() {
   const { day, days, notice, setDayNumber } = useStaffDay();
   const { rows, schedule } = useStaffRows();
   const toast = useToast();
+  const search = useSearchParams();
+  const requestedFilter = search.get("filter");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<ArrivalFilter>("not-arrived");
+  const [filter, setFilter] = useState<ArrivalFilter>(() =>
+    arrivalFilterFromQuery(requestedFilter),
+  );
   const [selected, setSelected] = useState<StaffRow | null>(null);
   const [moving, setMoving] = useState(false);
   const [moveReason, setMoveReason] = useState("");
@@ -82,6 +88,13 @@ export default function StaffPlayersPage() {
 
   const tournamentId = tournament?.id ?? null;
   const selectedDayNumber = day?.number ?? null;
+
+  // The add screen sends a review save here with ?filter=needs-review. Read it when the query
+  // changes so the same mounted page still opens on the review case. Manually chosen chips are not
+  // overridden because this effect only runs when the address changes.
+  useEffect(() => {
+    setFilter(arrivalFilterFromQuery(requestedFilter));
+  }, [requestedFilter]);
 
   // The last withdrawal on this tab, so leaving Players to look at the group and coming back still
   // offers the undo. The token holds ids, not names; the player is looked up below.
@@ -355,8 +368,10 @@ export default function StaffPlayersPage() {
 
               {selected.needsReview && (
                 <p className={`${styles.notice} ${styles.noticeWarn}`}>
-                  <b>Needs review.</b> No group is assigned, so this player cannot be scored yet.
-                  The organizers place them from the full desk.
+                  <b>Needs review.</b>{" "}
+                  {selected.reviewReasons[0] ? `${selected.reviewReasons[0]} ` : ""}
+                  No group is assigned, so this player cannot be scored yet. The organizers place
+                  them from the full desk.
                 </p>
               )}
 

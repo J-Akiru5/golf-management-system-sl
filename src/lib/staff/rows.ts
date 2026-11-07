@@ -55,6 +55,8 @@ export interface StaffRow {
   arrivedAt: string | null;
   arrivedBy: string | null;
   needsReview: boolean;
+  /** The desk's saved reason when the entry is waiting for a place. */
+  reviewReasons: string[];
 }
 
 export interface BuildRowsInput {
@@ -103,6 +105,7 @@ export function buildRows(input: BuildRowsInput): StaffRow[] {
     // The entry carries a review the desk has not cleared. Only when the entry says nothing does
     // the derived registration decide, which is the normal case for an imported player.
     const status = entry.status ?? input.statusByPlayer?.get(entry.playerId) ?? null;
+    const needsReview = status === "needs_review";
     rows.push({
       entryId: entry.id,
       playerId: entry.playerId,
@@ -116,7 +119,8 @@ export function buildRows(input: BuildRowsInput): StaffRow[] {
       arrived: Boolean(checkIn?.at),
       arrivedAt: checkIn?.at ?? null,
       arrivedBy: checkIn?.byName ?? null,
-      needsReview: status === "needs_review",
+      needsReview,
+      reviewReasons: needsReview ? (entry.reasons ?? []) : [],
     });
   }
 
@@ -169,6 +173,14 @@ export const FILTER_LABELS: Record<ArrivalFilter, string> = {
   arrived: "Arrived",
   "needs-review": "Needs review",
 };
+
+/** Read the filter the add screen asks for, and refuse an unknown value. */
+export function arrivalFilterFromQuery(value: string | null | undefined): ArrivalFilter {
+  const wanted = value?.trim().toLowerCase();
+  if (wanted === "all" || wanted === "arrived" || wanted === "not-arrived") return wanted;
+  if (wanted === "needs-review") return "needs-review";
+  return "not-arrived";
+}
 
 /** A name or phone search. Case and spacing are ignored, and a phone matches its digits. */
 export function matchesQuery(row: StaffRow, query: string): boolean {

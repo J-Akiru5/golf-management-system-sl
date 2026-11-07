@@ -288,6 +288,9 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
   const players: RoutingInput["players"] = [];
   const provisional: ProvisionalPlayer[] = [];
   for (const entry of entriesFor(s, t.id)) {
+    // A stored review means the desk already decided this entry cannot be routed. Feeding it back
+    // into the engine would give it a phantom group on the next proposal.
+    if (entry.status === "needs_review" || entry.status === "ineligible") continue;
     const p = s.players.find((x) => x.id === entry.playerId);
     if (!p) continue;
     // A disabled or soft-deleted player is never drawn. The entry stays on file, so putting the

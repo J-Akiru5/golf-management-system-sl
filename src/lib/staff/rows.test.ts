@@ -3,6 +3,7 @@ import type { RegistrationEntry } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
 import { placementOf, removePlayerFromDraw, restorePlayerToDraw } from "@/lib/draw/withdraw";
 import {
+  arrivalFilterFromQuery,
   buildRows,
   buildSchedule,
   filterRows,
@@ -184,6 +185,15 @@ describe("staff rows", () => {
     });
   });
 
+  it("reads the filter the add screen asks for, and falls back to not arrived", () => {
+    expect(arrivalFilterFromQuery("needs-review")).toBe("needs-review");
+    expect(arrivalFilterFromQuery("all")).toBe("all");
+    expect(arrivalFilterFromQuery("arrived")).toBe("arrived");
+    expect(arrivalFilterFromQuery("not-arrived")).toBe("not-arrived");
+    expect(arrivalFilterFromQuery(null)).toBe("not-arrived");
+    expect(arrivalFilterFromQuery("bogus")).toBe("not-arrived");
+  });
+
   it("filters and searches, including by phone digits and group number", () => {
     expect(filterRows(rows, "arrived").map((row) => row.entryId)).toEqual(["e2"]);
     expect(filterRows(rows, "not-arrived")).toHaveLength(3);
@@ -310,6 +320,9 @@ describe("staff rows", () => {
     });
     const row = rows.find((candidate) => candidate.playerId === "p4");
     expect(row?.needsReview).toBe(true);
+    expect(row?.reviewReasons).toEqual([
+      "No group in this player's class has an open place in the PM session.",
+    ]);
     expect(row?.group).toBeNull();
 
     // The board still has only the drawn players: no phantom place for the walk-up.
