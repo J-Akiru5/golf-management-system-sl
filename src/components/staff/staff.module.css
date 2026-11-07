@@ -16,6 +16,33 @@
   --s-bad: #a32118;
   --staff-bar-h: 60px;
   --staff-header-h: 56px;
+  /* The desk's own components (the card scanner, inputs, hints, notices) are mounted inside this
+     surface and read the global tokens. In a dark OS theme those tokens flip to light-on-dark, which
+     left pale text on this white page. Pin them to the light values so everything here keeps its
+     contrast, whatever the phone's theme is. */
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f3f5ee;
+  --line: #dfe4d9;
+  --line-strong: #747d75;
+  --ink: #10140f;
+  --ink-muted: #56615a;
+  --ink-page: #10140f;
+  --ink-muted-page: #56615a;
+  --primary: #073d2e;
+  --primary-hover: #0b2b23;
+  --on-primary: #f7f5ee;
+  --success: #1e6b43;
+  --success-soft: #e0efe5;
+  --warning: #8a4a00;
+  --warning-soft: #faebd4;
+  --danger: #b42318;
+  --danger-soft: #fbe4e1;
+  --info: #285a8c;
+  --info-soft: #e3ecf6;
+  --focus: #073d2e;
+  --gold-ink: #755719;
+  --gold-soft: #f2e9d4;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
