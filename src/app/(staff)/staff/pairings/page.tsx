@@ -80,6 +80,16 @@ export default function StaffPairingsPage() {
     });
   }
 
+  function removePlayer(playerId: string, name: string) {
+    if (!checkReason()) return;
+    dispatch({ type: "withdrawFromDraw", playerId });
+    toast.push({
+      title: `${name} removed from the group`,
+      detail: "They stay on the day's list and can be added to another group.",
+      tone: "info",
+    });
+  }
+
   function toggleLock(groupNumber: number, locked: boolean) {
     if (!checkReason()) return;
     dispatch({
@@ -289,48 +299,59 @@ export default function StaffPairingsPage() {
                                 {locked ? " · group locked" : ""}
                               </span>
                             </span>
-                            <select
-                              className={styles.select}
-                              value=""
-                              disabled={locked}
-                              aria-label={`Move ${player.playerName} to another group`}
-                              onChange={(event) => {
-                                if (event.target.value === "") return;
-                                movePlayer(
-                                  player.playerId,
-                                  player.playerName,
-                                  Number(event.target.value),
-                                );
-                              }}
-                            >
-                              <option value="">{locked ? "Unlock to move" : "Move to…"}</option>
-                              {!locked &&
-                                schedule
-                                  .filter((other) => other.number !== group.number)
-                                  .map((other) => {
-                                    const check = draw
-                                      ? dropCheck(
-                                          draw,
-                                          tournament.config,
-                                          regMap,
-                                          player.playerId,
-                                          other.number,
-                                          names,
-                                        )
-                                      : null;
-                                    return (
-                                      <option
-                                        key={other.id}
-                                        value={other.number}
-                                        disabled={!check?.ok}
-                                      >
-                                        Group {other.number} · {fmtTime(other.time)} · hole{" "}
-                                        {other.startHole}
-                                        {check && !check.ok ? ` — ${check.reason}` : ""}
-                                      </option>
-                                    );
-                                  })}
-                            </select>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <select
+                                className={styles.select}
+                                value=""
+                                disabled={locked}
+                                aria-label={`Move ${player.playerName} to another group`}
+                                onChange={(event) => {
+                                  if (event.target.value === "") return;
+                                  movePlayer(
+                                    player.playerId,
+                                    player.playerName,
+                                    Number(event.target.value),
+                                  );
+                                }}
+                              >
+                                <option value="">{locked ? "Unlock to move" : "Move to…"}</option>
+                                {!locked &&
+                                  schedule
+                                    .filter((other) => other.number !== group.number)
+                                    .map((other) => {
+                                      const check = draw
+                                        ? dropCheck(
+                                            draw,
+                                            tournament.config,
+                                            regMap,
+                                            player.playerId,
+                                            other.number,
+                                            names,
+                                          )
+                                        : null;
+                                      return (
+                                        <option
+                                          key={other.id}
+                                          value={other.number}
+                                          disabled={!check?.ok}
+                                        >
+                                          Group {other.number} · {fmtTime(other.time)} · hole{" "}
+                                          {other.startHole}
+                                          {check && !check.ok ? ` — ${check.reason}` : ""}
+                                        </option>
+                                      );
+                                    })}
+                              </select>
+                              <button
+                                type="button"
+                                className={styles.secondary}
+                                style={{ minHeight: 40, width: "auto", padding: "0 12px" }}
+                                disabled={locked}
+                                onClick={() => removePlayer(player.playerId, player.playerName)}
+                              >
+                                Remove from group
+                              </button>
+                            </div>
                           </div>
                         );
                       })
