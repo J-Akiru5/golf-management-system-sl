@@ -385,7 +385,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             // The calendar's month grid owns the remaining viewport, so the page itself must not
             // scroll on desktop. Phones keep normal document flow.
             calendarRoute &&
-              "lg:flex lg:h-[calc(100dvh_-_var(--shell-header))] lg:min-h-0 lg:flex-col lg:overflow-hidden lg:pb-4",
+              "lg:flex lg:h-[calc(100dvh_-_var(--shell-header))] lg:min-h-0 lg:flex-col lg:overflow-hidden lg:pb-4 print:block print:h-auto print:overflow-visible",
           )}
         >
           {children}

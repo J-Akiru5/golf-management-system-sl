@@ -361,7 +361,7 @@ export default function CalendarPage() {
   const sameDayConflicts = conflicts.filter((conflict) => conflict.kind === "same-day");
 
   return (
-    <div className="grid gap-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-3">
+    <div className="calendar-page grid gap-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-3">
       <PageHeader overline="Events" title="Calendar">
         Every event in one place. The same course and tee time cannot be booked twice; two events on
         the same day are allowed but shown as a warning.
@@ -489,16 +489,17 @@ export default function CalendarPage() {
                       {Number(cell.date.slice(-2))}
                     </button>
                     {isToday && (
-                      <span className="text-[9px] font-bold tracking-[.08em] text-gold-ink uppercase">
+                      <span className="hidden text-[9px] font-bold tracking-[.08em] text-gold-ink uppercase sm:inline">
                         Today
                       </span>
                     )}
                     {hidden.length > 0 && (
                       <button
                         type="button"
-                        className="ml-auto rounded px-1 text-[10px] font-semibold text-ink-muted hover:bg-fairway-soft hover:text-fairway"
+                        className="ml-auto inline-flex min-h-6 shrink-0 items-center rounded px-1.5 text-[10px] font-semibold text-ink-muted hover:bg-fairway-soft hover:text-fairway"
                         onClick={() => setDayPeek(cell.date)}
-                        aria-label={`Show ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"} on ${cell.date}`}
+                        aria-haspopup="dialog"
+                        aria-label={`+${hidden.length} more: show all ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"} on ${fmtDateLabel([cell.date])}`}
                       >
                         +{hidden.length}
                         <span className="hidden sm:inline"> more</span>
@@ -843,7 +844,7 @@ export default function CalendarPage() {
       <Sheet open={dayPeek !== null} onOpenChange={(open) => !open && setDayPeek(null)}>
         <SheetContent
           title={dayPeek ? fmtDateLabel([dayPeek]) : "Day"}
-          description={dayPeek ? `Every event on ${fmtDateLabel([dayPeek])}.` : undefined}
+          description="Every event on this day."
         >
           {dayPeek && (
             <div className="grid gap-2">

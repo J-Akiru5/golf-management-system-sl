@@ -786,6 +786,11 @@ check(
 // dividers must stay visible in both themes, and the month/list switch must still work on a phone.
 // The switcher matches on exact names: getByRole matches substrings by default, so "Month" would
 // also catch "Previous month" and "Next month". Nothing is created or saved in this block.
+
+// The conflict check above leaves the edit sheet open. Close it before measuring layout, or its
+// overlay intercepts the Month button.
+await calendarPage.keyboard.press("Escape");
+await expect(calendarPage.getByRole("dialog")).toBeHidden({ timeout: 8000 });
 const viewButton = (name) => calendarPage.getByRole("button", { name, exact: true });
 const setCalendarTheme = async (theme) => {
   await calendarPage.evaluate((choice) => {
@@ -807,14 +812,34 @@ for (const size of [
     await setCalendarTheme(theme);
     await calendarPage.setViewportSize(size);
     await calendarPage.waitForTimeout(150);
-    const { scroll, inner } = await calendarPage.evaluate(() => ({
-      scroll: document.documentElement.scrollHeight,
-      inner: window.innerHeight,
-    }));
+    // A clipped page reports the same scrollHeight as a page that fits, so also check the month
+    // section and its last cell are actually on screen and that the six rows share the height.
+    const layout = await calendarPage.evaluate(() => {
+      const section = document.querySelector("section[aria-label='Event month']");
+      const grids = section?.querySelectorAll(".grid.grid-cols-7");
+      const cells = [...(grids[grids.length - 1]?.children ?? [])];
+      const rowHeights = [0, 7, 14, 21, 28, 35].map(
+        (index) => cells[index]?.getBoundingClientRect().height ?? 0,
+      );
+      return {
+        scroll: document.documentElement.scrollHeight,
+        inner: window.innerHeight,
+        sectionBottom: section?.getBoundingClientRect().bottom ?? -1,
+        lastCellBottom: cells.at(-1)?.getBoundingClientRect().bottom ?? -1,
+        rowHeights,
+      };
+    });
+    const rowsEqual =
+      Math.max(...layout.rowHeights) - Math.min(...layout.rowHeights) <= 1 &&
+      layout.rowHeights.every((height) => height > 0);
+    const onScreen = (value) => value <= layout.inner + 0.5;
     check(
       `${size.width}x${size.height} ${theme} fits without a page scroll`,
-      scroll <= inner,
-      `${scroll}/${inner}`,
+      layout.scroll <= layout.inner &&
+        onScreen(layout.sectionBottom) &&
+        onScreen(layout.lastCellBottom) &&
+        rowsEqual,
+      `${layout.scroll}/${layout.inner}, grid ends ${Math.round(layout.sectionBottom)}, rows ${layout.rowHeights.map(Math.round).join("/")}`,
     );
   }
 }

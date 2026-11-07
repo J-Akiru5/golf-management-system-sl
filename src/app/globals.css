@@ -3144,6 +3144,14 @@
   --rail-pad: 264px;
 }
 
+/* The desktop calendar is a full-height workspace. The build label would otherwise take a slice
+   of the height the month grid needs, so it steps out at the rail breakpoint. Phones keep it. */
+@media (min-width: 1024px) {
+  main:has(.calendar-page) [data-testid="app-version"] {
+    display: none;
+  }
+}
+
 /* ------------------------------------------------------------------------------- help centre */
 
 /* The ring a "Show me" help step draws over the control it means. It is its own element, placed by
