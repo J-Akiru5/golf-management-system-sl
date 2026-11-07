@@ -26,24 +26,31 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
   return (
     <I18nProvider locale={locale}>
       <div lang={locale} className="grid min-h-dvh content-start">
-        <header className="band flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center no-underline">
-            <TeeLineLogo variant="reverse" width={172} />
+        {/* One 56px row on a phone: logo left, help and language right. The page title, "All
+            pairings" and sign-out only appear where there is room, because the bottom tab bar and
+            the Profile page already cover them on a phone. */}
+        <header className="band sticky top-0 z-30 flex min-h-14 items-center gap-2 px-3 pt-[env(safe-area-inset-top)] sm:gap-5 sm:px-6">
+          <Link
+            href="/"
+            aria-label="TeeLine Golf"
+            className="flex min-h-11 items-center no-underline"
+          >
+            <TeeLineLogo variant="reverse" width={172} className="h-auto w-[124px] sm:w-[172px]" />
           </Link>
-          <span className="text-sm font-semibold">{t("player.title")}</span>
+          <span className="hidden text-sm font-semibold sm:inline">{t("player.title")}</span>
           <span className="flex-1" />
-          <nav aria-label="Player" className="flex flex-wrap items-center gap-4 text-sm">
+          <nav aria-label="Player" className="flex items-center gap-1 text-sm sm:gap-3">
             <Link
               href="/pairings"
               data-help="my-pairings"
-              className="text-on-forest no-underline hover:underline"
+              className="hidden min-h-11 items-center px-2 text-on-forest no-underline hover:underline lg:inline-flex"
             >
               {t("player.nav.allPairings")}
             </Link>
             <HelpButton audience="player" screen="my" />
-            <LanguageSwitcher tone="on-forest" />
+            <LanguageSwitcher tone="on-forest" compact />
             {isSupabaseConfigured() && (
-              <SignOutForm className="btn small ghost !border-on-forest-muted" />
+              <SignOutForm className="btn small ghost hidden !border-on-forest-muted lg:inline-flex" />
             )}
           </nav>
         </header>

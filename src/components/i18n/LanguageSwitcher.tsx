@@ -15,9 +15,12 @@ import { cn } from "@/lib/ui/cn";
  */
 export function LanguageSwitcher({
   tone = "default",
+  compact = false,
   className,
 }: {
   tone?: "default" | "on-forest";
+  /** A globe and the language code in a 44px target; the native picker opens on tap. */
+  compact?: boolean;
   className?: string;
 }) {
   const { locale, t } = useI18n();
@@ -33,6 +36,38 @@ export function LanguageSwitcher({
     }
     router.refresh();
   };
+
+  if (compact) {
+    // The visible part is the globe and the code; the real select sits over it, invisible, so a
+    // tap anywhere on the control opens the phone's own picker.
+    return (
+      <label
+        className={cn(
+          "relative inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-3 text-xs font-bold tracking-wide uppercase focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus)]",
+          tone === "on-forest"
+            ? "border border-[rgba(238,240,234,0.25)] text-on-forest"
+            : "border border-line text-ink",
+          className,
+        )}
+      >
+        <Languages className="size-4 shrink-0" aria-hidden="true" />
+        <span aria-hidden="true">{locale}</span>
+        <span className="sr">{t("common.language")}</span>
+        <select
+          value={locale}
+          onChange={(event) => choose(event.target.value)}
+          aria-label={t("common.language")}
+          className="absolute inset-0 size-full cursor-pointer opacity-0"
+        >
+          {LOCALES.map((code) => (
+            <option key={code} value={code}>
+              {LOCALE_LABEL[code]}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
 
   return (
     <label className={cn("inline-flex min-h-11 items-center gap-2", className)}>
