@@ -147,13 +147,13 @@ export function ScorecardBreakdown({ card, t }: { card: PortalScorecard; t: Tran
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           <p className="overline">{t("player.scorecard.heading")}</p>
-          <h4
+          <h3
             id={`scorecard-${card.roundId}`}
             className="flex flex-wrap items-center gap-2 text-[18px] leading-6"
           >
             {t("player.scorecard.day", { day: card.dayNumber })}
             <span className={`pill ${card.state === "final" ? "ok" : "info"}`}>{stateLabel}</span>
-          </h4>
+          </h3>
           <p className="hint">
             {card.playDate ? dateText(card.playDate) : t("player.value.dateTbc")}
             {card.playingHandicap !== null && ` · PH ${fmtHcp(card.playingHandicap)}`}
@@ -182,14 +182,30 @@ export function ScorecardBreakdown({ card, t }: { card: PortalScorecard; t: Tran
           <caption className="sr-only">{t("player.scorecard.heading")}</caption>
           <thead>
             <tr>
-              <th className="num">{t("player.scorecard.hole")}</th>
-              <th className="num">{t("player.scorecard.par")}</th>
-              <th className="num">{t("player.scorecard.strokeIndex")}</th>
-              <th className="num">{t("player.scorecard.score")}</th>
-              <th className="num">{t("player.scorecard.hcp")}</th>
-              <th className="num">{t("player.scorecard.net")}</th>
-              <th className="num">{t("player.scorecard.grossPoints")}</th>
-              <th className="num">{t("player.scorecard.netPoints")}</th>
+              <th scope="col" className="num">
+                {t("player.scorecard.hole")}
+              </th>
+              <th scope="col" className="num">
+                {t("player.scorecard.par")}
+              </th>
+              <th scope="col" className="num">
+                {t("player.scorecard.strokeIndex")}
+              </th>
+              <th scope="col" className="num">
+                {t("player.scorecard.score")}
+              </th>
+              <th scope="col" className="num">
+                {t("player.scorecard.hcp")}
+              </th>
+              <th scope="col" className="num">
+                {t("player.scorecard.net")}
+              </th>
+              <th scope="col" className="num">
+                {t("player.scorecard.grossPoints")}
+              </th>
+              <th scope="col" className="num">
+                {t("player.scorecard.netPoints")}
+              </th>
             </tr>
           </thead>
           <tbody>
