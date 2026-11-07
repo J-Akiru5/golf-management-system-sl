@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { HelpButton } from "@/components/help";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
@@ -11,8 +10,7 @@ import {
   RulesOfPlay,
   TeeTimesBoard,
 } from "@/components/public/ProgrammeView";
-import { PublicNav } from "@/components/public/PublicNav";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { PublicHeader } from "@/components/public/PublicHeader";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings, toPublicProgramme } from "@/lib/data/public";
 import { fmtTime } from "@/lib/format";
@@ -59,18 +57,7 @@ export function DemoPairings() {
 
   return (
     <main className="public public-pairings mobile-bar-space">
-      <header className="public-head">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <TeeLineLogo variant="reverse" width={172} />
-            <span className="leading-tight">
-              <b className="block font-display text-[13px] font-semibold">{t("pairings.title")}</b>
-              <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-            </span>
-          </div>
-          <HelpButton audience="player" screen="pairings" />
-        </div>
-        <PublicNav current="/pairings" t={t} />
+      <PublicHeader current="/pairings" label={t("pairings.title")} t={t} help="pairings">
         <p className="overline mt-3">
           {tournament.config.startFormat === "shotgun"
             ? t("pairings.shotgun")
@@ -81,7 +68,7 @@ export function DemoPairings() {
           {tournament.name}
         </h1>
         <p className="text-on-forest-muted">{dateLabel}</p>
-      </header>
+      </PublicHeader>
 
       {!pairings ? (
         <div className="notice" role="status">

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicHeader } from "@/components/public/PublicHeader";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { getI18n } from "@/lib/i18n/server";
 import { NGAP_FAQ, NGAP_FAQ_CURRENT, NGAP_FAQ_SOURCE } from "@/lib/public/ngap-faq";
 import { faqPageSchema, openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 
@@ -30,26 +31,20 @@ export const metadata: Metadata = {
  * current position, because the fees and dates are the 2024 ones. Two defects in the source are
  * shown as notes on the questions they affect, not repaired.
  */
-export default function NgapFaqPage() {
+export default async function NgapFaqPage() {
+  const { t } = await getI18n();
   return (
     <main className="public mobile-bar-space">
       <JsonLd data={faqPageSchema(NGAP_FAQ)} />
-      <header className="public-head">
-        <div className="flex flex-wrap items-center gap-3">
-          <TeeLineLogo variant="reverse" width={172} />
-          <span className="leading-tight">
-            <b className="block font-display text-[13px] font-semibold">NGAP WHS FAQ</b>
-            <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-          </span>
-        </div>
-        <p className="overline mt-3 !text-gold">Handicaps</p>
+      <PublicHeader current="/faq" label="NGAP WHS FAQ" t={t} homeSection>
+        <p className="overline mt-3">Handicaps</p>
         <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
           NGAP World Handicap System: frequently asked questions
         </h1>
         <p className="text-on-forest-muted">
           The questions golfers ask about the NGAP&rsquo;s WHS, in the NGAP&rsquo;s words.
         </p>
-      </header>
+      </PublicHeader>
 
       <section className="card grid gap-2" aria-labelledby="faq-source">
         <h2 id="faq-source" className="text-[18px]">

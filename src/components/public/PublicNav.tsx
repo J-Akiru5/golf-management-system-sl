@@ -8,7 +8,15 @@ import type { Translate } from "@/lib/i18n/t";
  * pairings, the leaderboard and the player's own area. The page a player is already on says so with
  * aria-current instead of being a second link to nowhere.
  */
-export function PublicNav({ current, t }: { current: string; t: Translate }) {
+export function PublicNav({
+  current,
+  t,
+  homeSection = false,
+}: {
+  current: string;
+  t: Translate;
+  homeSection?: boolean;
+}) {
   const items = [
     { href: "/", label: t("pairings.navHome") },
     { href: "/pairings", label: t("player.app.openPairings") },
@@ -22,7 +30,13 @@ export function PublicNav({ current, t }: { current: string; t: Translate }) {
         <Link
           key={item.href}
           href={item.href}
-          aria-current={current === item.href ? "page" : undefined}
+          aria-current={
+            current === item.href
+              ? "page"
+              : item.href === "/" && homeSection
+                ? "location"
+                : undefined
+          }
         >
           {item.label}
         </Link>

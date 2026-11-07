@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { HelpButton } from "@/components/help";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { ResultTable } from "@/components/public/LeaderboardResults";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { PublicHeader } from "@/components/public/PublicHeader";
 import {
   loadPublicPhotos,
   loadPublishedRounds,
   loadRoundResults,
   PublicResultRow,
 } from "@/lib/data/public-results";
+import { getI18n } from "@/lib/i18n/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 
@@ -25,15 +25,15 @@ export default async function LeaderboardPage({
   searchParams: Promise<{ round?: string }>;
 }) {
   const params = await searchParams;
+  const { t } = await getI18n();
   if (!isSupabaseConfigured()) {
     return (
       <main className="public public-pairings mobile-bar-space">
-        <header className="public-head">
-          <TeeLineLogo variant="reverse" width={172} />
+        <PublicHeader current="/leaderboard" label={t("player.board.title")} t={t} help="pairings">
           <h1 className="mt-4 font-serif text-[34px] leading-10 font-semibold !text-on-forest">
-            Leaderboard
+            {t("player.board.title")}
           </h1>
-        </header>
+        </PublicHeader>
         <div className="notice" role="status">
           The public leaderboard is available when the club is connected to its event database.
         </div>
@@ -70,27 +70,17 @@ export default async function LeaderboardPage({
 
   return (
     <main className="public public-pairings mobile-bar-space">
-      <header className="public-head">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <TeeLineLogo variant="reverse" width={172} />
-            <span className="leading-tight">
-              <b className="block font-display text-[13px] font-semibold">Leaderboard</b>
-              <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-            </span>
-          </div>
-          <HelpButton audience="player" screen="pairings" />
-        </div>
+      <PublicHeader current="/leaderboard" label={t("player.board.title")} t={t} help="pairings">
         {board && (
-          <p className="overline mt-3 !text-gold">
+          <p className="overline mt-3">
             {board.round.state === "final" ? "Final" : "Provisional"} · Day {board.round.dayNumber}
           </p>
         )}
         <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-          {board ? board.round.eventName : "Leaderboard"}
+          {board ? board.round.eventName : t("player.board.title")}
         </h1>
         {board && <p className="text-on-forest-muted">{dateLabel(board.round.playDate)}</p>}
-      </header>
+      </PublicHeader>
 
       {failure ? (
         <div className="notice" role="alert">

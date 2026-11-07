@@ -990,6 +990,29 @@ const layoutAudit = () => {
   return { problems, scorecards };
 };
 
+// Every public page has to wear the same way round the club: four links, exactly one marked as
+// current, 44px targets and one row on a phone. /pairings shipped without a nav once, so this is
+// measured rather than trusted to the component being used.
+const navAudit = () => {
+  const problems = [];
+  const nav = document.querySelector("header nav[aria-label]");
+  if (!nav) return { problems: ["no player nav"], rows: 0 };
+  const links = [...nav.querySelectorAll("a")];
+  if (links.length !== 4) problems.push(`nav links ${links.length}`);
+  const marked = links.filter((link) => link.hasAttribute("aria-current"));
+  if (marked.length !== 1) problems.push(`aria-current ${marked.length}`);
+  for (const link of links) {
+    const box = link.getBoundingClientRect();
+    if (box.height < 44 || box.width < 44) {
+      problems.push(`nav target ${Math.round(box.width)}x${Math.round(box.height)}`);
+    }
+  }
+  const rows = new Set(links.map((link) => Math.round(link.getBoundingClientRect().top))).size;
+  return { problems, rows };
+};
+
+const publicRoutes = ["/pairings", "/leaderboard", "/faq", "/privacy", "/terms"];
+
 // The real routes, in both card shapes: the demo build renders a sample card on /my/card, so the
 // phone check has an actual table to measure rather than a promise.
 const playerRoutes = [
@@ -998,7 +1021,7 @@ const playerRoutes = [
   "/my/card",
   "/my/course",
   "/my/profile",
-  "/pairings",
+  ...publicRoutes,
   "/admin",
 ];
 const playerViewports = [
@@ -1052,6 +1075,15 @@ for (const theme of ["light", "dark"]) {
         audit.problems.length === 0,
         audit.problems.slice(0, 3).join(" | "),
       );
+      if (publicRoutes.includes(route)) {
+        const nav = await layoutPage.evaluate(navAudit);
+        if (phone && nav.rows !== 1) nav.problems.push(`nav rows ${nav.rows}`);
+        check(
+          `${route} ${theme} ${viewport.label} shared nav`,
+          nav.problems.length === 0,
+          nav.problems.slice(0, 3).join(" | "),
+        );
+      }
       if (route === "/my/card") {
         const card = audit.scorecards[0];
         check(
@@ -1064,6 +1096,24 @@ for (const theme of ["light", "dark"]) {
     await layoutContext.close();
   }
 }
+
+// The nav is chrome, not content: a printed pairings sheet must not carry four links to other
+// pages. The class does that; this proves it on every public page.
+section("public pages: shared nav in print");
+const printContext = await browser.newContext();
+const printPage = await printContext.newPage();
+watch(printPage);
+for (const route of publicRoutes) {
+  await printPage.goto(`${BASE}${route}`, { waitUntil: "load", timeout: 120000 });
+  await printPage.emulateMedia({ media: "print" });
+  const hidden = await printPage.evaluate(() => {
+    const nav = document.querySelector(".public-nav");
+    return !nav || getComputedStyle(nav).display === "none";
+  });
+  check(`${route} nav hidden in print`, hidden);
+  await printPage.emulateMedia({ media: "screen" });
+}
+await printContext.close();
 
 console.log(`\nconsole errors: ${errors.length}`);
 for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 600));

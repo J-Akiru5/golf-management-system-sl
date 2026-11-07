@@ -4541,7 +4541,38 @@
   color: var(--on-forest);
 }
 
-.public-nav a[aria-current="page"] {
+.public-nav a[aria-current] {
   background: rgba(238, 240, 234, 0.14);
   color: #e8cf95;
+}
+
+/* Legal pages keep their full-width band, so the shared header drops the card styling inside it. */
+.legal-head {
+  display: block;
+}
+
+.legal-head .public-head {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Four columns of consent text do not fit a 390px phone by their content width, so the legal
+   tables divide the width evenly and wrap long cookie names instead of pushing the page sideways. */
+.legal-prose table {
+  table-layout: fixed;
+}
+
+.legal-prose th,
+.legal-prose td {
+  overflow-wrap: anywhere;
+}
+
+/* The NGAP answers carry long email addresses and URLs. Breaking them inside the card keeps the
+   phone page at its width instead of letting one word widen the whole column. */
+.public .card {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { HelpButton } from "@/components/help";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { PairingsView } from "@/components/PairingsView";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
@@ -10,8 +9,7 @@ import {
   RulesOfPlay,
   TeeTimesBoard,
 } from "@/components/public/ProgrammeView";
-import { PublicNav } from "@/components/public/PublicNav";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { PublicHeader } from "@/components/public/PublicHeader";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
@@ -102,18 +100,7 @@ export default async function PublicPairingsPage() {
   return (
     <main className="public public-pairings mobile-bar-space">
       <PlayerOfflineNotice path="/pairings" />
-      <header className="public-head">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <TeeLineLogo variant="reverse" width={172} />
-            <span className="leading-tight">
-              <b className="block font-display text-[13px] font-semibold">{t("pairings.title")}</b>
-              <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-            </span>
-          </div>
-          <HelpButton audience="player" screen="pairings" />
-        </div>
-        <PublicNav current="/pairings" t={t} />
+      <PublicHeader current="/pairings" label={t("pairings.title")} t={t} help="pairings">
         {data && (
           <>
             <p className="overline mt-3">
@@ -126,7 +113,7 @@ export default async function PublicPairingsPage() {
             <p className="text-on-forest-muted">{dateLabel}</p>
           </>
         )}
-      </header>
+      </PublicHeader>
 
       {failed ? (
         <div className="notice" role="status">

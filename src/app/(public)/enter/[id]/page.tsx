@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicHeader } from "@/components/public/PublicHeader";
 import { RegistrationForm } from "@/components/public/RegistrationForm";
 import {
   loadRegistrationForm,
@@ -59,8 +60,8 @@ export default function EnterTournament() {
 
   return (
     <main className="public public-enter mobile-bar-space">
-      <header className="public-head">
-        <p className="overline mt-3 !text-gold">{t("enter.overline")}</p>
+      <PublicHeader current="" label={t("enter.overline")} t={t} nav={false}>
+        <p className="overline mt-3">{t("enter.overline")}</p>
         <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
           {config?.name ?? t("enter.title")}
         </h1>
@@ -73,7 +74,7 @@ export default function EnterTournament() {
               .join(" · ")}
           </p>
         )}
-      </header>
+      </PublicHeader>
 
       {state === "loading" && <p role="status">{t("enter.loading")}</p>}
 
