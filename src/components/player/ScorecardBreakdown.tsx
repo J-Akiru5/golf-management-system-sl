@@ -31,7 +31,10 @@ const publishedText = (date: string): string => {
 function ScoreRow({ number, hole }: { number: number; hole: PortalScorecardHole | null }) {
   return (
     <tr>
-      <td className="num font-semibold">{number}</td>
+      {/* The hole number is pinned left, so swiping the columns never takes away the row label. */}
+      <td className="num sticky left-0 z-10 border-r border-line bg-surface-raised px-3 font-semibold">
+        {number}
+      </td>
       <td className="num">{hole ? hole.par : "-"}</td>
       <td className="num">{hole ? hole.strokeIndex : "-"}</td>
       <td className="num font-semibold">{hole ? hole.grossStrokes : "-"}</td>
@@ -46,7 +49,12 @@ function ScoreRow({ number, hole }: { number: number; hole: PortalScorecardHole 
 function TotalRow({ label, totals }: { label: string; totals: ScorecardTotals }) {
   return (
     <tr className="font-semibold">
-      <td colSpan={3}>{label}</td>
+      {/* Same pinned column as the hole rows, so Out, In and Total stay readable while scrolling. */}
+      <td className="sticky left-0 z-10 border-r border-line bg-surface-raised px-3 text-left">
+        {label}
+      </td>
+      <td className="num" />
+      <td className="num" />
       <td className="num">{totals.holes === 0 ? "-" : totals.grossStrokes}</td>
       <td className="num">-</td>
       <td className="num">{numberText(totals.netStrokes)}</td>
@@ -74,7 +82,7 @@ export function ScorecardBreakdown({ card, t }: { card: PortalScorecard; t: Tran
   return (
     <section className="grid gap-3" aria-labelledby={`scorecard-${card.roundId}`}>
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="grid gap-1">
+        <div className="grid min-w-0 flex-1 gap-1">
           <p className="overline">{t("player.scorecard.heading")}</p>
           <h4
             id={`scorecard-${card.roundId}`}
@@ -91,14 +99,14 @@ export function ScorecardBreakdown({ card, t }: { card: PortalScorecard; t: Tran
           </p>
         </div>
 
-        <dl className="m-0 grid grid-cols-2 gap-x-5 gap-y-1 sm:text-right">
+        <dl className="m-0 grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:w-auto sm:gap-x-5 sm:text-right">
           {[
             { label: t("player.scorecard.gross"), value: total.grossStrokes },
             { label: t("player.scorecard.net"), value: total.netStrokes },
             { label: t("player.scorecard.grossPoints"), value: total.grossPoints },
             { label: t("player.scorecard.netPoints"), value: total.netPoints },
           ].map((fact) => (
-            <div key={fact.label} className="grid gap-0.5">
+            <div key={fact.label} className="grid min-w-0 gap-0.5">
               <dt className="small-h">{fact.label}</dt>
               <dd className="m-0 font-semibold tnum">{numberText(fact.value)}</dd>
             </div>
@@ -107,11 +115,14 @@ export function ScorecardBreakdown({ card, t }: { card: PortalScorecard; t: Tran
       </header>
 
       <div className="table-wrap">
-        <table>
+        {/* Separate borders: Safari keeps a sticky cell in place with border-collapse: separate. */}
+        <table className="border-separate border-spacing-0">
           <caption className="sr-only">{t("player.scorecard.heading")}</caption>
           <thead>
             <tr>
-              <th className="num">{t("player.scorecard.hole")}</th>
+              <th className="num sticky left-0 z-20 border-r border-line bg-surface-sunken px-3">
+                {t("player.scorecard.hole")}
+              </th>
               <th className="num">{t("player.scorecard.par")}</th>
               <th className="num">{t("player.scorecard.strokeIndex")}</th>
               <th className="num">{t("player.scorecard.score")}</th>

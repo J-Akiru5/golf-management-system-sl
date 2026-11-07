@@ -8,7 +8,9 @@ import { publicPhotoUrl } from "@/lib/photo";
 import { boardKey, findYou, type LiveBoardPayload, rankMoves } from "@/lib/player/ranks";
 import { cn } from "@/lib/ui/cn";
 
-const ROW = 64;
+/* 70px per slot with a 64px row leaves a 6px gap: the row clears the 44px thumb target with room
+   for two lines of text, and stays under the 72px ceiling so six rows still fit a 390x844 phone. */
+const ROW = 70;
 const POLL_MS = 20_000;
 const MOVE_MS = 7_000;
 
@@ -124,10 +126,10 @@ export function LiveBoard({
   };
 
   return (
-    <section className="grid gap-3" aria-labelledby="live-board-h">
+    <section className="grid min-w-0 gap-3" aria-labelledby="live-board-h">
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="grid gap-0.5">
-          <h2 id="live-board-h" className="text-[18px] leading-6">
+        <div className="grid min-w-0 gap-0.5">
+          <h2 id="live-board-h" className="text-[18px] leading-6 break-words">
             {board.eventName}
           </h2>
           <p className="hint">
@@ -159,7 +161,7 @@ export function LiveBoard({
               className={cn("live-row", isYou && "is-you")}
               style={{ top: index * ROW, height: ROW - 6 }}
             >
-              <span className="live-rank tnum">{index + 1}</span>
+              <span className="live-rank tnum shrink-0">{index + 1}</span>
               {delta !== 0 && (
                 <span className={cn("live-move", delta > 0 ? "up" : "down")}>
                   {delta > 0 ? (
@@ -173,16 +175,15 @@ export function LiveBoard({
               )}
               <Avatar name={row.playerName} photo={publicPhotoUrl(row.photoPath)} />
               <span className="grid min-w-0 flex-1">
-                <b className="truncate text-[14px]">
-                  {row.playerName}
+                <span className="flex min-w-0 items-baseline gap-1">
+                  <b className="min-w-0 truncate text-[15px] leading-5">{row.playerName}</b>
                   {isYou && (
-                    <span className="text-[11px] font-semibold text-[var(--ink-muted)]">
-                      {" "}
-                      · {t("player.board.you")}
+                    <span className="shrink-0 text-[10px] font-bold tracking-wide text-gold-ink uppercase">
+                      {t("player.board.you")}
                     </span>
                   )}
-                </b>
-                <span className="truncate text-[11px] text-[var(--ink-muted)]">
+                </span>
+                <span className="min-w-0 truncate text-[11px] leading-4 text-ink-muted">
                   {row.flightName ?? "—"} ·{" "}
                   {t("player.board.holes", {
                     count: row.holesCounted,
@@ -190,12 +191,10 @@ export function LiveBoard({
                   })}
                 </span>
               </span>
-              <span className="grid shrink-0 text-right">
-                <b className="text-[17px] leading-5 tnum">{row.points}</b>
-                <span className="text-[10px] text-[var(--ink-muted)]">
-                  {t("player.board.points")}
-                </span>
-                <span className="text-[10px] text-[var(--ink-muted)] tnum">
+              <span className="grid shrink-0 text-right leading-tight">
+                <b className="text-[18px] leading-5 tnum">{row.points}</b>
+                <span className="text-[10px] text-ink-muted">{t("player.board.points")}</span>
+                <span className="text-[10px] text-ink-muted tnum">
                   {row.strokes ?? "—"} {t("player.board.strokes")}
                 </span>
               </span>
@@ -204,7 +203,13 @@ export function LiveBoard({
         })}
       </ol>
 
-      {you === null && <p className="hint">{t("player.board.noYou")}</p>}
+      {total === 0 && (
+        <p className="notice" role="status">
+          {t("player.board.empty")}
+        </p>
+      )}
+
+      {total > 0 && you === null && <p className="hint">{t("player.board.noYou")}</p>}
 
       {takeover && (
         <div className="rank-takeover" role="status" aria-live="polite" data-testid="rank-takeover">

@@ -33,7 +33,12 @@ export default async function PlayerCoursePage() {
 
       <p className="hint">{t("player.course.numbersOnly")}</p>
       <p className="hint">
-        <Link href="/pairings">{t("player.app.openPairings")}</Link>
+        <Link
+          href="/pairings"
+          className="inline-flex min-h-11 items-center font-semibold underline"
+        >
+          {t("player.app.openPairings")}
+        </Link>
       </p>
     </div>
   );
