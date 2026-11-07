@@ -1110,6 +1110,13 @@ export interface Database {
         Returns: Json;
       };
       player_portal_entries: { Args: Record<string, never>; Returns: Json };
+      /** The caller's own record, contact details and photo booleans. Added by 20261108000300. */
+      player_own_profile: { Args: Record<string, never>; Returns: Json };
+      /** Writes only the caller's own phone, email and nickname. Added by 20261108000300. */
+      player_update_own_contact: {
+        Args: { p_phone: string | null; p_email: string | null; p_nickname: string | null };
+        Returns: Json;
+      };
       save_draw: {
         Args: {
           p_tournament: string;

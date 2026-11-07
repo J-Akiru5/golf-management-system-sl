@@ -4343,3 +4343,446 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- S5: the wide player home and the profile page ---------------------------------------
+   One block, tokens only. `.ph` is the home's shell, `.pf` is the profile's. Both stack into a
+   single column on a phone and only become two columns where there is room to read them side by
+   side, so the same markup serves a 390px phone and a 1900px desktop. */
+
+@layer components {
+  .ph,
+  .pf {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 20px max(16px, env(safe-area-inset-left, 0px)) 32px;
+    display: grid;
+    gap: 18px;
+    min-width: 0;
+  }
+
+  .ph-head,
+  .pf-head {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .ph-title,
+  .pf-title {
+    font-family: var(--f-serif);
+    font-size: 32px;
+    line-height: 36px;
+    font-weight: 600;
+  }
+
+  .ph-sub,
+  .pf-sub {
+    max-width: 44rem;
+    font-size: 15px;
+    line-height: 22px;
+    color: var(--ink-muted);
+  }
+
+  /* One calm line. No border, no background: the page is not warning anyone. */
+  .ph-status {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .ph-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--fairway);
+  }
+
+  /* The shared hero heading takes the page ink from the base rule; inside the forest hero it has to
+     take the band's ink. Scoped so nothing else changes. */
+  .ph .next-up-title {
+    color: var(--on-forest);
+  }
+
+  .ph-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+    min-width: 0;
+  }
+
+  .ph-main,
+  .pf-main,
+  .ph-side,
+  .pf-side {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  .ph-card-title,
+  .pf-card-title {
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 600;
+  }
+
+  /* 14px, not the 13px .hint: the player is standing in the sun, not reading a desk form. */
+  .ph-hint,
+  .pf-hint {
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--ink-muted);
+  }
+
+  .ph-quick {
+    display: grid;
+    gap: 10px;
+  }
+
+  .ph-quick-list {
+    gap: 6px;
+  }
+
+  .ph-quick-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    color: var(--ink);
+    text-decoration: none;
+    transition: background-color var(--motion-fast) var(--ease-standard);
+  }
+
+  .ph-quick-item:hover {
+    background: var(--surface-sunken);
+  }
+
+  .ph-quick-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--fairway-soft);
+    color: var(--fairway);
+  }
+
+  .ph-quick-text {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .ph-quick-hint {
+    font-size: 14px;
+    line-height: 19px;
+    color: var(--ink-muted);
+  }
+
+  .ph-quick-go {
+    flex: none;
+    color: var(--ink-muted);
+  }
+
+  .ph-profile {
+    display: grid;
+    gap: 8px;
+  }
+
+  .ph-profile-name {
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  .ph-profile-cta {
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .ph-link-card {
+    display: grid;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .ph-link-forms {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  .ph-link-aside {
+    display: none;
+  }
+
+  .ph-note-text {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--surface-sunken);
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--ink-muted);
+  }
+
+  /* The demo line is quiet: it is a note, not a warning, and it does not deserve a bordered box. */
+  .ph-demo {
+    margin: 0;
+  }
+
+  /* A claim form reads best at a measure. It never stretches across an empty card. */
+  .ph-claim-form {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    max-width: 26rem;
+  }
+
+  /* 16px at every width. On a phone it stops iOS zooming; on a desktop it keeps the form legible
+     instead of inheriting the page's smaller body size. */
+  .ph-claim-form input,
+  .ph-claim-form select,
+  .pf-form input,
+  .pf-form select,
+  .pf-form textarea {
+    font-size: 16px;
+  }
+
+  .ph-divider {
+    display: grid;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .pf-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    min-height: 44px;
+    margin-left: -8px;
+    padding: 0 10px 0 8px;
+    border-radius: 10px;
+    color: var(--ink-muted);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .pf-back:hover {
+    color: var(--ink);
+  }
+
+  .pf-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    min-width: 0;
+  }
+
+  .pf-card {
+    display: grid;
+    gap: 12px;
+    padding: 18px;
+  }
+
+  .pf-facts {
+    display: grid;
+    margin: 0;
+  }
+
+  .pf-fact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 52px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .pf-fact:last-child {
+    border-bottom: 0;
+  }
+
+  .pf-fact dt {
+    min-width: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--ink-muted);
+  }
+
+  .pf-fact dd {
+    margin: 0;
+    text-align: right;
+    font-size: 15px;
+    line-height: 21px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .pf-fact-note {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-muted);
+  }
+
+  .pf-note {
+    display: grid;
+    gap: 6px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--surface-sunken);
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .pf-note p {
+    margin: 0;
+  }
+
+  .pf-form {
+    display: grid;
+    gap: 16px;
+  }
+
+  .pf-error {
+    font-size: 14px;
+    line-height: 19px;
+    color: var(--danger);
+  }
+
+  .pf-status {
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--success);
+  }
+
+  .pf-status.is-error {
+    color: var(--danger);
+  }
+
+  /* Full width on a phone, so the thumb lands on it without aiming. */
+  .pf-save {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .pf-langs {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .pf-lang {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: var(--surface-raised);
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .pf-lang:hover {
+    background: var(--surface-sunken);
+  }
+
+  .pf-lang:has(.pf-lang-input:checked) {
+    border-color: var(--fairway);
+    background: var(--fairway-soft);
+  }
+
+  .pf-lang-input {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    accent-color: var(--fairway);
+  }
+
+  .pf-lang-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pf-lang-text b {
+    font-weight: 600;
+  }
+
+  .pf-lang-check {
+    flex: none;
+    color: var(--fairway);
+  }
+
+  @media (min-width: 1024px) {
+    /* `main.public` caps the player page at 56rem. These two screens need the wider measure the
+       brief asks for (about 1120px), so they centre themselves in the viewport with equal negative
+       margins. No transform: that would break the sticky column inside. */
+    .ph,
+    .pf {
+      --s5-width: min(1120px, calc(100vw - 48px));
+      width: var(--s5-width);
+      max-width: none;
+      margin-inline: calc((100% - var(--s5-width)) / 2);
+    }
+
+    .ph-grid {
+      grid-template-columns: minmax(0, 1.9fr) minmax(18rem, 1fr);
+      gap: 24px;
+    }
+
+    .ph-side {
+      position: sticky;
+      top: 84px;
+    }
+
+    .ph-link-card {
+      grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
+      gap: 32px;
+      padding: 24px;
+    }
+
+    .ph-link-aside {
+      display: block;
+    }
+  }
+
+  @media (min-width: 1120px) {
+    .pf-layout {
+      grid-template-columns: minmax(0, 1.9fr) minmax(18rem, 1fr);
+      gap: 24px;
+    }
+
+    .pf-side {
+      position: sticky;
+      top: 84px;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .ph-title,
+    .pf-title {
+      font-size: 36px;
+      line-height: 40px;
+    }
+  }
+}

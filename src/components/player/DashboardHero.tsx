@@ -1,6 +1,6 @@
 import { ClipboardList, List, Map, Trophy } from "lucide-react";
 import Link from "next/link";
-import { fmtTime } from "@/lib/format";
+import { fmtTime, shortDate } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
 import type { NextUp } from "@/lib/player/dashboard";
 import { startLabel } from "@/lib/player/portal";
@@ -17,10 +17,14 @@ export function DashboardHero({ next, t }: { next: NextUp; t: Translate }) {
       : when === "upcoming"
         ? t("player.app.nextUp")
         : t("player.app.lastPlayed");
+  // A date people read: "Thu, Nov 12", not "2026-11-12". Anything that is not an ISO day is shown
+  // as stored rather than hidden.
   const dates =
     entry.dates.length > 0
-      ? entry.dates.join(" · ")
-      : (entry.eventDate ?? t("player.value.dateTbc"));
+      ? entry.dates.map((date) => shortDate(date) ?? date).join(" · ")
+      : entry.eventDate
+        ? (shortDate(entry.eventDate) ?? entry.eventDate)
+        : t("player.value.dateTbc");
 
   return (
     <section className="next-up" aria-labelledby="next-up-h" data-testid="next-up">

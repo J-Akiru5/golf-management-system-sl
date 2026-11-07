@@ -133,9 +133,9 @@ function PortalBody({
 export default async function MyGolfPage({
   searchParams,
 }: {
-  searchParams: Promise<{ claim?: string; ngap?: string }>;
+  searchParams: Promise<{ claim?: string; ngap?: string; demo?: string }>;
 }) {
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   const params = await searchParams;
   const code = params.claim ?? "";
   // A printed card's QR code carries the NGAP number, so the claim form opens with it filled in.
@@ -145,6 +145,28 @@ export default async function MyGolfPage({
   const linkedMessage = parsedNotice?.tone === "ok" ? parsedNotice.text : null;
 
   if (!isSupabaseConfigured()) {
+    // S5 demo hook. `?demo=desktop` shows the wide home with sample data, and `?demo=unlinked`
+    // shows the same screen before the club has linked a record. Demo builds only: with Supabase
+    // configured the normal signed-in path runs and this block is never reached.
+    if (params.demo === "desktop" || params.demo === "unlinked") {
+      const { demoPortalState, demoUnlinkedState } = await import(
+        "@/components/player/desktop/demo-data"
+      );
+      const { PlayerHomeDesktop } = await import("@/components/player/desktop/PlayerHomeDesktop");
+      return (
+        <PlayerHomeDesktop
+          t={t}
+          state={params.demo === "unlinked" ? demoUnlinkedState : demoPortalState}
+          notice={null}
+          linkedMessage={null}
+          today={manilaToday()}
+          defaultNgap={defaultNgap}
+          locale={locale}
+          demo
+        />
+      );
+    }
+
     return (
       <div className="grid gap-4" data-help="my-entry">
         <h1 className="font-serif text-[30px] leading-9 font-semibold">{t("player.title")}</h1>
