@@ -317,6 +317,13 @@ begin
     if not exists (
       select 1
       from public.tie_break_policies p
+      where p.id = v_tie_break and p.club_id = v_club
+    ) then
+      -- An id that is not a policy for this club is a missing setting, not a confirmation problem.
+      v_tie_break := null;
+    elsif not exists (
+      select 1
+      from public.tie_break_policies p
       where p.id = v_tie_break
         and p.club_id = v_club
         and p.confirmed_at is not null
