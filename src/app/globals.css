@@ -1629,6 +1629,37 @@
     outline: 2px solid var(--gold);
     outline-offset: -2px;
   }
+  .player-more-menu {
+    position: fixed;
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    z-index: 41;
+    display: grid;
+    width: min(18rem, calc(100vw - 24px));
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-lift);
+  }
+  .player-more-menu-item {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    border-radius: 10px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .player-more-menu-item:hover {
+    background: var(--surface-sunken);
+  }
+  .player-more-menu-item svg {
+    color: var(--fairway);
+  }
   /* ---------- Small screens: nothing may push the page sideways ----------
      Buttons and pills keep their label on one line on a wide screen. On a phone a label such as
      a publish status is wider than the page, so they wrap instead of stretching it, and the flex
@@ -1665,13 +1696,20 @@
   }
 
   /* ---------- Player app: dashboard, live board, course map ---------- */
+  .player-desktop-nav {
+    display: none;
+  }
   .next-up {
     display: grid;
-    gap: 4px;
-    padding: 18px;
-    border-radius: 18px;
-    background: linear-gradient(150deg, #073d2e 0%, #0b4d3a 58%, #0e5a44 100%);
+    gap: 8px;
+    padding: 22px;
+    border: 1px solid color-mix(in srgb, #f7f5ee 18%, transparent);
+    border-radius: 20px;
+    background:
+      radial-gradient(ellipse at 90% 0%, rgba(215, 181, 104, 0.2), transparent 42%),
+      linear-gradient(150deg, #073d2e 0%, #0b4d3a 58%, #0e5a44 100%);
     color: var(--on-forest);
+    box-shadow: var(--shadow-lift);
   }
   .next-up .overline {
     color: #d7b568;
@@ -1691,6 +1729,19 @@
     color: var(--on-forest-muted);
     font-size: 13px;
   }
+  .next-up-schedule {
+    margin-top: -2px;
+  }
+  .next-up-details {
+    display: grid;
+    gap: 3px;
+    margin-top: 8px;
+    padding: 12px 14px;
+    border: 1px solid rgba(238, 240, 234, 0.18);
+    border-inline-start: 3px solid #d7b568;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.13);
+  }
   .app-tiles {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1698,6 +1749,7 @@
   }
   .app-tile {
     display: flex;
+    min-height: 64px;
     align-items: center;
     gap: 10px;
     padding: 12px 14px;
@@ -1707,9 +1759,29 @@
     color: var(--ink);
     font-size: 14px;
     font-weight: 600;
+    box-shadow: var(--shadow-card);
+    transition:
+      border-color var(--motion-fast) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
   }
   .app-tile:hover {
-    border-color: var(--line-strong);
+    border-color: var(--fairway);
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-1px);
+  }
+  .app-tile:active {
+    transform: translateY(0);
+  }
+  .app-tile-icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--fairway-soft);
+    color: var(--fairway);
   }
   .round-pills {
     display: flex;
@@ -3147,6 +3219,56 @@
 /* The desktop calendar is a full-height workspace. The build label would otherwise take a slice
    of the height the month grid needs, so it steps out at the rail breakpoint. Phones keep it. */
 @media (min-width: 1024px) {
+  .player-more-menu {
+    display: none;
+  }
+  .player-desktop-nav {
+    display: flex;
+    width: 100%;
+    max-width: 56rem;
+    gap: 4px;
+    margin-inline: auto;
+    padding: 12px max(16px, env(safe-area-inset-left, 0px)) 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .player-desktop-nav-item {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-muted);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      color var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard),
+      background-color var(--motion-fast) var(--ease-standard);
+  }
+  .player-desktop-nav-item:hover {
+    background: var(--surface-sunken);
+    color: var(--ink);
+  }
+  .player-desktop-nav-item[aria-current="page"] {
+    border-bottom-color: var(--gold);
+    color: var(--ink);
+  }
+  .player-header-pairings {
+    display: none;
+  }
+  .player-main {
+    width: 100%;
+    max-width: 72rem;
+    padding-top: 24px;
+  }
+  .player-main .app-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .player-main .app-tile {
+    min-height: 76px;
+  }
   main:has(.calendar-page) [data-testid="app-version"] {
     display: none;
   }

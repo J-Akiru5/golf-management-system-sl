@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { FirstRunWelcome, HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PlayerBottomBar, PlayerDesktopNav } from "@/components/MobileTabBar";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { SignOutForm } from "@/components/SignOutForm";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -36,7 +36,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
             <Link
               href="/pairings"
               data-help="my-pairings"
-              className="text-on-forest no-underline hover:underline"
+              className="player-header-pairings text-on-forest no-underline hover:underline"
             >
               {t("player.nav.allPairings")}
             </Link>
@@ -47,9 +47,31 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
             )}
           </nav>
         </header>
-        <main className="public mobile-bar-space">{children}</main>
+        <PlayerDesktopNav
+          labels={{
+            navigation: t("player.app.tiles"),
+            home: t("player.title"),
+            board: t("player.board.title"),
+            card: t("player.scorecard.heading"),
+            course: t("player.course.title"),
+            pairings: t("player.app.openPairings"),
+            profile: t("player.profile.title"),
+          }}
+        />
+        <main className="public mobile-bar-space player-main">{children}</main>
         <FirstRunWelcome audience="player" />
-        <PlayerBottomBar />
+        <PlayerBottomBar
+          labels={{
+            navigation: t("player.app.tiles"),
+            home: t("player.title"),
+            board: t("player.board.title"),
+            card: t("player.scorecard.heading"),
+            more: t("player.app.more"),
+            course: t("player.course.title"),
+            pairings: t("player.app.openPairings"),
+            profile: t("player.profile.title"),
+          }}
+        />
         <InstallPrompt />
       </div>
     </I18nProvider>

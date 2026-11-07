@@ -28,15 +28,17 @@ export function DashboardHero({ next, t }: { next: NextUp; t: Translate }) {
       <h2 id="next-up-h" className="next-up-title">
         {entry.eventName}
       </h2>
-      <p className="next-up-hint">
+      <p className="next-up-hint next-up-schedule">
         {dates} ·{" "}
         {entry.startFormat === "shotgun" ? t("player.value.shotgun") : t("player.value.twoTee")}
       </p>
-      <p className="next-up-start">{startLabel(entry, t, fmtTime)}</p>
-      <p className="next-up-hint">
-        {entry.flight ?? t("player.value.notPlacedYet")} ·{" "}
-        {entry.tee ?? t("player.value.notSetYet")}
-      </p>
+      <div className="next-up-details">
+        <p className="next-up-start">{startLabel(entry, t, fmtTime)}</p>
+        <p className="next-up-hint">
+          {entry.flight ?? t("player.value.notPlacedYet")} ·{" "}
+          {entry.tee ?? t("player.value.notSetYet")}
+        </p>
+      </div>
     </section>
   );
 }
@@ -54,7 +56,9 @@ export function AppTiles({ t }: { t: Translate }) {
     <nav aria-label={t("player.app.tiles")} className="app-tiles">
       {tiles.map(({ href, label, Icon }) => (
         <Link key={href} href={href} className="app-tile no-underline">
-          <Icon className="size-[18px]" aria-hidden="true" />
+          <span className="app-tile-icon">
+            <Icon className="size-[18px]" aria-hidden="true" />
+          </span>
           <span>{label}</span>
         </Link>
       ))}

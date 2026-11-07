@@ -90,6 +90,7 @@ export const tl: Dictionary = {
       nextUp: "Susunod",
       lastPlayed: "Huling nilaro",
       tiles: "Mga screen mo",
+      more: "Iba pa",
       openBoard: "Live na board",
       openCard: "Card ko",
       openCourse: "Mapa ng course",

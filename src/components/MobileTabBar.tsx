@@ -7,6 +7,7 @@ import {
   House,
   LayoutGrid,
   List,
+  Map,
   Menu,
   TableProperties,
   Trophy,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { cn } from "@/lib/ui/cn";
 import {
   DESK_MOBILE_ITEMS,
@@ -47,11 +49,13 @@ function TabBar({
   label,
   testId,
   onMore,
+  moreOpen,
 }: {
   items: readonly MobileNavItem[];
   label: string;
   testId: string;
   onMore?: () => void;
+  moreOpen?: boolean;
 }) {
   const path = usePathname();
 
@@ -66,6 +70,8 @@ function TabBar({
               type="button"
               className="mobile-tabbar-item"
               onClick={onMore}
+              aria-expanded={moreOpen}
+              aria-controls={moreOpen === undefined ? undefined : "player-more-destinations"}
               data-testid={item.testId}
             >
               <span className="mobile-tabbar-icon">
@@ -110,6 +116,118 @@ export function DeskBottomBar({ onMore }: { onMore: () => void }) {
   );
 }
 
-export function PlayerBottomBar() {
-  return <TabBar items={PLAYER_MOBILE_ITEMS} label="Player" testId="player-bottom-bar" />;
+export function PlayerBottomBar({
+  labels,
+}: {
+  labels?: {
+    navigation: string;
+    home: string;
+    board: string;
+    card: string;
+    more: string;
+    course: string;
+    pairings: string;
+    profile: string;
+  };
+}) {
+  const copy = labels ?? {
+    navigation: "Player",
+    home: "Home",
+    board: "Board",
+    card: "Card",
+    more: "More",
+    course: "Course map",
+    pairings: "Pairings",
+    profile: "Profile",
+  };
+  const [open, setOpen] = useState(false);
+  const destinations = [
+    { href: "/my/course", label: copy.course, Icon: Map },
+    { href: "/pairings", label: copy.pairings, Icon: List },
+    { href: "/my/profile", label: copy.profile, Icon: CircleUserRound },
+  ];
+  const itemLabels: Record<string, string> = {
+    "player-bar-home": copy.home,
+    "player-bar-board": copy.board,
+    "player-bar-card": copy.card,
+    "player-bar-more": copy.more,
+  };
+  const items = PLAYER_MOBILE_ITEMS.map((item) => ({
+    ...item,
+    label: itemLabels[item.testId] ?? item.label,
+  }));
+
+  return (
+    <>
+      <TabBar
+        items={items}
+        label={copy.navigation}
+        testId="player-bottom-bar"
+        onMore={() => setOpen((wasOpen) => !wasOpen)}
+        moreOpen={open}
+      />
+      {open && (
+        <nav
+          id="player-more-destinations"
+          aria-label="More player destinations"
+          className="player-more-menu"
+        >
+          {destinations.map(({ href, label, Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="player-more-menu-item no-underline"
+              onClick={() => setOpen(false)}
+            >
+              <Icon className="size-5" aria-hidden="true" />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
+    </>
+  );
+}
+
+/** Persistent player navigation for desktop, where the phone bottom bar is hidden. */
+export function PlayerDesktopNav({
+  labels,
+}: {
+  labels: {
+    navigation: string;
+    home: string;
+    board: string;
+    card: string;
+    course: string;
+    pairings: string;
+    profile: string;
+  };
+}) {
+  const path = usePathname();
+  const items = [
+    { href: "/my", label: labels.home, exact: true },
+    { href: "/my/board", label: labels.board },
+    { href: "/my/card", label: labels.card },
+    { href: "/my/course", label: labels.course },
+    { href: "/pairings", label: labels.pairings },
+    { href: "/my/profile", label: labels.profile },
+  ];
+
+  return (
+    <nav aria-label={labels.navigation} className="player-desktop-nav">
+      {items.map(({ href, label, exact }) => {
+        const current = isMobileCurrent(path, href) && (!exact || path === href);
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={current ? "page" : undefined}
+            className={cn("player-desktop-nav-item no-underline", current && "is-current")}
+          >
+            {label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 }

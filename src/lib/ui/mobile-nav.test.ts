@@ -53,16 +53,14 @@ describe("player bottom bar", () => {
       "/my",
       "/my/board",
       "/my/card",
-      "/pairings",
-      "/my/profile",
     ]);
     expect(PLAYER_MOBILE_ITEMS.map((item) => item.label)).toEqual([
       "Home",
       "Board",
       "Card",
-      "Pairings",
-      "Profile",
+      "More",
     ]);
+    expect(PLAYER_MOBILE_ITEMS.at(-1)).toMatchObject({ kind: "more", label: "More" });
   });
 
   it("marks Home only on the dashboard, never on a screen it parents", () => {

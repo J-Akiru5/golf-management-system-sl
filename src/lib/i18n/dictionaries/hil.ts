@@ -90,6 +90,7 @@ export const hil: Dictionary = {
       nextUp: "Sunod",
       lastPlayed: "Katapusan nga ginplay",
       tiles: "Mga screen mo",
+      more: "Iban pa",
       openBoard: "Live nga board",
       openCard: "Akon card",
       openCourse: "Mapa sang course",

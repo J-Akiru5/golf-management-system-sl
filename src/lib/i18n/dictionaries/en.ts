@@ -92,6 +92,7 @@ export const en = {
       nextUp: "Next up",
       lastPlayed: "Last played",
       tiles: "Your screens",
+      more: "More",
       openBoard: "Live board",
       openCard: "My card",
       openCourse: "Course map",

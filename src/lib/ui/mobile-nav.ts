@@ -12,12 +12,11 @@
  *   More         opens the existing drawer, so Print, Settings, Import, Course, Spotlight and
  *                Tournaments stay reachable without a second menu of their own
  *
- * Player (someone checking their own round):
+ * Player (someone checking their own round, plus a more menu for secondary destinations):
  *   Home         their entry and published start
  *   Board        the live leaderboard, with their own row marked
  *   Card         the scorecards the club has published
- *   Pairings     the full published list
- *   Profile      the record the club holds for them
+ *   More         opens the course map, pairings and profile
  *
  * Test ids are part of the contract with the "Show me" feature: it navigates to a page and rings
  * one of these controls, so they must not be renamed casually. Labels stay visible; an icon-only
@@ -87,9 +86,8 @@ export const DESK_MOBILE_ITEMS: readonly MobileNavItem[] = [
 ] as const;
 
 /**
- * The player app's five destinations: the dashboard, the live board, the cards, the pairings and
- * the player's own record. Club home moves into the header (the wordmark already goes there) to
- * make room: five is what the bar holds without shrinking the labels below a readable size.
+ * The player app's five controls: Home, Board and Card are the primary round tasks. More keeps
+ * Course map, Pairings and Profile reachable without forcing six labels into the bar.
  */
 export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
   {
@@ -115,18 +113,10 @@ export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
     testId: "player-bar-card",
   },
   {
-    kind: "link",
-    href: "/pairings",
-    label: "Pairings",
-    icon: "list",
-    testId: "player-bar-pairings",
-  },
-  {
-    kind: "link",
-    href: "/my/profile",
-    label: "Profile",
-    icon: "player",
-    testId: "player-bar-profile",
+    kind: "more",
+    label: "More",
+    icon: "menu",
+    testId: "player-bar-more",
   },
 ] as const;
 
