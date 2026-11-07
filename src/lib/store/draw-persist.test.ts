@@ -133,4 +133,37 @@ describe("planDrawJobs", () => {
   it("ignores actions that do not touch the draw", () => {
     expect(plan(generated(), { type: "hydrate", state: generated() })).toEqual([]);
   });
+
+  it("keeps the round it was planned with when the day changes before the queue drains", () => {
+    const state = generated();
+    const group = state.boards[state.activeTournamentId ?? ""]?.draw?.[0];
+    const action: Action = {
+      type: "setGroupLocked",
+      group: group?.number ?? 1,
+      locked: true,
+      reason: "Sponsor group",
+    };
+    const after = run(state, action);
+    const jobs = planDrawJobs(action, state, after, { roundId: "round-day-3" });
+    const save = jobs[0];
+    expect(save?.kind).toBe("save");
+    if (save?.kind === "save") expect(save.roundId).toBe("round-day-3");
+  });
+
+  it("excludes a player who chose another day from the saved board", () => {
+    const state = generated();
+    const id = state.activeTournamentId ?? "";
+    const draw = state.boards[id]?.draw ?? [];
+    const playerId = draw.flatMap((group) => group.playerIds)[0] ?? "";
+    expect(playerId).not.toBe("");
+    const action: Action = { type: "generate", preserveLocks: true };
+    const after = run(state, action);
+    const jobs = planDrawJobs(action, state, after, { dayExcluded: new Set([playerId]) });
+    const save = jobs.find((job) => job.kind === "save");
+    expect(save?.kind).toBe("save");
+    if (save?.kind === "save") {
+      expect(save.draw.flatMap((group) => group.playerIds)).not.toContain(playerId);
+      expect(save.draw.every((group) => group.playerIds.length > 0)).toBe(true);
+    }
+  });
 });

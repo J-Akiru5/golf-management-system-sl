@@ -1,4 +1,5 @@
-import { daysOfTournament } from "@/lib/data/dates";
+import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
+import { daySessions } from "@/lib/data/sessions";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { isPlayerRemoved } from "@/lib/data/player-state";
 import { missingFactsFor, playsUnclassified, registrationFor } from "@/lib/data/registrations";
@@ -46,6 +47,14 @@ import drawFixture from "../../../demo-video/fixtures/bamboo-tee-draw.json";
 
 const AVP_DEMO = process.env.NEXT_PUBLIC_AVP_DEMO === "1";
 
+/** One playing day of a publish: which day it is and the board that belongs to it. */
+export interface PublishedDay {
+  dayNumber: number;
+  dayLabel: string;
+  playDate: string;
+  groups: DrawGroup[];
+}
+
 /** What players see. A frozen copy, so organizer edits never leak out before they publish again. */
 export interface PublishedGroup {
   number: number;
@@ -56,6 +65,14 @@ export interface PublishedGroup {
   players: string[];
   /** Parallel to `players` for snapshots published after 20261039000000. */
   playerIds?: string[];
+  /**
+   * The playing day this group belongs to. Added when the desk began publishing every day
+   * together; an older snapshot has none and is read as the event's first day.
+   */
+  dayNumber?: number;
+  dayLabel?: string;
+  /** ISO date of the day. */
+  playDate?: string;
 }
 
 export interface Published {
@@ -145,7 +162,8 @@ export type Action =
   | { type: "refreeze"; tournamentId: string; entryIds?: string[] }
   | { type: "applyImport"; payload: ApplyImportPayload }
   | { type: "resolveDeferred"; id: string; decision: "link" | "create" | "drop" }
-  | { type: "generate"; preserveLocks: boolean }
+  /** Draws one playing day. `dayNumber` null keeps the old whole-event behaviour. */
+  | { type: "generate"; preserveLocks: boolean; dayNumber?: number | null }
   | { type: "move"; playerId: string; toGroup: number; reason: string }
   /** Takes a withdrawn player off the day's board, leaving their group slot open. */
   | { type: "withdrawFromDraw"; playerId: string }
@@ -154,7 +172,11 @@ export type Action =
   /** Puts a walk-up into a group the staff screen already found an open place in. */
   | { type: "placeOnDraw"; playerId: string; groupNumber: number }
   | { type: "setGroupLocked"; group: number; locked: boolean; reason: string }
-  | { type: "publish" }
+  /**
+   * Publishes one playing day and keeps the days already published. The store fills the day
+   * fields from the day on screen, so a screen only asks to publish.
+   */
+  | { type: "publish"; dayNumber?: number | null; dayLabel?: string; playDate?: string }
   | { type: "unpublish" }
   /** The database confirmed a publish and assigned its version number and time. */
   | { type: "publishAck"; tournamentId: string; version: number; at: string };
@@ -278,16 +300,42 @@ export function buildRegistrations(s: DeskState): DeskRegistration[] {
   return out;
 }
 
+/** The playing days of an event, in day order, with any non-playing day left out. */
+export function playingDaysOfEvent(days: TournamentDay[]): TournamentDay[] {
+  const seen = new Set<number>();
+  return days
+    .filter((day) => day.isPlayingDay !== false)
+    .slice()
+    .sort((a, b) => a.dayNumber - b.dayNumber || a.playDate.localeCompare(b.playDate))
+    .filter((day) => {
+      if (seen.has(day.dayNumber)) return false;
+      seen.add(day.dayNumber);
+      return true;
+    });
+}
+
 /**
  * The engine input: players it can classify, plus confirmed provisional players it must place
  * without a category or flight. Index always comes from the frozen entry, never from a live import.
+ *
+ * With a playing day, only the players who chose that day are included, and each one carries the
+ * session the desk recorded for that day. That is what keeps day 1's board from holding players who
+ * registered for day 3, and what sends a confirmed afternoon player off in the afternoon.
  */
-export function routingInputFor(s: DeskState): RoutingInput | null {
+export function routingInputFor(s: DeskState, dayNumber: number | null = null): RoutingInput | null {
   const t = activeTournament(s);
   if (!t) return null;
+  const days = playingDaysOfEvent(s.days[t.id] ?? daysOfTournament(t));
+  const day = dayNumber === null ? null : (days.find((d) => d.dayNumber === dayNumber) ?? null);
+  const dayIndex = day ? days.findIndex((d) => d.dayNumber === day.dayNumber) : -1;
+  const byPlayer = new Map<string, "AM" | "PM" | null>();
   const players: RoutingInput["players"] = [];
   const provisional: ProvisionalPlayer[] = [];
   for (const entry of entriesFor(s, t.id)) {
+    const chosen = selectedDaysOf(entry, days);
+    // An entry that recorded no day at all is treated as playing every day, the same rule the
+    // draw screen uses. Only a player who chose other days is left out.
+    if (dayNumber !== null && chosen.length > 0 && !chosen.includes(dayNumber)) continue;
     // A stored review means the desk already decided this entry cannot be routed. Feeding it back
     // into the engine would give it a phantom group on the next proposal.
     if (entry.status === "needs_review" || entry.status === "ineligible") continue;
@@ -299,6 +347,9 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
     // A confirmed entry missing a routing fact cannot be classified. It is handed to the engine
     // separately so it can still be placed, without a category or flight being invented for it.
     const missing = missingFactsFor(p, entry);
+    // An explicit null means the player is on this day but has no session recorded; the engine
+    // draws them in the morning and says so. A missing key means they are not playing this day.
+    if (dayNumber !== null) byPlayer.set(p.id, entry.daySessions?.[dayNumber] ?? null);
     if (playsUnclassified(p, entry)) {
       provisional.push({ id: p.id, name: p.name, index: entry.frozen.index, missing });
       continue;
@@ -314,6 +365,20 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
       teamKey: entry.teamNo === null || entry.teamNo === undefined ? null : `team-${entry.teamNo}`,
     });
   }
+  const sessions: RoutingInput["sessions"] =
+    dayNumber !== null
+      ? {
+          byPlayer,
+          starts: {
+            AM: day?.startTime?.trim() || t.config.firstTeeTime,
+            PM: daySessions(Math.max(dayIndex, 0), Math.max(days.length, 1))[1]?.time ?? "12:30",
+          },
+          dayNumber,
+          // A second start inside a session is spaced by the batch interval, never by the long
+          // gap between the morning and the afternoon.
+          batchGapMinutes: t.config.intervalMinutes,
+        }
+      : undefined;
   return {
     players,
     config: t.config,
@@ -322,11 +387,65 @@ export function routingInputFor(s: DeskState): RoutingInput | null {
     flights: t.flights,
     defaultCategoryId: defaultCategoryFor(t.categories)?.id,
     provisional,
+    sessions,
   };
 }
 
-const signatureOf = (draw: DrawGroup[]) =>
-  draw.map((g) => `${g.number}:${g.playerIds.join(",")}`).join("|");
+// Number order, so the same board compares equal whether it came from the engine or from the
+// stored snapshot, which is sorted by day and tee time.
+const signatureOf = (draw: DrawGroup[], dayNumber: number | null = null) =>
+  draw
+    .slice()
+    .sort((a, b) => a.number - b.number)
+    .map((g) => `${dayNumber === null ? "" : `${dayNumber}:`}${g.number}:${g.playerIds.join(",")}`)
+    .join("|");
+
+/** The signature of one day's board, compared with that day's published copy. */
+export const drawSignatureForDay = (draw: DrawGroup[], dayNumber: number | null) =>
+  signatureOf(draw, dayNumber);
+
+/** The published groups that belong to another playing day. Older snapshots carry no day. */
+export function publishedGroupsForOtherDays(
+  published: Published | null,
+  dayNumber: number | null,
+): PublishedGroup[] {
+  if (!published || dayNumber === null) return [];
+  return published.groups.filter(
+    (group) => typeof group.dayNumber === "number" && group.dayNumber !== dayNumber,
+  );
+}
+
+/** The published groups of one day. A snapshot written before days existed is one day. */
+export function publishedGroupsForDay(
+  published: Published | null,
+  dayNumber: number | null,
+): PublishedGroup[] {
+  if (!published) return [];
+  if (dayNumber === null) return published.groups;
+  if (!published.groups.some((group) => typeof group.dayNumber === "number")) {
+    return published.groups;
+  }
+  return published.groups.filter((group) => group.dayNumber === dayNumber);
+}
+
+/** The publication signature for one day, so a day is compared with its own published copy. */
+export function publishedSignatureForDay(
+  published: Published | null,
+  dayNumber: number | null,
+): string {
+  return signatureOf(
+    publishedGroupsForDay(published, dayNumber).map((group) => ({
+      number: group.number,
+      flightId: "",
+      startHole: group.startHole,
+      wave: group.wave,
+      time: group.time,
+      locked: false,
+      playerIds: group.playerIds ?? [],
+    })),
+    dayNumber,
+  );
+}
 
 /** The player ids of the confirmed provisional entries in a set of desk registrations. */
 export const provisionalIdsOf = (regs: DeskRegistration[]): Set<string> =>
@@ -343,13 +462,19 @@ export function isUnclassifiedGroup(
   return playerIds.length > 0 && playerIds.every((id) => regById.get(id)?.provisional === true);
 }
 
-/** Freezes the board into what players will see. Empty groups are left off the sheet. */
+/**
+ * Freezes one playing day's board into what players will see, and keeps the other days that were
+ * already published. Empty groups are left off the sheet. Publishing day 3 therefore updates day 3
+ * and leaves day 1 and day 2 on the public page instead of replacing the whole week.
+ */
 export function buildPublished(
   draw: DrawGroup[],
   players: PlayerRecord[],
   tournament: Tournament,
   at: string,
   provisionalIds: ReadonlySet<string> = new Set(),
+  day?: { dayNumber: number; dayLabel: string; playDate: string } | null,
+  alreadyPublished: Published | null = null,
 ): Published {
   const nameById = new Map(players.map((p) => [p.id, p.name]));
   const flightName = (id: string | null) =>
@@ -358,21 +483,40 @@ export function buildPublished(
     provisionalIds.size > 0 && g.playerIds.every((id) => provisionalIds.has(id))
       ? UNCLASSIFIED_LABEL
       : flightName(g.flightId);
+  const dayNumber = day?.dayNumber ?? null;
+  const dayGroups: PublishedGroup[] = draw
+    .filter((g) => g.playerIds.length > 0)
+    .map((g) => ({
+      number: g.number,
+      startHole: g.startHole,
+      wave: g.wave,
+      time: g.time,
+      flight: groupLabel(g),
+      players: g.playerIds.map((id) => nameById.get(id) ?? "").filter((n) => n !== ""),
+      playerIds: g.playerIds.filter((id) => nameById.has(id)),
+      ...(day
+        ? { dayNumber: day.dayNumber, dayLabel: day.dayLabel, playDate: day.playDate }
+        : {}),
+    }));
+  const otherDays = publishedGroupsForOtherDays(alreadyPublished, dayNumber);
   return {
     tournamentId: tournament.id,
     at,
-    signature: signatureOf(draw),
-    groups: draw
-      .filter((g) => g.playerIds.length > 0)
-      .map((g) => ({
-        number: g.number,
-        startHole: g.startHole,
-        wave: g.wave,
-        time: g.time,
-        flight: groupLabel(g),
-        players: g.playerIds.map((id) => nameById.get(id) ?? "").filter((n) => n !== ""),
-        playerIds: g.playerIds.filter((id) => nameById.has(id)),
-      })),
+    signature: [...otherDays.map((group) => group), ...dayGroups]
+      .sort(
+        (a, b) =>
+          (a.dayNumber ?? 1) - (b.dayNumber ?? 1) ||
+          a.time.localeCompare(b.time) ||
+          a.number - b.number,
+      )
+      .map((g) => `${g.dayNumber ?? 1}:${g.number}:${(g.playerIds ?? []).join(",")}`)
+      .join("|"),
+    groups: [...otherDays, ...dayGroups].sort(
+      (a, b) =>
+        (a.dayNumber ?? 1) - (b.dayNumber ?? 1) ||
+        a.time.localeCompare(b.time) ||
+        a.number - b.number,
+    ),
   };
 }
 
@@ -660,7 +804,8 @@ export function reducer(state: DeskState, a: Action): DeskState {
 
     case "generate": {
       const t = activeTournament(state);
-      const input = routingInputFor(state);
+      const dayNumber = a.dayNumber ?? null;
+      const input = routingInputFor(state, dayNumber);
       if (!t || !input) return state;
       const board = boardOf(state);
       const previous = board.draw ?? [];
@@ -676,7 +821,9 @@ export function reducer(state: DeskState, a: Action): DeskState {
               time: g.time,
             }))
         : [];
-      const result = route(input, { lockedGroups: locked });
+      // The club fills a day as it goes: the first start takes groups until the holes are used,
+      // and the next start takes whoever is left, rather than moving a whole class on.
+      const result = route(input, { lockedGroups: locked, splitClassesAcrossWaves: true });
       const sameMembers = (a2: string[], b2: string[]) =>
         a2.length === b2.length && [...a2].sort().join(",") === [...b2].sort().join(",");
       const draw: DrawGroup[] = result.groups.map((g) => ({
@@ -685,11 +832,15 @@ export function reducer(state: DeskState, a: Action): DeskState {
           a.preserveLocks &&
           previous.some((p) => p.locked && sameMembers(p.playerIds, g.playerIds)),
       }));
+      // A fresh proposal for one day does not take another day's published list down: only a
+      // snapshot with no day left in it is cleared, which is the case until days are published.
+      const keepsOtherDays =
+        publishedGroupsForOtherDays(board.published, dayNumber).length > 0;
       const next: BoardState = {
         draw,
         // Small groups are checked live by validateDraw, so the engine's one-off copy would go stale.
         warnings: result.warnings.filter((w) => !/a group has only/.test(w)),
-        published: a.preserveLocks ? board.published : null,
+        published: a.preserveLocks || keepsOtherDays ? board.published : null,
         overrides: a.preserveLocks ? board.overrides : [],
       };
       return withBoard(state, t.id, next);
@@ -793,6 +944,19 @@ export function reducer(state: DeskState, a: Action): DeskState {
       const board = boardOf(state);
       if (!t || !board.draw) return state;
       const regs = buildRegistrations(state);
+      const publishDay = a.dayNumber ?? null;
+      const dayList = playingDaysOfEvent(state.days[t.id] ?? daysOfTournament(t));
+      const dayMembers =
+        publishDay === null
+          ? undefined
+          : new Set(
+              entriesFor(state, t.id)
+                .filter((entry) => {
+                  const chosen = selectedDaysOf(entry, dayList);
+                  return chosen.length === 0 || chosen.includes(publishDay);
+                })
+                .map((entry) => entry.playerId),
+            );
       // The page disables the button too; this is the backstop.
       const issues = validateDraw({
         draw: board.draw,
@@ -804,8 +968,18 @@ export function reducer(state: DeskState, a: Action): DeskState {
           flight: (id) => t.flights.find((f) => f.id === id)?.name ?? "—",
           category: (id) => t.categories.find((c) => c.id === id)?.name ?? "—",
         },
+        dayNumber: publishDay,
+        dayMembers,
       });
       if (issues.some((i) => i.severity === "blocking")) return state;
+      const day =
+        a.dayNumber === undefined || a.dayNumber === null
+          ? null
+          : {
+              dayNumber: a.dayNumber,
+              dayLabel: a.dayLabel?.trim() || `Day ${a.dayNumber}`,
+              playDate: a.playDate ?? t.config.date,
+            };
       return withBoard(state, t.id, {
         ...board,
         published: buildPublished(
@@ -814,6 +988,8 @@ export function reducer(state: DeskState, a: Action): DeskState {
           t,
           new Date().toISOString(),
           provisionalIdsOf(regs),
+          day,
+          board.published,
         ),
       });
     }

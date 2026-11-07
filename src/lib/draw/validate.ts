@@ -33,6 +33,12 @@ export interface ValidateInput {
    */
   flags?: { playerId: string; message: string }[];
   names: Names;
+  /**
+   * The playing day this board belongs to, and the players who chose it. With both, a player who
+   * registered for another day is not reported as unplaced on this day's board.
+   */
+  dayNumber?: number | null;
+  dayMembers?: ReadonlySet<string>;
 }
 
 const ORDER: Record<Severity, number> = { blocking: 0, warning: 1, info: 2 };
@@ -51,6 +57,8 @@ export function validateDraw({
   engineWarnings,
   flags = [],
   names,
+  dayNumber = null,
+  dayMembers,
 }: ValidateInput): Issue[] {
   const issues: Issue[] = [];
   const regById = new Map(registrations.map((r) => [r.playerId, r]));
@@ -99,6 +107,9 @@ export function validateDraw({
   }
 
   for (const r of registrations) {
+    // A day's board holds only that day's players, so a player who chose another day is not
+    // unplaced here. Without a day the whole field is checked, as before.
+    if (dayNumber !== null && dayMembers && !dayMembers.has(r.playerId)) continue;
     if (r.status === "ok" && !seen.has(r.playerId)) {
       issues.push({
         id: `unplaced-${r.playerId}`,

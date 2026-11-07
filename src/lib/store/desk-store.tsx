@@ -55,10 +55,14 @@ import { lastDeskUserId, loadDeskSnapshot, saveDeskSnapshot } from "@/lib/offlin
 import type { Tee } from "@/lib/routing";
 import {
   type Action,
+  type BoardState,
   buildRegistrations,
   type DeskState,
+  drawSignatureForDay,
   flagsOf,
+  playingDaysOfEvent,
   type Published,
+  publishedSignatureForDay,
 } from "@/lib/store/state";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -132,6 +136,11 @@ interface Desk {
   accessProblem: DeskAccessProblem | null;
   /** True while a write is in flight, for a "saving…" label. */
   saving: boolean;
+  /**
+   * The last queued draw save failed and the board was put back to what the database holds.
+   * Publishing is refused until a save succeeds.
+   */
+  saveFailed: boolean;
   /**
    * The publish and unpublish writes. The screens show the change only when this returns to
    * "idle"; "failed" carries the message so the dialog can keep itself open with a retry. The
@@ -222,12 +231,16 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const [publishError, setPublishError] = useState<string | null>(null);
   const [member, setMember] = useState<Desk["member"]>(connected ? undefined : undefined);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   // The playing day on screen, and the round each event's board belongs to. A save names the round,
   // so changing one day cannot rewrite the rest of the week.
   const [drawDay, setDrawDayState] = useState<number | null>(null);
   const drawDayRef = useRef<number | null>(null);
   const roundsRef = useRef<Record<string, string>>({});
+  // Which draw action is the newest. A failed save restores the board only when nothing newer has
+  // been dispatched, so a late failure cannot wipe an edit made after it.
+  const drawSerial = useRef(0);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [networkOnline, setNetworkOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine,
@@ -428,7 +441,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
             revision,
             job.draw,
             job.overrides,
-            roundsRef.current[job.tournamentId] ?? null,
+            // The round captured when the job was planned, not whatever day is on screen now.
+            job.roundId,
           ),
         );
         return null;
@@ -467,11 +481,72 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     rawDispatch({ type: "hydrate", state: next });
   }, []);
 
+  // Puts a board back exactly as it was before a queued save that failed. The unsaved board must
+  // never stay on screen, because a publish built from it would show players a draw the database
+  // does not have.
+  const applyBoard = useCallback((tournamentId: string, board: BoardState | undefined) => {
+    if (!board) return;
+    const current = latest.current;
+    const next: DeskState = {
+      ...current,
+      boards: { ...current.boards, [tournamentId]: board },
+    };
+    latest.current = next;
+    rawDispatch({ type: "hydrate", state: next });
+  }, []);
+
+  // The day on screen, as the reducer and the save jobs need it. The store owns the selection, so
+  // filling it here keeps every screen from having to name the day on each action.
+  const dayContext = useCallback(() => {
+    const current = latest.current;
+    const tournamentId = current.activeTournamentId;
+    const tournament = current.tournaments.find((t) => t.id === tournamentId);
+    const days = tournament ? playingDaysOfEvent(current.days[tournament.id] ?? []) : [];
+    const day = days.find((entry) => entry.dayNumber === drawDayRef.current) ?? null;
+    const excluded = new Set<string>();
+    if (day && tournament) {
+      for (const entry of current.entries) {
+        if (entry.tournamentId !== tournament.id) continue;
+        const chosen = entry.selectedDays ?? [];
+        if (chosen.length > 0 && !chosen.includes(day.dayNumber)) excluded.add(entry.playerId);
+      }
+    }
+    return { tournamentId, tournament, day, excluded };
+  }, []);
+
   // Every screen dispatches through this. In demo mode it is the plain reducer; with Supabase the
   // draw actions are also queued for the database.
   const dispatch = useCallback<Dispatch<Action>>(
-    (action) => {
+    (rawAction) => {
+      const context = dayContext();
+      const action: Action =
+        rawAction.type === "generate"
+          ? { ...rawAction, dayNumber: rawAction.dayNumber ?? context.day?.dayNumber ?? null }
+          : rawAction.type === "publish"
+            ? {
+                ...rawAction,
+                dayNumber: rawAction.dayNumber ?? context.day?.dayNumber ?? null,
+                dayLabel: rawAction.dayLabel ?? context.day?.label,
+                playDate: rawAction.playDate ?? context.day?.playDate,
+              }
+            : rawAction;
       const isPublish = action.type === "publish" || action.type === "unpublish";
+      // A save that failed leaves the screen on the last saved board. Publishing then would need a
+      // board the database never stored, so it waits for a successful save.
+      if (action.type === "publish" && saveFailed) {
+        setPublishState("failed");
+        setPublishError("The last change was not saved. Fix it and save again before publishing.");
+        toast.push({
+          tone: "bad",
+          title: "Not published",
+          detail: "The last change was not saved, so there is nothing safe to publish yet.",
+        });
+        return;
+      }
+      const planOptions = {
+        roundId: context.tournamentId ? (roundsRef.current[context.tournamentId] ?? null) : null,
+        dayExcluded: context.day ? context.excluded : undefined,
+      };
       // Offline is not a queue: the change is refused before it reaches the reducer, so the screen
       // cannot show a value that the database never received.
       if (connected && !LOCAL_ONLY_ACTIONS.has(action.type) && !canWriteRef.current) {
@@ -495,7 +570,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       const after = reducer(before, action);
 
       if (isPublish) {
-        const jobs = planDrawJobs(action, before, after);
+        const jobs = planDrawJobs(action, before, after, planOptions);
         // Nothing to write: the reducer refused the action (blocking issues) or there was no
         // published copy to take down. The screen must not claim anything changed.
         if (jobs.length === 0) {
@@ -576,7 +651,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const jobs = planDrawJobs(action, before, after);
+      const serial = ++drawSerial.current;
+      const jobs = planDrawJobs(action, before, after, planOptions);
       const takedown = jobs.find((job) => job.kind === "unpublish");
 
       if (takedown) {
@@ -607,13 +683,25 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       if (notice) toast.push(notice);
       for (const job of jobs) {
         drawQueue.current?.(async () => {
-          await runDrawJob(job, client);
-          // The takedown landed; the old snapshot goes only now.
-          if (job.kind === "unpublish") applyPublished(job.tournamentId, null);
+          try {
+            await runDrawJob(job, client);
+            if (job.kind === "save") setSaveFailed(false);
+            // The takedown landed; the old snapshot goes only now.
+            if (job.kind === "unpublish") applyPublished(job.tournamentId, null);
+          } catch (error) {
+            if (job.kind === "save") {
+              setSaveFailed(true);
+              // Put the last saved board back, unless a newer action has replaced this one.
+              if (serial === drawSerial.current) {
+                applyBoard(job.tournamentId, before.boards[job.tournamentId]);
+              }
+            }
+            throw error;
+          }
         });
       }
     },
-    [apply, applyPublished, client, connected, runDrawJob],
+    [apply, applyBoard, applyPublished, client, connected, runDrawJob, saveFailed],
   );
 
   const adapters = useMemo<Adapters>(() => {
@@ -648,7 +736,6 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       selectedDays: selectedDaysOf(entry, days),
     }));
     const draw = board.draw;
-    const signature = draw?.map((g) => `${g.number}:${g.playerIds.join(",")}`).join("|") ?? "";
     const inDraw = new Set(draw?.flatMap((g) => g.playerIds) ?? []);
     const lookup =
       <T extends { id: string; name: string }>(xs: T[]) =>
@@ -721,8 +808,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       published: board.published,
       overrides: board.overrides,
       isPublished: board.published !== null,
+      // Compared per playing day: another day's published copy is not a change to this one.
       changedSincePublish:
-        board.published !== null && draw !== null && board.published.signature !== signature,
+        board.published !== null &&
+        draw !== null &&
+        publishedSignatureForDay(board.published, drawDay) !== drawSignatureForDay(draw, drawDay),
       names: {
         category: lookup(tournament?.categories ?? []),
         flight: lookup(tournament?.flights ?? []),
@@ -738,6 +828,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       error,
       accessProblem,
       saving,
+      saveFailed,
       publishState,
       publishError,
       member: connected ? member : undefined,
@@ -758,6 +849,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     error,
     accessProblem,
     saving,
+    saveFailed,
     publishState,
     publishError,
     member,

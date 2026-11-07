@@ -269,6 +269,18 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
   // A day can run two shotguns. When the caller names each player's session, the field is cut per
   // session, so the morning never borrows the afternoon's holes or its start time.
   const sessionInput = input.sessions;
+  /**
+   * Is this player playing the day being drawn? The map the caller passes is the day's own
+   * registrations, so a player who is missing from it chose another day and must not be drawn
+   * here. An explicit null value is different: the player is playing but the desk has not
+   * recorded a session, so they are drawn in the morning and the warning names the gap.
+   */
+  const playingThisDay = (playerId: string): boolean => {
+    if (!sessionInput) return true;
+    const byPlayer = sessionInput.byPlayer;
+    if (byPlayer instanceof Map) return byPlayer.has(playerId);
+    return Object.prototype.hasOwnProperty.call(byPlayer, playerId);
+  };
   const sessionOf = (playerId: string): Session | null => {
     if (!sessionInput) return null;
     const byPlayer = sessionInput.byPlayer;
@@ -278,14 +290,12 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
         : (byPlayer as Record<string, Session | null | undefined>)[playerId];
     return value === "AM" || value === "PM" ? value : null;
   };
-  // A player with no session on file still plays: the morning is used and the warning names the
-  // gap, so the desk corrects it instead of the player dropping off the board.
   const sessionFor = (r: Registration): Session | null =>
     sessionOf(r.playerId) ?? (sessionInput ? "AM" : null);
   const sessionOrder: (Session | null)[] = sessionInput ? ["AM", "PM"] : [null];
   if (sessionInput) {
     const unassigned = registrations.filter(
-      (r) => r.status === "ok" && sessionOf(r.playerId) === null,
+      (r) => r.status === "ok" && playingThisDay(r.playerId) && sessionOf(r.playerId) === null,
     );
     if (unassigned.length > 0) {
       warnings.push(
@@ -293,6 +303,14 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
       );
     }
   }
+  // A second start inside a session is spaced by the batch interval, not by the long gap between
+  // sessions. Without an explicit interval the event setting is used.
+  const batchGap =
+    sessionInput?.batchGapMinutes !== undefined &&
+    Number.isFinite(sessionInput.batchGapMinutes) &&
+    sessionInput.batchGapMinutes > 0
+      ? sessionInput.batchGapMinutes
+      : config.waveGapMinutes;
 
   const placed: { flight: FlightRule; groups: string[][]; session: Session | null }[] = [];
   for (const session of sessionOrder) {
@@ -301,6 +319,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
         .filter(
           (r) =>
             r.status === "ok" &&
+            playingThisDay(r.playerId) &&
             r.flightId === flight.id &&
             !lockedIds.has(r.playerId) &&
             sessionFor(r) === session,
@@ -332,37 +351,39 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
   // after every real flight and sorted by name so a re-run is stable. The group row needs a real
   // flight id for the database, so the first flight's id is used as a carrier only: the board and
   // the published snapshot label the group from its provisional members, never from that flight.
-  const loose = provisional
-    .filter((p) => !lockedIds.has(p.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  if (loose.length > 0) {
+  const looseRegistrations = provisionalRegistrations
+    .filter((r) => !lockedIds.has(r.playerId) && playingThisDay(r.playerId))
+    .sort((a, b) => a.playerName.localeCompare(b.playerName));
+  if (looseRegistrations.length > 0) {
     const carrierFlightId = orderedFlights[0]?.id ?? "";
     if (carrierFlightId === "") {
       warnings.push(
         `The event has no flights set up, so ${UNCLASSIFIED_LABEL} groups cannot be saved. Set up at least one flight in Settings.`,
       );
     }
-    const sizes = groupSizes(loose.length, config.groupSize);
-    const cut = chunk(loose, sizes);
-    for (const g of cut) {
-      if (g.length < config.minGroupSize) {
-        warnings.push(`${UNCLASSIFIED_LABEL}: a group has only ${g.length} player(s).`);
+    // Each session keeps its own unclassified block, so a confirmed player who chose the
+    // afternoon goes off in the afternoon instead of being dropped into the morning.
+    for (const session of sessionOrder) {
+      const loose = looseRegistrations.filter((r) => sessionFor(r) === session);
+      if (loose.length === 0) continue;
+      const cut = chunk(loose, groupSizes(loose.length, config.groupSize));
+      for (const g of cut) {
+        if (g.length < config.minGroupSize) {
+          warnings.push(`${UNCLASSIFIED_LABEL}: a group has only ${g.length} player(s).`);
+        }
       }
+      const boundary = placed.reduce(
+        (last, entry, index) => (entry.session === session ? index + 1 : last),
+        0,
+      );
+      placed.splice(boundary, 0, {
+        flight: { id: carrierFlightId, name: UNCLASSIFIED_LABEL, categoryId: "", min: 0, max: 0 },
+        groups: cut.map((g) => g.map((r) => r.playerId)),
+        session,
+      });
     }
-    // The unclassified block belongs to the morning, after that session's classes, so the slot
-    // order stays in step with the group order.
-    const looseSession = sessionOrder[0] ?? null;
-    const boundary = placed.reduce(
-      (last, entry, index) => (entry.session === looseSession ? index + 1 : last),
-      0,
-    );
-    placed.splice(boundary, 0, {
-      flight: { id: carrierFlightId, name: UNCLASSIFIED_LABEL, categoryId: "", min: 0, max: 0 },
-      groups: cut.map((g) => g.map((r) => r.id)),
-      session: looseSession,
-    });
     warnings.push(
-      `${loose.length} confirmed player(s) are missing a birthdate, gender or handicap index and were placed in ${UNCLASSIFIED_LABEL} groups. Correct the details and re-run the draw.`,
+      `${looseRegistrations.length} confirmed player(s) are missing a birthdate, gender or handicap index and were placed in ${UNCLASSIFIED_LABEL} groups. Correct the details and re-run the draw.`,
     );
   }
 
@@ -400,7 +421,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
           counts,
           config.holes,
           sessionInput.starts[session],
-          config.waveGapMinutes,
+          batchGap,
           occupied,
           drawSeed,
           options.splitClassesAcrossWaves ?? false,
