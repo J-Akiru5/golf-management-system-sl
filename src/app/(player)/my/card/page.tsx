@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
+import { PlayerPageHeader } from "@/components/player/PlayerPageHeader";
 import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
 import { getI18n } from "@/lib/i18n/server";
 import { loadPortal } from "@/lib/player/portal";
@@ -39,14 +41,17 @@ export default async function PlayerCardPage() {
   return (
     <div className="grid gap-5">
       <PlayerOfflineNotice path="/my/card" />
-      <h1 className="font-serif text-[30px] leading-9 font-semibold">
-        {t("player.scorecard.heading")}
-      </h1>
+      <PlayerPageHeader title={t("player.scorecard.heading")} />
 
       {entries.length === 0 ? (
-        <p className="notice" role="status">
-          {t("player.scorecard.empty")}
-        </p>
+        <div className="grid gap-2">
+          <p className="notice" role="status">
+            {t("player.scorecard.empty")}
+          </p>
+          <p className="hint">
+            <Link href="/pairings">{t("player.app.openPairings")}</Link>
+          </p>
+        </div>
       ) : (
         entries.map((entry) => (
           <section key={entry.tournamentId} className="grid gap-4">

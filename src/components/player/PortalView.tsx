@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
+import { fmtRange } from "@/lib/data/labels";
 import { fmtHcp, fmtIndex, fmtTime } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
 import {
@@ -18,6 +19,11 @@ import {
 export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
   // A snapshot saved on the phone before scorecards existed has no array at all.
   const scorecards = entry.scorecards ?? [];
+  const dates = entry.dates.length
+    ? fmtRange(entry.dates)
+    : entry.eventDate
+      ? fmtRange([entry.eventDate])
+      : t("player.value.dateTbc");
   const facts: { label: string; value: string }[] = [
     { label: t("player.fact.start"), value: startLabel(entry, t, fmtTime) },
     { label: t("player.fact.flight"), value: entry.flight ?? t("player.value.notPlacedYet") },
@@ -33,9 +39,7 @@ export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
       <header className="grid gap-1">
         <h3 className="font-serif text-[24px] leading-7 font-semibold">{entry.eventName}</h3>
         <p className="hint">
-          {entry.dates.length > 1
-            ? entry.dates.join(" · ")
-            : (entry.eventDate ?? t("player.value.dateTbc"))}
+          {dates}
           {" · "}
           {entry.startFormat === "shotgun" ? t("player.value.shotgun") : t("player.value.twoTee")}
         </p>
@@ -70,10 +74,17 @@ export function EntryCard({ entry, t }: { entry: PortalEntry; t: Translate }) {
         <p className="hint">{t("player.scorecard.empty")}</p>
       )}
 
-      <p className="hint">
-        {entry.published ? t("player.published.yes") : t("player.published.no")}{" "}
-        <Link href="/pairings">{t("player.seeFullList")}</Link>.
-      </p>
+      <div className="grid gap-1">
+        <p className="hint">
+          {entry.published ? t("player.published.yes") : t("player.published.no")}
+        </p>
+        <Link
+          href="/pairings"
+          className="inline-flex min-h-11 items-center font-semibold text-fairway no-underline hover:underline"
+        >
+          {t("player.seeFullList")}
+        </Link>
+      </div>
     </article>
   );
 }
@@ -84,14 +95,23 @@ export function PortalEntries({
   t,
   linkedMessage,
   nameHeading = "h1",
+  showIdentity = true,
+  excludeTournamentId,
+  entriesHeading,
 }: {
   state: PortalState;
   t: Translate;
   linkedMessage?: string | null;
   /** The offline page already has its own h1, so it asks for h2. */
   nameHeading?: "h1" | "h2";
+  /** The dashboard shows the identity itself, above the next-round card. */
+  showIdentity?: boolean;
+  /** The next round is already the dashboard hero; do not repeat its full card below. */
+  excludeTournamentId?: string;
+  entriesHeading?: string;
 }) {
   const NameHeading = nameHeading;
+  const entries = state.entries.filter((entry) => entry.tournamentId !== excludeTournamentId);
   return (
     <div className="grid gap-4">
       {linkedMessage && (
@@ -99,7 +119,7 @@ export function PortalEntries({
           {linkedMessage}
         </p>
       )}
-      {state.player && (
+      {state.player && showIdentity && (
         <div className="grid gap-1">
           <p className="overline">{t("player.title")}</p>
           <NameHeading className="font-serif text-[32px] leading-9 font-semibold">
@@ -109,17 +129,20 @@ export function PortalEntries({
         </div>
       )}
 
+      {entriesHeading && entries.length > 0 && (
+        <h2 className="text-[18px] leading-6">{entriesHeading}</h2>
+      )}
       {state.entries.length === 0 ? (
         <p className="notice" role="status">
           {t("player.noEntries")}
         </p>
-      ) : (
+      ) : entries.length > 0 ? (
         <div className="grid gap-4">
-          {state.entries.map((entry) => (
+          {entries.map((entry) => (
             <EntryCard key={entry.tournamentId} entry={entry} t={t} />
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

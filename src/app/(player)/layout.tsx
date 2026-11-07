@@ -27,7 +27,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
     <I18nProvider locale={locale}>
       <div lang={locale} className="grid min-h-dvh content-start">
         <header className="band flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center no-underline">
+          <Link href="/" className="flex min-h-11 items-center no-underline">
             <TeeLineLogo variant="reverse" width={172} />
           </Link>
           <span className="text-sm font-semibold">{t("player.title")}</span>
@@ -36,7 +36,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
             <Link
               href="/pairings"
               data-help="my-pairings"
-              className="text-on-forest no-underline hover:underline"
+              className="inline-flex min-h-11 items-center text-on-forest no-underline hover:underline"
             >
               {t("player.nav.allPairings")}
             </Link>

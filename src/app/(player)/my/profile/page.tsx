@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Avatar } from "@/components/bits";
+import { PlayerPageHeader } from "@/components/player/PlayerPageHeader";
 import { SignOutForm } from "@/components/SignOutForm";
 import { loadPublicPhotos } from "@/lib/data/public-results";
 import { getI18n } from "@/lib/i18n/server";
@@ -56,9 +57,7 @@ export default async function PlayerProfilePage() {
 
   return (
     <div className="grid gap-4">
-      <h1 className="font-serif text-[30px] leading-9 font-semibold">
-        {t("player.profile.title")}
-      </h1>
+      <PlayerPageHeader title={t("player.profile.title")} />
 
       <section className="card grid gap-4" aria-labelledby="profile-h">
         <div className="flex items-center gap-3">

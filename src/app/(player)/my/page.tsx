@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppTiles, DashboardHero } from "@/components/player/DashboardHero";
 import { PlayerOfflineNotice, RememberPortal } from "@/components/player/OfflinePortal";
+import { PlayerGreeting } from "@/components/player/PlayerGreeting";
+import { PlayerPageHeader } from "@/components/player/PlayerPageHeader";
 import { PortalEntries } from "@/components/player/PortalView";
 import { getI18n } from "@/lib/i18n/server";
 import type { Translate } from "@/lib/i18n/t";
@@ -104,13 +106,15 @@ function PortalBody({
   today: string;
   defaultNgap: string;
 }) {
-  if (!state.linked || !state.player) {
+  const player = state.player;
+  if (!state.linked || !player) {
     // Not linked is not a locked door. The player pages stay open and say what is missing; only
     // the entries wait for the club to link the record.
     return (
       <div className="grid gap-4" data-help="my-entry">
         <PlayerOfflineNotice />
-        <PortalEntries state={state} t={t} linkedMessage={linkedMessage} />
+        <PlayerPageHeader title={t("player.title")} intro={t("player.claim.notLinked")} />
+        <PortalEntries state={state} t={t} linkedMessage={linkedMessage} showIdentity={false} />
         <AppTiles t={t} />
         <ClaimCard t={t} notice={notice} defaultNgap={defaultNgap} />
       </div>
@@ -123,9 +127,17 @@ function PortalBody({
     <div className="grid gap-4" data-help="my-entry">
       <PlayerOfflineNotice />
       <RememberPortal state={state} />
+      <PlayerGreeting name={player.name} ngapId={player.ngapId} t={t} />
       {next && <DashboardHero next={next} t={t} />}
       <AppTiles t={t} />
-      <PortalEntries state={state} t={t} linkedMessage={linkedMessage} />
+      <PortalEntries
+        state={state}
+        t={t}
+        linkedMessage={linkedMessage}
+        showIdentity={false}
+        excludeTournamentId={next?.entry.tournamentId}
+        entriesHeading={next ? t("player.app.otherEntries") : undefined}
+      />
     </div>
   );
 }
@@ -147,7 +159,7 @@ export default async function MyGolfPage({
   if (!isSupabaseConfigured()) {
     return (
       <div className="grid gap-4" data-help="my-entry">
-        <h1 className="font-serif text-[30px] leading-9 font-semibold">{t("player.title")}</h1>
+        <PlayerPageHeader title={t("player.title")} />
         <p className="notice" role="status">
           {t("player.demo.body")} <Link href="/pairings">{t("player.demo.link")}</Link>.
         </p>
@@ -167,7 +179,7 @@ export default async function MyGolfPage({
   } catch (error) {
     return (
       <div className="grid gap-4" data-help="my-entry">
-        <h1 className="font-serif text-[30px] leading-9 font-semibold">{t("player.title")}</h1>
+        <PlayerPageHeader title={t("player.title")} />
         <p className="notice bad" role="alert">
           {portalErrorMessage(error, t)}
         </p>

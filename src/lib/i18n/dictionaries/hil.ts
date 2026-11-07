@@ -94,6 +94,7 @@ export const hil: Dictionary = {
       openCard: "Akon card",
       openCourse: "Mapa sang course",
       openPairings: "Pairing",
+      otherEntries: "Iban pa nga mga entry",
     },
     board: {
       title: "Leaderboard",

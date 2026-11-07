@@ -96,6 +96,7 @@ export const en = {
       openCard: "My card",
       openCourse: "Course map",
       openPairings: "Pairings",
+      otherEntries: "Other entries",
     },
     board: {
       title: "Leaderboard",

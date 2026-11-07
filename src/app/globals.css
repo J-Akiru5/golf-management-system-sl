@@ -1661,30 +1661,125 @@
 
   /* ---------- Player app: dashboard, live board, course map ---------- */
   .next-up {
+    position: relative;
     display: grid;
     gap: 4px;
-    padding: 18px;
-    border-radius: 18px;
+    padding: 20px;
+    border-radius: 20px;
     background: linear-gradient(150deg, #073d2e 0%, #0b4d3a 58%, #0e5a44 100%);
     color: var(--on-forest);
+    box-shadow: var(--shadow-lift);
+    overflow: hidden;
   }
   .next-up .overline {
     color: #d7b568;
   }
   .next-up-title {
+    color: var(--on-forest);
     font-family: var(--f-serif);
     font-size: 25px;
     line-height: 32px;
     font-weight: 600;
   }
   .next-up-start {
-    font-size: 19px;
+    font-size: clamp(22px, 5.5vw, 28px);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
   .next-up-hint {
     color: var(--on-forest-muted);
     font-size: 13px;
+  }
+  .next-up-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-top: 2px;
+    color: var(--on-forest-muted);
+    font-size: 12px;
+  }
+  .next-up-facts b {
+    color: var(--on-forest);
+  }
+  .next-up-status {
+    margin-top: 2px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    background: rgba(215, 181, 104, 0.14);
+    color: #f0d9a1;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .next-up-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .next-up-action {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 14px;
+    border: 1px solid rgba(247, 245, 238, 0.36);
+    border-radius: 10px;
+    color: var(--on-forest);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+  }
+  .next-up-action:hover {
+    background: rgba(247, 245, 238, 0.12);
+  }
+  .next-up-action.primary {
+    border-color: var(--gold);
+    background: var(--gold);
+    color: var(--on-gold);
+  }
+  .next-up-action.primary:hover {
+    background: #ebcb7e;
+  }
+  .player-greeting {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 2px 0;
+  }
+  .player-greeting .avatar {
+    flex: 0 0 auto;
+  }
+  .player-greeting .overline,
+  .player-page-head .overline {
+    color: var(--gold-ink);
+  }
+  .player-greeting-name {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--f-serif);
+    font-size: clamp(28px, 8vw, 36px);
+    line-height: 1.05;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .player-page-head {
+    display: grid;
+    gap: 3px;
+  }
+  .player-page-head h1 {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--f-serif);
+    font-size: clamp(30px, 6vw, 36px);
+    line-height: 1.1;
+    font-weight: 600;
+  }
+  .player-page-head .hint {
+    margin: 0;
   }
   .app-tiles {
     display: grid;
@@ -1693,6 +1788,7 @@
   }
   .app-tile {
     display: flex;
+    min-height: 56px;
     align-items: center;
     gap: 10px;
     padding: 12px 14px;
@@ -1710,6 +1806,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+  .round-pills .pill {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
   }
   .round-pills .pill[aria-current="page"] {
     border-color: var(--gold);
@@ -1867,7 +1968,7 @@
     gap: 6px;
   }
   .hole-chip {
-    min-height: 40px;
+    min-height: 44px;
     border: 1px solid var(--line);
     border-radius: 10px;
     background: var(--surface-raised);

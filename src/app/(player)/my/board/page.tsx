@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LiveBoard } from "@/components/player/LiveBoard";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
+import { PlayerPageHeader } from "@/components/player/PlayerPageHeader";
 import type { PublicRoundSummary } from "@/lib/data/public-results";
 import { getI18n } from "@/lib/i18n/server";
 import { playerBoard, playerRounds } from "@/lib/player/board-data";
@@ -72,12 +73,7 @@ export default async function PlayerBoardPage({
   return (
     <div className="grid gap-4">
       <PlayerOfflineNotice path="/my/board" />
-      <header className="grid gap-1">
-        <h1 className="font-serif text-[30px] leading-9 font-semibold">
-          {t("player.board.title")}
-        </h1>
-        <p className="hint">{t("player.board.intro")}</p>
-      </header>
+      <PlayerPageHeader title={t("player.board.title")} intro={t("player.board.intro")} />
 
       {rounds.length > 1 && (
         <nav aria-label={t("player.board.round")} className="round-pills">

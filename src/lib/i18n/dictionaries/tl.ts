@@ -94,6 +94,7 @@ export const tl: Dictionary = {
       openCard: "Card ko",
       openCourse: "Mapa ng course",
       openPairings: "Pairings",
+      otherEntries: "Iba pang mga entry",
     },
     board: {
       title: "Leaderboard",

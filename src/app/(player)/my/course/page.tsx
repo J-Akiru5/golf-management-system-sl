@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PlayerMap } from "@/components/player/PlayerMap";
+import { PlayerPageHeader } from "@/components/player/PlayerPageHeader";
 import { COURSE_IS_PLACEHOLDER } from "@/lib/course/layout";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -16,12 +17,7 @@ export default async function PlayerCoursePage() {
 
   return (
     <div className="grid gap-4">
-      <header className="grid gap-1">
-        <p className="overline">{t("player.course.subtitle")}</p>
-        <h1 className="font-serif text-[30px] leading-9 font-semibold">
-          {t("player.course.title")}
-        </h1>
-      </header>
+      <PlayerPageHeader title={t("player.course.title")} intro={t("player.course.subtitle")} />
 
       {COURSE_IS_PLACEHOLDER && (
         <p className="notice warn" role="note">
