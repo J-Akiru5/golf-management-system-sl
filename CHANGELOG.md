@@ -9,10 +9,16 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-11-08
+
+### Migrations shipping with 0.31.0
+`20261108003000_public_profile_leaderboard.sql`, applied to the live project on 8 November 2026
+(details under Added).
+
 ### Added
 - **Public player profile and cumulative two-man team leaderboard (issue #198).** The pairings page
-  navigation is now `Pairings`, `Players`, `Player Profile` and `Leaderboard`; the `Tee times` pill
-  is gone and the tee-time board stays on the pairings page. `Player Profile` searches a confirmed
+  navigation is now `Pairings`, `Players`, `PROFILE PLAYERS` and `Leaderboard`; the `Tee times` pill
+  is gone and the tee-time board stays on the pairings page. `PROFILE PLAYERS` searches a confirmed
   player and shows their frozen published card, partner, class, category and index.
   `/leaderboard` ranks two-man teams across every published round, with a category filter and a
   class filter, a ten-team limit and a `T` mark for ties. Equal teams share a rank and the
@@ -35,6 +41,11 @@ Supabase project, because the code and the database are released separately.
   linked from the pairings footer and its not-out-yet notice, the roster, the home page and the FAQ.
 - The old `/leaderboard` per-round gross and net tables remain as a fallback for a database without
   the new function. The live project has it now, so the page uses the cumulative team table.
+- **Public labels are in capitals (issue #206).** The `Player Profile` tab is `PROFILE PLAYERS`, the
+  `Official rules` and `Rules of play` links are `RULES OF PLAY`, and `TeeLine Golf home` is
+  `TEELINE GOLF HOME`, in English, Tagalog and Hiligaynon (the two local languages keep their own
+  words, in capitals). The per-class leaderboard that issue asks for is the class filter on
+  `/leaderboard` from issue #198. No migration.
 
 ## [0.30.0] - 2026-11-08
 
