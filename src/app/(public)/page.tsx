@@ -15,8 +15,8 @@ import {
   dateRange,
   daysBetween,
   enteredLabel,
-  formatLabel,
   type PublicEvent,
+  VENUE_LABEL,
 } from "@/lib/public/highlights";
 import {
   openGraphFor,
@@ -83,7 +83,7 @@ function ScheduleStrip({ event }: { event: PublicEvent }) {
       <div>
         <p className="section-kicker">Schedule</p>
         <h2 id="schedule-title">{event.name}</h2>
-        <p className="schedule-meta">{formatLabel(event.startFormat, event.firstTeeTime)}</p>
+        <p className="schedule-meta">{VENUE_LABEL}</p>
       </div>
       <ol className="schedule-days">
         {days.map((day) => (
@@ -251,8 +251,7 @@ export default async function HomePage() {
                 <em>{dateRange(featured.dates)}</em>
               </h1>
               <p className="hero-copy">
-                {formatLabel(featured.startFormat, featured.firstTeeTime)} ·{" "}
-                {cutOffLabel(daysBetween(today, featured.cutOffDate))} ·{" "}
+                {VENUE_LABEL} · {cutOffLabel(daysBetween(today, featured.cutOffDate))} ·{" "}
                 {enteredLabel(featured.entered)}
               </p>
             </>
@@ -304,8 +303,8 @@ export default async function HomePage() {
               <dd>{featured.dates.length}</dd>
             </div>
             <div>
-              <dt>First tee</dt>
-              <dd>{featured.firstTeeTime}</dd>
+              <dt>Venue</dt>
+              <dd className="hero-stat-text">{VENUE_LABEL}</dd>
             </div>
           </dl>
         )}
