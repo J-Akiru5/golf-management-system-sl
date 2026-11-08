@@ -6,10 +6,20 @@ import { useMemo, useState } from "react";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { playingDaysOf } from "@/lib/data/dates";
+import { isFinalPlayingDay, playingDaysOf } from "@/lib/data/dates";
 import { fmtIso } from "@/lib/data/labels";
-import { daySessionSummary, sessionLabelForTime } from "@/lib/data/sessions";
-import { batchAssignment, teeAssignmentProblem } from "@/lib/data/tee-time";
+import {
+  type DaySession,
+  type SessionKey,
+  sessionSummaryOf,
+  sessionsForDay,
+} from "@/lib/data/sessions";
+import {
+  batchAssignment,
+  startCountForField,
+  startTimesFrom,
+  teeAssignmentProblem,
+} from "@/lib/data/tee-time";
 import type {
   Caddie,
   DayTeeAssignment,
@@ -17,7 +27,12 @@ import type {
   RegistrationEntry,
   TournamentDay,
 } from "@/lib/data/types";
-import { type DrawPlacement, placementsFromDraw } from "@/lib/draw/tee-times";
+import {
+  batchLetters,
+  type DrawPlacement,
+  placementsFromDraw,
+  sessionForRow,
+} from "@/lib/draw/tee-times";
 import { fmtIndex, fmtTime } from "@/lib/format";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -27,7 +42,8 @@ import { useDesk } from "@/lib/store/desk-store";
  * selected. The database function checks the course's hole count and the day's start time.
  */
 export default function TeeTimesPage() {
-  const { tournament, days, entries, players, caddies, adapters, status, draw } = useDesk();
+  const { tournament, days, entries, players, caddies, adapters, status, draw, drawDay } =
+    useDesk();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [batchTime, setBatchTime] = useState("");
   const [batching, setBatching] = useState<"missing" | "all" | "draw" | null>(null);
@@ -38,14 +54,24 @@ export default function TeeTimesPage() {
   // reads the same list. A trailing non-playing day must not move the last playing day's afternoon.
   const playingDays = useMemo(() => playingDaysOf(days), [days]);
   const day = playingDays.find((d) => d.dayNumber === selectedDay) ?? playingDays[0] ?? null;
-  // 0-based position in the playing days, which is what the session defaults read: every day but the
-  // last runs a morning and an afternoon, and the last day runs one tee time.
-  const dayIndex = day
-    ? Math.max(
-        0,
-        playingDays.findIndex((d) => d.dayNumber === day.dayNumber),
-      )
-    : 0;
+  // The morning and afternoon this day runs, read from what the desk stored: the day's own start,
+  // the day's own afternoon start, then the event's afternoon time. Each session says whether its
+  // time is stored or a fallback, so the subtitle never reads a default as the club's choice.
+  const sessions = useMemo(
+    () =>
+      day
+        ? sessionsForDay(
+            // A day with no start of its own opens at the event's first tee time, the same fallback
+            // the draw store uses. The afternoon comes from the stored settings only.
+            { startTime: day.startTime ?? tournament?.config.firstTeeTime, pmStartTime: day.pmStartTime },
+            {
+              eventPmStart: tournament?.config.pmFirstTeeTime,
+              finalDay: isFinalPlayingDay(day, playingDays),
+            },
+          )
+        : [],
+    [day, playingDays, tournament],
+  );
 
   // The day's own start time, editable per day: Sunday's morning is not Thursday's. A draft keeps the
   // day it was typed for, so switching days shows that day's saved value instead of the last edit.
@@ -57,13 +83,30 @@ export default function TeeTimesPage() {
     tone: "ok" | "bad";
     text: string;
   } | null>(null);
+  // The afternoon start follows the same per-day draft: a value typed for one day never shows on
+  // another, and clearing it makes that day use the event's afternoon time again.
+  const [pmStartDraft, setPmStartDraft] = useState<{ key: string; value: string } | null>(null);
+  const [pmStartSaving, setPmStartSaving] = useState(false);
+  const [pmStartResult, setPmStartResult] = useState<{
+    key: string;
+    tone: "ok" | "bad";
+    text: string;
+  } | null>(null);
 
   const playerById = useMemo(
     () => new Map(players.map((player) => [player.id, player])),
     [players],
   );
-  // Where the draw put each player: the time and hole the draw's group starts with.
-  const placements = useMemo(() => placementsFromDraw(draw ?? []), [draw]);
+  // Where the draw put each player: the time and hole the draw's group starts with. Only this day's
+  // board can give this day its times, so a board loaded for another playing day yields nothing
+  // rather than one day's holes landing on another day.
+  const placements = useMemo(
+    () =>
+      day && (drawDay === null || drawDay === day.dayNumber)
+        ? placementsFromDraw(draw ?? [], day.dayNumber)
+        : new Map<string, DrawPlacement>(),
+    [draw, day, drawDay],
+  );
   const rows = useMemo(() => {
     if (!day) return [];
     return entries
@@ -96,6 +139,52 @@ export default function TeeTimesPage() {
   const chosenTime = batchTime || config.firstTeeTime;
   const dayStart = dayStartDraft?.key === dayKey ? dayStartDraft.value : (day?.startTime ?? "");
   const dayStartMessage = dayStartResult?.key === dayKey ? dayStartResult : null;
+  const pmStart = pmStartDraft?.key === dayKey ? pmStartDraft.value : (day?.pmStartTime ?? "");
+  const pmStartMessage = pmStartResult?.key === dayKey ? pmStartResult : null;
+
+  // How many start times this day's field needs. Every hole holding one group is one start, and the
+  // rest of the field follows one interval later. There is no fixed two: a bigger field gets a third
+  // start and a fourth, and the letters follow the same count.
+  const startsNeeded = startCountForField(rows.length, config.holes, config.groupSize);
+  const starts = startTimesFrom(
+    day?.startTime?.trim() || config.firstTeeTime,
+    config.intervalMinutes,
+    startsNeeded,
+  );
+  const letters = batchLetters(startsNeeded);
+  /** "06:30 (A), 06:45 (B)" for the start times this day needs, in order. */
+  const startList = starts
+    .map((start, index) => {
+      const letter = letters[index];
+      return letter ? `${start.time} (${letter})` : start.time;
+    })
+    .join(", ");
+  /** Said instead of taking times when the board on screen is another playing day's board. */
+  const boardDayWarning =
+    day && drawDay !== null && drawDay !== day.dayNumber
+      ? `The board on screen is Day ${drawDay}. Open the Draw screen on Day ${day.dayNumber} to take Day ${day.dayNumber}'s times.`
+      : null;
+
+  const pmSession = sessions.find((session) => session.key === "PM") ?? null;
+  const pmTime = pmSession?.time ?? config.pmFirstTeeTime ?? config.firstTeeTime;
+  // Which afternoon time is the record and which is only a fallback, so nobody reads a default as
+  // the club's stored choice.
+  const pmHint = day?.pmStartTime
+    ? `Stored for this day: ${pmTime}. Other days keep their own. Leave it empty to use the event's afternoon time.`
+    : pmSession?.source === "stored"
+      ? `Not stored for this day, so the event's time is used: ${pmTime}.`
+      : `Not stored for this day. It falls back to a default time, ${pmTime}.`;
+
+  // `sessionSummaryOf` writes "AM 06:30 · PM 12:30". Each time says where it came from, so a
+  // fallback is never read as the club's stored choice.
+  const daySummary = sessionSummaryOf(
+    sessions.map((session) => ({
+      ...session,
+      time: `${session.time}${
+        session.source === "default" ? " (default)" : session.source === "stored" ? " (stored)" : ""
+      }`,
+    })),
+  );
 
   /**
    * Writes one start time to the day, in small parallel batches.
@@ -163,6 +252,11 @@ export default function TeeTimesPage() {
    */
   async function applyFromDraw() {
     if (!day || batching) return;
+    // The board must be this day's: another day's group would write its hole and time here.
+    if (boardDayWarning) {
+      setBatchMessage({ tone: "bad", text: boardDayWarning });
+      return;
+    }
     const targets: {
       entry: RegistrationEntry;
       player: PlayerRecord;
@@ -199,7 +293,8 @@ export default function TeeTimesPage() {
           await adapters.registrations.assignDayTee(item.entry.id, day.dayNumber, {
             teeTime: item.teeTime,
             startHole: item.placed.startHole,
-            wave: null,
+            // Only the batch letter a stored label names, never the whole label ("D1-AM-A").
+            wave: item.placed.batch ?? null,
             confirmed: false,
           });
           saved += 1;
@@ -254,6 +349,39 @@ export default function TeeTimesPage() {
     }
   }
 
+  /**
+   * Saves this day's own afternoon start, or clears it so the day uses the event's afternoon time.
+   * Only this day moves: the other days keep the time each already has.
+   */
+  async function savePmStart(time: string) {
+    if (!day || pmStartSaving) return;
+    const event = tournament;
+    if (!event) return;
+    setPmStartSaving(true);
+    setPmStartResult(null);
+    try {
+      await adapters.tournaments.setDayPmStart(event.id, day.dayNumber, time || null);
+      setPmStartResult({
+        key: dayKey,
+        tone: "ok",
+        text: time
+          ? `Saved. This day's afternoon starts at ${time}.`
+          : "Cleared. This day's afternoon uses the event's time.",
+      });
+    } catch (error) {
+      setPmStartResult({
+        key: dayKey,
+        tone: "bad",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Could not save the afternoon start for this day.",
+      });
+    } finally {
+      setPmStartSaving(false);
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <PageHeader
@@ -298,44 +426,78 @@ export default function TeeTimesPage() {
               id="tee-times"
               icon={<CalendarClock />}
               title={`${day.label} · ${fmtIso(day.playDate)}`}
-              subtitle={`${daySessionSummary(dayIndex, playingDays.length)}. ${
+              subtitle={`${daySummary}. ${
                 day.startTime
                   ? `The day opens at ${day.startTime}, and times before that are refused.`
                   : "No day start time is set, so the event's first tee time is the floor."
               }`}
             >
-              <div className="flex flex-wrap items-end gap-2 rounded-[12px] border border-line bg-surface-sunken p-3">
-                <label className="field w-40">
-                  <span>Day start (AM)</span>
-                  <input
-                    type="time"
-                    value={dayStart}
-                    disabled={dayStartSaving}
-                    className="text-[16px] md:text-sm"
-                    onChange={(event) => {
-                      setDayStartDraft({ key: dayKey, value: event.target.value });
-                      setDayStartResult(null);
-                    }}
-                    aria-label={`Start time for ${day.label}`}
-                  />
-                </label>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="min-h-11 md:min-h-0"
-                  disabled={dayStartSaving || dayStart === (day.startTime ?? "")}
-                  onClick={() => void saveDayStart(dayStart)}
-                >
-                  {dayStartSaving ? "Saving…" : "Save day start"}
-                </Button>
-                <span
-                  className={dayStartMessage?.tone === "bad" ? "hint !text-danger" : "hint"}
-                  role={dayStartMessage?.tone === "bad" ? "alert" : "status"}
-                >
-                  {dayStartMessage
-                    ? dayStartMessage.text
-                    : `Only this day moves. Leave it empty to start at the event's first tee time, ${fmtTime(config.firstTeeTime)}.`}
-                </span>
+              <div className="grid gap-2 rounded-[12px] border border-line bg-surface-sunken p-3">
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="field w-36">
+                    <span>Day start (AM)</span>
+                    <input
+                      type="time"
+                      value={dayStart}
+                      disabled={dayStartSaving}
+                      className="min-h-11 text-[16px] md:min-h-0 md:text-sm"
+                      onChange={(event) => {
+                        setDayStartDraft({ key: dayKey, value: event.target.value });
+                        setDayStartResult(null);
+                      }}
+                      aria-label={`Start time for ${day.label}`}
+                    />
+                  </label>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="min-h-11 md:min-h-0"
+                    disabled={dayStartSaving || dayStart === (day.startTime ?? "")}
+                    onClick={() => void saveDayStart(dayStart)}
+                  >
+                    {dayStartSaving ? "Saving…" : "Save day start"}
+                  </Button>
+                  <span
+                    className={dayStartMessage?.tone === "bad" ? "hint !text-danger" : "hint"}
+                    role={dayStartMessage?.tone === "bad" ? "alert" : "status"}
+                  >
+                    {dayStartMessage
+                      ? dayStartMessage.text
+                      : `Only this day moves. Leave it empty to start at the event's first tee time, ${fmtTime(config.firstTeeTime)}.`}
+                  </span>
+                </div>
+                {/* The afternoon start is this day's own setting. Empty means the event's time. */}
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="field w-36">
+                    <span>Afternoon start (PM)</span>
+                    <input
+                      type="time"
+                      value={pmStart}
+                      disabled={pmStartSaving}
+                      className="min-h-11 text-[16px] md:min-h-0 md:text-sm"
+                      onChange={(event) => {
+                        setPmStartDraft({ key: dayKey, value: event.target.value });
+                        setPmStartResult(null);
+                      }}
+                      aria-label={`Afternoon start time for ${day.label}`}
+                    />
+                  </label>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="min-h-11 md:min-h-0"
+                    disabled={pmStartSaving || pmStart === (day.pmStartTime ?? "")}
+                    onClick={() => void savePmStart(pmStart)}
+                  >
+                    {pmStartSaving ? "Saving…" : "Save PM start"}
+                  </Button>
+                  <span
+                    className={pmStartMessage?.tone === "bad" ? "hint !text-danger" : "hint"}
+                    role={pmStartMessage?.tone === "bad" ? "alert" : "status"}
+                  >
+                    {pmStartMessage ? pmStartMessage.text : pmHint}
+                  </span>
+                </div>
               </div>
 
               <div className="tiles grid-cols-2 lg:grid-cols-4">
@@ -357,6 +519,19 @@ export default function TeeTimesPage() {
                 </div>
               </div>
 
+              {boardDayWarning && (
+                <div className="notice warn" role="status">
+                  {boardDayWarning}
+                </div>
+              )}
+
+              {config.startFormat === "shotgun" && startsNeeded > 2 && (
+                <div className="notice warn" role="status">
+                  This day&apos;s {rows.length} players need {startsNeeded} start times: {startList}
+                  . Check the hole count and the group size, or expect a longer session.
+                </div>
+              )}
+
               {config.startFormat === "shotgun" && rows.length > 0 && (
                 <div className="grid gap-3 rounded-[12px] border border-line bg-surface-sunken p-3">
                   <div>
@@ -372,6 +547,12 @@ export default function TeeTimesPage() {
                       </Link>
                       . Either way the time is saved unconfirmed until the desk ticks it.
                     </p>
+                    {startsNeeded <= 2 && (
+                      <p className="hint mt-0.5">
+                        This day needs {startsNeeded} start {startsNeeded === 1 ? "time" : "times"}:{" "}
+                        {startList}.
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-end gap-2">
                     <label className="field w-36">
@@ -458,10 +639,10 @@ export default function TeeTimesPage() {
                           entry={entry}
                           player={player}
                           day={day}
-                          dayIndex={dayIndex}
-                          dayCount={playingDays.length}
                           caddies={caddies.filter((caddie) => caddie.active)}
                           courseHoles={tournament.config.holes}
+                          sessions={sessions}
+                          placementSession={placements.get(player.id)?.session ?? null}
                           onSave={(assignment) =>
                             adapters.registrations.assignDayTee(entry.id, day.dayNumber, assignment)
                           }
@@ -503,9 +684,7 @@ export default function TeeTimesPage() {
                 disabled={batching !== null || fromDraw === 0}
                 onClick={() => void applyFromDraw()}
               >
-                {batching === "draw"
-                  ? "Taking the draw…"
-                  : `Take the draw's times (${fromDraw})`}
+                {batching === "draw" ? "Taking the draw…" : `Take the draw's times (${fromDraw})`}
               </Button>
             </div>
           )}
@@ -519,21 +698,22 @@ function TeeRow({
   entry,
   player,
   day,
-  dayIndex,
-  dayCount,
   caddies,
   courseHoles,
+  sessions,
+  placementSession,
   onSave,
   onAssignCaddie,
 }: {
   entry: RegistrationEntry;
   player: PlayerRecord;
   day: TournamentDay;
-  /** 0-based day position, used only to name the session. */
-  dayIndex: number;
-  dayCount: number;
   caddies: Caddie[];
   courseHoles: number;
+  /** The morning and afternoon this day runs, read from what the desk stored. */
+  sessions: readonly DaySession[];
+  /** The session a stored draw label names, when the board had one. */
+  placementSession: SessionKey | null;
 
   onSave: (assignment: DayTeeAssignment) => Promise<void>;
   onAssignCaddie: (caddieId: string | null) => Promise<void>;
@@ -546,6 +726,15 @@ function TeeRow({
   const [saving, setSaving] = useState(false);
   const [caddieSaving, setCaddieSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  // The session the desk recorded for this day wins, then the session a stored draw label names,
+  // then the time itself. The row never invents one of the two.
+  const sessionKey = sessionForRow({
+    chosen: entry.daySessions?.[day.dayNumber] ?? null,
+    placement: placementSession,
+    time: teeTime || null,
+    sessions,
+  });
+  const sessionLabel = sessions.find((session) => session.key === sessionKey)?.label ?? null;
 
   /**
    * The one place that turns the row's fields into a write. Used by Save, by Clear, and by the
@@ -654,9 +843,7 @@ function TeeRow({
         <span className="pill">{entry.role}</span>
       </td>
       <td>
-        <span className="pill">
-          {sessionLabelForTime(teeTime || null, dayIndex, dayCount) ?? "—"}
-        </span>
+        <span className="pill">{sessionLabel ?? "—"}</span>
       </td>
       <td>
         <input
