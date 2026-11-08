@@ -269,6 +269,7 @@ export const en = {
     footer:
       "Names, home club, handicap, category, flight, hole and time only. No contact details or photos.",
     home: "TeeLine Golf home",
+    backHome: "Back to main page",
     demoFooter:
       "This is a local demo preview, not a published page. It shows names, home club, handicap, category, flight, hole and time only.",
     findName: "Find your name",

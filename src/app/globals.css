@@ -5381,10 +5381,49 @@ html[data-textsize="large"] {
   cursor: pointer;
 }
 
+/* The chip names the day and, below it, the date, so the day is readable without the screen-reader label. */
+.p-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding-block: 4px;
+  line-height: 1.15;
+}
+
+.p-chip-date {
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .p-chip.is-active {
   background: var(--forest);
   color: var(--on-forest);
   border-color: var(--forest);
+}
+
+/* The way back to the club's main page, first thing in the public header. */
+.public-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -6px 0 2px -4px;
+  padding: 0 4px;
+  color: var(--on-forest);
+  font: 600 14px / 1 var(--f-sans);
+  text-decoration: none;
+}
+
+.public-back:hover {
+  text-decoration: underline;
+}
+
+.public-back:focus-visible {
+  outline: 2px solid var(--gold-on-forest);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 .p-chip:focus-visible {

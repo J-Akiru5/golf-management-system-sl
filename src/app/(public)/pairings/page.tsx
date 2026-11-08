@@ -11,6 +11,7 @@ import {
   RulesOfPlay,
   TeeTimesBoard,
 } from "@/components/public/ProgrammeView";
+import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
@@ -124,6 +125,7 @@ export default async function PublicPairingsPage() {
     <main className="public public-pairings mobile-bar-space">
       <PlayerOfflineNotice path="/pairings" />
       <header className="public-head !p-4 sm:!p-5">
+        <PublicBackLink label={t("pairings.backHome")} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
