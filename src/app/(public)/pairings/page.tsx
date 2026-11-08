@@ -5,6 +5,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { PairingsView, type PairingsYou } from "@/components/PairingsView";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
+import { PairingsLive } from "@/components/public/PairingsLive";
 import {
   PlayerDirectory,
   ProgrammeNav,
@@ -20,6 +21,7 @@ import { loadPublicProgramme } from "@/lib/data/supabase/public-programme";
 import { fmtTime } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { loadPortal } from "@/lib/player/portal";
+import { pairingsSignature } from "@/lib/public/pairings-live";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
@@ -120,10 +122,14 @@ export default async function PublicPairingsPage() {
       : null;
   const showProgramme = Boolean(pairings && published && programme);
   const skippedRows = data?.skippedRows ?? 0;
+  // What this render shows, in the same terms the version endpoint answers with. The live refresher
+  // compares the two, so it reloads the page for a publish, an unpublish or a recovery from an error.
+  const liveSignature = failed ? "error" : pairingsSignature(published);
 
   return (
     <main className="public public-pairings mobile-bar-space">
       <PlayerOfflineNotice path="/pairings" />
+      <PairingsLive signature={liveSignature} />
       <header className="public-head !p-4 sm:!p-5">
         <PublicBackLink label={t("pairings.backHome")} />
         <div className="flex flex-wrap items-start justify-between gap-3">
