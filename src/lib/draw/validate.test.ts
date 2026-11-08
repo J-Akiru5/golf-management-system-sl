@@ -95,6 +95,42 @@ describe("validateDraw", () => {
     expect(check([grp(1, ["a", "b", "c"])], regs)).toEqual([]);
   });
 
+  it("blocks partners placed in different groups", () => {
+    const regs = [
+      reg("a", { pairKey: "team-124" }),
+      reg("b", { pairKey: "team-124" }),
+      reg("c"),
+      reg("d"),
+    ];
+    const issues = check([grp(1, ["a", "c"]), grp(2, ["b", "d"])], regs);
+    expect(issues.find((issue) => issue.id === "pair-split-team-124")?.severity).toBe("blocking");
+  });
+
+  it("does not block partners kept in the same group", () => {
+    const regs = [
+      reg("a", { pairKey: "team-124" }),
+      reg("b", { pairKey: "team-124" }),
+      reg("c"),
+      reg("d"),
+    ];
+    const issues = check([grp(1, ["a", "b", "c", "d"])], regs);
+    expect(issues.find((issue) => issue.id === "pair-split-team-124")).toBeUndefined();
+  });
+
+  it("ignores a partner who is not playing the selected day", () => {
+    const regs = [reg("a", { pairKey: "team-124" }), reg("b", { pairKey: "team-124" }), reg("c")];
+    const issues = validateDraw({
+      draw: [grp(1, ["a", "c"]), grp(2, ["b"])],
+      registrations: regs,
+      config,
+      engineWarnings: [],
+      names,
+      dayNumber: 3,
+      dayMembers: new Set(["a", "c"]),
+    });
+    expect(issues.find((issue) => issue.id === "pair-split-team-124")).toBeUndefined();
+  });
+
   it("warns, but does not block, on small and empty groups", () => {
     const issues = check([grp(1, ["a", "b"]), grp(2, [])], [reg("a"), reg("b")]);
     expect(issues.map((i) => [i.id, i.severity])).toEqual([

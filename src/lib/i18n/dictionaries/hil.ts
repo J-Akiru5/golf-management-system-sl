@@ -565,6 +565,16 @@ export const hil: Dictionary = {
       note: "Ang ngalan, birthdate kag handicap hay ginahuptan sang club. Pamangkuta ang desk nga tadlungon ini, kag makita ang pagbag-o diri sa masunod nga pagbukas mo sang sini nga pahina.",
       askDesk: "Pamangkuta ang desk nga tadlungon ini",
     },
+    pair: {
+      title: "Ang imo pares",
+      body: "Ang imo kaupod sa sini nga event. Ginadungan sang club ang pares sa draw.",
+      number: "Numero sang pares",
+      partner: "Kaupod",
+      partnerMissing: "Wala pa kaupod nga nakatala",
+      notPublished:
+        "Wala pa na-publish. Ang public pairings nagapakita pa sang katapusan nga na-publish nga listahan.",
+      none: "Wala pa pares nga nakatala para sa sini nga event.",
+    },
     contact: {
       title: "Paano ka namon maabot",
       body: "Ginagamit sang club ini para sa imo entry, kag para maabot ka sa adlaw sang hampang.",

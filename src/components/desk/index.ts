@@ -22,6 +22,10 @@ export {
   rankPlayerMatches,
   roleLabel,
 } from "./logic";
+export type { PairCardProps } from "./PairCard";
+export { PairCard } from "./PairCard";
+export type { PairDialogProps, PairDialogTarget } from "./PairDialog";
+export { PairDialog } from "./PairDialog";
 export type { PlayerQuickPickProps } from "./PlayerQuickPick";
 export { PlayerQuickPick } from "./PlayerQuickPick";
 export type { RegisterConfirmProps } from "./RegisterConfirm";

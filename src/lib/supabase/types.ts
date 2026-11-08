@@ -326,6 +326,24 @@ export type RegistrationRow = {
   import_batch_id?: string | null;
 };
 
+/** One member-guest pair in an event. Added by 20261108002000. */
+export type RegistrationPairRow = {
+  id: string;
+  club_id: string;
+  tournament_id: string;
+  number: number;
+  created_at: string;
+  updated_at: string;
+};
+
+/** One side of a pair. A registration id occurs at most once. Added by 20261108002000. */
+export type RegistrationPairMemberRow = {
+  club_id: string;
+  pair_id: string;
+  registration_id: string;
+  side: "member" | "guest";
+};
+
 export type ImportBatchRow = {
   id: string;
   club_id: string;
@@ -898,6 +916,24 @@ export interface Database {
           import_batch_id?: string | null;
         }
       >;
+      registration_pairs: Table<
+        RegistrationPairRow,
+        {
+          id?: string;
+          club_id: string;
+          tournament_id: string;
+          number: number;
+        }
+      >;
+      registration_pair_members: Table<
+        RegistrationPairMemberRow,
+        {
+          club_id: string;
+          pair_id: string;
+          registration_id: string;
+          side: RegistrationPairMemberRow["side"];
+        }
+      >;
       groups: Table<
         GroupRow,
         {
@@ -1118,6 +1154,29 @@ export interface Database {
       player_portal_entries: { Args: Record<string, never>; Returns: Json };
       /** The caller's own record, contact details and photo booleans. Added by 20261108000300. */
       player_own_profile: { Args: Record<string, never>; Returns: Json };
+      /** Creates, replaces, moves or removes one member-guest pair. Added by 20261108002000. */
+      save_pair: {
+        Args: {
+          p_tournament: string;
+          p_number: number;
+          p_member?: string | null;
+          p_guest?: string | null;
+          p_action?: string;
+          p_reason?: string | null;
+        };
+        Returns: Json;
+      };
+      /** Exchanges one side between two full pairs in one transaction. Added by 20261108002000. */
+      swap_pair_members: {
+        Args: {
+          p_tournament: string;
+          p_number_a: number;
+          p_number_b: number;
+          p_side?: string;
+          p_reason?: string | null;
+        };
+        Returns: Json;
+      };
       /** Writes only the caller's own phone, email and nickname. Added by 20261108000300. */
       player_update_own_contact: {
         Args: { p_phone: string | null; p_email: string | null; p_nickname: string | null };

@@ -1615,7 +1615,73 @@ export function createSupabaseAdapters(
     },
   };
 
+  const pairs: Adapters["pairs"] = {
+    save: (input) =>
+      queuedWrite(async () => {
+        const { data, error } = await client.rpc("save_pair", {
+          p_tournament: input.tournamentId,
+          p_number: input.number,
+          p_member: input.memberEntryId,
+          p_guest: input.guestEntryId,
+          p_action: input.action ?? "pair.save",
+          p_reason: input.reason ?? null,
+        });
+        if (error) {
+          const missing =
+            error.code === "PGRST202" ||
+            /could not find the function|function .* does not exist/i.test(error.message);
+          throw new Error(
+            missing
+              ? "Pair changes need migration 20261108002000. Nothing was saved."
+              : `Could not save the pair: ${error.message}`,
+          );
+        }
+        const result = data as unknown as {
+          affected?: { registrationId?: string; number?: number | null }[];
+        } | null;
+        for (const row of result?.affected ?? []) {
+          if (!row.registrationId) continue;
+          dispatch({
+            type: "updateEntry",
+            id: row.registrationId,
+            patch: { teamNo: row.number ?? null },
+          });
+        }
+      }),
+    swap: (input) =>
+      queuedWrite(async () => {
+        const { data, error } = await client.rpc("swap_pair_members", {
+          p_tournament: input.tournamentId,
+          p_number_a: input.numberA,
+          p_number_b: input.numberB,
+          p_side: input.side,
+          p_reason: input.reason ?? null,
+        });
+        if (error) {
+          const missing =
+            error.code === "PGRST202" ||
+            /could not find the function|function .* does not exist/i.test(error.message);
+          throw new Error(
+            missing
+              ? "Pair changes need migration 20261108002000. Nothing was saved."
+              : `Could not swap partners: ${error.message}`,
+          );
+        }
+        const result = data as unknown as {
+          affected?: { registrationId?: string; number?: number | null }[];
+        } | null;
+        for (const row of result?.affected ?? []) {
+          if (!row.registrationId) continue;
+          dispatch({
+            type: "updateEntry",
+            id: row.registrationId,
+            patch: { teamNo: row.number ?? null },
+          });
+        }
+      }),
+  };
+
   const email = createSupabaseEmailRepository(client, state, clubId);
 
-  return { players, tournaments, registrations, caddies, email, imports, router, setup };
+  return { players, tournaments, registrations, pairs, caddies, email, imports, router, setup };
 }

@@ -19,6 +19,13 @@ Supabase project, because the code and the database are released separately.
   every page "DRAFT · NOT PUBLISHED · FOR DESK USE ONLY", and enables the PDF and Excel download.
   The public pages still read only the published snapshot, so players never see a draft. No
   migration.
+- **Member-guest pairs are first-class and can be changed from the desk.** The registration desk,
+  the player workspace and the new pair page can assign, replace, move, swap, remove or create a
+  pair. A player can be in only one pair per event, and a pair split across two draw groups is a
+  blocking issue, so publish stops until it is fixed. The player's own profile shows their pair and
+  partner, marked not published until the draw is. Migration `20261108002000` is written and
+  reviewed but **not applied to the live project**; until it is, pair writes say so and the existing
+  pair numbers still read from `answers.teamNo`. No push.
 
 ### Fixed
 - **The test suite runs from a Windows path that contains a space.** `vitest.config.ts` resolves

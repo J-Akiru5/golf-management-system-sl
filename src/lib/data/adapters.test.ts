@@ -43,4 +43,88 @@ describe("mock adapters", () => {
       "That registration was not found.",
     );
   });
+
+  function withEntries() {
+    let state = initialState();
+    const dispatch = (action: Action) => {
+      state = reducer(state, action);
+    };
+    let adapters = createMockAdapters(state, dispatch);
+    const member = adapters.registrations.add("bamboo-tee-2026", {
+      ...walkUp,
+      playerId: "p-member",
+      role: "member",
+    });
+    const guest = adapters.registrations.add("bamboo-tee-2026", walkUp);
+    // The adapter reads the snapshot it was built from, so rebuild it once both rows exist.
+    adapters = createMockAdapters(state, dispatch);
+    return { adapters, member, guest, dispatch, getState: () => state };
+  }
+
+  it("assigns a pair and clears the partner it replaced", async () => {
+    const { adapters, member, guest, dispatch, getState } = withEntries();
+    await adapters.pairs.save({
+      tournamentId: "bamboo-tee-2026",
+      number: 124,
+      memberEntryId: member.id,
+      guestEntryId: guest.id,
+      action: "pair.create",
+    });
+    expect(getState().entries.find((row) => row.id === member.id)?.teamNo).toBe(124);
+    expect(getState().entries.find((row) => row.id === guest.id)?.teamNo).toBe(124);
+
+    // The real store rebuilds its adapters after each state change; do the same here.
+    const afterFirst = createMockAdapters(getState(), dispatch);
+    await afterFirst.pairs.save({
+      tournamentId: "bamboo-tee-2026",
+      number: 124,
+      memberEntryId: member.id,
+      guestEntryId: null,
+      action: "pair.remove",
+    });
+    expect(getState().entries.find((row) => row.id === guest.id)?.teamNo).toBeNull();
+  });
+
+  it("swaps one side between two pairs", async () => {
+    const { adapters, member, guest, dispatch, getState } = withEntries();
+    await adapters.pairs.save({
+      tournamentId: "bamboo-tee-2026",
+      number: 124,
+      memberEntryId: member.id,
+      guestEntryId: guest.id,
+      action: "pair.create",
+    });
+    const member2 = adapters.registrations.add("bamboo-tee-2026", {
+      ...walkUp,
+      playerId: "p-member-2",
+      role: "member",
+    });
+    const guest2 = adapters.registrations.add("bamboo-tee-2026", {
+      ...walkUp,
+      playerId: "p-guest-2",
+      role: "guest",
+    });
+    const next = createMockAdapters(getState(), dispatch);
+    await next.pairs.save({
+      tournamentId: "bamboo-tee-2026",
+      number: 125,
+      memberEntryId: member2.id,
+      guestEntryId: guest2.id,
+      action: "pair.create",
+    });
+    // Rebuild after the save so the swap reads both pairs as they now stand.
+    const afterPair = createMockAdapters(getState(), dispatch);
+    await afterPair.pairs.swap({
+      tournamentId: "bamboo-tee-2026",
+      numberA: 124,
+      numberB: 125,
+      side: "guest",
+    });
+
+    const byId = (id: string) => getState().entries.find((row) => row.id === id);
+    expect(byId(guest.id)?.teamNo).toBe(125);
+    expect(byId(guest2.id)?.teamNo).toBe(124);
+    expect(byId(member.id)?.teamNo).toBe(124);
+    expect(byId(member2.id)?.teamNo).toBe(125);
+  });
 });

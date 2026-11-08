@@ -11,6 +11,7 @@ import {
   TriangleAlert,
   UserPlus,
   UserRound,
+  Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,6 +22,8 @@ import {
   eligibilityView,
   missingRequiredFields,
   PAYMENT_OPTIONS,
+  PairDialog,
+  type PairDialogTarget,
   type PlayerPickItem,
   PlayerQuickPick,
   RegisterConfirm,
@@ -48,6 +51,7 @@ import {
   type RegistrationEntry,
 } from "@/lib/data/types";
 import { displayName, fmtIndex, photoOf } from "@/lib/format";
+import { nextPairNumber } from "@/lib/pairs/pairs";
 import { shrinkPhoto } from "@/lib/photo";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
@@ -145,6 +149,12 @@ function RegisterDesk() {
     member?.role === "owner" ||
     member?.role === "organizer" ||
     member?.role === "desk";
+  /** A pair affects the draw, so the desk may fix one on the day. The write is audited. */
+  const canPair =
+    status === "demo" ||
+    member?.role === "owner" ||
+    member?.role === "organizer" ||
+    member?.role === "desk";
   /** Bulk confirmation writes to the database, so it is offered only on the connected desk. */
   const canConfirmMany =
     status === "ready" &&
@@ -155,6 +165,8 @@ function RegisterDesk() {
     entry: RegistrationEntry;
     registration: DeskRegistration;
   } | null>(null);
+  /** The pair drawer: an empty slot, a player's pair, or a new pair from two solo players. */
+  const [pairTarget, setPairTarget] = useState<PairDialogTarget | null>(null);
   const params = useSearchParams();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [query, setQuery] = useState("");
@@ -553,6 +565,7 @@ function RegisterDesk() {
 
   /** Everything one player's column shows: their own days, status, missing facts and buttons. */
   function slotFor({ e, r, p }: ListRow): TeamPlayer & { role: "member" | "guest" } {
+    const teamNo = e.teamNo;
     const provisional = r?.provisional === true;
     const selectedDays = e.selectedDays ?? [];
     const preferred = Object.entries(e.teePreferences)
@@ -619,6 +632,22 @@ function RegisterDesk() {
               <RefreshCw aria-hidden="true" /> Re-freeze
             </Button>
           )}
+          {canPair && teamNo != null && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                setPairTarget({
+                  number: teamNo,
+                  side: e.role,
+                  entryId: e.id,
+                  start: "menu",
+                })
+              }
+            >
+              <Users aria-hidden="true" /> Pair
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -641,6 +670,21 @@ function RegisterDesk() {
         crumbs={[{ label: tournament.name, href: "/tournaments" }, { label: "Registration desk" }]}
         actions={
           <>
+            {canPair && (
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setPairTarget({
+                    number: nextPairNumber(entries),
+                    side: "member",
+                    entryId: null,
+                    start: "create",
+                  })
+                }
+              >
+                <Users aria-hidden="true" /> Pair two players
+              </Button>
+            )}
             <Button variant="secondary" asChild>
               <Link href="/players">
                 <UserPlus aria-hidden="true" /> Directory
@@ -1545,6 +1589,17 @@ function RegisterDesk() {
                   number={team.number}
                   guest={slots.find((slot) => slot.role === "guest") ?? null}
                   member={slots.find((slot) => slot.role === "member") ?? null}
+                  onAssign={
+                    canPair && team.number !== null
+                      ? (side) =>
+                          setPairTarget({
+                            number: team.number as number,
+                            side,
+                            entryId: null,
+                            start: "assign",
+                          })
+                      : undefined
+                  }
                 />
               );
             })}
@@ -1659,6 +1714,21 @@ function RegisterDesk() {
             void adapters.registrations.overrideReady(override.entry.id, input);
             setOverride(null);
           }}
+        />
+      )}
+
+      {pairTarget && (
+        <PairDialog
+          open={pairTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setPairTarget(null);
+          }}
+          target={pairTarget}
+          tournamentId={tournament.id}
+          entries={entries}
+          players={players}
+          onSave={(input) => adapters.pairs.save(input)}
+          onSwap={(input) => adapters.pairs.swap(input)}
         />
       )}
     </div>
