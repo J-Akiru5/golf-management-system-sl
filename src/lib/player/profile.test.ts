@@ -42,8 +42,13 @@ describe("mapOwnProfile pair", () => {
     });
   });
 
-  it("leaves the pair null when the row has none", () => {
+  it("leaves the pair undefined when the function predates the key", () => {
     const profile = mapOwnProfile({ player: { id: "p1", name: "PLAYER ONE" } });
+    expect(profile?.pair).toBeUndefined();
+  });
+
+  it("keeps a null pair when the function answered with none", () => {
+    const profile = mapOwnProfile({ player: { id: "p1", name: "PLAYER ONE" }, pair: null });
     expect(profile?.pair).toBeNull();
   });
 });

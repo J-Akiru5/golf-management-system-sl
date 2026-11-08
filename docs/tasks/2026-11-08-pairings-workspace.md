@@ -1,7 +1,10 @@
 # Pairings workspace and granular pair control
 
-Status: decisions taken 8 November 2026. Implementation starts on a local branch; the migration is
-written but not applied to the live project.
+Status: Phase 1 implemented locally on `feat/pair-control` on 8 November 2026. The migration is
+written and reviewed but **not applied to the live project**; no branch has been pushed and nothing
+has been deployed. The local dev server is running against the live project, so the existing pair
+numbers show from `answers.teamNo`, while a pair write answers that the migration is missing until
+it is applied.
 
 ## Decisions taken
 

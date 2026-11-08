@@ -50,7 +50,7 @@ function recordFromPortal(
     membership: { type: null, memberNumber: null },
     clubName: null,
     photo: { private: false, public: false, publicConsentAt: null },
-    pair: null,
+    pair: undefined,
   };
 }
 
@@ -133,27 +133,29 @@ function ProfileScreen({
             </div>
           </ProfileCard>
 
-          <ProfileCard
-            id="profile-pair"
-            title={t("profile.pair.title")}
-            body={t("profile.pair.body")}
-          >
-            {profile.pair ? (
-              <dl className="pf-facts">
-                <ProfileFact term={t("profile.pair.number")}>
-                  Pair {profile.pair.number}
-                </ProfileFact>
-                <ProfileFact term={t("profile.pair.partner")}>
-                  {profile.pair.partner?.name ?? t("profile.pair.partnerMissing")}
-                </ProfileFact>
-              </dl>
-            ) : (
-              <p className="pf-note">{t("profile.pair.none")}</p>
-            )}
-            {profile.pair && !profile.pair.published && (
-              <p className="pf-note">{t("profile.pair.notPublished")}</p>
-            )}
-          </ProfileCard>
+          {profile.pair !== undefined && (
+            <ProfileCard
+              id="profile-pair"
+              title={t("profile.pair.title")}
+              body={t("profile.pair.body")}
+            >
+              {profile.pair ? (
+                <dl className="pf-facts">
+                  <ProfileFact term={t("profile.pair.number")}>
+                    Pair {profile.pair.number}
+                  </ProfileFact>
+                  <ProfileFact term={t("profile.pair.partner")}>
+                    {profile.pair.partner?.name ?? t("profile.pair.partnerMissing")}
+                  </ProfileFact>
+                </dl>
+              ) : (
+                <p className="pf-note">{t("profile.pair.none")}</p>
+              )}
+              {profile.pair && !profile.pair.published && (
+                <p className="pf-note">{t("profile.pair.notPublished")}</p>
+              )}
+            </ProfileCard>
+          )}
 
           <ProfileCard
             id="profile-contact"

@@ -53,13 +53,18 @@ export interface OwnProfile {
   photo: { private: boolean; public: boolean; publicConsentAt: string | null };
   /**
    * The player's own pair in the current event. `published` says whether the public snapshot
-   * carries it yet; the pair is the player's own entry, not public data.
+   * carries it yet; the pair is the player's own entry, not public data. `undefined` means the
+   * database function predates the pair key, so the page hides the section instead of claiming
+   * there is no pair.
    */
-  pair: {
-    number: number;
-    published: boolean;
-    partner: { id: string; name: string } | null;
-  } | null;
+  pair:
+    | {
+        number: number;
+        published: boolean;
+        partner: { id: string; name: string } | null;
+      }
+    | null
+    | undefined;
 }
 
 export const NICKNAME_MAX = 24;
@@ -202,8 +207,8 @@ export function mapOwnProfile(raw: unknown): OwnProfile | null {
       public: photo.public === true,
       publicConsentAt: asString(photo.publicConsentAt),
     },
-    pair:
-      pairNumber !== null && Number.isInteger(pairNumber) && pairNumber > 0
+    pair: Object.hasOwn(root, "pair")
+      ? pairNumber !== null && Number.isInteger(pairNumber) && pairNumber > 0
         ? {
             number: pairNumber,
             published: pair.published === true,
@@ -215,7 +220,8 @@ export function mapOwnProfile(raw: unknown): OwnProfile | null {
                   }
                 : null,
           }
-        : null,
+        : null
+      : undefined,
   };
 }
 
