@@ -12,6 +12,7 @@ import {
   RulesOfPlay,
   TeeTimesBoard,
 } from "@/components/public/ProgrammeView";
+import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { addIsoDays } from "@/lib/data/dates";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
@@ -337,6 +338,7 @@ export function DemoPairings() {
   return (
     <main className="public public-pairings mobile-bar-space">
       <header className="public-head !p-4 sm:!p-5">
+        <PublicBackLink label={t("pairings.backHome")} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />

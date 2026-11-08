@@ -268,6 +268,7 @@ export const tl: Dictionary = {
     footer:
       "Pangalan, home club, handicap, kategorya, flight, hole at oras lamang. Walang contact details o litrato.",
     home: "TeeLine Golf home",
+    backHome: "Bumalik sa pangunahing pahina",
     demoFooter:
       "Lokal na demo preview ito, hindi nailathalang pahina. Pangalan, home club, handicap, kategorya, flight, hole at oras lamang ang nakikita.",
     findName: "Hanapin ang pangalan mo",

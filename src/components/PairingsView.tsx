@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { Avatar } from "@/components/bits";
+import { datedHeading } from "@/lib/data/pairing-day";
 import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
 import type {
   PublicPairingDay,
@@ -290,15 +291,26 @@ export function PairingsView({
     for (const key of ["AM", "PM", "TBC"] as const) {
       const groups = buckets[key];
       if (groups.length === 0) continue;
-      const heading =
+      const base =
         key === "TBC"
-          ? t("pairings.timeTbc")
+          ? multiDay
+            ? `${day.label} · ${t("pairings.timeTbc")}`
+            : t("pairings.timeTbc")
           : multiDay
             ? t("pairings.daySessionHeading", { day: day.label, session: key })
             : key === "AM"
               ? t("pairings.sessionAmHeading")
               : t("pairings.sessionPmHeading");
-      sections.push({ key: `${day.dayNumber}-${key}`, heading, groups, day: day.dayNumber });
+      // Every group bar names its date, so a reader can see which day the groups below belong to.
+      // A snapshot written before days existed has no per-day date, so the event's own date label
+      // stands in for it.
+      const dateText = shortDate(day.playDate) ?? (days.length === 0 ? pairings.dateLabel : null);
+      sections.push({
+        key: `${day.dayNumber}-${key}`,
+        heading: datedHeading(base, dateText),
+        groups,
+        day: day.dayNumber,
+      });
     }
   }
 
@@ -459,7 +471,8 @@ export function PairingsView({
                       onKeyDown={onChipKeyDown}
                       onClick={() => chooseDay(day.dayNumber)}
                     >
-                      {day.label}
+                      <span className="p-chip-day">{day.label}</span>
+                      {date && <span className="p-chip-date">{date}</span>}
                     </button>
                   );
                 })}
