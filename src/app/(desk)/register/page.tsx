@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
 import {
   eligibilityView,
@@ -53,6 +53,7 @@ import {
 } from "@/lib/data/types";
 import { displayName, fmtIndex, photoOf } from "@/lib/format";
 import { nextPairNumber } from "@/lib/pairs/pairs";
+import { groupIntoTeams } from "@/lib/pairs/registration-teams";
 import { shrinkPhoto } from "@/lib/photo";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
@@ -231,62 +232,46 @@ function RegisterDesk() {
       )
     : null;
 
-  const listRows = useMemo(() => {
-    const q = listQuery.trim().toLowerCase();
-    return entries
-      .map((e) => ({ e, r: regById.get(e.playerId), p: players.find((p) => p.id === e.playerId) }))
-      .filter(({ e, p }) => {
-        if (!p) return false;
-        if (!q) return true;
-        return (
-          p.name.toLowerCase().includes(q) ||
-          (p.ngapId ?? "").toLowerCase().includes(q) ||
-          e.role.includes(q)
-        );
-      });
-  }, [entries, regById, players, listQuery]);
-
-  /** Rows whose player record is loaded. The rest cannot be shown, so they are left out. */
-  const knownRows = useMemo(
-    () => listRows.filter((row): row is ListRow => Boolean(row.p)),
-    [listRows],
+  /**
+   * Every entry whose player record is loaded, before the search box. The rest cannot be shown, so
+   * they are left out. Pair cards are built from these, never from the searched list: a search that
+   * matches one partner would otherwise take the other out of the card and make a full pair read
+   * "Partner not entered".
+   */
+  const allKnownRows = useMemo(
+    () =>
+      entries
+        .map((e) => ({
+          e,
+          r: regById.get(e.playerId),
+          p: players.find((p) => p.id === e.playerId),
+        }))
+        .filter((row): row is ListRow => Boolean(row.p)),
+    [entries, regById, players],
+  );
+  const listQueryText = listQuery.trim().toLowerCase();
+  const rowMatchesQuery = useCallback(
+    ({ e, p }: ListRow) =>
+      !listQueryText ||
+      p.name.toLowerCase().includes(listQueryText) ||
+      (p.ngapId ?? "").toLowerCase().includes(listQueryText) ||
+      e.role.includes(listQueryText),
+    [listQueryText],
+  );
+  /** The entries the search matches, one by one. The bulk actions and the counts work on these. */
+  const listRows = useMemo(
+    () => allKnownRows.filter(rowMatchesQuery),
+    [allKnownRows, rowMatchesQuery],
   );
 
   // The desk works a member and their guest as one team, so a pair from the club sheet becomes one
   // card: the guest on the left, the member on the right. Each player is still their own entry, so
   // one partner's status or buttons never stand for the other's. Paging counts teams, not entries,
   // and the order is stable so editing one player cannot move the card to another page.
-  const teams = useMemo(() => {
-    const byNumber = new Map<number, ListRow[]>();
-    const solo: ListRow[] = [];
-    for (const row of knownRows) {
-      const teamNo = row.e.teamNo;
-      if (teamNo === null || teamNo === undefined) {
-        solo.push(row);
-        continue;
-      }
-      const list = byNumber.get(teamNo) ?? [];
-      list.push(row);
-      byNumber.set(teamNo, list);
-    }
-    // One card per member and guest. A number that somehow carries three entries (a duplicate on
-    // the club sheet) still shows every one of them: the extra player gets a card of their own
-    // rather than disappearing from the list.
-    const grouped: { key: string; number: number | null; rows: ListRow[] }[] = [];
-    for (const [number, rows] of byNumber) {
-      const members = rows.filter((row) => row.e.role === "member");
-      const guests = rows.filter((row) => row.e.role === "guest");
-      const cards = Math.max(members.length, guests.length);
-      for (let at = 0; at < cards; at += 1) {
-        const pair = [members[at], guests[at]].filter((row): row is ListRow => Boolean(row));
-        grouped.push({ key: `pair-${number}-${at}`, number, rows: pair });
-      }
-    }
-    grouped.push(...solo.map((row) => ({ key: row.e.id, number: null, rows: [row] })));
-    const lead = (team: { rows: ListRow[] }) =>
-      (team.rows.find((row) => row.e.role === "member") ?? team.rows[0])?.p.name ?? "";
-    return grouped.sort((a, b) => lead(a).localeCompare(lead(b)) || a.key.localeCompare(b.key));
-  }, [knownRows]);
+  const teams = useMemo(
+    () => groupIntoTeams(allKnownRows, listQueryText ? rowMatchesQuery : undefined),
+    [allKnownRows, listQueryText, rowMatchesQuery],
+  );
   const { page, setPage } = usePagedList(teams, listQuery);
 
   // Bulk confirmation takes every entry the database still holds as needs_review, except the two
