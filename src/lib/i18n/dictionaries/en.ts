@@ -368,6 +368,8 @@ export const en = {
     leaderboardClass: "Class",
     leaderboardAllClasses: "All classes",
     leaderboardTeam: "Team",
+    leaderboardPair: "PAIR {number}",
+    leaderboardTogether: "Member and guest, kept together",
     leaderboardMember: "MEMBER",
     leaderboardGuest: "GUEST",
     leaderboardRank: "RANK",

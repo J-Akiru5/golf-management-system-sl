@@ -367,6 +367,8 @@ export const tl: Dictionary = {
     leaderboardClass: "Klase",
     leaderboardAllClasses: "Lahat ng klase",
     leaderboardTeam: "Koponan",
+    leaderboardPair: "PAIR {number}",
+    leaderboardTogether: "Miyembro at bisita, magkasama sa draw",
     leaderboardMember: "MIYEMBRO",
     leaderboardGuest: "BISITA",
     leaderboardRank: "RANGO",

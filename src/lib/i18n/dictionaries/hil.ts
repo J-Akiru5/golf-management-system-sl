@@ -369,6 +369,8 @@ export const hil: Dictionary = {
     leaderboardClass: "Klase",
     leaderboardAllClasses: "Tanan nga klase",
     leaderboardTeam: "Team",
+    leaderboardPair: "PAIR {number}",
+    leaderboardTogether: "Miyembro kag bisita, tingob sa draw",
     leaderboardMember: "MIYEMBRO",
     leaderboardGuest: "BISITA",
     leaderboardRank: "RANGO",

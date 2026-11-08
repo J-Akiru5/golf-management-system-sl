@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Avatar } from "@/components/bits";
+import { publicTabHref } from "@/lib/data/public-tabs";
 import type {
   PublicTeamFilters,
   PublicTeamOptions,
@@ -22,6 +25,38 @@ function rankLabel(team: PublicTeamStanding): string {
 
 function score(value: number | null): string {
   return value === null ? "—" : String(value);
+}
+
+/** One side of a pair card: the role label, the player and a link to their profile. */
+function PairPlayer({
+  label,
+  name,
+  href,
+  className = "",
+}: {
+  label: string;
+  name: string | null;
+  href: string | null;
+  className?: string;
+}) {
+  return (
+    <div className={`grid min-w-0 content-start gap-1.5 p-2 sm:p-3 ${className}`}>
+      <span className="small-h">{label}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        {name ? <Avatar name={name} /> : null}
+        {href ? (
+          <Link
+            href={href}
+            className="min-w-0 break-words font-semibold text-ink no-underline hover:underline"
+          >
+            {name}
+          </Link>
+        ) : (
+          <b className="min-w-0 break-words">{name ?? "—"}</b>
+        )}
+      </span>
+    </div>
+  );
 }
 
 /**
@@ -130,40 +165,48 @@ export function TeamLeaderboard({
           </p>
         </div>
       ) : (
-        <>
-          <ol className="grid gap-2 sm:hidden" data-testid="leaderboard-cards">
-            {teams.map((team) => (
+        <ol className="grid gap-3" data-testid="leaderboard-cards">
+          {teams.map((team) => {
+            const memberId = team.playerIds[0] ?? null;
+            const guestId = team.playerIds[1] ?? null;
+            return (
               <li
                 key={team.key}
-                className="grid gap-2 rounded-[14px] border border-line bg-surface-raised p-3"
+                className="overflow-hidden rounded-[14px] border border-line bg-surface-raised"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex min-w-0 flex-1 items-start gap-2">
-                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-gold-soft text-[12px] font-bold text-gold-ink">
-                      {rankLabel(team)}
-                    </span>
-                    <span className="grid min-w-0 flex-1 grid-cols-2 gap-2">
-                      <span className="min-w-0">
-                        <span className="small-h block">{t("programme.leaderboardMember")}</span>
-                        <b className="block break-words text-[14px]">{team.memberName ?? "—"}</b>
-                      </span>
-                      <span className="min-w-0">
-                        <span className="small-h block">{t("programme.leaderboardGuest")}</span>
-                        <b className="block break-words text-[14px]">{team.guestName ?? "—"}</b>
-                      </span>
-                    </span>
+                <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-sunken px-3 py-2">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-gold-soft text-[12px] font-bold text-gold-ink">
+                    {rankLabel(team)}
                   </span>
-                  <span className="grid shrink-0 text-right">
+                  <span className="pill gold">
+                    {t("programme.leaderboardPair", { number: team.pairNumber ?? "—" })}
+                  </span>
+                  <span className="pill">{team.flightName ?? "—"}</span>
+                  {team.categories.length > 0 && (
+                    <span className="pill">{team.categories.join(" · ")}</span>
+                  )}
+                  <span className="hint">{t("programme.leaderboardTogether")}</span>
+                  <span className="ml-auto grid shrink-0 text-right">
                     <b className="text-[20px] leading-5 tnum">{score(team.netPoints)}</b>
                     <span className="text-[11px] text-ink-muted">
                       {t("programme.leaderboardPts")}
                     </span>
                   </span>
                 </div>
-                <p className="m-0 text-[12px] text-ink-muted">
-                  {[team.flightName, ...team.categories].filter(Boolean).join(" · ") || "—"}
-                </p>
-                <dl className="m-0 grid grid-cols-4 gap-2 text-[12px]">
+                <div className="grid grid-cols-2">
+                  <PairPlayer
+                    label={t("programme.leaderboardMember")}
+                    name={team.memberName}
+                    href={memberId ? publicTabHref("profile", { player: memberId }) : null}
+                    className="border-r border-line"
+                  />
+                  <PairPlayer
+                    label={t("programme.leaderboardGuest")}
+                    name={team.guestName}
+                    href={guestId ? publicTabHref("profile", { player: guestId }) : null}
+                  />
+                </div>
+                <dl className="m-0 grid grid-cols-4 gap-2 border-t border-line px-3 py-2 text-[12px]">
                   <div>
                     <dt className="small-h">{t("programme.leaderboardThru")}</dt>
                     <dd className="m-0 font-semibold tnum">
@@ -184,57 +227,9 @@ export function TeamLeaderboard({
                   </div>
                 </dl>
               </li>
-            ))}
-          </ol>
-
-          <div className="table-wrap hidden sm:block" data-testid="leaderboard-table">
-            <table>
-              <thead>
-                <tr>
-                  <th className="num">#</th>
-                  <th>{t("programme.leaderboardMember")}</th>
-                  <th>{t("programme.leaderboardGuest")}</th>
-                  <th>{t("programme.leaderboardClass")}</th>
-                  <th className="num">{t("programme.leaderboardThru")}</th>
-                  <th className="num">{t("programme.leaderboardPts")}</th>
-                  <th className="num">{t("programme.leaderboardGross")}</th>
-                  <th className="num">{t("programme.leaderboardNet")}</th>
-                  <th className="num">{t("programme.leaderboardToPar")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teams.map((team) => (
-                  <tr key={team.key}>
-                    <td className="num">{rankLabel(team)}</td>
-                    <td>
-                      <b className="break-words">{team.memberName ?? "—"}</b>
-                    </td>
-                    <td>
-                      <b className="break-words">{team.guestName ?? "—"}</b>
-                    </td>
-                    <td>
-                      <span className="grid gap-0.5">
-                        <span>{team.flightName ?? "—"}</span>
-                        {team.categories.length > 0 && (
-                          <span className="text-[12px] text-ink-muted">
-                            {team.categories.join(" · ")}
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="num">
-                      {team.holesCounted}/{team.holesTotal || "—"}
-                    </td>
-                    <td className="num font-semibold">{score(team.netPoints)}</td>
-                    <td className="num">{score(team.grossStrokes)}</td>
-                    <td className="num">{score(team.netStrokes)}</td>
-                    <td className="num">{team.toPar}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+            );
+          })}
+        </ol>
       )}
 
       {unpaired > 0 && (
