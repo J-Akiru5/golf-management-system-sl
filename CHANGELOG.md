@@ -9,6 +9,13 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.32.1] - 2026-11-09
+
+### Fixed
+- **The last PROFILE PLAYERS link is gone from the leaderboard and demo footers.** The public nav
+  and its footer links now name only Pairings and Players; a player profile is reached from a
+  Players card. No migration.
+
 ## [0.32.0] - 2026-11-09
 
 ### Migrations shipping with 0.32.0

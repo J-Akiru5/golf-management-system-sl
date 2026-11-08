@@ -123,8 +123,7 @@ export default async function LeaderboardPage({
       />
       <p className="hint no-print">
         <Link href="/pairings">{t("programme.navPairings")}</Link> ·{" "}
-        <Link href="/roster">{t("programme.navPlayers")}</Link> ·{" "}
-        <Link href="/pairings?tab=profile">{t("programme.navProfile")}</Link>
+        <Link href="/roster">{t("programme.navPlayers")}</Link>
       </p>
     </LeaderboardShell>
   );

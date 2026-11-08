@@ -428,7 +428,6 @@ export function DemoPairings({
         {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
         <Link href="/roster">{t("programme.playersTitle")}</Link> ·{" "}
         <Link href="/rules?from=pairings">{t("programme.navFullRules")}</Link> ·{" "}
-        <Link href="/pairings?tab=profile">{t("programme.navProfile")}</Link> ·{" "}
         <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
       </p>
       <PlayerBottomBar />
