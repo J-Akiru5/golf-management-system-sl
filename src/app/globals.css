@@ -5088,6 +5088,13 @@ html[data-textsize="large"] {
   height: 22px;
 }
 
+/* Keep the Next.js dev overlay off every printed sheet. */
+@media print {
+  nextjs-portal {
+    display: none !important;
+  }
+}
+
 /* P2 print */
 /* The public /pairings sheet: the club posts the published draw on the notice board, so a printed
    copy has to read like that sheet and not like a screenshot of the phone page. Everything below is
@@ -5403,9 +5410,5 @@ html[data-textsize="large"] {
   }
 }
 
-/* Keep the Next.js dev overlay off every printed sheet. */
-@media print {
-  nextjs-portal {
-    display: none !important;
-  }
-}
+
+
