@@ -7,7 +7,11 @@ pre-release: usable for testing, not yet signed off by the club.
 Each entry lists the database migrations that ship with it and whether they are applied to the live
 Supabase project, because the code and the database are released separately.
 
-## [Unreleased]
+## [0.30.0] - 2026-11-08
+
+### Migrations shipping with 0.30.0
+No new migration. `20261108002100_fix_save_draw_round_id.sql` was applied to the live project on
+8 November 2026; the fix it carries is recorded under Fixed below.
 
 ### Added
 - **A public tournament rules page at `/rules` for the 24th IGCCI Bamboo Tee Invitational.** The
@@ -20,13 +24,23 @@ Supabase project, because the code and the database are released separately.
   with Download and View PDF actions. The page is a reading aid; the PDF is named as the governing
   copy, and the three places where the document contradicts itself are shown as source notes rather
   than silently resolved. No migration.
+- **Public pairings update themselves when a new version is published (issue #201).** Open
+  `/pairings` pages check the published version while visible and online, back off while failing,
+  and refresh without losing the search, flight filter, day tab or scroll position. Only a publish
+  or an unpublish changes the answer; a draft edit is not announced. No migration.
 
 ### Changed
+- **The public home page shows the venue instead of the tee time (issue #199).** The schedule, hero
+  line, event cards and at-a-glance strip show Iloilo Golf and Country Club, with a Venue tile in
+  place of First tee. No migration.
 - **The draw board opens flight-first (issue #205).** Flight A, B, C are shown in start order and
   each flight's holes run in order; the class stays on every card as a sub-value. A Flight priority
   / Class priority toggle keeps the old class-first order one click away. No migration.
 
 ### Fixed
+- **The registration card keeps both partners when the search matches one (issue #200).** Pair cards
+  are built from every entry, and a card stays whole when either partner matches. Display only; no
+  data change and no migration.
 - **Saving the draw no longer fails on `group_members.round_id`.** Migration `20261108000900`
   replaced `save_draw` with a body copied from before `group_members.round_id` existed, so the
   member insert omitted the column and every save failed with a not-null violation, leaving the desk
