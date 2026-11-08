@@ -83,6 +83,36 @@ export const en = {
       swipe: "Swipe the card sideways to see every column. The hole number stays in place.",
       empty:
         "Your hole-by-hole scorecard appears here after the organizer publishes the day's results.",
+      toPar: "To par",
+      formatIndividual: "Individual",
+      formatFourBall: "Four-ball (best ball)",
+      formatAggregate: "Team aggregate",
+      formatScramble: "Scramble",
+      youRow: "You",
+      partnerRow: "Partner",
+      teamRow: "Team",
+      partnerNamed: "Partner: {name}",
+      teamHeading: "Partner and team",
+      teamRuleFourBall:
+        "Four-ball: the lower {basis} score of the two players counts on each hole.",
+      teamRuleAggregate: "Team aggregate: both {basis} scores count on each hole.",
+      teamRuleScramble: "Scramble: one shared team score on each hole.",
+      basisNet: "net",
+      basisGross: "gross",
+      teamIncomplete: "No team total yet. Missing holes: {holes}.",
+      teamUnsupported: "This card cannot show the team format {format}.",
+      partnerNotPublished: "Your partner card is not published here, so no team score is shown.",
+      formatNotConfigured:
+        "The team format is not configured for this event, so this card shows your own scores only.",
+      previewBadge: "Preview only",
+      previewHeading: "Preview a score edit",
+      previewBody:
+        "Change a gross score to watch net, points and the team total recalculate. This preview is not saved and sends no score to the club.",
+      previewHole: "Hole {hole}",
+      previewReset: "Reset the preview",
+      previewFormat: "Team format (preview)",
+      previewDemoNote:
+        "Sample data. The event has no team format yet, so this selector only previews the layouts.",
     },
     published: {
       yes: "These are the published pairings.",

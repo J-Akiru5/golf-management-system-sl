@@ -82,6 +82,37 @@ export const hil: Dictionary = {
         "I-swipe pahiga ang card agod makita ang tanan nga column. Nagapabilin ang hole number.",
       empty:
         "Makita diri ang hole-by-hole scorecard mo pagkatapos ipahayag sang organizer ang resulta sang adlaw.",
+      toPar: "Kumpara sa par",
+      formatIndividual: "Individual",
+      formatFourBall: "Four-ball (best ball)",
+      formatAggregate: "Team aggregate",
+      formatScramble: "Scramble",
+      youRow: "Ikaw",
+      partnerRow: "Partner",
+      teamRow: "Team",
+      partnerNamed: "Partner: {name}",
+      teamHeading: "Partner kag team",
+      teamRuleFourBall:
+        "Four-ball: ang mas mababa nga {basis} score sang duha ka player ang ginabilang sa kada hole.",
+      teamRuleAggregate: "Team aggregate: pareho nga {basis} score ang ginabilang sa kada hole.",
+      teamRuleScramble: "Scramble: isa ka shared team score sa kada hole.",
+      basisNet: "net",
+      basisGross: "gross",
+      teamIncomplete: "Wala pa team total. Kulang nga hole: {holes}.",
+      teamUnsupported: "Indi maipakita sang card nga ini ang team format nga {format}.",
+      partnerNotPublished:
+        "Wala ginapahayag diri ang card sang partner mo, gani wala team score nga ginapakita.",
+      formatNotConfigured:
+        "Wala pa naka-set nga team format para sa sini nga event, gani ang imo lang nga score ang makita sa card.",
+      previewBadge: "Preview lamang",
+      previewHeading: "I-preview ang pagbaylo sang score",
+      previewBody:
+        "Bayluhi ang gross score agod makita ang bag-o nga net, points kag team total. Indi ini ma-save kag wala score nga ginapadala sa club.",
+      previewHole: "Hole {hole}",
+      previewReset: "I-reset ang preview",
+      previewFormat: "Team format (preview)",
+      previewDemoNote:
+        "Sample data. Wala pa team format ang event, gani preview lamang sang layout ang selector nga ini.",
     },
     published: {
       yes: "Amo ini ang ginpahayag nga pairing.",
