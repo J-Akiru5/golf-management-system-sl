@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Fixed
+- **The test suite runs from a Windows path that contains a space.** `vitest.config.ts` resolves
+  the `@/` alias with `fileURLToPath` instead of `URL.pathname`, which produced a leading-slash,
+  percent-encoded path. Development-only; no product behavior change. All 146 files and 1479 tests
+  pass. No migration.
+
 ## [0.28.0] - 2026-11-08
 
 Headline: the staff phone app, a round for every playing day, a draw that works one day and one AM or PM session at a time, per-day publish and player portal, pairings that read at a glance, and day-synced Excel and PDF export.

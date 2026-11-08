@@ -1,0 +1,81 @@
+version: 1
+
+integration:
+  target_branch: develop
+  remote: origin
+  protected_branches:
+    - main
+    - staging
+  require_source_on_remote: true
+  allow_agents:
+    - integrator
+    - lead
+
+claims:
+  lease_minutes: 20
+
+amendments:
+  tier2_requires_role: lead
+
+verification:
+  profiles:
+    docs:
+      resource_class: light
+      commands:
+        - pnpm lint
+    unit:
+      resource_class: moderate
+      commands:
+        - pnpm typecheck
+        - pnpm lint
+        - pnpm test
+    full:
+      resource_class: heavy
+      commands:
+        - pnpm typecheck
+        - pnpm lint
+        - pnpm test
+        - pnpm build
+
+resources:
+  classes:
+    - light
+    - moderate
+    - heavy
+  exclusive:
+    - heavy
+
+database:
+  tool: supabase
+  dev_project_ref: null
+  production_project_refs:
+    - egfwfyznbndunqfqzxjx
+  env_file: .env.local
+  migrate_command: null
+  verify_command: null
+  lease_minutes: 30
+  resource_class: moderate
+
+deployment:
+  provider: vercel
+  allowed_branches:
+    - main
+    - develop
+  production_branch: main
+  excluded_branches:
+    - staging
+  sensitive_paths:
+    - vercel.json
+    - render.yaml
+    - next.config.ts
+    - package.json
+    - pnpm-lock.yaml
+    - pnpm-workspace.yaml
+    - .github/workflows/**
+    - supabase/migrations/**
+    - src/**
+    - public/**
+  project_note: "The repository vercel.json enables main and staging and disables develop. The policy keeps the global main-plus-develop allowlist required by agentctl. The conflict is recorded in plan/PROJECT.md and has not been changed."
+
+cleanup:
+  require_apply_flag: true
