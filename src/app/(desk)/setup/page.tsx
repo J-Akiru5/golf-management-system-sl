@@ -35,8 +35,10 @@ import {
   strokeIndexProblem,
 } from "@/lib/data/course-data";
 import { nextPlayDay } from "@/lib/data/dates";
+import { fmtIso } from "@/lib/data/labels";
 import { SETUP_SECTIONS, type SetupSection } from "@/lib/data/setup-payload";
 import { startCountForField, startTimesFrom } from "@/lib/data/tee-time";
+import { withTeeTimeConfirmed } from "@/lib/data/tee-time-choices";
 import type { Hole, RegistrationField, Tournament, TournamentRegistration } from "@/lib/data/types";
 import type { CategoryRule, FlightRule, StartFormat, Tee, TournamentConfig } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -1480,6 +1482,37 @@ function SetupWizard({
                     <Plus aria-hidden="true" /> Add a question
                   </Button>
                 </div>
+
+                {draft.registration.teeTimes.length > 0 && (
+                  <fieldset className="grid gap-2 border-t border-line pt-4">
+                    <legend className="overline float-left mb-2 w-full">Tee-time choices</legend>
+                    <p className="hint">
+                      Players pick a tee time as a preference. Tick a day once the organizer has
+                      checked its times; until then it shows as needing confirmation. The times
+                      themselves are not changed here.
+                    </p>
+                    {draft.registration.teeTimes.map((d) => (
+                      <label key={d.date} className="check text-[14px]">
+                        <input
+                          type="checkbox"
+                          checked={!d.needsConfirmation}
+                          onChange={(e) =>
+                            updateRegistration({
+                              teeTimes: withTeeTimeConfirmed(
+                                draft.registration.teeTimes,
+                                d.date,
+                                e.target.checked,
+                              ),
+                            })
+                          }
+                        />
+                        <span>
+                          <b>{d.label}</b> ({fmtIso(d.date)}): {d.options.join(" or ")} confirmed
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                )}
 
                 <div className="grid gap-3.5 border-t border-line pt-4 sm:grid-cols-2">
                   <label className="field">

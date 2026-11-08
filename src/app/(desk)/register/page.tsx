@@ -43,6 +43,7 @@ import { selectIndexForCutOff } from "@/lib/data/frozen";
 import { instructionText } from "@/lib/data/instructions";
 import { fmtIso } from "@/lib/data/labels";
 import { daySessionSummary, registeredDayBadges } from "@/lib/data/sessions";
+import { teeTimesNeedConfirmation } from "@/lib/data/tee-time-choices";
 import {
   type DeskRegistration,
   PAYMENT_LABEL,
@@ -1676,15 +1677,19 @@ function RegisterDesk() {
               {tournament.registration.teeTimes.map((d) => (
                 <li key={d.date} className="flex flex-wrap items-center gap-1.5">
                   <b>{d.label}:</b> {d.options.join(" or ")}
-                  {d.needsConfirmation && (
+                  {d.needsConfirmation ? (
                     <span className="pill warn">Needs organizer confirmation</span>
+                  ) : (
+                    <span className="pill ok">Confirmed</span>
                   )}
                 </li>
               ))}
             </ul>
             <p className="hint mt-1">
-              A tee time is saved as a <b>preference</b>, never as a confirmed start. Day 4 is kept
-              exactly as supplied (“11:30PM Tee Off”) until the organizer confirms it.
+              A tee time is saved as a <b>preference</b>, never as a confirmed start.{" "}
+              {teeTimesNeedConfirmation(tournament.registration.teeTimes)
+                ? "A day marked as needing confirmation is kept exactly as supplied until the organizer confirms it in Setup."
+                : "The organizer has confirmed every tee-time choice above."}
             </p>
           </div>
         </div>
