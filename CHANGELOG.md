@@ -7,6 +7,21 @@ pre-release: usable for testing, not yet signed off by the club.
 Each entry lists the database migrations that ship with it and whether they are applied to the live
 Supabase project, because the code and the database are released separately.
 
+## [0.29.1] - 2026-11-08
+
+### Fixed
+- **The desk keeps the playing day you pick on Draw, Tee times and Print.** Selecting Day 2, 3 or
+  4 no longer reloads back to Day 1, and the Tee times tabs now set the shared desk day. No
+  migration.
+- **The flight draw is hardened and three queue view bugs are fixed (issue #195).** A seeded fuzz
+  test exercises 300 random fields and 200 random move sequences; the queue no longer stays on PM
+  after moving to a day with no PM, the two-tee move list offers only its own holes, and the queue
+  view and card stay out of a two-tee start. No migration.
+
+### Changed
+- **Migration `20261108001100` is recorded as applied to the live project.** The owner reported it
+  on 8 November 2026; the record was not independently checked from this tree. No code change.
+
 ## [0.29.0] - 2026-11-08
 
 ### Migrations shipping with 0.29.0
