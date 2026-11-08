@@ -28,6 +28,9 @@ Supabase project, because the code and the database are released separately.
   pair numbers still read from `answers.teamNo`. No push.
 
 ### Fixed
+- **Lint ignores local Claude worktrees.** `biome.json` excludes `.claude/**`, so `pnpm lint` from
+  the main checkout does not treat a nested worktree's `biome.json` as a second root configuration.
+  Development-only; no product behavior change. No migration.
 - **The test suite runs from a Windows path that contains a space.** `vitest.config.ts` resolves
   the `@/` alias with `fileURLToPath` instead of `URL.pathname`, which produced a leading-slash,
   percent-encoded path. Development-only; no product behavior change. All 146 files and 1479 tests
