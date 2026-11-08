@@ -10,6 +10,8 @@ import type {
   PublicPairings,
   PublicPlayerProfile,
   PublicProgramme,
+  PublicRoster,
+  PublicRosterPlayer,
   PublicTeeTimeDay,
   PublicTeeTimePlayer,
   RegistrationEntry,
@@ -233,6 +235,64 @@ export function toPublicProgramme({
     players: publicPlayers,
     rulesOfPlay: cleanPublicText(rulesOfPlay),
   };
+}
+
+/* -------------------------------------------------------------------------------------------------
+ * The roster: the confirmed field only. No day, tee time, hole, group, pairing or contact detail.
+ * ------------------------------------------------------------------------------------------------ */
+
+/**
+ * Reduces the programme to the roster vocabulary. Only the five allow-listed fields are copied, so a
+ * richer source object cannot leak a tee time, pairing key, contact field or photo path: nothing is
+ * spread and `PublicRosterPlayer` has no room for one. This is the only object passed to the roster
+ * browser.
+ */
+export function toPublicRoster(programme: PublicProgramme): PublicRoster {
+  const players: PublicRosterPlayer[] = programme.players
+    .map((player) => ({
+      name: player.name,
+      homeCourse: player.homeCourse,
+      index: player.index,
+      category: player.category,
+      flight: player.flight,
+    }))
+    .sort(byName);
+  return { players };
+}
+
+/** The distinct flights in the roster, sorted, for the filter's options. */
+export function rosterFlights(players: readonly PublicRosterPlayer[]): string[] {
+  const flights = new Set<string>();
+  for (const player of players) {
+    const flight = player.flight?.trim();
+    if (flight) flights.add(flight);
+  }
+  return [...flights].sort((a, b) => a.localeCompare(b));
+}
+
+/** Lower case, no accents: a search that ignores case and a keyboard without accents. */
+function searchKey(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+/**
+ * The roster's name search and flight filter. The name match is a case-insensitive partial match;
+ * an empty query or flight means "all". A player without a flight appears under "all flights" only.
+ */
+export function filterRoster(
+  players: readonly PublicRosterPlayer[],
+  { query = "", flight = "" }: { query?: string; flight?: string | null } = {},
+): PublicRosterPlayer[] {
+  const needle = searchKey(query.trim());
+  const wantedFlight = flight?.trim() ?? "";
+  return players.filter(
+    (player) =>
+      (!needle || searchKey(player.name).includes(needle)) &&
+      (!wantedFlight || (player.flight?.trim() ?? "") === wantedFlight),
+  );
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
