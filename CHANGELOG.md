@@ -49,6 +49,9 @@ Supabase project, because the code and the database are released separately.
   stays as a read-only fallback for one release.
 
 ### Fixed
+- **The control room no longer warns about a hydration mismatch.** The divisions donut wrote
+  full-precision trigonometric points, and Node and Chrome could differ in the last digit; both now
+  round to three decimals. No migration.
 - **The browser check follows the current player demo copy.** After the player home was rewritten,
   the language check still waited for the old sentence and for a "no player area" line that no longer
   exists. It now dismisses the player onboarding tour and first-run welcome in the test contexts

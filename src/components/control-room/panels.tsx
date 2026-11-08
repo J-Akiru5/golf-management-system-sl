@@ -436,7 +436,11 @@ export function DivisionsPanel({ b, variant }: { b: Board; variant?: PanelVarian
             {rows.map(([k, c], i) => {
               const sweep = (Math.PI * c) / total;
               const a2 = a + sweep - (rows.length > 1 ? 0.03 : 0);
-              const d = `M${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)} A${r} ${r} 0 0 1 ${cx + r * Math.cos(a2)} ${cy + r * Math.sin(a2)}`;
+              // Round the points: Node and the browser can disagree in the last floating-point
+              // digit of Math.sin/cos, and React reports that as a hydration mismatch on this SVG.
+              const point = (angle: number) =>
+                `${(cx + r * Math.cos(angle)).toFixed(3)} ${(cy + r * Math.sin(angle)).toFixed(3)}`;
+              const d = `M${point(a)} A${r} ${r} 0 0 1 ${point(a2)}`;
               a += sweep;
               return (
                 <path
