@@ -14,8 +14,13 @@ import { NeedsTournament } from "@/components/NeedsTournament";
 import { fmtIso } from "@/lib/data/labels";
 import { sessionFinderFor } from "@/lib/draw/day-sessions";
 import { buildFlightQueue } from "@/lib/draw/flight-queue";
+import {
+  buildPairingSections,
+  type PairingCategorization,
+  type PairingFlight,
+} from "@/lib/draw/pairing-sections";
 import { buildDrawTable } from "@/lib/draw/table-model";
-import { dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
+import { type DrawGroup, dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -61,6 +66,8 @@ export default function DrawPage() {
   // AM, PM or both. Every playing day runs a morning and an afternoon session.
   const [sessionFilter, setSessionFilter] = useState<"all" | "AM" | "PM">("all");
   const [classFilter, setClassFilter] = useState("all");
+  // Flight-first is the default; class-first is the older order, kept as a toggle (issue 205).
+  const [categorization, setCategorization] = useState<PairingCategorization>("flight");
   // Cards edit; the table is the printed pairing layout, for reading a class at a glance.
   const [layout, setLayout] = useState<"cards" | "table">("cards");
   const [flash, setFlash] = useState<number | null>(null);
@@ -289,6 +296,24 @@ export default function DrawPage() {
       ),
     [draw, tournament?.flights, config?.holes, activeSession, sessionOfTime],
   );
+  // The flight each group belongs to, used when the board is grouped flight-first (issue 205).
+  const flightByGroup = useMemo(() => {
+    const map = new Map<number, PairingFlight>();
+    for (const hole of queueModel.byHole) {
+      for (const entry of hole.entries) {
+        map.set(entry.groupNumber, {
+          time: entry.time,
+          letter: entry.letter,
+          session: entry.session,
+        });
+      }
+    }
+    return map;
+  }, [queueModel]);
+  const flightOf = useCallback(
+    (g: DrawGroup) => flightByGroup.get(g.number) ?? null,
+    [flightByGroup],
+  );
   // The hole with its flight letter ("1A", "12B") for each group, shown on the cards and in Details.
   const slotByGroup = useMemo(() => {
     const slots = new Map<number, string>();
@@ -383,13 +408,12 @@ export default function DrawPage() {
   const shownGroups = (sessionDraw ?? []).filter(
     (g) => activeClass === "all" || classOf(g) === activeClass,
   );
-  const sections = new Map<string, NonNullable<typeof draw>>();
-  for (const g of shownGroups) {
-    const key = isUnclassifiedGroup(g.playerIds, regById)
-      ? UNCLASSIFIED_LABEL
-      : `${fmtTime(g.time)} · ${names.flight(g.flightId)}`;
-    sections.set(key, [...(sections.get(key) ?? []), g]);
-  }
+  const sections = buildPairingSections({
+    groups: shownGroups,
+    categorization,
+    classNameOf: classOf,
+    flightOf,
+  });
 
   const activeName = active ? playerById.get(active.id)?.name : null;
   const groupSize = config?.groupSize ?? 4;
@@ -723,6 +747,34 @@ export default function DrawPage() {
             </nav>
           )}
 
+          {view === "board" && (
+            <div className="row">
+              <nav className="row" aria-label="Categorization">
+                <button
+                  type="button"
+                  className={categorization === "flight" ? "btn small" : "btn small ghost"}
+                  aria-pressed={categorization === "flight"}
+                  onClick={() => setCategorization("flight")}
+                >
+                  Flight priority
+                </button>
+                <button
+                  type="button"
+                  className={categorization === "class" ? "btn small" : "btn small ghost"}
+                  aria-pressed={categorization === "class"}
+                  onClick={() => setCategorization("class")}
+                >
+                  Class priority
+                </button>
+              </nav>
+              <span className="hint">
+                {categorization === "flight"
+                  ? "Flight A, B, C in start order; holes run in order; class stays on each card."
+                  : "Class first, as before. The flight order stays on each card."}
+              </span>
+            </div>
+          )}
+
           {view === "board" && classTabs.length > 0 && (
             <div className="row">
               <nav className="row grow" aria-label="Class">
@@ -836,6 +888,8 @@ export default function DrawPage() {
                   playerName: (id) => playerById.get(id)?.name ?? "Unknown player",
                   flightName: (id) => names.flight(id ?? ""),
                   isUnclassified: (g) => isUnclassifiedGroup(g.playerIds, regById),
+                  categorization,
+                  flightOf,
                 })}
                 issuesByGroup={issuesByGroup}
                 selectedPlayer={selection?.kind === "player" ? selection.id : null}
@@ -845,8 +899,8 @@ export default function DrawPage() {
                 onSelectGroup={selectGroup}
               />
             ) : (
-              [...sections.entries()].map(([heading, groups]) => (
-                <section key={heading} className="stack tight">
+              sections.map(({ key, heading, groups }) => (
+                <section key={key} className="stack tight">
                   <div className="wave-head">
                     <div>
                       <h2>{heading}</h2>

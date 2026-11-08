@@ -21,7 +21,8 @@ function issueMarker(issues: Issue[] | undefined): { text: string; cls: string }
 
 /**
  * Compact table view of the draw, laid out like the printed pairing sheet.
- * Each section is a start time and class with one row per group.
+ * Each section is a start time and the chosen categorization: a class, or a flight with the class
+ * kept as a row value.
  */
 export function DrawTable({
   sections,
@@ -59,7 +60,7 @@ export function DrawTable({
                     Group
                   </th>
                   <th scope="col" className="min-h-[44px] px-3 py-2 font-semibold">
-                    Class (flight)
+                    Class
                   </th>
                   {Array.from({ length: section.columns }, (_, col) => (
                     <th key={col} scope="col" className="min-h-[44px] px-3 py-2 font-semibold">
