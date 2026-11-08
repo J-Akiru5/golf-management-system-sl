@@ -111,12 +111,16 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
 
   // The event rule treats an unverified handicap as 0: a player with no index on file still plays,
   // joins a class and can be paired. The reason names the number so the desk can correct it later.
-  const index = player.index ?? 0;
+  // The event rule caps an index above the maximum at the maximum: the player still plays, and the
+  // class, tee and playing handicap use the capped number. The index on file is left as it is, so
+  // the real number is not lost and the desk can see why the cap was applied.
+  const onFile = player.index ?? 0;
+  const index = Math.min(onFile, config.maxIndex);
   if (player.index === null) reg.reasons.push("No handicap index on file; 0 is used.");
-  if (index > config.maxIndex) {
-    reg.status = "ineligible";
-    reg.reasons.push(`Index ${index} is above the maximum of ${config.maxIndex}.`);
-    return reg;
+  if (onFile > config.maxIndex) {
+    reg.reasons.push(
+      `Index ${onFile} is above the maximum of ${config.maxIndex}; ${index} is used.`,
+    );
   }
 
   let category: CategoryRule | undefined;
@@ -222,7 +226,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
   ];
   // A member-guest pair is classed on the average of the two indexes, before any grouping, so both
   // partners share one class and cannot be split across groups.
-  applyTeamClasses(registrations, flights);
+  applyTeamClasses(registrations, flights, config.maxIndex);
   const byId = new Map(registrations.map((r) => [r.playerId, r]));
   const warnings: string[] = [];
 

@@ -127,6 +127,12 @@ describe("eligibility messaging", () => {
     );
   });
 
+  it("says the maximum is used when a ready player is above it", () => {
+    const view = eligibilityView({ status: "ok", index: 31.4, maxIndex: 30 });
+    expect(view.blocked).toBe(false);
+    expect(view.message).toBe("Index 31.4 is above the maximum of 30; 30 is used for the draw.");
+  });
+
   it("says 0 is used when a ready player has no index on file", () => {
     expect(eligibilityView({ status: "ok", index: null, maxIndex: 30 }).message).toBe(
       "Ready to route: no index is on file, so the event rule uses 0.",

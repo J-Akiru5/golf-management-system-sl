@@ -94,19 +94,32 @@ describe("lock-aware re-run", () => {
     expect(collisions).toHaveLength(1);
   });
 
-  it("releases a lock and explains it when a player is no longer eligible", () => {
+  it("releases a lock and explains it when a player can no longer be routed", () => {
     const players = Array.from({ length: 4 }, () => player());
     const first = route(input(players));
     const locked = asLocked(first.groups[0] as NonNullable<(typeof first.groups)[number]>);
-    const withOverLimit = players.map((p) =>
-      p.id === locked.playerIds[0] ? { ...p, index: 31.4 } : p,
+    // No category in this setup fits a woman, so the player needs review and is left out.
+    const unroutable = players.map((p) =>
+      p.id === locked.playerIds[0] ? { ...p, gender: "F" as const } : p,
     );
-    const second = route(input(withOverLimit), { lockedGroups: [locked] });
+    const second = route(input(unroutable), { lockedGroups: [locked] });
     expect(second.warnings.join(" ")).toContain(`Locked group ${locked.number} was released`);
-    // The remaining three players are routed as a fresh group; the ineligible one is left out.
+    // The remaining three players are routed as a fresh group; the unroutable one is left out.
     expect(second.groups).toHaveLength(1);
     expect(second.groups[0]?.playerIds).toHaveLength(3);
     expect(second.groups[0]?.playerIds).not.toContain(locked.playerIds[0]);
+  });
+
+  it("keeps a lock when a player's index goes above the cap, because the player is capped", () => {
+    // All four are in Class B (12.1 to 30), so a capped 31.4 is still Class B and the group holds.
+    const players = Array.from({ length: 4 }, () => player({ index: 28 }));
+    const first = route(input(players));
+    const locked = asLocked(first.groups[0] as NonNullable<(typeof first.groups)[number]>);
+    const aboveCap = players.map((p) => (p.id === locked.playerIds[0] ? { ...p, index: 31.4 } : p));
+    const second = route(input(aboveCap), { lockedGroups: [locked] });
+    expect(second.warnings.join(" ")).not.toContain("was released");
+    const kept = second.groups.find((g) => g.number === locked.number);
+    expect(kept?.playerIds).toEqual(locked.playerIds);
   });
 
   it("releases a lock when a player has left the field", () => {

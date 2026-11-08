@@ -46,7 +46,11 @@ export function averageIndex(indexes: (number | null)[]): number {
  * indexes, so the two play in one class and are never split into different groups. A team whose
  * average covers no class, or more than one, keeps the classes it was given player by player.
  */
-export function applyTeamClasses(registrations: Registration[], flights: FlightRule[]): void {
+export function applyTeamClasses(
+  registrations: Registration[],
+  flights: FlightRule[],
+  maxIndex?: number,
+): void {
   const teams = new Map<string, Registration[]>();
   for (const reg of registrations) {
     if (reg.status !== "ok" || !reg.teamKey) continue;
@@ -56,7 +60,14 @@ export function applyTeamClasses(registrations: Registration[], flights: FlightR
   }
   for (const members of teams.values()) {
     if (members.length < 2) continue;
-    const value = averageIndex(members.map((member) => member.index));
+    // An index above the event maximum counts as the maximum, the same cap the single-player draw uses.
+    const value = averageIndex(
+      members.map((member) =>
+        member.index !== null && maxIndex !== undefined
+          ? Math.min(member.index, maxIndex)
+          : member.index,
+      ),
+    );
     const matches = matchFlights(flights, value);
     if (matches.length !== 1) continue;
     const flight = matches[0] as FlightRule;

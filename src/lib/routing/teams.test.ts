@@ -52,6 +52,18 @@ describe("applyTeamClasses", () => {
     expect(registrations[0]?.flightId).toBe("a");
   });
 
+  it("averages an index above the event maximum as the maximum", () => {
+    const registrations = [reg("member", 40, "team-3"), reg("guest", 14, "team-3")];
+
+    applyTeamClasses(registrations, flights, 30);
+
+    // 40 counts as 30, so the pair averages 22 (Class C), not 27 (Class D) from the raw number.
+    expect(registrations.map((r) => r.flightId)).toEqual(["c", "c"]);
+    expect(registrations[0]?.reasons.join(" ")).toContain("average index 22");
+    // The index on file is not rewritten.
+    expect(registrations[0]?.index).toBe(40);
+  });
+
   it("keeps the individual classes when the average covers no class", () => {
     const registrations = [reg("a", 31, "team-9"), reg("b", 32, "team-9")];
 

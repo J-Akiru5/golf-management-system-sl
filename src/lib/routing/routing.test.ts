@@ -109,10 +109,29 @@ describe("classification", () => {
     expect(r.teeId).toBe("silver");
   });
 
-  it("blocks an index above 30", () => {
+  it("caps an index above 30 at 30 and still routes the player", () => {
     const r = classifyPlayer(player({ index: 30.1 }), input([]));
-    expect(r.status).toBe("ineligible");
-    expect(r.flightId).toBeNull();
+    expect(r.status).toBe("ok");
+    expect(r.flightId).toBe("c");
+    expect(r.playingHandicap).toBe(playingHandicap(30, tees[0] as Tee, 1));
+    // The index on file is not rewritten, and the reason says which number was used.
+    expect(r.index).toBe(30.1);
+    expect(r.reasons.join(" ")).toContain("Index 30.1 is above the maximum of 30; 30 is used.");
+  });
+
+  it("gives an index far above the cap the same class and playing handicap as 30", () => {
+    const capped = classifyPlayer(player({ index: 34.5 }), input([]));
+    const atCap = classifyPlayer(player({ index: 30 }), input([]));
+    expect(capped.status).toBe("ok");
+    expect(capped.flightId).toBe(atCap.flightId);
+    expect(capped.playingHandicap).toBe(atCap.playingHandicap);
+  });
+
+  it("reads the cap from the tournament setting, not a fixed 30", () => {
+    const r = classifyPlayer(player({ index: 26 }), input([], { maxIndex: 24 }));
+    expect(r.status).toBe("ok");
+    expect(r.playingHandicap).toBe(playingHandicap(24, tees[0] as Tee, 1));
+    expect(r.reasons.join(" ")).toContain("24 is used");
   });
 
   it("accepts an index of exactly 30", () => {
@@ -273,13 +292,13 @@ describe("route", () => {
     }
   });
 
-  it("leaves an ineligible player out of the groups but keeps a player with no index", () => {
+  it("groups a player above the cap and a player with no index alongside everyone else", () => {
     const out = route(
       input([player({ index: 31 }), player({ index: null }), player({ index: 8 })]),
     );
     const grouped = out.groups.flatMap((g) => g.playerIds);
-    expect(grouped).toHaveLength(2);
-    expect(out.registrations.find((r) => r.index === 31)?.status).toBe("ineligible");
+    expect(grouped).toHaveLength(3);
+    expect(out.registrations.find((r) => r.index === 31)?.status).toBe("ok");
   });
 
   it("flags groups smaller than the minimum", () => {

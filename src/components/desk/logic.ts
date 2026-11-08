@@ -148,7 +148,9 @@ export function eligibilityView(input: EligibilityInput): EligibilityView {
       ? "Ready to route: no index is on file, so the event rule uses 0."
       : max === null
         ? `Index ${indexLabel} is on file and ready to route.`
-        : `Index ${indexLabel} is within the event maximum of ${max}.`;
+        : input.index > max
+          ? `Index ${indexLabel} is above the maximum of ${max}; ${max} is used for the draw.`
+          : `Index ${indexLabel} is within the event maximum of ${max}.`;
   return { status: "ok", tone: "ok", message, blocked: false, maxIndex: max };
 }
 
