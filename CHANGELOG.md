@@ -19,6 +19,11 @@ Supabase project, because the code and the database are released separately.
   every page "DRAFT · NOT PUBLISHED · FOR DESK USE ONLY", and enables the PDF and Excel download.
   The public pages still read only the published snapshot, so players never see a draft. No
   migration.
+- **The player roster filters by pairing status (issue #191).** The players list now has All
+  players, Paired and Unpaired chips with counts, a shareable `?pairing_status=` parameter, and
+  empty states that say which filter is hiding the list. Pairing comes from the active event's
+  `teamNo`; a player who is not entered in the event counts as unpaired and the page says so. No
+  migration.
 - **Member-guest pairs are first-class and can be changed from the desk.** The registration desk,
   the player workspace and the new pair page can assign, replace, move, swap, remove or create a
   pair. A player can be in only one pair per event, and a pair split across two draw groups is a
