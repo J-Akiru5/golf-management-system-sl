@@ -9,6 +9,37 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-11-09
+
+### Migrations shipping with 0.32.0
+`20261108004000_public_leaderboard_sides.sql` is additive and **NOT applied**. It adds a nullable
+`side` field to `public_team_leaderboard()` and orders the member first. Until it is applied, the
+page still shows both partners, but the member/guest order falls back to alphabetical.
+
+### Added
+- **The leaderboard uses the desk's pair-card format.** Each team is one card with a PAIR number,
+  class and category, the team's points, and the two partners side by side under MEMBER and GUEST.
+  The names link to the player's profile, and the card footer keeps THRU, GROSS, NET and TO PAR.
+- **Player cards open the profile, and the profile shows the pair score.** A card on `/roster` opens
+  that player's profile; the profile keeps the player's published cards and adds the pair's
+  cumulative rank, points, holes, to-par and class.
+- **Navigation follows the page the reader came from (issue #207).** The Rules page back link
+  returns to the pairings view when the link carries `?from=pairings` or the referrer is the
+  pairings page; otherwise it returns to the main page. The player profile back link returns to the
+  pairings list. The not-out-yet screen uses Check again instead of a Rules button.
+
+### Changed
+- **The public nav is three all-caps tabs: PAIRINGS, PLAYERS and LEADERBOARD.** PROFILE PLAYERS is
+  removed from the nav; a player's profile is reached from a Players card and keeps Players active.
+- **The leaderboard is a pair-card list, not a table.** The pair stays together in one card, with
+  MEMBER and GUEST in the same row.
+- **The landing hero no longer shows Enter this event.** View published pairings is the primary
+  action; the rest of the public entry flow is unchanged.
+
+### Fixed
+- The Rules page back link, the demo pairings back link and the Pairings not-out-yet actions now
+  match the live page.
+
 ## [0.31.0] - 2026-11-08
 
 ### Migrations shipping with 0.31.0
