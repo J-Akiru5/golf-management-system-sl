@@ -42,7 +42,9 @@ Supabase project, because the code and the database are released separately.
   the language check still waited for the old sentence and for a "no player area" line that no longer
   exists. It now dismisses the player onboarding tour and first-run welcome in the test contexts
   that are not checking the welcome itself, waits for the desktop sample-data line the page actually
-  renders, and checks `html[lang=en]` after switching back. Test-only; no product change.
+  renders, checks `html[lang=en]` after switching back, and expects the cross-screen player step to
+  ring the published pairings search instead of the old "no pairings" message. Test-only; no product
+  change.
 - **Lint ignores local Claude worktrees.** `biome.json` excludes `.claude/**`, so `pnpm lint` from
   the main checkout does not treat a nested worktree's `biome.json` as a second root configuration.
   Development-only; no product behavior change. No migration.

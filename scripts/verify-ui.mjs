@@ -768,13 +768,23 @@ await pairingsSummary
   .click();
 await expect(playerCrossPage).toHaveURL(/\/pairings$/, { timeout: 15000 });
 check("a player step on another screen navigates there", true);
-// The demo pairings are not published, so there is no search box to ring. The panel has to say
-// that instead of doing nothing.
-const missingSheet = playerCrossPage.getByRole("dialog", { name: "Help" });
-await expect(missingSheet).toBeVisible({ timeout: 15000 });
+// The demo pairings are published, so the step points at the search box. The panel closes and
+// the ring lands on that box after the player-to-public layout change.
+const playerRing = playerCrossPage.locator(".help-ring");
+await expect(playerRing).toHaveCount(1, { timeout: 15000 });
+const pairingsSearch = playerCrossPage.getByRole("searchbox", { name: "Find your name" });
+const searchBox = await pairingsSearch.boundingBox();
+const playerRingBox = await playerRing.boundingBox();
 check(
-  "and a control that is not there is explained, not silent",
-  (await missingSheet.getByText("That control is not on this screen right now.").count()) > 0,
+  "and rings the pairings search after the layout change",
+  searchBox !== null &&
+    playerRingBox !== null &&
+    Math.abs(playerRingBox.x - searchBox.x) < 3 &&
+    Math.abs(playerRingBox.y - searchBox.y) < 3 &&
+    Math.abs(playerRingBox.width - searchBox.width) < 3,
+  searchBox && playerRingBox
+    ? `(ring ${Math.round(playerRingBox.width)}x${Math.round(playerRingBox.height)} over search ${Math.round(searchBox.width)}x${Math.round(searchBox.height)})`
+    : "(no box)",
 );
 await playerCrossContext.close();
 
