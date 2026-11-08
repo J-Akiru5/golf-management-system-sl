@@ -170,6 +170,9 @@ export default async function PublicPairingsPage() {
             <Link className="btn ghost no-print" href="/pairings#tee-times">
               {t("programme.navTeeTimes")}
             </Link>
+            <Link className="btn ghost no-print" href="/rules">
+              {t("programme.navFullRules")}
+            </Link>
             <Link className="btn ghost no-print" href="/">
               {t("pairings.home")}
             </Link>
@@ -220,6 +223,7 @@ export default async function PublicPairingsPage() {
       <p className="hint no-print">
         {t("pairings.footer")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
         <Link href="/roster">{t("programme.playersTitle")}</Link> ·{" "}
+        <Link href="/rules">{t("programme.navFullRules")}</Link> ·{" "}
         <Link href="/leaderboard">Leaderboard</Link>
       </p>
       <PlayerBottomBar />

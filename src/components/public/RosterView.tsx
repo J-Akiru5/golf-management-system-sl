@@ -89,6 +89,7 @@ export function RosterPage({
 
       <p className="hint no-print">
         <Link href="/pairings">{t("programme.navPairings")}</Link> ·{" "}
+        <Link href="/rules">{t("programme.navFullRules")}</Link> ·{" "}
         <Link href="/">{t("pairings.home")}</Link>
       </p>
       <PlayerBottomBar />

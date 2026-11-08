@@ -7,6 +7,20 @@ pre-release: usable for testing, not yet signed off by the club.
 Each entry lists the database migrations that ship with it and whether they are applied to the live
 Supabase project, because the code and the database are released separately.
 
+## [Unreleased]
+
+### Added
+- **A public tournament rules page at `/rules` for the 24th IGCCI Bamboo Tee Invitational.** The
+  organizers' nine-page Conditions of Play is arranged into eleven responsive accordion sections:
+  tournament format, handicap and divisions, tee times, local rules and scoring, pace of play,
+  mulligans, scorecards and disputes, tie-breaking, weather and withdrawals, and prizes. Strict
+  penalties and local rules use callout boxes, and the page carries the source page for each section.
+  A Rules pill in the public programme navigation, the home navigation and the public footers leads
+  to it. The official PDF is served from `public/documents/24th-bamboo-tee-conditions-of-play.pdf`
+  with Download and View PDF actions. The page is a reading aid; the PDF is named as the governing
+  copy, and the three places where the document contradicts itself are shown as source notes rather
+  than silently resolved. No migration.
+
 ## [0.29.1] - 2026-11-08
 
 ### Fixed

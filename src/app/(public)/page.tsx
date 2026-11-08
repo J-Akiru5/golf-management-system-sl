@@ -224,6 +224,9 @@ export default async function HomePage() {
             <a href="#experience">The experience</a>
             <a href="#workflow">How it works</a>
             <Link href="/pairings">Player pairings</Link>
+            <Link className="site-nav-rules" href="/rules">
+              Tournament rules
+            </Link>
             <Link href="/faq">NGAP FAQ</Link>
           </nav>
           <div className="site-nav-end">
@@ -410,7 +413,8 @@ export default async function HomePage() {
             <p className="section-kicker">For players</p>
             <h2>When pairings are published, they should be easy to find.</h2>
             <p>
-              Search the approved player view by name. No private profile details, no guesswork.
+              Search the approved player view by name. No private profile details, no guesswork.{" "}
+              <Link href="/rules">Read the tournament rules</Link>.
             </p>
           </div>
           <Link className="button-dark" href="/pairings">
@@ -434,6 +438,7 @@ export default async function HomePage() {
           <nav className="footer-col" aria-label="Product">
             <h2>Product</h2>
             <Link href="/pairings">Published pairings</Link>
+            <Link href="/rules">Tournament rules</Link>
             <Link href="/leaderboard">Public leaderboard</Link>
             <Link href="/login">Sign in to the desk</Link>
           </nav>
