@@ -8,7 +8,10 @@ import {
   PM_TEE_TIME,
   registeredDayBadges,
   sessionForTime,
+  sessionForTimeIn,
   sessionLabelForTime,
+  sessionSummaryOf,
+  sessionsForDay,
 } from "./sessions";
 
 describe("daySessions", () => {
@@ -160,6 +163,57 @@ describe("daySessionBadge", () => {
       time: AM_TEE_TIME,
       source: "default",
     });
+  });
+});
+
+describe("sessionsForDay", () => {
+  it("reads the day's stored morning and afternoon starts", () => {
+    expect(sessionsForDay({ startTime: "07:00", pmStartTime: "13:30" })).toEqual([
+      { key: "AM", label: "AM", time: "07:00", source: "stored" },
+      { key: "PM", label: "PM", time: "13:30", source: "stored" },
+    ]);
+  });
+
+  it("uses the event's stored afternoon start on the last playing day too", () => {
+    // A one-day Saturday event must not borrow the 11:30 Sunday fallback when the club stored 12:30.
+    expect(sessionsForDay({}, { eventPmStart: "12:30", finalDay: true })).toEqual([
+      { key: "AM", label: "AM", time: AM_TEE_TIME, source: "default" },
+      { key: "PM", label: "PM", time: PM_TEE_TIME, source: "stored" },
+    ]);
+  });
+
+  it("falls back to the fixed times only when nothing is stored, and marks them as defaults", () => {
+    expect(sessionsForDay({}, {})).toEqual([
+      { key: "AM", label: "AM", time: AM_TEE_TIME, source: "default" },
+      { key: "PM", label: "PM", time: PM_TEE_TIME, source: "default" },
+    ]);
+    expect(sessionsForDay({}, { finalDay: true })[1]).toEqual({
+      key: "PM",
+      label: "PM",
+      time: FINAL_DAY_PM_TEE_TIME,
+      source: "default",
+    });
+  });
+
+  it("keeps a stored time readable when Postgres adds seconds", () => {
+    expect(sessionsForDay({ startTime: "07:15:00", pmStartTime: "12:45:00" }).map((s) => s.time)).toEqual([
+      "07:15",
+      "12:45",
+    ]);
+  });
+
+  it("ignores an unreadable stored time rather than passing it on", () => {
+    expect(sessionsForDay({ startTime: "25:00", pmStartTime: "noon" }, { finalDay: true })).toEqual([
+      { key: "AM", label: "AM", time: AM_TEE_TIME, source: "default" },
+      { key: "PM", label: "PM", time: FINAL_DAY_PM_TEE_TIME, source: "default" },
+    ]);
+  });
+
+  it("labels a time against the day's own stored starts", () => {
+    const sessions = sessionsForDay({ startTime: "10:00", pmStartTime: "13:30" });
+    expect(sessionForTimeIn(sessions, "10:00")?.key).toBe("AM");
+    expect(sessionForTimeIn(sessions, "13:30")?.key).toBe("PM");
+    expect(sessionSummaryOf(sessions)).toBe("AM 10:00 · PM 13:30");
   });
 });
 

@@ -19,11 +19,18 @@ export interface DaySession {
   label: string;
   /** HH:MM default for that session on that day. */
   time: string;
+  /**
+   * Where the time came from. A stored setting wins; a time the code supplied as a fallback is
+   * marked as a default so no screen presents it as the club's choice. Day lists built without
+   * stored settings leave this out, which reads as the old fixed default.
+   */
+  source?: "stored" | "default";
 }
 
 /**
- * The sessions a day runs: a morning and an afternoon, every day. `dayIndex` is 0-based, the same
- * order the day list uses, and only the last day's afternoon time differs from the rest.
+ * The sessions a day runs when only its position in the list is known. Kept for the screens that
+ * still pass an index; the desk's own screens should pass the day itself to `sessionsForDay`, so a
+ * stored start and a stored afternoon start are used and a sparse day list cannot move a time.
  */
 export function daySessions(dayIndex: number, dayCount: number): DaySession[] {
   const finalDay = dayCount > 0 && dayIndex === dayCount - 1;
@@ -32,6 +39,57 @@ export function daySessions(dayIndex: number, dayCount: number): DaySession[] {
     { key: "PM", label: "PM", time: finalDay ? FINAL_DAY_PM_TEE_TIME : PM_TEE_TIME },
   ];
 }
+
+/** The stored times a playing day carries: its own morning start and its own afternoon start. */
+export interface DaySessionSettings {
+  /** `tournament_days.start_time`, or null when the day has no start of its own. */
+  startTime?: string | null;
+  /** `tournament_days.pm_start_time`, or null when the day has no afternoon start of its own. */
+  pmStartTime?: string | null;
+}
+
+/** The stored fallbacks that apply to the whole event, and whether this is the last playing day. */
+export interface SessionDefaults {
+  /** `tournaments.pm_first_tee_time`, the club's afternoon start for the event. */
+  eventPmStart?: string | null;
+  /** The day is the last playing day, by date. Only used when nothing is stored for the afternoon. */
+  finalDay?: boolean;
+}
+
+/**
+ * The morning and afternoon a playing day runs, read from what the desk stored.
+ *
+ * A stored value always wins: the day's own afternoon start, then the event's afternoon start.
+ * The fixed defaults (06:30, 12:30, and 11:30 on the last playing day) apply only when nothing is
+ * stored, and each returned session says whether its time is stored or a default. Nothing here
+ * looks at a day's position in a list, so day numbers can be sparse.
+ */
+export function sessionsForDay(
+  day: DaySessionSettings = {},
+  defaults: SessionDefaults = {},
+): DaySession[] {
+  const storedAm = clockText(day.startTime ?? null);
+  const storedPm = clockText(day.pmStartTime ?? null);
+  const eventPm = clockText(defaults.eventPmStart ?? null);
+  const morning = storedAm ?? AM_TEE_TIME;
+  const afternoon =
+    storedPm ?? eventPm ?? (defaults.finalDay ? FINAL_DAY_PM_TEE_TIME : PM_TEE_TIME);
+  return [
+    { key: "AM", label: "AM", time: morning, source: storedAm ? "stored" : "default" },
+    {
+      key: "PM",
+      label: "PM",
+      time: afternoon,
+      source: storedPm || eventPm ? "stored" : "default",
+    },
+  ];
+}
+
+/** "AM 06:30 · PM 12:30" for a session list a screen already worked out. */
+export function sessionSummaryOf(sessions: readonly DaySession[]): string {
+  return sessions.map((session) => `${session.label} ${session.time}`).join(" · ");
+}
+
 
 /** Minutes after midnight for an "HH:MM" time, or null when it is not one. */
 function minutesOf(time: string | null): number | null {
@@ -57,9 +115,20 @@ export function sessionForTime(
   dayIndex: number,
   dayCount: number,
 ): DaySession | null {
+  return sessionForTimeIn(daySessions(dayIndex, dayCount), time);
+}
+
+/**
+ * The session a time belongs to, read against a session list a screen already worked out. Same
+ * turn-over rule as `sessionForTime`, so a stored day start and a stored afternoon start decide the
+ * label instead of the fixed constants.
+ */
+export function sessionForTimeIn(
+  sessions: readonly DaySession[],
+  time: string | null,
+): DaySession | null {
   const assigned = minutesOf(time);
   if (assigned === null) return null;
-  const sessions = daySessions(dayIndex, dayCount);
   const first = sessions[0];
   if (!first) return null;
   const afternoon = sessions[1] ?? first;
@@ -71,9 +140,7 @@ export function sessionForTime(
 
 /** "AM 06:30 · PM 12:30" for Thursday to Saturday, "AM 06:30 · PM 11:30" for Sunday. */
 export function daySessionSummary(dayIndex: number, dayCount: number): string {
-  return daySessions(dayIndex, dayCount)
-    .map((session) => `${session.label} ${session.time}`)
-    .join(" · ");
+  return sessionSummaryOf(daySessions(dayIndex, dayCount));
 }
 
 /** "AM" or "PM" on its own, for a table cell. Null when no time is assigned yet. */
@@ -119,8 +186,10 @@ export function daySessionBadge(input: {
   dayCount: number;
   session?: SessionKey | null;
   teeTime?: string | null;
+  /** A session list already worked out from stored day times. Falls back to the position defaults. */
+  sessions?: readonly DaySession[];
 }): DaySessionBadge {
-  const sessions = daySessions(input.dayIndex, input.dayCount);
+  const sessions = input.sessions ?? daySessions(input.dayIndex, input.dayCount);
   const stored = clockText(input.teeTime ?? null);
   const chosen = input.session === "AM" || input.session === "PM" ? input.session : null;
   const morning = sessions[0] ?? { key: "AM" as const, label: "AM", time: AM_TEE_TIME };
@@ -129,8 +198,7 @@ export function daySessionBadge(input: {
     const picked = sessions.find((session) => session.key === chosen) ?? morning;
     // A stored time only answers for the chosen session. If the two disagree, the choice is the
     // record and the day shows the choice's own start time rather than a contradictory label.
-    const storedFits =
-      stored !== null && sessionForTime(stored, input.dayIndex, input.dayCount)?.key === picked.key;
+    const storedFits = stored !== null && sessionForTimeIn(sessions, stored)?.key === picked.key;
     return {
       session: picked.key,
       label: picked.label,
@@ -140,7 +208,7 @@ export function daySessionBadge(input: {
   }
 
   if (stored) {
-    const resolved = sessionForTime(stored, input.dayIndex, input.dayCount);
+    const resolved = sessionForTimeIn(sessions, stored);
     if (resolved) {
       return { session: resolved.key, label: resolved.label, time: stored, source: "stored" };
     }
