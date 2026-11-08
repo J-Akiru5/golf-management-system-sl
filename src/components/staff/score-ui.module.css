@@ -27,7 +27,7 @@
   place-items: center;
   border: 1px solid var(--s-line);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--s-card);
   color: var(--s-ink);
   text-decoration: none;
 }

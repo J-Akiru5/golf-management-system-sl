@@ -1,6 +1,6 @@
 /* The first-run welcome. A bottom sheet on phones, a small centred card on a wide screen.
    Everything is scoped here; the sheet is portalled to the body, so it carries its own tokens.
-   Player tone follows the theme tokens. Staff tone stays white and high contrast like the staff app. */
+   Player tone follows the theme tokens. Staff tone follows them too, now that the staff app has the theme control. */
 
 .sheet,
 .spotlight,
@@ -48,21 +48,6 @@
   border-bottom: 1px solid var(--ob-line);
   padding: calc(10px + env(safe-area-inset-top, 0px)) 18px 18px;
   animation-name: sheet-down;
-}
-
-.sheet[data-tone="staff"] {
-  --ob-bg: #ffffff;
-  --ob-ink: #10140f;
-  --ob-muted: #56615a;
-  --ob-line: #c9d0c7;
-  --ob-soft: #f3f5ee;
-  --ob-accent: #073d2e;
-  --ob-accent-ink: #ffffff;
-  --ob-gold: #f0c75e;
-  --ob-gold-ink: #231a04;
-  --ob-ok: #1c6b3a;
-  --ob-bad: #a32118;
-  color-scheme: light;
 }
 
 .handle {

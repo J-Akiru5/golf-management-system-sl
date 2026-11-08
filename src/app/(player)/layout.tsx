@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { HelpButton } from "@/components/help";
-import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { OnboardingGate } from "@/components/onboarding";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { SignOutForm } from "@/components/SignOutForm";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { AppTopBar } from "@/components/ui/AppTopBar";
 import { I18nProvider } from "@/lib/i18n/context";
 import { getI18n } from "@/lib/i18n/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -32,35 +30,29 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
   return (
     <I18nProvider locale={locale}>
       <div lang={locale} className="player-shell grid min-h-dvh content-start">
-        {/* One 56px row on a phone: logo left, help and language right. The page title, "All
-            pairings" and sign-out only appear where there is room. */}
-        <header className="band sticky top-0 z-30 flex min-h-14 items-center gap-2 px-3 pt-[env(safe-area-inset-top)] sm:gap-5 sm:px-6">
-          <Link
-            href="/"
-            aria-label="TeeLine Golf"
-            className="flex min-h-11 items-center no-underline"
-          >
-            <TeeLineLogo variant="reverse" width={172} className="h-auto w-[124px] sm:w-[172px]" />
-          </Link>
-          <span className="hidden text-sm font-semibold sm:inline">{t("player.title")}</span>
-          <span className="flex-1" />
-          <nav aria-label="Player" className="flex items-center gap-1 text-sm sm:gap-3">
-            <Link
-              href="/pairings"
-              data-help="my-pairings"
-              className="hidden min-h-11 items-center px-2 text-on-forest no-underline hover:underline lg:inline-flex"
-            >
-              {t("player.nav.allPairings")}
-            </Link>
-            <HelpButton audience="player" screen="my" />
-            <span data-onboard="language">
-              <LanguageSwitcher tone="on-forest" compact />
-            </span>
-            {isSupabaseConfigured() && (
-              <SignOutForm className="btn small ghost hidden !border-on-forest-muted lg:inline-flex" />
-            )}
-          </nav>
-        </header>
+        {/* The same top bar as the organizer desk and the staff app: wordmark, Help, the theme
+            control, language and a round account chip that opens Profile. "All pairings" and
+            sign-out only appear where there is room; the tab bar and Profile cover them. */}
+        <AppTopBar
+          homeHref="/"
+          help={{ audience: "player", screen: "my" }}
+          language
+          account={{ label: t("player.tab.me"), href: "/my/profile" }}
+          extra={
+            <>
+              <Link
+                href="/pairings"
+                data-help="my-pairings"
+                className="hidden min-h-11 items-center px-2 text-sm text-on-forest no-underline hover:underline lg:inline-flex"
+              >
+                {t("player.nav.allPairings")}
+              </Link>
+              {isSupabaseConfigured() && (
+                <SignOutForm className="btn small ghost hidden !border-on-forest-muted lg:inline-flex" />
+              )}
+            </>
+          }
+        />
         <main className="public player-main mobile-bar-space">{children}</main>
         <OnboardingGate role="player" />
         <PlayerBottomBar />

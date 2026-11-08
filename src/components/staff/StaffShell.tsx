@@ -1,27 +1,19 @@
 "use client";
 
-import {
-  CalendarDays,
-  CircleUserRound,
-  ClipboardList,
-  Flag,
-  Home,
-  RefreshCw,
-  Users,
-  WifiOff,
-} from "lucide-react";
+import { CalendarDays, ClipboardList, Flag, Home, RefreshCw, Users, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
+import { AppTopBar } from "@/components/ui/AppTopBar";
 import { accessProblemCopy } from "@/lib/auth/access-problem";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { isStaffCurrent, STAFF_NAV, type StaffIcon } from "@/lib/staff/nav";
 import { useDesk } from "@/lib/store/desk-store";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { AccountSheet } from "./AccountSheet";
 import { StaffDayProvider } from "./day-context";
 import { SignInSheet } from "./SignInSheet";
-import styles from "./staff.module.css";
 import { StaffToastProvider } from "./StaffToast";
+import styles from "./staff.module.css";
 
 const ICONS: Record<StaffIcon, typeof Home> = {
   home: Home,
@@ -47,16 +39,7 @@ function initialsOf(name: string | undefined): string {
  * the account sheet.
  */
 export function StaffShell({ children }: { children: ReactNode }) {
-  const {
-    club,
-    tournament,
-    member,
-    status,
-    accessProblem,
-    offline,
-    cachedAt,
-    reload,
-  } = useDesk();
+  const { club, tournament, member, status, accessProblem, offline, cachedAt, reload } = useDesk();
   const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
   const [signInDismissed, setSignInDismissed] = useState(false);
@@ -79,27 +62,20 @@ export function StaffShell({ children }: { children: ReactNode }) {
     <StaffDayProvider>
       <StaffToastProvider>
         <div className={styles.shell}>
-          <header className={styles.header}>
-            <div className={styles.headerTitle}>
-              <b>{club.shortName || club.name}</b>
-              <span>{tournament?.name ?? "No event selected"} · Staff</span>
-            </div>
-            <button
-              type="button"
-              className={styles.accountButton}
-              onClick={() => setAccountOpen(true)}
-              aria-label="Account and event"
-              data-onboard="account-sheet"
-            >
-              {initials ? (
-                <span className={styles.accountButtonInitials} aria-hidden="true">
-                  {initials}
-                </span>
-              ) : (
-                <CircleUserRound size={24} aria-hidden="true" />
-              )}
-            </button>
-          </header>
+          {/* The same top bar as the organizer desk and the player app, so the three areas feel
+              like one product. The account chip opens the staff account sheet. */}
+          <AppTopBar
+            homeHref="/staff"
+            title={club.shortName || club.name}
+            subtitle={`${tournament?.name ?? "No event selected"} · Staff`}
+            help={{ audience: "desk", screen: "/staff" }}
+            account={{
+              label: "Account and event",
+              initials: initials || undefined,
+              onClick: () => setAccountOpen(true),
+              dataOnboard: "account-sheet",
+            }}
+          />
 
           {status === "demo" && (
             <p className={styles.demoStrip}>
