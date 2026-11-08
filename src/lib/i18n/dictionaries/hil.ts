@@ -235,6 +235,7 @@ export const hil: Dictionary = {
       "Pairing version {version} · gin-update {when} (Philippine time). Kon may nakaprinta ka nga kopya, tan-awa kon pareho ang version.",
     versionNoNumber:
       "Gin-update {when} (Philippine time). Kon may nakaprinta ka nga kopya, tan-awa kon pareho ang version.",
+    scanLive: "I-scan para sa live nga pairing",
     footer:
       "Ngalan, home club, handicap, kategorya, flight, hole kag oras lamang. Wala sang contact details ukon litrato.",
     home: "TeeLine Golf home",

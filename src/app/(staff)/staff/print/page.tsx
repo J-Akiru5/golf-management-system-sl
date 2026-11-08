@@ -3,8 +3,9 @@
 import { ArrowLeft, Printer, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { NoticePoster, ShotgunGrid } from "@/components/print/P2Sheets";
 import { Scorecards } from "@/components/print/Scorecards";
-import { StartSheet } from "@/components/print/StartSheet";
+import { StartSheetTable } from "@/components/print/StartSheetTable";
 import type { PrintGroup } from "@/components/print/types";
 import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
@@ -12,11 +13,19 @@ import { StaffLoading } from "@/components/staff/StaffLoading";
 import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
 import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
-import { fmtDateLabel } from "@/lib/data/labels";
-import { photoOf } from "@/lib/format";
+import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
+import { fmtTime, photoOf } from "@/lib/format";
+import { formatLine, splitIntoSessions, versionLine } from "@/lib/print/sheets";
 import { useDesk } from "@/lib/store/desk-store";
 
-type SheetKind = "start" | "scorecards";
+type SheetKind = "start" | "grid" | "poster" | "scorecards";
+
+const SHEETS: { id: SheetKind; label: string }[] = [
+  { id: "start", label: "Start sheet" },
+  { id: "grid", label: "Hole grid" },
+  { id: "poster", label: "Poster" },
+  { id: "scorecards", label: "Scorecards" },
+];
 
 /**
  * The staff print sheet. It prints the live board, not only the published list, so a starter can
@@ -36,8 +45,9 @@ export default function StaffPrintPage() {
     error: deskError,
     offline,
     reload,
+    published,
   } = useDesk();
-  const { day, days, notice, setDayNumber } = useStaffDay();
+  const { day, days, notice, setDayNumber, session } = useStaffDay();
   const { schedule } = useStaffRows();
   const [kind, setKind] = useState<SheetKind>("start");
   const [excluded, setExcluded] = useState<Set<number>>(new Set());
@@ -92,10 +102,25 @@ export default function StaffPrintPage() {
         holes,
       })
     : "missing";
+  const format = tournament
+    ? formatLine(tournament.config.startFormat, fmtTime(tournament.config.firstTeeTime))
+    : "";
+  const stamp = versionLine(published);
+  const paperDay = day
+    ? { dayNumber: day.number, label: day.label, playDate: day.date }
+    : null;
+  const sheetGroups = selectedGroups.map((group) => ({
+    ...group,
+    dayNumber: day?.number ?? 1,
+  }));
+  // One sheet per AM/PM session, so a day's two sessions never share a page.
+  const daySheets = splitIntoSessions(sheetGroups, paperDay ? [paperDay] : []);
+  const shownSheets =
+    session === "all" ? daySheets : daySheets.filter((sheet) => sheet.session === session);
   const subtitle = tournament
     ? `${tournament.name}${day ? ` · ${day.label}` : ""} · ${fmtDateLabel(tournament.dates)} · ${
         tournament.config.startFormat === "shotgun" ? "Shotgun start" : "Two-tee start"
-      } · first tee ${tournament.config.firstTeeTime}`
+      } · first tee ${fmtTime(tournament.config.firstTeeTime)}`
     : "";
 
   function toggleGroup(number: number) {
@@ -173,22 +198,17 @@ export default function StaffPrintPage() {
             </div>
 
             <div className={styles.choiceGrid} role="group" aria-label="Sheet type">
-              <button
-                type="button"
-                className={styles.choice}
-                aria-pressed={kind === "start"}
-                onClick={() => setKind("start")}
-              >
-                Start sheet
-              </button>
-              <button
-                type="button"
-                className={styles.choice}
-                aria-pressed={kind === "scorecards"}
-                onClick={() => setKind("scorecards")}
-              >
-                Scorecards
-              </button>
+              {SHEETS.map((sheet) => (
+                <button
+                  key={sheet.id}
+                  type="button"
+                  className={styles.choice}
+                  aria-pressed={kind === sheet.id}
+                  onClick={() => setKind(sheet.id)}
+                >
+                  {sheet.label}
+                </button>
+              ))}
             </div>
 
             <div className={styles.sectionHead}>
@@ -280,26 +300,19 @@ export default function StaffPrintPage() {
           </p>
 
           <p className={`${styles.muted} ${styles.noPrint}`} style={{ margin: "14px 0 6px" }}>
-            The sheet is wider than the phone. Scroll sideways to read the whole page.
+            This is the paper. Each session starts a new sheet, and long fields run on numbered
+            pages.
           </p>
           <div
             className={`${styles.printArea} print-sheet-scope`}
             role="region"
-            aria-label="Print preview. Scroll sideways to see the whole sheet."
+            aria-label="Print preview"
             tabIndex={0}
           >
-            {kind === "start" ? (
-              <StartSheet
-                title="Start sheet"
-                subtitle={subtitle}
-                groups={selectedGroups}
-                startFormat={tournament.config.startFormat}
-                courseDataStatus={courseDataStatus}
-                showFlight={showFlight}
-                showTee={showTee}
-                showHandicaps={showHandicaps}
-              />
-            ) : (
+            {kind === "grid" && (
+              <style>{"@page { size: A4 landscape; margin: 8mm; }"}</style>
+            )}
+            {kind === "scorecards" ? (
               <Scorecards
                 title={tournament.name}
                 subtitle={subtitle}
@@ -311,6 +324,51 @@ export default function StaffPrintPage() {
                 courseDataStatus={courseDataStatus}
                 showQrCodes={showQrCodes}
               />
+            ) : shownSheets.length === 0 ? (
+              <p className={styles.notice}>
+                No {session === "all" ? "" : `${session} `}groups are selected for this day.
+              </p>
+            ) : (
+              shownSheets.map((sheet) =>
+                kind === "start" ? (
+                  <StartSheetTable
+                    key={sheet.key}
+                    eventName={tournament.name}
+                    title="Start sheet"
+                    dayLabel={sheet.label}
+                    formatLine={format}
+                    versionLine={stamp}
+                    groups={sheet.groups}
+                    startFormat={tournament.config.startFormat}
+                    courseDataStatus={courseDataStatus}
+                    showFlight={showFlight}
+                    showTee={showTee}
+                    showHandicaps={showHandicaps}
+                  />
+                ) : kind === "grid" ? (
+                  <ShotgunGrid
+                    key={sheet.key}
+                    eventName={tournament.name}
+                    title="Hole grid"
+                    dayLabel={sheet.label}
+                    formatLine={format}
+                    versionLine={stamp}
+                    groups={sheet.groups}
+                    startFormat={tournament.config.startFormat}
+                  />
+                ) : (
+                  <NoticePoster
+                    key={sheet.key}
+                    eventName={tournament.name}
+                    title="Notice board"
+                    dayLabel={sheet.label}
+                    formatLine={format}
+                    versionLine={stamp}
+                    groups={sheet.groups}
+                    startFormat={tournament.config.startFormat}
+                  />
+                ),
+              )
             )}
           </div>
         </>

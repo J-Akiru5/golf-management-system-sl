@@ -1,0 +1,464 @@
+/*
+ * Paper for the two P2 sheets: the A4 landscape hole grid and the A4 portrait notice board.
+ * Black ink on white paper only, real pt/mm sizes when printed, smaller px sizes in the screen
+ * preview.
+ *
+ * The landscape sheet asks for a named page, `p2landscape`. A named page only applies to the box
+ * that asks for it with `page:`, so the portrait sheets keep their own paper size. An unscoped
+ * @page in this module would change every sheet that imports it, which is why none is used.
+ */
+
+.paper {
+  box-sizing: border-box;
+  color: #000;
+  background: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  line-height: 1.2;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.paper *,
+.paper *::before,
+.paper *::after {
+  box-sizing: border-box;
+}
+
+/* A4 landscape with 8mm margins: 281mm by 194mm of paper. The named page below asks the browser
+   for landscape when this sheet is printed; the width fills whatever the printer gives us. */
+.landscapePage {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5mm;
+  width: 100%;
+  max-width: 281mm;
+  min-height: 180mm;
+}
+
+/* A4 portrait with 10mm margins: 190mm by 277mm of paper. */
+.noticePage {
+  display: flex;
+  flex-direction: column;
+  gap: 4mm;
+  width: 190mm;
+  max-width: 100%;
+  min-height: 268mm;
+}
+
+.gridHeader,
+.noticeHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4mm;
+  padding-bottom: 2mm;
+  border-bottom: 1.5px solid #000;
+}
+
+.headerBlock {
+  display: grid;
+  gap: 0.8mm;
+  min-width: 0;
+}
+
+.kicker {
+  margin: 0;
+  font-size: 8.5pt;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.eventName {
+  margin: 0;
+  font-size: 18pt;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.dayLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4mm;
+  margin: 0;
+}
+
+.dayLabel {
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.formatLine {
+  font-size: 9pt;
+}
+
+.versionLine {
+  margin: 0;
+  font-size: 8.5pt;
+}
+
+.pageStamp {
+  margin: 0;
+  font-size: 8.5pt;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sheetFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+  margin-top: auto;
+  padding-top: 1.5mm;
+  border-top: 1px solid #000;
+  font-size: 8.5pt;
+}
+
+/* ---------- Hole grid ---------- */
+
+.gridTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #000;
+  background: #fff;
+}
+
+.gridTable th,
+.gridTable td {
+  border: 1px solid #000;
+  color: #000;
+  background: #fff;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.gridTable thead th {
+  padding: 1mm 2mm;
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.holeCol {
+  width: 5.2%;
+}
+
+.groupsCol {
+  width: 22.4%;
+}
+
+.holeRow {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.holeCell {
+  padding: 1.5mm 1mm;
+  font-size: 12pt;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  vertical-align: middle;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+.groupCell {
+  padding: 0.6mm 1.2mm;
+  vertical-align: top;
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5mm;
+  margin: 0;
+}
+
+.groupNumber {
+  font-size: 12pt;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.groupTime {
+  font-size: 9.5pt;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.groupNames {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.5mm;
+  margin: 0.2mm 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 9pt;
+  font-weight: 600;
+  line-height: 1.05;
+}
+
+.groupNames li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.slotEmpty {
+  font-size: 9pt;
+}
+
+.empty {
+  margin: 0;
+  font-size: 12pt;
+  font-weight: 700;
+}
+
+.footNote {
+  margin: 0;
+  font-size: 9pt;
+}
+
+/* ---------- Notice board ---------- */
+
+.noticeEvent {
+  margin: 0;
+  font-size: 26pt;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.noticeDay {
+  margin: 0;
+  font-size: 16pt;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.noticeMeta {
+  margin: 0;
+  font-size: 9pt;
+}
+
+.noticeGroups {
+  flex: 1;
+  column-count: 2;
+  column-gap: 8mm;
+}
+
+.noticeGroup {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 0 0 4mm;
+  padding: 2mm 2.5mm;
+  border: 1px solid #000;
+}
+
+.noticeTime {
+  margin: 0 0 1mm;
+  font-size: 14pt;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.noticeNames {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13pt;
+  line-height: 1.2;
+}
+
+.noticeNames li {
+  overflow-wrap: anywhere;
+}
+
+.noticeNone {
+  margin: 0;
+  font-size: 11pt;
+}
+
+/* ---------- Paper ---------- */
+
+@media print {
+  .landscapePage {
+    width: 100%;
+    min-height: 178mm;
+  }
+
+  .landscapePage,
+  .noticePage {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* First sheet in place: no leading blank page. */
+  .landscapePage:first-child,
+  .noticePage:first-child {
+    break-before: auto;
+    page-break-before: auto;
+  }
+
+  .gridTable thead {
+    display: table-header-group;
+  }
+
+  .holeRow,
+  .holeCell,
+  .groupCell,
+  .noticeGroup {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* ---------- Screen preview ---------- */
+
+@media screen {
+  .landscapePage,
+  .noticePage {
+    width: 100%;
+    min-height: 0;
+    gap: 12px;
+  }
+
+  .landscapePage {
+    max-width: 281mm;
+  }
+
+  .noticePage {
+    max-width: 190mm;
+  }
+
+  .gridHeader,
+  .noticeHeader {
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom-width: 1px;
+  }
+
+  .headerBlock {
+    gap: 2px;
+  }
+
+  .kicker {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  .eventName {
+    font-size: 16px;
+  }
+
+  .noticeEvent {
+    font-size: 22px;
+  }
+
+  .dayLabel {
+    font-size: 12px;
+  }
+
+  .noticeDay {
+    font-size: 14px;
+  }
+
+  .formatLine,
+  .versionLine {
+    font-size: 10px;
+  }
+
+  .noticeMeta {
+    font-size: 10px;
+  }
+
+  .pageStamp {
+    font-size: 9px;
+  }
+
+  .sheetFooter {
+    padding-top: 6px;
+    font-size: 9px;
+  }
+
+  .gridTable thead th {
+    padding: 4px;
+    font-size: 8px;
+  }
+
+  .holeCell {
+    padding: 5px 2px;
+    font-size: 10px;
+  }
+
+  .groupCell {
+    padding: 5px 6px;
+  }
+
+  .groupHead {
+    gap: 4px;
+  }
+
+  .groupNumber {
+    font-size: 10px;
+  }
+
+  .groupTime {
+    font-size: 9px;
+  }
+
+  .groupNames {
+    column-gap: 6px;
+    font-size: 8px;
+    line-height: 1.25;
+  }
+
+  .slotEmpty {
+    font-size: 8px;
+  }
+
+  .empty {
+    font-size: 14px;
+  }
+
+  .footNote {
+    font-size: 10px;
+  }
+
+  .noticeGroups {
+    column-count: 1;
+    column-gap: 12px;
+  }
+
+  .noticeGroup {
+    margin-bottom: 8px;
+    padding: 8px 10px;
+  }
+
+  .noticeTime {
+    font-size: 12px;
+  }
+
+  .noticeNames {
+    font-size: 11px;
+  }
+
+  .noticeNone {
+    font-size: 10px;
+  }
+}
+
+/* A phone preview keeps the poster to one column; a wide preview shows the paper's two. */
+@media screen and (min-width: 640px) {
+  .noticeGroups {
+    column-count: 2;
+  }
+}
+
+

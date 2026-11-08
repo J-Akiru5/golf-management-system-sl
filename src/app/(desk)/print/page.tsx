@@ -5,7 +5,9 @@ import {
   Download,
   FileText,
   Flag,
+  LayoutGrid,
   Printer,
+  Rows3,
   Smartphone,
   TableProperties,
   Users,
@@ -15,20 +17,27 @@ import { useMemo, useState } from "react";
 import { CheatSheet } from "@/components/help";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
+import { NoticePoster, ShotgunGrid } from "@/components/print/P2Sheets";
 import { type CountsGrouping, DayCounts } from "@/components/print/DayCounts";
 import { PairingsSheet } from "@/components/print/PairingsSheet";
 import { Scorecards } from "@/components/print/Scorecards";
-import { StartSheet } from "@/components/print/StartSheet";
+import { StartSheetTable } from "@/components/print/StartSheetTable";
 import type { PrintGroup } from "@/components/print/types";
 import { Button } from "@/components/ui/button";
 import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
 import { playingDaysOf } from "@/lib/data/dates";
 import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
-import { daySessionSummary } from "@/lib/data/sessions";
 import { buildXlsx, type Cell } from "@/lib/export/xlsx";
-import { photoOf } from "@/lib/format";
+import { fmtTime, photoOf } from "@/lib/format";
 import { buildDayCountBlocks, buildGroupBlocks } from "@/lib/print/day-counts";
+import {
+  formatLine,
+  splitIntoSessions,
+  type PrintDay,
+  type PrintSheet,
+  versionLine,
+} from "@/lib/print/sheets";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
@@ -36,6 +45,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/ui/cn";
 
 type Tab = "start" | "counts" | "pairings" | "scorecards" | "howto";
+type Paper = "table" | "grid" | "poster";
+type SessionFilter = "all" | "AM" | "PM";
 
 const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
   { id: "start", label: "Start sheet", icon: TableProperties },
@@ -43,6 +54,12 @@ const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
   { id: "pairings", label: "Pairings", icon: Flag },
   { id: "scorecards", label: "Scorecards", icon: FileText },
   { id: "howto", label: "How to", icon: CircleHelp },
+];
+
+const PAPERS: { id: Paper; label: string; hint: string; icon: typeof FileText }[] = [
+  { id: "table", label: "Start sheet", hint: "A4 portrait, one sheet per session", icon: Rows3 },
+  { id: "grid", label: "Hole grid", hint: "A4 landscape, groups by hole", icon: LayoutGrid },
+  { id: "poster", label: "Poster", hint: "A4 portrait, names and times only", icon: TableProperties },
 ];
 
 export default function PrintCenter() {
@@ -63,11 +80,16 @@ export default function PrintCenter() {
     setDrawDay,
   } = useDesk();
   const [tab, setTab] = useState<Tab>("start");
+  const [paper, setPaper] = useState<Paper>("table");
+  const [session, setSession] = useState<SessionFilter>("all");
   // Printing follows the desk's day: picking a day here loads that day's board, so the sheets never
   // mix two days together. Playing days only, in day order, so a trailing non-playing day does not
   // make the last playing day's afternoon read as an ordinary day.
   const playingDays = useMemo(() => playingDaysOf(days), [days]);
   const chosenDay = playingDays.find((d) => d.dayNumber === drawDay) ?? null;
+  // A draw belongs to the event until a day is opened in the desk, so the preview starts on the
+  // first playing day rather than on an empty screen.
+  const previewDay = chosenDay ?? playingDays[0] ?? null;
   // Every day at once, fetched on demand: the desk itself only holds the selected day.
   const [everyDay, setEveryDay] = useState<{ day: number; groups: PrintGroup[] }[] | null>(null);
   const [preparingAll, setPreparingAll] = useState(false);
@@ -125,7 +147,6 @@ export default function PrintCenter() {
   const playerById = new Map(players.map((p) => [p.id, p]));
   const shotgun = tournament.config.startFormat === "shotgun";
   const dayGroups = draw ?? [];
-  const groups = dayGroups;
   // This existing route remains the assembler: adapt the desk's domain objects into plain print props here.
   const toPrintGroup = (group: {
     number: number;
@@ -151,7 +172,6 @@ export default function PrintCenter() {
         name: player?.name ?? "Unknown player",
         handicapIndex: registration?.frozenIndex ?? null,
         playingHandicap: registration?.playingHandicap ?? null,
-        // The tee and its numbers go on the card: the course handicap beside them comes off them.
         teeName: registration?.teeId ? (tee?.name ?? names.tee(registration.teeId)) : null,
         teeRating: tee?.courseRating ?? null,
         teeSlope: tee?.slope ?? null,
@@ -160,7 +180,28 @@ export default function PrintCenter() {
       };
     }),
   });
-  const printGroups = groups.map(toPrintGroup);
+  const printGroups = dayGroups.map(toPrintGroup);
+
+  /**
+   * Every sheet the desk can print: one per playing day and AM/PM session. The desk holds one day
+   * at a time, so "Print all days" reads the whole event's board once and lays the days out in order.
+   */
+  const loadedDays: PrintDay[] = playingDays.map((day) => ({
+    dayNumber: day.dayNumber,
+    label: day.label,
+    playDate: day.playDate,
+  }));
+  const flatPreview: (PrintGroup & { dayNumber: number })[] = everyDay
+    ? everyDay.flatMap((board) => board.groups.map((group) => ({ ...group, dayNumber: board.day })))
+    : previewDay
+      ? printGroups.map((group) => ({ ...group, dayNumber: previewDay.dayNumber }))
+      : [];
+  const allSheets: PrintSheet<PrintGroup & { dayNumber: number }>[] = splitIntoSessions(
+    flatPreview,
+    loadedDays,
+  );
+  const previewSheets =
+    session === "all" ? allSheets : allSheets.filter((sheet) => sheet.session === session);
 
   /**
    * Prints every playing day in one run. The desk holds one day at a time, so this reads the whole
@@ -224,7 +265,7 @@ export default function PrintCenter() {
         }));
 
       setEveryDay(boards);
-      if (autoPrint) window.setTimeout(() => window.print(), 400);
+      if (autoPrint) window.setTimeout(() => window.print(), 500);
     } finally {
       setPreparingAll(false);
     }
@@ -297,55 +338,23 @@ export default function PrintCenter() {
     tees,
     holes,
   });
+  const stamp = versionLine(published);
+  const format = formatLine(tournament.config.startFormat, fmtTime(tournament.config.firstTeeTime));
+  const previewTitle = paper === "grid" ? "Hole grid" : paper === "poster" ? "Notice board" : "Start sheet";
   const dayPart = chosenDay ? `${chosenDay.label} · ` : "";
-  const subtitle = `${tournament.name} · ${dayPart}${fmtDateLabel(tournament.dates)} · ${
-    shotgun ? "Shotgun start" : "Two-tee start"
-  } · first tee ${tournament.config.firstTeeTime}${
-    groups[0] ? ` · ${groups.length} groups` : " · no draw yet"
-  }`;
   const scorecardSubtitle = `${dayPart}${fmtDateLabel(tournament.dates)} · ${
     shotgun ? "Shotgun start" : "Two-tee start"
-  } · first tee ${tournament.config.firstTeeTime}`;
+  } · first tee ${fmtTime(tournament.config.firstTeeTime)}`;
+  const showPreview = tab === "start" && (everyDay !== null || Boolean(draw));
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-4 pb-4">
       <PageHeader
         overline="Print center"
         title="Print sheets"
         crumbs={[{ label: tournament.name, href: "/tournaments" }, { label: "Print center" }]}
         actions={
           <>
-            {playingDays.length > 0 && (
-              <label className="no-print grid w-full min-w-0 gap-1 sm:w-auto">
-                <span className="overline !text-[10px]">Day to print</span>
-                <select
-                  value={drawDay ?? ""}
-                  onChange={(e) =>
-                    setDrawDay(e.target.value === "" ? null : Number(e.target.value))
-                  }
-                  // The longest day label is wider than a phone; let it fill the row there and use
-                  // its own width on a desktop.
-                  className="w-full min-w-0 text-[16px] md:text-sm sm:w-auto"
-                  data-help="print-day"
-                >
-                  {playingDays.map((d, index) => (
-                    <option key={d.id} value={d.dayNumber}>
-                      {d.label} · {fmtIso(d.playDate)} ·{" "}
-                      {daySessionSummary(index, playingDays.length)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <Button
-              variant="secondary"
-              onClick={() => void loadEveryDay()}
-              disabled={preparingAll}
-              className="no-print min-h-11 md:min-h-0"
-              data-help="print-all"
-            >
-              <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
-            </Button>
             <Button variant="secondary" asChild className="min-h-11">
               <Link href="/pairings">
                 <Smartphone aria-hidden="true" /> Public preview
@@ -354,17 +363,15 @@ export default function PrintCenter() {
             <Button
               variant="gold"
               onClick={() => window.print()}
-              className="no-print min-h-11 md:min-h-0"
-              data-help="print-now"
+              className="no-print hidden min-h-11 md:inline-flex"
             >
-              <Printer aria-hidden="true" /> Print this sheet
+              <Printer aria-hidden="true" /> Print
             </Button>
           </>
         }
       >
-        Built from the current board. Use the browser's print dialog: the sheets are laid out for A4
-        or Letter, with the navigation left off. Printing on the club's own printer has not been
-        tested.
+        A4 paper, one sheet per playing day and AM/PM session. The preview is the paper. Use the
+        browser's print dialog for paper size and copies.
       </PageHeader>
 
       {courseDataStatus !== "official" && (
@@ -380,7 +387,7 @@ export default function PrintCenter() {
         </p>
       )}
 
-      <div className="no-print flex flex-wrap items-center gap-3" data-help="print-tabs">
+      <div className="no-print grid gap-3" data-help="print-tabs">
         <div className="tabs !w-auto grid-cols-5">
           {TABS.map((t) => (
             <button
@@ -393,20 +400,99 @@ export default function PrintCenter() {
                 // The counts sheet reads each player's pairing, so it needs every day's board once.
                 if (t.id === "counts" && !everyDay && !preparingAll) void loadEveryDay(false);
               }}
-              className="flex min-h-11 items-center gap-2 px-4"
+              className="flex min-h-12 flex-col items-center justify-center gap-0.5 px-1 text-[10px] leading-tight md:min-h-11 md:flex-row md:gap-2 md:px-4 md:text-sm"
             >
-              <t.icon className="size-4" aria-hidden="true" />
-              {t.label}
+              <t.icon className="size-4 shrink-0" aria-hidden="true" />
+              <span className="whitespace-nowrap">{t.label}</span>
             </button>
           ))}
         </div>
-        <span className={cn("pill", published ? "ok" : "info")} data-help="print-version">
-          {published
-            ? changedSincePublish
-              ? "Published, with newer changes on the board"
-              : "Matches the published list"
-            : "Draft · not published"}
-        </span>
+
+        {tab === "start" && (
+          <section className="card grid gap-3 p-3" aria-label="What to print">
+            <div className="grid gap-1">
+              <span className="overline !text-[10px]">Sheet</span>
+              <div className="grid grid-cols-3 gap-2" role="group" aria-label="Sheet type">
+                {PAPERS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-pressed={paper === item.id}
+                    onClick={() => setPaper(item.id)}
+                    className={cn(
+                      "grid min-h-[64px] content-center justify-items-center gap-1 rounded-[10px] border px-2 py-2 text-[13px] font-semibold",
+                      paper === item.id
+                        ? "border-forest bg-forest text-on-forest"
+                        : "border-line bg-surface text-ink",
+                    )}
+                  >
+                    <item.icon className="size-5" aria-hidden="true" />
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <p className="hint mt-1">
+                {PAPERS.find((item) => item.id === paper)?.hint}
+                {paper === "grid" && !shotgun
+                  ? " · the grid works best for shotgun starts"
+                  : ""}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid min-w-0 gap-1">
+                <span className="overline !text-[10px]">Day</span>
+                <select
+                  value={drawDay ?? previewDay?.dayNumber ?? ""}
+                  onChange={(e) => {
+                    setDrawDay(e.target.value === "" ? null : Number(e.target.value));
+                    setEveryDay(null);
+                  }}
+                  className="min-h-11 w-full min-w-0 text-[16px]"
+                  data-help="print-day"
+                >
+                  {playingDays.length === 0 && <option value="">No playing days</option>}
+                  {playingDays.map((d) => (
+                    <option key={d.id} value={d.dayNumber}>
+                      {d.label} · {fmtIso(d.playDate)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid min-w-0 gap-1">
+                <span className="overline !text-[10px]">Session</span>
+                <select
+                  value={session}
+                  onChange={(e) => setSession(e.target.value as SessionFilter)}
+                  className="min-h-11 w-full min-w-0 text-[16px]"
+                >
+                  <option value="all">AM and PM</option>
+                  <option value="AM">AM only</option>
+                  <option value="PM">PM only</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={cn("pill", published ? "ok" : "info")} data-help="print-version">
+                {published
+                  ? changedSincePublish
+                    ? "Published, with newer changes on the board"
+                    : "Matches the published list"
+                  : "Draft · not published"}
+              </span>
+              {everyDay && (
+                <button
+                  type="button"
+                  className="btn small ghost"
+                  onClick={() => setEveryDay(null)}
+                >
+                  Back to this day only
+                </button>
+              )}
+            </div>
+          </section>
+        )}
       </div>
 
       <div className="print-sheet-scope">
@@ -425,53 +511,77 @@ export default function PrintCenter() {
             <h2 className="text-[20px]">How to use the desk</h2>
             <CheatSheet />
           </section>
-        ) : !draw ? (
-          <div className="card grid min-h-[220px] place-items-center text-center">
-            <div className="grid justify-items-center gap-2">
-              <FileText className="size-6 text-ink-muted" aria-hidden="true" />
-              <h2>Nothing to print yet</h2>
+        ) : tab === "start" ? (
+          !showPreview ? (
+            <div className="card grid min-h-[220px] place-items-center text-center">
+              <div className="grid justify-items-center gap-2">
+                <FileText className="size-6 text-ink-muted" aria-hidden="true" />
+                <h2>Nothing to print yet</h2>
+                <p className="muted">
+                  Make the draw first; the start sheet, poster and hole grid all come from it.
+                </p>
+                <Button variant="primary" asChild className="mt-2 no-print">
+                  <Link href="/draw">Open the draw</Link>
+                </Button>
+              </div>
+            </div>
+          ) : previewSheets.length === 0 ? (
+            <div className="card grid gap-2 p-4">
+              <h2>No {session === "all" ? "" : `${session} `}groups on this day</h2>
               <p className="muted">
-                Make the draw first; the start sheet, pairings and scorecards all come from it.
+                The board has no groups for this session yet. Choose another session, or open the
+                draw to place players.
               </p>
-              <Button variant="primary" asChild className="mt-2 no-print">
+              <Button variant="secondary" asChild className="justify-self-start no-print">
                 <Link href="/draw">Open the draw</Link>
               </Button>
             </div>
-          </div>
-        ) : tab === "start" ? (
-          everyDay ? (
-            <div className="grid gap-6">
-              <p className="hint no-print">
-                Every playing day, one sheet each.{" "}
-                <button type="button" className="btn small ghost" onClick={() => setEveryDay(null)}>
-                  Back to this day only
-                </button>
-              </p>
-              {everyDay.map((board) => {
-                const label =
-                  playingDays.find((d) => d.dayNumber === board.day)?.label ?? `Day ${board.day}`;
-                return (
-                  <StartSheet
-                    key={board.day}
-                    title={`Start sheet · ${label}`}
-                    subtitle={`${tournament.name} · ${label} · ${fmtDateLabel(tournament.dates)} · ${
-                      shotgun ? "Shotgun start" : "Two-tee start"
-                    } · ${board.groups.length} groups`}
-                    groups={board.groups}
+          ) : (
+            <div className="grid gap-4">
+              {paper === "table" &&
+                previewSheets.map((sheet) => (
+                  <StartSheetTable
+                    key={sheet.key}
+                    eventName={tournament.name}
+                    title="Start sheet"
+                    dayLabel={sheet.label}
+                    formatLine={format}
+                    versionLine={stamp}
+                    groups={sheet.groups}
                     startFormat={tournament.config.startFormat}
                     courseDataStatus={courseDataStatus}
                   />
-                );
-              })}
+                ))}
+              {paper === "grid" && (
+                <style>{"@page { size: A4 landscape; margin: 8mm; }"}</style>
+              )}
+              {paper === "grid" &&
+                previewSheets.map((sheet) => (
+                  <ShotgunGrid
+                    key={sheet.key}
+                    eventName={tournament.name}
+                    title="Hole grid"
+                    dayLabel={sheet.label}
+                    formatLine={format}
+                    versionLine={stamp}
+                    groups={sheet.groups}
+                    startFormat={tournament.config.startFormat}
+                  />
+                ))}
+              {paper === "poster" &&
+                previewSheets.map((sheet) => (
+                  <NoticePoster
+                    key={sheet.key}
+                    eventName={tournament.name}
+                    title="Notice board"
+                    dayLabel={sheet.label}
+                    formatLine={format}
+                    versionLine={stamp}
+                    groups={sheet.groups}
+                    startFormat={tournament.config.startFormat}
+                  />
+                ))}
             </div>
-          ) : (
-            <StartSheet
-              title="Start sheet"
-              subtitle={subtitle}
-              groups={printGroups}
-              startFormat={tournament.config.startFormat}
-              courseDataStatus={courseDataStatus}
-            />
           )
         ) : tab === "pairings" ? (
           <section className="grid gap-3">
@@ -499,27 +609,32 @@ export default function PrintCenter() {
         )}
       </div>
 
-      {/* Phone only: the header actions sit at the top of a long sheet, so the two print actions
-          stay within reach above the app's bottom tab bar. The header actions remain. */}
-      <div className="no-print sticky bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-line bg-surface/95 px-4 py-2 backdrop-blur md:hidden">
-        <Button
-          variant="secondary"
-          size="sm"
-          className="min-h-11 flex-1"
-          onClick={() => void loadEveryDay()}
-          disabled={preparingAll}
-        >
-          <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
-        </Button>
-        <Button
-          variant="gold"
-          size="sm"
-          className="min-h-11 flex-1"
-          onClick={() => window.print()}
-        >
-          <Printer aria-hidden="true" /> Print this sheet
-        </Button>
-      </div>
+      {/* Phone only: the header actions sit at the top of a long sheet, so the print action stays
+          within reach above the app's bottom tab bar. */}
+      {tab === "start" && showPreview && (
+        <div className="no-print sticky bottom-[calc(72px+env(safe-area-inset-bottom,0px))] z-20 -mx-4 flex items-center gap-2 border-t border-line bg-surface/95 px-4 py-2 backdrop-blur md:hidden">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="min-h-12 flex-1"
+            onClick={() => void loadEveryDay()}
+            disabled={preparingAll || playingDays.length < 2}
+          >
+            <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "All days"}
+          </Button>
+          <Button
+            variant="gold"
+            size="sm"
+            className="min-h-12 flex-[1.6]"
+            onClick={() => window.print()}
+            disabled={previewSheets.length === 0}
+          >
+            <Printer aria-hidden="true" />
+            Print {previewTitle.toLowerCase()}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
+
