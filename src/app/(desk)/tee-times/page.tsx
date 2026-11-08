@@ -42,8 +42,7 @@ import { useDesk } from "@/lib/store/desk-store";
  * selected. The database function checks the course's hole count and the day's start time.
  */
 export default function TeeTimesPage() {
-  const { tournament, days, entries, players, caddies, adapters, status, draw, drawDay } =
-    useDesk();
+  const { tournament, days, entries, players, caddies, adapters, status, draw, drawDay } = useDesk();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [batchTime, setBatchTime] = useState("");
   const [batching, setBatching] = useState<"missing" | "all" | "draw" | null>(null);
@@ -53,7 +52,10 @@ export default function TeeTimesPage() {
   // Playing days only, in day order: the position names the day's sessions, and the print center
   // reads the same list. A trailing non-playing day must not move the last playing day's afternoon.
   const playingDays = useMemo(() => playingDaysOf(days), [days]);
-  const day = playingDays.find((d) => d.dayNumber === selectedDay) ?? playingDays[0] ?? null;
+  // The day on screen: the one the operator picked here, else the day whose board the desk loaded.
+  // Opening from a remembered day therefore shows that day instead of day 1 beside day 4's board.
+  const day =
+    playingDays.find((d) => d.dayNumber === (selectedDay ?? drawDay)) ?? playingDays[0] ?? null;
   // The morning and afternoon this day runs, read from what the desk stored: the day's own start,
   // the day's own afternoon start, then the event's afternoon time. Each session says whether its
   // time is stored or a fallback, so the subtitle never reads a default as the club's choice.
