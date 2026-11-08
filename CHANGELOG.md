@@ -15,10 +15,21 @@ Supabase project, because the code and the database are released separately.
 8 November scheduling migrations were already applied before this release.
 
 ### Added
-- **The AgentOps queue now carries issues #185, #186 and #187.** T-0007 adds a public roster,
-  T-0008 adds the player scorecard and team-format engine, and T-0009 generalises the existing
-  Cloudflare R2 client for media and documents. The three contracts are ready but not implemented in
-  this commit. No migration and no deployment.
+- **The public player roster is live at `/roster` (issue #185).** It lists the confirmed field with
+  name, home club, frozen index, category and flight, with a name search and a flight filter. The
+  browser receives only those five fields; the page returns no content while the event is
+  unpublished. It is in the sitemap and linked from the pairings page. No migration.
+- **The player scorecard understands team formats (issue #186).** The card shows gross and net,
+  handicap strokes, points and relation to par. A pure engine covers four-ball, aggregate and
+  scramble, and refuses to invent a score when a partner card is missing. The connected portal still
+  reads only the caller's own published card; the partner row and the client-side edit preview are
+  demo-only until the owner approves the format setting, the group read projection and the player
+  write rule. No migration.
+- **Cloudflare R2 storage is reusable for media and documents (issue #187).** The scorecard scan
+  client now backs a general service with presigned uploads and downloads, public or signed URL
+  selection, deletion, and MIME and size validation. A staff-only presign route scopes keys to the
+  caller's club, and the scan path keeps its contract. The owner still has to create the bucket,
+  token and CORS rule and set the environment variables. No migration.
 - **The print center can print the player pairings while the draw is still a draft.** When no
   published snapshot exists, the Pairings tab builds the club's sheet from the current board, marks
   every page "DRAFT · NOT PUBLISHED · FOR DESK USE ONLY", and enables the PDF and Excel download.
