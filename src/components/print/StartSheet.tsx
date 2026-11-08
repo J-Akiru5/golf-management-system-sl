@@ -51,7 +51,7 @@ export function StartSheet({
 
       {sections.map((section) => (
         <section key={section.key} className={styles.startSection}>
-          <h3 className={styles.sectionHeading}>Tee time {fmtTime(section.time)}</h3>
+          <h3 className={styles.sectionHeading}>{fmtTime(section.time)}</h3>
           <div className={styles.startGrid}>
             {section.groups.map((group) => (
               <article className={styles.startGroup} key={`${group.startHole}-${group.number}`}>
