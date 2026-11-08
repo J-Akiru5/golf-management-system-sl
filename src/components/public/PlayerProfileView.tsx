@@ -1,0 +1,72 @@
+import { Avatar } from "@/components/bits";
+import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
+import type { PublicPlayerProfileData } from "@/lib/data/public-profile";
+import { fmtIndex } from "@/lib/format";
+import type { Translate } from "@/lib/i18n/t";
+
+/**
+ * The selected player's profile: who they are, their partner, and their frozen cards. The cards
+ * come from the published snapshot, so this page never shows a score that is still being edited.
+ */
+export function PlayerProfileView({ data, t }: { data: PublicPlayerProfileData; t: Translate }) {
+  const { player, partner, cards } = data;
+  return (
+    <div className="grid gap-4" data-testid="player-profile">
+      <section className="card grid gap-3" aria-labelledby="profile-name">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar name={player.name} />
+            <div className="min-w-0">
+              <h2 id="profile-name" className="m-0 break-words text-[22px] leading-7">
+                {player.name}
+              </h2>
+              <p className="hint m-0">
+                {[player.flight, player.category].filter(Boolean).join(" · ") ||
+                  t("programme.unflighted")}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+          <div className="grid gap-0.5">
+            <dt className="small-h">{t("programme.profileIndex")}</dt>
+            <dd className="m-0 font-semibold tnum">{fmtIndex(player.index)}</dd>
+          </div>
+          <div className="grid gap-0.5">
+            <dt className="small-h">{t("programme.profileClass")}</dt>
+            <dd className="m-0 min-w-0 break-words font-semibold">
+              {player.flight ?? t("programme.unflighted")}
+            </dd>
+          </div>
+          <div className="grid gap-0.5">
+            <dt className="small-h">{t("programme.profileCategory")}</dt>
+            <dd className="m-0 min-w-0 break-words font-semibold">
+              {player.category ?? t("programme.profileUncategorized")}
+            </dd>
+          </div>
+          <div className="grid gap-0.5">
+            <dt className="small-h">{t("programme.profilePartner")}</dt>
+            <dd className="m-0 min-w-0 break-words font-semibold">
+              {partner?.name ?? t("programme.profileNoPartner")}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      {cards.length === 0 ? (
+        <section className="card" role="status" data-testid="profile-no-cards">
+          <h3 className="m-0 text-[18px] leading-6">{t("programme.profileNoScoresTitle")}</h3>
+          <p className="hint mt-1 mb-0">{t("programme.profileNoScoresBody")}</p>
+        </section>
+      ) : (
+        <>
+          <p className="hint">{t("player.scorecard.swipe")}</p>
+          {cards.map((card) => (
+            <ScorecardBreakdown key={card.roundId} card={card} t={t} />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}

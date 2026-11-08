@@ -6,17 +6,16 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
-import {
-  PlayerDirectory,
-  ProgrammeNav,
-  RulesOfPlay,
-  TeeTimesBoard,
-} from "@/components/public/ProgrammeView";
+import { PlayerProfileSearch } from "@/components/public/PlayerProfileSearch";
+import { PlayerProfileView } from "@/components/public/PlayerProfileView";
+import { RulesOfPlay, TeeTimesBoard } from "@/components/public/ProgrammeView";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
+import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { addIsoDays } from "@/lib/data/dates";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings, toPublicProgramme } from "@/lib/data/public";
+import type { PublicTab } from "@/lib/data/public-tabs";
 import type {
   PublicPairingDay,
   PublicPairingGroup,
@@ -25,6 +24,8 @@ import type {
   PublicProgramme,
   PublicTeeTimeDay,
 } from "@/lib/data/types";
+import { demoPlayerId } from "@/lib/demo/ids";
+import { samplePlayerProfileData } from "@/lib/demo/public-leaderboard";
 import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { manilaToday } from "@/lib/player/dashboard";
@@ -210,9 +211,10 @@ function samplePairings(): PublicPairings {
 
       const players = Array.from({ length: size }, (_, offset) => {
         const pooled = SAMPLE_NAMES[(cursor + offset) % SAMPLE_NAMES.length] ?? SAMPLE_NAMES[0];
+        const name = featured && offset === 0 ? SAMPLE_FEATURED_PLAYER : pooled;
         return {
-          id: null,
-          name: featured && offset === 0 ? SAMPLE_FEATURED_PLAYER : pooled,
+          id: demoPlayerId(name),
+          name,
           photoPath: null,
         };
       });
@@ -264,6 +266,7 @@ export function sampleProgramme(): PublicProgramme {
     for (const player of group.players) {
       if (profiles.has(player.name)) continue;
       profiles.set(player.name, {
+        id: demoPlayerId(player.name),
         name: player.name,
         homeCourse: "Iloilo Golf & Country Club",
         index: 12.4,
@@ -302,7 +305,13 @@ export function sampleProgramme(): PublicProgramme {
  *
  * The free-text rules live on the tournament, so they show the moment the demo event has some.
  */
-export function DemoPairings() {
+export function DemoPairings({
+  tab = "pairings",
+  playerId = null,
+}: {
+  tab?: PublicTab;
+  playerId?: string | null;
+}) {
   const { t } = useI18n();
   const { published, tournament, days, entries, registrations, players } = useDesk();
 
@@ -334,6 +343,13 @@ export function DemoPairings() {
           firstTeeTime: tournament.config.firstTeeTime,
         })
       : null) ?? samplePairings();
+  const selectedPlayer = playerId
+    ? (programme.players.find((player) => player.id === playerId) ?? null)
+    : null;
+  const profile =
+    selectedPlayer?.id !== null && selectedPlayer?.id !== undefined
+      ? samplePlayerProfileData({ ...selectedPlayer, id: selectedPlayer.id })
+      : null;
 
   return (
     <main className="public public-pairings mobile-bar-space">
@@ -364,23 +380,22 @@ export function DemoPairings() {
         <p className="text-on-forest-muted">{dateLabel}</p>
       </header>
 
-      {!pairings ? (
-        <section className="pairings-empty" role="status">
-          <h2>{t("pairings.notOutTitle")}</h2>
-          <p>{t("pairings.notOutBody")}</p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Link className="btn ghost no-print" href="/pairings#tee-times">
-              {t("programme.navTeeTimes")}
-            </Link>
-            <Link className="btn ghost no-print" href="/">
-              {t("pairings.home")}
-            </Link>
-          </div>
-        </section>
+      <PublicTournamentNav active={tab} />
+
+      {tab === "profile" ? (
+        <>
+          <PlayerProfileSearch players={programme.players} selectedId={playerId} />
+          {profile ? (
+            <PlayerProfileView data={profile} t={t} />
+          ) : playerId ? (
+            <section className="pairings-empty" role="status">
+              <h2>{t("programme.profileNotFoundTitle")}</h2>
+              <p>{t("programme.profileNotFoundBody")}</p>
+            </section>
+          ) : null}
+        </>
       ) : (
         <>
-          {programme && <ProgrammeNav programme={programme} hasPairings />}
-
           <section
             className="grid gap-3"
             id="pairings"
@@ -391,21 +406,22 @@ export function DemoPairings() {
               pairings={pairings}
               headingLevel="section"
               flightFilter
-              you={{ id: null, name: SAMPLE_FEATURED_PLAYER }}
+              you={{ id: demoPlayerId(SAMPLE_FEATURED_PLAYER), name: SAMPLE_FEATURED_PLAYER }}
             />
           </section>
 
           <TeeTimesBoard programme={programme} />
-          <PlayerDirectory programme={programme} />
 
-          {programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
+          {programme.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
         </>
       )}
 
       <p className="hint no-print">
         {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
         <Link href="/roster">{t("programme.playersTitle")}</Link> ·{" "}
-        <Link href="/rules">{t("programme.navFullRules")}</Link>
+        <Link href="/rules">{t("programme.navFullRules")}</Link> ·{" "}
+        <Link href="/pairings?tab=profile">{t("programme.navProfile")}</Link> ·{" "}
+        <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
       </p>
       <PlayerBottomBar />
     </main>

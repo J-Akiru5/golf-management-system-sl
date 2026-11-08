@@ -273,6 +273,8 @@ describe("toPublicProgramme", () => {
     ]);
     expect(out.players).toEqual([
       {
+        // The id is part of the programme allow-list so the profile search can name one player.
+        id: "p1",
         name: "ANTONIO ALCANTARA",
         homeCourse: "IGCC",
         index: 12.4,
@@ -369,6 +371,7 @@ describe("mapPublicProgramme", () => {
       { name: "ANTONIO ALCANTARA", teeTime: null, startHole: null, confirmed: false },
     ]);
     expect(out?.players[0]).toEqual({
+      id: null,
       name: "ANTONIO ALCANTARA",
       homeCourse: null,
       index: null,

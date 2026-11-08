@@ -26,8 +26,8 @@ import type {
  * notes can never leak into a public page by accident.
  *
  * The programme (the day schedule, the player cards and the rules of play) has its own allow-list
- * below. It adds home course, frozen index, category and flight, and still never carries contact
- * details, birthdate, gender, notes or a photo.
+ * below. It adds the stable player id, home course, frozen index, category and flight, and still
+ * never carries contact details, birthdate, gender, notes or a photo.
  */
 
 /** The shape the publisher stores. Kept structural so this module does not import the store. */
@@ -219,6 +219,7 @@ export function toPublicProgramme({
   const publicPlayers: PublicPlayerProfile[] = registrations
     .filter((registration) => registration.status === "ok")
     .map((registration) => ({
+      id: registration.playerId || null,
       name: displayName(registration.playerName),
       homeCourse: homeCourseByPlayer.get(registration.playerId)?.trim() || null,
       index: registration.frozenIndex,
@@ -383,6 +384,7 @@ export function mapPublicProgramme(value: unknown): PublicProgramme | null {
     const name = typeof rawPlayer.name === "string" ? rawPlayer.name.trim() : "";
     if (name === "") return null;
     players.push({
+      id: textOrNull(rawPlayer.id),
       name: displayName(name),
       homeCourse: textOrNull(rawPlayer.homeCourse),
       index: indexOrNull(rawPlayer.index),

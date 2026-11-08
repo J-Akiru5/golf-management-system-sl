@@ -90,6 +90,7 @@ describe("toPublicRoster", () => {
       days: [],
       players: [
         {
+          id: null,
           name: "Noel Yulo",
           homeCourse: null,
           index: null,
@@ -97,6 +98,7 @@ describe("toPublicRoster", () => {
           flight: null,
         },
         {
+          id: null,
           name: "Antonio Alcantara",
           homeCourse: "IGCC",
           index: 12.4,

@@ -1145,6 +1145,16 @@ export interface Database {
         Args: { p_tournament?: string | null };
         Returns: Json;
       };
+      /** One player's frozen scorecards, for the public profile tab. Added by 20261108003000. */
+      public_player_scorecard: {
+        Args: { p_player: string; p_tournament?: string | null };
+        Returns: Json;
+      };
+      /** One row per player per published round, for the cumulative team leaderboard. */
+      public_team_leaderboard: {
+        Args: { p_tournament?: string | null };
+        Returns: Json;
+      };
       current_player_id: { Args: Record<string, never>; Returns: string | null };
       /** Two factors: NGAP plus birthdate, or the account email when the record holds it. */
       claim_player_record: {

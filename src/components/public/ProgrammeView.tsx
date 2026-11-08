@@ -16,58 +16,15 @@ import { useI18n } from "@/lib/i18n/context";
  * index, category, flight and a confirmed start time are the whole vocabulary; contact details,
  * birthdates, gender, notes and photos are not part of the type and cannot leak from here.
  *
- * The pairings stay separate (`PairingsView`) so the page can put them between the player cards and
- * the rules, in the order players asked for.
+ * The pairings stay separate (`PairingsView`) so the pairings page can put them above the tee-time
+ * board and the rules, while the roster and the profile have their own pages.
  *
  * Everything here is read one-handed on a phone: the jump links and the day chips scroll sideways
  * instead of wrapping into several rows, and every control is at least 44px tall.
  */
 
-const NAV_LINK =
-  "inline-flex min-h-11 shrink-0 items-center rounded-full border border-line bg-surface-raised px-3.5 text-sm font-semibold whitespace-nowrap text-ink no-underline hover:bg-fairway-soft";
 const PILL =
   "inline-flex min-h-6 shrink-0 items-center rounded-full border border-line bg-surface-raised px-2 text-[12px] font-semibold whitespace-nowrap text-ink-muted";
-
-export function ProgrammeNav({
-  programme,
-  hasPairings,
-}: {
-  programme: PublicProgramme;
-  hasPairings: boolean;
-}) {
-  const { t } = useI18n();
-  const showRules = programme.rulesOfPlay !== null;
-  return (
-    <nav
-      className="no-print flex w-full min-w-0 gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible"
-      aria-label={t("programme.navLabel")}
-    >
-      {hasPairings && (
-        <a className={NAV_LINK} href="#pairings">
-          {t("programme.navPairings")}
-        </a>
-      )}
-      {programme.days.length > 0 && (
-        <a className={NAV_LINK} href="#tee-times">
-          {t("programme.navTeeTimes")}
-        </a>
-      )}
-      {programme.players.length > 0 && (
-        <a className={NAV_LINK} href="#players">
-          {t("programme.navPlayers")}
-        </a>
-      )}
-      {showRules && (
-        <a className={NAV_LINK} href="#rules">
-          {t("programme.navRules")}
-        </a>
-      )}
-      <Link className={NAV_LINK} href="/rules">
-        {t("programme.navFullRules")}
-      </Link>
-    </nav>
-  );
-}
 
 interface TimeGroup {
   key: string;

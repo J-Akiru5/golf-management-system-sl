@@ -166,7 +166,7 @@ function mapScorecardHole(value: unknown): PortalScorecardHole | null {
   };
 }
 
-function mapScorecard(value: unknown): PortalScorecard | null {
+export function mapScorecard(value: unknown): PortalScorecard | null {
   const raw = asRecord(value);
   const roundId = asString(raw.roundId);
   if (!roundId) return null;

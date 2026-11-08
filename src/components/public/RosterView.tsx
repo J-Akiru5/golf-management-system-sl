@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Avatar } from "@/components/bits";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { filterRoster, rosterFlights } from "@/lib/data/public";
 import type { PublicRosterPlayer } from "@/lib/data/types";
@@ -56,6 +57,8 @@ export function RosterPage({
         </h1>
         <p className="text-on-forest-muted">{t("programme.playersIntro")}</p>
       </header>
+
+      <PublicTournamentNav active="players" />
 
       <p className="notice no-print" data-testid="roster-privacy">
         {PRIVACY_NOTICE}

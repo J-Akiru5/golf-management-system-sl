@@ -1,21 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { PairingsView, type PairingsYou } from "@/components/PairingsView";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
 import { PairingsLive } from "@/components/public/PairingsLive";
-import {
-  PlayerDirectory,
-  ProgrammeNav,
-  RulesOfPlay,
-  TeeTimesBoard,
-} from "@/components/public/ProgrammeView";
+import { PlayerProfileSearch } from "@/components/public/PlayerProfileSearch";
+import { PlayerProfileView } from "@/components/public/PlayerProfileView";
+import { RulesOfPlay, TeeTimesBoard } from "@/components/public/ProgrammeView";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
+import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
+import { loadPublicPlayerProfile, type PublicPlayerProfileData } from "@/lib/data/public-profile";
+import { parsePublicTab } from "@/lib/data/public-tabs";
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
 import { loadPublicProgramme } from "@/lib/data/supabase/public-programme";
 import { fmtTime } from "@/lib/format";
@@ -29,20 +30,19 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DemoPairings } from "./DemoPairings";
 
 export const metadata: Metadata = {
-  title: "Tee times, players and pairings",
+  title: "Pairings, players and scores",
   description:
-    "The published programme for the club's tournament: the confirmed tee times for each playing day, the player list and the pairings, plus the organizers' rules of play. No account needed.",
+    "The published programme for the club's tournament: the pairings, the confirmed tee times, the player list, each player's published scorecard and the cumulative team leaderboard. No account needed.",
   alternates: { canonical: "/pairings" },
   openGraph: openGraphFor({
-    title: `Tee times, players and pairings | ${SITE_NAME}`,
+    title: `Pairings, players and scores | ${SITE_NAME}`,
     description:
-      "Confirmed tee times by day, the player list, the published pairings and the rules of play. No account needed.",
+      "The pairings, the player list, published scorecards and the cumulative team leaderboard. No account needed.",
     path: "/pairings",
   }),
   twitter: twitterFor({
-    title: `Tee times, players and pairings | ${SITE_NAME}`,
-    description:
-      "Confirmed tee times by day, the player list, the published pairings and the rules.",
+    title: `Pairings, players and scores | ${SITE_NAME}`,
+    description: "The pairings, the player list, published scorecards and the team leaderboard.",
   }),
 };
 
@@ -57,7 +57,9 @@ export const metadata: Metadata = {
  *
  * The pairings come from the frozen published snapshot. The day schedule, the player cards and the
  * rules are reference data read through `public_programme()`, which only answers while the event is
- * published; a time that the desk has not confirmed is never part of that projection.
+ * published; a time that the desk has not confirmed is never part of that projection. The player
+ * profile tab reads one player's frozen card through `public_player_scorecard()`; the leaderboard
+ * lives on its own page because the team table adds every published round together.
  */
 const manila = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "medium",
@@ -81,10 +83,23 @@ async function loadSignedInPlayer(): Promise<PairingsYou | null> {
   }
 }
 
-export default async function PublicPairingsPage() {
-  const { t } = await getI18n();
-  if (!isSupabaseConfigured()) return <DemoPairings />;
+const PLAYER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export default async function PublicPairingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string | string[]; player?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const tab = parsePublicTab(params.tab);
+  const rawPlayerId = typeof params.player === "string" ? params.player : null;
+  if (tab === "players") redirect("/roster");
+  if (tab === "leaderboard") redirect("/leaderboard");
+
+  const { t } = await getI18n();
+  if (!isSupabaseConfigured()) return <DemoPairings tab={tab} playerId={rawPlayerId} />;
+
+  const playerId = rawPlayerId && PLAYER_ID.test(rawPlayerId) ? rawPlayerId : null;
   const client = createSupabasePublicClient();
   // The signed-in lookup runs alongside the public reads: it never delays the pairings.
   const signedIn = loadSignedInPlayer();
@@ -100,6 +115,16 @@ export default async function PublicPairingsPage() {
   if (pairingsResult.status === "fulfilled") data = pairingsResult.value;
   else failed = true;
   if (programmeResult.status === "fulfilled") programme = programmeResult.value;
+
+  let profile: PublicPlayerProfileData | null = null;
+  let profileFailed = false;
+  if (tab === "profile" && playerId) {
+    try {
+      profile = await loadPublicPlayerProfile(client, playerId);
+    } catch {
+      profileFailed = true;
+    }
+  }
   const you = await signedIn;
 
   const published = data?.published ?? null;
@@ -120,7 +145,6 @@ export default async function PublicPairingsPage() {
           photoByPlayerId: data.photoByPlayerId,
         })
       : null;
-  const showProgramme = Boolean(pairings && published && programme);
   const skippedRows = data?.skippedRows ?? 0;
   // What this render shows, in the same terms the version endpoint answers with. The live refresher
   // compares the two, so it reloads the page for a publish, an unpublish or a recovery from an error.
@@ -173,9 +197,6 @@ export default async function PublicPairingsPage() {
           <h2>{t("pairings.notOutTitle")}</h2>
           <p>{t("pairings.notOutBody")}</p>
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Link className="btn ghost no-print" href="/pairings#tee-times">
-              {t("programme.navTeeTimes")}
-            </Link>
             <Link className="btn ghost no-print" href="/rules">
               {t("programme.navFullRules")}
             </Link>
@@ -186,43 +207,66 @@ export default async function PublicPairingsPage() {
         </section>
       ) : (
         <>
-          {showProgramme && programme && <ProgrammeNav programme={programme} hasPairings />}
+          <PublicTournamentNav active={tab} />
 
-          <section
-            className="grid gap-3"
-            id="pairings"
-            style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
-          >
-            <div>
-              <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
-              <p className="hint no-print" data-testid="pairings-version">
-                {published.version
-                  ? t("pairings.version", {
-                      version: published.version,
-                      when: manila.format(new Date(published.at)),
-                    })
-                  : t("pairings.versionNoNumber", {
-                      when: manila.format(new Date(published.at)),
-                    })}
-              </p>
-            </div>
-            {skippedRows > 0 && (
-              <p className="notice warn no-print" role="status" data-testid="pairings-skipped">
-                Part of the published draw could not be read.{" "}
-                {skippedRows === 1 ? "1 row is" : `${skippedRows} rows are`} not shown.
-              </p>
-            )}
-            <PairingsView pairings={pairings} headingLevel="section" flightFilter you={you} />
-          </section>
-
-          {showProgramme && programme && (
+          {tab === "profile" ? (
             <>
-              <TeeTimesBoard programme={programme} />
-              <PlayerDirectory programme={programme} />
+              {!programme || !programme.players.some((player) => player.id !== null) ? (
+                <div className="notice" role="status">
+                  {t("programme.profileUnavailable")}
+                </div>
+              ) : (
+                <>
+                  <PlayerProfileSearch players={programme.players} selectedId={playerId} />
+                  {profileFailed ? (
+                    <div className="notice" role="alert">
+                      {t("programme.profileFailed")}
+                    </div>
+                  ) : profile ? (
+                    <PlayerProfileView data={profile} t={t} />
+                  ) : playerId ? (
+                    <section className="pairings-empty" role="status" data-testid="profile-empty">
+                      <h2>{t("programme.profileNotFoundTitle")}</h2>
+                      <p>{t("programme.profileNotFoundBody")}</p>
+                    </section>
+                  ) : null}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <section
+                className="grid gap-3"
+                id="pairings"
+                style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
+              >
+                <div>
+                  <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
+                  <p className="hint no-print" data-testid="pairings-version">
+                    {published.version
+                      ? t("pairings.version", {
+                          version: published.version,
+                          when: manila.format(new Date(published.at)),
+                        })
+                      : t("pairings.versionNoNumber", {
+                          when: manila.format(new Date(published.at)),
+                        })}
+                  </p>
+                </div>
+                {skippedRows > 0 && (
+                  <p className="notice warn no-print" role="status" data-testid="pairings-skipped">
+                    Part of the published draw could not be read.{" "}
+                    {skippedRows === 1 ? "1 row is" : `${skippedRows} rows are`} not shown.
+                  </p>
+                )}
+                <PairingsView pairings={pairings} headingLevel="section" flightFilter you={you} />
+              </section>
+
+              {programme && <TeeTimesBoard programme={programme} />}
+
+              {programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
             </>
           )}
-
-          {showProgramme && programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
         </>
       )}
 
@@ -230,7 +274,13 @@ export default async function PublicPairingsPage() {
         {t("pairings.footer")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
         <Link href="/roster">{t("programme.playersTitle")}</Link> ·{" "}
         <Link href="/rules">{t("programme.navFullRules")}</Link> ·{" "}
-        <Link href="/leaderboard">Leaderboard</Link>
+        <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
+        {tab === "pairings" && programme?.rulesOfPlay && (
+          <>
+            {" · "}
+            <a href="#rules">{t("programme.navRules")}</a>
+          </>
+        )}
       </p>
       <PlayerBottomBar />
     </main>

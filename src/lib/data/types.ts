@@ -459,6 +459,11 @@ export interface PublicTeeTimeDay {
  * row through. Contact details, birthdate, gender, notes and photos are deliberately absent.
  */
 export interface PublicPlayerProfile {
+  /**
+   * The stable player id, already public through the pairings and the photo lookup. Null only for
+   * an old database that has not applied the programme migration yet.
+   */
+  id: string | null;
   name: string;
   homeCourse: string | null;
   /** The index frozen at the cut-off, which is the one the draw used. Null means no index on file. */

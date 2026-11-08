@@ -1,5 +1,6 @@
 import { addIsoDays } from "@/lib/data/dates";
 import type { PublicPairings, PublicProgramme } from "@/lib/data/types";
+import { demoPlayerId } from "@/lib/demo/ids";
 import { stablefordPoints } from "@/lib/scoring/stableford";
 import { manilaToday } from "./dashboard";
 import { SAMPLE_INDEX, SAMPLE_PLAYER, SAMPLE_PLAYING_HANDICAP } from "./demo-identity";
@@ -319,7 +320,11 @@ export function demoPairings(now: Date = new Date()): PublicPairings {
       startHole: group.hole,
       time: group.time,
       flight: group.flight,
-      players: group.names.map((name) => ({ id: null, name, photoPath: null })),
+      players: group.names.map((name) => ({
+        id: demoPlayerId(name),
+        name,
+        photoPath: null,
+      })),
     })),
   };
 }
@@ -329,6 +334,7 @@ export function demoProgramme(now: Date = new Date()): PublicProgramme {
   const today = manilaToday(now);
   const players = DEMO_GROUPS.flatMap((group) =>
     group.names.map((name) => ({
+      id: demoPlayerId(name),
       name,
       homeCourse: "Iloilo Golf & Country Club",
       index: 12.4,
