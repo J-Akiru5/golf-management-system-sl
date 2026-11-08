@@ -269,7 +269,7 @@ export const hil: Dictionary = {
     liveUpdated: "Bag-o lang gin-update ang mga pairing.",
     footer:
       "Ngalan, home club, handicap, kategorya, flight, hole kag oras lamang. Wala sang contact details ukon litrato.",
-    home: "TeeLine Golf home",
+    home: "TEELINE GOLF HOME",
     backHome: "Balik sa main nga pahina",
     demoFooter:
       "Lokal nga demo preview ini, indi ginpahayag nga pahina. Ngalan, home club, handicap, kategorya, flight, hole kag oras lamang ang makita.",
@@ -313,10 +313,10 @@ export const hil: Dictionary = {
     navTeeTimes: "Mga tee time",
     navPlayers: "Mga manug hampang",
     navPairings: "Pairing",
-    navProfile: "Profile sang manug hampang",
+    navProfile: "PROFILE SANG MANUG HAMPANG",
     navLeaderboard: "Leaderboard",
-    navRules: "Mga pagsulundan sa hampang",
-    navFullRules: "Opisyal nga mga pagsulundan",
+    navRules: "MGA PAGSULUNDAN SA HAMPANG",
+    navFullRules: "MGA PAGSULUNDAN SA HAMPANG",
     teeTimesTitle: "Tee time kada adlaw",
     teeTimesIntro:
       "Mga nakumpirma nga oras sang pagsugod sa kada adlaw sang hampang. Indi ginapakita ang oras nga wala pa nakumpirma sang desk.",

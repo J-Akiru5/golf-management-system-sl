@@ -269,7 +269,7 @@ export const en = {
     liveUpdated: "The pairings were just updated.",
     footer:
       "Names, home club, handicap, category, flight, hole and time only. No contact details or photos.",
-    home: "TeeLine Golf home",
+    home: "TEELINE GOLF HOME",
     backHome: "Back to main page",
     demoFooter:
       "This is a local demo preview, not a published page. It shows names, home club, handicap, category, flight, hole and time only.",
@@ -313,10 +313,10 @@ export const en = {
     navTeeTimes: "Tee times",
     navPlayers: "Players",
     navPairings: "Pairings",
-    navProfile: "Player Profile",
+    navProfile: "PROFILE PLAYERS",
     navLeaderboard: "Leaderboard",
-    navRules: "Rules of play",
-    navFullRules: "Official rules",
+    navRules: "RULES OF PLAY",
+    navFullRules: "RULES OF PLAY",
     teeTimesTitle: "Tee times by day",
     teeTimesIntro:
       "Confirmed start times for each playing day. A time the desk has not confirmed is not shown.",

@@ -136,7 +136,7 @@ export default function TournamentRulesPage() {
       </section>
 
       <p className="hint no-print">
-        <Link href="/">TeeLine Golf home</Link> ·{" "}
+        <Link href="/">TEELINE GOLF HOME</Link> ·{" "}
         <Link href="/pairings">Tee times and pairings</Link> ·{" "}
         <Link href="/roster">Player roster</Link> · <Link href="/leaderboard">Leaderboard</Link> ·{" "}
         <Link href="/faq">NGAP FAQ</Link>

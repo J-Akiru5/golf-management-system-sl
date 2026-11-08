@@ -268,7 +268,7 @@ export const tl: Dictionary = {
     liveUpdated: "Kaka-update lang ng mga pairing.",
     footer:
       "Pangalan, home club, handicap, kategorya, flight, hole at oras lamang. Walang contact details o litrato.",
-    home: "TeeLine Golf home",
+    home: "TEELINE GOLF HOME",
     backHome: "Bumalik sa pangunahing pahina",
     demoFooter:
       "Lokal na demo preview ito, hindi nailathalang pahina. Pangalan, home club, handicap, kategorya, flight, hole at oras lamang ang nakikita.",
@@ -312,10 +312,10 @@ export const tl: Dictionary = {
     navTeeTimes: "Mga tee time",
     navPlayers: "Mga manlalaro",
     navPairings: "Pairings",
-    navProfile: "Profile ng manlalaro",
+    navProfile: "PROFILE NG MANLALARO",
     navLeaderboard: "Leaderboard",
-    navRules: "Mga patakaran sa laro",
-    navFullRules: "Opisyal na mga patakaran",
+    navRules: "MGA PATAKARAN SA LARO",
+    navFullRules: "MGA PATAKARAN SA LARO",
     teeTimesTitle: "Tee times bawat araw",
     teeTimesIntro:
       "Mga kumpirmadong oras ng simula sa bawat araw ng laro. Hindi ipinapakita ang oras na hindi pa kinukumpirma ng desk.",

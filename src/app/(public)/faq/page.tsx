@@ -94,7 +94,7 @@ export default function NgapFaqPage() {
       </ol>
 
       <p className="hint no-print">
-        <Link href="/">TeeLine Golf home</Link>
+        <Link href="/">TEELINE GOLF HOME</Link>
         {" · "}
         <Link href="/pairings">Player pairings</Link>
         {" · "}

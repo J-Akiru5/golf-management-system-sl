@@ -1,5 +1,5 @@
 /**
- * The public tournament tabs. Pairings, Players, Player Profile and Leaderboard each have a URL,
+ * The public tournament tabs. Pairings, Players, Profile Players and Leaderboard each have a URL,
  * so a shared link opens the same tab and the back button works.
  */
 
