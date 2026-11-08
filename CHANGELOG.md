@@ -7,7 +7,12 @@ pre-release: usable for testing, not yet signed off by the club.
 Each entry lists the database migrations that ship with it and whether they are applied to the live
 Supabase project, because the code and the database are released separately.
 
-## [Unreleased]
+## [0.29.0] - 2026-11-08
+
+### Migrations shipping with 0.29.0
+`20261108002000_registration_pairs.sql` is additive and **applied to the live project on 8 November
+2026**. The live project has 143 pairs and 283 pair members; pair 124 is complete. The earlier
+8 November scheduling migrations were already applied before this release.
 
 ### Added
 - **The AgentOps queue now carries issues #185, #186 and #187.** T-0007 adds a public roster,
@@ -28,9 +33,9 @@ Supabase project, because the code and the database are released separately.
   the player workspace and the new pair page can assign, replace, move, swap, remove or create a
   pair. A player can be in only one pair per event, and a pair split across two draw groups is a
   blocking issue, so publish stops until it is fixed. The player's own profile shows their pair and
-  partner, marked not published until the draw is. Migration `20261108002000` is written and
-  reviewed but **not applied to the live project**; until it is, pair writes say so and the existing
-  pair numbers still read from `answers.teamNo`. No push.
+  partner, marked not published until the draw is. Migration `20261108002000` is **applied to the
+  live project on 8 November 2026** and verified: 143 pairs and 283 pair members. `answers.teamNo`
+  stays as a read-only fallback for one release.
 
 ### Fixed
 - **Lint ignores local Claude worktrees.** `biome.json` excludes `.claude/**`, so `pnpm lint` from
@@ -38,7 +43,7 @@ Supabase project, because the code and the database are released separately.
   Development-only; no product behavior change. No migration.
 - **The test suite runs from a Windows path that contains a space.** `vitest.config.ts` resolves
   the `@/` alias with `fileURLToPath` instead of `URL.pathname`, which produced a leading-slash,
-  percent-encoded path. Development-only; no product behavior change. All 146 files and 1479 tests
+  percent-encoded path. Development-only; no product behavior change. All 149 files and 1519 tests
   pass. No migration.
 
 ## [0.28.0] - 2026-11-08
