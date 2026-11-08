@@ -7,6 +7,15 @@ pre-release: usable for testing, not yet signed off by the club.
 Each entry lists the database migrations that ship with it and whether they are applied to the live
 Supabase project, because the code and the database are released separately.
 
+## [Unreleased]
+
+### Fixed
+- **Saving the draw no longer fails on `group_members.round_id`.** Migration `20261108000900`
+  replaced `save_draw` with a body copied from before `group_members.round_id` existed, so the
+  member insert omitted the column and every save failed with a not-null violation, leaving the desk
+  on “Not saved”. Migration `20261108002100` restores the round_id copy while keeping the null-round
+  guard. The migration is written and **not applied** until the owner applies it.
+
 ## [0.29.1] - 2026-11-08
 
 ### Fixed
