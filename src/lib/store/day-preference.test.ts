@@ -5,6 +5,7 @@ import {
   type DayNumberLike,
   dayExists,
   dayOnEventSwitch,
+  dayToLoad,
   readDayPreference,
   type StorageLike,
   writeDayPreference,
@@ -144,5 +145,68 @@ describe("a day across an event switch", () => {
       { dayNumber: 2, isPlayingDay: true },
     ];
     expect(dayOnEventSwitch(null, unordered)).toBe(1);
+  });
+});
+
+describe("the day a reload asks for", () => {
+  it("asks for the day the organizer just picked, not the one remembered when the page opened", () => {
+    // Opened with Day 1 remembered, then Day 3 picked on the Draw screen.
+    expect(
+      dayToLoad({
+        onScreen: 3,
+        saved: { tournamentId: "event-1", dayNumber: 1 },
+        eventId: "event-1",
+      }),
+    ).toBe(3);
+  });
+
+  it("asks for the picked day even when nothing was remembered", () => {
+    // The first load of a browser with no saved day, then Day 2 picked: this used to open round 1.
+    expect(dayToLoad({ onScreen: 2, saved: null, eventId: "event-1" })).toBe(2);
+  });
+
+  it("follows every pick in turn", () => {
+    const saved = { tournamentId: "event-1", dayNumber: 1 };
+    const asks = [2, 4, 1, 3].map((onScreen) => dayToLoad({ onScreen, saved, eventId: "event-1" }));
+    expect(asks).toEqual([2, 4, 1, 3]);
+  });
+
+  it("uses the remembered day only before anything is on screen", () => {
+    expect(
+      dayToLoad({
+        onScreen: null,
+        saved: { tournamentId: "event-1", dayNumber: 3 },
+        eventId: "event-1",
+      }),
+    ).toBe(3);
+  });
+
+  it("does not apply another event's remembered day", () => {
+    expect(
+      dayToLoad({
+        onScreen: null,
+        saved: { tournamentId: "event-2", dayNumber: 3 },
+        eventId: "event-1",
+      }),
+    ).toBeNull();
+  });
+
+  it("applies a day remembered before any event was known", () => {
+    expect(
+      dayToLoad({
+        onScreen: null,
+        saved: { tournamentId: null, dayNumber: 2 },
+        eventId: "event-1",
+      }),
+    ).toBe(2);
+  });
+
+  it("asks for no day when nothing is on screen and nothing is remembered", () => {
+    expect(dayToLoad({ onScreen: null, saved: null, eventId: null })).toBeNull();
+  });
+
+  it("ignores a day on screen that is not a whole number above zero", () => {
+    expect(dayToLoad({ onScreen: 0, saved: null, eventId: "event-1" })).toBeNull();
+    expect(dayToLoad({ onScreen: 1.5, saved: null, eventId: "event-1" })).toBeNull();
   });
 });

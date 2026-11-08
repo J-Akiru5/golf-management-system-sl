@@ -109,3 +109,28 @@ export function dayOnEventSwitch(
     .sort((a, b) => a - b)[0];
   return first ?? null;
 }
+
+/**
+ * The day a load of the desk should ask the database for.
+ *
+ * The day on screen wins. Picking a day on the Draw or Print screen works by reloading the desk for
+ * that day, so the reload has to ask for the day that was just picked. The remembered day is only
+ * what the browser had when the page opened; asking for it again on a later reload puts the
+ * organizer back on a day they have already left (Day 1, when nothing was remembered).
+ *
+ * Before anything is on screen the remembered day is used, and only for the event it was chosen on
+ * (or when it was saved before an event was known). Null means "no day asked for": the loader then
+ * opens the event's first round.
+ */
+export function dayToLoad(input: {
+  onScreen: number | null;
+  saved: DayPreference | null;
+  eventId: string | null;
+}): number | null {
+  if (isDayNumber(input.onScreen)) return input.onScreen;
+  const { saved, eventId } = input;
+  if (saved && (saved.tournamentId === null || saved.tournamentId === eventId)) {
+    return saved.dayNumber;
+  }
+  return null;
+}
