@@ -62,10 +62,7 @@ export function StaffToastProvider({ children }: { children: ReactNode }) {
     (toast: StaffToastInput) => {
       const id = ++seq.current;
       const tone = toast.tone ?? "info";
-      setItems((list) => [
-        ...list.slice(-(MAX_VISIBLE - 1)),
-        { ...toast, id, tone },
-      ]);
+      setItems((list) => [...list.slice(-(MAX_VISIBLE - 1)), { ...toast, id, tone }]);
       timers.current.set(
         id,
         setTimeout(() => dismiss(id), toast.onAction ? WITH_ACTION : LIFETIME[tone]),

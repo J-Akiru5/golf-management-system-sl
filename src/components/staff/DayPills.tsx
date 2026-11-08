@@ -15,12 +15,7 @@ export function DayPills({
 }) {
   if (days.length === 0) return null;
   return (
-    <div
-      className={styles.dayPills}
-      role="group"
-      aria-label="Playing day"
-      data-onboard="day-pills"
-    >
+    <div className={styles.dayPills} role="group" aria-label="Playing day" data-onboard="day-pills">
       {days.map((day) => (
         <button
           key={day.number}

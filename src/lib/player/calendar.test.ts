@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCalendarFile,
+  type CalendarStart,
   calendarDataUrl,
   calendarFileName,
   calendarUid,
-  type CalendarStart,
 } from "./calendar";
 
 const start: CalendarStart = {

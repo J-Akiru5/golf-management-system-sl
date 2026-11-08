@@ -257,11 +257,7 @@ export default function StaffGroupPage() {
           <Users aria-hidden="true" size={20} style={{ marginRight: 8 }} />
           {claimedHere ? "Open the score sheet" : "I am scoring this group"}
         </button>
-        <button
-          type="button"
-          className={staffStyles.secondary}
-          onClick={() => claimAnd(true)}
-        >
+        <button type="button" className={staffStyles.secondary} onClick={() => claimAnd(true)}>
           <ScanLine aria-hidden="true" size={20} style={{ marginRight: 8 }} />
           Scan a card
         </button>

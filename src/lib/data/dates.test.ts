@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeDemoTournaments } from "@/lib/demo/data";
-import {
-  addIsoDays,
-  daysOfTournament,
-  nextPlayDay,
-  playingDaysOf,
-  selectedDaysOf,
-} from "./dates";
+import { addIsoDays, daysOfTournament, nextPlayDay, playingDaysOf, selectedDaysOf } from "./dates";
 import type { TournamentDay } from "./types";
 
 describe("addIsoDays", () => {
@@ -66,11 +60,7 @@ describe("playingDaysOf", () => {
   });
 
   it("sorts by day number and keeps one row per day number", () => {
-    const days = [
-      day(2, "2026-11-06"),
-      day(1, "2026-11-05"),
-      day(1, "2026-11-05"),
-    ];
+    const days = [day(2, "2026-11-06"), day(1, "2026-11-05"), day(1, "2026-11-05")];
     expect(playingDaysOf(days).map((item) => item.dayNumber)).toEqual([1, 2]);
   });
 });

@@ -1,8 +1,8 @@
 import { addIsoDays } from "@/lib/data/dates";
 import type { PublicPairings, PublicProgramme } from "@/lib/data/types";
-import type { LiveBoardPayload, LiveBoardRow } from "./ranks";
-import type { PortalEntry, PortalScorecard, PortalState } from "./portal";
 import { manilaToday } from "./dashboard";
+import type { PortalEntry, PortalScorecard, PortalState } from "./portal";
+import type { LiveBoardPayload, LiveBoardRow } from "./ranks";
 
 /**
  * Sample data for the demo build (no Supabase environment).
@@ -147,16 +147,18 @@ export function demoBoard(playDate: string): LiveBoardPayload {
     ["Rogelio Sarmiento", "Flight C", 30, 79, "demo-player-rogelio"],
     ["Juan Dela Cruz", "Flight C", 29, 80, "demo-player-juan"],
   ];
-  const rows: LiveBoardRow[] = sample.map(([playerName, flightName, points, strokes, playerId]) => ({
-    playerId,
-    playerName: playerName.toUpperCase(),
-    flightName,
-    points,
-    strokes,
-    holesCounted: 18,
-    holesTotal: 18,
-    photoPath: null,
-  }));
+  const rows: LiveBoardRow[] = sample.map(
+    ([playerName, flightName, points, strokes, playerId]) => ({
+      playerId,
+      playerName: playerName.toUpperCase(),
+      flightName,
+      points,
+      strokes,
+      holesCounted: 18,
+      holesTotal: 18,
+      photoPath: null,
+    }),
+  );
 
   return {
     roundId: `demo-round-${playDate}`,
@@ -181,12 +183,48 @@ export function demoDateLabel(now: Date = new Date()): string {
 }
 
 const DEMO_GROUPS = [
-  { number: 1, hole: 1, time: "06:30", flight: "Flight A", names: ["Benjamin Bautista", "Carlos Castillo", "Felipe Marquez"] },
-  { number: 2, hole: 1, time: "06:40", flight: "Flight A", names: ["Antonio Alcantara", "Gregorio Padilla", "Noel Yulo"] },
-  { number: 3, hole: 2, time: "06:30", flight: "Flight B", names: ["Rogelio Sarmiento", "Juan Dela Cruz", "Adela Reyes"] },
-  { number: 4, hole: 2, time: "06:40", flight: "Flight B", names: ["Bernadette Cruz", "Carmela Lim", "Dolores Tan", "Elena Uy"] },
-  { number: 5, hole: 10, time: "12:30", flight: "Flight C", names: ["Gloria Ramos", "Helen Sy", "Imelda Tan"] },
-  { number: 6, hole: 10, time: "12:40", flight: "Flight C", names: ["Fe Lim", "Boyet Cruz", "Jing Tan"] },
+  {
+    number: 1,
+    hole: 1,
+    time: "06:30",
+    flight: "Flight A",
+    names: ["Benjamin Bautista", "Carlos Castillo", "Felipe Marquez"],
+  },
+  {
+    number: 2,
+    hole: 1,
+    time: "06:40",
+    flight: "Flight A",
+    names: ["Antonio Alcantara", "Gregorio Padilla", "Noel Yulo"],
+  },
+  {
+    number: 3,
+    hole: 2,
+    time: "06:30",
+    flight: "Flight B",
+    names: ["Rogelio Sarmiento", "Juan Dela Cruz", "Adela Reyes"],
+  },
+  {
+    number: 4,
+    hole: 2,
+    time: "06:40",
+    flight: "Flight B",
+    names: ["Bernadette Cruz", "Carmela Lim", "Dolores Tan", "Elena Uy"],
+  },
+  {
+    number: 5,
+    hole: 10,
+    time: "12:30",
+    flight: "Flight C",
+    names: ["Gloria Ramos", "Helen Sy", "Imelda Tan"],
+  },
+  {
+    number: 6,
+    hole: 10,
+    time: "12:40",
+    flight: "Flight C",
+    names: ["Fe Lim", "Boyet Cruz", "Jing Tan"],
+  },
 ] as const;
 
 /** A sample published draw, so the demo build shows the real pairings layout on a phone. */

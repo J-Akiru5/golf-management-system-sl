@@ -35,11 +35,7 @@ export function SignInSheet({
         <Link className={styles.primary} href={`/login?next=${next}`}>
           <LogIn size={20} aria-hidden="true" /> Sign in again
         </Link>
-        <button
-          type="button"
-          className={styles.secondary}
-          onClick={() => onOpenChange(false)}
-        >
+        <button type="button" className={styles.secondary} onClick={() => onOpenChange(false)}>
           Keep looking at this screen
         </button>
       </div>

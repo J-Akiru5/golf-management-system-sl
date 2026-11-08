@@ -572,7 +572,8 @@ export const tl: Dictionary = {
       emailHint:
         "Dito nagsusulat ang club tungkol sa entry mo. Maaaring iba ito sa email na ginagamit mo sa sign-in.",
       nickname: "Palayaw sa board",
-      nicknameHint: "Hanggang 24 na character. Iwanang walang laman para buong pangalan ang lumabas.",
+      nicknameHint:
+        "Hanggang 24 na character. Iwanang walang laman para buong pangalan ang lumabas.",
       save: "I-save ang contact details",
       saving: "Nagse-save…",
       saved: "Nai-save. Nakikita na ng desk ang mga detalye.",

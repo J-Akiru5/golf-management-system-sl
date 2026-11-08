@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type PublishedGroupShape, groupMates } from "./group";
+import { groupMates, type PublishedGroupShape } from "./group";
 
 const group = (hole: number, time: string, names: string[]): PublishedGroupShape => ({
   startHole: hole,

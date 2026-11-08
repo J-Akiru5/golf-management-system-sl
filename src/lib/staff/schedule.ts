@@ -3,7 +3,7 @@
  * clock, and what a search matches. No I/O and no clock read inside, so the schedule's behaviour can
  * be tested for any day and any moment.
  */
-import { sessionForTime, type SessionKey } from "@/lib/data/sessions";
+import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
 import type { ScheduleGroup } from "./rows";
 
 export type SessionFilter = SessionKey | "all";
@@ -192,7 +192,8 @@ export function matchGroup(
   const byName = playerIds.length > 0;
   const byNumber = String(group.number).includes(needle) && /^\d{1,3}$/.test(needle);
   const byFlight = group.flightName.toLowerCase().includes(needle);
-  const byHole = digits !== "" && /^(\d{1,2}|hole)$/i.test(needle) && String(group.startHole) === digits;
+  const byHole =
+    digits !== "" && /^(\d{1,2}|hole)$/i.test(needle) && String(group.startHole) === digits;
   const byTime =
     digits !== "" && /^[\d:]+$/.test(needle) && group.time.replace(/\D/g, "").includes(digits);
 

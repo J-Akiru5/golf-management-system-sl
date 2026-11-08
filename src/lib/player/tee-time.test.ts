@@ -77,7 +77,10 @@ describe("playing days", () => {
 
   it("uses the tee label rule for a two-tee start", () => {
     const days = teeDays(
-      baseEntry({ startFormat: "two_tee", start: { dayNumber: 1, hole: 1, wave: null, time: "12:30" } }),
+      baseEntry({
+        startFormat: "two_tee",
+        start: { dayNumber: 1, hole: 1, wave: null, time: "12:30" },
+      }),
       "2026-11-12",
     );
     expect(days[0]?.session).toBe("PM");

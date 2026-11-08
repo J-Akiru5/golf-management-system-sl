@@ -137,9 +137,7 @@ describe("a playing day drawn in a morning and an afternoon session", () => {
         categories: [category],
         flights,
         sessions: {
-          byPlayer: new Map(
-            field.slice(0, 2).map((player) => [player.id, "AM" as const]),
-          ),
+          byPlayer: new Map(field.slice(0, 2).map((player) => [player.id, "AM" as const])),
           starts: { AM: "06:30", PM: "12:30" },
           dayNumber: 1,
         },

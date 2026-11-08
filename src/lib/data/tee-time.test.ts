@@ -48,15 +48,21 @@ describe("teeAssignmentProblem", () => {
 
 describe("batchAssignment", () => {
   it("a changed time drops the confirmation", () => {
-    expect(
-      batchAssignment({ teeTime: "06:30", startHole: 4, confirmed: true }, "12:30"),
-    ).toEqual({ teeTime: "12:30", startHole: 4, wave: null, confirmed: false });
+    expect(batchAssignment({ teeTime: "06:30", startHole: 4, confirmed: true }, "12:30")).toEqual({
+      teeTime: "12:30",
+      startHole: 4,
+      wave: null,
+      confirmed: false,
+    });
   });
 
   it("the same time keeps a confirmed row", () => {
-    expect(
-      batchAssignment({ teeTime: "06:30", startHole: 4, confirmed: true }, "06:30"),
-    ).toEqual({ teeTime: "06:30", startHole: 4, wave: null, confirmed: true });
+    expect(batchAssignment({ teeTime: "06:30", startHole: 4, confirmed: true }, "06:30")).toEqual({
+      teeTime: "06:30",
+      startHole: 4,
+      wave: null,
+      confirmed: true,
+    });
   });
 
   it("a new row is unconfirmed", () => {

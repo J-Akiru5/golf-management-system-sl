@@ -74,7 +74,13 @@ describe("email shape", () => {
   });
 
   it("refuses a half-typed address and one with spaces", () => {
-    for (const email of ["ferdie", "ferdie@", "ferdie@example", "fer die@example.com", "@example.com"]) {
+    for (const email of [
+      "ferdie",
+      "ferdie@",
+      "ferdie@example",
+      "fer die@example.com",
+      "@example.com",
+    ]) {
       expect(validateContact(contact({ email })).errors.email, email).toBe(
         "profile.contact.errorEmail",
       );
@@ -97,9 +103,7 @@ describe("nickname", () => {
 
 describe("validateContact", () => {
   it("reports each bad field on its own and keeps the good ones", () => {
-    const result = validateContact(
-      contact({ phone: "abc", email: "nope", nickname: "Ferdie" }),
-    );
+    const result = validateContact(contact({ phone: "abc", email: "nope", nickname: "Ferdie" }));
     expect(result.ok).toBe(false);
     expect(result.errors).toEqual({
       phone: "profile.contact.errorPhone",

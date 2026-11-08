@@ -579,13 +579,15 @@ export const hil: Dictionary = {
       saving: "Ginase-save…",
       saved: "Nai-save. Nakita na sang desk ini nga mga detalye.",
       notReady: "Wala pa available ang sini nga setting. Kinahanglan pa ini buksan sang club.",
-      failed: "Wala nai-save. Susiha ang connection kag tilawi liwat. Wala sing nadula sa imo gintype.",
+      failed:
+        "Wala nai-save. Susiha ang connection kag tilawi liwat. Wala sing nadula sa imo gintype.",
       fix: "Palihog susiha ang namarkahan nga field kag i-save liwat.",
       unchanged: "Wala sing nagbag-o, gani wala sing nai-save.",
       errorPhone: "Mukhang kulang ang amo nga mobile number. Susiha ang mga digit.",
       errorEmail: "Mukhang kulang ang amo nga email address. Tan-awa kon may @ kag tuldok.",
       errorNickname: "Tubtob 24 ka character lang ang palayaw, sa isa ka linya.",
-      readOnly: "Kinahanglan sang naka-sign in nga account agod maka-save. Demo data ang build nga ini.",
+      readOnly:
+        "Kinahanglan sang naka-sign in nga account agod maka-save. Demo data ang build nga ini.",
     },
     language: {
       title: "Pulong",

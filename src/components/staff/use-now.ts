@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { manilaNow, type ManilaNow } from "@/lib/staff/schedule";
+import { type ManilaNow, manilaNow } from "@/lib/staff/schedule";
 
 /**
  * The club's clock, refreshed on a slow tick. A tee sheet only needs to know the minute, and a

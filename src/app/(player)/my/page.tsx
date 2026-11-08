@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppTiles } from "@/components/player/DashboardHero";
-import { PlayerOfflineNotice, RememberPortal } from "@/components/player/OfflinePortal";
 import { PlayerHomeDesktop } from "@/components/player/desktop/PlayerHomeDesktop";
+import { PlayerOfflineNotice, RememberPortal } from "@/components/player/OfflinePortal";
 import { PlayerHomeHero } from "@/components/player/PlayerHomeHero";
 import { PortalEntries } from "@/components/player/PortalView";
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
@@ -13,7 +13,12 @@ import { claimMessage } from "@/lib/player/claim";
 import { manilaToday, nextUp } from "@/lib/player/dashboard";
 import { demoGroupMates, demoPortalState } from "@/lib/player/demo";
 import { groupMates } from "@/lib/player/group";
-import { loadPortal, type PortalEntry, type PortalState, portalErrorMessage } from "@/lib/player/portal";
+import {
+  loadPortal,
+  type PortalEntry,
+  type PortalState,
+  portalErrorMessage,
+} from "@/lib/player/portal";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -112,12 +117,7 @@ function ClaimCard({
           </label>
           <label className="field">
             <span>{t("player.claim.birthdate")}</span>
-            <input
-              name="birthdate"
-              type="date"
-              autoComplete="bday"
-              className="text-[16px]"
-            />
+            <input name="birthdate" type="date" autoComplete="bday" className="text-[16px]" />
           </label>
           <p className="hint">{t("player.claim.help")}</p>
           <button type="submit" className="btn ghost min-h-12 w-full justify-center">
@@ -142,9 +142,7 @@ function DemoHome({ t }: { t: Translate }) {
         <h1 className="font-serif text-[28px] leading-8 font-semibold">{state.player?.name}</h1>
       </header>
 
-      {entry && (
-        <PlayerHomeHero entry={entry} today={today} groupMates={demoGroupMates()} demo />
-      )}
+      {entry && <PlayerHomeHero entry={entry} today={today} groupMates={demoGroupMates()} demo />}
 
       <AppTiles t={t} />
 

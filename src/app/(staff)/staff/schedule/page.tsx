@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DayBar } from "@/components/staff/DayBar";
 import { useStaffDay } from "@/components/staff/day-context";
-import styles from "@/components/staff/staff.module.css";
-import { useStaffRows } from "@/components/staff/use-rows";
-import { useManilaNow } from "@/components/staff/use-now";
 import { useStaffToast } from "@/components/staff/StaffToast";
-import { useDesk } from "@/lib/store/desk-store";
+import styles from "@/components/staff/staff.module.css";
+import { useManilaNow } from "@/components/staff/use-now";
+import { useStaffRows } from "@/components/staff/use-rows";
 import { daySessions } from "@/lib/data/sessions";
 import { fmtTime } from "@/lib/format";
 import {
@@ -23,6 +22,7 @@ import {
   nextUpGroup,
   relativeTalk,
 } from "@/lib/staff/schedule";
+import { useDesk } from "@/lib/store/desk-store";
 
 /**
  * The tee sheet. A starter reads it in tee order: the day, the session, then every group with its
@@ -188,7 +188,9 @@ export default function StaffSchedulePage() {
       ) : visible.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>
-            {query.trim() === "" ? `No groups in the ${sessionLabel ?? ""} session` : "No group matches"}
+            {query.trim() === ""
+              ? `No groups in the ${sessionLabel ?? ""} session`
+              : "No group matches"}
           </p>
           <p>
             {query.trim() === ""

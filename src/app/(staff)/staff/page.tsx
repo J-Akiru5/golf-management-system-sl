@@ -6,15 +6,15 @@ import { useEffect, useState } from "react";
 import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
 import styles from "@/components/staff/staff.module.css";
-import { useStaffRows } from "@/components/staff/use-rows";
 import { useManilaNow } from "@/components/staff/use-now";
-import { useDesk } from "@/lib/store/desk-store";
+import { useStaffRows } from "@/components/staff/use-rows";
 import { daySessions, sessionForTime } from "@/lib/data/sessions";
 import { fmtTime } from "@/lib/format";
 import { type GroupClaim, readClaim } from "@/lib/staff/claim";
 import { fmtDayDate } from "@/lib/staff/day";
 import { summarise, unplacedRows } from "@/lib/staff/rows";
 import { dayState, nextUpGroup, relativeTalk } from "@/lib/staff/schedule";
+import { useDesk } from "@/lib/store/desk-store";
 
 /**
  * Today: the one screen a volunteer opens first. It answers, above the fold, which day and session
@@ -40,7 +40,9 @@ export default function StaffTodayPage() {
   const unplaced = unplacedRows(rows);
   const state = day ? dayState(day.date, now) : "before";
   const nextGroup = nextUpGroup(schedule, state, now.minutes);
-  const claimedGroup = claim ? (schedule.find((group) => group.id === claim.groupId) ?? null) : null;
+  const claimedGroup = claim
+    ? (schedule.find((group) => group.id === claim.groupId) ?? null)
+    : null;
   const currentSession =
     day && state === "today" ? sessionForTime(now.clock, dayIndex, dayCount) : null;
   const sessions = daySessions(dayIndex, dayCount);
@@ -209,7 +211,9 @@ export default function StaffTodayPage() {
             </Link>
             <Link
               className={styles.bigAction}
-              href={claim ? `/staff/groups/${claim.groupId}/score?tab=scan` : "/staff/score?tab=scan"}
+              href={
+                claim ? `/staff/groups/${claim.groupId}/score?tab=scan` : "/staff/score?tab=scan"
+              }
               data-onboard="score-entry"
             >
               <ScanLine aria-hidden="true" size={24} />

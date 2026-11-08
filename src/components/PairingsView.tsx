@@ -1,8 +1,15 @@
 "use client";
 
-import { type CSSProperties, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Avatar } from "@/components/bits";
-import { sessionForTime, type SessionKey } from "@/lib/data/sessions";
+import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
 import type {
   PublicPairingDay,
   PublicPairingGroup,
@@ -128,9 +135,11 @@ export function PairingsView({
   const [flight, setFlight] = useState("");
   const [density, setDensity] = useState<Density>("comfortable");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [focusRequest, setFocusRequest] = useState<{ day: number; number: number; seq: number } | null>(
-    null,
-  );
+  const [focusRequest, setFocusRequest] = useState<{
+    day: number;
+    number: number;
+    seq: number;
+  } | null>(null);
   const [notListed, setNotListed] = useState(false);
   const [toolbarHeight, setToolbarHeight] = useState(0);
   // The phone action bar appears once the list is being read, so it never covers the first card.
@@ -270,7 +279,8 @@ export function PairingsView({
 
   const sections: Array<Section & { day: number }> = [];
   for (const day of daysToRead) {
-    const dayIndex = days.length > 0 ? days.findIndex((item) => item.dayNumber === day.dayNumber) : 0;
+    const dayIndex =
+      days.length > 0 ? days.findIndex((item) => item.dayNumber === day.dayNumber) : 0;
     const dayCount = Math.max(1, days.length);
     const buckets: Record<Bucket, PublicPairingGroup[]> = { AM: [], PM: [], TBC: [] };
     for (const group of day.groups.filter(matched).sort(byTime)) {
@@ -294,7 +304,9 @@ export function PairingsView({
 
   const shown = sections.reduce((sum, section) => sum + section.groups.length, 0);
   const countLabel =
-    shown === 1 ? t("pairings.groupCountGroupsOne") : t("pairings.groupCountGroups", { count: shown });
+    shown === 1
+      ? t("pairings.groupCountGroupsOne")
+      : t("pairings.groupCountGroups", { count: shown });
   const isOwnGroup = (group: PublicPairingGroup) => group.players.some(isYou);
   const dayOf = (group: PublicPairingGroup) => group.dayNumber ?? activeDay?.dayNumber ?? 1;
 
@@ -550,7 +562,9 @@ export function PairingsView({
         ))}
         {shown === 0 && (
           <div className="p-empty">
-            <p className="m-0">{searching || flight ? t("pairings.noMatch") : t("pairings.dayEmpty")}</p>
+            <p className="m-0">
+              {searching || flight ? t("pairings.noMatch") : t("pairings.dayEmpty")}
+            </p>
             {(searching || flight) && (
               <button type="button" className="btn ghost" onClick={clearSearch}>
                 {t("pairings.clearSearch")}

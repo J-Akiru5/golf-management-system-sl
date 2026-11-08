@@ -503,9 +503,7 @@ export default function TeeTimesPage() {
                 disabled={batching !== null || fromDraw === 0}
                 onClick={() => void applyFromDraw()}
               >
-                {batching === "draw"
-                  ? "Taking the draw…"
-                  : `Take the draw's times (${fromDraw})`}
+                {batching === "draw" ? "Taking the draw…" : `Take the draw's times (${fromDraw})`}
               </Button>
             </div>
           )}

@@ -2,8 +2,8 @@
 
 import { Check, Info } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useDesk } from "@/lib/store/desk-store";
 import type { StaffRow } from "@/lib/staff/rows";
+import { useDesk } from "@/lib/store/desk-store";
 import styles from "./roster.module.css";
 import { useStaffToast } from "./StaffToast";
 
@@ -126,11 +126,7 @@ export function RosterRow({
           <span className={styles.body}>
             <b className={styles.name}>{row.name}</b>
             <span className={styles.meta}>
-              {arrived
-                ? arrival
-                  ? `Arrived ${arrival}`
-                  : "Arrived"
-                : "Expected at the tee"}
+              {arrived ? (arrival ? `Arrived ${arrival}` : "Arrived") : "Expected at the tee"}
             </span>
           </span>
           <span className={styles.state}>
@@ -149,11 +145,7 @@ export function RosterRow({
       {phase === "error" && (
         <p className={styles.rowError} role="alert">
           <span>Not saved. {error}</span>
-          <button
-            type="button"
-            className={styles.retry}
-            onClick={() => void write(failedTarget)}
-          >
+          <button type="button" className={styles.retry} onClick={() => void write(failedTarget)}>
             Retry
           </button>
         </p>

@@ -273,7 +273,8 @@ function ControlRoomInner({
 
         <div
           ref={titleRef}
-          className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[var(--rail-pad)]">
+          className="on-photo absolute top-[104px] left-4 max-w-[min(560px,calc(100%-32px))] sm:left-6 lg:top-[118px] lg:left-[var(--rail-pad)]"
+        >
           <p className="text-[11px] font-bold tracking-[.14em] text-[#e0bc65] uppercase">
             {shotgun ? "Shotgun start" : "Two-tee start"} · {fmtTime(startClock)} · {date}
           </p>

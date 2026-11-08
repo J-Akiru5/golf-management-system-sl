@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { SignOutForm } from "@/components/SignOutForm";
 import { fmtDayDate } from "@/lib/staff/day";
-import { APP_VERSION_LABEL } from "@/lib/version";
 import { useDesk } from "@/lib/store/desk-store";
+import { APP_VERSION_LABEL } from "@/lib/version";
 import { BottomSheet } from "./BottomSheet";
 import styles from "./staff.module.css";
 
@@ -18,8 +18,7 @@ const ROLE_LABEL: Record<"owner" | "organizer" | "desk", string> = {
 };
 
 const ROLE_CAN: Record<"owner" | "organizer" | "desk", string> = {
-  owner:
-    "Everything, including moving players, publishing the draw and changing event settings.",
+  owner: "Everything, including moving players, publishing the draw and changing event settings.",
   organizer:
     "Everything, including moving players, publishing the draw and changing event settings.",
   desk: "Record arrivals, add a walk-up, find a player and print. Organizers move players and publish the draw.",
@@ -37,17 +36,8 @@ export function AccountSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const {
-    member,
-    club,
-    tournament,
-    tournaments,
-    dispatch,
-    status,
-    offline,
-    cachedAt,
-    error,
-  } = useDesk();
+  const { member, club, tournament, tournaments, dispatch, status, offline, cachedAt, error } =
+    useDesk();
   const pathname = usePathname();
   const [switching, setSwitching] = useState(false);
 
@@ -73,7 +63,13 @@ export function AccountSheet({
         </span>
         <span className={styles.accountText}>
           <b>{member?.displayName?.trim() || (status === "demo" ? "Demo staff" : "Staff")}</b>
-          <span>{role ? ROLE_LABEL[role] : status === "demo" ? "No sign-in in demo mode" : "Not signed in"}</span>
+          <span>
+            {role
+              ? ROLE_LABEL[role]
+              : status === "demo"
+                ? "No sign-in in demo mode"
+                : "Not signed in"}
+          </span>
         </span>
       </div>
 
@@ -93,9 +89,7 @@ export function AccountSheet({
       )}
 
       {error && !offline && (
-        <p className={`${styles.notice} ${styles.noticeBad}`}>
-          The desk reported: {error}
-        </p>
+        <p className={`${styles.notice} ${styles.noticeBad}`}>The desk reported: {error}</p>
       )}
 
       <section className={styles.accountSection} aria-labelledby="account-event">
@@ -129,16 +123,14 @@ export function AccountSheet({
                   }}
                 >
                   <b>{event.name}</b>
-                  <span>{event.id === tournament?.id ? "Showing now" : "Switch to this event"}</span>
+                  <span>
+                    {event.id === tournament?.id ? "Showing now" : "Switch to this event"}
+                  </span>
                 </button>
               ))}
             </div>
           ) : (
-            <button
-              type="button"
-              className={styles.secondary}
-              onClick={() => setSwitching(true)}
-            >
+            <button type="button" className={styles.secondary} onClick={() => setSwitching(true)}>
               Switch event
             </button>
           )

@@ -57,7 +57,10 @@ function addMinutes(date: string, time: string, minutes: number): { date: string
 
 /** A stable id, so adding the same start twice replaces it in most calendar apps. */
 export function calendarUid(start: CalendarStart): string {
-  const safeTitle = start.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+  const safeTitle = start.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 40);
   return `${start.date.replace(/-/g, "")}-${start.time.replace(":", "")}-${safeTitle || "tee"}@teeline.golf`;
 }
 

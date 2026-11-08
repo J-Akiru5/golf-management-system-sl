@@ -60,8 +60,8 @@ import {
   type DeskState,
   drawSignatureForDay,
   flagsOf,
-  playingDaysOfEvent,
   type Published,
+  playingDaysOfEvent,
   publishedSignatureForDay,
 } from "@/lib/store/state";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";

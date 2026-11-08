@@ -14,7 +14,12 @@ import type { Translate } from "@/lib/i18n/t";
 import { publicPhotoUrl } from "@/lib/photo";
 import type { PortalEntry } from "@/lib/player/portal";
 import { loadPortal } from "@/lib/player/portal";
-import { demoOwnProfile, indexFromEntries, mapOwnProfile, type OwnProfile } from "@/lib/player/profile";
+import {
+  demoOwnProfile,
+  indexFromEntries,
+  mapOwnProfile,
+  type OwnProfile,
+} from "@/lib/player/profile";
 import { signedInClient } from "@/lib/player/session";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 

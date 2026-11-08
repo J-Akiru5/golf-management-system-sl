@@ -25,9 +25,8 @@ export function groupMates(
   );
   const wanted = displayName(player.name);
   const own =
-    candidates.find((group) =>
-      group.players.some((name) => displayName(name) === wanted),
-    ) ?? candidates[0];
+    candidates.find((group) => group.players.some((name) => displayName(name) === wanted)) ??
+    candidates[0];
   if (!own) return [];
   return own.players
     .filter((name) => displayName(name) !== wanted)

@@ -1,9 +1,9 @@
 "use client";
 
+import { SESSION_FILTERS, type SessionCounts } from "@/lib/staff/schedule";
 import { DayPills } from "./DayPills";
 import { useStaffDay } from "./day-context";
 import styles from "./staff.module.css";
-import { SESSION_FILTERS, type SessionCounts } from "@/lib/staff/schedule";
 
 /**
  * The tee sheet's two switches: the playing day, and the session within it. The counts are the

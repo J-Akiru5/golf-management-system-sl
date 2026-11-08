@@ -13,11 +13,7 @@ import {
   relativeTalk,
 } from "./schedule";
 
-function group(
-  number: number,
-  time: string,
-  extra: Partial<ScheduleGroup> = {},
-): ScheduleGroup {
+function group(number: number, time: string, extra: Partial<ScheduleGroup> = {}): ScheduleGroup {
   return {
     id: `g-1-${number}`,
     number,
