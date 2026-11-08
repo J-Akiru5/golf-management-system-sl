@@ -116,7 +116,9 @@ export const DESK_GUIDES: HelpGuide[] = [
         anchor: "players-search",
       },
       {
-        text: literal("The filters narrow the list by status, category, gender and home club."),
+        text: literal(
+          "The filters narrow the list by status, pairing, category, gender and home club.",
+        ),
         anchor: "players-filters",
       },
       {
