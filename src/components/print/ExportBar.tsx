@@ -29,7 +29,7 @@ export function ExportBar({
 }: ExportBarProps) {
   const off = disabled || busy !== null;
   return (
-    <div className="no-print flex flex-wrap items-center gap-2" data-help="print-export">
+    <div className="no-print flex flex-wrap items-center gap-2">
       <span className="overline !text-[10px]">Download</span>
       {excelAvailable && (
         <Button

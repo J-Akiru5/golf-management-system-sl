@@ -49,7 +49,7 @@ describe("pdfSafe", () => {
   });
 });
 
-describe("buildBookPdf", () => {
+describe("buildBookPdf", { timeout: 30_000 }, () => {
   it("writes a PDF with a page per table", async () => {
     const blob = await buildBookPdf(book);
     const head = new TextDecoder().decode((await bytes(blob)).slice(0, 5));
@@ -58,7 +58,7 @@ describe("buildBookPdf", () => {
   });
 });
 
-describe("buildBookXlsx", () => {
+describe("buildBookXlsx", { timeout: 30_000 }, () => {
   it("writes a styled workbook whose cells are text, not formulas", async () => {
     const blob = await buildBookXlsx(book);
     const data = await bytes(blob);

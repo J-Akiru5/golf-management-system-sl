@@ -16,6 +16,7 @@ import { CheatSheet } from "@/components/help";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
 import { type CountsGrouping, DayCounts } from "@/components/print/DayCounts";
+import { ExportBar, type ExportFormat } from "@/components/print/ExportBar";
 import { PairingsSheet } from "@/components/print/PairingsSheet";
 import { Scorecards } from "@/components/print/Scorecards";
 import { StartSheet } from "@/components/print/StartSheet";
@@ -26,9 +27,16 @@ import { playingDaysOf } from "@/lib/data/dates";
 import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { daySessionSummary } from "@/lib/data/sessions";
-import { buildXlsx, type Cell } from "@/lib/export/xlsx";
+import { downloadBlob } from "@/lib/export/download";
 import { photoOf } from "@/lib/format";
 import { buildDayCountBlocks, buildGroupBlocks } from "@/lib/print/day-counts";
+import {
+  type BoardScope,
+  buildPrintBook,
+  KIND_LABEL,
+  printFileName,
+} from "@/lib/print/export-book";
+import { courseNote, pairingsForDay } from "@/lib/print/export-model";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
@@ -71,6 +79,11 @@ export default function PrintCenter() {
   // Every day at once, fetched on demand: the desk itself only holds the selected day.
   const [everyDay, setEveryDay] = useState<{ day: number; groups: PrintGroup[] }[] | null>(null);
   const [preparingAll, setPreparingAll] = useState(false);
+  // The selector's "All playing days" choice. The cached boards above are only the data; this is
+  // what the screen and every download follow, so a file always matches the day that is shown.
+  const [allDays, setAllDays] = useState(false);
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  const [exportError, setExportError] = useState("");
   // The organisers read the same players two ways: by AM/PM session, or by the draw's groups.
   const [groupBy, setGroupBy] = useState<CountsGrouping>("session");
   // The organisers' headcount: players per playing day, split into AM and PM, with tee-off times.
@@ -225,69 +238,129 @@ export default function PrintCenter() {
 
       setEveryDay(boards);
       if (autoPrint) window.setTimeout(() => window.print(), 400);
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "Could not read every day.");
+      setAllDays(false);
     } finally {
       setPreparingAll(false);
     }
   };
 
-  /**
-   * The same numbers as a workbook: a summary, every player by session, and every group with its
-   * players. Built in the browser, so nothing about the event leaves the desk.
-   */
-  const exportCounts = () => {
-    const summary: Cell[][] = [
-      ["Day", "Date", "AM", "PM", "Not set", "Players"],
-      ...countBlocks.map((block) => [
-        block.label,
-        block.playDate ?? "",
-        block.tally.am,
-        block.tally.pm,
-        block.tally.unset,
-        block.tally.total,
-      ]),
-    ];
-    const bySession: Cell[][] = [
-      ["Day", "Date", "AM/PM", "Tee off", "Start hole", "Player"],
-      ...countBlocks.flatMap((block) =>
-        block.rows.map((row) => [
-          block.label,
-          block.playDate ?? "",
-          row.session ?? "Not set",
-          row.teeTime ?? "",
-          row.startHole ?? "",
-          row.name,
-        ]),
-      ),
-    ];
-    const byGroup: Cell[][] = [
-      ["Day", "Date", "Group", "Tee off", "Start hole", "AM/PM", "Flight", "Players"],
-      ...groupBlocks.flatMap((block) =>
-        block.groups.map((group) => [
-          block.label,
-          block.playDate ?? "",
-          group.number,
-          group.time ?? "",
-          group.startHole ?? "",
-          group.session ?? "Not set",
-          group.flight,
-          group.players.map((player) => player.name).join(", "),
-        ]),
-      ),
-    ];
-    const bytes = buildXlsx([
-      { name: "Summary", rows: summary },
-      { name: "By session", rows: bySession },
-      { name: "By group", rows: byGroup },
-    ]);
-    const blob = new Blob([bytes.buffer as ArrayBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  // The day scope every sheet and download follows: the one chosen day, or every playing day.
+  const everyDayScope = allDays || !chosenDay;
+  const scopeBoards: BoardScope[] =
+    allDays && everyDay
+      ? everyDay.map((board) => {
+          const day = playingDays.find((d) => d.dayNumber === board.day);
+          return {
+            dayNumber: board.day,
+            dayLabel: day?.label ?? `Day ${board.day}`,
+            playDate: day?.playDate ?? null,
+            dateLabel: day ? fmtIso(day.playDate) : fmtDateLabel(tournament.dates),
+            groups: board.groups,
+          };
+        })
+      : [
+          {
+            dayNumber: chosenDay?.dayNumber ?? null,
+            dayLabel: chosenDay?.label ?? null,
+            playDate: chosenDay?.playDate ?? null,
+            dateLabel: chosenDay ? fmtIso(chosenDay.playDate) : fmtDateLabel(tournament.dates),
+            groups: printGroups,
+          },
+        ];
+  const inScope = (dayNumber: number) => everyDayScope || chosenDay?.dayNumber === dayNumber;
+  const scopedCounts = countBlocks.filter((block) => inScope(block.dayNumber));
+  const scopedGroupBlocks = groupBlocks.filter((block) => inScope(block.dayNumber));
+  // The published list, cut to the same days. A snapshot with no days is one list for the event.
+  const pairingDays = (() => {
+    if (!pairings) return [];
+    const cut = (dayNumber: number, label: string, playDate: string) => ({
+      dayLabel: label,
+      pairings: {
+        ...pairingsForDay(pairings, dayNumber),
+        dateLabel: `${label} · ${fmtIso(playDate)}`,
+      },
     });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `players-by-day-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (!everyDayScope && chosenDay) {
+      return [cut(chosenDay.dayNumber, chosenDay.label, chosenDay.playDate)];
+    }
+    return pairings.days && pairings.days.length > 0
+      ? pairings.days.map((day) => cut(day.dayNumber, day.label, day.playDate))
+      : [{ dayLabel: null, pairings }];
+  })();
+
+  const scopeWords = `${KIND_LABEL[tab === "howto" ? "start" : tab]} · ${
+    everyDayScope ? "All playing days" : (chosenDay?.label ?? "")
+  }`;
+  const status = published
+    ? changedSincePublish
+      ? "Published · board has newer changes"
+      : "Published"
+    : "Draft · not published";
+
+  // Why the download buttons are off, in words. Null means they work.
+  const exportBlock: string | null =
+    tab === "pairings"
+      ? pairings
+        ? null
+        : "Publish the draw to download the player pairings."
+      : !draw
+        ? "Make the draw first."
+        : (allDays && !everyDay) || (tab === "counts" && !everyDay)
+          ? "Reading every day's board…"
+          : null;
+
+  const runExport = async (format: ExportFormat) => {
+    if (tab === "howto") return;
+    setExporting(format);
+    setExportError("");
+    try {
+      const result = buildPrintBook({
+        kind: tab,
+        eventName: tournament.name,
+        status,
+        startFormat: tournament.config.startFormat,
+        course: courseDataStatus,
+        boards: scopeBoards,
+        pairingDays,
+        countBlocks: scopedCounts,
+        groupBlocks: scopedGroupBlocks,
+        groupBy,
+        holes,
+      });
+      if (!result) {
+        setExportError("Nothing to download for this day yet.");
+        return;
+      }
+      let blob: Blob;
+      if (format === "xlsx") {
+        blob = await (await import("@/lib/export/xlsx-book")).buildBookXlsx(result.book);
+      } else if (result.scorecards) {
+        blob = await (await import("@/lib/export/pdf")).buildScorecardsPdf(
+          { ...result.book, note: courseNote(courseDataStatus) },
+          result.scorecards,
+        );
+      } else {
+        blob = await (await import("@/lib/export/pdf")).buildBookPdf(result.book);
+      }
+      downloadBlob(blob, printFileName(result, format));
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "The file could not be made.");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const onScope = (value: string) => {
+    setExportError("");
+    if (value === "all") {
+      setAllDays(true);
+      void loadEveryDay(false);
+      return;
+    }
+    setAllDays(false);
+    setDrawDay(value === "" ? null : Number(value));
   };
 
   // Derived from what is saved and whether an owner or organizer confirmed it against the club
@@ -297,13 +370,14 @@ export default function PrintCenter() {
     tees,
     holes,
   });
+  const dateText = chosenDay ? fmtIso(chosenDay.playDate) : fmtDateLabel(tournament.dates);
   const dayPart = chosenDay ? `${chosenDay.label} · ` : "";
-  const subtitle = `${tournament.name} · ${dayPart}${fmtDateLabel(tournament.dates)} · ${
+  const subtitle = `${tournament.name} · ${dayPart}${dateText} · ${
     shotgun ? "Shotgun start" : "Two-tee start"
   } · first tee ${tournament.config.firstTeeTime}${
     groups[0] ? ` · ${groups.length} groups` : " · no draw yet"
   }`;
-  const scorecardSubtitle = `${dayPart}${fmtDateLabel(tournament.dates)} · ${
+  const scorecardSubtitle = `${dayPart}${dateText} · ${
     shotgun ? "Shotgun start" : "Two-tee start"
   } · first tee ${tournament.config.firstTeeTime}`;
 
@@ -319,10 +393,8 @@ export default function PrintCenter() {
               <label className="no-print grid w-full min-w-0 gap-1 sm:w-auto">
                 <span className="overline !text-[10px]">Day to print</span>
                 <select
-                  value={drawDay ?? ""}
-                  onChange={(e) =>
-                    setDrawDay(e.target.value === "" ? null : Number(e.target.value))
-                  }
+                  value={allDays ? "all" : (drawDay ?? "")}
+                  onChange={(e) => onScope(e.target.value)}
                   // The longest day label is wider than a phone; let it fill the row there and use
                   // its own width on a desktop.
                   className="w-full min-w-0 text-[16px] md:text-sm sm:w-auto"
@@ -334,12 +406,16 @@ export default function PrintCenter() {
                       {daySessionSummary(index, playingDays.length)}
                     </option>
                   ))}
+                  {playingDays.length > 1 && <option value="all">All playing days</option>}
                 </select>
               </label>
             )}
             <Button
               variant="secondary"
-              onClick={() => void loadEveryDay()}
+              onClick={() => {
+                setAllDays(true);
+                void loadEveryDay();
+              }}
               disabled={preparingAll}
               className="no-print min-h-11 md:min-h-0"
               data-help="print-all"
@@ -409,14 +485,26 @@ export default function PrintCenter() {
         </span>
       </div>
 
+      {tab !== "howto" && (
+        <ExportBar
+          scopeLabel={scopeWords}
+          busy={exporting}
+          disabled={exportBlock !== null}
+          disabledReason={exportBlock ?? undefined}
+          excelAvailable={tab !== "scorecards"}
+          error={exportError}
+          onExport={(format) => void runExport(format)}
+        />
+      )}
+
       <div className="print-sheet-scope">
         {tab === "counts" ? (
           <DayCounts
-            blocks={countBlocks}
-            groupBlocks={groupBlocks}
+            blocks={scopedCounts}
+            groupBlocks={scopedGroupBlocks}
             groupBy={groupBy}
             onGroupBy={setGroupBy}
-            onExport={exportCounts}
+            onExport={() => void runExport("xlsx")}
             eventName={tournament.name}
             loading={preparingAll}
           />
@@ -438,12 +526,16 @@ export default function PrintCenter() {
               </Button>
             </div>
           </div>
+        ) : allDays && !everyDay ? (
+          <p className="notice" role="status">
+            Reading every day's board…
+          </p>
         ) : tab === "start" ? (
-          everyDay ? (
+          allDays && everyDay ? (
             <div className="grid gap-6">
               <p className="hint no-print">
                 Every playing day, one sheet each.{" "}
-                <button type="button" className="btn small ghost" onClick={() => setEveryDay(null)}>
+                <button type="button" className="btn small ghost" onClick={() => setAllDays(false)}>
                   Back to this day only
                 </button>
               </p>
@@ -477,7 +569,13 @@ export default function PrintCenter() {
           <section className="grid gap-3">
             <h2 className="text-[20px]">Pairings</h2>
             {pairings ? (
-              <PairingsSheet pairings={pairings} />
+              pairingDays.map((day) => (
+                <PairingsSheet
+                  key={day.dayLabel ?? "event"}
+                  pairings={day.pairings}
+                  title={day.dayLabel ? `Pairings · ${day.dayLabel}` : "Pairings"}
+                />
+              ))
             ) : (
               <p className="muted">
                 The player view reads the published list. Publish the draw to print the same list
@@ -485,6 +583,29 @@ export default function PrintCenter() {
               </p>
             )}
           </section>
+        ) : allDays && everyDay ? (
+          <>
+            {everyDay.map((board) => {
+              const day = playingDays.find((d) => d.dayNumber === board.day);
+              return (
+                <Scorecards
+                  key={board.day}
+                  title={tournament.name}
+                  subtitle={`${day?.label ?? `Day ${board.day}`} · ${
+                    day ? fmtIso(day.playDate) : fmtDateLabel(tournament.dates)
+                  } · ${shotgun ? "Shotgun start" : "Two-tee start"} · first tee ${
+                    tournament.config.firstTeeTime
+                  }`}
+                  hostName={tournament.hostName}
+                  logoUrl={tournament.logoUrl}
+                  groups={board.groups}
+                  holes={holes}
+                  startFormat={tournament.config.startFormat}
+                  courseDataStatus={courseDataStatus}
+                />
+              );
+            })}
+          </>
         ) : (
           <Scorecards
             title={tournament.name}
@@ -506,17 +627,15 @@ export default function PrintCenter() {
           variant="secondary"
           size="sm"
           className="min-h-11 flex-1"
-          onClick={() => void loadEveryDay()}
+          onClick={() => {
+            setAllDays(true);
+            void loadEveryDay();
+          }}
           disabled={preparingAll}
         >
           <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
         </Button>
-        <Button
-          variant="gold"
-          size="sm"
-          className="min-h-11 flex-1"
-          onClick={() => window.print()}
-        >
+        <Button variant="gold" size="sm" className="min-h-11 flex-1" onClick={() => window.print()}>
           <Printer aria-hidden="true" /> Print this sheet
         </Button>
       </div>

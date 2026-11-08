@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/desk";
+import { DrawTable } from "@/components/draw/DrawTable";
 import { GroupCard } from "@/components/draw/GroupCard";
 import { IssuesPanel } from "@/components/draw/IssuesPanel";
 import { PublishDialog } from "@/components/draw/PublishDialog";
@@ -10,6 +11,7 @@ import { PublishDialog } from "@/components/draw/PublishDialog";
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { fmtIso } from "@/lib/data/labels";
+import { buildDrawTable } from "@/lib/draw/table-model";
 import { dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
@@ -53,6 +55,9 @@ export default function DrawPage() {
   const [tab, setTab] = useState<Tab>("pool");
   // The check list is long, so it lives on its own tab and the groups are visible on opening.
   const [view, setView] = useState<"board" | "checks">("board");
+  const [classFilter, setClassFilter] = useState("all");
+  // Cards edit; the table is the printed pairing layout, for reading a class at a glance.
+  const [layout, setLayout] = useState<"cards" | "table">("cards");
   const [flash, setFlash] = useState<number | null>(null);
   const [pubOpen, setPubOpen] = useState(false);
   const [confirm, setConfirm] = useState<"startOver" | "unpublish" | null>(null);
@@ -291,8 +296,28 @@ export default function DrawPage() {
 
   // Cards under one heading per start time. Confirmed provisional players get one clearly labelled
   // heading of their own instead of a made-up flight.
+  const classOf = (g: { playerIds: string[]; flightId: string }) =>
+    isUnclassifiedGroup(g.playerIds, regById) ? UNCLASSIFIED_LABEL : names.flight(g.flightId);
+  // One tab per class, so a long day is read a class at a time instead of by scrolling.
+  const classTabs = (() => {
+    const tally = new Map<string, { groups: number; players: number }>();
+    for (const g of visibleDraw ?? []) {
+      const name = classOf(g);
+      const row = tally.get(name) ?? { groups: 0, players: 0 };
+      tally.set(name, { groups: row.groups + 1, players: row.players + g.playerIds.length });
+    }
+    return [...tally.entries()]
+      .sort(([a], [b]) =>
+        a === UNCLASSIFIED_LABEL ? 1 : b === UNCLASSIFIED_LABEL ? -1 : a.localeCompare(b),
+      )
+      .map(([name, row]) => ({ name, ...row }));
+  })();
+  const activeClass = classTabs.some((c) => c.name === classFilter) ? classFilter : "all";
+  const shownGroups = (visibleDraw ?? []).filter(
+    (g) => activeClass === "all" || classOf(g) === activeClass,
+  );
   const sections = new Map<string, NonNullable<typeof draw>>();
-  for (const g of visibleDraw ?? []) {
+  for (const g of shownGroups) {
     const key = isUnclassifiedGroup(g.playerIds, regById)
       ? UNCLASSIFIED_LABEL
       : `${fmtTime(g.time)} · ${names.flight(g.flightId)}`;
@@ -598,6 +623,52 @@ export default function DrawPage() {
             </button>
           </nav>
 
+          {view === "board" && classTabs.length > 0 && (
+            <div className="row">
+              <nav className="row grow" aria-label="Class">
+                <button
+                  type="button"
+                  className={activeClass === "all" ? "btn small" : "btn small ghost"}
+                  aria-pressed={activeClass === "all"}
+                  onClick={() => setClassFilter("all")}
+                >
+                  All classes · {visibleDraw?.length ?? 0}
+                </button>
+                {classTabs.map((c) => (
+                  <button
+                    key={c.name}
+                    type="button"
+                    className={activeClass === c.name ? "btn small" : "btn small ghost"}
+                    aria-pressed={activeClass === c.name}
+                    onClick={() => setClassFilter(c.name)}
+                    title={`${c.groups} groups · ${c.players} players`}
+                  >
+                    {c.name} · {c.groups}
+                    <span className="muted"> ({c.players})</span>
+                  </button>
+                ))}
+              </nav>
+              <nav className="row" aria-label="Layout">
+                <button
+                  type="button"
+                  className={layout === "cards" ? "btn small" : "btn small ghost"}
+                  aria-pressed={layout === "cards"}
+                  onClick={() => setLayout("cards")}
+                >
+                  Cards
+                </button>
+                <button
+                  type="button"
+                  className={layout === "table" ? "btn small" : "btn small ghost"}
+                  aria-pressed={layout === "table"}
+                  onClick={() => setLayout("table")}
+                >
+                  Table
+                </button>
+              </nav>
+            </div>
+          )}
+
           {view === "checks" && (
             <div data-help="draw-issues">
               {fixError && (
@@ -641,75 +712,95 @@ export default function DrawPage() {
       {draw && view === "board" && (
         <div className="draw-layout">
           <div className="board stack">
-            {[...sections.entries()].map(([heading, groups]) => (
-              <section key={heading} className="stack tight">
-                <div className="wave-head">
-                  <div>
-                    <h2>{heading}</h2>
-                    {heading === UNCLASSIFIED_LABEL && (
-                      <p className="hint">
-                        Confirmed while the player record is short of a routing fact, so no category
-                        or flight was invented. The entry keeps the index from the club sheet;
-                        correct the records, then re-run the draw.
-                      </p>
-                    )}
+            {layout === "table" ? (
+              <DrawTable
+                sections={buildDrawTable({
+                  groups: shownGroups,
+                  startFormat: shotgun ? "shotgun" : "two_tee",
+                  playerName: (id) => playerById.get(id)?.name ?? "Unknown player",
+                  flightName: (id) => names.flight(id ?? ""),
+                  isUnclassified: (g) => isUnclassifiedGroup(g.playerIds, regById),
+                })}
+                issuesByGroup={issuesByGroup}
+                selectedPlayer={selection?.kind === "player" ? selection.id : null}
+                selectedGroup={selection?.kind === "group" ? selection.n : null}
+                manualOverrideIds={manualOverrideIds as ReadonlySet<string>}
+                onSelectPlayer={selectPlayer}
+                onSelectGroup={selectGroup}
+              />
+            ) : (
+              [...sections.entries()].map(([heading, groups]) => (
+                <section key={heading} className="stack tight">
+                  <div className="wave-head">
+                    <div>
+                      <h2>{heading}</h2>
+                      {heading === UNCLASSIFIED_LABEL && (
+                        <p className="hint">
+                          Confirmed while the player record is short of a routing fact, so no
+                          category or flight was invented. The entry keeps the index from the club
+                          sheet; correct the records, then re-run the draw.
+                        </p>
+                      )}
+                    </div>
+                    <span className="muted">
+                      {groups.length} groups · {groups.reduce((n, g) => n + g.playerIds.length, 0)}{" "}
+                      players
+                    </span>
                   </div>
-                  <span className="muted">
-                    {groups.length} groups · {groups.reduce((n, g) => n + g.playerIds.length, 0)}{" "}
-                    players
-                  </span>
-                </div>
-                <div className="groups">
-                  {groups.map((g) => (
-                    <GroupCard
-                      key={g.number}
-                      g={g}
-                      shotgun={Boolean(shotgun)}
-                      groupSize={config.groupSize}
-                      minGroupSize={config.minGroupSize}
-                      flightName={
-                        isUnclassifiedGroup(g.playerIds, regById)
-                          ? UNCLASSIFIED_LABEL
-                          : names.flight(g.flightId)
-                      }
-                      flightNameOf={names.flight}
-                      players={playerById}
-                      regs={regById}
-                      manualOverrideIds={manualOverrideIds}
-                      issues={issuesByGroup.get(g.number) ?? none}
-                      active={active}
-                      drop={
-                        active ? dropCheck(draw, config, regById, active.id, g.number, names) : null
-                      }
-                      selectedPlayer={
-                        selection?.kind === "player" && g.playerIds.includes(selection.id)
-                          ? selection.id
-                          : null
-                      }
-                      selected={selection?.kind === "group" && selection.n === g.number}
-                      flash={flash === g.number}
-                      onSelectPlayer={selectPlayer}
-                      onSelectGroup={selectGroup}
-                      onPick={onPick}
-                      onLock={(n) => {
-                        const group = draw.find((x) => x.number === n);
-                        dispatch({
-                          type: "setGroupLocked",
-                          group: n,
-                          locked: !(group?.locked ?? false),
-                          reason,
-                        });
-                      }}
-                      onDragStart={onDragStart}
-                      onDragEnd={onDragEnd}
-                      onMoveHere={moveActiveTo}
-                      allowDrop={allowDrop}
-                      dropOn={dropOn}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
+                  <div className="groups">
+                    {groups.map((g) => (
+                      <GroupCard
+                        key={g.number}
+                        g={g}
+                        shotgun={Boolean(shotgun)}
+                        groupSize={config.groupSize}
+                        minGroupSize={config.minGroupSize}
+                        flightName={
+                          isUnclassifiedGroup(g.playerIds, regById)
+                            ? UNCLASSIFIED_LABEL
+                            : names.flight(g.flightId)
+                        }
+                        flightNameOf={names.flight}
+                        players={playerById}
+                        regs={regById}
+                        manualOverrideIds={manualOverrideIds}
+                        issues={issuesByGroup.get(g.number) ?? none}
+                        active={active}
+                        drop={
+                          active
+                            ? dropCheck(draw, config, regById, active.id, g.number, names)
+                            : null
+                        }
+                        selectedPlayer={
+                          selection?.kind === "player" && g.playerIds.includes(selection.id)
+                            ? selection.id
+                            : null
+                        }
+                        selected={selection?.kind === "group" && selection.n === g.number}
+                        flash={flash === g.number}
+                        onSelectPlayer={selectPlayer}
+                        onSelectGroup={selectGroup}
+                        onPick={onPick}
+                        onLock={(n) => {
+                          const group = draw.find((x) => x.number === n);
+                          dispatch({
+                            type: "setGroupLocked",
+                            group: n,
+                            locked: !(group?.locked ?? false),
+                            reason,
+                          });
+                        }}
+                        onDragStart={onDragStart}
+                        onDragEnd={onDragEnd}
+                        onMoveHere={moveActiveTo}
+                        allowDrop={allowDrop}
+                        dropOn={dropOn}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))
+            )}
           </div>
           <div ref={panelRef} className="panel-wrap">
             <SidePanel
