@@ -16,8 +16,9 @@ Supabase project, because the code and the database are released separately.
 
 `20261108001100_cap_handicap_snapshot_index.sql` replaces `save_handicap_snapshot` so an index above
 the tournament maximum is capped at the maximum instead of refused (issue #190). It changes one
-function and no table. It is **not confirmed applied** to the live project. Until it is, opening a
-round for a player whose index was capped fails at the handicap snapshot.
+function and no table. The owner reported it **applied to the live project on 8 November 2026**
+(not independently checked from this tree). Without it, opening a round for a player whose index was
+capped fails at the handicap snapshot.
 
 ### Added
 - **A session runs at most Flight A and Flight B, and the desk can see and change the queue (issue
