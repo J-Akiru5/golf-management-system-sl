@@ -14,8 +14,29 @@ Supabase project, because the code and the database are released separately.
 2026**. The live project has 143 pairs and 283 pair members; pair 124 is complete. The earlier
 8 November scheduling migrations were already applied before this release.
 
+`20261108001100_cap_handicap_snapshot_index.sql` replaces `save_handicap_snapshot` so an index above
+the tournament maximum is capped at the maximum instead of refused (issue #190). It changes one
+function and no table. It is **not confirmed applied** to the live project. Until it is, opening a
+round for a player whose index was capped fails at the handicap snapshot.
+
 ### Added
-- **The public player roster is live at `/roster` (issue #185).** It lists the confirmed field with
+- **A session runs at most Flight A and Flight B, and the desk can see and change the queue (issue
+  #195).** A flight is a wave of groups, not a class: Flight A is the first group on every hole,
+  Flight B the next group on every hole, shown as slots 1A, 1B and so on. Classes only set the order
+  groups are listed in. The draw never makes a third flight: the limit is the tournament setting
+  `maxFlightsPerSession` (default 2, not stored in the database yet), so a session holds 36 groups on
+  18 holes. Groups that do not fit are left out whole, their players stay in "Not in a group", and the
+  draw says how many. The draw page has a Flight queue view and an AM and PM filter with counts, the
+  group cards and Details say Hole 1A, and Details has a Start hole select and a Swap start with
+  select. A move, swap or reorder locks the groups it touches, is saved, and is recorded as a manual
+  override. The control room has a Day select and a Flight queue card. A session with 18 groups or
+  fewer is a single flight. No migration.
+- **The demo draws every playing day in one click.** Make the draw and Start over draw each playing
+  day with its own AM and PM sessions, the demo opens on the first day, and the All playing days
+  option is gone. A connected desk still keeps one saved round per day and draws the day on screen.
+  A developer can run the demo on the real field on one machine with `scripts/local-demo-field.ts`,
+  which writes a git-ignored `.env.local` line and is never deployed. No migration.
+ It lists the confirmed field with
   name, home club, frozen index, category and flight, with a name search and a flight filter. The
   browser receives only those five fields; the page returns no content while the event is
   unpublished. It is in the sitemap and linked from the pairings page. No migration.
@@ -49,6 +70,21 @@ Supabase project, because the code and the database are released separately.
   stays as a read-only fallback for one release.
 
 ### Fixed
+- **A handicap index above the maximum is capped instead of blocking the player (issue #190).** The
+  draw uses the maximum for class, tee and playing handicap, keeps the index on file, says which
+  number was used, and averages a member-guest pair on the capped indexes. The override dialog now
+  allows it with a warning. The matching database change is the migration listed above.
+- **A selected player is readable on the draw table (issue #192).** The name was drawn in the pale
+  accent tint on an accent cell; it now uses the ink colour with a ring, in light and dark. No
+  migration.
+- **The desk can mark a day's tee-time choices as confirmed (issue #193).** Setup has a Tee-time
+  choices section with one tick per day, and the Register page shows a Confirmed pill instead of
+  "Needs organizer confirmation". No migration.
+- **The public pairings page names the day and has a way back (issue #194).** Every group bar ends
+  with its date, each day chip shows its date, and a Back to main page link leads the header. No
+  migration.
+- **Manual overrides no longer share an id.** Two changes in a row reused one id and the list warned
+  about duplicate keys. No migration.
 - **The control room no longer warns about a hydration mismatch.** The divisions donut wrote
   full-precision trigonometric points, and Node and Chrome could differ in the last digit; both now
   round to three decimals. No migration.
