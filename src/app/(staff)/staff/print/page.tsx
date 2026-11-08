@@ -13,7 +13,7 @@ import { StaffLoading } from "@/components/staff/StaffLoading";
 import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
 import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-data";
-import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
+import { fmtDateLabel } from "@/lib/data/labels";
 import { fmtTime, photoOf } from "@/lib/format";
 import { formatLine, splitIntoSessions, versionLine } from "@/lib/print/sheets";
 import { useDesk } from "@/lib/store/desk-store";

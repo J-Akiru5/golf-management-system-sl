@@ -2,7 +2,6 @@
 
 import {
   CircleHelp,
-  Download,
   FileText,
   Flag,
   LayoutGrid,
