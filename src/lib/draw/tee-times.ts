@@ -1,7 +1,8 @@
 /**
  * Where the draw put a player: the time their group starts, the hole it starts on, the group
- * number, and the batch/session a stored label names. There is no wave: a session may have more
- * than one start time, and the time is the fact the desk and the tee-times screen both use.
+ * number, and the batch/session a stored label names. A group is described by its time and hole;
+ * a session may have more than one start time, and the time is the fact the desk and the tee-times
+ * screen both use.
  */
 import { type DaySession, type SessionKey, sessionForTimeIn } from "@/lib/data/sessions";
 
