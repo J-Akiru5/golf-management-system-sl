@@ -40,15 +40,63 @@ async function load(): Promise<{ doc: (o: Record<string, unknown>) => Doc; autoT
   return { doc: (options) => new jsPDF(options), autoTable };
 }
 
+interface Logo {
+  /** PNG data URL. */
+  data: string;
+  /** Width over height. */
+  ratio: number;
+}
+
+/** Set by each builder before it draws, so every page header carries the same logo. */
+let brandLogo: Logo | null = null;
+
+/**
+ * The reversed (light on dark) TeeLine logo as a PNG, because jsPDF cannot draw an SVG. It is read
+ * from the app's own bundled files. Without a browser, or if the file will not load, the header
+ * falls back to the word mark: a missing logo never stops an export.
+ */
+export async function loadLogo(): Promise<Logo | null> {
+  if (typeof document === "undefined") return null;
+  try {
+    const reply = await fetch("/brand/teeline-horizontal-reverse.svg");
+    if (!reply.ok) return null;
+    const svg = await reply.text();
+    // The file has a viewBox but no width or height, so its true ratio comes from the viewBox.
+    const box = /viewBox="[\d.]+ [\d.]+ ([\d.]+) ([\d.]+)"/.exec(svg);
+    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const ratio = box ? Number(box[1]) / Number(box[2]) : 3.75;
+      const canvas = document.createElement("canvas");
+      canvas.width = 1200;
+      canvas.height = Math.round(1200 / ratio);
+      canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return { data: canvas.toDataURL("image/png"), ratio };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch {
+    return null;
+  }
+}
+
 function pageHeader(doc: Doc, width: number, book: { eventName: string; status: string }): void {
   doc.setFillColor(...FOREST);
-  doc.rect(0, 0, width, 9, "F");
+  doc.rect(0, 0, width, 11, "F");
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("TeeLine Golf", MARGIN, 6);
   doc.setFont("helvetica", "normal");
-  doc.text(pdfSafe(book.eventName), width - MARGIN, 6, { align: "right" });
+  doc.setFontSize(8);
+  if (brandLogo) {
+    const height = 6.4;
+    doc.addImage(brandLogo.data, "PNG", MARGIN, 2.3, height * brandLogo.ratio, height);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.text("TeeLine Golf", MARGIN, 7);
+    doc.setFont("helvetica", "normal");
+  }
+  doc.text(pdfSafe(book.eventName), width - MARGIN, 7, { align: "right" });
 }
 
 /** "Page 2 of 5" and the status on every page, once the page count is known. */
@@ -159,6 +207,7 @@ function drawTable(doc: Doc, autoTable: AutoTable, book: ExportBook, table: Expo
 
 /** An export book as a PDF: each table starts on its own page, in its own orientation. */
 export async function buildBookPdf(book: ExportBook): Promise<Blob> {
+  brandLogo = await loadLogo();
   const { doc: make, autoTable } = await load();
   const first = book.tables[0]?.orientation ?? "portrait";
   const doc = make({ unit: "mm", format: "a4", orientation: first, compress: true });
@@ -179,6 +228,7 @@ export async function buildScorecardsPdf(
   book: { eventName: string; label: string; status: string; note?: string },
   pages: readonly ScorecardPage[],
 ): Promise<Blob> {
+  brandLogo = await loadLogo();
   const { doc: make, autoTable } = await load();
   const doc = make({ unit: "mm", format: "a4", orientation: "landscape", compress: true });
   doc.setProperties({ title: `${book.eventName} · ${book.label}`, creator: "TeeLine Golf" });
