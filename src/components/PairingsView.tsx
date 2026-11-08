@@ -393,7 +393,7 @@ export function PairingsView({
               <input
                 ref={searchRef}
                 type="search"
-                className="p-search"
+                className={`p-search${query !== "" ? " has-clear" : ""}`}
                 data-help="pairings-search"
                 placeholder={t("pairings.findName")}
                 aria-label={t("pairings.findName")}
