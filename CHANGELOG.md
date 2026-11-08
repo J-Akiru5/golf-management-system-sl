@@ -154,6 +154,44 @@ All additive. Reported applied to the live project by the owner on 8 Nov 2026 (n
   on every route. The theme control and the rail toggle read the applied attribute instead of a
   private copy, so two controls on one page can no longer disagree about the current state.
 
+### Scheduling follow-up (8 November 2026)
+
+#### Added
+- **A playing day can carry its own afternoon start.** The new field on `/tee-times` saves
+  `tournament_days.pm_start_time`; an empty field means the event's `tournaments.pm_first_tee_time`,
+  and only a day with neither uses the old 12:30 (or 11:30 on the last playing day). A one-day
+  Saturday event no longer borrows the Sunday time. New migration `20261108000800_day_pm_start.sql`
+  adds one nullable column and is **additive and NOT applied**.
+- **`save_draw` refuses an unnamed whole-event save** once an event has more than one round, so a
+  stale caller cannot delete every day's board. New migration
+  `20261108000900_save_draw_requires_day.sql` replaces only the existing function body (same
+  signature and ACL); **additive and NOT applied**.
+- **The unplaced-player alert counts each playing day.** A player drawn on day 1 no longer satisfies
+  the check for day 3. New migration `20261108001000_notifications_per_day.sql` replaces only the
+  existing function body (same signature and ACL); **additive and NOT applied**.
+
+#### Changed
+- **The draw and the Tee times screen read stored session times.** The day's morning start, its own
+  afternoon start and the event's afternoon start are read in that order, and a time that came from
+  a fallback is marked as a default on screen. A sparse day list (days 1, 2, 4) is keyed by day
+  number, not by position.
+- **"Take the draw's times" only reads the board on screen.** A board loaded for another playing
+  day gives nothing and says so, a player is never given the first group from another day, and only
+  the one-letter batch is written to `registration_days.wave` instead of a label such as `D1-AM-A`.
+  The Session column takes the desk's recorded session first, then the draw label, then the time.
+- **The Tee times screen warns when the field needs a third start.** It names every start time and
+  its batch letter for the day, with no fixed two-start cap.
+- **The selected playing day survives a reload and an event switch.** It is kept in this browser,
+  and switching to an event that plays the same day keeps it; otherwise that event's first playing
+  day opens. No schema change.
+
+#### Fixed
+- **The draw can no longer hang on an impossible field.** A zero (or non-integer) hole count, a
+  group size of zero or less, and a fully occupied start with no free slot now raise a clear error
+  instead of looping. `addMinutes` refuses `24:00`, `06:60`, `6:3` and a non-whole minute count
+  instead of silently repairing them. Filling a start as it goes no longer reports a class as
+  "across starts" when it merely begins in the next empty one.
+
 ## [0.27.4] - 2026-11-04
 
 Desk completeness and public correctness, after the four audits.

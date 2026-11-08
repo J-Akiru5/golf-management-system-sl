@@ -342,16 +342,24 @@ These are places where the spec promises something the code does not do yet. Che
    real shape on 6 November 2026: a playing day runs a morning and an afternoon shotgun, each filled
    from its own start time, and a session that overflows gets a second start inside itself. `route`
    draws that way through its `sessions` input. Waves were removed on 7 November 2026: a group is
-   described by its start time and hole, and no letter is written anywhere. The board still cannot be saved per playing day: `groups` holds one board
-   per event and `save_draw` does not name a playing day,so a per-day save needs the save call to take the day first. Migration 20261106000100 now gives
-   `save_draw` the playing day and numbers groups per day, so a per-day board can be stored; the
-   draft is drawn per day into `docs/draft-24th-bamboo-tee.md`. **Corrected 8 Nov 2026** by the
-   read-only audit ([`docs/audit-scheduling-2026-11-08.md`](audit-scheduling-2026-11-08.md)): the
-   desk does pass a round id to `save_draw` (since `b1f026e`). The real blockers are that nothing
-   created a `competition_rounds` row for playing days 2..n (`open_round`, migration
-   `20261108000100`, creates them but is **not applied yet**; issue #174), that the desk still draws
-   the whole event in one pass (#175), and that publishing one day replaces the event-wide snapshot
-   (#176). Issues #174 to #184 track every finding.
+   described by its start time and hole, and no letter is written anywhere.
+   **8 November 2026 (streams S4 and S4b).** The per-day board is built in code: migration
+   `20261108000500` gives every playing day its own round, the desk draws one day with its morning
+   and afternoon sessions, a save names the day, and publishing keeps every day. The afternoon start
+   is read from the day's stored `pm_start_time`, then the event's `pm_first_tee_time`, and only
+   then the fixed defaults (06:30, 12:30, and 11:30 on the last playing day), so a one-day Saturday
+   event no longer borrows Sunday's time. The Tee times screen reads only the board it is showing,
+   writes one batch letter, warns when the field needs a third start, and lets the desk edit the
+   afternoon start per day. The selected day survives a reload and an event switch. The routing
+   engine refuses zero holes, a zero group size and invalid times instead of hanging or repairing
+   them. **Still open:** the additive migrations `20261108000500` (a round per playing day),
+   `20261108000800` (a day's own afternoon start), `20261108000900` (refuse an unnamed whole-event
+   save) and `20261108001000` (per-day unplaced count) are written and **NOT applied**, so the draft
+   is still checked as a document until they are. A locked group from another day can still
+   duplicate a hole (C13), a two-tee start still ignores the AM/PM starts (C14), the calendar
+   findings C7 and C8 are untouched, and the parked legacy writer
+   `src/lib/data/supabase/persist.ts` still saves without a round (D3). Issues #174 to #184 track
+   every finding.
 8. **Import is CSV-only** and the NGAP format has still not been seen; the queue's column mapping is
    the guard against guessing it.
 9. **Multi-day events are a demo assumption.** Age and the cut-off read the first day, because the
