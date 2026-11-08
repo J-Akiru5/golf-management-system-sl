@@ -488,7 +488,7 @@ check(
 );
 
 await langPage.goto(`${BASE}/my`, { waitUntil: "networkidle", timeout: 120000 });
-const switcher = langPage.getByLabel("Wika");
+const switcher = langPage.getByLabel("Wika", { exact: true });
 check("the picker is labelled in the chosen language", (await switcher.count()) > 0);
 await switcher.selectOption("en");
 await langPage.getByText("This build runs on demo data").first().waitFor({ timeout: 20000 });
