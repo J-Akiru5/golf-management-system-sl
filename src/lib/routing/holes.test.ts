@@ -101,9 +101,9 @@ describe("guards against an impossible start", () => {
     expect(() => planShotgunFrom([{ flightName: "Class A", groups: 1 }], -1, "06:30", 15)).toThrow(
       "A shotgun start needs at least one hole.",
     );
-    expect(() =>
-      planShotgunFrom([{ flightName: "Class A", groups: 1 }], 2.5, "06:30", 15),
-    ).toThrow("A shotgun start needs at least one hole.");
+    expect(() => planShotgunFrom([{ flightName: "Class A", groups: 1 }], 2.5, "06:30", 15)).toThrow(
+      "A shotgun start needs at least one hole.",
+    );
   });
 
   it("throws instead of searching forever when no slot can ever be free", () => {

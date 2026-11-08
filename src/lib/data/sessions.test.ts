@@ -196,17 +196,18 @@ describe("sessionsForDay", () => {
   });
 
   it("keeps a stored time readable when Postgres adds seconds", () => {
-    expect(sessionsForDay({ startTime: "07:15:00", pmStartTime: "12:45:00" }).map((s) => s.time)).toEqual([
-      "07:15",
-      "12:45",
-    ]);
+    expect(
+      sessionsForDay({ startTime: "07:15:00", pmStartTime: "12:45:00" }).map((s) => s.time),
+    ).toEqual(["07:15", "12:45"]);
   });
 
   it("ignores an unreadable stored time rather than passing it on", () => {
-    expect(sessionsForDay({ startTime: "25:00", pmStartTime: "noon" }, { finalDay: true })).toEqual([
-      { key: "AM", label: "AM", time: AM_TEE_TIME, source: "default" },
-      { key: "PM", label: "PM", time: FINAL_DAY_PM_TEE_TIME, source: "default" },
-    ]);
+    expect(sessionsForDay({ startTime: "25:00", pmStartTime: "noon" }, { finalDay: true })).toEqual(
+      [
+        { key: "AM", label: "AM", time: AM_TEE_TIME, source: "default" },
+        { key: "PM", label: "PM", time: FINAL_DAY_PM_TEE_TIME, source: "default" },
+      ],
+    );
   });
 
   it("labels a time against the day's own stored starts", () => {

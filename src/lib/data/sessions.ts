@@ -90,7 +90,6 @@ export function sessionSummaryOf(sessions: readonly DaySession[]): string {
   return sessions.map((session) => `${session.label} ${session.time}`).join(" · ");
 }
 
-
 /** Minutes after midnight for an "HH:MM" time, or null when it is not one. */
 function minutesOf(time: string | null): number | null {
   if (!time) return null;

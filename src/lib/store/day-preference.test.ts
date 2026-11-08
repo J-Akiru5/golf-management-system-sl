@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   clearDayPreference,
   DAY_PREFERENCE_KEY,
+  type DayNumberLike,
   dayExists,
   dayOnEventSwitch,
-  type DayNumberLike,
   readDayPreference,
   type StorageLike,
   writeDayPreference,

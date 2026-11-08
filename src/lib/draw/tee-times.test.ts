@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { daySessions } from "@/lib/data/sessions";
-import {
-  batchLetters,
-  placementsFromDraw,
-  parseBatchLabel,
-  sessionForRow,
-} from "./tee-times";
+import { batchLetters, parseBatchLabel, placementsFromDraw, sessionForRow } from "./tee-times";
 import type { DrawGroup } from "./validate";
 
 const group = (over: Partial<DrawGroup> & { number: number; playerIds: string[] }): DrawGroup => ({
@@ -107,9 +102,7 @@ describe("sessionForRow", () => {
   const sessions = daySessions(0, 2);
 
   it("prefers the session the desk recorded", () => {
-    expect(
-      sessionForRow({ chosen: "PM", placement: "AM", time: "06:30", sessions }),
-    ).toBe("PM");
+    expect(sessionForRow({ chosen: "PM", placement: "AM", time: "06:30", sessions })).toBe("PM");
   });
 
   it("takes the draw label when the day has no recorded session", () => {

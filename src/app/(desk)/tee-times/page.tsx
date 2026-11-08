@@ -42,7 +42,8 @@ import { useDesk } from "@/lib/store/desk-store";
  * selected. The database function checks the course's hole count and the day's start time.
  */
 export default function TeeTimesPage() {
-  const { tournament, days, entries, players, caddies, adapters, status, draw, drawDay } = useDesk();
+  const { tournament, days, entries, players, caddies, adapters, status, draw, drawDay } =
+    useDesk();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [batchTime, setBatchTime] = useState("");
   const [batching, setBatching] = useState<"missing" | "all" | "draw" | null>(null);
@@ -65,7 +66,10 @@ export default function TeeTimesPage() {
         ? sessionsForDay(
             // A day with no start of its own opens at the event's first tee time, the same fallback
             // the draw store uses. The afternoon comes from the stored settings only.
-            { startTime: day.startTime ?? tournament?.config.firstTeeTime, pmStartTime: day.pmStartTime },
+            {
+              startTime: day.startTime ?? tournament?.config.firstTeeTime,
+              pmStartTime: day.pmStartTime,
+            },
             {
               eventPmStart: tournament?.config.pmFirstTeeTime,
               finalDay: isFinalPlayingDay(day, playingDays),
