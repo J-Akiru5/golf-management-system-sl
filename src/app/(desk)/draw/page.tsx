@@ -12,6 +12,7 @@ import { PublishDialog } from "@/components/draw/PublishDialog";
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { fmtIso } from "@/lib/data/labels";
+import { sessionFinderFor } from "@/lib/draw/day-sessions";
 import { buildFlightQueue } from "@/lib/draw/flight-queue";
 import { buildDrawTable } from "@/lib/draw/table-model";
 import { dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
@@ -256,9 +257,24 @@ export default function DrawPage() {
   // The queue reads the whole board for the loaded day, never the class or day filter, so a hole's
   // queue is always complete.
   const queueModel = useMemo(
-    () => buildFlightQueue(draw ?? [], tournament?.flights ?? [], config?.holes ?? 18),
-    [draw, tournament?.flights, config?.holes],
+    () =>
+      buildFlightQueue(
+        draw ?? [],
+        tournament?.flights ?? [],
+        config?.holes ?? 18,
+        sessionFinderFor(days, day),
+      ),
+    [draw, tournament?.flights, config?.holes, days, day],
   );
+  // The hole with its flight letter ("1A", "12B") for each group, shown on the cards and in Details.
+  const slotByGroup = useMemo(() => {
+    const slots = new Map<number, string>();
+    for (const queue of queueModel.byHole) {
+      for (const entry of queue.entries) slots.set(entry.groupNumber, entry.slot);
+    }
+    return slots;
+  }, [queueModel]);
+  const slotOf = useCallback((groupNumber: number) => slotByGroup.get(groupNumber), [slotByGroup]);
   // A shotgun group can start on any hole; a two-tee start only has hole 1 and hole 10.
   const holeOptions = useMemo(
     () =>
@@ -829,6 +845,7 @@ export default function DrawPage() {
                         }
                         selected={selection?.kind === "group" && selection.n === g.number}
                         flash={flash === g.number}
+                        slot={slotByGroup.get(g.number)}
                         onSelectPlayer={selectPlayer}
                         onSelectGroup={selectGroup}
                         onPick={onPick}
@@ -872,6 +889,7 @@ export default function DrawPage() {
               onShowGroup={focusGroup}
               onLock={onLock}
               holeOptions={holeOptions}
+              slotOf={slotOf}
               onMoveGroupToHole={onQueueMove}
               onSwapGroups={onQueueSwap}
               explain={adapters.router.explain}

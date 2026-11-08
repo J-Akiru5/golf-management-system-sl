@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { FlightQueueModel } from "@/lib/draw/flight-queue";
+import { fmtTime } from "@/lib/format";
 import { Panel, type PanelVariant } from "./panels";
 
 export interface FlightQueueSummaryProps {
@@ -12,8 +13,8 @@ export interface FlightQueueSummaryProps {
 const countOf = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
 /**
- * A compact read of the same queue model for the overview: flight order, group and player totals,
- * and the vacant holes at each wave. It has no controls; the draw page owns the moves.
+ * A compact read of the same queue model for the overview: each flight (a wave of groups, A then
+ * B), its start, its groups and the vacant holes. It has no controls; the draw page owns the moves.
  */
 export function FlightQueueSummary({
   model,
@@ -24,7 +25,7 @@ export function FlightQueueSummary({
   return (
     <Panel
       title="Flight queue"
-      subtitle="Each flight goes out in its own wave, in this order."
+      subtitle="Flight A is the first group on each hole, B the next."
       variant={variant}
       className={className}
       labelledBy={variant === "card" ? "queue-h-card" : "queue-h"}
@@ -35,25 +36,22 @@ export function FlightQueueSummary({
         <ul className="grid gap-2">
           {model.flights.map((flight) => (
             <li
-              key={flight.flightId}
+              key={flight.key}
               className="min-w-0 rounded-[10px] border border-line bg-surface-sunken p-2.5 text-[13px] text-ink"
             >
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <b className="font-semibold">
-                  Queue {flight.position} · Flight {flight.flightName}
+                  {flight.session ? `${flight.session} ` : ""}
+                  {flight.label}
                 </b>
-                <span className="text-[12px] text-ink-muted">
-                  {countOf(flight.groups, "group")} · {flight.players} players
-                </span>
+                <span className="mono text-[12px]">{fmtTime(flight.time)}</span>
               </div>
-              <ul className="mt-0.5 grid gap-0.5 text-[12px] text-ink-muted">
-                {flight.waves.map((wave) => (
-                  <li key={wave.time}>
-                    <span className="mono text-ink">{wave.time}</span>:{" "}
-                    {countOf(wave.groups, "group")}, {wave.vacantHoles.length} vacant
-                  </li>
-                ))}
-              </ul>
+              <p className="mt-0.5 text-[12px] text-ink-muted">
+                {countOf(flight.groups, "group")} · {flight.players} players ·{" "}
+                {flight.vacantHoles.length === 0
+                  ? "all holes used"
+                  : `${flight.vacantHoles.length} vacant`}
+              </p>
             </li>
           ))}
         </ul>

@@ -29,6 +29,8 @@ function StartHoleControl(props: {
   draw: DrawGroup[];
   shotgun: boolean;
   holeOptions: number[];
+  /** The hole with its flight letter for a group ("1A"), when the draw can say. */
+  slotOf?: (groupNumber: number) => string | undefined;
   onMove: (groupNumber: number, hole: number) => void;
   onSwap: (a: number, b: number) => void;
 }) {
@@ -73,7 +75,7 @@ function StartHoleControl(props: {
             <option value="">Choose a group…</option>
             {others.map((o) => (
               <option key={o.number} value={o.number}>
-                {`Group ${o.number} · ${place(o.startHole)} · ${fmtTime(o.time)}`}
+                {`Group ${o.number} · ${shotgun ? `Hole ${props.slotOf?.(o.number) ?? o.startHole}` : place(o.startHole)} · ${fmtTime(o.time)}`}
               </option>
             ))}
           </select>
@@ -106,6 +108,8 @@ export function SidePanel(props: {
   onLock: (n: number, locked: boolean) => void;
   /** The holes (or tees) a group can start on, in the order the list shows them. */
   holeOptions: number[];
+  /** The hole with its flight letter for a group ("1A"), when the draw can say. */
+  slotOf?: (groupNumber: number) => string | undefined;
   onMoveGroupToHole: (groupNumber: number, hole: number) => void;
   onSwapGroups: (a: number, b: number) => void;
   explain: (playerId: string) => RoutingExplanation | null;
@@ -121,7 +125,9 @@ export function SidePanel(props: {
     : [];
 
   const groupLabel = (g: DrawGroup) =>
-    `Group ${g.number} · ${props.shotgun ? "hole" : "tee"} ${g.startHole} · ${fmtTime(g.time)}`;
+    `Group ${g.number} · ${props.shotgun ? "hole" : "tee"} ${
+      props.shotgun ? (props.slotOf?.(g.number) ?? g.startHole) : g.startHole
+    } · ${fmtTime(g.time)}`;
 
   // A group whose members are all provisional is labelled from them, not from the carrier flight
   // id the database row needs.
@@ -316,6 +322,7 @@ export function SidePanel(props: {
                         draw={draw}
                         shotgun={props.shotgun}
                         holeOptions={props.holeOptions}
+                        slotOf={props.slotOf}
                         onMove={props.onMoveGroupToHole}
                         onSwap={props.onSwapGroups}
                       />
@@ -382,6 +389,7 @@ export function SidePanel(props: {
                     draw={draw}
                     shotgun={props.shotgun}
                     holeOptions={props.holeOptions}
+                    slotOf={props.slotOf}
                     onMove={props.onMoveGroupToHole}
                     onSwap={props.onSwapGroups}
                   />

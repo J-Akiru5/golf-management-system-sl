@@ -921,7 +921,7 @@ export function reducer(state: DeskState, a: Action): DeskState {
         : [];
       // The club fills a day as it goes: the first start takes groups until the holes are used,
       // and the next start takes whoever is left, rather than moving a whole class on.
-      const result = route(input, { lockedGroups: locked, flightPerWave: true });
+      const result = route(input, { lockedGroups: locked, splitClassesAcrossWaves: true });
       const sameMembers = (a2: string[], b2: string[]) =>
         a2.length === b2.length && [...a2].sort().join(",") === [...b2].sort().join(",");
       const draw: DrawGroup[] = result.groups.map((g) => ({

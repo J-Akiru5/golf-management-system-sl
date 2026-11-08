@@ -20,8 +20,10 @@ import { ScrollFade } from "@/components/ui/scroll-fade";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { COURSE_IS_PLACEHOLDER, MAP_H, MAP_HOLES, MAP_W } from "@/lib/course/layout";
 import type { Tournament } from "@/lib/data/types";
+import { sessionFinderFor } from "@/lib/draw/day-sessions";
 import { buildFlightQueue } from "@/lib/draw/flight-queue";
 import { fmtTime } from "@/lib/format";
+import { useDesk } from "@/lib/store/desk-store";
 import { useBoard } from "@/lib/ui/board";
 import { cn } from "@/lib/ui/cn";
 import { clampPan, clampZoom, type Pan, panBounds, zoomAbout } from "@/lib/ui/map-pan";
@@ -105,9 +107,16 @@ function ControlRoomInner({
   });
   const startClock = startGroups[0]?.time ?? config.firstTeeTime;
   // The queue reads the whole draw, not just the start shown on the map.
+  const { days, drawDay } = useDesk();
   const queueModel = useMemo(
-    () => buildFlightQueue(draw ?? [], tournament.flights, config.holes),
-    [draw, tournament.flights, config.holes],
+    () =>
+      buildFlightQueue(
+        draw ?? [],
+        tournament.flights,
+        config.holes,
+        sessionFinderFor(days, drawDay),
+      ),
+    [draw, tournament.flights, config.holes, days, drawDay],
   );
 
   const startPan = (e: React.PointerEvent<HTMLElement>) => {

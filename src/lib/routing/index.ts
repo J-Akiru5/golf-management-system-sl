@@ -82,12 +82,6 @@ export interface RouteOptions {
    * the 18 holes are used, and wave 2 takes whoever is left.
    */
   splitClassesAcrossWaves?: boolean;
-  /**
-   * Each flight takes its own wave: Flight A fills the holes at the first start and Flight B queues
-   * behind it from hole 1 at the next start, even if A left holes vacant (issue 195). Overrides
-   * `splitClassesAcrossWaves` for deciding where a flight starts.
-   */
-  flightPerWave?: boolean;
 }
 
 /** Steps 2 to 7 of the routing flow: classify one player. Pure, so it can be tested alone. */
@@ -435,7 +429,6 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
           occupied,
           drawSeed,
           options.splitClassesAcrossWaves ?? false,
-          options.flightPerWave ?? false,
         );
         warnings.push(...plan.warnings);
         slots.push(...plan.slots);
@@ -449,7 +442,6 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
         occupied,
         drawSeed,
         options.splitClassesAcrossWaves ?? false,
-        options.flightPerWave ?? false,
       );
       warnings.push(...plan.warnings);
       slots = plan.slots;
