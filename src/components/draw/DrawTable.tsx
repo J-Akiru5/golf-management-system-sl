@@ -78,7 +78,7 @@ export function DrawTable({
                     <tr
                       key={group.number}
                       className={`border-b border-line last:border-b-0 ${
-                        rowSelected ? "bg-accent/10" : ""
+                        rowSelected ? "bg-fairway-soft/50" : ""
                       }`}
                     >
                       <th
@@ -99,7 +99,7 @@ export function DrawTable({
                         <button
                           type="button"
                           className={`btn small ghost min-h-[44px] md:min-h-0 ${
-                            rowSelected ? "!border-accent !text-accent" : ""
+                            rowSelected ? "!border-fairway !bg-fairway-soft !text-ink" : ""
                           }`}
                           aria-pressed={rowSelected}
                           aria-label={`Select group ${group.number}`}
@@ -126,13 +126,15 @@ export function DrawTable({
                           <td
                             key={cell.playerId}
                             className={`min-h-[44px] px-3 py-2 align-middle ${
-                              isSelected ? "bg-accent/15" : ""
+                              isSelected ? "bg-fairway-soft" : ""
                             }`}
                           >
                             <button
                               type="button"
-                              className={`inline-flex min-h-[44px] w-full items-center gap-1.5 rounded-md px-1 py-1 text-left hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-0 ${
-                                isSelected ? "font-semibold text-accent" : ""
+                              className={`inline-flex min-h-[44px] w-full items-center gap-1.5 rounded-md px-1 py-1 text-left hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fairway md:min-h-0 ${
+                                isSelected
+                                  ? "font-semibold text-ink ring-2 ring-inset ring-fairway"
+                                  : ""
                               }`}
                               aria-pressed={isSelected}
                               onClick={() => onSelectPlayer(cell.playerId)}
