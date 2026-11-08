@@ -291,7 +291,7 @@ export function filterRoster(
   return players.filter(
     (player) =>
       (!needle || searchKey(player.name).includes(needle)) &&
-      (!wantedFlight || player.flight === wantedFlight),
+      (!wantedFlight || (player.flight?.trim() ?? "") === wantedFlight),
   );
 }
 

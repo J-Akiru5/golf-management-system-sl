@@ -184,6 +184,17 @@ describe("filterRoster", () => {
     expect(filterRoster(players)).toEqual(players);
   });
 
+  it("selects a flight whose stored name has surrounding spaces", () => {
+    const padded: PublicRosterPlayer[] = [
+      { ...players[0]!, name: "Padded Player", flight: "  Flight A  " },
+    ];
+
+    expect(rosterFlights(padded)).toEqual(["Flight A"]);
+    expect(filterRoster(padded, { flight: "Flight A" }).map((player) => player.name)).toEqual([
+      "Padded Player",
+    ]);
+  });
+
   it("combines the name search and the flight filter", () => {
     expect(
       filterRoster(players, { query: "mar", flight: "Ladies A" }).map((player) => player.name),

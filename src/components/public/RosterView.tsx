@@ -52,7 +52,7 @@ export function RosterPage({
           <LanguageSwitcher tone="on-forest" />
         </div>
         <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
-          Player roster
+          {t("programme.playersTitle")}
         </h1>
         <p className="text-on-forest-muted">{t("programme.playersIntro")}</p>
       </header>
@@ -72,8 +72,8 @@ export function RosterPage({
         </div>
       ) : unavailable === "unpublished" ? (
         <section className="pairings-empty" role="status" data-testid="roster-empty">
-          <h2>The player roster is not out yet.</h2>
-          <p>The roster appears when the organizers publish the event.</p>
+          <h2>{t("pairings.notOutTitle")}</h2>
+          <p>{t("pairings.notOutBody")}</p>
           <Link className="btn ghost no-print" href="/pairings">
             {t("programme.navPairings")}
           </Link>
