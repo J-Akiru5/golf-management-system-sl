@@ -68,6 +68,12 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Database } from "@/lib/supabase/types";
 import { actionNotice } from "./action-notice";
+import {
+  type DayPreference,
+  dayOnEventSwitch,
+  readDayPreference,
+  writeDayPreference,
+} from "./day-preference";
 import { type DrawJob, planDrawJobs, publishedWhileWritesPending } from "./draw-persist";
 import { activeTournament, boardOf, emptyState, entriesFor, initialState, reducer } from "./state";
 
@@ -191,6 +197,20 @@ const LOCAL_ONLY_ACTIONS: ReadonlySet<Action["type"]> = new Set([
   "publishAck",
 ]);
 
+/**
+ * This browser's storage, or null in a server render and when the browser refuses it. Read through
+ * a function so the provider can call it without ever touching `window` during render.
+ */
+function dayStorage(): Storage | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    // Storage switched off: the desk forgets the day between visits, and nothing else changes.
+    return null;
+  }
+}
+
 export function DeskProvider({ children }: { children: ReactNode }) {
   const connected = isSupabaseConfigured();
   // Every action reports what it did. One listener, so no screen has to invent its own wording.
@@ -212,6 +232,24 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const revisions = useRef<Record<string, number>>({});
   // An event to keep selected across the next load, for example one that was just created.
   const keepSelected = useRef<string | null>(null);
+  // The playing day this browser last showed. It is read once, on the first load of a mount, so a
+  // later reload or a remount cannot put an older day back over the organizer's own choice.
+  const savedDay = useRef<DayPreference | null>(null);
+  const savedDayRead = useRef(false);
+  const restoreDayPreference = useCallback((): DayPreference | null => {
+    if (!savedDayRead.current) {
+      savedDayRead.current = true;
+      savedDay.current = readDayPreference(dayStorage());
+    }
+    return savedDay.current;
+  }, []);
+  // Remembers the day on screen. Written against the event it was chosen on, so switching events can
+  // tell whether that day applies there. A browser that refuses storage just forgets it.
+  const rememberDay = useCallback((tournamentId: string, day: number | null) => {
+    if (day === null) return;
+    const storage = dayStorage();
+    if (storage) writeDayPreference(storage, tournamentId, day);
+  }, []);
   // Handed to the adapters, which are rebuilt on every state change, so the revision outlives them.
   const revisionStore: RevisionStore = useMemo(
     () => ({
@@ -306,9 +344,22 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         userId = data.user.id;
         awaitingSession.current = false;
         const signedIn = await getDeskMember(supabase, userId);
+        // The day this browser had open, restored once per mount. The saved day is used only for
+        // the event it was chosen on (or when no event was named), so another event's days are never
+        // assumed; the chosen event always wins over a stale saved one.
+        const saved = restoreDayPreference();
+        const preferredEvent =
+          keepSelected.current ?? latest.current.activeTournamentId ?? saved?.tournamentId ?? null;
+        const preferredDay =
+          saved && (saved.tournamentId === null || saved.tournamentId === preferredEvent)
+            ? saved.dayNumber
+            : null;
         const loaded = await loadDeskState(supabase, signedIn.clubId, {
-          preferTournamentId: keepSelected.current ?? latest.current.activeTournamentId,
-          dayNumber: drawDayRef.current,
+          preferTournamentId: preferredEvent,
+          dayNumber: preferredDay,
+          // Only a remembered day may fall back: an event whose day was removed since the last
+          // visit opens on its first round rather than failing the whole load.
+          ...(preferredDay === null ? {} : { fallbackToFirstDay: true }),
         });
         if (!active) return "failed";
         keepSelected.current = null;
@@ -316,7 +367,18 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         setMember({ displayName: signedIn.displayName, role: signedIn.role });
         revisions.current = loaded.revisions;
         roundsRef.current = loaded.rounds;
-        const shownDay = loaded.roundDays[loaded.state.activeTournamentId ?? ""] ?? null;
+        // The round the board was read from, as long as the event still calls it a playing day.
+        const shownEvent = loaded.state.activeTournamentId;
+        const shownDays = shownEvent ? playingDaysOfEvent(loaded.state.days[shownEvent] ?? []) : [];
+        const boardDay = shownEvent ? (loaded.roundDays[shownEvent] ?? null) : null;
+        let shownDay = shownDays.some((day) => day.dayNumber === boardDay) ? boardDay : null;
+        // Defensive: a remembered day the event no longer plays (or a round with no day row) must
+        // not leave the desk naming a day it cannot show. The first playing day is used and
+        // remembered instead, without asking for another load.
+        if (shownDay === null) {
+          shownDay = shownDays[0]?.dayNumber ?? null;
+          if (shownEvent && shownDay !== null) rememberDay(shownEvent, shownDay);
+        }
         drawDayRef.current = shownDay;
         setDrawDayState(shownDay);
         rawDispatch({ type: "hydrate", state: loaded.state });
@@ -397,14 +459,21 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       active = false;
       subscription.subscription.unsubscribe();
     };
-  }, [connected, reloadToken]);
+  }, [connected, reloadToken, rememberDay, restoreDayPreference]);
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
-  const setDrawDay = useCallback((day: number | null) => {
-    drawDayRef.current = day;
-    setDrawDayState(day);
-    setReloadToken((n) => n + 1);
-  }, []);
+  const setDrawDay = useCallback(
+    (day: number | null) => {
+      drawDayRef.current = day;
+      setDrawDayState(day);
+      // Remembered against the event it was chosen on, so switching events can tell whether the day
+      // applies there. A day cleared to null leaves the last saved one alone.
+      const tournamentId = latest.current.activeTournamentId;
+      if (day !== null && tournamentId) rememberDay(tournamentId, day);
+      setReloadToken((n) => n + 1);
+    },
+    [rememberDay],
+  );
   const onEventCreated = useCallback((id: string) => {
     keepSelected.current = id;
     setReloadToken((n) => n + 1);
@@ -518,6 +587,20 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   // draw actions are also queued for the database.
   const dispatch = useCallback<Dispatch<Action>>(
     (rawAction) => {
+      // Switching events keeps the day on screen when the new event plays it too, so the organizer
+      // lands on the same round rather than the first one. The choice is remembered against the new
+      // event first, and the reload token below is what reads that event's board for that day.
+      if (rawAction.type === "selectTournament") {
+        const eventDays = rawAction.id ? (latest.current.days[rawAction.id] ?? []) : [];
+        const nextDay = dayOnEventSwitch(drawDayRef.current, playingDaysOfEvent(eventDays));
+        drawDayRef.current = nextDay;
+        setDrawDayState(nextDay);
+        keepSelected.current = rawAction.id;
+        if (rawAction.id) {
+          rememberDay(rawAction.id, nextDay);
+          setReloadToken((n) => n + 1);
+        }
+      }
       const context = dayContext();
       const action: Action =
         rawAction.type === "generate"
@@ -705,7 +788,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [apply, applyBoard, applyPublished, client, connected, runDrawJob, saveFailed],
+    [apply, applyBoard, applyPublished, client, connected, rememberDay, runDrawJob, saveFailed],
   );
 
   const adapters = useMemo<Adapters>(() => {
