@@ -5087,3 +5087,697 @@ html[data-textsize="large"] {
   width: 22px;
   height: 22px;
 }
+
+/* ---------- P1 pairings (phone first) ---------- */
+.p-pairings {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Nothing inside may force a horizontal scroll on a narrow phone. */
+.p-pairings > *,
+.p-toolbar > *,
+.p-toolbar-row > *,
+.p-toolbar-meta > *,
+.p-toolbar-actions > *,
+.p-actions > *,
+.p-card > *,
+.p-card-top > *,
+.p-card-foot > *,
+.p-players > *,
+.p-row > *,
+.p-groups > *,
+.p-session > * {
+  min-width: 0;
+}
+
+.p-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  gap: 6px;
+  padding-top: max(env(safe-area-inset-top, 0px), 4px);
+  padding-inline: 8px;
+  padding-bottom: 4px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.p-toolbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.p-toolbar-tools .p-chips {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.p-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.p-search-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.p-search {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-size: 16px;
+}
+
+/* Only reserve room for the clear button when it is actually there. */
+.p-search.has-clear {
+  padding-right: 44px;
+}
+
+.p-search:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.p-clear {
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.p-clear:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.p-density {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding: 1px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-sunken);
+}
+
+.p-density-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: 600 13px / 16px var(--f-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.p-density-btn[aria-pressed="true"] {
+  background: var(--surface-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+
+.p-density-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.p-chips {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.p-chip {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: 600 14px / 1 var(--f-sans);
+  white-space: nowrap;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+.p-chip.is-active {
+  background: var(--forest);
+  color: var(--on-forest);
+  border-color: var(--forest);
+}
+
+.p-chip:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.p-toolbar-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 20px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.p-count {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.p-notice {
+  color: var(--ink-muted);
+  line-height: 1.35;
+}
+
+.p-flight-select {
+  flex: none;
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.p-flight-select:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* The phone shows one clear control; the browser's own search clear would be a second X. */
+.p-search::-webkit-search-cancel-button,
+.p-search::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.p-toolbar-actions {
+  display: none;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* At the top of the page the search row is the action; this keeps Find me in reach without
+   covering the first card. The sticky bottom bar repeats it once the list is being read. */
+.p-toolbar-find {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .p-toolbar-find {
+    display: inline-flex;
+    flex: none;
+    margin-left: auto;
+    min-height: 44px;
+    height: auto;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+}
+
+.p-list {
+  display: grid;
+  gap: 12px;
+  /* Room for the sticky action bar so it never covers the last card. */
+  padding-bottom: 84px;
+}
+
+.p-session {
+  display: grid;
+  gap: 8px;
+}
+
+.p-session-bar {
+  position: sticky;
+  top: var(--p-toolbar-h, 120px);
+  z-index: 20;
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font: 700 12px / 16px var(--f-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.p-groups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.p-card {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  scroll-margin-top: calc(var(--p-toolbar-h, 120px) + 56px);
+  scroll-margin-bottom: 96px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.p-card.is-own {
+  border-left: 4px solid var(--gold);
+}
+
+.p-card.is-hit {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  animation: p-flash 1.6s ease-out;
+}
+
+@keyframes p-flash {
+  0% {
+    background: var(--gold-soft);
+  }
+  100% {
+    background: var(--surface-raised);
+  }
+}
+
+.p-card-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.p-time {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 26px;
+  line-height: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.p-time.is-tbc {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.p-hole {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--fairway-soft);
+  color: var(--ink);
+  font: 700 13px / 1 var(--f-sans);
+  white-space: nowrap;
+}
+
+.p-own-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--on-gold);
+  font: 700 11px / 1 var(--f-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.p-players {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  display: grid;
+}
+
+.p-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 6px 12px;
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 24px;
+}
+
+.p-row + .p-row {
+  border-top: 1px solid var(--line);
+}
+
+.p-row .avatar {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+
+.p-row-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  font-size: inherit;
+  overflow-wrap: anywhere;
+}
+
+.p-you {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--on-gold);
+  font: 700 11px / 1 var(--f-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.p-row.is-hit {
+  background: var(--gold-soft);
+}
+
+.p-row.is-hit .p-row-name {
+  font-weight: 700;
+}
+
+.p-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 8px;
+}
+
+.p-flight {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font: 600 11px / 1 var(--f-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* The same chip in the top row, for compact cards only. */
+.p-flight-top {
+  display: none;
+}
+
+.is-you-name {
+  font-weight: 700;
+}
+
+/* Compact density: players run inline so six cards fit a 390x844 phone. */
+.is-compact .p-card-top {
+  padding: 6px 10px 4px;
+}
+
+.is-compact .p-time {
+  font-size: 24px;
+  line-height: 24px;
+}
+
+.is-compact .p-hole {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.is-compact .p-flight-top {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font: 600 10px / 1 var(--f-sans);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.is-compact .p-players {
+  display: block;
+  padding: 4px 10px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.is-compact .p-row {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.is-compact .p-row + .p-row {
+  border-top: 0;
+}
+
+.is-compact .p-row .avatar {
+  display: none;
+}
+
+.is-compact .p-row-name {
+  display: inline;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.is-compact .p-row + .p-row::before {
+  content: "·";
+  margin: 0 5px;
+  color: var(--ink-muted);
+}
+
+.is-compact .p-row.is-hit {
+  background: var(--gold-soft);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.is-compact .p-you {
+  min-height: 16px;
+  padding: 0 5px;
+  font-size: 9px;
+}
+
+.is-compact .p-card-foot {
+  display: none;
+}
+
+.p-empty {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  padding: 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 14px;
+  color: var(--ink-muted);
+}
+
+.p-actions {
+  position: sticky;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  z-index: 30;
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-raised);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 180ms;
+}
+
+.p-actions.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.p-action-primary {
+  border: 0;
+  background: var(--forest);
+  color: var(--on-forest);
+  font-weight: 700;
+}
+
+.p-actions .p-action-primary {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 48px;
+}
+
+.p-actions .btn.ghost {
+  flex: none;
+  height: auto;
+  min-height: 48px;
+}
+
+/* Two words of label need less room once the search field shares the row. */
+@media (max-width: 420px) {
+  .p-density-btn {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-card {
+    transition: none;
+    animation: none;
+  }
+  .p-card.is-hit {
+    outline: 2px solid var(--gold);
+  }
+  .p-actions {
+    transition: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .p-toolbar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .p-toolbar-row {
+    display: flex;
+    flex-wrap: nowrap;
+    flex: 0 1 360px;
+  }
+  .p-toolbar-tools {
+    flex: 1 1 auto;
+  }
+  .p-toolbar-meta {
+    margin-left: auto;
+  }
+  .p-toolbar-actions {
+    display: flex;
+  }
+  .p-actions {
+    display: none;
+  }
+  .p-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .p-session-bar {
+    font-size: 12px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .p-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .public-pairings {
+    max-width: 72rem;
+  }
+}
+
+@media print {
+  .p-toolbar,
+  .p-chips,
+  .p-toolbar-actions,
+  .p-density,
+  .p-clear,
+  .p-actions {
+    display: none !important;
+  }
+  .p-list {
+    padding-bottom: 0;
+  }
+  .p-session-bar {
+    position: static;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: #000;
+  }
+  .p-groups {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .p-card {
+    break-inside: avoid;
+    border-color: #000;
+    box-shadow: none;
+  }
+  .p-card.is-own {
+    border-left-color: #000;
+  }
+}

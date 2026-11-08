@@ -123,10 +123,10 @@ export default async function PublicPairingsPage() {
   return (
     <main className="public public-pairings mobile-bar-space">
       <PlayerOfflineNotice path="/pairings" />
-      <header className="public-head">
+      <header className="public-head !p-4 sm:!p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <TeeLineLogo variant="reverse" width={172} />
+            <TeeLineLogo variant="reverse" width={144} />
             <span className="leading-tight">
               <b className="block font-display text-[13px] font-semibold">{t("pairings.title")}</b>
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
@@ -139,11 +139,11 @@ export default async function PublicPairingsPage() {
         </div>
         {data && (
           <>
-            <p className="overline mt-3 !text-gold">
+            <p className="overline mt-2 !text-gold">
               {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
               {fmtTime(data.firstTeeTime)}
             </p>
-            <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px] lg:text-[56px] lg:leading-[60px]">
+            <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
               {data.name}
             </h1>
             <p className="text-on-forest-muted">{dateLabel}</p>
