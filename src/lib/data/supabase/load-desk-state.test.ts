@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickRoundForDay } from "./load-desk-state";
+import { pickRoundForDay, pickRoundForLoad } from "./load-desk-state";
 
 // A three-day event has one round per playing day. The desk used to fall back to the first round, so
 // asking for day 3 showed day 1's board (audit finding A1, GitHub #174).
@@ -24,5 +24,21 @@ describe("pickRoundForDay", () => {
   it("returns the first round when no day is asked for", () => {
     expect(pickRoundForDay(ROUNDS, null)?.id).toBe("round-1");
     expect(pickRoundForDay([], null)).toBeNull();
+  });
+});
+
+describe("pickRoundForLoad", () => {
+  it("is strict about a requested day unless fallbackToFirstDay is set", () => {
+    const oneRound = [{ id: "round-1", day_number: 1 }];
+    // Absent or false keeps the strict path the loader turns into an error.
+    expect(pickRoundForLoad(oneRound, 3)).toBeNull();
+    expect(pickRoundForLoad(oneRound, 3, false)).toBeNull();
+    // Set, a day with no round reads the first round instead of failing the load.
+    expect(pickRoundForLoad(oneRound, 3, true)?.id).toBe("round-1");
+  });
+
+  it("keeps the asked day's own round when it has one", () => {
+    expect(pickRoundForLoad(ROUNDS, 3, true)?.id).toBe("round-3");
+    expect(pickRoundForLoad(ROUNDS, null, true)?.id).toBe("round-1");
   });
 });

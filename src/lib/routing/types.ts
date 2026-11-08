@@ -105,6 +105,11 @@ export interface TournamentConfig {
   minGroupSize: number;
   /** "HH:MM" 24-hour. */
   firstTeeTime: string;
+  /**
+   * "HH:MM" 24-hour afternoon start for the whole event, from `tournaments.pm_first_tee_time`.
+   * Null when the club has not stored one; a playing day's own afternoon start still wins over it.
+   */
+  pmFirstTeeTime?: string | null;
   /** Minutes between groups (two-tee start). */
   intervalMinutes: number;
   /** Minutes between start times (shotgun): how much later the next start follows. */

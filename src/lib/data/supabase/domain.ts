@@ -259,6 +259,7 @@ export function toTournament(
     groupSize: row.group_size,
     minGroupSize: row.min_group_size,
     firstTeeTime: row.first_tee_time.slice(0, 5),
+    pmFirstTeeTime: row.pm_first_tee_time ? row.pm_first_tee_time.slice(0, 5) : null,
     intervalMinutes: row.interval_minutes,
     waveGapMinutes: row.wave_gap_minutes,
   };

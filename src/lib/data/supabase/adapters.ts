@@ -796,6 +796,37 @@ export function createSupabaseAdapters(
       dispatch({ type: "setDayStart", tournamentId, dayNumber, time });
       options.onSaved();
     },
+    setDayPmStart: async (tournamentId, dayNumber, time) => {
+      const write = () =>
+        client
+          .from("tournament_days")
+          .update({ pm_start_time: time })
+          .eq("club_id", clubId)
+          .eq("tournament_id", tournamentId)
+          .eq("day_number", dayNumber)
+          .select("id");
+      const { data, error } = await write();
+      if (error) {
+        // The column arrives with 20261108000800; a database without it is a supported state that
+        // says so instead of failing with the raw message.
+        const missing =
+          error.code === "42P01" ||
+          error.code === "42703" ||
+          /does not exist|schema cache/i.test(error.message);
+        throw new Error(
+          missing
+            ? "The afternoon start needs migration 20261108000800. Nothing was saved."
+            : `Could not save the afternoon start for that day: ${error.message}`,
+        );
+      }
+      if (!data?.length) {
+        throw new Error(
+          "This event has no stored row for that day. Save the event dates in Settings first.",
+        );
+      }
+      dispatch({ type: "setDayPmStart", tournamentId, dayNumber, time });
+      options.onSaved();
+    },
     createFromTemplate: (name, date, branding) => {
       // A club with no event yet has no tees or categories to copy, so it starts from the starter
       // setup. Either way the new event gets its own categories and flights (they belong to one

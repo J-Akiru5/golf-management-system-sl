@@ -192,6 +192,8 @@ export interface TournamentDay {
   label: string;
   /** HH:MM, or null when the day's start is not set. */
   startTime: string | null;
+  /** HH:MM afternoon start for this day (`tournament_days.pm_start_time`); null when it has none. */
+  pmStartTime?: string | null;
   isPlayingDay: boolean;
 }
 

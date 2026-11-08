@@ -203,6 +203,8 @@ export type TournamentRow = {
   cutoff_date: string;
   start_format: "shotgun" | "two_tee";
   first_tee_time: string;
+  /** Added by 20261106000100. The club's afternoon start; optional so an older database still loads. */
+  pm_first_tee_time?: string | null;
   interval_minutes: number;
   wave_gap_minutes: number;
   group_size: number;
@@ -237,6 +239,8 @@ export type TournamentDayRow = {
   play_date: string;
   label: string;
   start_time: string | null;
+  /** Added by 20261108000800. Optional so a database before that migration still loads. */
+  pm_start_time?: string | null;
   notes: string | null;
   is_playing_day: boolean;
   created_at: string;
@@ -700,6 +704,7 @@ export interface Database {
           cutoff_date: string;
           start_format: TournamentRow["start_format"];
           first_tee_time: string;
+          pm_first_tee_time?: string | null;
           interval_minutes?: number;
           wave_gap_minutes?: number;
           group_size?: number;
@@ -733,6 +738,7 @@ export interface Database {
           play_date: string;
           label: string;
           start_time?: string | null;
+          pm_start_time?: string | null;
           notes?: string | null;
           is_playing_day?: boolean;
         }

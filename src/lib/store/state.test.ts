@@ -148,3 +148,123 @@ describe("publishing every playing day", () => {
     expect(publishedSignatureForDay(published, 3)).toBe("");
   });
 });
+
+const BAMBOO = "bamboo-tee-2026";
+
+/** The demo event's days with the given edits, so a test never depends on the demo's own times. */
+function withDaysOfBamboo(
+  base: DeskState,
+  edit: (day: DeskState["days"][string][number]) => DeskState["days"][string][number],
+): DeskState {
+  const days = base.days[BAMBOO] ?? [];
+  return { ...base, days: { ...base.days, [BAMBOO]: days.map(edit) } };
+}
+
+function withEventPmStart(base: DeskState, time: string | null): DeskState {
+  return {
+    ...base,
+    tournaments: base.tournaments.map((tournament) =>
+      tournament.id === BAMBOO
+        ? { ...tournament, config: { ...tournament.config, pmFirstTeeTime: time } }
+        : tournament,
+    ),
+  };
+}
+
+describe("the afternoon start of a playing day", () => {
+  it("uses the day's own stored afternoon start", () => {
+    const state = withDaysOfBamboo(initialState(), (day) =>
+      day.dayNumber === 1 ? { ...day, startTime: "05:45", pmStartTime: "10:15" } : day,
+    );
+    // The event's afternoon start is different on purpose: the day's own time must win.
+    const input = routingInputFor(withEventPmStart(state, "13:00"), 1);
+    expect(input?.sessions?.starts).toEqual({ AM: "05:45", PM: "10:15" });
+  });
+
+  it("uses the event's afternoon start when the day has none", () => {
+    const state = withDaysOfBamboo(initialState(), (day) =>
+      day.dayNumber === 2 ? { ...day, startTime: "07:00", pmStartTime: null } : day,
+    );
+    const input = routingInputFor(withEventPmStart(state, "13:00"), 2);
+    expect(input?.sessions?.starts).toEqual({ AM: "07:00", PM: "13:00" });
+  });
+
+  it("reads a sparse day list by the day's own values, not its position", () => {
+    const base = withEventPmStart(initialState(), null);
+    const sparse: DeskState["days"][string] = [
+      {
+        id: "d1",
+        dayNumber: 1,
+        playDate: "2026-11-12",
+        label: "Day 1",
+        startTime: null,
+        isPlayingDay: true,
+      },
+      {
+        id: "d2",
+        dayNumber: 2,
+        playDate: "2026-11-13",
+        label: "Day 2",
+        startTime: null,
+        isPlayingDay: true,
+      },
+      {
+        id: "d4",
+        dayNumber: 4,
+        playDate: "2026-11-15",
+        label: "Day 4",
+        startTime: "07:15",
+        pmStartTime: "09:45",
+        isPlayingDay: true,
+      },
+    ];
+    const state: DeskState = { ...base, days: { ...base.days, [BAMBOO]: sparse } };
+
+    // Day 4 is the last playing day, yet its own stored times are what the engine is given.
+    expect(routingInputFor(state, 4)?.sessions?.starts).toEqual({ AM: "07:15", PM: "09:45" });
+    // Day 2 stores nothing, so it keeps the ordinary afternoon default, not a neighbouring day's.
+    expect(routingInputFor(state, 2)?.sessions?.starts).toEqual({ AM: "06:30", PM: "12:30" });
+  });
+
+  it("falls back to the last playing day's 11:30 only when nothing is stored", () => {
+    const base = withEventPmStart(initialState(), null);
+    const sparse: DeskState["days"][string] = [
+      {
+        id: "d1",
+        dayNumber: 1,
+        playDate: "2026-11-12",
+        label: "Day 1",
+        startTime: null,
+        isPlayingDay: true,
+      },
+      {
+        id: "d4",
+        dayNumber: 4,
+        playDate: "2026-11-15",
+        label: "Day 4",
+        startTime: null,
+        isPlayingDay: true,
+      },
+    ];
+    const state: DeskState = { ...base, days: { ...base.days, [BAMBOO]: sparse } };
+    expect(routingInputFor(state, 4)?.sessions?.starts.PM).toBe("11:30");
+    expect(routingInputFor(state, 1)?.sessions?.starts.PM).toBe("12:30");
+  });
+
+  it("moves only the named day's afternoon start", () => {
+    const state = initialState();
+    const before = state.days[BAMBOO] ?? [];
+    const next = run(state, {
+      type: "setDayPmStart",
+      tournamentId: BAMBOO,
+      dayNumber: 2,
+      time: "13:15",
+    });
+    const after = next.days[BAMBOO] ?? [];
+    expect(after.find((day) => day.dayNumber === 2)?.pmStartTime).toBe("13:15");
+    for (const day of after) {
+      if (day.dayNumber === 2) continue;
+      expect(day).toEqual(before.find((old) => old.dayNumber === day.dayNumber));
+    }
+  });
+});

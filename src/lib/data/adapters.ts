@@ -145,6 +145,12 @@ export interface TournamentRepository {
    * used. Only that day's waves move; the other days keep their own start.
    */
   setDayStart(tournamentId: string, dayNumber: number, time: string | null): Promise<void>;
+  /**
+   * Sets the afternoon start of one playing day on its own, or clears it with null so the event's
+   * afternoon start is used. Only that day's afternoon moves; its morning and every other day keep
+   * their own times.
+   */
+  setDayPmStart(tournamentId: string, dayNumber: number, time: string | null): Promise<void>;
 }
 
 /**
@@ -462,6 +468,9 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     },
     setDayStart: async (tournamentId, dayNumber, time) => {
       dispatch({ type: "setDayStart", tournamentId, dayNumber, time });
+    },
+    setDayPmStart: async (tournamentId, dayNumber, time) => {
+      dispatch({ type: "setDayPmStart", tournamentId, dayNumber, time });
     },
   };
 
