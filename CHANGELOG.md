@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **The AgentOps queue now carries issues #185, #186 and #187.** T-0007 adds a public roster,
+  T-0008 adds the player scorecard and team-format engine, and T-0009 generalises the existing
+  Cloudflare R2 client for media and documents. The three contracts are ready but not implemented in
+  this commit. No migration and no deployment.
+
 ### Fixed
 - **The test suite runs from a Windows path that contains a space.** `vitest.config.ts` resolves
   the `@/` alias with `fileURLToPath` instead of `URL.pathname`, which produced a leading-slash,

@@ -62,6 +62,18 @@ The milestone file is `plan/milestones/M1-first-event-readiness.md`. Task contra
 | T-0005 | Retire or align the parked legacy draw writer | Ready |
 | T-0006 | Exercise `open_round` end to end and record the scoring setup | Blocked on T-0001 |
 
+## Milestone M2: player experience and media storage
+
+The milestone file is `plan/milestones/M2-player-experience-and-media.md`. These contracts come from
+issues #185, #186 and #187, opened on 8 November 2026. They are queued behind M1 and do not change
+an M1 rule or a live migration.
+
+| Task | Issue | Scope | State |
+| --- | --- | --- | --- |
+| T-0007 | #185 | Add a dedicated public roster that filters by flight and excludes pairings and private data | Ready |
+| T-0008 | #186 | Build the player scorecard view and the pure team-format engine; live player writes stay owner-gated | Ready |
+| T-0009 | #187 | Generalise Cloudflare R2 storage for media and documents | Ready |
+
 Work that is real but not yet contracted belongs in a new contract through the amendment workflow;
 do not stretch an existing contract to cover it.
 
