@@ -562,6 +562,15 @@ export const en = {
       note: "Name, birthdate and handicap are kept by the club. Ask the desk to correct them, and the change shows here next time you open this page.",
       askDesk: "Ask the desk to correct this",
     },
+    pair: {
+      title: "Your pair",
+      body: "Your partner for this event. The club keeps the pair together in the draw.",
+      number: "Pair number",
+      partner: "Partner",
+      partnerMissing: "Partner not entered yet",
+      notPublished: "Not published yet. The public pairings still show the last published list.",
+      none: "No pair is recorded for this event yet.",
+    },
     contact: {
       title: "How we reach you",
       body: "The club uses these for your entry, and to reach you on the day.",

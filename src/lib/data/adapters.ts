@@ -230,6 +230,38 @@ export interface RegistrationRepository {
   checkIn(entryId: string, dayNumber: number, arrived: boolean): Promise<void>;
 }
 
+export type PairSide = "member" | "guest";
+
+export interface SavePairInput {
+  tournamentId: string;
+  number: number;
+  memberEntryId: string | null;
+  guestEntryId: string | null;
+  action?:
+    | "pair.assign"
+    | "pair.replace"
+    | "pair.move"
+    | "pair.remove"
+    | "pair.create"
+    | "pair.save";
+  reason?: string | null;
+}
+
+export interface SwapPairInput {
+  tournamentId: string;
+  numberA: number;
+  numberB: number;
+  side: PairSide;
+  reason?: string | null;
+}
+
+export interface PairRepository {
+  /** Creates, replaces, moves or removes one pair. Resolves after the write is accepted. */
+  save(input: SavePairInput): Promise<void>;
+  /** Exchanges one side between two full pairs in one write. */
+  swap(input: SwapPairInput): Promise<void>;
+}
+
 export interface CaddieRepository {
   list(): Caddie[];
   add(input: {
@@ -281,6 +313,7 @@ export interface Adapters {
   players: PlayerRepository;
   tournaments: TournamentRepository;
   registrations: RegistrationRepository;
+  pairs: PairRepository;
   caddies: CaddieRepository;
   email: EmailRepository;
   imports: HandicapImportAdapter;
@@ -742,6 +775,52 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     },
   };
 
+  const pairs: PairRepository = {
+    save: async (input) => {
+      // The same rules the database enforces, said here first so a demo build answers plainly.
+      const slots: { side: PairSide; id: string | null }[] = [
+        { side: "member", id: input.memberEntryId },
+        { side: "guest", id: input.guestEntryId },
+      ];
+      if (input.number < 1) throw new Error("A pair number must be 1 or more.");
+      if (input.memberEntryId !== null && input.memberEntryId === input.guestEntryId) {
+        throw new Error("A player cannot fill both sides of one pair.");
+      }
+      for (const slot of slots) {
+        if (!slot.id) continue;
+        const entry = state.entries.find((row) => row.id === slot.id);
+        if (!entry) throw new Error("That player is not entered in this event.");
+        if (entry.role !== slot.side) {
+          throw new Error(`That player is a ${entry.role}, not a ${slot.side}.`);
+        }
+      }
+
+      const before = state.entries.filter((entry) => entry.teamNo === input.number);
+      for (const entry of before) {
+        if (entry.id !== input.memberEntryId && entry.id !== input.guestEntryId) {
+          dispatch({ type: "updateEntry", id: entry.id, patch: { teamNo: null } });
+        }
+      }
+      for (const slot of slots) {
+        if (!slot.id) continue;
+        dispatch({ type: "updateEntry", id: slot.id, patch: { teamNo: input.number } });
+      }
+    },
+    swap: async (input) => {
+      const sideA = state.entries.find(
+        (entry) => entry.teamNo === input.numberA && entry.role === input.side,
+      );
+      const sideB = state.entries.find(
+        (entry) => entry.teamNo === input.numberB && entry.role === input.side,
+      );
+      if (!sideA || !sideB) {
+        throw new Error(`Both pairs need a ${input.side} to swap.`);
+      }
+      dispatch({ type: "updateEntry", id: sideA.id, patch: { teamNo: input.numberB } });
+      dispatch({ type: "updateEntry", id: sideB.id, patch: { teamNo: input.numberA } });
+    },
+  };
+
   const email: EmailRepository = {
     list: async () => [],
     queue: async () => ({
@@ -758,7 +837,7 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
     retryFailed: async () => 0,
   };
 
-  return { players, tournaments, registrations, caddies, email, imports, router, setup };
+  return { players, tournaments, registrations, pairs, caddies, email, imports, router, setup };
 }
 
 const cutOffOf = (s: DeskState, tournamentId: string) =>

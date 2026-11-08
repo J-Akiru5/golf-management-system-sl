@@ -22,6 +22,8 @@ describe("areaOf", () => {
       "/admin/anything",
       "/players",
       "/players/p1",
+      "/pairs",
+      "/pairs/124",
       "/draw",
       "/scores",
       "/print",

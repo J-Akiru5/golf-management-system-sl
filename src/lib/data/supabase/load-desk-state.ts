@@ -441,6 +441,36 @@ export async function loadDeskState(
 
   const entries = asArray(entryRows.data).map(toRegistrationEntry);
 
+  // The pair tables are the source of truth after 20261108002000. A database that has not applied
+  // that migration keeps the team number read from `answers.teamNo`, so the screen still loads.
+  const pairRows = await client
+    .from("registration_pairs")
+    .select("id, number")
+    .eq("club_id", clubId);
+  const pairMemberRows = await client
+    .from("registration_pair_members")
+    .select("pair_id, registration_id")
+    .eq("club_id", clubId);
+  if (pairRows.error && !missingObject(pairRows.error)) {
+    throw new Error(`Could not load the pairs: ${pairRows.error.message}`);
+  }
+  if (pairMemberRows.error && !missingObject(pairMemberRows.error)) {
+    throw new Error(`Could not load the pair members: ${pairMemberRows.error.message}`);
+  }
+  if (!pairRows.error && !pairMemberRows.error) {
+    const numberByPair = new Map(
+      asArray(pairRows.data).map((row) => [row.id, row.number] as const),
+    );
+    const numberByRegistration = new Map<string, number>();
+    for (const row of asArray(pairMemberRows.data)) {
+      const number = numberByPair.get(row.pair_id);
+      if (number !== undefined) numberByRegistration.set(row.registration_id, number);
+    }
+    for (const entry of entries) {
+      entry.teamNo = numberByRegistration.get(entry.id) ?? null;
+    }
+  }
+
   // The selected days live in registration_days after 20261037000000. Before it, the old
   // teePreferences keys are the only record; derive the same day numbers so the UI is unchanged.
   const dayNumberById = new Map(

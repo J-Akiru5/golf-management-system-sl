@@ -1,8 +1,10 @@
 "use client";
 
+import { UserPlus } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Avatar, StatusPill } from "@/components/bits";
+import { Button } from "@/components/ui/button";
 import { fmtHcp, fmtIndex } from "@/lib/format";
 import type { RegistrationStatus } from "./types";
 
@@ -39,6 +41,8 @@ export interface RegistrationTeamProps {
   guest: TeamPlayer | null;
   /** Right column. */
   member: TeamPlayer | null;
+  /** Fills the empty side of this pair. Omitted on a screen that cannot write. */
+  onAssign?: (side: "guest" | "member") => void;
 }
 
 /** `Index 19.9 · PH 21 · Class B`, minus whatever is not known. Never an invented value. */
@@ -57,7 +61,7 @@ function metaLine(player: TeamPlayer): string {
  * their schedule under their name, then their status and their actions. The pair is the unit the
  * desk works with, so the two players sit side by side instead of as two unrelated rows.
  */
-export function RegistrationTeam({ number, guest, member }: RegistrationTeamProps) {
+export function RegistrationTeam({ number, guest, member, onAssign }: RegistrationTeamProps) {
   const entered = (guest ? 1 : 0) + (member ? 1 : 0);
   // A pair is classed on the average of its two indexes, so both partners normally share one class.
   // Showing it on the pair makes the rule visible instead of leaving it to be read off each player.
@@ -91,14 +95,22 @@ export function RegistrationTeam({ number, guest, member }: RegistrationTeamProp
         <span className="tnum ml-auto text-[12px] text-ink-muted">{entered}/2</span>
       </header>
       <div className="grid gap-px bg-line md:grid-cols-2">
-        <TeamColumn side="guest" player={guest} />
-        <TeamColumn side="member" player={member} />
+        <TeamColumn side="guest" player={guest} onAssign={onAssign} />
+        <TeamColumn side="member" player={member} onAssign={onAssign} />
       </div>
     </article>
   );
 }
 
-function TeamColumn({ side, player }: { side: "guest" | "member"; player: TeamPlayer | null }) {
+function TeamColumn({
+  side,
+  player,
+  onAssign,
+}: {
+  side: "guest" | "member";
+  player: TeamPlayer | null;
+  onAssign?: (side: "guest" | "member") => void;
+}) {
   const title = side === "guest" ? "Guest" : "Member";
   return (
     <section aria-label={title} className="min-w-0 bg-surface-raised p-3.5">
@@ -170,11 +182,18 @@ function TeamColumn({ side, player }: { side: "guest" | "member"; player: TeamPl
           <div className="mt-2 flex flex-wrap items-center gap-1.5">{player.actions}</div>
         </>
       ) : (
-        <p className="hint mt-1.5">
-          {side === "guest"
-            ? "No guest entered for this pair. The member plays alone until one is added."
-            : "No member entered for this pair yet."}
-        </p>
+        <div className="mt-1.5 grid gap-2 justify-items-start">
+          <p className="hint">
+            {side === "guest"
+              ? "No guest entered for this pair. The member plays alone until one is added."
+              : "No member entered for this pair yet."}
+          </p>
+          {onAssign && (
+            <Button variant="secondary" size="sm" onClick={() => onAssign(side)}>
+              <UserPlus aria-hidden="true" /> Assign partner
+            </Button>
+          )}
+        </div>
       )}
     </section>
   );

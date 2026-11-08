@@ -165,6 +165,37 @@ export function validateDraw({
     }
   }
 
+  // A member-guest pair is one unit in the draw. Two partners on the same day who land in different
+  // groups would be printed apart, so the board cannot be published until the organizer fixes it.
+  const pairGroups = new Map<string, { playerId: string; name: string; group: number }[]>();
+  for (const g of draw) {
+    for (const id of g.playerIds) {
+      const r = regById.get(id);
+      const key = r?.pairKey ?? r?.teamKey;
+      if (!key) continue;
+      const list = pairGroups.get(key) ?? [];
+      list.push({ playerId: id, name: nameOf(id), group: g.number });
+      pairGroups.set(key, list);
+    }
+  }
+  for (const [key, members] of pairGroups) {
+    if (members.length < 2) continue;
+    const onDay = members.filter(
+      (member) => dayNumber === null || !dayMembers || dayMembers.has(member.playerId),
+    );
+    if (onDay.length < 2) continue;
+    const numbers = [...new Set(onDay.map((member) => member.group))];
+    if (numbers.length > 1) {
+      issues.push({
+        id: `pair-split-${key}`,
+        severity: "blocking",
+        message: `${onDay.map((member) => member.name).join(" and ")} are partners but are in groups ${numbers.join(" and ")}.`,
+        group: onDay[0]?.group,
+        playerId: onDay[1]?.playerId,
+      });
+    }
+  }
+
   engineWarnings.forEach((w, i) => {
     issues.push({ id: `engine-${i}`, severity: "warning", message: w });
   });

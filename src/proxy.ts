@@ -104,6 +104,7 @@ export const config = {
     "/register/:path*",
     "/tee-times/:path*",
     "/players/:path*",
+    "/pairs/:path*",
     "/caddies/:path*",
     "/audit/:path*",
     "/import/:path*",

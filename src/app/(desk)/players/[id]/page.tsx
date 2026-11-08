@@ -12,12 +12,19 @@ import {
   Pencil,
   ScrollText,
   Trophy,
+  Users,
   UserX,
 } from "lucide-react";
 import Link from "next/link";
 import { use, useState } from "react";
 import { Avatar } from "@/components/bits";
-import { RoleGate } from "@/components/desk";
+import {
+  PairCard,
+  PairDialog,
+  type PairDialogTarget,
+  RegistrationDaysEditor,
+  RoleGate,
+} from "@/components/desk";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { SectionCard } from "@/components/PageHeader";
 import { PlayerCard } from "@/components/PlayerCard";
@@ -28,6 +35,7 @@ import { fmtIso } from "@/lib/data/labels";
 import { registeredDayBadges } from "@/lib/data/sessions";
 import { PAYMENT_LABEL } from "@/lib/data/types";
 import { displayName, fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
+import { nextPairNumber } from "@/lib/pairs/pairs";
 import { shrinkPhoto } from "@/lib/photo";
 import { rawCourseHandicap } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
@@ -54,6 +62,8 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
   const {
     tournament,
     playerById,
+    players,
+    entries,
     regById,
     entryByPlayer,
     draw,
@@ -75,6 +85,12 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
   const [linkEmail, setLinkEmail] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkMessage, setLinkMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const [pairTarget, setPairTarget] = useState<PairDialogTarget | null>(null);
+  const canPair =
+    status === "demo" ||
+    member?.role === "owner" ||
+    member?.role === "organizer" ||
+    member?.role === "desk";
 
   if (!tournament) return <NeedsTournament what="The player profile" />;
 
@@ -227,6 +243,44 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
             </section>
           )}
 
+          {entry && entry.teamNo != null && (
+            <PairCard
+              number={entry.teamNo}
+              entries={entries}
+              players={players}
+              days={days}
+              onManage={setPairTarget}
+            />
+          )}
+          {entry && entry.teamNo == null && canPair && (
+            <SectionCard
+              id="pair-h"
+              icon={<Users />}
+              title="Pair"
+              subtitle="This player is entered alone. A pair is one member and one guest."
+            >
+              <p className="muted text-[14px]">
+                Pair this player with a member or guest who is already entered in the event. Both
+                players keep their own days, status and handicap.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="justify-self-start"
+                onClick={() =>
+                  setPairTarget({
+                    number: nextPairNumber(entries),
+                    side: entry.role,
+                    entryId: entry.id,
+                    start: "menu",
+                  })
+                }
+              >
+                <Users aria-hidden="true" /> Pair this player
+              </Button>
+            </SectionCard>
+          )}
+
           <SectionCard
             id="handicap-h"
             icon={<Calculator />}
@@ -357,6 +411,22 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
                     . Informational only; eligibility uses the imported index.
                   </p>
                 )}
+              </div>
+            )}
+            {entry && (
+              <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                <RegistrationDaysEditor
+                  entry={entry}
+                  days={days.filter((day) => day.isPlayingDay)}
+                  required={tournament.requiredDays ?? null}
+                  max={tournament.maxDays ?? null}
+                  onSave={(next, sessions) =>
+                    adapters.registrations.setDays(entry.id, next, sessions)
+                  }
+                />
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/register">Open registration desk</Link>
+                </Button>
               </div>
             )}
           </SectionCard>
@@ -681,6 +751,21 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
           options={options}
         />
       </section>
+
+      {pairTarget && (
+        <PairDialog
+          open={pairTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setPairTarget(null);
+          }}
+          target={pairTarget}
+          tournamentId={tournament.id}
+          entries={entries}
+          players={players}
+          onSave={(input) => adapters.pairs.save(input)}
+          onSwap={(input) => adapters.pairs.swap(input)}
+        />
+      )}
     </div>
   );
 }

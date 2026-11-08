@@ -14,8 +14,23 @@ Supabase project, because the code and the database are released separately.
   T-0008 adds the player scorecard and team-format engine, and T-0009 generalises the existing
   Cloudflare R2 client for media and documents. The three contracts are ready but not implemented in
   this commit. No migration and no deployment.
+- **The print center can print the player pairings while the draw is still a draft.** When no
+  published snapshot exists, the Pairings tab builds the club's sheet from the current board, marks
+  every page "DRAFT · NOT PUBLISHED · FOR DESK USE ONLY", and enables the PDF and Excel download.
+  The public pages still read only the published snapshot, so players never see a draft. No
+  migration.
+- **Member-guest pairs are first-class and can be changed from the desk.** The registration desk,
+  the player workspace and the new pair page can assign, replace, move, swap, remove or create a
+  pair. A player can be in only one pair per event, and a pair split across two draw groups is a
+  blocking issue, so publish stops until it is fixed. The player's own profile shows their pair and
+  partner, marked not published until the draw is. Migration `20261108002000` is written and
+  reviewed but **not applied to the live project**; until it is, pair writes say so and the existing
+  pair numbers still read from `answers.teamNo`. No push.
 
 ### Fixed
+- **Lint ignores local Claude worktrees.** `biome.json` excludes `.claude/**`, so `pnpm lint` from
+  the main checkout does not treat a nested worktree's `biome.json` as a second root configuration.
+  Development-only; no product behavior change. No migration.
 - **The test suite runs from a Windows path that contains a space.** `vitest.config.ts` resolves
   the `@/` alias with `fileURLToPath` instead of `URL.pathname`, which produced a leading-slash,
   percent-encoded path. Development-only; no product behavior change. All 146 files and 1479 tests

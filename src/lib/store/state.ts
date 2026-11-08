@@ -311,6 +311,7 @@ export function buildRegistrations(s: DeskState): DeskRegistration[] {
       ...reg,
       reasons: [...reg.reasons],
       teamKey: entry.teamNo != null && !hasStoredRouting(entry) ? `team-${entry.teamNo}` : null,
+      pairKey: entry.teamNo == null ? null : `team-${entry.teamNo}`,
     });
   }
   // The class of a member-guest pair is the average of both indexes, the same rule the engine

@@ -30,6 +30,7 @@ import { daySessionSummary } from "@/lib/data/sessions";
 import { downloadBlob } from "@/lib/export/download";
 import { photoOf } from "@/lib/format";
 import { buildDayCountBlocks, buildGroupBlocks } from "@/lib/print/day-counts";
+import { draftPairings as buildDraftPairings } from "@/lib/print/draft-pairings";
 import {
   type BoardScope,
   buildPrintBook,
@@ -120,7 +121,7 @@ export default function PrintCenter() {
     [playingDays, everyDay],
   );
 
-  const pairings = useMemo(() => {
+  const publishedPairings = useMemo(() => {
     if (!tournament) return null;
     const source = published ?? null;
     if (!source) return null;
@@ -174,6 +175,40 @@ export default function PrintCenter() {
     }),
   });
   const printGroups = groups.map(toPrintGroup);
+
+  // The player-facing pairings sheet before the draw is published. It is built from the same board
+  // as the start sheet, goes through the same allow-list projection, and is marked as a draft. The
+  // public pages still read only the published snapshot, so this cannot leak a draft to players.
+  // Once a published list exists it wins, because that is what players can actually see.
+  const draftPairings = publishedPairings
+    ? null
+    : buildDraftPairings({
+        tournamentName: tournament.name,
+        dateLabel: fmtDateLabel(tournament.dates),
+        startFormat: tournament.config.startFormat,
+        firstTeeTime: tournament.config.firstTeeTime,
+        days:
+          allDays && everyDay
+            ? everyDay.map((board) => {
+                const day = playingDays.find((candidate) => candidate.dayNumber === board.day);
+                return {
+                  dayNumber: board.day,
+                  dayLabel: day?.label ?? `Day ${board.day}`,
+                  playDate: day?.playDate ?? null,
+                  groups: board.groups,
+                };
+              })
+            : [
+                {
+                  dayNumber: chosenDay?.dayNumber ?? null,
+                  dayLabel: chosenDay?.label ?? null,
+                  playDate: chosenDay?.playDate ?? null,
+                  groups: printGroups,
+                },
+              ],
+      });
+  const pairings = publishedPairings ?? draftPairings;
+  const pairingsDraft = !publishedPairings && draftPairings !== null;
 
   /**
    * Prints every playing day in one run. The desk holds one day at a time, so this reads the whole
@@ -304,7 +339,9 @@ export default function PrintCenter() {
     tab === "pairings"
       ? pairings
         ? null
-        : "Publish the draw to download the player pairings."
+        : draw
+          ? "No players are placed on this day's board yet."
+          : "Make the draw first."
       : !draw
         ? "Make the draw first."
         : (allDays && !everyDay) || (tab === "counts" && !everyDay)
@@ -569,17 +606,27 @@ export default function PrintCenter() {
           <section className="grid gap-3">
             <h2 className="text-[20px]">Pairings</h2>
             {pairings ? (
-              pairingDays.map((day) => (
-                <PairingsSheet
-                  key={day.dayLabel ?? "event"}
-                  pairings={day.pairings}
-                  title={day.dayLabel ? `Pairings · ${day.dayLabel}` : "Pairings"}
-                />
-              ))
+              <>
+                {pairingsDraft && (
+                  <p className="notice no-print" role="note">
+                    <b>Draft · not published.</b> This sheet is built from the current board.
+                    Players still see the last published list, or nothing.
+                  </p>
+                )}
+                {pairingDays.map((day) => (
+                  <PairingsSheet
+                    key={day.dayLabel ?? "event"}
+                    pairings={day.pairings}
+                    title={day.dayLabel ? `Pairings · ${day.dayLabel}` : "Pairings"}
+                    draft={pairingsDraft}
+                  />
+                ))}
+              </>
             ) : (
               <p className="muted">
-                The player view reads the published list. Publish the draw to print the same list
-                players see.
+                {draw
+                  ? "No players are placed on this day's board yet."
+                  : "Make the draw first; the pairings sheet comes from it."}
               </p>
             )}
           </section>

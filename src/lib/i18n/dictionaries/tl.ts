@@ -563,6 +563,16 @@ export const tl: Dictionary = {
       note: "Ang pangalan, birthdate at handicap ay hawak ng club. Pakiusapan ang desk na itama ang mga ito, at lalabas ang pagbabago dito sa susunod na buksan mo ang pahinang ito.",
       askDesk: "Pakiusapan ang desk na itama ito",
     },
+    pair: {
+      title: "Ang iyong pares",
+      body: "Ang iyong kapares sa event na ito. Pinagsasama ng club ang pares sa draw.",
+      number: "Numero ng pares",
+      partner: "Kapares",
+      partnerMissing: "Wala pang kapares na naitala",
+      notPublished:
+        "Hindi pa na-publish. Ang public pairings ay nagpapakita pa rin ng huling na-publish na listahan.",
+      none: "Wala pang pares na naitala para sa event na ito.",
+    },
     contact: {
       title: "Paano ka namin maaabot",
       body: "Ginagamit ng club ang mga ito para sa entry mo, at para maabot ka sa araw ng laro.",

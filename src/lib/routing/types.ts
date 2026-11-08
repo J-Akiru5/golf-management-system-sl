@@ -123,6 +123,8 @@ export interface Registration {
   playerName: string;
   /** Copied from the player so the draw can keep a pair together. */
   teamKey?: string | null;
+  /** The pair regardless of a stored routing override, used to check a saved board. */
+  pairKey?: string | null;
   status: RegistrationStatus;
   reasons: string[];
   index: number | null;

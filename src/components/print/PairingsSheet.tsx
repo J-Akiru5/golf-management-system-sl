@@ -9,6 +9,8 @@ import styles from "./print.module.css";
 export interface PairingsSheetProps {
   pairings: PublicPairings;
   title?: string;
+  /** The sheet was built from the working board, not the published snapshot. */
+  draft?: boolean;
 }
 
 /**
@@ -18,7 +20,7 @@ export interface PairingsSheetProps {
  *
  * Print view accepts only the public allow-list projection, never player or registration records.
  */
-export function PairingsSheet({ pairings, title = "Pairings" }: PairingsSheetProps) {
+export function PairingsSheet({ pairings, title = "Pairings", draft = false }: PairingsSheetProps) {
   const shotgun = pairings.startFormat === "shotgun";
   const sections = groupStartGroups(pairings.groups, pairings.startFormat);
   const columns = pairingsColumns(pairings.groups.map((group) => group.players.length));
@@ -28,7 +30,12 @@ export function PairingsSheet({ pairings, title = "Pairings" }: PairingsSheetPro
     return (
       <section className={styles.sheet}>
         <h2>{title}</h2>
-        <p>No published pairings are available.</p>
+        {draft && <p className={styles.draftMark}>Draft · not published · for desk use only</p>}
+        <p>
+          {draft
+            ? "No players are placed on this day's board yet."
+            : "No published pairings are available."}
+        </p>
       </section>
     );
   }
@@ -58,6 +65,8 @@ export function PairingsSheet({ pairings, title = "Pairings" }: PairingsSheetPro
                 </p>
               </div>
             </header>
+
+            {draft && <p className={styles.draftMark}>Draft · not published · for desk use only</p>}
 
             <table className={styles.holeTable}>
               <thead>

@@ -25,6 +25,34 @@ describe("normalizeContact", () => {
   });
 });
 
+describe("mapOwnProfile pair", () => {
+  it("maps the player's own pair and partner", () => {
+    const profile = mapOwnProfile({
+      player: { id: "p1", name: "PLAYER ONE" },
+      pair: {
+        number: 124,
+        published: false,
+        partner: { id: "p2", name: "PARTNER TWO" },
+      },
+    });
+    expect(profile?.pair).toEqual({
+      number: 124,
+      published: false,
+      partner: { id: "p2", name: "PARTNER TWO" },
+    });
+  });
+
+  it("leaves the pair undefined when the function predates the key", () => {
+    const profile = mapOwnProfile({ player: { id: "p1", name: "PLAYER ONE" } });
+    expect(profile?.pair).toBeUndefined();
+  });
+
+  it("keeps a null pair when the function answered with none", () => {
+    const profile = mapOwnProfile({ player: { id: "p1", name: "PLAYER ONE" }, pair: null });
+    expect(profile?.pair).toBeNull();
+  });
+});
+
 describe("phone shape", () => {
   it("accepts the Philippines formats people actually write", () => {
     for (const phone of [

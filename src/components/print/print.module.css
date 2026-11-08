@@ -510,6 +510,21 @@
   height: auto;
 }
 
+/* A draft sheet must never be mistaken for the list players can see. Black on white so the mark
+   survives a club printer and a photocopy. */
+.draftMark {
+  margin: 0;
+  padding: 2mm 3mm;
+  border: 1.5px solid #000;
+  color: #000;
+  background: #fff;
+  font-size: 9pt;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .pairingEvent {
   display: grid;
   gap: 0.8mm;
