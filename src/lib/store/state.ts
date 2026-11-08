@@ -30,6 +30,7 @@ import {
   makeDemoSeed,
   makeDemoTournaments,
 } from "@/lib/demo/data";
+import { moveGroupToHole, reorderHoleQueue, swapGroupSlots } from "@/lib/draw/group-slots";
 import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
 import {
   type GroupPlacement,
@@ -183,6 +184,12 @@ export type Action =
   /** Puts a walk-up into a group the staff screen already found an open place in. */
   | { type: "placeOnDraw"; playerId: string; groupNumber: number }
   | { type: "setGroupLocked"; group: number; locked: boolean; reason: string }
+  /** Swaps two groups' start slots (time and hole); both groups end up locked. */
+  | { type: "swapGroupSlots"; a: number; b: number; reason: string }
+  /** Moves a group to another hole at the same start time. */
+  | { type: "moveGroupToHole"; groupNumber: number; hole: number; reason: string }
+  /** Reorders the groups waiting on one hole, earliest start first. */
+  | { type: "reorderHoleQueue"; hole: number; order: number[]; reason: string }
   /**
    * Publishes one playing day and keeps the days already published. The store fills the day
    * fields from the day on screen, so a screen only asks to publish.
@@ -604,6 +611,37 @@ function withBoard(s: DeskState, tournamentId: string | null, board: BoardState)
   return { ...s, boards: { ...s.boards, [tournamentId]: board } };
 }
 
+/** A short plain description of where a group starts, for the manual override log. */
+const slotLabel = (group: DrawGroup | undefined): string | null =>
+  group ? `G${group.number} ${group.time} hole ${group.startHole}` : null;
+
+/** The groups waiting on one hole, earliest start first, for the manual override log. */
+const queueLabel = (draw: DrawGroup[], hole: number): string => {
+  const numbers = draw
+    .filter((g) => g.startHole === hole)
+    .sort((x, y) => x.time.localeCompare(y.time))
+    .map((g) => `G${g.number}`);
+  return `Hole ${hole}: ${numbers.join(", ")}`;
+};
+
+/** The manual override a slot edit records: no player, a move, and where the slot went. */
+const slotOverride = (
+  state: DeskState,
+  tournamentId: string,
+  from: string | null,
+  to: string | null,
+  reason: string,
+): ManualOverride => ({
+  id: `ov-${state.seq + 1}`,
+  tournamentId,
+  playerId: "",
+  kind: "move",
+  from,
+  to,
+  reason,
+  at: new Date().toISOString(),
+});
+
 export function reducer(state: DeskState, a: Action): DeskState {
   switch (a.type) {
     // The Supabase adapter replaces the whole desk once it has read the club's data. Nothing is
@@ -985,6 +1023,51 @@ export function reducer(state: DeskState, a: Action): DeskState {
         ...board,
         draw,
         overrides: [...board.overrides, override],
+      });
+    }
+
+    case "swapGroupSlots": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      const result = swapGroupSlots(board.draw, a.a, a.b);
+      if (!result.ok) return state;
+      const from = slotLabel(board.draw.find((g) => g.number === a.a));
+      const to = slotLabel(result.draw.find((g) => g.number === a.a));
+      return withBoard(state, t.id, {
+        ...board,
+        draw: result.draw,
+        overrides: [...board.overrides, slotOverride(state, t.id, from, to, a.reason)],
+      });
+    }
+
+    case "moveGroupToHole": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      const result = moveGroupToHole(board.draw, a.groupNumber, a.hole, t.config.holes);
+      if (!result.ok) return state;
+      const from = slotLabel(board.draw.find((g) => g.number === a.groupNumber));
+      const to = slotLabel(result.draw.find((g) => g.number === a.groupNumber));
+      return withBoard(state, t.id, {
+        ...board,
+        draw: result.draw,
+        overrides: [...board.overrides, slotOverride(state, t.id, from, to, a.reason)],
+      });
+    }
+
+    case "reorderHoleQueue": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      const result = reorderHoleQueue(board.draw, a.hole, a.order);
+      if (!result.ok) return state;
+      const from = queueLabel(board.draw, a.hole);
+      const to = queueLabel(result.draw, a.hole);
+      return withBoard(state, t.id, {
+        ...board,
+        draw: result.draw,
+        overrides: [...board.overrides, slotOverride(state, t.id, from, to, a.reason)],
       });
     }
 

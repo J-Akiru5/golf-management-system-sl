@@ -100,6 +100,26 @@ export function actionNotice(
       };
     }
 
+    case "swapGroupSlots":
+    case "moveGroupToHole":
+    case "reorderHoleQueue": {
+      // The reducer returns the same state when the slot edit is refused.
+      if (after === before) {
+        return {
+          tone: "bad",
+          title: "Change refused",
+          detail: "That change could not be made.",
+        };
+      }
+      const title =
+        action.type === "swapGroupSlots"
+          ? "Groups swapped"
+          : action.type === "moveGroupToHole"
+            ? "Group moved"
+            : "Queue reordered";
+      return { tone: "ok", title, detail: action.reason };
+    }
+
     default:
       return null;
   }
