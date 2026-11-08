@@ -9,6 +9,21 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-08
+
+Headline: the staff phone app, a round for every playing day, a draw that works one day and one AM or PM session at a time, per-day publish and player portal, pairings that read at a glance, and day-synced Excel and PDF export.
+
+### Migrations shipping with 0.28.0
+All additive. Reported applied to the live project by the owner on 8 Nov 2026 (not independently checked from this tree): `20261106000000_staff_check_in`, `20261108000100_open_round`, `20261108000200_notification_single_read`, `20261108000300_player_self_profile`, `20261108000500_rounds_per_playing_day`, `20261108000600_public_pairings_by_day`, `20261108000700_portal_starts_by_day`.
+
+### Also in this release
+- **Staff phone app** at `/staff` (Today, Schedule, check-in, scan card, score entry, print) with its own account sheet, first-run tour, and a desk role that lands there after sign-in.
+- **One top bar** shared by the organizer desk, the staff app and the player app (Help, light or dark theme, account chip); the staff app follows the theme.
+- **Pairings** list the tee time first, with day chips, AM and PM sections, name search and Find me, and a compact view; the public pairings print as a notice-board sheet.
+- **Player app** desktop home and profile management (name, contact).
+- **Draw page** class tabs and a Cards or Table view; **Print center** Excel and PDF export follows the day selector, with an All playing days option.
+- Known gaps: the day-by-day start sheets, hole grid and poster from the print stream are not in this release; the afternoon start is still set by position rather than per day.
+
 ### Added
 - **A scoring round can be opened from the published draw (issue #149).** New migration
   `20261108000100_open_round.sql` adds one function, `open_round`, owner and organizer only. It
