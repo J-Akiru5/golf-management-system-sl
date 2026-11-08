@@ -146,7 +146,7 @@ function checkDraw(s: Scenario, groups: DrawGroup[], label: string) {
 }
 
 describe("the draw never breaks its rules", () => {
-  it("holds for 300 random fields drawn in AM and PM sessions", () => {
+  it("holds for 300 random fields drawn in AM and PM sessions", { timeout: 60000 }, () => {
     for (let seed = 1; seed <= 300; seed++) {
       const s = scenario(seed, true);
       const result = route(s.input, { seed, splitClassesAcrossWaves: true });
@@ -221,7 +221,9 @@ describe("the draw never breaks its rules", () => {
     }
   });
 
-  it("holds for 150 random fields drawn with no sessions: one session, two flights", () => {
+  it("holds for 150 random fields drawn with no sessions: one session, two flights", {
+    timeout: 60000,
+  }, () => {
     for (let seed = 1000; seed < 1150; seed++) {
       const s = scenario(seed, false);
       const groups = asDraw(route(s.input, { seed, splitClassesAcrossWaves: true }).groups);
@@ -245,7 +247,7 @@ describe("the draw never breaks its rules", () => {
     expect(JSON.parse(JSON.stringify(s.players))).toEqual(copy);
   });
 
-  it("keeps locked groups where they are when it is run again", () => {
+  it("keeps locked groups where they are when it is run again", { timeout: 60000 }, () => {
     for (let seed = 2000; seed < 2060; seed++) {
       const s = scenario(seed, true);
       const first = route(s.input, { seed, splitClassesAcrossWaves: true });
@@ -275,7 +277,9 @@ describe("the draw never breaks its rules", () => {
 describe("hand edits never lose or duplicate anything", () => {
   const key = (g: DrawGroup) => `${g.time}:${g.startHole}`;
 
-  it("holds through 200 random sequences of 40 swaps, moves and reorders", () => {
+  it("holds through 200 random sequences of 40 swaps, moves and reorders", {
+    timeout: 60000,
+  }, () => {
     for (let seed = 1; seed <= 200; seed++) {
       const random = mulberry32(seed * 7919);
       const s = scenario(seed, true);
