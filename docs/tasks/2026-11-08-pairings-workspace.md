@@ -1,6 +1,24 @@
 # Pairings workspace and granular pair control
 
-Status: plan for review, 8 November 2026. No implementation yet, no migration written or applied.
+Status: decisions taken 8 November 2026. Implementation starts on a local branch; the migration is
+written but not applied to the live project.
+
+## Decisions taken
+
+- A pair is always one member and one guest.
+- All six pair actions are in the first cut: assign, replace, move, swap, remove, create from two
+  solo players.
+- A pair change after a draft draw marks the board stale and offers a redraw. Publish stays blocked
+  until the board is redrawn or an override reason is recorded.
+- The signed-in player sees their own pair and partner before publication, marked not published.
+- The pair is stored in new `registration_pairs` and `registration_pair_members` tables. The
+  migration and the guarded write path are part of this work.
+- The first cut includes both the player workspace and the pair page.
+- Owner, organizer and desk may reassign a pair. Every change is audited.
+
+Still assumed unless corrected: the partner picker searches players already entered in the event,
+and offers a link to add an unentered player from the directory. The directory add is a separate
+step in this cut, not a silent registration.
 
 ## The problem
 
@@ -195,25 +213,31 @@ to the pair and the player.
 
 ## Phases
 
-**Phase 1, before the 12 November event (small and shippable)**
+**Phase 1, before the 12 November event (the agreed first cut)**
 
-- `registration_pairs` table, backfill, `save_pair` RPC, repository and tests.
-- Registration desk: assign, replace, move and remove from a pair.
-- Player workspace: pair header and pair card; keep the rest of the profile as it is.
-- Player account: pair line on `/my/profile`.
-- Draw: stale-board warning and a publish guard.
+- `registration_pairs` table, backfill, `save_pair` and `swap_pair_members` RPCs, repository and
+  tests. The migration is written and reviewed but applied to the live project only with owner
+  approval.
+- Registration desk: assign, replace, move, swap, remove and create a pair.
+- Pair page at `/pairs/[number]`: both players, shared class, schedule and the pair actions.
+- Player workspace at `/players/[id]`: pair header and pair card, plus the entry status, days and
+  current draw group. The remaining controls keep their existing screens as deep links.
+- Player account: pair line on `/my/profile`, marked not published when appropriate.
+- Draw: a blocking issue when partners are in different groups, and a publish guard that asks for a
+  redraw or an override reason.
 - Print: the draft pairings sheet shows the pair number when the club wants it (optional).
 
-**Phase 2, one player workspace**
+**Phase 2, finish the single page**
 
-- Move entry controls, days, tee times, draw group and scoring into `/players/[id]`.
-- Extract the tee-time editor and the day editor into reusable components so the workspace and the
-  old screens share them.
-- Keep `/register`, `/tee-times` and `/draw` as deep links for the board-wide work.
+- Move the tee-time editor, caddie, check-in, scoring and the draw move control into
+  `/players/[id]`.
+- Extract the tee-time editor from `/tee-times` so the workspace and the old screen share it.
+- Keep `/register`, `/tee-times` and `/draw` as board-wide tools, not as the only way to reach a
+  player.
 
-**Phase 3, pair page and bulk tools**
+**Phase 3, pair board and bulk tools**
 
-- `/pairs` list and `/pairs/[number]` page.
+- `/pairs` list with search and filters.
 - Print a pair sheet.
 - Bulk pair import and renumber.
 - Swap wizard for a whole flight.
@@ -242,16 +266,17 @@ to the pair and the player.
 - The published snapshot is immutable by design. Do not rewrite it to make the screens agree.
 - The event is four days away. Phase 1 has to stay small; the full workspace is Phase 2.
 
-## Decisions needed
+## Remaining assumptions
 
-1. Is a pair always one member and one guest, or can it be any two players?
-2. Which reassignment actions are needed first: assign missing, replace, move, swap, remove, create?
-3. Should the partner picker also add an unentered player from the directory, or only choose players
-   already entered?
-4. After a pair change with a draft draw, should the board be redrawn automatically, marked stale
-   with a redraw button, or blocked?
-5. Should the player's own account show the pair before publication, or only after publication?
-6. Should we add the `registration_pairs` table, or keep `teamNo` in the JSON for speed?
-7. Who may reassign: owner and organizer only, or the desk as well?
-8. Is the "single page" the player workspace, a pair workspace, or both? The plan recommends the
-   player workspace first, with the pair card, then a pair page later.
+These do not block the first cut; say if any is wrong.
+
+1. The partner picker searches players already entered in the event and shows a link to add an
+   unentered player through the directory. It does not silently create a registration.
+2. A pair change is blocked while a scoring round is open, with the round named in the message.
+3. A new pair uses the next free number, and the organizer can type another number.
+4. The pair page lives at `/pairs/[number]`; the registration desk and the player workspace link to
+   it.
+5. The draft pairings sheet shows the pair number only when the club asks for it, so the current
+   sheet layout does not change by default.
+6. The `answers.teamNo` JSON stays as a read-only fallback for one release, then is removed from the
+   write path.
