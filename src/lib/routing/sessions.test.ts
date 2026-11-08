@@ -221,4 +221,26 @@ describe("a playing day drawn in a morning and an afternoon session", () => {
       true,
     );
   });
+
+  it("does not warn when a small class simply begins in the next empty batch", () => {
+    // Class A fills all 18 holes of the first start exactly. Class B does not span two starts: it
+    // only begins at the next one, so there is no split to flag.
+    const field = [...players(72, 5), ...players(4, 20, 100)];
+    const input = {
+      players: field,
+      config,
+      tees: [tee],
+      categories: [category],
+      flights,
+      sessions: {
+        byPlayer: new Map(field.map((player) => [player.id, "AM" as const])),
+        starts: { AM: "06:30", PM: "12:30" },
+        dayNumber: 4,
+      },
+    };
+
+    const filled = route(input, { seed: 7, splitClassesAcrossWaves: true });
+    expect(startsOf(filled)).toEqual({ "06:30": 18, "06:39": 1 });
+    expect(filled.warnings.some((w) => w.includes("plays across"))).toBe(false);
+  });
 });
