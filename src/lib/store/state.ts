@@ -98,6 +98,11 @@ export interface BoardState {
   warnings: string[];
   published: Published | null;
   overrides: ManualOverride[];
+  /**
+   * Demo only: each playing day's own board, kept when every day is drawn at once. `draw` and
+   * `warnings` above are the day on screen. A connected desk keeps one saved round per day instead.
+   */
+  dayBoards?: Record<number, { draw: DrawGroup[]; warnings: string[] }>;
 }
 
 export const EMPTY_BOARD: BoardState = {
@@ -176,6 +181,10 @@ export type Action =
   | { type: "resolveDeferred"; id: string; decision: "link" | "create" | "drop" }
   /** Draws one playing day. `dayNumber` null keeps the old whole-event behaviour. */
   | { type: "generate"; preserveLocks: boolean; dayNumber?: number | null }
+  /** Demo only: draws every playing day at once, each with its own AM and PM sessions. */
+  | { type: "generateAllDays"; showDay: number | null }
+  /** Demo only: shows another playing day's board, keeping the edits made to the one left. */
+  | { type: "showDay"; from: number | null; to: number }
   | { type: "move"; playerId: string; toGroup: number; reason: string }
   /** Takes a withdrawn player off the day's board, leaving their group slot open. */
   | { type: "withdrawFromDraw"; playerId: string }
@@ -933,12 +942,18 @@ export function reducer(state: DeskState, a: Action): DeskState {
       // A fresh proposal for one day does not take another day's published list down: only a
       // snapshot with no day left in it is cleared, which is the case until days are published.
       const keepsOtherDays = publishedGroupsForOtherDays(board.published, dayNumber).length > 0;
+      // Small groups are checked live by validateDraw, so the engine's one-off copy would go stale.
+      const warnings = result.warnings.filter((w) => !/a group has only/.test(w));
       const next: BoardState = {
         draw,
-        // Small groups are checked live by validateDraw, so the engine's one-off copy would go stale.
-        warnings: result.warnings.filter((w) => !/a group has only/.test(w)),
+        warnings,
         published: a.preserveLocks || keepsOtherDays ? board.published : null,
         overrides: a.preserveLocks ? board.overrides : [],
+        // The other days' boards stay as they were; only the day drawn now is replaced.
+        dayBoards:
+          board.dayBoards && dayNumber !== null
+            ? { ...board.dayBoards, [dayNumber]: { draw, warnings } }
+            : board.dayBoards,
       };
       return withBoard(state, t.id, next);
     }
@@ -1011,6 +1026,49 @@ export function reducer(state: DeskState, a: Action): DeskState {
             ? { ...group, playerIds: [...group.playerIds, a.playerId] }
             : group,
         ),
+      });
+    }
+
+    case "generateAllDays": {
+      const t = activeTournament(state);
+      if (!t) return state;
+      const days = playingDaysOfEvent(state.days[t.id] ?? []);
+      const firstDay = days[0];
+      if (!firstDay) return reducer(state, { type: "generate", preserveLocks: false });
+      const dayBoards: Record<number, { draw: DrawGroup[]; warnings: string[] }> = {};
+      let next = state;
+      for (const day of days) {
+        next = reducer(next, { type: "generate", dayNumber: day.dayNumber, preserveLocks: false });
+        const drawn = boardOf(next);
+        if (drawn.draw) dayBoards[day.dayNumber] = { draw: drawn.draw, warnings: drawn.warnings };
+      }
+      const shown = days.some((d) => d.dayNumber === a.showDay) ? a.showDay : firstDay.dayNumber;
+      const showing = (shown !== null ? dayBoards[shown] : undefined) ?? null;
+      const board = boardOf(next);
+      return withBoard(next, t.id, {
+        ...board,
+        dayBoards,
+        draw: showing?.draw ?? board.draw,
+        warnings: showing?.warnings ?? board.warnings,
+      });
+    }
+
+    case "showDay": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.dayBoards) return state;
+      const target = board.dayBoards[a.to];
+      if (!target) return state;
+      const dayBoards = { ...board.dayBoards };
+      // The edits made to the day being left are kept, so coming back finds them.
+      if (a.from !== null && board.draw) {
+        dayBoards[a.from] = { draw: board.draw, warnings: board.warnings };
+      }
+      return withBoard(state, t.id, {
+        ...board,
+        dayBoards,
+        draw: target.draw,
+        warnings: target.warnings,
       });
     }
 

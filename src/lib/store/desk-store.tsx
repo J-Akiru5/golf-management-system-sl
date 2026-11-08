@@ -602,17 +602,28 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         }
       }
       const context = dayContext();
+      // The demo has no saved rounds, so the first draw, and a start over, draws every playing day
+      // at once, each with its own AM and PM sessions. A re-run that keeps locks stays on the day on
+      // screen. "Make the draw" asks to keep locks too, so no draw yet counts as a first draw.
+      const hasDraw = Boolean(
+        context.tournamentId && latest.current.boards[context.tournamentId]?.draw,
+      );
       const action: Action =
-        rawAction.type === "generate"
-          ? { ...rawAction, dayNumber: rawAction.dayNumber ?? context.day?.dayNumber ?? null }
-          : rawAction.type === "publish"
-            ? {
-                ...rawAction,
-                dayNumber: rawAction.dayNumber ?? context.day?.dayNumber ?? null,
-                dayLabel: rawAction.dayLabel ?? context.day?.label,
-                playDate: rawAction.playDate ?? context.day?.playDate,
-              }
-            : rawAction;
+        rawAction.type === "generate" &&
+        !connected &&
+        (!rawAction.preserveLocks || !hasDraw) &&
+        rawAction.dayNumber === undefined
+          ? { type: "generateAllDays", showDay: context.day?.dayNumber ?? null }
+          : rawAction.type === "generate"
+            ? { ...rawAction, dayNumber: rawAction.dayNumber ?? context.day?.dayNumber ?? null }
+            : rawAction.type === "publish"
+              ? {
+                  ...rawAction,
+                  dayNumber: rawAction.dayNumber ?? context.day?.dayNumber ?? null,
+                  dayLabel: rawAction.dayLabel ?? context.day?.label,
+                  playDate: rawAction.playDate ?? context.day?.playDate,
+                }
+              : rawAction;
       const isPublish = action.type === "publish" || action.type === "unpublish";
       // A save that failed leaves the screen on the last saved board. Publishing then would need a
       // board the database never stored, so it waits for a successful save.
@@ -815,6 +826,28 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     if (!connected || !client) return createDemoScoringRepository(buildDemoScoringSeed());
     return createSupabaseScoringRepository({ client });
   }, [connected, client]);
+
+  // The demo keeps every playing day's board in memory (a fresh draw makes them all at once), so
+  // choosing a day shows that day's own AM and PM board. A connected desk loads the saved round.
+  const shownDayRef = useRef<number | null | undefined>(undefined);
+  useEffect(() => {
+    if (connected) return;
+    const previous = shownDayRef.current;
+    shownDayRef.current = drawDay;
+    if (previous === undefined || previous === drawDay) return;
+    if (drawDay !== null) dispatch({ type: "showDay", from: previous, to: drawDay });
+  }, [connected, drawDay, dispatch]);
+
+  // The demo starts on the first playing day, because a day is what a draw is made for.
+  useEffect(() => {
+    if (connected || drawDay !== null) return;
+    const current = latest.current;
+    const tournament = current.tournaments.find((t) => t.id === current.activeTournamentId);
+    const first = tournament ? playingDaysOfEvent(current.days[tournament.id] ?? [])[0] : undefined;
+    if (!first) return;
+    drawDayRef.current = first.dayNumber;
+    setDrawDayState(first.dayNumber);
+  }, [connected, drawDay]);
 
   const value = useMemo<Desk>(() => {
     const tournament = activeTournament(state);

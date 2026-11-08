@@ -322,8 +322,6 @@ function ControlRoomInner({
                 onChange={(e) => setDrawDay(e.target.value === "" ? null : Number(e.target.value))}
                 className="!w-auto min-h-9 max-w-full rounded-full border border-[rgba(238,240,234,.3)] bg-[rgba(14,22,18,.5)] px-3 text-sm text-[#eef0ea] [&>option]:bg-white [&>option]:text-black"
               >
-                {/* The demo has one in-memory board, so it can show the whole event. */}
-                {status === "demo" && <option value="">All playing days</option>}
                 {playingDays.map((d) => (
                   <option key={d.id} value={d.dayNumber}>
                     {d.label} · {fmtIso(d.playDate)}

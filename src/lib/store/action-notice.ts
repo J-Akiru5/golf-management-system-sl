@@ -44,6 +44,16 @@ export function actionNotice(
   if (!board) return null;
 
   switch (action.type) {
+    case "generateAllDays": {
+      const days = Object.keys(board.dayBoards ?? {}).length;
+      const shown = board.draw?.length ?? 0;
+      return {
+        tone: "ok",
+        title: "Draw made",
+        detail: `${days} playing day${days === 1 ? "" : "s"} drawn, AM and PM kept apart · ${shown} group${shown === 1 ? "" : "s"} on the day shown`,
+      };
+    }
+
     case "generate": {
       const now = board.draw ?? [];
       const then = was?.draw ?? null;
