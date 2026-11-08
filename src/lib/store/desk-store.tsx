@@ -71,6 +71,7 @@ import { actionNotice } from "./action-notice";
 import {
   type DayPreference,
   dayOnEventSwitch,
+  dayToLoad,
   readDayPreference,
   writeDayPreference,
 } from "./day-preference";
@@ -350,10 +351,13 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         const saved = restoreDayPreference();
         const preferredEvent =
           keepSelected.current ?? latest.current.activeTournamentId ?? saved?.tournamentId ?? null;
-        const preferredDay =
-          saved && (saved.tournamentId === null || saved.tournamentId === preferredEvent)
-            ? saved.dayNumber
-            : null;
+        // The day on screen comes first: choosing a day reloads the desk, and that reload must ask
+        // for the chosen day. The remembered day is only for before anything was chosen.
+        const preferredDay = dayToLoad({
+          onScreen: drawDayRef.current,
+          saved,
+          eventId: preferredEvent,
+        });
         const loaded = await loadDeskState(supabase, signedIn.clubId, {
           preferTournamentId: preferredEvent,
           dayNumber: preferredDay,
