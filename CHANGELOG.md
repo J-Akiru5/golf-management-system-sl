@@ -9,6 +9,11 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- **The draw board opens flight-first (issue #205).** Flight A, B, C are shown in start order and
+  each flight's holes run in order; the class stays on every card as a sub-value. A Flight priority
+  / Class priority toggle keeps the old class-first order one click away. No migration.
+
 ### Fixed
 - **Saving the draw no longer fails on `group_members.round_id`.** Migration `20261108000900`
   replaced `save_draw` with a body copied from before `group_members.round_id` existed, so the

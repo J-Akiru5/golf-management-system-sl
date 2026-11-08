@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { DrawGroup } from "@/lib/draw/validate";
+import { fmtTime } from "@/lib/format";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
+import type { PairingFlight } from "./pairing-sections";
 import { buildDrawTable } from "./table-model";
 
 const grp = (number: number, ids: string[], over: Partial<DrawGroup> = {}): DrawGroup => ({
@@ -106,6 +108,29 @@ describe("buildDrawTable", () => {
       grp(2, ["b"], { startHole: 2, time: "07:00" }),
     ]);
     expect(sections[0]?.groups.map((g) => g.number)).toEqual([5, 2]);
+  });
+
+  it("groups by flight and orders rows by hole when flight is chosen", () => {
+    const flightOf = (g: DrawGroup): PairingFlight | null =>
+      g.number === 1 || g.number === 2
+        ? { time: "06:30", letter: "A", session: "AM" }
+        : g.number === 3
+          ? { time: "06:45", letter: "B", session: "AM" }
+          : null;
+    const sections = build(
+      [
+        grp(1, ["a"], { startHole: 7, time: "06:30", flightId: "r-a" }),
+        grp(2, ["b"], { startHole: 1, time: "06:30", flightId: "r-a" }),
+        grp(3, ["c"], { startHole: 3, time: "06:45", flightId: "r-b" }),
+      ],
+      { categorization: "flight", flightOf },
+    );
+    expect(sections.map((s) => s.heading)).toEqual([
+      `${fmtTime("06:30")} · Flight A`,
+      `${fmtTime("06:45")} · Flight B`,
+    ]);
+    expect(sections[0]?.groups.map((g) => g.label)).toEqual(["HOLE 1", "HOLE 7"]);
+    expect(sections[0]?.groups.map((g) => g.flightName)).toEqual(["Men's A", "Men's A"]);
   });
 
   it("does not mutate the input groups", () => {

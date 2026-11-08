@@ -1,7 +1,11 @@
 import type { DrawGroup } from "@/lib/draw/validate";
-import { fmtTime } from "@/lib/format";
 import { groupRowLabels, pairingsColumns } from "@/lib/print/pairings";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
+import {
+  buildPairingSections,
+  type PairingCategorization,
+  type PairingFlight,
+} from "./pairing-sections";
 
 /** One name slot in a table row: a player, or an empty cell for a short group. */
 export type DrawTableCell = { playerId: string; name: string } | null;
@@ -34,6 +38,10 @@ export interface BuildDrawTableInput {
   playerName: (id: string) => string;
   flightName: (flightId: string | null) => string;
   isUnclassified: (group: DrawGroup) => boolean;
+  /** How to group the sections. Defaults to class, the older order. */
+  categorization?: PairingCategorization;
+  /** The flight for a group when flight grouping is chosen. */
+  flightOf?: (group: DrawGroup) => PairingFlight | null;
 }
 
 /**
@@ -44,28 +52,23 @@ export function buildDrawTable(input: BuildDrawTableInput): DrawTableSection[] {
   const { groups, startFormat, playerName, flightName, isUnclassified } = input;
   const noun = startFormat === "shotgun" ? "HOLE" : "TEE";
 
-  // Group by start time + class, keeping the order groups first appear (matches the draw page).
-  const sections = new Map<string, DrawGroup[]>();
-  for (const g of groups) {
-    const key = isUnclassified(g)
-      ? UNCLASSIFIED_LABEL
-      : `${fmtTime(g.time)} · ${flightName(g.flightId)}`;
-    const existing = sections.get(key);
-    if (existing) {
-      existing.push(g);
-    } else {
-      sections.set(key, [g]);
-    }
-  }
+  // Group by start time and the chosen category, then sort inside a flight by hole. The class stays
+  // on the row as a sub-value when flight grouping is chosen.
+  const sections = buildPairingSections({
+    groups,
+    categorization: input.categorization ?? "class",
+    classNameOf: (g) => (isUnclassified(g) ? UNCLASSIFIED_LABEL : flightName(g.flightId)),
+    flightOf: input.flightOf ?? (() => null),
+  });
 
   const result: DrawTableSection[] = [];
-  for (const [key, sectionGroups] of sections) {
+  for (const section of sections) {
     const columns = pairingsColumns(
-      sectionGroups.map((g) => g.playerIds.length),
+      section.groups.map((g) => g.playerIds.length),
       4,
     );
-    const labels = groupRowLabels(sectionGroups, noun);
-    const tableGroups: DrawTableGroup[] = sectionGroups.map((g, index) => {
+    const labels = groupRowLabels(section.groups, noun);
+    const tableGroups: DrawTableGroup[] = section.groups.map((g, index) => {
       const cells: DrawTableCell[] = Array.from({ length: columns }, (_, col) => {
         const playerId = g.playerIds[col];
         if (playerId === undefined) return null;
@@ -79,7 +82,12 @@ export function buildDrawTable(input: BuildDrawTableInput): DrawTableSection[] {
         cells,
       };
     });
-    result.push({ key, heading: key, groups: tableGroups, columns });
+    result.push({
+      key: section.key,
+      heading: section.heading,
+      groups: tableGroups,
+      columns,
+    });
   }
 
   return result;
