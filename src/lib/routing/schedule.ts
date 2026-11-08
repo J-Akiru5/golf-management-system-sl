@@ -94,6 +94,14 @@ export function planShotgunFrom(
    * start takes groups until the holes are used, and the next start takes whoever is left.
    */
   fillSequentially = false,
+  /**
+   * Every flight takes its own wave (issue 195). Flight A fills the holes at the first start, and
+   * Flight B goes into the next start on hole 1 onwards, queued behind A on each hole, even when A
+   * left holes vacant. A flight with fewer groups than holes is spread over the holes by the seeded
+   * shuffle, so the vacant holes fall in between instead of at the end. A flight with more groups
+   * than holes carries on into the following wave, and the next flight starts a fresh wave after it.
+   */
+  flightPerWave = false,
 ): ShotgunPlan {
   if (!Number.isInteger(holes) || holes < 1) {
     throw new Error("A shotgun start needs at least one hole.");
@@ -153,17 +161,22 @@ export function planShotgunFrom(
 
   for (const { flightName, groups } of flightGroupCounts) {
     if (groups === 0) continue;
+    // One flight per wave: a flight never shares a start with the flight before it.
+    if (flightPerWave && placedNow > 0) {
+      start += 1;
+      placedNow = 0;
+    }
     if (groups > holes) {
       warnings.push(
         `Flight ${flightName} has ${groups} groups, more than the ${holes} holes at one start, so it was split across start times.`,
       );
-    } else if (!fillSequentially && groups > roomNow() && placedNow > 0) {
+    } else if (!flightPerWave && !fillSequentially && groups > roomNow() && placedNow > 0) {
       start += 1;
       placedNow = 0;
     }
     const startsUsed = new Set<number>();
     for (let i = 0; i < groups; i++) startsUsed.add(place());
-    if (fillSequentially && groups <= holes && startsUsed.size > 1) {
+    if ((fillSequentially || flightPerWave) && groups <= holes && startsUsed.size > 1) {
       const first = Math.min(...startsUsed);
       const last = Math.max(...startsUsed);
       warnings.push(
