@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { groupSizes, packUnits } from "./groups";
 import { ageOn, playingHandicap, rawCourseHandicap } from "./handicap";
 import { classifyPlayer, type RoutingInput, route } from "./index";
-import { addMinutes, planShotgun, planTwoTee } from "./schedule";
+import { addMinutes, planShotgun, planTwoTee, planTwoTeeFrom } from "./schedule";
 import type { Player, Tee, TournamentConfig } from "./types";
 
 // Placeholder ratings. Replace with the real IGCC values before launch.
@@ -154,6 +154,13 @@ describe("group sizes", () => {
     expect(groupSizes(0, 4)).toEqual([]);
   });
 
+  it("refuses a group size that is not a whole number of at least 1", () => {
+    expect(() => groupSizes(8, 0)).toThrow("Invalid group size");
+    expect(() => groupSizes(8, -1)).toThrow("Invalid group size");
+    expect(() => groupSizes(8, 2.5)).toThrow("Invalid group size");
+    expect(() => groupSizes(8, Number.NaN)).toThrow("Invalid group size");
+  });
+
   it("packs teams without splitting one across two groups", () => {
     const packed = packUnits(
       [
@@ -187,12 +194,33 @@ describe("schedule", () => {
   it("adds minutes and wraps", () => {
     expect(addMinutes("07:00", 300)).toBe("12:00");
     expect(addMinutes("23:30", 60)).toBe("00:30");
+    expect(addMinutes("6:03", 0)).toBe("06:03");
+  });
+
+  it("refuses a time that is not a valid 24-hour clock time", () => {
+    expect(() => addMinutes("24:00", 0)).toThrow("Invalid time: 24:00");
+    expect(() => addMinutes("06:60", 0)).toThrow("Invalid time: 06:60");
+    expect(() => addMinutes("6:3", 0)).toThrow("Invalid time: 6:3");
+    expect(() => addMinutes("noon", 0)).toThrow("Invalid time: noon");
+  });
+
+  it("refuses a minute count that is not a whole number", () => {
+    expect(() => addMinutes("07:00", Number.NaN)).toThrow("Invalid minute count");
+    expect(() => addMinutes("07:00", Number.POSITIVE_INFINITY)).toThrow("Invalid minute count");
+    expect(() => addMinutes("07:00", 1.5)).toThrow("Invalid minute count");
   });
 
   it("alternates tees and advances one interval per pair", () => {
     const s = planTwoTee(5, "07:00", 12);
     expect(s.map((x) => x.startHole)).toEqual([1, 10, 1, 10, 1]);
     expect(s.map((x) => x.time)).toEqual(["07:00", "07:00", "07:12", "07:12", "07:24"]);
+  });
+
+  it("returns no slots for an empty field and refuses a bad interval", () => {
+    expect(planTwoTeeFrom(0, "07:00", 12)).toEqual([]);
+    expect(() => planTwoTeeFrom(2, "07:00", 0)).toThrow("Invalid two-tee interval");
+    expect(() => planTwoTeeFrom(2, "07:00", -5)).toThrow("Invalid two-tee interval");
+    expect(() => planTwoTeeFrom(2, "07:00", Number.NaN)).toThrow("Invalid two-tee interval");
   });
 
   it("keeps a flight whole by moving it to the next start", () => {

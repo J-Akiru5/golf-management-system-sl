@@ -92,3 +92,31 @@ describe("seeded hole assignment", () => {
     expect(new Set(holesOf(plan.slots, "06:30")).size).toBe(17);
   });
 });
+
+describe("guards against an impossible start", () => {
+  it("refuses a shotgun start with no holes", () => {
+    expect(() => planShotgunFrom([{ flightName: "Class A", groups: 1 }], 0, "06:30", 15)).toThrow(
+      "A shotgun start needs at least one hole.",
+    );
+    expect(() => planShotgunFrom([{ flightName: "Class A", groups: 1 }], -1, "06:30", 15)).toThrow(
+      "A shotgun start needs at least one hole.",
+    );
+    expect(() =>
+      planShotgunFrom([{ flightName: "Class A", groups: 1 }], 2.5, "06:30", 15),
+    ).toThrow("A shotgun start needs at least one hole.");
+  });
+
+  it("throws instead of searching forever when no slot can ever be free", () => {
+    // A zero gap means every start is the same time, and both holes are held there, so no start
+    // after the first can offer a slot. The search must give up instead of looping.
+    expect(() =>
+      planShotgunFrom(
+        [{ flightName: "A", groups: 1 }],
+        2,
+        "06:30",
+        0,
+        new Set(["06:30:1", "06:30:2"]),
+      ),
+    ).toThrow("No shotgun slot is free");
+  });
+});

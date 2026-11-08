@@ -1,8 +1,14 @@
 /** Adds minutes to an "HH:MM" time and wraps at 24 hours. */
 export function addMinutes(time: string, minutes: number): string {
-  const [h, m] = time.split(":").map(Number);
-  if (h === undefined || m === undefined || Number.isNaN(h) || Number.isNaN(m)) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time);
+  if (!match) throw new Error(`Invalid time: ${time}`);
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) {
     throw new Error(`Invalid time: ${time}`);
+  }
+  if (!Number.isFinite(minutes) || !Number.isInteger(minutes)) {
+    throw new Error(`Invalid minute count: ${minutes}`);
   }
   const total = (((h * 60 + m + minutes) % 1440) + 1440) % 1440;
   const hh = String(Math.floor(total / 60)).padStart(2, "0");
@@ -89,6 +95,9 @@ export function planShotgunFrom(
    */
   fillSequentially = false,
 ): ShotgunPlan {
+  if (!Number.isInteger(holes) || holes < 1) {
+    throw new Error("A shotgun start needs at least one hole.");
+  }
   const slots: Slot[] = [];
   const warnings: string[] = [];
   let start = 0;
@@ -113,24 +122,37 @@ export function planShotgunFrom(
   /** Free holes left at this start. */
   const roomNow = () => orderFor(start).length;
 
-  const place = () => {
+  /**
+   * Start times already found to have no free hole. The clock wraps at 24 hours, so a start time
+   * that comes round again with no free hole means no later start can offer one either.
+   */
+  const emptyTimes = new Set<string>();
+
+  /** Places one group and returns the start index it used. */
+  const place = (): number => {
     for (;;) {
+      const time = timeOf(start);
       const order = orderFor(start);
       const startHole = order.shift();
       if (startHole === undefined) {
+        if (emptyTimes.has(time)) {
+          throw new Error(
+            `No shotgun slot is free: every hole is taken at every start time from ${firstTeeTime}.`,
+          );
+        }
+        emptyTimes.add(time);
         start += 1;
         placedNow = 0;
         continue;
       }
-      slots.push({ startHole, time: timeOf(start) });
+      slots.push({ startHole, time });
       placedNow += 1;
-      return;
+      return start;
     }
   };
 
   for (const { flightName, groups } of flightGroupCounts) {
     if (groups === 0) continue;
-    const startIndex = start;
     if (groups > holes) {
       warnings.push(
         `Flight ${flightName} has ${groups} groups, more than the ${holes} holes at one start, so it was split across start times.`,
@@ -139,10 +161,13 @@ export function planShotgunFrom(
       start += 1;
       placedNow = 0;
     }
-    for (let i = 0; i < groups; i++) place();
-    if (fillSequentially && groups <= holes && start > startIndex) {
+    const startsUsed = new Set<number>();
+    for (let i = 0; i < groups; i++) startsUsed.add(place());
+    if (fillSequentially && groups <= holes && startsUsed.size > 1) {
+      const first = Math.min(...startsUsed);
+      const last = Math.max(...startsUsed);
       warnings.push(
-        `Class ${flightName} plays across the ${timeOf(startIndex)} and ${timeOf(start)} starts.`,
+        `Class ${flightName} plays across the ${timeOf(first)} and ${timeOf(last)} starts.`,
       );
     }
   }
@@ -169,7 +194,16 @@ export function planTwoTeeFrom(
   intervalMinutes: number,
   occupied: ReadonlySet<string> = new Set(),
 ): Slot[] {
+  if (!Number.isInteger(groupCount) || groupCount < 0) {
+    throw new Error(`Invalid two-tee group count: ${groupCount}.`);
+  }
+  if (!Number.isInteger(intervalMinutes) || intervalMinutes < 1) {
+    throw new Error(`Invalid two-tee interval: ${intervalMinutes}.`);
+  }
   const slots: Slot[] = [];
+  // A slot taken by a locked group comes round again once the clock wraps. Meeting the same taken
+  // slot twice without placing anything means the rest of the field can never go off.
+  const passedOver = new Set<string>();
   let n = 0;
   while (slots.length < groupCount) {
     const slot: Slot = {
@@ -177,7 +211,16 @@ export function planTwoTeeFrom(
       time: addMinutes(firstTeeTime, Math.floor(n / 2) * intervalMinutes),
     };
     n += 1;
-    if (occupied.has(twoTeeKey(slot.startHole, slot.time))) continue;
+    const key = twoTeeKey(slot.startHole, slot.time);
+    if (occupied.has(key)) {
+      if (passedOver.has(key)) {
+        throw new Error(
+          `No two-tee slot is free: the tee times from ${firstTeeTime} are all taken.`,
+        );
+      }
+      passedOver.add(key);
+      continue;
+    }
     slots.push(slot);
   }
   return slots;

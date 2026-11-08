@@ -3,6 +3,11 @@
  * 14 players with max 4 gives 4,4,3,3 (not 4,4,4,2).
  */
 export function groupSizes(n: number, maxSize: number): number[] {
+  if (!Number.isInteger(maxSize) || maxSize < 1) {
+    throw new Error(
+      `Invalid group size: ${maxSize}. A group size must be a whole number of at least 1.`,
+    );
+  }
   if (n <= 0) return [];
   const count = Math.ceil(n / maxSize);
   const base = Math.floor(n / count);
