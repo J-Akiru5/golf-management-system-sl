@@ -40,8 +40,9 @@ Supabase project, because the code and the database are released separately.
 ### Fixed
 - **The browser check follows the current player demo copy.** After the player home was rewritten,
   the language check still waited for the old sentence and for a "no player area" line that no longer
-  exists. It now waits for the sample-data line the page actually renders and checks `html[lang=en]`
-  after switching back. Test-only; no product change.
+  exists. It now dismisses the player first-run welcome in its own context, waits for the sample-data
+  line the page actually renders, and checks `html[lang=en]` after switching back. Test-only; no
+  product change.
 - **Lint ignores local Claude worktrees.** `biome.json` excludes `.claude/**`, so `pnpm lint` from
   the main checkout does not treat a nested worktree's `biome.json` as a second root configuration.
   Development-only; no product behavior change. No migration.

@@ -461,6 +461,18 @@ check("focus stays on the destination link, not the page body", afterNav.tag !==
 // -------------------------------------------------------------- player languages
 section("player languages");
 const langContext = await browser.newContext({ viewport: { width: 1200, height: 950 } });
+// The player first-run welcome is a modal. This context has not seen it, so mark it seen before the
+// page loads; otherwise the demo notice is in the page but hidden behind the overlay.
+await langContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+  } catch {
+    // Storage off: the welcome will show, and the visibility check will say so.
+  }
+});
 const langPage = await langContext.newPage();
 watch(langPage);
 const setLang = async (value) => {
