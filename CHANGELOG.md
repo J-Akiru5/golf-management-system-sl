@@ -14,6 +14,11 @@ Supabase project, because the code and the database are released separately.
   T-0008 adds the player scorecard and team-format engine, and T-0009 generalises the existing
   Cloudflare R2 client for media and documents. The three contracts are ready but not implemented in
   this commit. No migration and no deployment.
+- **The print center can print the player pairings while the draw is still a draft.** When no
+  published snapshot exists, the Pairings tab builds the club's sheet from the current board, marks
+  every page "DRAFT · NOT PUBLISHED · FOR DESK USE ONLY", and enables the PDF and Excel download.
+  The public pages still read only the published snapshot, so players never see a draft. No
+  migration.
 
 ### Fixed
 - **The test suite runs from a Windows path that contains a space.** `vitest.config.ts` resolves
