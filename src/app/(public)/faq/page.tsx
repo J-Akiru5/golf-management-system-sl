@@ -42,7 +42,7 @@ export default function NgapFaqPage() {
             <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
           </span>
         </div>
-        <p className="overline mt-3 !text-gold">Handicaps</p>
+        <p className="overline mt-3 !text-gold-on-forest">Handicaps</p>
         <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
           NGAP World Handicap System: frequently asked questions
         </h1>

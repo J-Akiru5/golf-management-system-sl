@@ -139,7 +139,7 @@ export default async function PublicPairingsPage() {
         </div>
         {data && (
           <>
-            <p className="overline mt-2 !text-gold">
+            <p className="overline mt-2 !text-gold-on-forest">
               {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
               {fmtTime(data.firstTeeTime)}
             </p>

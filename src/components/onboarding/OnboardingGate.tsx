@@ -64,6 +64,39 @@ function findAnchor(name: string): Element | null {
   return null;
 }
 
+/**
+ * Runs `run` once the page has finished its first load, and returns a way to cancel it.
+ *
+ * Radix marks everything outside its dialog aria-hidden while it is open. On the player home that
+ * mutation used to land on nodes React had not hydrated yet, because the page streams in behind
+ * its loading skeleton, and React then reported an attribute mismatch on the hero. Waiting for
+ * `load` (or 1.5s, whichever comes first, so a slow image cannot hold the welcome) keeps the dialog
+ * after hydration. A client navigation has no hydration left to wait for, so it opens at once.
+ */
+function whenPageSettled(run: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  let settled = false;
+  let timer = 0;
+  const fire = () => {
+    if (settled) return;
+    settled = true;
+    window.clearTimeout(timer);
+    window.removeEventListener("load", fire);
+    window.requestAnimationFrame(run);
+  };
+  if (window.document.readyState === "complete") {
+    fire();
+    return () => {};
+  }
+  window.addEventListener("load", fire);
+  timer = window.setTimeout(fire, 1500);
+  return () => {
+    settled = true;
+    window.clearTimeout(timer);
+    window.removeEventListener("load", fire);
+  };
+}
+
 function prefersReducedMotion(): boolean {
   return (
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -111,6 +144,7 @@ export function OnboardingGate({
   // no user id, which is exactly right for the demo and for a borrowed phone.
   useEffect(() => {
     let alive = true;
+    let cancelOpen: (() => void) | null = null;
     const boot = async () => {
       // The older help welcome says less than this tour. Mark it seen before the help panel reads
       // its storage, so two first-run panels never stack on the same screen.
@@ -135,16 +169,21 @@ export function OnboardingGate({
       const replay = new URLSearchParams(window.location.search).get("onboarding") === "1";
       if (replay) {
         setStep(0);
-        setOpen(true);
+        cancelOpen = whenPageSettled(() => {
+          if (alive) setOpen(true);
+        });
       } else if (!stored.seen && window.location.pathname === home) {
         setStep(clampStep(role, stored.step));
-        setOpen(true);
+        cancelOpen = whenPageSettled(() => {
+          if (alive) setOpen(true);
+        });
       }
       setReady(true);
     };
     void boot();
     return () => {
       alive = false;
+      cancelOpen?.();
     };
   }, [role, userId, home]);
 

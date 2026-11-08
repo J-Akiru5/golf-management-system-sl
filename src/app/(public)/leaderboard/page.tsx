@@ -82,7 +82,7 @@ export default async function LeaderboardPage({
           <HelpButton audience="player" screen="pairings" />
         </div>
         {board && (
-          <p className="overline mt-3 !text-gold">
+          <p className="overline mt-3 !text-gold-on-forest">
             {board.round.state === "final" ? "Final" : "Provisional"} · Day {board.round.dayNumber}
           </p>
         )}

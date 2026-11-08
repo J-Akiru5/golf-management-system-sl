@@ -209,7 +209,7 @@ export default function StaffSchedulePage() {
           </button>
         </div>
       ) : (
-        <div aria-label="Groups in tee order">
+        <div aria-label="Groups in tee order" className={styles.groupList}>
           {visible.map((group) => {
             const isNext = next?.id === group.id;
             const match = matchGroup(group, query);

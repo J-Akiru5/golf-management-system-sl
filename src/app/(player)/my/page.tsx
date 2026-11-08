@@ -266,7 +266,28 @@ export default async function MyGolfPage({
       );
     }
 
-    return <DemoHome t={t} />;
+    // The demo build is what the owner reviews, so it gets the same wide home the signed-in player
+    // gets: the phone column on a phone, two columns on a monitor. The sample record is the same on
+    // both, so the name and the round do not change when the window does.
+    return (
+      <>
+        <div className="hidden lg:block">
+          <PlayerHomeDesktop
+            t={t}
+            state={demoPortalState()}
+            notice={null}
+            linkedMessage={null}
+            today={manilaToday()}
+            defaultNgap={defaultNgap}
+            locale={locale}
+            demo
+          />
+        </div>
+        <div className="lg:hidden">
+          <DemoHome t={t} />
+        </div>
+      </>
+    );
   }
 
   const client = await createSupabaseServerClient();

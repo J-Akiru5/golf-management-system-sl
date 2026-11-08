@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PlayerBottomBar, PlayerDesktopNav } from "@/components/MobileTabBar";
 import { OnboardingGate } from "@/components/onboarding";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { SignOutForm } from "@/components/SignOutForm";
@@ -52,6 +52,19 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
               )}
             </>
           }
+        />
+        {/* From 1024px the phone bar is hidden, so these become a row under the top bar. Same
+            destinations, plus the card and the course map the phone bar has no room for. */}
+        <PlayerDesktopNav
+          labels={{
+            navigation: t("player.app.tiles"),
+            home: t("player.title"),
+            pairings: t("player.tab.pairings"),
+            board: t("player.board.title"),
+            card: t("player.scorecard.heading"),
+            course: t("player.course.title"),
+            profile: t("player.profile.title"),
+          }}
         />
         <main className="public player-main mobile-bar-space">{children}</main>
         <OnboardingGate role="player" />
