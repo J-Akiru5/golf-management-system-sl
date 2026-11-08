@@ -1,4 +1,4 @@
-import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
+import { daysOfTournament, isFinalPlayingDay, selectedDaysOf } from "@/lib/data/dates";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { isPlayerRemoved } from "@/lib/data/player-state";
 import {
@@ -7,7 +7,7 @@ import {
   playsUnclassified,
   registrationFor,
 } from "@/lib/data/registrations";
-import { daySessions } from "@/lib/data/sessions";
+import { sessionsForDay } from "@/lib/data/sessions";
 import type {
   Caddie,
   Club,
@@ -156,6 +156,11 @@ export type Action =
   | { type: "saveSetup"; tournament: Tournament; tees: Tee[]; holes: Hole[] }
   /** One playing day opens at its own time; null clears it back to the event's first tee time. */
   | { type: "setDayStart"; tournamentId: string; dayNumber: number; time: string | null }
+  /**
+   * One playing day's afternoon start on its own; null clears it back to the event's afternoon
+   * start (`tournaments.pm_first_tee_time`) or the fixed default.
+   */
+  | { type: "setDayPmStart"; tournamentId: string; dayNumber: number; time: string | null }
   | { type: "addPlayer"; player: PlayerRecord }
   | { type: "updatePlayer"; id: string; patch: Partial<PlayerRecord> }
   | { type: "removePlayer"; id: string }
@@ -345,7 +350,6 @@ export function routingInputFor(
   if (!t) return null;
   const days = playingDaysOfEvent(s.days[t.id] ?? daysOfTournament(t));
   const day = dayNumber === null ? null : (days.find((d) => d.dayNumber === dayNumber) ?? null);
-  const dayIndex = day ? days.findIndex((d) => d.dayNumber === day.dayNumber) : -1;
   const byPlayer = new Map<string, "AM" | "PM" | null>();
   const players: RoutingInput["players"] = [];
   const provisional: ProvisionalPlayer[] = [];
@@ -383,13 +387,28 @@ export function routingInputFor(
       teamKey: entry.teamNo === null || entry.teamNo === undefined ? null : `team-${entry.teamNo}`,
     });
   }
+  // The day's own stored times decide its sessions: the day's morning start, then its own afternoon
+  // start, then the event's afternoon start (`tournaments.pm_first_tee_time`), and only then the
+  // fixed defaults. A day's position in the list never decides a time, so a sparse day list is safe.
+  const drawSessions =
+    dayNumber !== null
+      ? sessionsForDay(
+          // A day with no start of its own still opens at the event's first tee time, the same
+          // fallback the tee-time screen uses. The afternoon comes from the stored settings only.
+          { startTime: day?.startTime ?? t.config.firstTeeTime, pmStartTime: day?.pmStartTime },
+          {
+            eventPmStart: t.config.pmFirstTeeTime,
+            finalDay: day ? isFinalPlayingDay(day, days) : false,
+          },
+        )
+      : null;
   const sessions: RoutingInput["sessions"] =
     dayNumber !== null
       ? {
           byPlayer,
           starts: {
-            AM: day?.startTime?.trim() || t.config.firstTeeTime,
-            PM: daySessions(Math.max(dayIndex, 0), Math.max(days.length, 1))[1]?.time ?? "12:30",
+            AM: drawSessions?.[0]?.time ?? t.config.firstTeeTime,
+            PM: drawSessions?.[1]?.time ?? "12:30",
           },
           dayNumber,
           // A second start inside a session is spaced by the batch interval, never by the long
@@ -649,6 +668,20 @@ export function reducer(state: DeskState, a: Action): DeskState {
           ...state.days,
           [a.tournamentId]: list.map((day) =>
             day.dayNumber === a.dayNumber ? { ...day, startTime: a.time } : day,
+          ),
+        },
+      };
+    }
+
+    case "setDayPmStart": {
+      const tournament = state.tournaments.find((t) => t.id === a.tournamentId);
+      const list = state.days[a.tournamentId] ?? (tournament ? daysOfTournament(tournament) : []);
+      return {
+        ...state,
+        days: {
+          ...state.days,
+          [a.tournamentId]: list.map((day) =>
+            day.dayNumber === a.dayNumber ? { ...day, pmStartTime: a.time } : day,
           ),
         },
       };

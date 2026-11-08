@@ -63,6 +63,23 @@ export function pickRoundForDay(
   return rows.find((row) => row.day_number === dayNumber) ?? null;
 }
 
+/**
+ * The round a day's board is read from, with the loader's optional fallback.
+ *
+ * A requested day with no round is null, which the loader turns into an error. When the caller set
+ * `fallbackToFirstDay`, the first round is used instead. No day asked for keeps `pickRoundForDay`'s
+ * behaviour.
+ */
+export function pickRoundForLoad(
+  rows: { id: string; day_number: number }[],
+  dayNumber: number | null,
+  fallbackToFirstDay = false,
+): { id: string; day_number: number } | null {
+  const picked = pickRoundForDay(rows, dayNumber);
+  if (picked || dayNumber === null || !fallbackToFirstDay) return picked;
+  return pickRoundForDay(rows, null);
+}
+
 function toPublished(value: Json | null, tournamentId: string): Published | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
@@ -139,6 +156,11 @@ export async function loadDeskState(
      * opened event has no round for is an error, not a quiet fall back to the first day.
      */
     dayNumber?: number | null;
+    /**
+     * Use the first round when the requested day has no round instead of failing. Absent or false
+     * keeps the strict behaviour above; a screen that only needs a board to show can set it.
+     */
+    fallbackToFirstDay?: boolean;
   } = {},
 ): Promise<LoadedDesk> {
   const { data: club, error: clubError } = await client
@@ -218,6 +240,21 @@ export async function loadDeskState(
   if (dayRows.error && !missingObject(dayRows.error)) {
     throw new Error(`Could not load the event days: ${dayRows.error.message}`);
   }
+  // A day's own afternoon start arrives with 20261108000800. It is read on its own so a database
+  // that has not run that migration still loads its days, just without a stored afternoon start.
+  const pmStartByDayId = new Map<string, string | null>();
+  const pmRows = await client
+    .from("tournament_days")
+    .select("id, pm_start_time")
+    .eq("club_id", clubId);
+  if (pmRows.error && !missingObject(pmRows.error)) {
+    throw new Error(`Could not load the afternoon start times: ${pmRows.error.message}`);
+  }
+  if (!pmRows.error) {
+    for (const row of asArray(pmRows.data)) {
+      pmStartByDayId.set(row.id, row.pm_start_time ? row.pm_start_time.slice(0, 5) : null);
+    }
+  }
   if (!dayRows.error) {
     const grouped = new Map<string, TournamentDay[]>();
     for (const row of asArray(dayRows.data)) {
@@ -229,6 +266,7 @@ export async function loadDeskState(
         playDate: row.play_date,
         label: row.label,
         startTime: row.start_time ? row.start_time.slice(0, 5) : null,
+        pmStartTime: pmStartByDayId.get(row.id) ?? null,
         isPlayingDay: row.is_playing_day,
       });
       grouped.set(row.tournament_id, list);
@@ -335,9 +373,10 @@ export async function loadDeskState(
       .sort((a, b) => a.day_number - b.day_number);
     // The named day applies to the opened event. Other events keep their first round, so nothing
     // else on the desk has to have that day on file.
-    const picked = pickRoundForDay(rows, tournament.id === active ? requestedDay : null);
+    const askedDay = tournament.id === active ? requestedDay : null;
+    const picked = pickRoundForLoad(rows, askedDay, options.fallbackToFirstDay === true);
     if (!picked) {
-      if (tournament.id === active && requestedDay !== null) {
+      if (tournament.id === active && requestedDay !== null && !options.fallbackToFirstDay) {
         throw new Error(
           `Day ${requestedDay} has no round on file for this event. Open the draw again after the event days are saved.`,
         );
