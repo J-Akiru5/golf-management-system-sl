@@ -165,7 +165,7 @@ export function startSheetTable(input: {
     title: `Start sheet${input.dayLabel ? ` · ${input.dayLabel}` : ""}`,
     subtitle: `${input.eventName} · ${day}${input.dateLabel} · ${withPlayers.length} groups · ${rows.length} players`,
     columns: [
-      { header: "Tee off", width: 10 },
+      { header: "Time", width: 10 },
       { header: "AM/PM", width: 7, align: "center" },
       { header: noun, width: 6, align: "center" },
       { header: "Group", width: 7, align: "center" },
@@ -201,7 +201,7 @@ export function pairingTables(pairings: PublicPairings, dayLabel: string | null)
     const labels = groupRowLabels(section.groups, noun);
     return {
       sheetName: `${dayLabel ? `${dayLabel.replace(/^Day /, "D")} ` : ""}${fmtTime(section.time)}`,
-      title: `Pairings · ${day}tee-off ${fmtTime(section.time)}`,
+      title: `Pairings · ${day}${fmtTime(section.time)}`,
       subtitle: `${pairings.tournamentName} · ${pairings.dateLabel} · ${
         shotgun ? "Shotgun" : "Two-tee"
       } start · ${section.groups.length} groups`,
@@ -251,7 +251,7 @@ export function countsTables(blocks: readonly DayCountBlock[]): ExportTable[] {
     subtitle: `${block.playDate ?? ""} · AM ${block.tally.am} · PM ${block.tally.pm} · not set ${block.tally.unset} · total ${block.tally.total}`,
     columns: [
       { header: "AM/PM", width: 9, align: "center" as const },
-      { header: "Tee off", width: 11 },
+      { header: "Time", width: 11 },
       { header: "Start hole", width: 11, align: "center" as const },
       { header: "Player", width: 36 },
     ],
@@ -274,7 +274,7 @@ export function groupCountsTables(blocks: readonly DayGroupBlock[]): ExportTable
     subtitle: `${block.playDate ?? ""} · ${block.groups.length} groups`,
     columns: [
       { header: "Group", width: 7, align: "center" as const },
-      { header: "Tee off", width: 11 },
+      { header: "Time", width: 11 },
       { header: "Hole", width: 7, align: "center" as const },
       { header: "AM/PM", width: 8, align: "center" as const },
       { header: "Flight", width: 12 },

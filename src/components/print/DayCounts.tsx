@@ -150,7 +150,7 @@ export function DayCounts({
                   <thead>
                     <tr>
                       <th>AM/PM</th>
-                      <th>Tee off</th>
+                      <th>Time</th>
                       <th className={styles.countsNum}>Start hole</th>
                       <th className={styles.countsPlayers}>Player</th>
                     </tr>
@@ -190,7 +190,7 @@ export function DayCounts({
                   <thead>
                     <tr>
                       <th className={styles.countsNum}>Group</th>
-                      <th>Tee off</th>
+                      <th>Time</th>
                       <th className={styles.countsNum}>Hole</th>
                       <th>AM/PM</th>
                       <th>Flight</th>

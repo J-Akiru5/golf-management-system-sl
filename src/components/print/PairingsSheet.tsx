@@ -54,7 +54,7 @@ export function PairingsSheet({ pairings, title = "Pairings" }: PairingsSheetPro
                 <h2>{pairings.tournamentName}</h2>
                 <p className={styles.pairingDate}>{pairings.dateLabel}</p>
                 <p className={styles.teeOff}>
-                  TEE-OFF TIME {fmtTime(section.time)} {shotgun ? "SHOTGUN" : "TWO-TEE"}
+                  {fmtTime(section.time)} {shotgun ? "SHOTGUN" : "TWO-TEE"}
                 </p>
               </div>
             </header>
