@@ -469,6 +469,11 @@ await langContext.addInitScript(() => {
       "teeline-help-seen",
       JSON.stringify(["welcome.desk", "welcome.player"]),
     );
+    const seen = { seen: true, step: 0, updatedAt: new Date().toISOString() };
+    window.localStorage.setItem(
+      "teeline-onboarding-v1",
+      JSON.stringify({ player: seen, staff: seen }),
+    );
   } catch {
     // Storage off: the welcome will show, and the visibility check will say so.
   }
