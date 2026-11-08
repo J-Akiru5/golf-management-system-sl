@@ -40,12 +40,12 @@ jobs:
         run: |
           node <<'NODE'
           const d = require("./vercel.json")?.git?.deploymentEnabled ?? {};
-          const ok = d.develop === true && d.main === true && d["*"] === false && d["**"] === false;
+          const ok = d.staging === true && d.main === true && d.develop === false && d["*"] === false && d["**"] === false;
           if (!ok) {
-            console.error("vercel.json must allow only develop and main to auto-deploy");
+            console.error("vercel.json must allow only staging and main to auto-deploy");
             process.exit(1);
           }
-          console.log("deploy policy: develop and main only");
+          console.log("deploy policy: staging and main only");
           NODE
 
       - name: Install
