@@ -4,7 +4,8 @@ Date: 2026-11-08
 Task: T-0008
 Issue: #186
 Branch: `feat/issue-186-player-scorecard`
-Status: implementation complete locally; owner decisions listed below remain open.
+Status: implementation complete on the branch; the full unit gates pass; owner decisions listed
+below remain open.
 
 ## What is built
 
@@ -211,8 +212,10 @@ Checks run locally in the task worktree:
 - `node node_modules/@biomejs/biome/bin/biome check` on the changed files passed after safe
   formatting fixes.
 
-Deferred because the host was at the red resource level: full `pnpm test`, full `pnpm typecheck`,
-`pnpm lint`, `pnpm build` and `agentctl verify`. No claim is made that those passed.
+The full unit gates passed on the rebased tree: `tsc --noEmit` (no output), `biome check .`
+(572 files, no fixes) and 147 test files with 1517 tests. The production build, the 360 px browser
+review and `agentctl verify` were not run because the host was at resource level red. They remain
+part of the integration gate.
 
 No migration, RLS policy, database function or staff scoring screen was changed. No score was
 written. No branch was pushed, merged or deployed.
