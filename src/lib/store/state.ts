@@ -624,15 +624,25 @@ const queueLabel = (draw: DrawGroup[], hole: number): string => {
   return `Hole ${hole}: ${numbers.join(", ")}`;
 };
 
+/**
+ * A fresh id for a manual override: one the board does not already hold. The old `seq + 1` id was
+ * reused when two overrides were made in a row, which gave the overrides list duplicate keys.
+ */
+const nextOverrideId = (overrides: readonly ManualOverride[]): string => {
+  let n = overrides.length + 1;
+  while (overrides.some((o) => o.id === `ov-${n}`)) n += 1;
+  return `ov-${n}`;
+};
+
 /** The manual override a slot edit records: no player, a move, and where the slot went. */
 const slotOverride = (
-  state: DeskState,
+  overrides: readonly ManualOverride[],
   tournamentId: string,
   from: string | null,
   to: string | null,
   reason: string,
 ): ManualOverride => ({
-  id: `ov-${state.seq + 1}`,
+  id: nextOverrideId(overrides),
   tournamentId,
   playerId: "",
   kind: "move",
@@ -952,7 +962,7 @@ export function reducer(state: DeskState, a: Action): DeskState {
         return g;
       });
       const override: ManualOverride = {
-        id: `ov-${state.seq + 1}`,
+        id: nextOverrideId(board.overrides),
         tournamentId: t.id,
         playerId: a.playerId,
         kind: "move",
@@ -1010,7 +1020,7 @@ export function reducer(state: DeskState, a: Action): DeskState {
       if (!t || !board.draw) return state;
       const draw = board.draw.map((g) => (g.number === a.group ? { ...g, locked: a.locked } : g));
       const override: ManualOverride = {
-        id: `ov-${state.seq + 1}`,
+        id: nextOverrideId(board.overrides),
         tournamentId: t.id,
         playerId: "",
         kind: a.locked ? "lock" : "unlock",
@@ -1037,7 +1047,7 @@ export function reducer(state: DeskState, a: Action): DeskState {
       return withBoard(state, t.id, {
         ...board,
         draw: result.draw,
-        overrides: [...board.overrides, slotOverride(state, t.id, from, to, a.reason)],
+        overrides: [...board.overrides, slotOverride(board.overrides, t.id, from, to, a.reason)],
       });
     }
 
@@ -1052,7 +1062,7 @@ export function reducer(state: DeskState, a: Action): DeskState {
       return withBoard(state, t.id, {
         ...board,
         draw: result.draw,
-        overrides: [...board.overrides, slotOverride(state, t.id, from, to, a.reason)],
+        overrides: [...board.overrides, slotOverride(board.overrides, t.id, from, to, a.reason)],
       });
     }
 
@@ -1067,7 +1077,7 @@ export function reducer(state: DeskState, a: Action): DeskState {
       return withBoard(state, t.id, {
         ...board,
         draw: result.draw,
-        overrides: [...board.overrides, slotOverride(state, t.id, from, to, a.reason)],
+        overrides: [...board.overrides, slotOverride(board.overrides, t.id, from, to, a.reason)],
       });
     }
 

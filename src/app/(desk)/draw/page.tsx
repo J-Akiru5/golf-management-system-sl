@@ -259,6 +259,12 @@ export default function DrawPage() {
     () => buildFlightQueue(draw ?? [], tournament?.flights ?? [], config?.holes ?? 18),
     [draw, tournament?.flights, config?.holes],
   );
+  // A shotgun group can start on any hole; a two-tee start only has hole 1 and hole 10.
+  const holeOptions = useMemo(
+    () =>
+      shotgun ? Array.from({ length: config?.holes ?? 18 }, (_, index) => index + 1) : [1, 10],
+    [shotgun, config?.holes],
+  );
   const onQueueMove = useCallback(
     (groupNumber: number, hole: number) =>
       dispatch({ type: "moveGroupToHole", groupNumber, hole, reason }),
@@ -865,6 +871,9 @@ export default function DrawPage() {
               onShowPlayer={showPlayer}
               onShowGroup={focusGroup}
               onLock={onLock}
+              holeOptions={holeOptions}
+              onMoveGroupToHole={onQueueMove}
+              onSwapGroups={onQueueSwap}
               explain={adapters.router.explain}
             />
           </div>

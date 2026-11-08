@@ -116,6 +116,25 @@ describe("planDrawJobs", () => {
     expect(move.map((job) => job.kind)).toEqual(["save"]);
   });
 
+  it("gives every manual override its own id, so changes made in a row do not collide", () => {
+    const state = generated();
+    const id = state.activeTournamentId ?? "";
+    const draw = state.boards[id]?.draw ?? [];
+    const a = draw[0]?.number ?? 1;
+    const b = draw[1]?.number ?? 2;
+    const swapped = run(state, { type: "swapGroupSlots", a, b, reason: "Pace of play" });
+    const unlocked = run(swapped, {
+      type: "setGroupLocked",
+      group: a,
+      locked: false,
+      reason: "Undo",
+    });
+    const again = run(unlocked, { type: "swapGroupSlots", a, b, reason: "Pace of play" });
+    const ids = again.boards[id]?.overrides.map((o) => o.id) ?? [];
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+  });
+
   it("saves the draw when a hole's queue is reordered", () => {
     const state = generated();
     const draw = state.boards[state.activeTournamentId ?? ""]?.draw ?? [];
