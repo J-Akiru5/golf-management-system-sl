@@ -69,9 +69,80 @@ export interface FlightQueueModel {
  * - Pure: no input is changed.
  */
 export function buildFlightQueue(
-  _groups: readonly DrawGroup[],
-  _flights: readonly { id: string; name: string }[],
-  _holes: number,
+  groups: readonly DrawGroup[],
+  flights: readonly { id: string; name: string }[],
+  holes: number,
 ): FlightQueueModel {
-  throw new Error("buildFlightQueue is not implemented yet");
+  const holeCount = Number.isInteger(holes) && holes > 0 ? holes : 0;
+  const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  const byStart = (a: DrawGroup, b: DrawGroup) => compare(a.time, b.time) || a.number - b.number;
+  // A group that starts off the course cannot sit in a hole's queue, so it is left out entirely.
+  const onCourse = groups.filter(
+    (g) => Number.isInteger(g.startHole) && g.startHole >= 1 && g.startHole <= holeCount,
+  );
+
+  const entryOf = (g: DrawGroup): QueueEntry => ({
+    groupNumber: g.number,
+    flightId: g.flightId,
+    time: g.time,
+    startHole: g.startHole,
+    locked: g.locked,
+    players: g.playerIds.length,
+  });
+
+  const byHole: HoleQueue[] = Array.from({ length: holeCount }, (_, index) => ({
+    hole: index + 1,
+    entries: onCourse
+      .filter((g) => g.startHole === index + 1)
+      .sort(byStart)
+      .map(entryOf),
+  }));
+
+  // Holes taken at each start time by any flight, so a vacant hole means vacant for everyone.
+  const takenAt = new Map<string, Set<number>>();
+  for (const g of onCourse) {
+    const taken = takenAt.get(g.time) ?? new Set<number>();
+    taken.add(g.startHole);
+    takenAt.set(g.time, taken);
+  }
+  const vacantAt = (time: string): number[] => {
+    const taken = takenAt.get(time) ?? new Set<number>();
+    const vacant: number[] = [];
+    for (let hole = 1; hole <= holeCount; hole++) if (!taken.has(hole)) vacant.push(hole);
+    return vacant;
+  };
+
+  const summaries = flights.flatMap((flight, order) => {
+    const own = onCourse.filter((g) => g.flightId === flight.id);
+    if (own.length === 0) return [];
+    const times = [...new Set(own.map((g) => g.time))].sort(compare);
+    const waves: FlightWave[] = times.map((time) => {
+      const atTime = own.filter((g) => g.time === time);
+      return {
+        time,
+        groups: atTime.length,
+        holes: [...new Set(atTime.map((g) => g.startHole))].sort((a, b) => a - b),
+        vacantHoles: vacantAt(time),
+      };
+    });
+    return [
+      {
+        order,
+        first: times[0] ?? "",
+        queue: {
+          flightId: flight.id,
+          flightName: flight.name,
+          position: 0,
+          groups: own.length,
+          players: own.reduce((sum, g) => sum + g.playerIds.length, 0),
+          waves,
+        } satisfies FlightQueue,
+      },
+    ];
+  });
+
+  summaries.sort((a, b) => compare(a.first, b.first) || a.order - b.order);
+  const ranked = summaries.map(({ queue }, index) => ({ ...queue, position: index + 1 }));
+
+  return { holes: holeCount, byHole, flights: ranked };
 }
