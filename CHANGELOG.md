@@ -14,7 +14,8 @@ Supabase project, because the code and the database are released separately.
   replaced `save_draw` with a body copied from before `group_members.round_id` existed, so the
   member insert omitted the column and every save failed with a not-null violation, leaving the desk
   on “Not saved”. Migration `20261108002100` restores the round_id copy while keeping the null-round
-  guard. The migration is written and **not applied** until the owner applies it.
+  guard. **Applied to the live project by the owner on 8 November 2026** and verified by saving a
+  Move. No app deploy was needed.
 
 ## [0.29.1] - 2026-11-08
 
