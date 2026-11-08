@@ -296,11 +296,15 @@ describe("a session runs at most Flight A and Flight B", () => {
     );
   });
 
-  it("does not apply to a day drawn without sessions", () => {
+  it("holds for a draw with no sessions too: never a third flight", () => {
     const result = route(
       { players: morning(40), config, tees: [tee], categories: [category], flights },
       { seed: 7 },
     );
-    expect(result.groups).toHaveLength(40);
+    expect(result.groups).toHaveLength(36);
+    expect(Object.keys(startsOf(result))).toHaveLength(2);
+    expect(result.warnings.join(" ")).toContain(
+      "This draw: the course fits 36 groups (2 flights of 18 holes), so 4 groups with 16 players were left out.",
+    );
   });
 });
