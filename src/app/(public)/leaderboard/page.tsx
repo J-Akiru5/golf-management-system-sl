@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { HelpButton } from "@/components/help";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { ResultTable } from "@/components/public/LeaderboardResults";
+import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeamLeaderboard } from "@/components/public/TeamLeaderboard";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -129,7 +130,7 @@ export default async function LeaderboardPage({
   );
 }
 
-function LeaderboardShell({
+async function LeaderboardShell({
   eventName,
   dateText,
   children,
@@ -138,9 +139,11 @@ function LeaderboardShell({
   dateText?: string;
   children: ReactNode;
 }) {
+  const { t } = await getI18n();
   return (
     <main className="public public-pairings mobile-bar-space">
-      <header className="public-head">
+      <header className="public-head !p-4 sm:!p-5">
+        <PublicBackLink label={t("pairings.backHome")} />
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={172} />

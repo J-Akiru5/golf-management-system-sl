@@ -4,8 +4,10 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Avatar } from "@/components/bits";
+import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { filterRoster, rosterFlights } from "@/lib/data/public";
@@ -42,6 +44,7 @@ export function RosterPage({
   return (
     <main className="public public-pairings mobile-bar-space">
       <header className="public-head !p-4 sm:!p-5">
+        <PublicBackLink label={t("pairings.backHome")} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
@@ -52,7 +55,10 @@ export function RosterPage({
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <LanguageSwitcher tone="on-forest" />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher tone="on-forest" />
+            <HelpButton audience="player" screen="pairings" />
+          </div>
         </div>
         <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
           {t("programme.playersTitle")}

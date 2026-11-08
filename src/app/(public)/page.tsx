@@ -272,15 +272,7 @@ export default async function HomePage() {
             </>
           )}
           <div className="hero-actions">
-            {featured && featured.entriesOpen && (
-              <Link className="button-light" href={`/enter/${featured.tournamentId}`}>
-                Enter this event <ArrowRight aria-hidden="true" />
-              </Link>
-            )}
-            <Link
-              className={featured?.entriesOpen ? "button-quiet" : "button-light"}
-              href="/pairings"
-            >
+            <Link className="button-light" href="/pairings">
               View published pairings <ArrowRight aria-hidden="true" />
             </Link>
             <a className="button-quiet" href="#experience">
