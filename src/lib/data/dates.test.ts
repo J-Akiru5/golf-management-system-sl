@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { makeDemoTournaments } from "@/lib/demo/data";
-import { addIsoDays, daysOfTournament, nextPlayDay, playingDaysOf, selectedDaysOf } from "./dates";
+import {
+  addIsoDays,
+  daysOfTournament,
+  isFinalPlayingDay,
+  lastPlayingDayNumber,
+  nextPlayDay,
+  playingDaysOf,
+  selectedDaysOf,
+} from "./dates";
 import type { TournamentDay } from "./types";
 
 describe("addIsoDays", () => {
@@ -62,6 +70,38 @@ describe("playingDaysOf", () => {
   it("sorts by day number and keeps one row per day number", () => {
     const days = [day(2, "2026-11-06"), day(1, "2026-11-05"), day(1, "2026-11-05")];
     expect(playingDaysOf(days).map((item) => item.dayNumber)).toEqual([1, 2]);
+  });
+});
+
+describe("lastPlayingDayNumber", () => {
+  const day = (dayNumber: number, playDate: string, isPlayingDay = true): TournamentDay => ({
+    id: `d${dayNumber}`,
+    dayNumber,
+    playDate,
+    label: `Day ${dayNumber}`,
+    startTime: null,
+    isPlayingDay,
+  });
+
+  it("finds the final day by date when the day numbers are sparse", () => {
+    const days = [day(1, "2026-11-05"), day(2, "2026-11-06"), day(4, "2026-11-08")];
+    expect(lastPlayingDayNumber(days)).toBe(4);
+    expect(isFinalPlayingDay({ dayNumber: 4 }, days)).toBe(true);
+    expect(isFinalPlayingDay({ dayNumber: 2 }, days)).toBe(false);
+  });
+
+  it("ignores a trailing non-playing day and an unsorted list", () => {
+    const days = [
+      day(3, "2026-11-07"),
+      day(1, "2026-11-05"),
+      day(4, "2026-11-08", false),
+      day(2, "2026-11-06"),
+    ];
+    expect(lastPlayingDayNumber(days)).toBe(3);
+  });
+
+  it("has no final day when the event has no playing day", () => {
+    expect(lastPlayingDayNumber([day(1, "2026-11-05", false)])).toBeNull();
   });
 });
 

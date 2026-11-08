@@ -51,6 +51,32 @@ export function playingDaysOf(days: readonly TournamentDay[]): TournamentDay[] {
 }
 
 /**
+ * The last playing day is the latest one on the calendar, with the day number breaking a tie. A
+ * list that ends with a non-playing day or carries its rows in an odd order still names the real
+ * final day, so the earlier final-day afternoon default lands on the right date.
+ */
+export function lastPlayingDayNumber(days: readonly TournamentDay[]): number | null {
+  let last: TournamentDay | null = null;
+  for (const day of playingDaysOf(days)) {
+    if (!last) {
+      last = day;
+      continue;
+    }
+    const byDate = day.playDate.localeCompare(last.playDate);
+    if (byDate > 0 || (byDate === 0 && day.dayNumber > last.dayNumber)) last = day;
+  }
+  return last?.dayNumber ?? null;
+}
+
+/** True when the day is the last playing day of the event, by date rather than by list position. */
+export function isFinalPlayingDay(
+  day: Pick<TournamentDay, "dayNumber">,
+  days: readonly TournamentDay[],
+): boolean {
+  return lastPlayingDayNumber(days) === day.dayNumber;
+}
+
+/**
  * The structured day list a screen should show. A connected desk provides `days` from the
  * `tournament_days` table; the demo, and a connected database before migration 20261037000000,
  * derive the same shape from the dates (and the old tee-time preferences) so the UI has one
