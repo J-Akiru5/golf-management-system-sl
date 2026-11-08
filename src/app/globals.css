@@ -3435,6 +3435,14 @@
   line-height: 1;
 }
 
+/* A place name is text, not a number: the big condensed figure style would overflow its tile. */
+.hero-stats dd.hero-stat-text {
+  font-family: var(--f-sans);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 @media (max-width: 640px) {
   .teeline-site .teeline-hero {
     min-height: 0;

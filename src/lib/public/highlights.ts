@@ -103,6 +103,13 @@ export function timeLabel(t: string): string {
   return `${hour12}:${minute} ${suffix}`;
 }
 
+/**
+ * Where the event is played, shown on the public pages in place of the start time. Every event is
+ * at the one club for now, and the public page already names the club in its footer, so this is a
+ * constant rather than a field the event would need a database change to carry.
+ */
+export const VENUE_LABEL = "Iloilo Golf and Country Club";
+
 /** "Shotgun · 6:30 AM". The format words are the ones the desk uses, not new ones. */
 export function formatLabel(startFormat: string, firstTeeTime: string): string {
   const format = startFormat === "two_tee" ? "Two-tee" : "Shotgun";

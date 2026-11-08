@@ -9,6 +9,7 @@ import {
   formatLabel,
   nextIndex,
   timeLabel,
+  VENUE_LABEL,
 } from "./highlights";
 
 // These run on the server and again during hydration, so nothing here may read the clock or the
@@ -72,6 +73,13 @@ describe("timeLabel", () => {
 
   it("leaves something it cannot read alone rather than blanking it", () => {
     expect(timeLabel("morning")).toBe("morning");
+  });
+});
+
+describe("VENUE_LABEL", () => {
+  it("names the club where the event is played, with no time in it", () => {
+    expect(VENUE_LABEL).toBe("Iloilo Golf and Country Club");
+    expect(VENUE_LABEL).not.toMatch(/\d/);
   });
 });
 

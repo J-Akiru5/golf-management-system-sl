@@ -5,7 +5,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Clock,
+  MapPin,
   UsersRound,
 } from "lucide-react";
 import Image from "next/image";
@@ -18,9 +18,9 @@ import {
   dayCount,
   daysBetween,
   enteredLabel,
-  formatLabel,
   nextIndex,
   type PublicEvent,
+  VENUE_LABEL,
 } from "@/lib/public/highlights";
 import { carouselSlides } from "@/lib/public/slides";
 
@@ -169,8 +169,8 @@ export function TournamentCarousel({ events, today }: { events: PublicEvent[]; t
                   <span>{dayCount(event.dates)}</span>
                 </p>
                 <p className="strip-meta">
-                  <Clock aria-hidden="true" />
-                  <span>{formatLabel(event.startFormat, event.firstTeeTime)}</span>
+                  <MapPin aria-hidden="true" />
+                  <span>{VENUE_LABEL}</span>
                   <span className="strip-dot" aria-hidden="true" />
                   <UsersRound aria-hidden="true" />
                   <span>{enteredLabel(event.entered)}</span>
