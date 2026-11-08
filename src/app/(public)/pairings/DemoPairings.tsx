@@ -27,6 +27,7 @@ import type {
 import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { manilaToday } from "@/lib/player/dashboard";
+import { SAMPLE_PLAYER } from "@/lib/player/demo-identity";
 import { useDesk } from "@/lib/store/desk-store";
 
 /** Ten morning start times and eight afternoon start times, a normal shotgun day at the club. */
@@ -168,7 +169,7 @@ const SAMPLE_NAMES = [
   "Trinidad Pardo",
 ] as const;
 
-const SAMPLE_FEATURED_PLAYER = "Antonio Alcantara";
+const SAMPLE_FEATURED_PLAYER: string = SAMPLE_PLAYER.name;
 
 /** Day 1 runs 18 groups, Day 2 runs 12, so the phone layout has two full days to review. */
 const SAMPLE_DAY_PLAN = [
@@ -388,7 +389,7 @@ export function DemoPairings() {
               pairings={pairings}
               headingLevel="section"
               flightFilter
-              you={{ id: null, name: "Antonio Alcantara" }}
+              you={{ id: null, name: SAMPLE_FEATURED_PLAYER }}
             />
           </section>
 

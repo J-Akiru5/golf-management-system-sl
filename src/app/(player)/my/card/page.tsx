@@ -23,7 +23,7 @@ export default async function PlayerCardPage() {
   if (!isSupabaseConfigured()) {
     const sample = demoScorecard(manilaToday());
     return (
-      <div className="grid gap-5">
+      <div className="player-column grid gap-5">
         <h1 className="font-serif text-[26px] leading-8 font-semibold sm:text-[30px] sm:leading-9">
           {t("player.scorecard.heading")}
         </h1>
@@ -47,7 +47,7 @@ export default async function PlayerCardPage() {
   const entries = portal.entries.filter((entry) => (entry.scorecards ?? []).length > 0);
 
   return (
-    <div className="grid gap-5">
+    <div className="player-column grid gap-5">
       <PlayerOfflineNotice path="/my/card" />
       <h1 className="font-serif text-[26px] leading-8 font-semibold sm:text-[30px] sm:leading-9">
         {t("player.scorecard.heading")}

@@ -1,3 +1,4 @@
+import { SAMPLE_INDEX, SAMPLE_PLAYER } from "./demo-identity";
 import type { PortalEntry } from "./portal";
 
 /**
@@ -216,13 +217,13 @@ export function indexFromEntries(
 /** A sample record for the demo build, where there is no database to ask. */
 export const demoOwnProfile: OwnProfile = {
   linked: true,
-  player: { id: "demo-player", name: "Ferdinand Salazar", ngapId: "30177" },
+  player: { ...SAMPLE_PLAYER },
   contact: {
     phone: "0917 123 4567",
-    email: "ferdie.salazar@example.com",
-    nickname: "Ferdie",
+    email: "antonio.alcantara@example.com",
+    nickname: "Tony",
   },
-  handicap: { index: 11.4, effectiveDate: "2026-11-05" },
+  handicap: { index: SAMPLE_INDEX, effectiveDate: "2026-11-05" },
   membership: { type: "member", memberNumber: "M-0182" },
   clubName: "Iloilo Golf and Country Club",
   photo: { private: true, public: true, publicConsentAt: "2026-09-14" },

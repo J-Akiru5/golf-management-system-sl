@@ -1,6 +1,7 @@
 import { addIsoDays } from "@/lib/data/dates";
 import type { PublicPairings, PublicProgramme } from "@/lib/data/types";
 import { manilaToday } from "./dashboard";
+import { SAMPLE_INDEX, SAMPLE_PLAYER, SAMPLE_PLAYING_HANDICAP } from "./demo-identity";
 import type { PortalEntry, PortalScorecard, PortalState } from "./portal";
 import type { LiveBoardPayload, LiveBoardRow } from "./ranks";
 
@@ -13,12 +14,6 @@ import type { LiveBoardPayload, LiveBoardRow } from "./ranks";
  * It is labelled as sample data wherever it is used, and it is never imported on a connected build.
  * Every name here is already a fictional name from the demo seed.
  */
-
-const SAMPLE_PLAYER = {
-  id: "demo-player-antonio",
-  name: "Antonio Alcantara",
-  ngapId: "8888",
-} as const;
 
 const SAMPLE_GROUP = ["Benjamin Bautista", "Carlos Castillo", "Felipe Marquez"] as const;
 
@@ -79,7 +74,7 @@ export function demoScorecard(playDate: string): PortalScorecard {
     state: "final",
     version: 3,
     publishedAt: `${playDate}T18:20:00+08:00`,
-    playingHandicap: 14,
+    playingHandicap: SAMPLE_PLAYING_HANDICAP,
     courseHandicap: 15,
     grossStrokes,
     netStrokes,
@@ -112,8 +107,8 @@ export function demoPortalState(now: Date = new Date()): PortalState {
     state: "published",
     status: "ok",
     reasons: [],
-    frozenIndex: 12.4,
-    playingHandicap: 14,
+    frozenIndex: SAMPLE_INDEX,
+    playingHandicap: SAMPLE_PLAYING_HANDICAP,
     category: "Regular",
     tee: "White",
     flight: "Flight A",
@@ -126,7 +121,7 @@ export function demoPortalState(now: Date = new Date()): PortalState {
 
   return {
     linked: true,
-    player: { ...SAMPLE_PLAYER, name: SAMPLE_PLAYER.name },
+    player: { ...SAMPLE_PLAYER },
     entries: [entry],
   };
 }
@@ -139,7 +134,7 @@ export function demoGroupMates(): string[] {
 export function demoBoard(playDate: string): LiveBoardPayload {
   const sample: [string, string, number, number, string][] = [
     ["Benjamin Bautista", "Flight A", 38, 71, "demo-player-ben"],
-    ["Antonio Alcantara", "Flight A", 36, 73, SAMPLE_PLAYER.id],
+    [SAMPLE_PLAYER.name, "Flight A", 36, 73, SAMPLE_PLAYER.id],
     ["Carlos Castillo", "Flight A", 35, 74, "demo-player-carlos"],
     ["Felipe Marquez", "Flight B", 34, 75, "demo-player-felipe"],
     ["Gregorio Padilla", "Flight B", 33, 76, "demo-player-greg"],

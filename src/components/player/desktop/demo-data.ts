@@ -1,11 +1,13 @@
 import { manilaToday } from "@/lib/player/dashboard";
+import { SAMPLE_INDEX, SAMPLE_PLAYER, SAMPLE_PLAYING_HANDICAP } from "@/lib/player/demo-identity";
 import type { PortalState } from "@/lib/player/portal";
 
 /**
  * Sample data for the demo build, where there is no Supabase project to ask.
  *
- * It is only used behind the `?demo=desktop` switch and on the profile page when Supabase is not
- * configured. The dates are relative to the club's today, so "Playing today" really is today
+ * It is only used behind the `?demo=desktop` and `?demo=unlinked` switches. The player is the same
+ * sample player the rest of the demo uses (`demo-identity.ts`), so the name does not change with the
+ * switch; only the events differ, to show a published start and a draft one. The dates are relative to the club's today, so "Playing today" really is today
  * whenever this is opened.
  */
 
@@ -18,7 +20,7 @@ function dayOffset(days: number): string {
 
 export const demoPortalState: PortalState = {
   linked: true,
-  player: { id: "demo-player", name: "Ferdinand Salazar", ngapId: "30177" },
+  player: { ...SAMPLE_PLAYER },
   entries: [
     {
       tournamentId: "demo-event-today",
@@ -30,10 +32,10 @@ export const demoPortalState: PortalState = {
       state: "published",
       status: "ok",
       reasons: [],
-      frozenIndex: 11.4,
-      playingHandicap: 12,
+      frozenIndex: SAMPLE_INDEX,
+      playingHandicap: SAMPLE_PLAYING_HANDICAP,
       category: "Regular",
-      tee: "Blue",
+      tee: "White",
       flight: "Flight A",
       paymentStatus: "paid",
       published: true,
@@ -51,8 +53,8 @@ export const demoPortalState: PortalState = {
       state: "draft",
       status: "ok",
       reasons: [],
-      frozenIndex: 11.4,
-      playingHandicap: 12,
+      frozenIndex: SAMPLE_INDEX,
+      playingHandicap: SAMPLE_PLAYING_HANDICAP,
       category: "Regular",
       tee: null,
       flight: null,

@@ -67,7 +67,7 @@ export default function NgapFaqPage() {
 
       <ol className="grid list-none gap-3 p-0">
         {NGAP_FAQ.map((item, index) => (
-          <li key={item.id} className="card grid gap-2">
+          <li key={item.id} className="card grid gap-2 [overflow-wrap:anywhere]">
             <h2 className="text-[18px] leading-6">
               <span className="mr-1.5 text-ink-muted tnum">{index + 1}.</span>
               {item.question}

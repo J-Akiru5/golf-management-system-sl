@@ -64,36 +64,60 @@ function findAnchor(name: string): Element | null {
   return null;
 }
 
+/** The longest the welcome waits for the page to hydrate. Past this it opens anyway. */
+const HYDRATION_WAIT_MS = 3000;
+
+function hasReactFiber(element: Element): boolean {
+  for (const key of Object.keys(element)) {
+    if (key.startsWith("__reactFiber$")) return true;
+  }
+  return false;
+}
+
 /**
- * Runs `run` once the page has finished its first load, and returns a way to cancel it.
+ * True once React has attached to the top-level nodes of the page content. The player and staff
+ * layouts render the page inside `<main>`, behind its loading skeleton, so those nodes hydrate after
+ * the layout does. A page with no `<main>` has nothing to wait for.
+ */
+function pageContentHydrated(): boolean {
+  const main = document.querySelector("main");
+  if (!main) return true;
+  return Array.from(main.children)
+    .filter((node) => !["SCRIPT", "STYLE", "TEMPLATE"].includes(node.tagName))
+    .every(hasReactFiber);
+}
+
+/**
+ * Runs `run` once the page content has hydrated, and returns a way to cancel it.
  *
  * Radix marks everything outside its dialog aria-hidden while it is open. On the player home that
  * mutation used to land on nodes React had not hydrated yet, because the page streams in behind
- * its loading skeleton, and React then reported an attribute mismatch on the hero. Waiting for
- * `load` (or 1.5s, whichever comes first, so a slow image cannot hold the welcome) keeps the dialog
- * after hydration. A client navigation has no hydration left to wait for, so it opens at once.
+ * its loading skeleton, and React then reported an attribute mismatch on the hero. The window `load`
+ * event is not enough (it fires before that hydration), and opening in a transition did not change
+ * the order, so this checks the nodes themselves, giving up after 3s so a failed check only delays
+ * the welcome. A client navigation has no hydration left to wait for, so it opens at once.
  */
 function whenPageSettled(run: () => void): () => void {
   if (typeof window === "undefined") return () => {};
-  let settled = false;
+  let cancelled = false;
   let timer = 0;
-  const fire = () => {
-    if (settled) return;
-    settled = true;
-    window.clearTimeout(timer);
-    window.removeEventListener("load", fire);
-    window.requestAnimationFrame(run);
+  const started = window.performance.now();
+  const check = () => {
+    if (cancelled) return;
+    const loaded = window.document.readyState === "complete";
+    if (
+      (loaded && pageContentHydrated()) ||
+      window.performance.now() - started > HYDRATION_WAIT_MS
+    ) {
+      run();
+      return;
+    }
+    timer = window.setTimeout(check, 50);
   };
-  if (window.document.readyState === "complete") {
-    fire();
-    return () => {};
-  }
-  window.addEventListener("load", fire);
-  timer = window.setTimeout(fire, 1500);
+  timer = window.setTimeout(check, 0);
   return () => {
-    settled = true;
+    cancelled = true;
     window.clearTimeout(timer);
-    window.removeEventListener("load", fire);
   };
 }
 
@@ -139,6 +163,10 @@ export function OnboardingGate({
   const [installed, setInstalled] = useState(false);
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null);
   const dismissed = useRef(false);
+  // True while the first-load open is waiting for the page to settle. The "arrived later" effect
+  // below must not open the sheet in that window, or it skips the wait and Radix's aria-hidden lands
+  // on nodes React has not hydrated yet.
+  const settling = useRef(false);
 
   // One read of who this is plus what they have already seen. A build with no Supabase project has
   // no user id, which is exactly right for the demo and for a borrowed phone.
@@ -167,16 +195,23 @@ export function OnboardingGate({
       setSeen(stored.seen);
       setChecklist(readChecklist(scopeKey(role, uid)));
       const replay = new URLSearchParams(window.location.search).get("onboarding") === "1";
+      const openWhenSettled = () => {
+        settling.current = true;
+        const cancel = whenPageSettled(() => {
+          settling.current = false;
+          if (alive) setOpen(true);
+        });
+        cancelOpen = () => {
+          settling.current = false;
+          cancel();
+        };
+      };
       if (replay) {
         setStep(0);
-        cancelOpen = whenPageSettled(() => {
-          if (alive) setOpen(true);
-        });
+        openWhenSettled();
       } else if (!stored.seen && window.location.pathname === home) {
         setStep(clampStep(role, stored.step));
-        cancelOpen = whenPageSettled(() => {
-          if (alive) setOpen(true);
-        });
+        openWhenSettled();
       }
       setReady(true);
     };
@@ -190,7 +225,7 @@ export function OnboardingGate({
   // Arriving at the home screen later in the same visit still gets the welcome, unless the person
   // closed it on this screen or finished it.
   useEffect(() => {
-    if (!ready || open || dismissed.current) return;
+    if (!ready || open || dismissed.current || settling.current) return;
     if (pathname !== home) return;
     const stored = readProgress(role, scopeUser);
     if (stored.seen) {

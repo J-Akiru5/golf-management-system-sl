@@ -34,7 +34,7 @@ export default async function PlayerBoardPage({
     const today = manilaToday();
     const sample = demoPortalState();
     return (
-      <div className="grid gap-4">
+      <div className="player-column grid gap-4">
         <h1 className="font-serif text-[26px] leading-8 font-semibold sm:text-[30px] sm:leading-9">
           {t("player.board.title")}
         </h1>
@@ -83,7 +83,7 @@ export default async function PlayerBoardPage({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="player-column grid gap-4">
       <PlayerOfflineNotice path="/my/board" />
       <header className="grid gap-1">
         <h1 className="font-serif text-[26px] leading-8 font-semibold sm:text-[30px] sm:leading-9">

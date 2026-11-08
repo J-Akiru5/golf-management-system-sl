@@ -3944,6 +3944,9 @@
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
+  /* Cookie names and storage keys are long single words; without this a four-column table is wider
+     than a phone and the whole page scrolls sideways. */
+  overflow-wrap: anywhere;
 }
 
 .legal-prose strong {
@@ -4877,6 +4880,15 @@ html[data-textsize="large"] {
   .player-main {
     max-width: 72rem;
     padding-top: 22px;
+  }
+
+  /* Rows and tables built for a phone spread into a 1000px line at this width: a name at one edge
+     and its score at the other. The leaderboard and the scorecard keep the same reading measure as
+     the course map instead. */
+  .player-column {
+    width: 100%;
+    max-width: 48rem;
+    margin-inline: auto;
   }
 
   .player-desktop-nav {
