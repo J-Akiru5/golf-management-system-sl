@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/desk";
 import { DrawTable } from "@/components/draw/DrawTable";
+import { FlightQueuePanel } from "@/components/draw/FlightQueuePanel";
 import { GroupCard } from "@/components/draw/GroupCard";
 import { IssuesPanel } from "@/components/draw/IssuesPanel";
 import { PublishDialog } from "@/components/draw/PublishDialog";
@@ -11,6 +12,8 @@ import { PublishDialog } from "@/components/draw/PublishDialog";
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { fmtIso } from "@/lib/data/labels";
+import { sessionFinderFor } from "@/lib/draw/day-sessions";
+import { buildFlightQueue } from "@/lib/draw/flight-queue";
 import { buildDrawTable } from "@/lib/draw/table-model";
 import { dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
@@ -54,7 +57,9 @@ export default function DrawPage() {
   const [selection, setSelection] = useState<Selection>(null);
   const [tab, setTab] = useState<Tab>("pool");
   // The check list is long, so it lives on its own tab and the groups are visible on opening.
-  const [view, setView] = useState<"board" | "checks">("board");
+  const [view, setView] = useState<"board" | "checks" | "queue">("board");
+  // AM, PM or both. Every playing day runs a morning and an afternoon session.
+  const [sessionFilter, setSessionFilter] = useState<"all" | "AM" | "PM">("all");
   const [classFilter, setClassFilter] = useState("all");
   // Cards edit; the table is the printed pairing layout, for reading a class at a glance.
   const [layout, setLayout] = useState<"cards" | "table">("cards");
@@ -95,6 +100,25 @@ export default function DrawPage() {
       ? draw
       : draw.filter((g) => g.playerIds.some(onDay))
     : null;
+  // The session each group belongs to, read from its start time, with the tally for the tabs.
+  const sessionOfTime = useMemo(() => sessionFinderFor(days, day), [days, day]);
+  const sessionTally = (["AM", "PM"] as const)
+    .map((key) => {
+      const inSession = (visibleDraw ?? []).filter((g) => sessionOfTime(g.time) === key);
+      return {
+        key,
+        groups: inSession.length,
+        players: inSession.reduce((n, g) => n + g.playerIds.length, 0),
+      };
+    })
+    .filter((row) => row.groups > 0);
+  const activeSession = sessionTally.some((row) => row.key === sessionFilter)
+    ? sessionFilter
+    : "all";
+  const sessionDraw =
+    visibleDraw && activeSession !== "all"
+      ? visibleDraw.filter((g) => sessionOfTime(g.time) === activeSession)
+      : visibleDraw;
   const mixedGroups =
     day === null ? [] : (visibleDraw ?? []).filter((g) => g.playerIds.some((id) => !onDay(id)));
   const ready = registrations.filter((r) => r.status === "ok").length;
@@ -251,6 +275,49 @@ export default function DrawPage() {
     [dispatch, reason],
   );
 
+  // The queue reads the whole board for the loaded day, never the class or day filter, so a hole's
+  // queue is always complete.
+  const queueModel = useMemo(
+    () =>
+      buildFlightQueue(
+        (draw ?? []).filter(
+          (g) => sessionFilter === "all" || sessionOfTime(g.time) === sessionFilter,
+        ),
+        tournament?.flights ?? [],
+        config?.holes ?? 18,
+        sessionOfTime,
+      ),
+    [draw, tournament?.flights, config?.holes, sessionFilter, sessionOfTime],
+  );
+  // The hole with its flight letter ("1A", "12B") for each group, shown on the cards and in Details.
+  const slotByGroup = useMemo(() => {
+    const slots = new Map<number, string>();
+    for (const queue of queueModel.byHole) {
+      for (const entry of queue.entries) slots.set(entry.groupNumber, entry.slot);
+    }
+    return slots;
+  }, [queueModel]);
+  const slotOf = useCallback((groupNumber: number) => slotByGroup.get(groupNumber), [slotByGroup]);
+  // A shotgun group can start on any hole; a two-tee start only has hole 1 and hole 10.
+  const holeOptions = useMemo(
+    () =>
+      shotgun ? Array.from({ length: config?.holes ?? 18 }, (_, index) => index + 1) : [1, 10],
+    [shotgun, config?.holes],
+  );
+  const onQueueMove = useCallback(
+    (groupNumber: number, hole: number) =>
+      dispatch({ type: "moveGroupToHole", groupNumber, hole, reason }),
+    [dispatch, reason],
+  );
+  const onQueueSwap = useCallback(
+    (a: number, b: number) => dispatch({ type: "swapGroupSlots", a, b, reason }),
+    [dispatch, reason],
+  );
+  const onQueueReorder = useCallback(
+    (hole: number, order: number[]) => dispatch({ type: "reorderHoleQueue", hole, order, reason }),
+    [dispatch, reason],
+  );
+
   const moveActiveTo = useCallback(
     (n: number) => {
       if (!active) return;
@@ -301,7 +368,7 @@ export default function DrawPage() {
   // One tab per class, so a long day is read a class at a time instead of by scrolling.
   const classTabs = (() => {
     const tally = new Map<string, { groups: number; players: number }>();
-    for (const g of visibleDraw ?? []) {
+    for (const g of sessionDraw ?? []) {
       const name = classOf(g);
       const row = tally.get(name) ?? { groups: 0, players: 0 };
       tally.set(name, { groups: row.groups + 1, players: row.players + g.playerIds.length });
@@ -313,7 +380,7 @@ export default function DrawPage() {
       .map(([name, row]) => ({ name, ...row }));
   })();
   const activeClass = classTabs.some((c) => c.name === classFilter) ? classFilter : "all";
-  const shownGroups = (visibleDraw ?? []).filter(
+  const shownGroups = (sessionDraw ?? []).filter(
     (g) => activeClass === "all" || classOf(g) === activeClass,
   );
   const sections = new Map<string, NonNullable<typeof draw>>();
@@ -463,9 +530,6 @@ export default function DrawPage() {
                 className="!w-auto max-w-full text-[16px] md:text-sm"
                 data-help="draw-day"
               >
-                {/* The demo has one in-memory board and no saved rounds, so it shows the whole
-                    event. A connected desk always has a day selected. */}
-                {desk.status === "demo" && <option value="">All playing days</option>}
                 {playingDays.map((d) => (
                   <option key={d.id} value={d.dayNumber}>
                     {d.label} · {fmtIso(d.playDate)}
@@ -612,6 +676,14 @@ export default function DrawPage() {
             </button>
             <button
               type="button"
+              className={view === "queue" ? "btn small" : "btn small ghost"}
+              aria-pressed={view === "queue"}
+              onClick={() => setView("queue")}
+            >
+              Flight queue
+            </button>
+            <button
+              type="button"
               className={view === "checks" ? "btn small" : "btn small ghost"}
               aria-pressed={view === "checks"}
               onClick={() => setView("checks")}
@@ -622,6 +694,32 @@ export default function DrawPage() {
                 : ""}
             </button>
           </nav>
+
+          {sessionTally.length > 0 && view !== "checks" && (
+            <nav className="row" aria-label="Session">
+              <button
+                type="button"
+                className={activeSession === "all" ? "btn small" : "btn small ghost"}
+                aria-pressed={activeSession === "all"}
+                onClick={() => setSessionFilter("all")}
+              >
+                AM and PM · {visibleDraw?.length ?? 0}
+              </button>
+              {sessionTally.map((row) => (
+                <button
+                  key={row.key}
+                  type="button"
+                  className={activeSession === row.key ? "btn small" : "btn small ghost"}
+                  aria-pressed={activeSession === row.key}
+                  onClick={() => setSessionFilter(row.key)}
+                  title={`${row.groups} groups · ${row.players} players`}
+                >
+                  {row.key} · {row.groups}
+                  <span className="muted"> ({row.players})</span>
+                </button>
+              ))}
+            </nav>
+          )}
 
           {view === "board" && classTabs.length > 0 && (
             <div className="row">
@@ -666,6 +764,21 @@ export default function DrawPage() {
                   Table
                 </button>
               </nav>
+            </div>
+          )}
+
+          {view === "queue" && (
+            <div>
+              <p className="hint mb-2">
+                Moves and swaps lock the groups they touch, so a new draw keeps them. The reason
+                chosen above is recorded with each change.
+              </p>
+              <FlightQueuePanel
+                model={queueModel}
+                onMoveToHole={onQueueMove}
+                onSwap={onQueueSwap}
+                onReorder={onQueueReorder}
+              />
             </div>
           )}
 
@@ -778,6 +891,7 @@ export default function DrawPage() {
                         }
                         selected={selection?.kind === "group" && selection.n === g.number}
                         flash={flash === g.number}
+                        slot={slotByGroup.get(g.number)}
                         onSelectPlayer={selectPlayer}
                         onSelectGroup={selectGroup}
                         onPick={onPick}
@@ -820,6 +934,10 @@ export default function DrawPage() {
               onShowPlayer={showPlayer}
               onShowGroup={focusGroup}
               onLock={onLock}
+              holeOptions={holeOptions}
+              slotOf={slotOf}
+              onMoveGroupToHole={onQueueMove}
+              onSwapGroups={onQueueSwap}
               explain={adapters.router.explain}
             />
           </div>

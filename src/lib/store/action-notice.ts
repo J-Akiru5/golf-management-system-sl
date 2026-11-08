@@ -44,6 +44,16 @@ export function actionNotice(
   if (!board) return null;
 
   switch (action.type) {
+    case "generateAllDays": {
+      const days = Object.keys(board.dayBoards ?? {}).length;
+      const shown = board.draw?.length ?? 0;
+      return {
+        tone: "ok",
+        title: "Draw made",
+        detail: `${days} playing day${days === 1 ? "" : "s"} drawn, AM and PM kept apart · ${shown} group${shown === 1 ? "" : "s"} on the day shown`,
+      };
+    }
+
     case "generate": {
       const now = board.draw ?? [];
       const then = was?.draw ?? null;
@@ -98,6 +108,26 @@ export function actionNotice(
         title: `Group ${action.group} ${action.locked ? "locked" : "unlocked"}`,
         detail: g ? `${place(g)} · ${action.reason}` : action.reason,
       };
+    }
+
+    case "swapGroupSlots":
+    case "moveGroupToHole":
+    case "reorderHoleQueue": {
+      // The reducer returns the same state when the slot edit is refused.
+      if (after === before) {
+        return {
+          tone: "bad",
+          title: "Change refused",
+          detail: "That change could not be made.",
+        };
+      }
+      const title =
+        action.type === "swapGroupSlots"
+          ? "Groups swapped"
+          : action.type === "moveGroupToHole"
+            ? "Group moved"
+            : "Queue reordered";
+      return { tone: "ok", title, detail: action.reason };
     }
 
     default:

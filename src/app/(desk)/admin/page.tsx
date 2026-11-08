@@ -3,6 +3,7 @@
 import { PanelRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CourseCanvas, MAP_MARGIN, useCover } from "@/components/control-room/CourseCanvas";
+import { FlightQueueSummary } from "@/components/control-room/FlightQueueSummary";
 import { HoleCard, HolePin } from "@/components/control-room/HolePin";
 import {
   ActivityPanel,
@@ -18,8 +19,12 @@ import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/compon
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { COURSE_IS_PLACEHOLDER, MAP_H, MAP_HOLES, MAP_W } from "@/lib/course/layout";
+import { fmtIso } from "@/lib/data/labels";
 import type { Tournament } from "@/lib/data/types";
+import { sessionFinderFor } from "@/lib/draw/day-sessions";
+import { buildFlightQueue } from "@/lib/draw/flight-queue";
 import { fmtTime } from "@/lib/format";
+import { useDesk } from "@/lib/store/desk-store";
 import { useBoard } from "@/lib/ui/board";
 import { cn } from "@/lib/ui/cn";
 import { clampPan, clampZoom, type Pan, panBounds, zoomAbout } from "@/lib/ui/map-pan";
@@ -96,12 +101,27 @@ function ControlRoomInner({
   const start =
     chosenStart && startTimes.includes(chosenStart) ? chosenStart : (startTimes[0] ?? null);
   const startGroups = draw?.filter((g) => !shotgun || g.time === start) ?? [];
-  const date = new Date(`${config.date}T00:00:00`).toLocaleDateString("en-PH", {
+  const { days, drawDay, setDrawDay, status } = useDesk();
+  const playingDays = useMemo(() => days.filter((d) => d.isPlayingDay), [days]);
+  // The date shown is the chosen day's, or the event's first day when the whole event is shown.
+  const shownDate = playingDays.find((d) => d.dayNumber === drawDay)?.playDate ?? config.date;
+  const date = new Date(`${shownDate}T00:00:00`).toLocaleDateString("en-PH", {
     weekday: "short",
     month: "short",
     day: "numeric",
   });
   const startClock = startGroups[0]?.time ?? config.firstTeeTime;
+  // The queue reads the whole draw, not just the start shown on the map.
+  const queueModel = useMemo(
+    () =>
+      buildFlightQueue(
+        draw ?? [],
+        tournament.flights,
+        config.holes,
+        sessionFinderFor(days, drawDay),
+      ),
+    [draw, tournament.flights, config.holes, days, drawDay],
+  );
 
   const startPan = (e: React.PointerEvent<HTMLElement>) => {
     // A fresh press is a fresh intent: it clears the guard, so Reset view still works when the
@@ -293,6 +313,23 @@ function ControlRoomInner({
               {b.status === "demo" && "Demo data only."}
             </p>
           )}
+          {playingDays.length > 1 && (
+            <label className="mt-3 flex items-center gap-2 text-xs">
+              <span className="font-bold tracking-[.14em] text-[#e0bc65] uppercase">Day</span>
+              <select
+                aria-label="Day of the event"
+                value={drawDay ?? ""}
+                onChange={(e) => setDrawDay(e.target.value === "" ? null : Number(e.target.value))}
+                className="!w-auto min-h-9 max-w-full rounded-full border border-[rgba(238,240,234,.3)] bg-[rgba(14,22,18,.5)] px-3 text-sm text-[#eef0ea] [&>option]:bg-white [&>option]:text-black"
+              >
+                {playingDays.map((d) => (
+                  <option key={d.id} value={d.dayNumber}>
+                    {d.label} · {fmtIso(d.playDate)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {shotgun && startTimes.length > 1 && (
             <div
               className="seg mt-3 !border-[rgba(238,240,234,.3)] bg-[rgba(14,22,18,.5)]"
@@ -372,6 +409,7 @@ function ControlRoomInner({
             <SessionLogDrawer />
             <AttentionPanel b={b} />
             <PublishPanel b={b} dataHelp="control-publish" />
+            <FlightQueueSummary model={queueModel} />
             <ReadinessPanel b={b} dataHelp="control-readiness" />
           </ScrollFade>
         </aside>
@@ -433,6 +471,7 @@ function ControlRoomInner({
 
       <div className={cn("grid gap-4 p-4 sm:p-6 md:grid-cols-2 lg:pl-[var(--rail-pad)] xl:hidden")}>
         <AttentionPanel b={b} variant="card" className="md:col-span-2" />
+        <FlightQueueSummary model={queueModel} variant="card" className="md:col-span-2" />
         <DivisionsPanel b={b} variant="card" />
         <HandicapHistogram b={b} variant="card" />
         <ActivityPanel variant="card" className="md:col-span-2" />

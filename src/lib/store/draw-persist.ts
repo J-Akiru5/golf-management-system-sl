@@ -119,6 +119,9 @@ export function planDrawJobs(
     case "restoreToDraw":
     case "placeOnDraw":
     case "setGroupLocked":
+    case "swapGroupSlots":
+    case "moveGroupToHole":
+    case "reorderHoleQueue":
       return save();
     case "publish":
       return now.published && now.published !== was?.published

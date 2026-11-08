@@ -27,6 +27,8 @@ export interface GroupCardProps {
   selectedPlayer: string | null;
   selected: boolean;
   flash: boolean;
+  /** The hole with its flight letter, for example "1A" or "12B". Falls back to the plain hole. */
+  slot?: string;
   onSelectPlayer: (id: string) => void;
   onSelectGroup: (n: number) => void;
   onPick: (id: string | null) => void;
@@ -67,7 +69,7 @@ function GroupCardImpl(p: GroupCardProps) {
     <article
       id={`group-${g.number}`}
       className={cls}
-      aria-label={`Group ${g.number}, ${p.shotgun ? `hole ${g.startHole}` : `tee ${g.startHole}`}, ${fmtTime(g.time)}`}
+      aria-label={`Group ${g.number}, ${p.shotgun ? `hole ${p.slot ?? g.startHole}` : `tee ${g.startHole}`}, ${fmtTime(g.time)}`}
       onDragOver={(e) => {
         if (p.allowDrop(g.number)) {
           e.preventDefault();
@@ -95,7 +97,7 @@ function GroupCardImpl(p: GroupCardProps) {
             {g.startHole}
           </span>
           <span>
-            <b>{p.shotgun ? `Hole ${g.startHole}` : `Tee ${g.startHole}`}</b>
+            <b>{p.shotgun ? `Hole ${p.slot ?? g.startHole}` : `Tee ${g.startHole}`}</b>
             <span className="muted"> · Group {g.number}</span>
             <br />
             <span className="mono nowrap">{fmtTime(g.time)}</span>

@@ -30,6 +30,7 @@ import {
   makeDemoSeed,
   makeDemoTournaments,
 } from "@/lib/demo/data";
+import { moveGroupToHole, reorderHoleQueue, swapGroupSlots } from "@/lib/draw/group-slots";
 import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
 import {
   type GroupPlacement,
@@ -97,6 +98,11 @@ export interface BoardState {
   warnings: string[];
   published: Published | null;
   overrides: ManualOverride[];
+  /**
+   * Demo only: each playing day's own board, kept when every day is drawn at once. `draw` and
+   * `warnings` above are the day on screen. A connected desk keeps one saved round per day instead.
+   */
+  dayBoards?: Record<number, { draw: DrawGroup[]; warnings: string[] }>;
 }
 
 export const EMPTY_BOARD: BoardState = {
@@ -175,6 +181,10 @@ export type Action =
   | { type: "resolveDeferred"; id: string; decision: "link" | "create" | "drop" }
   /** Draws one playing day. `dayNumber` null keeps the old whole-event behaviour. */
   | { type: "generate"; preserveLocks: boolean; dayNumber?: number | null }
+  /** Demo only: draws every playing day at once, each with its own AM and PM sessions. */
+  | { type: "generateAllDays"; showDay: number | null }
+  /** Demo only: shows another playing day's board, keeping the edits made to the one left. */
+  | { type: "showDay"; from: number | null; to: number }
   | { type: "move"; playerId: string; toGroup: number; reason: string }
   /** Takes a withdrawn player off the day's board, leaving their group slot open. */
   | { type: "withdrawFromDraw"; playerId: string }
@@ -183,6 +193,12 @@ export type Action =
   /** Puts a walk-up into a group the staff screen already found an open place in. */
   | { type: "placeOnDraw"; playerId: string; groupNumber: number }
   | { type: "setGroupLocked"; group: number; locked: boolean; reason: string }
+  /** Swaps two groups' start slots (time and hole); both groups end up locked. */
+  | { type: "swapGroupSlots"; a: number; b: number; reason: string }
+  /** Moves a group to another hole at the same start time. */
+  | { type: "moveGroupToHole"; groupNumber: number; hole: number; reason: string }
+  /** Reorders the groups waiting on one hole, earliest start first. */
+  | { type: "reorderHoleQueue"; hole: number; order: number[]; reason: string }
   /**
    * Publishes one playing day and keeps the days already published. The store fills the day
    * fields from the day on screen, so a screen only asks to publish.
@@ -604,6 +620,47 @@ function withBoard(s: DeskState, tournamentId: string | null, board: BoardState)
   return { ...s, boards: { ...s.boards, [tournamentId]: board } };
 }
 
+/** A short plain description of where a group starts, for the manual override log. */
+const slotLabel = (group: DrawGroup | undefined): string | null =>
+  group ? `G${group.number} ${group.time} hole ${group.startHole}` : null;
+
+/** The groups waiting on one hole, earliest start first, for the manual override log. */
+const queueLabel = (draw: DrawGroup[], hole: number): string => {
+  const numbers = draw
+    .filter((g) => g.startHole === hole)
+    .sort((x, y) => x.time.localeCompare(y.time))
+    .map((g) => `G${g.number}`);
+  return `Hole ${hole}: ${numbers.join(", ")}`;
+};
+
+/**
+ * A fresh id for a manual override: one the board does not already hold. The old `seq + 1` id was
+ * reused when two overrides were made in a row, which gave the overrides list duplicate keys.
+ */
+const nextOverrideId = (overrides: readonly ManualOverride[]): string => {
+  let n = overrides.length + 1;
+  while (overrides.some((o) => o.id === `ov-${n}`)) n += 1;
+  return `ov-${n}`;
+};
+
+/** The manual override a slot edit records: no player, a move, and where the slot went. */
+const slotOverride = (
+  overrides: readonly ManualOverride[],
+  tournamentId: string,
+  from: string | null,
+  to: string | null,
+  reason: string,
+): ManualOverride => ({
+  id: nextOverrideId(overrides),
+  tournamentId,
+  playerId: "",
+  kind: "move",
+  from,
+  to,
+  reason,
+  at: new Date().toISOString(),
+});
+
 export function reducer(state: DeskState, a: Action): DeskState {
   switch (a.type) {
     // The Supabase adapter replaces the whole desk once it has read the club's data. Nothing is
@@ -885,12 +942,18 @@ export function reducer(state: DeskState, a: Action): DeskState {
       // A fresh proposal for one day does not take another day's published list down: only a
       // snapshot with no day left in it is cleared, which is the case until days are published.
       const keepsOtherDays = publishedGroupsForOtherDays(board.published, dayNumber).length > 0;
+      // Small groups are checked live by validateDraw, so the engine's one-off copy would go stale.
+      const warnings = result.warnings.filter((w) => !/a group has only/.test(w));
       const next: BoardState = {
         draw,
-        // Small groups are checked live by validateDraw, so the engine's one-off copy would go stale.
-        warnings: result.warnings.filter((w) => !/a group has only/.test(w)),
+        warnings,
         published: a.preserveLocks || keepsOtherDays ? board.published : null,
         overrides: a.preserveLocks ? board.overrides : [],
+        // The other days' boards stay as they were; only the day drawn now is replaced.
+        dayBoards:
+          board.dayBoards && dayNumber !== null
+            ? { ...board.dayBoards, [dayNumber]: { draw, warnings } }
+            : board.dayBoards,
       };
       return withBoard(state, t.id, next);
     }
@@ -914,7 +977,7 @@ export function reducer(state: DeskState, a: Action): DeskState {
         return g;
       });
       const override: ManualOverride = {
-        id: `ov-${state.seq + 1}`,
+        id: nextOverrideId(board.overrides),
         tournamentId: t.id,
         playerId: a.playerId,
         kind: "move",
@@ -966,13 +1029,56 @@ export function reducer(state: DeskState, a: Action): DeskState {
       });
     }
 
+    case "generateAllDays": {
+      const t = activeTournament(state);
+      if (!t) return state;
+      const days = playingDaysOfEvent(state.days[t.id] ?? []);
+      const firstDay = days[0];
+      if (!firstDay) return reducer(state, { type: "generate", preserveLocks: false });
+      const dayBoards: Record<number, { draw: DrawGroup[]; warnings: string[] }> = {};
+      let next = state;
+      for (const day of days) {
+        next = reducer(next, { type: "generate", dayNumber: day.dayNumber, preserveLocks: false });
+        const drawn = boardOf(next);
+        if (drawn.draw) dayBoards[day.dayNumber] = { draw: drawn.draw, warnings: drawn.warnings };
+      }
+      const shown = days.some((d) => d.dayNumber === a.showDay) ? a.showDay : firstDay.dayNumber;
+      const showing = (shown !== null ? dayBoards[shown] : undefined) ?? null;
+      const board = boardOf(next);
+      return withBoard(next, t.id, {
+        ...board,
+        dayBoards,
+        draw: showing?.draw ?? board.draw,
+        warnings: showing?.warnings ?? board.warnings,
+      });
+    }
+
+    case "showDay": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.dayBoards) return state;
+      const target = board.dayBoards[a.to];
+      if (!target) return state;
+      const dayBoards = { ...board.dayBoards };
+      // The edits made to the day being left are kept, so coming back finds them.
+      if (a.from !== null && board.draw) {
+        dayBoards[a.from] = { draw: board.draw, warnings: board.warnings };
+      }
+      return withBoard(state, t.id, {
+        ...board,
+        dayBoards,
+        draw: target.draw,
+        warnings: target.warnings,
+      });
+    }
+
     case "setGroupLocked": {
       const t = activeTournament(state);
       const board = boardOf(state);
       if (!t || !board.draw) return state;
       const draw = board.draw.map((g) => (g.number === a.group ? { ...g, locked: a.locked } : g));
       const override: ManualOverride = {
-        id: `ov-${state.seq + 1}`,
+        id: nextOverrideId(board.overrides),
         tournamentId: t.id,
         playerId: "",
         kind: a.locked ? "lock" : "unlock",
@@ -985,6 +1091,51 @@ export function reducer(state: DeskState, a: Action): DeskState {
         ...board,
         draw,
         overrides: [...board.overrides, override],
+      });
+    }
+
+    case "swapGroupSlots": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      const result = swapGroupSlots(board.draw, a.a, a.b);
+      if (!result.ok) return state;
+      const from = slotLabel(board.draw.find((g) => g.number === a.a));
+      const to = slotLabel(result.draw.find((g) => g.number === a.a));
+      return withBoard(state, t.id, {
+        ...board,
+        draw: result.draw,
+        overrides: [...board.overrides, slotOverride(board.overrides, t.id, from, to, a.reason)],
+      });
+    }
+
+    case "moveGroupToHole": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      const result = moveGroupToHole(board.draw, a.groupNumber, a.hole, t.config.holes);
+      if (!result.ok) return state;
+      const from = slotLabel(board.draw.find((g) => g.number === a.groupNumber));
+      const to = slotLabel(result.draw.find((g) => g.number === a.groupNumber));
+      return withBoard(state, t.id, {
+        ...board,
+        draw: result.draw,
+        overrides: [...board.overrides, slotOverride(board.overrides, t.id, from, to, a.reason)],
+      });
+    }
+
+    case "reorderHoleQueue": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      const result = reorderHoleQueue(board.draw, a.hole, a.order);
+      if (!result.ok) return state;
+      const from = queueLabel(board.draw, a.hole);
+      const to = queueLabel(result.draw, a.hole);
+      return withBoard(state, t.id, {
+        ...board,
+        draw: result.draw,
+        overrides: [...board.overrides, slotOverride(board.overrides, t.id, from, to, a.reason)],
       });
     }
 

@@ -91,6 +91,64 @@ describe("planDrawJobs", () => {
     expect(jobs.map((j) => j.kind)).toEqual(["save"]);
   });
 
+  it("saves the draw when the organizer moves a group to another hole or swaps two groups", () => {
+    const state = generated();
+    const draw = state.boards[state.activeTournamentId ?? ""]?.draw ?? [];
+    const first = draw[0];
+    const second = draw[1];
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+
+    const swap = plan(state, {
+      type: "swapGroupSlots",
+      a: first?.number ?? 1,
+      b: second?.number ?? 2,
+      reason: "Pace of play",
+    });
+    expect(swap.map((job) => job.kind)).toEqual(["save"]);
+
+    const move = plan(state, {
+      type: "moveGroupToHole",
+      groupNumber: first?.number ?? 1,
+      hole: ((first?.startHole ?? 1) % 18) + 1,
+      reason: "Pace of play",
+    });
+    expect(move.map((job) => job.kind)).toEqual(["save"]);
+  });
+
+  it("gives every manual override its own id, so changes made in a row do not collide", () => {
+    const state = generated();
+    const id = state.activeTournamentId ?? "";
+    const draw = state.boards[id]?.draw ?? [];
+    const a = draw[0]?.number ?? 1;
+    const b = draw[1]?.number ?? 2;
+    const swapped = run(state, { type: "swapGroupSlots", a, b, reason: "Pace of play" });
+    const unlocked = run(swapped, {
+      type: "setGroupLocked",
+      group: a,
+      locked: false,
+      reason: "Undo",
+    });
+    const again = run(unlocked, { type: "swapGroupSlots", a, b, reason: "Pace of play" });
+    const ids = again.boards[id]?.overrides.map((o) => o.id) ?? [];
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it("saves the draw when a hole's queue is reordered", () => {
+    const state = generated();
+    const draw = state.boards[state.activeTournamentId ?? ""]?.draw ?? [];
+    const first = draw[0];
+    expect(first).toBeDefined();
+    const jobs = plan(state, {
+      type: "reorderHoleQueue",
+      hole: first?.startHole ?? 1,
+      order: draw.filter((g) => g.startHole === first?.startHole).map((g) => g.number),
+      reason: "Pace of play",
+    });
+    expect(jobs.map((job) => job.kind)).toEqual(["save"]);
+  });
+
   it("saves the board when a player is withdrawn and when they are put back", () => {
     const state = generated();
     const id = state.activeTournamentId ?? "";

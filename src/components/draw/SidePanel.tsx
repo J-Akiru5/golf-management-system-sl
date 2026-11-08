@@ -19,6 +19,76 @@ interface Names {
   tee: (id: string | null) => string;
 }
 
+/**
+ * Where one group starts, with the two ways to change it by hand: pick another hole, or swap the
+ * whole start with another group. Moving onto a hole that another group has at the same time swaps
+ * the two. Either way the groups end up locked, so a re-run of the draw keeps them.
+ */
+function StartHoleControl(props: {
+  g: DrawGroup;
+  draw: DrawGroup[];
+  shotgun: boolean;
+  holeOptions: number[];
+  /** The hole with its flight letter for a group ("1A"), when the draw can say. */
+  slotOf?: (groupNumber: number) => string | undefined;
+  onMove: (groupNumber: number, hole: number) => void;
+  onSwap: (a: number, b: number) => void;
+}) {
+  const { g, shotgun } = props;
+  const word = shotgun ? "Start hole" : "Start tee";
+  const place = (hole: number) => (shotgun ? `Hole ${hole}` : `Tee ${hole}`);
+  // A start hole outside the usual list (an older board) still shows, so the select is never blank.
+  const options = props.holeOptions.includes(g.startHole)
+    ? props.holeOptions
+    : [...props.holeOptions, g.startHole].sort((a, b) => a - b);
+  const others = props.draw
+    .filter((x) => x.number !== g.number)
+    .sort((a, b) => a.number - b.number);
+  return (
+    <div className="stack tight">
+      <label className="field">
+        <span>{word}</span>
+        <select
+          value={g.startHole}
+          onChange={(e) => {
+            const hole = Number(e.currentTarget.value);
+            if (Number.isInteger(hole) && hole !== g.startHole) props.onMove(g.number, hole);
+          }}
+        >
+          {options.map((hole) => (
+            <option key={hole} value={hole}>
+              {place(hole)}
+            </option>
+          ))}
+        </select>
+      </label>
+      {others.length > 0 && (
+        <label className="field">
+          <span>Swap start with</span>
+          <select
+            value=""
+            onChange={(e) => {
+              const other = Number(e.currentTarget.value);
+              if (Number.isInteger(other) && other > 0) props.onSwap(g.number, other);
+            }}
+          >
+            <option value="">Choose a group…</option>
+            {others.map((o) => (
+              <option key={o.number} value={o.number}>
+                {`Group ${o.number} · ${shotgun ? `Hole ${props.slotOf?.(o.number) ?? o.startHole}` : place(o.startHole)} · ${fmtTime(o.time)}`}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <p className="hint">
+        Choosing a hole another group has at the same time swaps the two. Changed groups are locked,
+        so a new draw keeps them.
+      </p>
+    </div>
+  );
+}
+
 export function SidePanel(props: {
   tab: Tab;
   onTab: (t: Tab) => void;
@@ -36,6 +106,12 @@ export function SidePanel(props: {
   onShowPlayer: (id: string) => void;
   onShowGroup: (n: number) => void;
   onLock: (n: number, locked: boolean) => void;
+  /** The holes (or tees) a group can start on, in the order the list shows them. */
+  holeOptions: number[];
+  /** The hole with its flight letter for a group ("1A"), when the draw can say. */
+  slotOf?: (groupNumber: number) => string | undefined;
+  onMoveGroupToHole: (groupNumber: number, hole: number) => void;
+  onSwapGroups: (a: number, b: number) => void;
   explain: (playerId: string) => RoutingExplanation | null;
 }) {
   const { tab, draw, unplaced, players, regs, names, selection } = props;
@@ -49,7 +125,9 @@ export function SidePanel(props: {
     : [];
 
   const groupLabel = (g: DrawGroup) =>
-    `Group ${g.number} · ${props.shotgun ? "hole" : "tee"} ${g.startHole} · ${fmtTime(g.time)}`;
+    `Group ${g.number} · ${props.shotgun ? "hole" : "tee"} ${
+      props.shotgun ? (props.slotOf?.(g.number) ?? g.startHole) : g.startHole
+    } · ${fmtTime(g.time)}`;
 
   // A group whose members are all provisional is labelled from them, not from the carrier flight
   // id the database row needs.
@@ -238,6 +316,17 @@ export function SidePanel(props: {
                         </button>
                       )}
                     </div>
+                    {g && (
+                      <StartHoleControl
+                        g={g}
+                        draw={draw}
+                        shotgun={props.shotgun}
+                        holeOptions={props.holeOptions}
+                        slotOf={props.slotOf}
+                        onMove={props.onMoveGroupToHole}
+                        onSwap={props.onSwapGroups}
+                      />
+                    )}
                   </div>
                   {explanation && (
                     <div className="card flat">
@@ -295,6 +384,15 @@ export function SidePanel(props: {
                       </dd>
                     </div>
                   </dl>
+                  <StartHoleControl
+                    g={g}
+                    draw={draw}
+                    shotgun={props.shotgun}
+                    holeOptions={props.holeOptions}
+                    slotOf={props.slotOf}
+                    onMove={props.onMoveGroupToHole}
+                    onSwap={props.onSwapGroups}
+                  />
                   <button
                     type="button"
                     className={`btn small ${g.locked ? "" : "ghost"}`}

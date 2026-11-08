@@ -4,6 +4,52 @@ import { planShotgunFrom } from "./schedule";
 const holesOf = (slots: { startHole: number; time: string }[], time: string) =>
   slots.filter((slot) => slot.time === time).map((slot) => slot.startHole);
 
+describe("flights are waves of groups, classes only set the order", () => {
+  // `true` is the rule the club plays by: fill the holes in class order, then the next wave.
+  const plan = (counts: { flightName: string; groups: number }[], seed?: number) =>
+    planShotgunFrom(counts, 18, "06:30", 15, new Set(), seed, true);
+
+  it("puts the first 18 groups in Flight A and the rest in Flight B, whatever their class", () => {
+    const out = plan([
+      { flightName: "Class A", groups: 10 },
+      { flightName: "Class B", groups: 12 },
+    ]);
+    expect(holesOf(out.slots, "06:30")).toHaveLength(18);
+    expect(holesOf(out.slots, "06:45")).toHaveLength(4);
+    // Class B straddles the two flights and the draw says so.
+    expect(out.warnings.join(" ")).toContain("Class Class B plays across");
+  });
+
+  it("has only Flight A when there are fewer than 18 groups, even with several classes", () => {
+    const out = plan([
+      { flightName: "Class A", groups: 10 },
+      { flightName: "Class B", groups: 6 },
+    ]);
+    expect(out.slots.every((slot) => slot.time === "06:30")).toBe(true);
+    expect(out.slots).toHaveLength(16);
+  });
+
+  it("scatters the vacant holes through Flight A when a seed is given", () => {
+    const out = plan([{ flightName: "Class A", groups: 10 }], 42);
+    const used = holesOf(out.slots, "06:30");
+    expect(new Set(used).size).toBe(10);
+    expect(used.some((hole) => hole > 10)).toBe(true);
+  });
+
+  it("starts Flight B on hole 1 when Flight A used all 18 holes", () => {
+    const out = plan([{ flightName: "Class A", groups: 24 }]);
+    expect(holesOf(out.slots, "06:30")).toEqual(Array.from({ length: 18 }, (_, i) => i + 1));
+    expect(holesOf(out.slots, "06:45")).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it("opens a third flight only after two full ones", () => {
+    const out = plan([{ flightName: "Class A", groups: 37 }]);
+    expect(holesOf(out.slots, "06:30")).toHaveLength(18);
+    expect(holesOf(out.slots, "06:45")).toHaveLength(18);
+    expect(holesOf(out.slots, "07:00")).toHaveLength(1);
+  });
+});
+
 describe("seeded hole assignment", () => {
   it("gives one group per hole, all 18 holes, at one start", () => {
     const plan = planShotgunFrom(

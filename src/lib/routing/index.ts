@@ -350,6 +350,39 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
     }
   }
 
+  // A session has room for `maxFlightsPerSession` flights of one group per hole, and no more. The
+  // groups past that are left out of the draw, whole groups from the end of the class order, so a
+  // pair is never split. Their players stay "not in a group" for the organizer to move to the other
+  // session or day. Groups an organizer locked already hold holes, so they count against the room.
+  // A draw with no sessions is one session, so the limit holds there too: a third flight is not a
+  // thing a real course can run, whatever the day.
+  if (config.startFormat === "shotgun") {
+    const maxFlights = Math.max(1, Math.floor(config.maxFlightsPerSession ?? 2));
+    const capacity = config.holes * maxFlights;
+    for (const session of sessionOrder) {
+      const lockedHere =
+        session === null || !sessionInput
+          ? kept.length
+          : kept.filter((g) => g.time >= sessionInput.starts.PM === (session === "PM")).length;
+      let room = Math.max(0, capacity - lockedHere);
+      let droppedGroups = 0;
+      let droppedPlayers = 0;
+      for (const entry of placed.filter((p) => p.session === session)) {
+        if (entry.groups.length > room) {
+          const left = entry.groups.splice(room);
+          droppedGroups += left.length;
+          droppedPlayers += left.reduce((sum, g) => sum + g.length, 0);
+        }
+        room -= entry.groups.length;
+      }
+      if (droppedGroups > 0) {
+        warnings.push(
+          `${session ? `${session} session` : "This draw"}: the course fits ${capacity} groups (${maxFlights} flight${maxFlights === 1 ? "" : "s"} of ${config.holes} holes), so ${droppedGroups} group${droppedGroups === 1 ? "" : "s"} with ${droppedPlayers} player${droppedPlayers === 1 ? "" : "s"} ${droppedGroups === 1 ? "was" : "were"} left out. Move them to the other session or day.`,
+        );
+      }
+    }
+  }
+
   // Unclassified placement: confirmed players the engine cannot classify. They keep empty
   // category, tee and flight; only a group heading and a start slot are supplied. They are listed
   // after every real flight and sorted by name so a re-run is stable. The group row needs a real
