@@ -509,7 +509,7 @@ const switcher = langPage.getByLabel("Wika", { exact: true });
 check("the picker is labelled in the chosen language", (await switcher.count()) > 0);
 await switcher.selectOption("en");
 await langPage
-  .getByText("This build runs on sample data", { exact: false })
+  .getByText("Sample data. This build runs without accounts.", { exact: false })
   .first()
   .waitFor({ timeout: 20000 });
 check(
