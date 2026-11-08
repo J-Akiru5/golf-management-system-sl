@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Avatar } from "@/components/bits";
@@ -8,6 +9,7 @@ import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { filterRoster, rosterFlights } from "@/lib/data/public";
+import { publicTabHref } from "@/lib/data/public-tabs";
 import type { PublicRosterPlayer } from "@/lib/data/types";
 import { fmtIndex } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
@@ -168,30 +170,46 @@ function RosterDirectory({ players }: { players: PublicRosterPlayer[] }) {
         </p>
       ) : (
         <ul className="plain player-cards" data-testid="roster-list">
-          {matches.map((player, index) => (
-            <li key={`${player.name}-${index}`} className="player-card">
-              <span className="who">
-                <Avatar name={player.name} />
-                <b className="min-w-0 break-words">{player.name}</b>
-              </span>
-              <span className="muted text-[13px]">
-                {[player.category, player.flight].filter(Boolean).join(" · ") ||
-                  t("programme.unflighted")}
-              </span>
-              <dl className="player-facts">
-                <div>
-                  <dt>{t("programme.index")}</dt>
-                  <dd>{fmtIndex(player.index)}</dd>
-                </div>
-                {player.homeCourse && (
+          {matches.map((player, index) => {
+            const href = player.id ? publicTabHref("profile", { player: player.id }) : null;
+            const content = (
+              <>
+                <span className="who">
+                  <Avatar name={player.name} />
+                  <b className="min-w-0 break-words">{player.name}</b>
+                  {href && <ChevronRight className="ml-auto size-4 shrink-0" aria-hidden="true" />}
+                </span>
+                <span className="muted text-[13px]">
+                  {[player.category, player.flight].filter(Boolean).join(" · ") ||
+                    t("programme.unflighted")}
+                </span>
+                <dl className="player-facts">
                   <div>
-                    <dt>{t("programme.homeCourse")}</dt>
-                    <dd className="min-w-0 break-words text-right">{player.homeCourse}</dd>
+                    <dt>{t("programme.index")}</dt>
+                    <dd>{fmtIndex(player.index)}</dd>
                   </div>
+                  {player.homeCourse && (
+                    <div>
+                      <dt>{t("programme.homeCourse")}</dt>
+                      <dd className="min-w-0 break-words text-right">{player.homeCourse}</dd>
+                    </div>
+                  )}
+                </dl>
+                {href && <span className="player-card-cta">{t("programme.viewScores")}</span>}
+              </>
+            );
+            return (
+              <li key={player.id ?? `${player.name}-${index}`}>
+                {href ? (
+                  <Link href={href} className="player-card player-card-link">
+                    {content}
+                  </Link>
+                ) : (
+                  <div className="player-card">{content}</div>
                 )}
-              </dl>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

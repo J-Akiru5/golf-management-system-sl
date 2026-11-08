@@ -243,14 +243,15 @@ export function toPublicProgramme({
  * ------------------------------------------------------------------------------------------------ */
 
 /**
- * Reduces the programme to the roster vocabulary. Only the five allow-listed fields are copied, so a
- * richer source object cannot leak a tee time, pairing key, contact field or photo path: nothing is
- * spread and `PublicRosterPlayer` has no room for one. This is the only object passed to the roster
- * browser.
+ * Reduces the programme to the roster vocabulary. The five displayed fields and the public player id
+ * (the link key) are copied explicitly, so a richer source object cannot leak a tee time, pairing
+ * key, contact field or photo path: nothing is spread and `PublicRosterPlayer` has no room for one.
+ * This is the only object passed to the roster browser.
  */
 export function toPublicRoster(programme: PublicProgramme): PublicRoster {
   const players: PublicRosterPlayer[] = programme.players
     .map((player) => ({
+      id: player.id,
       name: player.name,
       homeCourse: player.homeCourse,
       index: player.index,

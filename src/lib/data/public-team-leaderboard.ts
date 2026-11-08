@@ -31,6 +31,8 @@ export interface PublicTeamPlayerRow {
   publishedAt: string;
   playerId: string;
   playerName: string;
+  /** Which side of the pair this player fills. Null on a database without the side field yet. */
+  side: "member" | "guest" | null;
   flightName: string | null;
   categoryName: string | null;
   pairNumber: number | null;
@@ -64,6 +66,9 @@ export interface PublicTeamStanding {
   name: string;
   playerNames: string[];
   playerIds: string[];
+  /** The member and guest names, member first. Null when that side is not on file. */
+  memberName: string | null;
+  guestName: string | null;
   flightName: string | null;
   categories: string[];
   holesCounted: number;
@@ -139,6 +144,7 @@ function parseRow(value: unknown): PublicTeamPlayerRow | null {
   const playerId = text(value.playerId);
   const playerName = text(value.playerName);
   const pairKey = text(value.pairKey);
+  const side = value.side === "member" || value.side === "guest" ? value.side : null;
   if (
     !roundId ||
     dayNumber === null ||
@@ -161,6 +167,7 @@ function parseRow(value: unknown): PublicTeamPlayerRow | null {
     publishedAt,
     playerId,
     playerName: displayName(playerName),
+    side,
     flightName: text(value.flightName),
     categoryName: text(value.categoryName),
     pairNumber: whole(value.pairNumber),
@@ -289,12 +296,18 @@ export function buildTeamLeaderboard(data: PublicTeamLeaderboardData): PublicTea
       holesTotal += Math.max(...roundRows.map((row) => row.holesTotal));
     }
 
-    const playerNames = [...players.values()]
-      .map((row) => row.playerName)
-      .sort((a, b) => a.localeCompare(b));
-    const playerIds = [...players.values()]
-      .map((row) => row.playerId)
-      .sort((a, b) => a.localeCompare(b));
+    const playerRows = [...players.values()];
+    const member = playerRows.find((row) => row.side === "member") ?? null;
+    const guest = playerRows.find((row) => row.side === "guest") ?? null;
+    const ordered = [
+      ...(member ? [member] : []),
+      ...(guest ? [guest] : []),
+      ...playerRows
+        .filter((row) => row !== member && row !== guest)
+        .sort((a, b) => a.playerName.localeCompare(b.playerName)),
+    ];
+    const playerNames = ordered.map((row) => row.playerName);
+    const playerIds = ordered.map((row) => row.playerId);
     const categories = [
       ...new Set(
         [...players.values()]
@@ -323,6 +336,8 @@ export function buildTeamLeaderboard(data: PublicTeamLeaderboardData): PublicTea
       name: playerNames.join(" / "),
       playerNames,
       playerIds,
+      memberName: ordered[0]?.playerName ?? null,
+      guestName: ordered[1]?.playerName ?? null,
       flightName: flights.length > 0 ? flights.join(" / ") : null,
       categories,
       holesCounted,

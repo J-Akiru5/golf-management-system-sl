@@ -38,6 +38,7 @@ function row(
 ): PublicTeamPlayerRow {
   return {
     ...roundOne,
+    side: null,
     flightName: "Class A",
     categoryName: "Regular",
     pairNumber: 1,
@@ -123,6 +124,18 @@ describe("buildTeamLeaderboard", () => {
     expect(teams[0]?.toPar).toBe("+32");
   });
 
+  it("puts the member before the guest when the rows carry a side", () => {
+    const rows = [
+      row({ playerId: "b", playerName: "Ben", pairKey: "pair:1", side: "guest" }),
+      row({ playerId: "a", playerName: "Ana", pairKey: "pair:1", side: "member" }),
+    ];
+    const team = buildTeamLeaderboard(data(rows)).teams[0];
+
+    expect(team?.memberName).toBe("Ana");
+    expect(team?.guestName).toBe("Ben");
+    expect(team?.playerNames).toEqual(["Ana", "Ben"]);
+  });
+
   it("counts a player without a complete pair and does not rank them", () => {
     const rows = [row({ playerId: "solo", playerName: "Sol", pairKey: "solo:solo" })];
     const { teams, unpaired } = buildTeamLeaderboard(data(rows));
@@ -161,6 +174,8 @@ describe("ranking and filters", () => {
       pairNumber: 1,
       playerNames: [over.name],
       playerIds: [over.key],
+      memberName: over.name,
+      guestName: null,
       flightName: "Class A",
       categories: ["Regular"],
       holesCounted: 18,

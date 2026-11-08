@@ -8,6 +8,7 @@ import type { PublicProgramme, PublicRosterPlayer } from "./types";
  * purpose. That is the compile-time half of the allow-list.
  */
 const ALLOWED_FIELDS: Record<keyof PublicRosterPlayer, true> = {
+  id: true,
   name: true,
   homeCourse: true,
   index: true,
@@ -29,6 +30,7 @@ describe("toPublicRoster", () => {
       ],
       players: [
         {
+          id: "player-1",
           name: "Antonio Alcantara",
           homeCourse: "IGCC",
           index: 12.4,
@@ -56,6 +58,7 @@ describe("toPublicRoster", () => {
     expect(roster).toEqual({
       players: [
         {
+          id: "player-1",
           name: "Antonio Alcantara",
           homeCourse: "IGCC",
           index: 12.4,
@@ -111,6 +114,7 @@ describe("toPublicRoster", () => {
 
     expect(roster.players).toEqual([
       {
+        id: null,
         name: "Antonio Alcantara",
         homeCourse: "IGCC",
         index: 12.4,
@@ -118,6 +122,7 @@ describe("toPublicRoster", () => {
         flight: "Regular A",
       },
       {
+        id: null,
         name: "Noel Yulo",
         homeCourse: null,
         index: null,
@@ -130,6 +135,7 @@ describe("toPublicRoster", () => {
 
 const players: PublicRosterPlayer[] = [
   {
+    id: "p1",
     name: "Antonio Alcantara",
     homeCourse: "IGCC",
     index: 12.4,
@@ -137,6 +143,7 @@ const players: PublicRosterPlayer[] = [
     flight: "Regular A",
   },
   {
+    id: "p2",
     name: "José Peña",
     homeCourse: "Negros",
     index: 8.2,
@@ -144,6 +151,7 @@ const players: PublicRosterPlayer[] = [
     flight: "Regular B",
   },
   {
+    id: "p3",
     name: "Maria Santos",
     homeCourse: "IGCC",
     index: null,
@@ -151,6 +159,7 @@ const players: PublicRosterPlayer[] = [
     flight: "Ladies A",
   },
   {
+    id: "p4",
     name: "Noel Yulo",
     homeCourse: null,
     index: -2.3,

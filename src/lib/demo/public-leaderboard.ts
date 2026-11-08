@@ -60,12 +60,12 @@ export function sampleTeamLeaderboardData(): PublicTeamLeaderboardData {
     const pairKey = `pair:${pairNumber}`;
     const [member, guest, category, flight] = team;
     for (const round of rounds) {
-      for (const [side, name] of [
+      for (const [sideIndex, name] of [
         [0, member],
         [1, guest],
       ] as const) {
-        const points = Math.max(18, 38 - index - round.dayNumber + side);
-        const gross = 82 + index + round.dayNumber + side;
+        const points = Math.max(18, 38 - index - round.dayNumber + sideIndex);
+        const gross = 82 + index + round.dayNumber + sideIndex;
         rows.push({
           roundId: round.roundId,
           dayNumber: round.dayNumber,
@@ -75,6 +75,7 @@ export function sampleTeamLeaderboardData(): PublicTeamLeaderboardData {
           publishedAt: round.publishedAt,
           playerId: demoPlayerId(name),
           playerName: name,
+          side: sideIndex === 0 ? "member" : "guest",
           flightName: flight,
           categoryName: category,
           pairNumber,

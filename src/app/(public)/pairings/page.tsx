@@ -17,6 +17,11 @@ import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { loadPublicPlayerProfile, type PublicPlayerProfileData } from "@/lib/data/public-profile";
 import { parsePublicTab } from "@/lib/data/public-tabs";
+import {
+  buildTeamLeaderboard,
+  loadPublicTeamLeaderboard,
+  type PublicTeamStanding,
+} from "@/lib/data/public-team-leaderboard";
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
 import { loadPublicProgramme } from "@/lib/data/supabase/public-programme";
 import { fmtTime } from "@/lib/format";
@@ -119,12 +124,28 @@ export default async function PublicPairingsPage({
   if (programmeResult.status === "fulfilled") programme = programmeResult.value;
 
   let profile: PublicPlayerProfileData | null = null;
+  let team: PublicTeamStanding | null = null;
   let profileFailed = false;
   if (tab === "profile" && playerId) {
     try {
       profile = await loadPublicPlayerProfile(client, playerId);
     } catch {
       profileFailed = true;
+    }
+    if (profile) {
+      const profilePlayerId = profile.player.id;
+      try {
+        const leaderboard = await loadPublicTeamLeaderboard(client);
+        if (leaderboard) {
+          team =
+            buildTeamLeaderboard(leaderboard).teams.find((entry) =>
+              entry.playerIds.includes(profilePlayerId),
+            ) ?? null;
+        }
+      } catch {
+        // The pair total is additive. A database without the leaderboard still shows the profile.
+        team = null;
+      }
     }
   }
   const you = await signedIn;
@@ -215,27 +236,25 @@ export default async function PublicPairingsPage({
 
           {tab === "profile" ? (
             <>
-              {!programme || !programme.players.some((player) => player.id !== null) ? (
+              {!playerId && programme && programme.players.some((player) => player.id !== null) && (
+                <PlayerProfileSearch players={programme.players} selectedId={playerId} />
+              )}
+              {profileFailed ? (
+                <div className="notice" role="alert">
+                  {t("programme.profileFailed")}
+                </div>
+              ) : profile ? (
+                <PlayerProfileView data={profile} team={team} t={t} />
+              ) : playerId ? (
+                <section className="pairings-empty" role="status" data-testid="profile-empty">
+                  <h2>{t("programme.profileNotFoundTitle")}</h2>
+                  <p>{t("programme.profileNotFoundBody")}</p>
+                </section>
+              ) : programme && !programme.players.some((player) => player.id !== null) ? (
                 <div className="notice" role="status">
                   {t("programme.profileUnavailable")}
                 </div>
-              ) : (
-                <>
-                  <PlayerProfileSearch players={programme.players} selectedId={playerId} />
-                  {profileFailed ? (
-                    <div className="notice" role="alert">
-                      {t("programme.profileFailed")}
-                    </div>
-                  ) : profile ? (
-                    <PlayerProfileView data={profile} t={t} />
-                  ) : playerId ? (
-                    <section className="pairings-empty" role="status" data-testid="profile-empty">
-                      <h2>{t("programme.profileNotFoundTitle")}</h2>
-                      <p>{t("programme.profileNotFoundBody")}</p>
-                    </section>
-                  ) : null}
-                </>
-              )}
+              ) : null}
             </>
           ) : (
             <>

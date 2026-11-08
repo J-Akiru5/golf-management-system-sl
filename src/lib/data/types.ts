@@ -481,12 +481,14 @@ export interface PublicProgramme {
 }
 
 /**
- * One player on the public roster. This is the complete vocabulary the roster browser may receive.
- * Tee times, start holes, groups, pairings, contact details, birthdate, gender, notes and photo
- * paths are deliberately absent; adding one here would need a privacy decision and a new allow-list
- * entry, not an accident.
+ * One player on the public roster. The five displayed fields are the complete vocabulary the roster
+ * browser shows; `id` is a public link key used only to open that player's profile. Tee times, start
+ * holes, groups, pairings, contact details, birthdate, gender, notes and photo paths are deliberately
+ * absent; adding one here would need a privacy decision and a new allow-list entry, not an accident.
  */
 export interface PublicRosterPlayer {
+  /** The stable public player id, used only to link to the profile. Not displayed. */
+  id: string | null;
   name: string;
   homeCourse: string | null;
   /** The index frozen at the cut-off, which is the one the draw used. Null means no index on file. */

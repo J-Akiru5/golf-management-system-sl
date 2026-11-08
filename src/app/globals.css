@@ -4304,6 +4304,39 @@
   padding: 12px;
 }
 
+.player-cards > li {
+  display: grid;
+  min-width: 0;
+  list-style: none;
+}
+
+.player-card-link {
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.player-card-link:hover {
+  border-color: var(--forest);
+  background: var(--fairway-soft);
+}
+
+.player-card-link:focus-visible {
+  outline: 2px solid var(--forest);
+  outline-offset: 2px;
+}
+
+.player-card-cta {
+  align-self: end;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--forest);
+}
+
 .player-card .who {
   display: flex;
   min-width: 0;

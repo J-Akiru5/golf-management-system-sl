@@ -1,15 +1,27 @@
+import Link from "next/link";
 import { Avatar } from "@/components/bits";
 import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
 import type { PublicPlayerProfileData } from "@/lib/data/public-profile";
+import type { PublicTeamStanding } from "@/lib/data/public-team-leaderboard";
 import { fmtIndex } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
 
 /**
- * The selected player's profile: who they are, their partner, and their frozen cards. The cards
- * come from the published snapshot, so this page never shows a score that is still being edited.
+ * The selected player's profile: who they are, their partner, their pair's published total and
+ * their frozen cards. The cards come from the published snapshot, so this page never shows a score
+ * that is still being edited.
  */
-export function PlayerProfileView({ data, t }: { data: PublicPlayerProfileData; t: Translate }) {
+export function PlayerProfileView({
+  data,
+  team,
+  t,
+}: {
+  data: PublicPlayerProfileData;
+  team: PublicTeamStanding | null;
+  t: Translate;
+}) {
   const { player, partner, cards } = data;
+  const rank = team ? (team.tied ? `T${team.rank}` : String(team.rank)) : null;
   return (
     <div className="grid gap-4" data-testid="player-profile">
       <section className="card grid gap-3" aria-labelledby="profile-name">
@@ -53,6 +65,44 @@ export function PlayerProfileView({ data, t }: { data: PublicPlayerProfileData; 
           </div>
         </dl>
       </section>
+
+      {team && (
+        <section className="card grid gap-3" aria-labelledby="profile-pair-score">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 id="profile-pair-score" className="m-0 text-[18px] leading-6">
+              {t("programme.profilePairScore")}
+            </h3>
+            <Link href="/leaderboard" className="text-[13px] font-semibold">
+              {t("programme.navLeaderboard")}
+            </Link>
+          </div>
+          <p className="hint m-0">{team.playerNames.join(" / ")}</p>
+          <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5">
+            <div className="grid gap-0.5">
+              <dt className="small-h">{t("programme.leaderboardRank")}</dt>
+              <dd className="m-0 font-semibold tnum">{rank ?? "—"}</dd>
+            </div>
+            <div className="grid gap-0.5">
+              <dt className="small-h">{t("programme.leaderboardPts")}</dt>
+              <dd className="m-0 font-semibold tnum">{team.netPoints ?? "—"}</dd>
+            </div>
+            <div className="grid gap-0.5">
+              <dt className="small-h">{t("programme.leaderboardThru")}</dt>
+              <dd className="m-0 font-semibold tnum">
+                {team.holesCounted}/{team.holesTotal || "—"}
+              </dd>
+            </div>
+            <div className="grid gap-0.5">
+              <dt className="small-h">{t("programme.leaderboardToPar")}</dt>
+              <dd className="m-0 font-semibold tnum">{team.toPar}</dd>
+            </div>
+            <div className="grid gap-0.5">
+              <dt className="small-h">{t("programme.leaderboardClass")}</dt>
+              <dd className="m-0 min-w-0 break-words font-semibold">{team.flightName ?? "—"}</dd>
+            </div>
+          </dl>
+        </section>
+      )}
 
       {cards.length === 0 ? (
         <section className="card" role="status" data-testid="profile-no-cards">

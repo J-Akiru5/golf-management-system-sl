@@ -138,14 +138,18 @@ export function TeamLeaderboard({
                 className="grid gap-2 rounded-[14px] border border-line bg-surface-raised p-3"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span className="flex min-w-0 items-start gap-2">
+                  <span className="flex min-w-0 flex-1 items-start gap-2">
                     <span className="grid size-7 shrink-0 place-items-center rounded-full bg-gold-soft text-[12px] font-bold text-gold-ink">
                       {rankLabel(team)}
                     </span>
-                    <span className="min-w-0">
-                      <b className="block break-words text-[14px]">{team.name}</b>
-                      <span className="block text-[12px] text-ink-muted">
-                        {[team.flightName, ...team.categories].filter(Boolean).join(" · ") || "—"}
+                    <span className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+                      <span className="min-w-0">
+                        <span className="small-h block">{t("programme.leaderboardMember")}</span>
+                        <b className="block break-words text-[14px]">{team.memberName ?? "—"}</b>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="small-h block">{t("programme.leaderboardGuest")}</span>
+                        <b className="block break-words text-[14px]">{team.guestName ?? "—"}</b>
                       </span>
                     </span>
                   </span>
@@ -156,6 +160,9 @@ export function TeamLeaderboard({
                     </span>
                   </span>
                 </div>
+                <p className="m-0 text-[12px] text-ink-muted">
+                  {[team.flightName, ...team.categories].filter(Boolean).join(" · ") || "—"}
+                </p>
                 <dl className="m-0 grid grid-cols-4 gap-2 text-[12px]">
                   <div>
                     <dt className="small-h">{t("programme.leaderboardThru")}</dt>
@@ -185,7 +192,8 @@ export function TeamLeaderboard({
               <thead>
                 <tr>
                   <th className="num">#</th>
-                  <th>{t("programme.leaderboardTeam")}</th>
+                  <th>{t("programme.leaderboardMember")}</th>
+                  <th>{t("programme.leaderboardGuest")}</th>
                   <th>{t("programme.leaderboardClass")}</th>
                   <th className="num">{t("programme.leaderboardThru")}</th>
                   <th className="num">{t("programme.leaderboardPts")}</th>
@@ -199,14 +207,21 @@ export function TeamLeaderboard({
                   <tr key={team.key}>
                     <td className="num">{rankLabel(team)}</td>
                     <td>
+                      <b className="break-words">{team.memberName ?? "—"}</b>
+                    </td>
+                    <td>
+                      <b className="break-words">{team.guestName ?? "—"}</b>
+                    </td>
+                    <td>
                       <span className="grid gap-0.5">
-                        <b className="break-words">{team.name}</b>
-                        <span className="text-[12px] text-ink-muted">
-                          {team.categories.join(" · ") || "—"}
-                        </span>
+                        <span>{team.flightName ?? "—"}</span>
+                        {team.categories.length > 0 && (
+                          <span className="text-[12px] text-ink-muted">
+                            {team.categories.join(" · ")}
+                          </span>
+                        )}
                       </span>
                     </td>
-                    <td>{team.flightName ?? "—"}</td>
                     <td className="num">
                       {team.holesCounted}/{team.holesTotal || "—"}
                     </td>

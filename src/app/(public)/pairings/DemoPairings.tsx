@@ -16,6 +16,7 @@ import { addIsoDays } from "@/lib/data/dates";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings, toPublicProgramme } from "@/lib/data/public";
 import type { PublicTab } from "@/lib/data/public-tabs";
+import { buildTeamLeaderboard } from "@/lib/data/public-team-leaderboard";
 import type {
   PublicPairingDay,
   PublicPairingGroup,
@@ -25,7 +26,7 @@ import type {
   PublicTeeTimeDay,
 } from "@/lib/data/types";
 import { demoPlayerId } from "@/lib/demo/ids";
-import { samplePlayerProfileData } from "@/lib/demo/public-leaderboard";
+import { samplePlayerProfileData, sampleTeamLeaderboardData } from "@/lib/demo/public-leaderboard";
 import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { manilaToday } from "@/lib/player/dashboard";
@@ -352,6 +353,11 @@ export function DemoPairings({
     selectedPlayer?.id !== null && selectedPlayer?.id !== undefined
       ? samplePlayerProfileData({ ...selectedPlayer, id: selectedPlayer.id })
       : null;
+  const demoTeam = profile
+    ? (buildTeamLeaderboard(sampleTeamLeaderboardData()).teams.find((team) =>
+        team.playerIds.includes(profile.player.id),
+      ) ?? null)
+    : null;
 
   return (
     <main className="public public-pairings mobile-bar-space">
@@ -388,7 +394,7 @@ export function DemoPairings({
         <>
           <PlayerProfileSearch players={programme.players} selectedId={playerId} />
           {profile ? (
-            <PlayerProfileView data={profile} t={t} />
+            <PlayerProfileView data={profile} team={demoTeam} t={t} />
           ) : playerId ? (
             <section className="pairings-empty" role="status">
               <h2>{t("programme.profileNotFoundTitle")}</h2>
