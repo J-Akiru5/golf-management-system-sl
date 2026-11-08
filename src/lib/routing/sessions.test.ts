@@ -242,3 +242,65 @@ describe("a playing day drawn in a morning and an afternoon session", () => {
     expect(filled.warnings.some((w) => w.includes("plays across"))).toBe(false);
   });
 });
+
+describe("a session runs at most Flight A and Flight B", () => {
+  /** 4-player groups all in the morning: 4 * n players make n groups. */
+  const morning = (groups: number) => players(groups * 4, 5);
+  const am = () => "AM" as const;
+
+  it("fits 36 groups, two flights of 18 holes, and never starts a third flight", () => {
+    const result = draw(morning(36), am);
+    expect(result.groups).toHaveLength(36);
+    expect(startsOf(result)).toEqual({ "06:30": 18, "06:39": 18 });
+    expect(result.warnings.join(" ")).not.toContain("left out");
+  });
+
+  it("leaves out the groups that do not fit, whole groups, and says how many", () => {
+    const result = draw(morning(40), am);
+    expect(result.groups).toHaveLength(36);
+    expect(Object.keys(startsOf(result))).toEqual(["06:30", "06:39"]);
+    expect(result.warnings.join(" ")).toContain(
+      "AM session: the course fits 36 groups (2 flights of 18 holes), so 4 groups with 16 players were left out.",
+    );
+    // Nobody is in a group twice, and the 16 left out are in no group at all.
+    const placed = result.groups.flatMap((g) => g.playerIds);
+    expect(new Set(placed).size).toBe(placed.length);
+    expect(placed).toHaveLength(36 * 4);
+  });
+
+  it("caps the afternoon on its own, so a full morning does not use up the afternoon", () => {
+    const field = [...players(36 * 4, 5), ...players(20 * 4, 5, 500)];
+    const result = draw(field, (id) => (Number(id.slice(1)) >= 500 ? "PM" : "AM"));
+    expect(startsOf(result)).toEqual({ "06:30": 18, "06:39": 18, "12:30": 18, "12:39": 2 });
+  });
+
+  it("reads the limit from the setting, so one flight per session is possible", () => {
+    const result = route(
+      {
+        players: morning(20),
+        config: { ...config, maxFlightsPerSession: 1 },
+        tees: [tee],
+        categories: [category],
+        flights,
+        sessions: {
+          byPlayer: new Map(morning(20).map((player) => [player.id, "AM" as const])),
+          starts: { AM: "06:30", PM: "12:30" },
+          dayNumber: 2,
+        },
+      },
+      { seed: 7 },
+    );
+    expect(result.groups).toHaveLength(18);
+    expect(result.warnings.join(" ")).toContain(
+      "(1 flight of 18 holes), so 2 groups with 8 players",
+    );
+  });
+
+  it("does not apply to a day drawn without sessions", () => {
+    const result = route(
+      { players: morning(40), config, tees: [tee], categories: [category], flights },
+      { seed: 7 },
+    );
+    expect(result.groups).toHaveLength(40);
+  });
+});

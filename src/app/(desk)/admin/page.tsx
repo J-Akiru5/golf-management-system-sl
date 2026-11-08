@@ -19,6 +19,7 @@ import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/compon
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { COURSE_IS_PLACEHOLDER, MAP_H, MAP_HOLES, MAP_W } from "@/lib/course/layout";
+import { fmtIso } from "@/lib/data/labels";
 import type { Tournament } from "@/lib/data/types";
 import { sessionFinderFor } from "@/lib/draw/day-sessions";
 import { buildFlightQueue } from "@/lib/draw/flight-queue";
@@ -100,14 +101,17 @@ function ControlRoomInner({
   const start =
     chosenStart && startTimes.includes(chosenStart) ? chosenStart : (startTimes[0] ?? null);
   const startGroups = draw?.filter((g) => !shotgun || g.time === start) ?? [];
-  const date = new Date(`${config.date}T00:00:00`).toLocaleDateString("en-PH", {
+  const { days, drawDay, setDrawDay, status } = useDesk();
+  const playingDays = useMemo(() => days.filter((d) => d.isPlayingDay), [days]);
+  // The date shown is the chosen day's, or the event's first day when the whole event is shown.
+  const shownDate = playingDays.find((d) => d.dayNumber === drawDay)?.playDate ?? config.date;
+  const date = new Date(`${shownDate}T00:00:00`).toLocaleDateString("en-PH", {
     weekday: "short",
     month: "short",
     day: "numeric",
   });
   const startClock = startGroups[0]?.time ?? config.firstTeeTime;
   // The queue reads the whole draw, not just the start shown on the map.
-  const { days, drawDay } = useDesk();
   const queueModel = useMemo(
     () =>
       buildFlightQueue(
@@ -308,6 +312,25 @@ function ControlRoomInner({
                 "The event name still needs the organizer's confirmation. "}
               {b.status === "demo" && "Demo data only."}
             </p>
+          )}
+          {playingDays.length > 1 && (
+            <label className="mt-3 flex items-center gap-2 text-xs">
+              <span className="font-bold tracking-[.14em] text-[#e0bc65] uppercase">Day</span>
+              <select
+                aria-label="Day of the event"
+                value={drawDay ?? ""}
+                onChange={(e) => setDrawDay(e.target.value === "" ? null : Number(e.target.value))}
+                className="!w-auto min-h-9 max-w-full rounded-full border border-[rgba(238,240,234,.3)] bg-[rgba(14,22,18,.5)] px-3 text-sm text-[#eef0ea] [&>option]:bg-white [&>option]:text-black"
+              >
+                {/* The demo has one in-memory board, so it can show the whole event. */}
+                {status === "demo" && <option value="">All playing days</option>}
+                {playingDays.map((d) => (
+                  <option key={d.id} value={d.dayNumber}>
+                    {d.label} · {fmtIso(d.playDate)}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           {shotgun && startTimes.length > 1 && (
             <div

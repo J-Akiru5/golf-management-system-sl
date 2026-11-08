@@ -47,7 +47,7 @@ export function FlightQueueSummary({
                 <span className="mono text-[12px]">{fmtTime(flight.time)}</span>
               </div>
               <p className="mt-0.5 text-[12px] text-ink-muted">
-                {countOf(flight.groups, "group")} · {flight.players} players ·{" "}
+                {countOf(flight.groups, "group")} · {countOf(flight.players, "player")} ·{" "}
                 {flight.vacantHoles.length === 0
                   ? "all holes used"
                   : `${flight.vacantHoles.length} vacant`}

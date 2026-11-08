@@ -114,6 +114,13 @@ export interface TournamentConfig {
   intervalMinutes: number;
   /** Minutes between start times (shotgun): how much later the next start follows. */
   waveGapMinutes: number;
+  /**
+   * How many flights one session can run: Flight A is the first group on every hole, Flight B the
+   * next group on every hole. Two on a real course, which is the default when this is left out. A
+   * session never gets a third flight; groups that do not fit are left out of the draw and listed
+   * for the organizer to move. Only applies to a shotgun day drawn in sessions.
+   */
+  maxFlightsPerSession?: number;
 }
 
 export type RegistrationStatus = "ok" | "ineligible" | "needs_review";

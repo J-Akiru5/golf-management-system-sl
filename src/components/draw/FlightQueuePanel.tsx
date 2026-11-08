@@ -23,6 +23,10 @@ function groupLabel(count: number): string {
   return `${count} group${count === 1 ? "" : "s"}`;
 }
 
+function playerLabel(count: number): string {
+  return `${count} player${count === 1 ? "" : "s"}`;
+}
+
 /** "AM Flight A", or just "Flight A" when the draw has no sessions. */
 function flightTitle(session: string | null, label: string): string {
   return session ? `${session} ${label}` : label;
@@ -201,7 +205,7 @@ export function FlightQueuePanel({
                 </h3>
                 <span className="mono text-[13px] text-ink">{fmtTime(flight.time)}</span>
                 <span className="pill">
-                  {groupLabel(flight.groups)} · {flight.players} players
+                  {groupLabel(flight.groups)} · {playerLabel(flight.players)}
                 </span>
               </div>
               <p className="mt-1 text-[13px] text-ink-muted">

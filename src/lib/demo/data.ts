@@ -13,6 +13,7 @@ import type {
 import { displayName } from "@/lib/format";
 import { nameKey } from "@/lib/ngap";
 import type { CategoryRule, FlightRule, Player, Tee, TournamentConfig } from "@/lib/routing";
+import { makeFieldSeed, readLocalField } from "./field-seed";
 
 /**
  * Deterministic demo data for the IGCC Tournament Desk shell. Every player is fictional and every
@@ -88,7 +89,11 @@ export const DEMO_CONFIG: TournamentConfig = {
   minGroupSize: 3,
   firstTeeTime: "06:30",
   intervalMinutes: 12,
-  waveGapMinutes: 300,
+  // The gap between starts inside a session: a shotgun day only has the 6:30 and 12:30 sessions, so
+  // a second flight on the same holes goes off a few minutes after the first, never hours later.
+  waveGapMinutes: 12,
+  // A session runs Flight A and Flight B and no more: 18 holes, two groups deep.
+  maxFlightsPerSession: 2,
 };
 
 export const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
@@ -329,6 +334,18 @@ const iso = (d: number, m: number, y: number) =>
  * two players with the same name, and an incomplete stub from a deferred import decision.
  */
 export function makeDemoSeed(cutOffDate = BAMBOO_TEE_CUT_OFF): DemoSeed {
+  // A field written to .env.local on a developer's own machine replaces the generated players. It
+  // is never committed or deployed, so every other build gets the fictional field below.
+  const localField = readLocalField();
+  if (localField) {
+    return makeFieldSeed(localField, {
+      clubId: DEMO_CLUB.id,
+      tournamentId: "bamboo-tee-2026",
+      cutOffDate,
+      now: SEED_NOW,
+      homeCourse: DEMO_CLUB.name,
+    });
+  }
   const r = rng(2026);
   const pick = <T>(xs: T[]) => xs[Math.floor(r() * xs.length)] as T;
   const players: PlayerRecord[] = [];
