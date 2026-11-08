@@ -97,6 +97,8 @@ export default function NgapFaqPage() {
         <Link href="/">TeeLine Golf home</Link>
         {" · "}
         <Link href="/pairings">Player pairings</Link>
+        {" · "}
+        <Link href="/rules">Tournament rules</Link>
       </p>
       <PlayerBottomBar />
     </main>

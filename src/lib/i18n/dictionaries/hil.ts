@@ -314,6 +314,7 @@ export const hil: Dictionary = {
     navPlayers: "Mga manug hampang",
     navPairings: "Pairing",
     navRules: "Mga pagsulundan sa hampang",
+    navFullRules: "Opisyal nga mga pagsulundan",
     teeTimesTitle: "Tee time kada adlaw",
     teeTimesIntro:
       "Mga nakumpirma nga oras sang pagsugod sa kada adlaw sang hampang. Indi ginapakita ang oras nga wala pa nakumpirma sang desk.",

@@ -6,6 +6,7 @@ describe("areaOf", () => {
   it("puts the marketing page, pairings and the entry form in the public area", () => {
     expect(areaOf("/")).toBe("public");
     expect(areaOf("/pairings")).toBe("public");
+    expect(areaOf("/rules")).toBe("public");
     expect(areaOf("/enter/abc")).toBe("public");
     expect(areaOf("/login")).toBe("public");
   });
@@ -44,6 +45,7 @@ describe("decide", () => {
     for (const identity of ["signed-out", "staff", "player", "unlinked"] as const) {
       expect(decide({ pathname: "/", identity })).toEqual({ type: "allow" });
       expect(decide({ pathname: "/pairings", identity })).toEqual({ type: "allow" });
+      expect(decide({ pathname: "/rules", identity })).toEqual({ type: "allow" });
       expect(decide({ pathname: "/enter/e1", identity })).toEqual({ type: "allow" });
     }
   });

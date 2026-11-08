@@ -404,7 +404,8 @@ export function DemoPairings() {
 
       <p className="hint no-print">
         {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
-        <Link href="/roster">{t("programme.playersTitle")}</Link>
+        <Link href="/roster">{t("programme.playersTitle")}</Link> ·{" "}
+        <Link href="/rules">{t("programme.navFullRules")}</Link>
       </p>
       <PlayerBottomBar />
     </main>

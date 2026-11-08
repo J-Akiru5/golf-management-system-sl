@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/bits";
 import { fmtIso } from "@/lib/data/labels";
@@ -61,6 +62,9 @@ export function ProgrammeNav({
           {t("programme.navRules")}
         </a>
       )}
+      <Link className={NAV_LINK} href="/rules">
+        {t("programme.navFullRules")}
+      </Link>
     </nav>
   );
 }
@@ -312,6 +316,9 @@ export function RulesOfPlay({ text }: { text: string }) {
           </p>
         ))}
       </div>
+      <Link className="btn ghost justify-self-start no-print" href="/rules">
+        Full tournament rules
+      </Link>
     </section>
   );
 }

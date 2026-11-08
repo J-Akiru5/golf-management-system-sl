@@ -160,12 +160,13 @@ describe("crawl rules and the sitemap", () => {
     expect(disallow).not.toContain("/enter");
   });
 
-  it("lists the four durable pages and no entry links", () => {
+  it("lists the five durable pages and no entry links", () => {
     const entries = sitemap();
     expect(entries.map((entry) => entry.url)).toEqual([
       `${SITE_URL}/`,
       `${SITE_URL}/pairings`,
       `${SITE_URL}/roster`,
+      `${SITE_URL}/rules`,
       `${SITE_URL}/faq`,
     ]);
     expect(JSON.stringify(entries)).not.toContain("/enter/");
@@ -178,6 +179,7 @@ describe("crawl rules and the sitemap", () => {
     const text = await response.text();
     expect(text).toContain(`# ${SITE_NAME}`);
     expect(text).toContain(`${SITE_URL}/pairings`);
+    expect(text).toContain(`${SITE_URL}/rules`);
     expect(text).toContain(`${SITE_URL}/faq`);
     expect(text).toContain(`${SITE_URL}/sitemap.xml`);
     expect(text).toContain(COMPANY.email);

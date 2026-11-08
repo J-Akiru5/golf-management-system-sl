@@ -314,6 +314,7 @@ export const en = {
     navPlayers: "Players",
     navPairings: "Pairings",
     navRules: "Rules of play",
+    navFullRules: "Official rules",
     teeTimesTitle: "Tee times by day",
     teeTimesIntro:
       "Confirmed start times for each playing day. A time the desk has not confirmed is not shown.",

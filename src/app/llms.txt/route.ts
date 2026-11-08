@@ -35,6 +35,7 @@ sheet, pairings and scorecards. It runs in the browser on a phone or a laptop.
 
 - Home: ${SITE_URL}/
 - Published pairings: ${SITE_URL}/pairings
+- Tournament rules: ${SITE_URL}/rules (the 24th Bamboo Tee Conditions of Play, with the official PDF)
 - NGAP World Handicap System FAQ: ${SITE_URL}/faq (reference text published by the NGAP in 2024)
 - Sitemap: ${SITE_URL}/sitemap.xml
 - Crawl rules: ${SITE_URL}/robots.txt

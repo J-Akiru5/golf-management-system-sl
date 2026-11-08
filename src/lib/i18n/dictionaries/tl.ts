@@ -313,6 +313,7 @@ export const tl: Dictionary = {
     navPlayers: "Mga manlalaro",
     navPairings: "Pairings",
     navRules: "Mga patakaran sa laro",
+    navFullRules: "Opisyal na mga patakaran",
     teeTimesTitle: "Tee times bawat araw",
     teeTimesIntro:
       "Mga kumpirmadong oras ng simula sa bawat araw ng laro. Hindi ipinapakita ang oras na hindi pa kinukumpirma ng desk.",
