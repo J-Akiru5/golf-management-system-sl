@@ -215,7 +215,11 @@ export default function StaffPairingsPage() {
             flights, tee order and start format. It will not invent a place for a player it cannot
             route.
           </p>
-          <button type="button" className={styles.primary} onClick={createPairings}>
+          <button
+            type="button"
+            className={`${styles.primary} ${styles.actionInline}`}
+            onClick={createPairings}
+          >
             <Users aria-hidden="true" size={20} style={{ marginRight: 8 }} />
             Create pairings
           </button>

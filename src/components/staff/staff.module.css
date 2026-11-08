@@ -17,6 +17,9 @@
   --s-ok: var(--success);
   --s-warn: var(--warning);
   --s-bad: var(--danger);
+  /* Icons follow the theme: forest green by day, the light fairway green at night, so a card icon
+     never turns into a dark shape on a dark card. */
+  --s-icon: var(--fairway);
   --staff-bar-h: 60px;
   --staff-header-h: 56px;
   min-height: 100dvh;
@@ -1656,7 +1659,7 @@
 
 .bigAction svg,
 .bigAction .bigActionIcon {
-  color: var(--s-forest);
+  color: var(--s-icon);
 }
 
 .bigAction:focus-visible {
@@ -2223,5 +2226,131 @@
   }
   .heroProgressBar {
     transition: none;
+  }
+}
+
+/* ---------- Desk-sized screens ----------
+   The staff app is still a phone app: the same markup, the same order, the same touch sizes. On a
+   monitor the phone bar would stretch four labels across the whole window and the page would sit
+   in a 760px strip, so the bar becomes one row of links under the header and the content takes the
+   width it is given. Nothing here applies below 1024px. */
+
+.desktopNav {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .bar {
+    display: none;
+  }
+
+  .desktopNav {
+    display: flex;
+    gap: 4px;
+    padding: 0 max(32px, calc((100% - 1120px) / 2 + 32px));
+    border-bottom: 1px solid var(--s-line);
+    background: var(--s-card);
+  }
+
+  .desktopNavItem {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 52px;
+    padding: 0 14px;
+    border-bottom: 2px solid transparent;
+    color: var(--s-muted);
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .desktopNavItem:hover {
+    background: var(--s-soft);
+    color: var(--s-ink);
+  }
+
+  .desktopNavItem[aria-current="page"] {
+    border-bottom-color: var(--s-gold);
+    color: var(--s-ink);
+  }
+
+  .desktopNavItem:focus-visible {
+    outline: 3px solid #2f6fed;
+    outline-offset: -3px;
+  }
+
+  .main {
+    max-width: 1120px;
+    padding: 28px 32px 48px;
+  }
+
+  /* The search block bleeds to the page edge on a phone. Here it bleeds to the new gutter. */
+  .stickyTop {
+    margin: 0 -32px;
+    padding: 10px 32px;
+  }
+
+  /* The four things to do on Today read as one row rather than two tall pairs. */
+  .actionGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Two columns of tee-sheet cards, still in tee order across then down. */
+  .groupList {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-content: start;
+  }
+
+  .groupList .groupCard + .groupCard {
+    margin-top: 0;
+  }
+
+  /* The primary action stops reserving a phone-shaped bar's worth of space. */
+  .pageWithAction {
+    padding-bottom: 24px;
+  }
+
+  /* The page's primary action becomes a card at the foot of the content: a monitor has no thumb
+     resting on the bottom edge, and a bar pinned there covers the last group on the sheet. */
+  .stickyActionBar {
+    position: static;
+    width: auto;
+    max-width: 680px;
+    margin: 24px 0 0;
+    padding: 12px;
+    transform: none;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 16px;
+    border: 1px solid var(--s-line);
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .stickyActionBar > .primary,
+  .stickyActionBar > .secondary,
+  .stickyActionBar > .danger {
+    width: auto;
+    justify-self: start;
+    padding-inline: 24px;
+  }
+
+  /* A pair of tools or an empty-state button belongs at its own size, not across 1100px. */
+  .toolRow {
+    grid-template-columns: repeat(2, minmax(0, 320px));
+    justify-content: start;
+  }
+
+  .emptyAction {
+    max-width: 320px;
+    justify-self: center;
+  }
+
+  .actionInline {
+    width: auto;
+    min-width: 260px;
   }
 }

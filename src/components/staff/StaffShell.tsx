@@ -77,6 +77,26 @@ export function StaffShell({ children }: { children: ReactNode }) {
             }}
           />
 
+          {/* On a desk-sized screen the phone bar hands over to one row under the header. Same four
+              destinations, same order, so a volunteer who moves between a phone in the sun and the
+              office screen never relearns the app. */}
+          <nav className={styles.desktopNav} aria-label="Staff app">
+            {STAFF_NAV.map((item) => {
+              const Icon = ICONS[item.icon];
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={styles.desktopNavItem}
+                  aria-current={isStaffCurrent(pathname, item) ? "page" : undefined}
+                >
+                  <Icon aria-hidden="true" size={18} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
           {status === "demo" && (
             <p className={styles.demoStrip}>
               Demo mode · sample players and times · nothing is saved
