@@ -491,11 +491,13 @@ await langPage.goto(`${BASE}/my`, { waitUntil: "networkidle", timeout: 120000 })
 const switcher = langPage.getByLabel("Wika", { exact: true });
 check("the picker is labelled in the chosen language", (await switcher.count()) > 0);
 await switcher.selectOption("en");
-await langPage.getByText("This build runs on demo data").first().waitFor({ timeout: 20000 });
+await langPage
+  .getByText("This build runs on sample data", { exact: false })
+  .first()
+  .waitFor({ timeout: 20000 });
 check(
   "choosing English switches the page back",
-  (await langPage.getByText("There is no player area here", { exact: false }).count()) > 0 ||
-    (await langPage.getByText("no player area here").count()) > 0,
+  (await langPage.locator('html[lang="en"]').count()) > 0,
 );
 await langPage.screenshot({ path: `${SHOTS}/player-languages.png` });
 await langContext.close();
