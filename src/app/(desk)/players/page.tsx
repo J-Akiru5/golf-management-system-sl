@@ -103,8 +103,25 @@ function Players() {
   const pairingParam = searchParams.get("pairing_status");
   const [pairing, setPairing] = useState<PairingStatus>(() => pairingStatusFromQuery(pairingParam));
   useEffect(() => {
-    setPairing(pairingStatusFromQuery(pairingParam));
+    // Setting the same primitive is a no-op, so the popstate listener below cannot cause a loop.
+    setPairing((current) => {
+      const next = pairingStatusFromQuery(pairingParam);
+      return current === next ? current : next;
+    });
   }, [pairingParam]);
+  // Back and Forward change window.location without re-running the searchParams effect above.
+  useEffect(() => {
+    function onPopState() {
+      setPairing((current) => {
+        const next = pairingStatusFromQuery(
+          new URLSearchParams(window.location.search).get("pairing_status"),
+        );
+        return current === next ? current : next;
+      });
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   const [open, setOpen] = useState(false);
 
   const [firstName, setFirstName] = useState("");

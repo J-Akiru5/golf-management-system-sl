@@ -20,11 +20,12 @@ export const PAIRING_FILTERS: readonly { id: PairingStatus; label: string }[] = 
 ];
 
 /**
- * True when the active event's registration carries a partner number. A player with no registration
- * cannot be paired, so they read as unpaired.
+ * True when the active event's registration carries a positive whole partner number. Pair numbers
+ * start at 1. A player with no registration cannot be paired, so they read as unpaired.
  */
 export function isPaired(entry: PairingFacts | null | undefined): boolean {
-  return entry?.teamNo != null;
+  const teamNo = entry?.teamNo;
+  return typeof teamNo === "number" && Number.isInteger(teamNo) && teamNo > 0;
 }
 
 /** Reads `?pairing_status=`. A missing or unknown value falls back to All. */

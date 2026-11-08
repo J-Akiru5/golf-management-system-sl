@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import { countPairings, isPaired, matchesPairing, pairingStatusFromQuery } from "./pairing-status";
 
 describe("isPaired", () => {
-  it("reads a partner number as paired", () => {
+  it("reads a positive whole partner number as paired", () => {
     expect(isPaired({ teamNo: 1 })).toBe(true);
+    expect(isPaired({ teamNo: 42 })).toBe(true);
   });
 
-  it("treats pair zero as a real pair number", () => {
-    expect(isPaired({ teamNo: 0 })).toBe(true);
+  it("reads zero, a negative number or a fraction as unpaired", () => {
+    expect(isPaired({ teamNo: 0 })).toBe(false);
+    expect(isPaired({ teamNo: -1 })).toBe(false);
+    expect(isPaired({ teamNo: 1.5 })).toBe(false);
   });
 
   it("reads a missing, null or undefined number as unpaired", () => {
