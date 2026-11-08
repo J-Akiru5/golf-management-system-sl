@@ -211,7 +211,7 @@ export function PlayerHomeHero({
       )}
 
       <div className="hero-card">
-        <p className="overline !text-[#d7b568]">{whenLabel}</p>
+        <p className="overline !text-gold-on-forest">{whenLabel}</p>
         <h2 id="tee-time-h" className="hero-event">
           {entry.eventName}
         </h2>

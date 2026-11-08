@@ -349,7 +349,7 @@ export function DemoPairings() {
             <HelpButton audience="player" screen="pairings" />
           </div>
         </div>
-        <p className="overline mt-2 !text-gold">
+        <p className="overline mt-2 !text-gold-on-forest">
           {tournament.config.startFormat === "shotgun"
             ? t("pairings.shotgun")
             : t("pairings.twoTee")}{" "}

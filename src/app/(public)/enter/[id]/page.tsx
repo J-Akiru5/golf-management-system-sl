@@ -60,7 +60,7 @@ export default function EnterTournament() {
   return (
     <main className="public public-enter mobile-bar-space">
       <header className="public-head">
-        <p className="overline mt-3 !text-gold">{t("enter.overline")}</p>
+        <p className="overline mt-3 !text-gold-on-forest">{t("enter.overline")}</p>
         <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
           {config?.name ?? t("enter.title")}
         </h1>

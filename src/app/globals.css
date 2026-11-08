@@ -31,6 +31,10 @@
   --gold-ink: #755719;
   --gold-soft: #f2e9d4;
   --on-gold: #202522;
+  /* The gold that reads on the forest band. The light theme's --gold (#b89550) is 4.34:1 there,
+     which fails AA at the 11px labels the player hero and the pairings header use. This value is
+     7.73:1 on forest, so it is the same in both themes and does not follow the theme control. */
+  --gold-on-forest: #d7b568;
   --primary: #073d2e;
   --primary-hover: #0b2b23;
   --on-primary: #f7f5ee;
@@ -96,6 +100,7 @@
     --gold-ink: #e4c77c;
     --gold-soft: #392f1d;
     --on-gold: #171c19;
+    --gold-on-forest: #d7b568;
     --primary: #d7b568;
     --primary-hover: #e5c77a;
     --on-primary: #171c19;
@@ -137,6 +142,7 @@
   --gold-ink: #e4c77c;
   --gold-soft: #392f1d;
   --on-gold: #171c19;
+  --gold-on-forest: #d7b568;
   --primary: #d7b568;
   --primary-hover: #e5c77a;
   --on-primary: #171c19;
@@ -179,6 +185,7 @@
   --gold-ink: #e4c77c;
   --gold-soft: #392f1d;
   --on-gold: #171c19;
+  --gold-on-forest: #d7b568;
   --primary: #d7b568;
   --primary-hover: #e5c77a;
   --on-primary: #171c19;
@@ -220,6 +227,7 @@
   --color-gold-ink: var(--gold-ink);
   --color-gold-soft: var(--gold-soft);
   --color-on-gold: var(--on-gold);
+  --color-gold-on-forest: var(--gold-on-forest);
   --color-primary-hover: var(--primary-hover);
   --color-on-primary: var(--on-primary);
   --color-success: var(--success);
@@ -1605,8 +1613,8 @@
     -webkit-tap-highlight-color: transparent;
   }
   .mobile-tabbar-item.is-current {
-    /* #d7b568 on forest is 7.73:1; the old --gold was 4.34:1 at 11px and failed AA. */
-    color: #d7b568;
+    /* --gold-on-forest is 7.73:1 on the forest bar; the plain --gold was 4.34:1 at 11px. */
+    color: var(--gold-on-forest);
   }
   .mobile-tabbar-icon {
     display: grid;
@@ -1677,7 +1685,7 @@
     color: var(--on-forest);
   }
   .next-up .overline {
-    color: #d7b568;
+    color: var(--gold-on-forest);
   }
   .next-up-title {
     font-family: var(--f-serif);
@@ -1694,6 +1702,17 @@
     color: var(--on-forest-muted);
     font-size: 13px;
   }
+  /* The start and the place sit in one inset block, so the time is not one line among four. */
+  .next-up-details {
+    display: grid;
+    gap: 3px;
+    margin-top: 8px;
+    padding: 12px 14px;
+    border: 1px solid rgba(238, 240, 234, 0.18);
+    border-inline-start: 3px solid var(--gold-on-forest);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.13);
+  }
   .app-tiles {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1701,6 +1720,7 @@
   }
   .app-tile {
     display: flex;
+    min-height: 64px;
     align-items: center;
     gap: 10px;
     padding: 12px 14px;
@@ -1710,9 +1730,38 @@
     color: var(--ink);
     font-size: 14px;
     font-weight: 600;
+    box-shadow: var(--shadow-card);
+    transition:
+      border-color var(--motion-fast) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
   }
   .app-tile:hover {
-    border-color: var(--line-strong);
+    border-color: var(--fairway);
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-1px);
+  }
+  .app-tile:active {
+    transform: none;
+  }
+  /* The icon carries the brand on its own chip, so a row of four reads as places, not links. */
+  .app-tile-icon {
+    display: grid;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--fairway-soft);
+    color: var(--fairway);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .app-tile,
+    .app-tile:hover,
+    .app-tile:active {
+      transition: none;
+      transform: none;
+    }
   }
   .round-pills {
     display: flex;
@@ -4817,6 +4866,72 @@ html[data-textsize="large"] {
   padding-inline: max(14px, env(safe-area-inset-left, 0px));
 }
 
+/* The wide player area. The phone bar stops at 1024px, so the same destinations move into one row
+   under the top bar, aligned to the content the pages below use. Hidden on a phone: there the tab
+   bar is the navigation. */
+.player-desktop-nav {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .player-main {
+    max-width: 72rem;
+    padding-top: 22px;
+  }
+
+  .player-desktop-nav {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 max(22px, env(safe-area-inset-left, 0px));
+    gap: 2px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .player-desktop-nav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 12px;
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-muted);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+      color var(--motion-fast) var(--ease-standard),
+      background-color var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard);
+  }
+
+  .player-desktop-nav-item svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+  }
+
+  .player-desktop-nav-item:hover {
+    background: var(--surface-sunken);
+    color: var(--ink);
+  }
+
+  .player-desktop-nav-item[aria-current="page"] {
+    border-bottom-color: var(--gold);
+    color: var(--ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .player-desktop-nav-item {
+      transition: none;
+    }
+  }
+}
+
 /* A short, purposeful enter. It runs when a page's root block mounts after navigation. */
 @media (prefers-reduced-motion: no-preference) {
   .player-main > * {
@@ -4869,7 +4984,7 @@ html[data-textsize="large"] {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #d7b568;
+  color: var(--gold-on-forest);
 }
 
 .hero-time {
@@ -4905,7 +5020,7 @@ html[data-textsize="large"] {
   font-size: 19px;
   line-height: 26px;
   font-weight: 700;
-  color: #d7b568;
+  color: var(--gold-on-forest);
   font-variant-numeric: tabular-nums;
 }
 

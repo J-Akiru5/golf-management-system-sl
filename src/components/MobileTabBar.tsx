@@ -7,6 +7,7 @@ import {
   House,
   LayoutGrid,
   List,
+  Map,
   Menu,
   TableProperties,
   Trophy,
@@ -127,4 +128,52 @@ export function DeskBottomBar({ onMore }: { onMore: () => void }) {
 
 export function PlayerBottomBar() {
   return <TabBar items={PLAYER_MOBILE_ITEMS} label="Player" testId="player-bottom-bar" />;
+}
+
+export interface PlayerNavLabels {
+  navigation: string;
+  home: string;
+  pairings: string;
+  board: string;
+  card: string;
+  course: string;
+  profile: string;
+}
+
+/**
+ * The same destinations on a wide screen, where the phone bar is hidden from 1024px.
+ *
+ * The phone bar carries four because four labels fit a 360px screen. A monitor has room for the
+ * two the bar leaves out (the published card and the course map), so nothing a player uses is
+ * reachable only by first going back to My golf.
+ */
+export function PlayerDesktopNav({ labels }: { labels: PlayerNavLabels }) {
+  const path = usePathname();
+  const items = [
+    { href: "/my", label: labels.home, Icon: House, exact: true },
+    { href: "/pairings", label: labels.pairings, Icon: List },
+    { href: "/my/board", label: labels.board, Icon: Trophy },
+    { href: "/my/card", label: labels.card, Icon: ClipboardList },
+    { href: "/my/course", label: labels.course, Icon: Map },
+    { href: "/my/profile", label: labels.profile, Icon: CircleUserRound },
+  ];
+
+  return (
+    <nav aria-label={labels.navigation} className="player-desktop-nav">
+      {items.map(({ href, label, Icon, exact }) => {
+        const on = isMobileCurrent(path, href) && (!exact || path === href);
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={on ? "page" : undefined}
+            className="player-desktop-nav-item"
+          >
+            <Icon aria-hidden="true" />
+            <span>{label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
 }
