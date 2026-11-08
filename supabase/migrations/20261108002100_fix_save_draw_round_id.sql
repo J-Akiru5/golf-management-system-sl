@@ -1,5 +1,8 @@
 -- Fix save_draw so every group_members row carries the playing day's round_id.
 --
+-- APPLIED to the live project on 8 November 2026 by the owner. Verified by saving a Move; no app
+-- deploy was needed.
+--
 -- 20261106000200 made group_members.round_id NOT NULL and taught save_draw to copy the group's
 -- round_id into each member. 20261108000900 replaced the function body with a version copied from
 -- before that change, so it inserted group_members without round_id. Every draw save then failed
