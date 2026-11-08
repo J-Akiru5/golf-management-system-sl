@@ -852,7 +852,7 @@ await mob.screenshot({ path: `${SHOTS}/bell-mobile.png` });
 // Mark all as read has to work on the phone sheet too.
 await mob.keyboard.press("Escape");
 await mob.goto(`${BASE}/draw`, { waitUntil: "networkidle", timeout: 120000 });
-await mob.getByRole("button", { name: "Make the draw" }).click();
+await mob.getByRole("button", { name: "Make the draw" }).first().click();
 await mob.waitForTimeout(2500);
 await mob.getByRole("button", { name: "Lock", exact: true }).first().click();
 await mob.waitForTimeout(1200);
