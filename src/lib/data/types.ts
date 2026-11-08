@@ -474,3 +474,23 @@ export interface PublicProgramme {
   /** Trimmed organizer text, or null when nothing has been entered. */
   rulesOfPlay: string | null;
 }
+
+/**
+ * One player on the public roster. This is the complete vocabulary the roster browser may receive.
+ * Tee times, start holes, groups, pairings, contact details, birthdate, gender, notes and photo
+ * paths are deliberately absent; adding one here would need a privacy decision and a new allow-list
+ * entry, not an accident.
+ */
+export interface PublicRosterPlayer {
+  name: string;
+  homeCourse: string | null;
+  /** The index frozen at the cut-off, which is the one the draw used. Null means no index on file. */
+  index: number | null;
+  category: string | null;
+  flight: string | null;
+}
+
+/** The roster payload: the confirmed field, with no schedule and no contact detail. */
+export interface PublicRoster {
+  players: PublicRosterPlayer[];
+}

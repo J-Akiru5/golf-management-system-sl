@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import { createDemoScorecardKey, demoScanEnabled } from "@/lib/scoring/scan/demo";
-import {
-  createScorecardObjectKey,
-  isR2Configured,
-  isSupportedImageMime,
-  presignScorecardPut,
-} from "@/lib/scoring/scan/r2";
+import { createScorecardObjectKey, isSupportedImageMime } from "@/lib/scoring/scan/r2";
 import { scanSession, tournamentForClub } from "@/lib/scoring/scan/session";
+import { createPresignedUpload, isStorageConfigured } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,7 +57,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const session = await scanSession();
   if (!session.ok) return jsonError(session.status, session.message);
-  if (!isR2Configured()) {
+  if (!isStorageConfigured()) {
     return jsonError(503, "Photo storage is not configured. Add the R2 settings and try again.");
   }
 
@@ -70,7 +66,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (!tournament) return jsonError(404, "That tournament is not in your club.");
 
     const key = createScorecardObjectKey(session.member.clubId, mime);
-    const presigned = await presignScorecardPut(key, mime);
+    const presigned = await createPresignedUpload(key, mime);
     return NextResponse.json({
       ok: true,
       key,

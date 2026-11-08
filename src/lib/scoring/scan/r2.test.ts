@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { UnsupportedMediaTypeError } from "@/lib/storage";
 import {
   createScorecardObjectKey,
   extensionForImageMime,
   isSupportedImageMime,
+  presignScorecardPut,
   scorecardObjectBelongsToClub,
 } from "./r2";
 
@@ -32,5 +34,11 @@ describe("scorecard R2 keys", () => {
       ),
     ).toBe(false);
     expect(scorecardObjectBelongsToClub(`${clubId}/r2/../other/a.jpg`, clubId)).toBe(false);
+  });
+
+  it("keeps scorecard uploads image-only", async () => {
+    await expect(
+      presignScorecardPut(`${clubId}/r2/scorecards/a.pdf`, "application/pdf"),
+    ).rejects.toBeInstanceOf(UnsupportedMediaTypeError);
   });
 });

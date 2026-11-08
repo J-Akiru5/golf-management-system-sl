@@ -3,9 +3,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
 import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
+import { ScorecardPreview } from "@/components/player/ScorecardPreview";
 import { getI18n } from "@/lib/i18n/server";
 import { manilaToday } from "@/lib/player/dashboard";
-import { demoScorecard } from "@/lib/player/demo";
+import {
+  demoPartnerCard,
+  demoPartnerName,
+  demoScorecard,
+  demoScrambleCard,
+} from "@/lib/player/demo";
 import { loadPortal } from "@/lib/player/portal";
 import { signedInClient } from "@/lib/player/session";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -21,7 +27,8 @@ export default async function PlayerCardPage() {
   const { t } = await getI18n();
 
   if (!isSupabaseConfigured()) {
-    const sample = demoScorecard(manilaToday());
+    const today = manilaToday();
+    const sample = demoScorecard(today);
     return (
       <div className="player-column grid gap-5">
         <h1 className="font-serif text-[26px] leading-8 font-semibold sm:text-[30px] sm:leading-9">
@@ -35,7 +42,12 @@ export default async function PlayerCardPage() {
           .
         </p>
         <p className="hint">{t("player.scorecard.swipe")}</p>
-        <ScorecardBreakdown card={sample} t={t} />
+        <ScorecardPreview
+          card={sample}
+          partner={demoPartnerCard(today)}
+          sharedCard={demoScrambleCard(today)}
+          partnerName={demoPartnerName}
+        />
       </div>
     );
   }
@@ -67,6 +79,10 @@ export default async function PlayerCardPage() {
         <>
           {/* Said once above the first card: every table scrolls sideways below this line. */}
           <p className="hint">{t("player.scorecard.swipe")}</p>
+          <div className="grid gap-1">
+            <p className="hint">{t("player.scorecard.formatNotConfigured")}</p>
+            <p className="hint">{t("player.scorecard.partnerNotPublished")}</p>
+          </div>
           {entries.map((entry) => (
             <section key={entry.tournamentId} className="grid gap-4">
               <h2 className="font-serif text-[22px] leading-7 font-semibold">{entry.eventName}</h2>

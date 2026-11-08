@@ -254,7 +254,7 @@ function samplePairings(): PublicPairings {
  * A matching sample programme: the same two days, every player from the sample draw, and confirmed
  * tee-time rows that agree with the pairings.
  */
-function sampleProgramme(): PublicProgramme {
+export function sampleProgramme(): PublicProgramme {
   const pairings = samplePairings();
   const dayList = pairings.days ?? [];
 
@@ -401,7 +401,8 @@ export function DemoPairings() {
       )}
 
       <p className="hint no-print">
-        {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link>
+        {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
+        <Link href="/roster">{t("programme.playersTitle")}</Link>
       </p>
       <PlayerBottomBar />
     </main>

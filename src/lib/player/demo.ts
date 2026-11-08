@@ -1,5 +1,6 @@
 import { addIsoDays } from "@/lib/data/dates";
 import type { PublicPairings, PublicProgramme } from "@/lib/data/types";
+import { stablefordPoints } from "@/lib/scoring/stableford";
 import { manilaToday } from "./dashboard";
 import { SAMPLE_INDEX, SAMPLE_PLAYER, SAMPLE_PLAYING_HANDICAP } from "./demo-identity";
 import type { PortalEntry, PortalScorecard, PortalState } from "./portal";
@@ -80,6 +81,90 @@ export function demoScorecard(playDate: string): PortalScorecard {
     netStrokes,
     grossPoints,
     netPoints,
+    holesCounted: 18,
+    holesTotal: 18,
+    holes,
+  };
+}
+
+/** The sample partner name shown with the demo partner card. Fictional, as every demo name is. */
+export const demoPartnerName = "Benjamin Bautista";
+
+/**
+ * A sample partner card for the team layout. It is sample data, passed only to the demo branch;
+ * a connected build never reads it. The values differ from the sample player's card so the team
+ * rule is visible.
+ */
+export function demoPartnerCard(playDate: string): PortalScorecard {
+  const pars = [4, 3, 5, 4, 4, 3, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 5, 4];
+  const holes = pars.map((par, index) => {
+    const strokeIndex = ((index * 5 + 3) % 18) + 1;
+    const handicapStrokes = strokeIndex <= 9 ? 1 : 0;
+    const grossStrokes = par + (index % 3 === 0 ? 1 : 0) - (index % 8 === 0 ? 1 : 0);
+    const netStrokes = grossStrokes - handicapStrokes;
+    return {
+      hole: index + 1,
+      par,
+      strokeIndex,
+      grossStrokes,
+      handicapStrokes,
+      netStrokes,
+      grossPoints: stablefordPoints(par, grossStrokes),
+      netPoints: stablefordPoints(par, netStrokes),
+    };
+  });
+  return {
+    roundId: `demo-round-partner-${playDate}`,
+    dayNumber: 1,
+    playDate,
+    state: "final",
+    version: 3,
+    publishedAt: `${playDate}T18:25:00+08:00`,
+    playingHandicap: 9,
+    courseHandicap: 10,
+    grossStrokes: holes.reduce((sum, hole) => sum + hole.grossStrokes, 0),
+    netStrokes: holes.reduce((sum, hole) => sum + (hole.netStrokes ?? 0), 0),
+    grossPoints: holes.reduce((sum, hole) => sum + hole.grossPoints, 0),
+    netPoints: holes.reduce((sum, hole) => sum + (hole.netPoints ?? 0), 0),
+    holesCounted: 18,
+    holesTotal: 18,
+    holes,
+  };
+}
+
+/**
+ * A sample shared scramble card. One score per hole is the point of the fixture: the scramble rule
+ * must never turn it into two player scores.
+ */
+export function demoScrambleCard(playDate: string): PortalScorecard {
+  const pars = [4, 3, 5, 4, 4, 3, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 5, 4];
+  const holes = pars.map((par, index) => {
+    const strokeIndex = ((index * 7) % 18) + 1;
+    const grossStrokes = par + (index % 5 === 0 ? 1 : 0);
+    return {
+      hole: index + 1,
+      par,
+      strokeIndex,
+      grossStrokes,
+      handicapStrokes: null,
+      netStrokes: null,
+      grossPoints: stablefordPoints(par, grossStrokes),
+      netPoints: null,
+    };
+  });
+  return {
+    roundId: `demo-round-scramble-${playDate}`,
+    dayNumber: 1,
+    playDate,
+    state: "final",
+    version: 3,
+    publishedAt: `${playDate}T18:30:00+08:00`,
+    playingHandicap: null,
+    courseHandicap: null,
+    grossStrokes: holes.reduce((sum, hole) => sum + hole.grossStrokes, 0),
+    netStrokes: null,
+    grossPoints: holes.reduce((sum, hole) => sum + hole.grossPoints, 0),
+    netPoints: null,
     holesCounted: 18,
     holesTotal: 18,
     holes,
