@@ -150,7 +150,7 @@ or Charcoal and is remembered per browser.
 | `/` | Public TeeLine Golf landing page |
 | `/admin` | Tournament control room: illustrated course map with hole pins, event card, attention list, quick actions, readiness, divisions, Handicap Index histogram, session activity, open questions |
 | `/tournaments` | The demo events: dates, cut-off, entries, draw state; set the working event, start a new demo event, clear the selection to see the empty state |
-| `/players` | Directory: search by name, nickname, NGAP ID or home course; filters for status, category, gender and home course; add a player with photo consent |
+| `/players` | Directory: search by name, nickname, NGAP ID or home course; filters for status, pairing, category, gender and home course; add a player with photo consent |
 | `/players/[id]` | Profile: Handicap Index and playing handicap shown apart with the working, handicap history with the frozen marker, registration facts, private details, photo with consent, poster generator |
 | `/register` | Registration desk: find a player or start a new one, member/guest role, sponsor question, per-day tee-time preferences (Day 4 flagged), shirt sizes, extra event fields, payment recorded by hand, eligibility review after saving |
 | `/import` | NGAP CSV upload, column check, match and merge queue with decisions, apply, deferred rows, import history |

@@ -21,6 +21,13 @@ import { sortStable, usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tip } from "@/components/ui/tooltip";
+import {
+  countPairings,
+  matchesPairing,
+  PAIRING_FILTERS,
+  type PairingStatus,
+  pairingStatusFromQuery,
+} from "@/lib/data/pairing-status";
 import { isPlayerRemoved, playerStateLabel } from "@/lib/data/player-state";
 import { fmtHcp, fmtIndex, photoOf } from "@/lib/format";
 import { shrinkPhoto } from "@/lib/photo";
@@ -53,6 +60,22 @@ function statusOf(entry: boolean, status: string | undefined): StatusFilter {
   return (status as StatusFilter | undefined) ?? "needs_review";
 }
 
+/**
+ * The empty state has to say why the list is empty. A pairing view that hides nothing and a search
+ * that matches nothing need different advice.
+ */
+function emptyRosterMessage(pairing: PairingStatus, query: string, beforePairing: number): string {
+  if (pairing !== "all" && beforePairing > 0) {
+    return pairing === "paired"
+      ? "No paired players found on this list. Choose Unpaired or All players."
+      : "No unpaired players found on this list. Choose Paired or All players.";
+  }
+  if (query.trim() !== "") {
+    return "No players match the search. Clear the search to see the whole list.";
+  }
+  return "No players match these filters. Clear a filter, or choose All players.";
+}
+
 function Players() {
   const {
     tournament,
@@ -71,10 +94,34 @@ function Players() {
   const [gender, setGender] = useState("all");
   const [home, setHome] = useState("all");
   // The top bar's search lands here as ?q=.
-  const q = useSearchParams().get("q");
+  const searchParams = useSearchParams();
+  const q = searchParams.get("q");
   useEffect(() => {
     if (q !== null) setQuery(q);
   }, [q]);
+  // The pairing view is shareable through ?pairing_status=paired|unpaired. Missing means All.
+  const pairingParam = searchParams.get("pairing_status");
+  const [pairing, setPairing] = useState<PairingStatus>(() => pairingStatusFromQuery(pairingParam));
+  useEffect(() => {
+    // Setting the same primitive is a no-op, so the popstate listener below cannot cause a loop.
+    setPairing((current) => {
+      const next = pairingStatusFromQuery(pairingParam);
+      return current === next ? current : next;
+    });
+  }, [pairingParam]);
+  // Back and Forward change window.location without re-running the searchParams effect above.
+  useEffect(() => {
+    function onPopState() {
+      setPairing((current) => {
+        const next = pairingStatusFromQuery(
+          new URLSearchParams(window.location.search).get("pairing_status"),
+        );
+        return current === next ? current : next;
+      });
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   const [open, setOpen] = useState(false);
 
   const [firstName, setFirstName] = useState("");
@@ -103,7 +150,8 @@ function Players() {
   const categories = tournament?.categories ?? [];
   const canSave = firstName.trim() !== "" && lastName.trim() !== "" && (!photo || consent);
 
-  const rows = useMemo(() => {
+  // Everything except the pairing view, so its badges can say what each view will reveal.
+  const baseRows = useMemo(() => {
     const text = query.trim().toLowerCase();
     return players.filter((p) => {
       const reg = regById.get(p.id);
@@ -125,13 +173,25 @@ function Players() {
     });
   }, [players, regById, entryByPlayer, filter, query, gender, home, category]);
 
+  const pairingCounts = useMemo(
+    () => countPairings(baseRows.map((p) => entryByPlayer.get(p.id) ?? null)),
+    [baseRows, entryByPlayer],
+  );
+
+  const rows = useMemo(
+    () => baseRows.filter((p) => matchesPairing(entryByPlayer.get(p.id), pairing)),
+    [baseRows, entryByPlayer, pairing],
+  );
+
   // Filter first, then page. The order is stable so editing a row cannot move it to another page,
   // and any change to the search or filter sends the desk back to page 1.
   const ordered = useMemo(() => sortStable(rows, (a, b) => a.name.localeCompare(b.name)), [rows]);
   const { page, setPage } = usePagedList(
     ordered,
-    [query, filter, gender, home, category].join("|"),
+    [query, filter, gender, home, category, pairing].join("|"),
   );
+
+  const emptyMessage = emptyRosterMessage(pairing, query, baseRows.length);
 
   const counts = useMemo(() => {
     const c: Record<Filter, number> = {
@@ -153,6 +213,23 @@ function Players() {
     }
     return c;
   }, [players, regById, entryByPlayer]);
+
+  /**
+   * Changes the pairing view and writes it into the address bar. The native history call keeps the
+   * update client-side: reload and bookmark still see the filter, but nothing is fetched again.
+   */
+  function choosePairing(next: PairingStatus) {
+    setPairing(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "all") params.delete("pairing_status");
+    else params.set("pairing_status", next);
+    const search = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`,
+    );
+  }
 
   /**
    * Runs one state change and holds that row's buttons while it is in flight. The connected adapter
@@ -298,6 +375,38 @@ function Players() {
               </button>
             ))}
           </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="overline" id="pairing-filter-label">
+            Pairing
+          </span>
+          <div className="flex flex-wrap gap-2" role="group" aria-labelledby="pairing-filter-label">
+            {PAIRING_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={pairing === f.id}
+                onClick={() => choosePairing(f.id)}
+                className={cn(
+                  "inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium transition-colors",
+                  pairing === f.id
+                    ? "border-fairway bg-fairway-soft font-semibold text-ink"
+                    : "border-line-strong bg-surface-raised text-ink hover:bg-surface-sunken",
+                )}
+                title={
+                  f.id === "unpaired"
+                    ? "No partner number on the active event's registration. A player not entered in the event cannot be paired and counts here."
+                    : undefined
+                }
+              >
+                {f.label}
+                <span className="text-xs text-ink-muted tnum">{pairingCounts[f.id]}</span>
+              </button>
+            ))}
+          </div>
+          <span className="hint">
+            Partner number from the active event. Not entered counts as unpaired.
+          </span>
         </div>
         <div className="grid gap-3 sm:grid-cols-3 xl:max-w-[52rem]">
           <label className="field">
@@ -517,7 +626,7 @@ function Players() {
             {page.total === 0 && (
               <tr>
                 <td colSpan={9} className="muted">
-                  No players match. Clear the search, or choose All.
+                  {emptyMessage}
                 </td>
               </tr>
             )}
@@ -637,9 +746,7 @@ function Players() {
             </li>
           );
         })}
-        {page.total === 0 && (
-          <li className="card muted">No players match. Clear the search or choose All.</li>
-        )}
+        {page.total === 0 && <li className="card muted">{emptyMessage}</li>}
       </ul>
 
       <Pager page={page} onPage={setPage} />
