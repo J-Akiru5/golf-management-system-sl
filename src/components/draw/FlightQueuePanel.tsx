@@ -6,6 +6,8 @@ import { cn } from "@/lib/ui/cn";
 
 export interface FlightQueuePanelProps {
   model: FlightQueueModel;
+  /** The holes a group may be moved to. Every hole when left out. */
+  holeOptions?: number[];
   readOnly?: boolean;
   onMoveToHole?: (groupNumber: number, hole: number) => void;
   onSwap?: (groupA: number, groupB: number) => void;
@@ -170,6 +172,7 @@ function Chip({
  */
 export function FlightQueuePanel({
   model,
+  holeOptions,
   readOnly = false,
   onMoveToHole,
   onSwap,
@@ -247,7 +250,7 @@ export function FlightQueuePanel({
                         hole={hole}
                         index={index}
                         entries={entries}
-                        holes={holes}
+                        holes={holeOptions ?? holes}
                         otherGroups={allGroups.filter(
                           (groupNumber) => groupNumber !== entry.groupNumber,
                         )}

@@ -281,13 +281,13 @@ export default function DrawPage() {
     () =>
       buildFlightQueue(
         (draw ?? []).filter(
-          (g) => sessionFilter === "all" || sessionOfTime(g.time) === sessionFilter,
+          (g) => activeSession === "all" || sessionOfTime(g.time) === activeSession,
         ),
         tournament?.flights ?? [],
         config?.holes ?? 18,
         sessionOfTime,
       ),
-    [draw, tournament?.flights, config?.holes, sessionFilter, sessionOfTime],
+    [draw, tournament?.flights, config?.holes, activeSession, sessionOfTime],
   );
   // The hole with its flight letter ("1A", "12B") for each group, shown on the cards and in Details.
   const slotByGroup = useMemo(() => {
@@ -674,14 +674,16 @@ export default function DrawPage() {
             >
               Groups{visibleDraw ? ` · ${visibleDraw.length}` : ""}
             </button>
-            <button
-              type="button"
-              className={view === "queue" ? "btn small" : "btn small ghost"}
-              aria-pressed={view === "queue"}
-              onClick={() => setView("queue")}
-            >
-              Flight queue
-            </button>
+            {shotgun && (
+              <button
+                type="button"
+                className={view === "queue" ? "btn small" : "btn small ghost"}
+                aria-pressed={view === "queue"}
+                onClick={() => setView("queue")}
+              >
+                Flight queue
+              </button>
+            )}
             <button
               type="button"
               className={view === "checks" ? "btn small" : "btn small ghost"}
@@ -767,7 +769,7 @@ export default function DrawPage() {
             </div>
           )}
 
-          {view === "queue" && (
+          {view === "queue" && shotgun && (
             <div>
               <p className="hint mb-2">
                 Moves and swaps lock the groups they touch, so a new draw keeps them. The reason
@@ -775,6 +777,7 @@ export default function DrawPage() {
               </p>
               <FlightQueuePanel
                 model={queueModel}
+                holeOptions={holeOptions}
                 onMoveToHole={onQueueMove}
                 onSwap={onQueueSwap}
                 onReorder={onQueueReorder}

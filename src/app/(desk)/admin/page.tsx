@@ -409,7 +409,7 @@ function ControlRoomInner({
             <SessionLogDrawer />
             <AttentionPanel b={b} />
             <PublishPanel b={b} dataHelp="control-publish" />
-            <FlightQueueSummary model={queueModel} />
+            {shotgun && <FlightQueueSummary model={queueModel} />}
             <ReadinessPanel b={b} dataHelp="control-readiness" />
           </ScrollFade>
         </aside>
@@ -471,7 +471,9 @@ function ControlRoomInner({
 
       <div className={cn("grid gap-4 p-4 sm:p-6 md:grid-cols-2 lg:pl-[var(--rail-pad)] xl:hidden")}>
         <AttentionPanel b={b} variant="card" className="md:col-span-2" />
-        <FlightQueueSummary model={queueModel} variant="card" className="md:col-span-2" />
+        {shotgun && (
+          <FlightQueueSummary model={queueModel} variant="card" className="md:col-span-2" />
+        )}
         <DivisionsPanel b={b} variant="card" />
         <HandicapHistogram b={b} variant="card" />
         <ActivityPanel variant="card" className="md:col-span-2" />
