@@ -2,7 +2,7 @@
 
 **Task ID:** `T-0007` (issue #185)
 **Branch:** `feat/issue-185-public-roster`
-**Base:** `origin/develop` `461cdab`
+**Base:** `origin/develop` `71835fa` (rebased after the player-polish merge)
 **Integration target:** `develop`
 
 ## What the roster shows
@@ -45,5 +45,7 @@ Focused tests in `src/lib/data/roster.test.ts` cover the projection, the name se
 filter and an explicit leak fixture carrying tee times, pairing keys, contact details, a birthdate,
 gender, notes and photo paths. The sitemap test now includes `/roster`.
 
-The full `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build` gates were not run in this
-worktree because the host was at resource level red. They remain part of the integration gate.
+The full unit gates passed on the rebased tree: `tsc --noEmit` (no output), `biome check .`
+(573 files, no fixes) and 147 test files with 1494 tests. The production build, the browser
+page-source check against a published and an unpublished event, and `agentctl verify` were not run
+because the host was at resource level red. They remain part of the integration gate.
