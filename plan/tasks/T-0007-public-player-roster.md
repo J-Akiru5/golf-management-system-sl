@@ -4,7 +4,7 @@ title: Add a dedicated public player roster that excludes pairings and private d
 milestone: M2
 priority: P1
 status: ready
-rev: 1
+rev: 2
 objective: "Add a public /roster route that reuses the published, allow-listed programme projection, supports name search and flight filtering, and proves the browser payload never carries a tee time, pairing key, contact detail or private photo path."
 outcome: "Players and spectators can browse the confirmed field without seeing the draw or any private data, and the roster disappears while the event is unpublished."
 verification_profile: unit
@@ -15,9 +15,11 @@ ownership:
   - src/app/(public)/pairings/**
   - src/components/public/**
   - src/lib/data/public.ts
+  - src/lib/data/roster.test.ts
   - src/lib/data/supabase/public-programme.ts
   - src/lib/data/types.ts
   - src/lib/seo.ts
+  - src/lib/seo.test.ts
   - src/app/sitemap.ts
   - docs/tasks/2026-11-08-public-roster.md
 out_of_scope:
