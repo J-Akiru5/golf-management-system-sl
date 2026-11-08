@@ -271,6 +271,8 @@ export const hil: Dictionary = {
       "Ngalan, home club, handicap, kategorya, flight, hole kag oras lamang. Wala sang contact details ukon litrato.",
     home: "TEELINE GOLF HOME",
     backHome: "Balik sa main nga pahina",
+    backToPairings: "Balik sa pairings",
+    checkAgain: "Tan-awa liwat",
     demoFooter:
       "Lokal nga demo preview ini, indi ginpahayag nga pahina. Ngalan, home club, handicap, kategorya, flight, hole kag oras lamang ang makita.",
     findName: "Pangitaa ang ngalan mo",

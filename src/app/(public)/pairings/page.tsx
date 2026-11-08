@@ -155,7 +155,12 @@ export default async function PublicPairingsPage({
       <PlayerOfflineNotice path="/pairings" />
       <PairingsLive signature={liveSignature} />
       <header className="public-head !p-4 sm:!p-5">
-        <PublicBackLink label={t("pairings.backHome")} />
+        {/* Inside a player's profile the way back is the pairings list; everywhere else it is the
+            main page. */}
+        <PublicBackLink
+          label={tab === "profile" ? t("pairings.backToPairings") : t("pairings.backHome")}
+          href={tab === "profile" ? "/pairings" : "/"}
+        />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
@@ -197,9 +202,9 @@ export default async function PublicPairingsPage({
           <h2>{t("pairings.notOutTitle")}</h2>
           <p>{t("pairings.notOutBody")}</p>
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Link className="btn ghost no-print" href="/rules">
-              {t("programme.navFullRules")}
-            </Link>
+            <a className="btn ghost no-print" href="/pairings">
+              {t("pairings.checkAgain")}
+            </a>
             <Link className="btn ghost no-print" href="/">
               {t("pairings.home")}
             </Link>

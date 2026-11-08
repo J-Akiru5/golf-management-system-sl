@@ -271,6 +271,8 @@ export const en = {
       "Names, home club, handicap, category, flight, hole and time only. No contact details or photos.",
     home: "TEELINE GOLF HOME",
     backHome: "Back to main page",
+    backToPairings: "Back to pairings",
+    checkAgain: "Check again",
     demoFooter:
       "This is a local demo preview, not a published page. It shows names, home club, handicap, category, flight, hole and time only.",
     findName: "Find your name",
