@@ -3,6 +3,7 @@
 import { PanelRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CourseCanvas, MAP_MARGIN, useCover } from "@/components/control-room/CourseCanvas";
+import { FlightQueueSummary } from "@/components/control-room/FlightQueueSummary";
 import { HoleCard, HolePin } from "@/components/control-room/HolePin";
 import {
   ActivityPanel,
@@ -19,6 +20,7 @@ import { ScrollFade } from "@/components/ui/scroll-fade";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { COURSE_IS_PLACEHOLDER, MAP_H, MAP_HOLES, MAP_W } from "@/lib/course/layout";
 import type { Tournament } from "@/lib/data/types";
+import { buildFlightQueue } from "@/lib/draw/flight-queue";
 import { fmtTime } from "@/lib/format";
 import { useBoard } from "@/lib/ui/board";
 import { cn } from "@/lib/ui/cn";
@@ -102,6 +104,11 @@ function ControlRoomInner({
     day: "numeric",
   });
   const startClock = startGroups[0]?.time ?? config.firstTeeTime;
+  // The queue reads the whole draw, not just the start shown on the map.
+  const queueModel = useMemo(
+    () => buildFlightQueue(draw ?? [], tournament.flights, config.holes),
+    [draw, tournament.flights, config.holes],
+  );
 
   const startPan = (e: React.PointerEvent<HTMLElement>) => {
     // A fresh press is a fresh intent: it clears the guard, so Reset view still works when the
@@ -372,6 +379,7 @@ function ControlRoomInner({
             <SessionLogDrawer />
             <AttentionPanel b={b} />
             <PublishPanel b={b} dataHelp="control-publish" />
+            <FlightQueueSummary model={queueModel} />
             <ReadinessPanel b={b} dataHelp="control-readiness" />
           </ScrollFade>
         </aside>
@@ -433,6 +441,7 @@ function ControlRoomInner({
 
       <div className={cn("grid gap-4 p-4 sm:p-6 md:grid-cols-2 lg:pl-[var(--rail-pad)] xl:hidden")}>
         <AttentionPanel b={b} variant="card" className="md:col-span-2" />
+        <FlightQueueSummary model={queueModel} variant="card" className="md:col-span-2" />
         <DivisionsPanel b={b} variant="card" />
         <HandicapHistogram b={b} variant="card" />
         <ActivityPanel variant="card" className="md:col-span-2" />

@@ -92,7 +92,7 @@ function Chip({
             <select
               aria-label={`Swap group ${entry.groupNumber} with`}
               className="h-9 min-h-[44px] w-auto max-w-full font-semibold md:h-8 md:min-h-0 md:text-[13px]"
-              defaultValue=""
+              value=""
               onChange={(event) => {
                 const next = Number(event.currentTarget.value);
                 if (Number.isInteger(next) && next > 0) swap(entry.groupNumber, next);

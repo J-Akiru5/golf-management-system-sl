@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/desk";
 import { DrawTable } from "@/components/draw/DrawTable";
+import { FlightQueuePanel } from "@/components/draw/FlightQueuePanel";
 import { GroupCard } from "@/components/draw/GroupCard";
 import { IssuesPanel } from "@/components/draw/IssuesPanel";
 import { PublishDialog } from "@/components/draw/PublishDialog";
@@ -11,6 +12,7 @@ import { PublishDialog } from "@/components/draw/PublishDialog";
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { fmtIso } from "@/lib/data/labels";
+import { buildFlightQueue } from "@/lib/draw/flight-queue";
 import { buildDrawTable } from "@/lib/draw/table-model";
 import { dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
@@ -54,7 +56,7 @@ export default function DrawPage() {
   const [selection, setSelection] = useState<Selection>(null);
   const [tab, setTab] = useState<Tab>("pool");
   // The check list is long, so it lives on its own tab and the groups are visible on opening.
-  const [view, setView] = useState<"board" | "checks">("board");
+  const [view, setView] = useState<"board" | "checks" | "queue">("board");
   const [classFilter, setClassFilter] = useState("all");
   // Cards edit; the table is the printed pairing layout, for reading a class at a glance.
   const [layout, setLayout] = useState<"cards" | "table">("cards");
@@ -248,6 +250,26 @@ export default function DrawPage() {
   );
   const onLock = useCallback(
     (n: number, locked: boolean) => dispatch({ type: "setGroupLocked", group: n, locked, reason }),
+    [dispatch, reason],
+  );
+
+  // The queue reads the whole board for the loaded day, never the class or day filter, so a hole's
+  // queue is always complete.
+  const queueModel = useMemo(
+    () => buildFlightQueue(draw ?? [], tournament?.flights ?? [], config?.holes ?? 18),
+    [draw, tournament?.flights, config?.holes],
+  );
+  const onQueueMove = useCallback(
+    (groupNumber: number, hole: number) =>
+      dispatch({ type: "moveGroupToHole", groupNumber, hole, reason }),
+    [dispatch, reason],
+  );
+  const onQueueSwap = useCallback(
+    (a: number, b: number) => dispatch({ type: "swapGroupSlots", a, b, reason }),
+    [dispatch, reason],
+  );
+  const onQueueReorder = useCallback(
+    (hole: number, order: number[]) => dispatch({ type: "reorderHoleQueue", hole, order, reason }),
     [dispatch, reason],
   );
 
@@ -612,6 +634,14 @@ export default function DrawPage() {
             </button>
             <button
               type="button"
+              className={view === "queue" ? "btn small" : "btn small ghost"}
+              aria-pressed={view === "queue"}
+              onClick={() => setView("queue")}
+            >
+              Flight queue
+            </button>
+            <button
+              type="button"
               className={view === "checks" ? "btn small" : "btn small ghost"}
               aria-pressed={view === "checks"}
               onClick={() => setView("checks")}
@@ -666,6 +696,21 @@ export default function DrawPage() {
                   Table
                 </button>
               </nav>
+            </div>
+          )}
+
+          {view === "queue" && (
+            <div>
+              <p className="hint mb-2">
+                Moves and swaps lock the groups they touch, so a new draw keeps them. The reason
+                chosen above is recorded with each change.
+              </p>
+              <FlightQueuePanel
+                model={queueModel}
+                onMoveToHole={onQueueMove}
+                onSwap={onQueueSwap}
+                onReorder={onQueueReorder}
+              />
             </div>
           )}
 
