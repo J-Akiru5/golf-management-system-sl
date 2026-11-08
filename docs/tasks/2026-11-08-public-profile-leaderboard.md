@@ -28,7 +28,7 @@ and class filters and a ten-team limit.
 
 ## What changed
 
-- `supabase/migrations/20261108003000_public_profile_leaderboard.sql` (additive, **not applied**):
+- `supabase/migrations/20261108003000_public_profile_leaderboard.sql` (additive, **applied to the live project on 8 November 2026**):
   - `public_programme()` adds the stable player id to its player list.
   - `public_player_scorecard(p_player, p_tournament)` returns one confirmed player's summary,
     partner and frozen cards.
@@ -67,13 +67,21 @@ and class filters and a ten-team limit.
   came from a fragment starting at that line, not from the file; the bare-function lateral joins
   were still rewritten into the parenthesised `FROM latest l, LATERAL (…)` form used by the other
   migrations. Run the whole file, or select all of it in the SQL editor before pressing Run.
-- The migration has **not been applied** to any Supabase project. The SQL has not been executed
-  against a database from this tree because the Supabase CLI is not installed on this machine.
+- The migration was **applied to the live project on 8 November 2026** by the owner, in the
+  Supabase SQL editor, as four pieces of the same SQL: `public_programme`, `public_player_scorecard`,
+  `public_team_leaderboard`, then the file's own self-check, which passed. Before that it was run
+  against a copy of the repository's real schema (all earlier migrations, with the
+  `lock_new_functions` event trigger active), as the whole file and as the pieces. That test showed
+  that running only the `CREATE` of `public_programme` without its grant strips anonymous access,
+  so the pieces each carry their own grant. Afterwards the new functions were confirmed present and
+  callable by an anonymous visitor through the public API, and the existing programme and pairings
+  functions still answered. No round is published yet, so the team leaderboard answers an empty
+  list and the pages have not been checked against live scores.
 
 ## Next steps
 
-1. Apply `20261108003000_public_profile_leaderboard.sql` to a disposable or staging database and
-   check the three functions. The owner must approve the live project application.
+1. The migration is applied. Publish a round on the live project and check
+   `/pairings?tab=profile` and `/leaderboard` against real scores.
 2. Run `pnpm build` and the browser check when resources allow. Check `/pairings?tab=profile`,
    `/leaderboard`, the category/class filters, the phone layout and the empty states.
 3. Review the diff and integrate through the repository workflow.
