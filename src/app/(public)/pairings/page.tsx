@@ -3,6 +3,7 @@ import Link from "next/link";
 import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PairingsPrintFooter } from "@/components/print/PairingsPrintFooter";
 import { PairingsView, type PairingsYou } from "@/components/PairingsView";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
 import {
@@ -202,6 +203,7 @@ export default async function PublicPairingsPage() {
               </p>
             )}
             <PairingsView pairings={pairings} headingLevel="section" flightFilter you={you} />
+            <PairingsPrintFooter eventName={pairings.tournamentName} />
           </section>
 
           {showProgramme && programme && (

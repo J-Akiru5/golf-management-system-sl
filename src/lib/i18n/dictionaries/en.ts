@@ -236,6 +236,7 @@ export const en = {
       "Pairings version {version} · updated {when} (Philippine time). If you have a printed copy, check that the version matches.",
     versionNoNumber:
       "Updated {when} (Philippine time). If you have a printed copy, check that the version matches.",
+    scanLive: "Scan for the live pairings",
     footer:
       "Names, home club, handicap, category, flight, hole and time only. No contact details or photos.",
     home: "TeeLine Golf home",

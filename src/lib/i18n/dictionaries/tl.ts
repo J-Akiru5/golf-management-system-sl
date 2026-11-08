@@ -234,6 +234,7 @@ export const tl: Dictionary = {
       "Pairings version {version} · na-update {when} (Philippine time). Kung may nakaprinta kang kopya, tingnan kung tugma ang version.",
     versionNoNumber:
       "Na-update {when} (Philippine time). Kung may nakaprinta kang kopya, tingnan kung tugma ang version.",
+    scanLive: "I-scan para sa live na pairings",
     footer:
       "Pangalan, home club, handicap, kategorya, flight, hole at oras lamang. Walang contact details o litrato.",
     home: "TeeLine Golf home",

@@ -5,6 +5,7 @@ import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { NeedsTournament } from "@/components/NeedsTournament";
+import { PairingsPrintFooter } from "@/components/print/PairingsPrintFooter";
 import { PairingsView } from "@/components/PairingsView";
 import {
   PlayerDirectory,
@@ -390,6 +391,7 @@ export function DemoPairings() {
               flightFilter
               you={{ id: null, name: "Antonio Alcantara" }}
             />
+            <PairingsPrintFooter eventName={pairings.tournamentName} />
           </section>
 
           <TeeTimesBoard programme={programme} />

@@ -21,10 +21,6 @@
   background: #fff;
 }
 
-:global(nextjs-portal) {
-  display: none !important;
-}
-
 .previewToolbar {
   display: flex;
   align-items: center;
@@ -720,4 +716,325 @@
 
 .countsPlayers {
   width: 55%;
+}
+
+/* ---------- P2 start sheet: the paper on the starter's table ---------- */
+.p2StartSheets {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.p2StartSheet {
+  color: #000;
+  background: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+}
+
+.p2PaperHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4mm;
+  padding-bottom: 2.5mm;
+  border-bottom: 2px solid #000;
+}
+
+.p2PaperHead h2 {
+  margin: 0;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16pt;
+  line-height: 1.1;
+}
+
+.p2Club {
+  margin: 0 0 1mm;
+  color: #000;
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.p2Kind {
+  margin: 1mm 0 0;
+  color: #000;
+  font-size: 10pt;
+  font-weight: 700;
+}
+
+.p2Stamp {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  gap: 0.5mm;
+  color: #000;
+  font-size: 8.5pt;
+  text-align: right;
+}
+
+.p2Stamp b {
+  font-size: 11pt;
+}
+
+.p2Empty {
+  margin: 6mm 0;
+  font-size: 12pt;
+}
+
+.p2StartTable {
+  width: 100%;
+  margin-top: 3mm;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #000;
+  background: #fff;
+}
+
+.p2StartTable th,
+.p2StartTable td {
+  padding: 1.2mm 1.5mm;
+  border: 1px solid #000;
+  color: #000;
+  background: #fff;
+  font-size: 10pt;
+  line-height: 1.2;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.p2StartTable thead th {
+  background: #eee;
+  font-size: 10pt;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.p2ColTime {
+  width: 22mm;
+}
+
+.p2ColHole {
+  width: 16mm;
+}
+
+.p2ColGroup {
+  width: 25mm;
+}
+
+.p2ColArrived {
+  width: 18mm;
+  text-align: center !important;
+}
+
+.p2Time {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.p2Hole,
+.p2GroupCell b {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.p2GroupCell span {
+  display: block;
+}
+
+.p2Flight {
+  margin-top: 0.8mm;
+  padding: 0.4mm 1.2mm;
+  border: 0.5px solid #000;
+  background: #f3ecd9;
+  font-size: 9pt;
+  font-weight: 700;
+  white-space: normal;
+}
+
+.p2Players {
+  display: grid;
+  gap: 1.2mm;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.p2Players li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 2mm;
+  padding: 0.5mm 0;
+}
+
+.p2PlayerName {
+  font-size: 10.5pt;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.p2PlayerFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5mm;
+  color: #000;
+  font-size: 8.5pt;
+}
+
+.p2Arrived {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.p2Tick {
+  display: inline-block;
+  width: 7mm;
+  height: 7mm;
+  border: 1.5px solid #000;
+  background: #fff;
+}
+
+.p2PaperFoot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2mm 4mm;
+  margin-top: 3mm;
+  padding-top: 2mm;
+  border-top: 1px solid #000;
+  color: #000;
+  font-size: 8pt;
+}
+
+.p2StartRow {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@media screen {
+  .p2StartSheet {
+    max-width: 210mm;
+    margin-inline: auto;
+    padding: 12px;
+    border: 1px solid #d6d2c4;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 8%);
+    font-size: 12px;
+  }
+
+  .p2PaperHead {
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .p2PaperHead h2 {
+    font-size: 18px;
+  }
+
+  .p2Club,
+  .p2Stamp,
+  .p2PaperFoot {
+    font-size: 10px;
+  }
+
+  .p2Stamp b {
+    font-size: 12px;
+  }
+
+  .p2StartTable {
+    margin-top: 8px;
+  }
+
+  .p2StartTable th,
+  .p2StartTable td {
+    padding: 5px 6px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .p2StartTable thead th {
+    font-size: 9px;
+  }
+
+  .p2PlayerName {
+    font-size: 11px;
+  }
+
+  .p2PlayerFacts {
+    font-size: 9.5px;
+  }
+
+  .p2ColTime {
+    width: 52px;
+  }
+
+  .p2ColHole {
+    width: 44px;
+  }
+
+  .p2ColGroup {
+    width: 64px;
+  }
+
+  .p2ColArrived {
+    width: 52px;
+  }
+
+  .p2Flight {
+    font-size: 9px;
+  }
+
+  .p2Tick {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media print {
+  .p2StartSheet {
+    display: grid;
+    gap: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    break-inside: auto;
+  }
+
+  .p2StartSheet + .p2StartSheet {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .p2StartSheets + .p2StartSheets {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .p2StartTable {
+    border-collapse: collapse;
+  }
+
+  .p2StartTable thead {
+    display: table-header-group;
+  }
+
+  .p2StartTable tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .p2PaperHead {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .p2PaperFoot {
+    break-before: avoid;
+    page-break-before: avoid;
+  }
 }
