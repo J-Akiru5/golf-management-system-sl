@@ -107,10 +107,12 @@ export function explainRegistration({
   });
 
   if (tee && reg.frozenIndex !== null) {
-    const raw = rawCourseHandicap(reg.frozenIndex, tee);
+    // The draw caps an index above the event maximum, so the preview works from the same number.
+    const used = Math.min(reg.frozenIndex, tournament.config.maxIndex);
+    const raw = rawCourseHandicap(used, tee);
     steps.push({
       label: "Course handicap preview",
-      detail: `${fmtIndex(reg.frozenIndex)} × (${tee.slope} ÷ 113) + (${tee.courseRating} − ${tee.par}) = ${raw.toFixed(1)}${
+      detail: `${fmtIndex(used)} × (${tee.slope} ÷ 113) + (${tee.courseRating} − ${tee.par}) = ${raw.toFixed(1)}${
         tournament.config.allowance === 1
           ? ""
           : ` × ${Math.round(tournament.config.allowance * 100)}%`
@@ -132,8 +134,15 @@ export function explainRegistration({
         ? (reg.reasons[0] ?? "Not eligible for this event.")
         : reg.frozenIndex === null
           ? "Waiting for an index on or before the cut-off."
-          : `Index ${fmtIndex(reg.frozenIndex)} is within the event limit of ${tournament.config.maxIndex}.`,
-    tone: reg.status === "ineligible" ? "bad" : reg.frozenIndex === null ? "warn" : "ok",
+          : reg.frozenIndex > tournament.config.maxIndex
+            ? `Index ${fmtIndex(reg.frozenIndex)} is above the event limit of ${tournament.config.maxIndex}; ${tournament.config.maxIndex} is used.`
+            : `Index ${fmtIndex(reg.frozenIndex)} is within the event limit of ${tournament.config.maxIndex}.`,
+    tone:
+      reg.status === "ineligible"
+        ? "bad"
+        : reg.frozenIndex === null || reg.frozenIndex > tournament.config.maxIndex
+          ? "warn"
+          : "ok",
   });
 
   steps.push({

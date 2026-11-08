@@ -94,7 +94,7 @@ Full table is in the spec. The ones that drive the code:
 | --- | --- |
 | Handicap source | Imported from the NGAP export. The system never computes an official index. |
 | Course handicap | `Index × (Slope ÷ 113) + (Course Rating − Par)`, then × allowance (100%), **rounded once** at the end. Plus handicaps are stored negative and shown as `+n`. |
-| Max handicap | 30, checked on the **NGAP index** (not the course handicap). Above 30 cannot register. |
+| Max handicap | 30, checked on the **NGAP index** (not the course handicap). An index above 30 is **capped at 30**: the player still registers, class, tee and playing handicap use 30, and the index on file is kept (issue 190). The matching change to `save_handicap_snapshot` is written as `20261108001100_cap_handicap_snapshot_index.sql` and is **not applied**; until it is, opening a round still fails for a capped player. |
 | Categories | Regular, Senior 60–69, Super Senior 70+ (Silver tee), Ladies (own category and own tees). Age is taken on tournament day. |
 | Flights | Fixed handicap ranges per category. Basis defaults to index. |
 | Shotgun | 18 holes × max 4 per hole = 72 per start. The rest of a session goes off one gap later (default 300 min) in the same session. A flight is never split across starts unless it exceeds the holes in one start, and then it is flagged. |

@@ -22,7 +22,7 @@ Answers from the organizer, 17 Oct 2026. These go into the system as tournament 
 | Senior | 60+ | Per tournament |
 | Super Senior | 70+, Silver tee | Per tournament |
 | Ladies | Own category and own tees | Per tournament |
-| Maximum handicap | 30, checked on the NGAP index. Above 30 cannot register. | Per tournament |
+| Maximum handicap | 30, checked on the NGAP index. An index above 30 is capped at 30: the player still registers and the draw uses 30 (confirmed 8 November 2026, issue 190). | Per tournament |
 | Flights | Fixed handicap ranges, grouped by flight | Per tournament |
 | Classes | Class A 0–12, Class B 13–18, Class C 19–23, Class D 24 and above, read off the NGAP record. Each class is played and awarded on its own. | Per tournament |
 | Teams | One member and one guest. The pair plays as one team, and its handicap is the rounded average of both players. | Per tournament |
@@ -112,7 +112,7 @@ Every registration passes through the same steps. Each step writes its result on
 3. **Assign category.** Age on tournament day plus gender: Regular, Senior (60–69), Super Senior (70+), Ladies.
 4. **Assign tee.** Each category maps to one tee marker. Super Senior plays Silver.
 5. **Compute course handicap.** Uses that tee's Course Rating, Slope and Par, at 100% allowance.
-6. **Check eligibility.** An NGAP index above 30 blocks registration, and the desk shows the reason.
+6. **Check eligibility.** An NGAP index above 30 is capped at 30 for the draw. The player is not blocked, the index on file is kept, and the desk shows which number was used.
 7. **Assign flight.** Match the handicap to the category's fixed ranges, e.g. A, B, C.
 8. **Form groups.** Fill groups of four inside each flight.
 9. **Assign start.** Shotgun hole and set, or two-tee start time.

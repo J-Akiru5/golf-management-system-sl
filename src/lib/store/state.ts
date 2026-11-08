@@ -316,7 +316,7 @@ export function buildRegistrations(s: DeskState): DeskRegistration[] {
   // The class of a member-guest pair is the average of both indexes, the same rule the engine
   // draws by. Without it each partner is judged on their own index and the draw checks report a
   // pair as "from another flight" although the engine grouped it correctly.
-  applyTeamClasses(out, t.flights);
+  applyTeamClasses(out, t.flights, t.config.maxIndex);
   return out;
 }
 

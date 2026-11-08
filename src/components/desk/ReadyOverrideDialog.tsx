@@ -121,7 +121,7 @@ export function ReadyOverrideDialog({
 
   // Only the reason is required: it is the only thing the desk must supply, and it is what makes
   // an incomplete entry auditable. An index, when entered, has to be usable.
-  const canSave = open && indexValid && !overLimit && adjustmentValid && reason.trim().length >= 3;
+  const canSave = open && indexValid && adjustmentValid && reason.trim().length >= 3;
 
   // The record's date belongs only to its own index. An index the desk types in is not in that
   // record, so it is dated today rather than borrowing a date it never had.
@@ -297,10 +297,10 @@ export function ReadyOverrideDialog({
           </div>
 
           {overLimit && (
-            <p className="notice bad flex items-start gap-2 text-[13px]" role="alert">
+            <p className="notice warn flex items-start gap-2 text-[13px]" role="status">
               <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-              This index is above the event limit of {tournament.config.maxIndex}. Correct the index
-              instead of overriding the entry.
+              This index is above the event limit of {tournament.config.maxIndex}. The draw uses{" "}
+              {tournament.config.maxIndex} for this player; the index entered is kept on file.
             </p>
           )}
 
