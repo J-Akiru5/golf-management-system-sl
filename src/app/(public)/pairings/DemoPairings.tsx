@@ -30,6 +30,7 @@ import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { manilaToday } from "@/lib/player/dashboard";
 import { SAMPLE_PLAYER } from "@/lib/player/demo-identity";
+import { pairingsBackLink } from "@/lib/public/pairings-nav";
 import { useDesk } from "@/lib/store/desk-store";
 
 /** Ten morning start times and eight afternoon start times, a normal shotgun day at the club. */
@@ -313,6 +314,7 @@ export function DemoPairings({
   playerId?: string | null;
 }) {
   const { t } = useI18n();
+  const back = pairingsBackLink(tab);
   const { published, tournament, days, entries, registrations, players } = useDesk();
 
   if (!tournament) return <NeedsTournament what="The player view" />;
@@ -354,7 +356,7 @@ export function DemoPairings({
   return (
     <main className="public public-pairings mobile-bar-space">
       <header className="public-head !p-4 sm:!p-5">
-        <PublicBackLink label={t("pairings.backHome")} />
+        <PublicBackLink label={t(back.labelKey)} href={back.href} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
@@ -419,7 +421,7 @@ export function DemoPairings({
       <p className="hint no-print">
         {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
         <Link href="/roster">{t("programme.playersTitle")}</Link> ·{" "}
-        <Link href="/rules">{t("programme.navFullRules")}</Link> ·{" "}
+        <Link href="/rules?from=pairings">{t("programme.navFullRules")}</Link> ·{" "}
         <Link href="/pairings?tab=profile">{t("programme.navProfile")}</Link> ·{" "}
         <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
       </p>

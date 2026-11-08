@@ -273,7 +273,7 @@ export function RulesOfPlay({ text }: { text: string }) {
           </p>
         ))}
       </div>
-      <Link className="btn ghost justify-self-start no-print" href="/rules">
+      <Link className="btn ghost justify-self-start no-print" href="/rules?from=pairings">
         Full tournament rules
       </Link>
     </section>

@@ -40,7 +40,7 @@ export default function TournamentRulesPage() {
   return (
     <main className="public public-rules mobile-bar-space" data-testid="rules-page" lang="en">
       <header className="public-head rules-hero">
-        <PublicBackLink label="Back to main page" />
+        <PublicBackLink label="Back to main page" pairingsLabel="Back to pairings" />
 
         <div className="rules-hero-top">
           <div className="flex flex-wrap items-center gap-3">

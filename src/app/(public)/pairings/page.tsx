@@ -23,6 +23,7 @@ import { fmtTime } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { loadPortal } from "@/lib/player/portal";
 import { pairingsSignature } from "@/lib/public/pairings-live";
+import { pairingsBackLink } from "@/lib/public/pairings-nav";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
@@ -97,6 +98,7 @@ export default async function PublicPairingsPage({
   if (tab === "leaderboard") redirect("/leaderboard");
 
   const { t } = await getI18n();
+  const back = pairingsBackLink(tab);
   if (!isSupabaseConfigured()) return <DemoPairings tab={tab} playerId={rawPlayerId} />;
 
   const playerId = rawPlayerId && PLAYER_ID.test(rawPlayerId) ? rawPlayerId : null;
@@ -157,10 +159,7 @@ export default async function PublicPairingsPage({
       <header className="public-head !p-4 sm:!p-5">
         {/* Inside a player's profile the way back is the pairings list; everywhere else it is the
             main page. */}
-        <PublicBackLink
-          label={tab === "profile" ? t("pairings.backToPairings") : t("pairings.backHome")}
-          href={tab === "profile" ? "/pairings" : "/"}
-        />
+        <PublicBackLink label={t(back.labelKey)} href={back.href} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
@@ -278,7 +277,7 @@ export default async function PublicPairingsPage({
       <p className="hint no-print">
         {t("pairings.footer")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
         <Link href="/roster">{t("programme.playersTitle")}</Link> ·{" "}
-        <Link href="/rules">{t("programme.navFullRules")}</Link> ·{" "}
+        <Link href="/rules?from=pairings">{t("programme.navFullRules")}</Link> ·{" "}
         <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
         {tab === "pairings" && programme?.rulesOfPlay && (
           <>
