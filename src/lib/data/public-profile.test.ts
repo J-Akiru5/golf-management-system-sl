@@ -1,5 +1,11 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
-import { parsePublicPlayerProfile, searchProfilePlayers } from "./public-profile";
+import type { Database } from "@/lib/supabase/types";
+import {
+  loadPublicPlayerProfile,
+  parsePublicPlayerProfile,
+  searchProfilePlayers,
+} from "./public-profile";
 
 const card = {
   playerId: "p1",
@@ -86,6 +92,20 @@ describe("parsePublicPlayerProfile", () => {
 
     expect(parsed?.cards).toEqual([]);
     expect(parsed?.partner).toBeNull();
+  });
+});
+
+describe("loadPublicPlayerProfile", () => {
+  function client(data: unknown, error: { code?: string; message?: string } | null = null) {
+    return {
+      rpc: async () => ({ data, error }),
+    } as unknown as SupabaseClient<Database>;
+  }
+
+  it("returns null when the event is unpublished or its leaderboard is held", async () => {
+    // public_player_scorecard() joins the event's published flag and its leaderboard key. A held
+    // event answers with SQL null, and the page must not render an empty profile as if it existed.
+    await expect(loadPublicPlayerProfile(client(null), "p1", "held-event")).resolves.toBeNull();
   });
 });
 

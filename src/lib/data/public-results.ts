@@ -122,10 +122,22 @@ export async function loadRoundResults(
 export async function loadPublicPhotos(
   client: SupabaseClient<Database>,
   playerIds: string[],
+  tournamentId?: string | null,
 ): Promise<Record<string, string>> {
   const ids = [...new Set(playerIds.filter(Boolean))];
   if (!ids.length) return {};
-  const { data, error } = await client.rpc("public_player_photos", { p_ids: ids });
+
+  // The event argument is what applies a photos hold. A database that has not applied the release
+  // migration only has the one-argument function; retry without it there, because that database
+  // has no event policy to bypass. The page keeps its photos and the old behaviour is unchanged.
+  let result = await client.rpc("public_player_photos", {
+    p_ids: ids,
+    p_tournament: tournamentId ?? null,
+  });
+  if (result.error && isMissingFunction(result.error)) {
+    result = await client.rpc("public_player_photos", { p_ids: ids });
+  }
+  const { data, error } = result;
   if (error) throw new Error(`Could not load public player photos: ${error.message}`);
   if (!Array.isArray(data)) return {};
   const photos: Record<string, string> = {};
@@ -136,4 +148,8 @@ export async function loadPublicPhotos(
     if (playerId && photoPath) photos[playerId] = photoPath;
   }
   return photos;
+}
+
+function isMissingFunction(error: { code?: string; message?: string }): boolean {
+  return error.code === "PGRST202" || /could not find the function/i.test(error.message ?? "");
 }

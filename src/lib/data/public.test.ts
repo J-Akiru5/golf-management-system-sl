@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  heldReleaseSurfaces,
   mapPublicProgramme,
+  PUBLIC_RELEASE_SURFACES,
   type PublishedLike,
+  parsePublicReleaseState,
+  releaseIsHeld,
   toPublicPairings,
   toPublicProgramme,
 } from "./public";
@@ -391,5 +395,84 @@ describe("mapPublicProgramme", () => {
       players: [],
       rulesOfPlay: null,
     });
+  });
+
+  it("treats a held or older payload with missing sections as empty, not as an error", () => {
+    // public_programme() sends [] for a held roster or tee-times board. A database older than the
+    // programme migration can omit the keys entirely; neither may blank the pairings page.
+    expect(mapPublicProgramme({ rulesOfPlay: "Local rules apply." })).toEqual({
+      days: [],
+      players: [],
+      rulesOfPlay: "Local rules apply.",
+    });
+    expect(mapPublicProgramme({ days: [], players: [], rulesOfPlay: null })).toEqual({
+      days: [],
+      players: [],
+      rulesOfPlay: null,
+    });
+  });
+});
+
+describe("parsePublicReleaseState", () => {
+  it("keeps the event id and every enforced surface flag", () => {
+    const parsed = parsePublicReleaseState({
+      tournamentId: "t1",
+      pairings: false,
+      teeTimes: true,
+      roster: false,
+      leaderboard: true,
+      photos: false,
+      rules: true,
+    });
+
+    expect(parsed).toEqual({
+      tournamentId: "t1",
+      pairings: false,
+      teeTimes: true,
+      roster: false,
+      leaderboard: true,
+      photos: false,
+      rules: true,
+    });
+    expect(parsed && releaseIsHeld(parsed, "pairings")).toBe(true);
+    expect(parsed && releaseIsHeld(parsed, "teeTimes")).toBe(false);
+    expect(parsed && heldReleaseSurfaces(parsed)).toEqual(["pairings", "roster", "photos"]);
+  });
+
+  it("keeps the full key list in one place", () => {
+    expect(PUBLIC_RELEASE_SURFACES).toEqual([
+      "pairings",
+      "teeTimes",
+      "roster",
+      "leaderboard",
+      "photos",
+      "rules",
+    ]);
+  });
+
+  it("treats a missing or non-boolean key as released, so a client never freezes a surface", () => {
+    const parsed = parsePublicReleaseState({ tournamentId: "t1", pairings: false });
+    expect(parsed).toMatchObject({
+      pairings: false,
+      teeTimes: true,
+      roster: true,
+      leaderboard: true,
+      photos: true,
+      rules: true,
+    });
+
+    expect(
+      parsePublicReleaseState({ tournamentId: "t1", roster: "false", photos: 0 }),
+    ).toMatchObject({ roster: true, photos: true });
+  });
+
+  it("returns null when the database returned nothing or a payload without an event", () => {
+    expect(parsePublicReleaseState(null)).toBeNull();
+    expect(parsePublicReleaseState({})).toBeNull();
+    expect(parsePublicReleaseState({ pairings: false })).toBeNull();
+    expect(parsePublicReleaseState({ tournamentId: "  ", pairings: false })).toBeNull();
+    expect(JSON.stringify(parsePublicReleaseState({ tournamentId: "t1" }))).not.toContain(
+      "publish_views",
+    );
   });
 });

@@ -1,7 +1,10 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
+import type { Database } from "@/lib/supabase/types";
 import {
   buildTeamLeaderboard,
   filterTeams,
+  loadPublicTeamLeaderboard,
   type PublicTeamLeaderboardData,
   type PublicTeamPlayerRow,
   type PublicTeamStanding,
@@ -93,6 +96,28 @@ describe("parsePublicTeamLeaderboard", () => {
       rounds: [],
       rows: [],
     });
+  });
+});
+
+describe("loadPublicTeamLeaderboard", () => {
+  function client(data: unknown, error: { code?: string; message?: string } | null = null) {
+    return {
+      rpc: async () => ({ data, error }),
+    } as unknown as SupabaseClient<Database>;
+  }
+
+  it("returns null when the event is unpublished or its leaderboard is held", async () => {
+    // The database returns SQL null for those two cases, never an object with empty rows: a held
+    // event must not read as an event that simply has no scores yet.
+    await expect(loadPublicTeamLeaderboard(client(null), "held-event")).resolves.toBeNull();
+  });
+
+  it("returns null on a database before the leaderboard function exists", async () => {
+    await expect(
+      loadPublicTeamLeaderboard(
+        client(null, { code: "PGRST202", message: "Could not find the function" }),
+      ),
+    ).resolves.toBeNull();
   });
 });
 

@@ -36,7 +36,7 @@ export async function playerBoard(
 
   let photos: Record<string, string> = {};
   try {
-    photos = await loadPublicPhotos(client, ids);
+    photos = await loadPublicPhotos(client, ids, round.tournamentId);
   } catch {
     // A photo is a nicety; the board is not.
     photos = {};

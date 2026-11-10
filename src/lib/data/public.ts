@@ -323,17 +323,20 @@ const timeOrNull = (value: unknown): string | null => {
 };
 
 /**
- * Validates the JSON returned by `public_programme()`. A malformed or partially deployed response
- * returns null so the pairings page keeps working instead of throwing; the database is the only
- * producer of this shape.
+ * Validates the JSON returned by `public_programme()`. A malformed response returns null so the
+ * pairings page keeps working instead of throwing; the database is the only producer of this shape.
+ * A section the database has held or omitted is an empty section, never a reason to fail the page:
+ * an older database and a held surface both arrive without that content.
  */
 export function mapPublicProgramme(value: unknown): PublicProgramme | null {
-  if (!isRecord(value) || !Array.isArray(value.days) || !Array.isArray(value.players)) {
-    return null;
-  }
+  if (!isRecord(value)) return null;
+  if (value.days !== undefined && !Array.isArray(value.days)) return null;
+  if (value.players !== undefined && !Array.isArray(value.players)) return null;
+  const rawDays = Array.isArray(value.days) ? value.days : [];
+  const rawPlayers = Array.isArray(value.players) ? value.players : [];
 
   const days: PublicTeeTimeDay[] = [];
-  for (const rawDay of value.days) {
+  for (const rawDay of rawDays) {
     if (!isRecord(rawDay)) return null;
     const dayNumber = rawDay.dayNumber;
     const label = rawDay.label;
@@ -380,7 +383,7 @@ export function mapPublicProgramme(value: unknown): PublicProgramme | null {
   days.sort((a, b) => a.dayNumber - b.dayNumber);
 
   const players: PublicPlayerProfile[] = [];
-  for (const rawPlayer of value.players) {
+  for (const rawPlayer of rawPlayers) {
     if (!isRecord(rawPlayer)) return null;
     const name = typeof rawPlayer.name === "string" ? rawPlayer.name.trim() : "";
     if (name === "") return null;
@@ -400,4 +403,58 @@ export function mapPublicProgramme(value: unknown): PublicProgramme | null {
     players,
     rulesOfPlay: cleanPublicText(textOrNull(value.rulesOfPlay)),
   };
+}
+
+/* -------------------------------------------------------------------------------------------------
+ * The public release state: which surfaces the desk is holding for one event.
+ * ------------------------------------------------------------------------------------------------ */
+
+/**
+ * The enforced surface keys, in the order the release panel shows them. This is the same list the
+ * database setter accepts; adding a key on one side without the other is a bug.
+ */
+export const PUBLIC_RELEASE_SURFACES = [
+  "pairings",
+  "teeTimes",
+  "roster",
+  "leaderboard",
+  "photos",
+  "rules",
+] as const;
+
+export type PublicReleaseSurface = (typeof PUBLIC_RELEASE_SURFACES)[number];
+
+/** Booleans only. The database never sends the stored object or an auth user id through this read. */
+export type PublicReleaseState = {
+  tournamentId: string;
+} & Record<PublicReleaseSurface, boolean>;
+
+/**
+ * Validates the JSON returned by `public_release_state()`.
+ *
+ * A database before the release migration has no such function, so the loader returns null. A
+ * partial object is read conservatively: a missing or non-boolean key means "released", because
+ * every key defaults to true and a client must never freeze a surface on its own. A response with
+ * no tournament id is malformed and returns null.
+ */
+export function parsePublicReleaseState(value: unknown): PublicReleaseState | null {
+  if (!isRecord(value)) return null;
+  const tournamentId = textOrNull(value.tournamentId);
+  if (!tournamentId) return null;
+
+  const state = { tournamentId } as PublicReleaseState;
+  for (const surface of PUBLIC_RELEASE_SURFACES) {
+    state[surface] = typeof value[surface] === "boolean" ? value[surface] : true;
+  }
+  return state;
+}
+
+/** True only when the desk has explicitly held this surface. */
+export function releaseIsHeld(state: PublicReleaseState, surface: PublicReleaseSurface): boolean {
+  return state[surface] === false;
+}
+
+/** The held surfaces, in panel order. */
+export function heldReleaseSurfaces(state: PublicReleaseState): PublicReleaseSurface[] {
+  return PUBLIC_RELEASE_SURFACES.filter((surface) => releaseIsHeld(state, surface));
 }

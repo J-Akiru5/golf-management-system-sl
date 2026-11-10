@@ -199,6 +199,11 @@ export type TournamentRow = {
   logo_path?: string | null;
   /** Added by 20261041000000. Optional so a database before that migration still loads. */
   rules_of_play?: string | null;
+  /** Added by 20261110000000. The stored public release policy; read it through the RPCs. */
+  publish_views?: Json;
+  /** Added by 20261110000100. Audit only; never exposed by a public read. */
+  publish_views_updated_at?: string | null;
+  publish_views_updated_by?: string | null;
   play_date: string;
   cutoff_date: string;
   start_format: "shotgun" | "two_tee";
@@ -1034,7 +1039,25 @@ export interface Database {
           snapshot: Json;
         }[];
       };
-      public_player_photos: { Args: { p_ids: string[] }; Returns: Json };
+      /**
+       * Public photo paths. Added a second optional argument in 20261110000100 so the event's
+       * `photos` hold applies; a one-argument call resolves against the event the public
+       * programme selects.
+       */
+      public_player_photos: {
+        Args: { p_ids: string[]; p_tournament?: string | null };
+        Returns: Json;
+      };
+      /** Booleans only: which public surfaces the desk is holding for one event. */
+      public_release_state: {
+        Args: { p_tournament?: string | null };
+        Returns: Json;
+      };
+      /** Owner or organizer only. Changes one release key and returns the new release state. */
+      set_public_release: {
+        Args: { p_tournament: string; p_surface: string; p_released: boolean };
+        Returns: Json;
+      };
       /** Added by 20261037000000; all return JSON and are granted to authenticated only. */
       save_day_rule: {
         Args: { p_tournament: string; p_required: number | null; p_max: number | null };
