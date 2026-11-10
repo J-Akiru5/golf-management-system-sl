@@ -153,7 +153,7 @@ describe("crawl rules and the sitemap", () => {
 
     const rule = Array.isArray(rules.rules) ? rules.rules[0] : rules.rules;
     const disallow = String(rule?.disallow ?? "");
-    for (const path of ["/admin", "/my", "/scores", "/login", "/api/"]) {
+    for (const path of ["/admin", "/my", "/scores", "/login", "/api/", "/feedback-inbox"]) {
       expect(disallow).toContain(path);
     }
     // Entry pages must stay crawlable so their own noindex is seen.

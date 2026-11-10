@@ -114,6 +114,30 @@ export type PlayerRow = {
   deleted_at?: string | null;
 };
 
+/**
+ * One note sent from the public feedback page. Added by 20261110000200.
+ *
+ * Readable only by club staff; the public writes through `submit_feedback` and never sees a row.
+ * `rate_key` is a pseudonymous bucket, not an address.
+ */
+export type PublicFeedbackRow = {
+  id: string;
+  club_id: string;
+  category: "improvement" | "bug" | "content";
+  message: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_consent: boolean;
+  page_path: string | null;
+  locale: "en" | "tl" | "hil";
+  status: "new" | "read" | "planned" | "done" | "dismissed";
+  rate_key: string;
+  created_at: string;
+  updated_at: string;
+  status_changed_at: string | null;
+  status_changed_by: string | null;
+};
+
 /** One queued or provider-confirmed email. Added by 20261040000000. */
 export type EmailOutboxRow = {
   id: string;
@@ -646,6 +670,32 @@ export interface Database {
           assigned_by?: string | null;
         }
       >;
+      public_feedback: Table<
+        PublicFeedbackRow,
+        {
+          id?: string;
+          club_id: string;
+          category: PublicFeedbackRow["category"];
+          message: string;
+          contact_name?: string | null;
+          contact_email?: string | null;
+          contact_consent?: boolean;
+          page_path?: string | null;
+          locale?: PublicFeedbackRow["locale"];
+          status?: PublicFeedbackRow["status"];
+          rate_key: string;
+          created_at?: string;
+          updated_at?: string;
+          status_changed_at?: string | null;
+          status_changed_by?: string | null;
+        },
+        {
+          status?: PublicFeedbackRow["status"];
+          updated_at?: string;
+          status_changed_at?: string | null;
+          status_changed_by?: string | null;
+        }
+      >;
       email_outbox: Table<
         EmailOutboxRow,
         {
@@ -1111,6 +1161,23 @@ export interface Database {
         Returns: Json;
       };
       public_registration_form: { Args: { p_tournament: string }; Returns: Json };
+      /**
+       * The one write an anonymous visitor can make on the feedback page. Added by hand with
+       * 20261110000200_public_feedback.sql, which is not applied to the live project yet.
+       */
+      submit_feedback: {
+        Args: {
+          p_category: string;
+          p_message: string;
+          p_contact_name?: string | null;
+          p_contact_email?: string | null;
+          p_contact_consent?: boolean;
+          p_page_path?: string | null;
+          p_locale?: string;
+          p_honeypot?: string | null;
+        };
+        Returns: Json;
+      };
       /**
        * Everything a signed-out visitor may see about an event, including events whose entries have
        * closed. `entriesOpen` says whether the entry form still applies. Added by hand with

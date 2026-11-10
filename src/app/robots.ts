@@ -21,6 +21,7 @@ export default function robots(): MetadataRoute.Robots {
           "/players",
           "/caddies",
           "/audit",
+          "/feedback-inbox",
           "/register",
           "/tee-times",
           "/import",

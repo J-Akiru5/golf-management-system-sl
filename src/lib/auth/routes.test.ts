@@ -34,6 +34,7 @@ describe("areaOf", () => {
       "/tournaments",
       "/course",
       "/spotlight",
+      "/feedback-inbox",
     ]) {
       expect(areaOf(path)).toBe("staff");
     }
@@ -66,6 +67,17 @@ describe("decide", () => {
     expect(decide({ pathname: "/admin", identity: "unlinked" })).toEqual({
       type: "redirect",
       to: "/my",
+    });
+    expect(decide({ pathname: "/feedback-inbox", identity: "player" })).toEqual({
+      type: "redirect",
+      to: "/my",
+    });
+  });
+
+  it("sends a signed-out visitor to sign in before the feedback inbox", () => {
+    expect(decide({ pathname: "/feedback-inbox", identity: "signed-out" })).toEqual({
+      type: "redirect",
+      to: "/login?next=%2Ffeedback-inbox&error=sign_in_required",
     });
   });
 
@@ -154,7 +166,7 @@ describe("landingFor", () => {
 describe("PROXY_MATCHER", () => {
   it("covers both guarded areas, sign-in and the auth handler", () => {
     expect(PROXY_MATCHER).toContain("/auth/:path*");
-    for (const prefix of ["/admin", "/players", "/draw", "/my"]) {
+    for (const prefix of ["/admin", "/players", "/draw", "/feedback-inbox", "/my"]) {
       expect(PROXY_MATCHER).toContain(`${prefix}/:path*`);
     }
   });
