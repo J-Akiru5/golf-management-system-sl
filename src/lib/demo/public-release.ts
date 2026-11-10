@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import {
   PUBLIC_RELEASE_SURFACES,
   type PublicReleaseState,
@@ -51,20 +51,23 @@ function readStored(): Stored {
   }
 }
 
+/** The state both the server and the first client render use, before localStorage is read. */
+function defaultState(tournamentId: string): DemoReleaseState {
+  const state = { tournamentId } as DemoReleaseState;
+  for (const surface of PUBLIC_RELEASE_SURFACES) state[surface] = true;
+  for (const surface of DEMO_HELD[tournamentId] ?? []) state[surface] = false;
+  state.updatedAt = null;
+  state.updatedBy = null;
+  return state;
+}
+
 function buildState(tournamentId: string): DemoReleaseState {
   const stored = readStored()[tournamentId] ?? {};
-  const state = { tournamentId } as DemoReleaseState;
-  for (const surface of PUBLIC_RELEASE_SURFACES) {
-    state[surface] = typeof stored[surface] === "boolean" ? stored[surface] : true;
-  }
-  for (const surface of DEMO_HELD[tournamentId] ?? []) state[surface] = false;
+  const state = defaultState(tournamentId);
   // A stored value wins over the sample default, so a toggle is remembered.
-  if (typeof stored.pairings === "boolean") state.pairings = stored.pairings;
-  if (typeof stored.teeTimes === "boolean") state.teeTimes = stored.teeTimes;
-  if (typeof stored.roster === "boolean") state.roster = stored.roster;
-  if (typeof stored.leaderboard === "boolean") state.leaderboard = stored.leaderboard;
-  if (typeof stored.photos === "boolean") state.photos = stored.photos;
-  if (typeof stored.rules === "boolean") state.rules = stored.rules;
+  for (const surface of PUBLIC_RELEASE_SURFACES) {
+    if (typeof stored[surface] === "boolean") state[surface] = stored[surface];
+  }
   state.updatedAt = stored.updatedAt ?? null;
   state.updatedBy = stored.updatedBy ?? null;
   return state;
@@ -104,25 +107,31 @@ export function setDemoRelease(
   return next;
 }
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  const onStorage = (event: StorageEvent) => {
-    if (event.key !== STORAGE_KEY) return;
-    cache.clear();
-    listener();
-  };
-  window.addEventListener("storage", onStorage);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
-/** Read the current demo switches; server rendering gets the sample starting state. */
+/**
+ * Read the current demo switches. The first render (server and hydration) uses the sample default,
+ * then an effect reads localStorage. That keeps SSR and hydration identical while still making a
+ * toggle in another tab update the preview.
+ */
 export function useDemoReleaseState(tournamentId: string): DemoReleaseState {
-  return useSyncExternalStore(
-    subscribe,
-    () => demoReleaseSnapshot(tournamentId),
-    () => demoReleaseSnapshot(tournamentId),
-  );
+  const [state, setState] = useState<DemoReleaseState>(() => defaultState(tournamentId));
+
+  useEffect(() => {
+    const sync = () => setState(demoReleaseSnapshot(tournamentId));
+    sync();
+    listeners.add(sync);
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+      cache.clear();
+      sync();
+    };
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      listeners.delete(sync);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [tournamentId]);
+
+  return state;
 }
