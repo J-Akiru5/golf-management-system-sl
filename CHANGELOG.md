@@ -9,6 +9,11 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- `pnpm check` runs typecheck, lint, tests and build in order, and `pnpm check:ui` starts a dev server, runs the browser checks and stops it. CI calls the same two commands, so a local pass and a CI pass mean the same thing.
+- `pnpm release:check` compares `package.json`, `VERSION`, `CHANGELOG.md` and the tag before a release is tagged.
+- `plan/policy.yaml` now records the deployment allowlist that `vercel.json` enforces: `main` and `staging`.
+
 ## [0.33.0] - 2026-11-11
 
 ### Migrations shipping with this release

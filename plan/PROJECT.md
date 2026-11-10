@@ -89,15 +89,15 @@ These are not agent decisions. Stop the blocked action and continue unrelated wo
 - **NGAP export.** The importer is mapping-based because no real export has been seen.
 - **Accounts and access.** Rotate the two test staff accounts, add the golf pro as `organizer`,
   decide whether player sign-ups are open, and create one real player account before the event.
-- **Deployment configuration.** See the conflict below.
+- **Deployment configuration.** See the note below.
 
 ## Deployment note
 
 The repository's `vercel.json` enables deployments for `main` and `staging` and disables them for
-`develop` and every other branch. The global AgentOps policy requires `main` and `develop` and
-excludes `staging`, so `plan/policy.yaml` records the global allowlist. This repository does not
-match it. The conflict is recorded here, not resolved: do not change `vercel.json`, do not deploy to
-test the policy, and ask the owner before re-enabling any branch. Agents never run `vercel deploy`,
+`develop` and every other branch. That file is the rule for this repository, and the "Deploy policy" step in CI
+fails if it is loosened. `plan/policy.yaml` records the same allowlist. Global rules that name other
+branches do not apply here. Do not change `vercel.json`, do not deploy to test the policy, and ask
+the owner before re-enabling any branch. Agents never run `vercel deploy`,
 `promote`, `redeploy` or `rollback`.
 
 ## How work happens

@@ -4,8 +4,12 @@ name: CI
 # the other four could not see: an alerts panel whose text was ivory on ivory, and a list that sent
 # the desk back to page 2 when a search was cleared. Both passed typecheck, lint, test and build.
 #
-# Deployment is separate: Vercel only auto-deploys `develop` and `main`, because vercel.json disables
-# every other branch. The deploy-policy step below keeps that rule from being loosened by accident.
+# Both jobs call the same commands a person or an agent runs locally: `pnpm check` and `pnpm check:ui`.
+# Keep it that way, so a local pass and a CI pass cannot drift apart.
+#
+# Deployment is separate: Vercel only auto-deploys `staging` and `main`, because vercel.json disables
+# every other branch, `develop` included. The deploy-policy step below keeps that rule from being
+# loosened by accident.
 on:
   pull_request:
     branches: [develop, main]
@@ -51,17 +55,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Lint and format
-        run: pnpm lint
-
-      - name: Unit tests
-        run: pnpm test
-
-      - name: Build
-        run: pnpm build
+      # Typecheck, lint, unit tests, build, in that order, stopping at the first failure.
+      - name: Check
+        run: pnpm check
 
   browser:
     name: browser checks
@@ -85,24 +81,11 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       # With no Supabase URL in the environment the app runs on the demo seed, which is what
-      # scripts/verify-ui.mjs expects. It drives a real dev server, so it is not part of `pnpm test`.
-      - name: Start the dev server
-        run: |
-          pnpm dev --port 3100 > /tmp/dev-server.log 2>&1 &
-          for i in $(seq 1 90); do
-            if curl -sf -o /dev/null http://localhost:3100/players; then
-              echo "dev server ready after $((i * 2))s"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "the dev server never came up; last 50 lines:"
-          tail -50 /tmp/dev-server.log
-          exit 1
-
+      # scripts/verify-ui.mjs expects. `pnpm check:ui` starts a real dev server, waits for it, runs
+      # the browser checks and stops it, so it is not part of `pnpm test`.
       - name: Browser checks
-        run: pnpm verify:ui
+        run: pnpm check:ui
 
-      - name: Console log when it fails
+      - name: Dev server log when it fails
         if: failure()
-        run: tail -100 /tmp/dev-server.log || true
+        run: tail -100 .tmp/dev-server.log || true

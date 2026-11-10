@@ -32,6 +32,8 @@ Whole suite: 17 test files, 214 tests passing (`pnpm test`).
 pnpm install
 pnpm dev
 pnpm typecheck && pnpm lint && pnpm test
+pnpm check       # the three above plus the build, as CI runs them
+pnpm check:ui    # browser checks against a dev server it starts itself
 pnpm build
 ```
 
