@@ -17,10 +17,12 @@ ownership:
   - src/components/public/FeedbackLink.tsx
   - src/app/(public)/layout.tsx
   - src/app/(public)/privacy/page.tsx
+  - src/content/legal/privacy.ts
   - src/lib/data/feedback.ts
   - src/lib/data/feedback.test.ts
   - src/lib/data/supabase/feedback.ts
   - src/lib/data/supabase/feedback.test.ts
+  - src/lib/demo/feedback.ts
   - src/app/(desk)/feedback-inbox/**
   - src/components/AppShell.tsx
   - src/proxy.ts
