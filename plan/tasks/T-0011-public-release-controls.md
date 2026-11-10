@@ -16,10 +16,23 @@ ownership:
   - src/components/public/ReleaseState.tsx
   - src/components/public/PublicReleaseCard.tsx
   - src/app/(public)/pairings/page.tsx
+  - src/app/(public)/pairings/DemoPairings.tsx
   - src/app/(public)/roster/page.tsx
   - src/app/(public)/leaderboard/page.tsx
+  - src/app/api/pairings/version/route.ts
+  - src/components/public/ProgrammeView.tsx
+  - src/components/public/RosterView.tsx
+  - src/components/public/TeamLeaderboard.tsx
+  - src/lib/data/public.ts
+  - src/lib/data/public-results.ts
+  - src/lib/data/public-profile.ts
+  - src/lib/data/types.ts
   - src/lib/data/tournaments.ts
   - src/lib/data/supabase/tournaments.ts
+  - src/lib/i18n/dictionaries/en.ts
+  - src/lib/i18n/dictionaries/tl.ts
+  - src/lib/i18n/dictionaries/hil.ts
+  - src/lib/public/pairings-live.ts
   - src/lib/supabase/types.ts
   - src/lib/data/public-release.test.ts
   - src/lib/data/supabase/tournaments.test.ts
