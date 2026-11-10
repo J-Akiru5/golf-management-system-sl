@@ -17,10 +17,12 @@ import {
 
 const STORAGE_KEY = "teeline.demo.public-release.v1";
 
-/** The 24th Bamboo Tee's real starting state: the pairings are held, everything else is out. */
-const DEMO_HELD: Record<string, PublicReleaseSurface[]> = {
-  "bamboo-tee-2026": ["pairings"],
-};
+/**
+ * The demo starts with every surface released so the existing sample pages stay complete. Holding
+ * a surface is a deliberate preview action; the connected 24th event still starts with its real
+ * `pairings: false` policy from the database.
+ */
+const DEMO_HELD: Record<string, PublicReleaseSurface[]> = {};
 
 export type DemoReleaseState = PublicReleaseState & {
   updatedAt: string | null;
