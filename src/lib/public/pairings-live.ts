@@ -1,3 +1,5 @@
+import type { PublicReleaseState } from "@/lib/data/public";
+
 /**
  * Keeps the public pairings page current without anyone pressing refresh.
  *
@@ -19,12 +21,30 @@ const MIN_RECHECK_MS = 5_000;
 /** The same new version is not asked for again until the page has had this long to show it. */
 const REREQUEST_MS = 20_000;
 
-/** What identifies one publish. The same text the page renders and the endpoint answers with. */
+/**
+ * What identifies one publish. The same text the page renders and the endpoint answers with.
+ *
+ * The release flags are part of the signature because releasing the tee times, roster, rules or
+ * leaderboard changes the same public page. Without them, an open pairings tab would wait for the
+ * next publish before it noticed the organizer had released a held section.
+ */
 export function pairingsSignature(
   published: { at: string; version?: number | null } | null | undefined,
+  release?: PublicReleaseState | null,
 ): string {
-  if (!published) return "none";
-  return `v${published.version ?? "-"}@${published.at}`;
+  const version = published ? `v${published.version ?? "-"}@${published.at}` : "none";
+  if (!release) return version;
+  const flags = [
+    release.pairings,
+    release.teeTimes,
+    release.roster,
+    release.leaderboard,
+    release.photos,
+    release.rules,
+  ]
+    .map((released) => (released ? "1" : "0"))
+    .join("");
+  return `${version}|${flags}`;
 }
 
 /** The browser, as the poller needs to see it. */

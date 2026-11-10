@@ -761,4 +761,8 @@ export const tl: Dictionary = {
       passwordUpdated: "Na-update ang password mo. Mag-sign in gamit ang bago.",
     },
   },
+  release: {
+    heldTitle: "Hawak muna ng organizer ang seksyong ito.",
+    heldBody: "Hindi pa ito inilalabas ng organizer. Pakitingnan muli mamaya.",
+  },
 };

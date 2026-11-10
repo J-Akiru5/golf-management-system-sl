@@ -23,6 +23,24 @@ describe("pairingsSignature", () => {
     expect(pairingsSignature(null)).toBe("none");
     expect(pairingsSignature(undefined)).toBe("none");
   });
+
+  it("changes when a public section is released or held", () => {
+    const published = { at: "2026-11-12T06:00:00Z", version: 3 };
+    const released = {
+      tournamentId: "event-1",
+      pairings: true,
+      teeTimes: true,
+      roster: true,
+      leaderboard: true,
+      photos: true,
+      rules: true,
+    };
+    const held = { ...released, pairings: false };
+    expect(pairingsSignature(published, released)).toBe("v3@2026-11-12T06:00:00Z|111111");
+    expect(pairingsSignature(published, held)).toBe("v3@2026-11-12T06:00:00Z|011111");
+    expect(pairingsSignature(published, held)).not.toBe(pairingsSignature(published, released));
+    expect(pairingsSignature(published)).toBe("v3@2026-11-12T06:00:00Z");
+  });
 });
 
 /** A browser the test can drive: visibility, connectivity and the wake events. */

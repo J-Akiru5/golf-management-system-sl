@@ -1,4 +1,5 @@
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
+import { loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
 import { pairingsSignature } from "@/lib/public/pairings-live";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
@@ -27,11 +28,15 @@ export async function GET(): Promise<Response> {
     );
   }
   try {
-    const data = await loadPublicPairings(createSupabasePublicClient());
+    const client = createSupabasePublicClient();
+    const [data, release] = await Promise.all([
+      loadPublicPairings(client),
+      loadPublicReleaseState(client).catch(() => null),
+    ]);
     const published = data?.published ?? null;
     return Response.json(
       {
-        signature: pairingsSignature(published),
+        signature: pairingsSignature(published, release),
         published: published !== null,
         version: published?.version ?? null,
         at: published?.at ?? null,

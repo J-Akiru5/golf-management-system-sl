@@ -766,4 +766,8 @@ export const hil: Dictionary = {
       passwordUpdated: "Na-update ang password mo. Mag-sign in gamit ang bag-o.",
     },
   },
+  release: {
+    heldTitle: "Ginahawiran anay sang organizer ang seksyon nga ini.",
+    heldBody: "Wala pa ini ginapaguwa sang organizer. Palihog tan-awa liwat sa ulihi.",
+  },
 };

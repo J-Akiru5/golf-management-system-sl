@@ -6,6 +6,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { PairingsView, type PairingsYou } from "@/components/PairingsView";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
+import { HeldNotice } from "@/components/public/HeldNotice";
 import { PairingsLive } from "@/components/public/PairingsLive";
 import { PlayerProfileSearch } from "@/components/public/PlayerProfileSearch";
 import { PlayerProfileView } from "@/components/public/PlayerProfileView";
@@ -14,7 +15,7 @@ import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
-import { toPublicPairings } from "@/lib/data/public";
+import { type PublicReleaseState, toPublicPairings } from "@/lib/data/public";
 import { loadPublicPlayerProfile, type PublicPlayerProfileData } from "@/lib/data/public-profile";
 import { parsePublicTab } from "@/lib/data/public-tabs";
 import {
@@ -23,7 +24,7 @@ import {
   type PublicTeamStanding,
 } from "@/lib/data/public-team-leaderboard";
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
-import { loadPublicProgramme } from "@/lib/data/supabase/public-programme";
+import { loadPublicProgramme, loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
 import { fmtTime } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { loadPortal } from "@/lib/player/portal";
@@ -112,16 +113,19 @@ export default async function PublicPairingsPage({
   const signedIn = loadSignedInPlayer();
   let data: Awaited<ReturnType<typeof loadPublicPairings>> = null;
   let programme: Awaited<ReturnType<typeof loadPublicProgramme>> = null;
+  let release: PublicReleaseState | null = null;
   let failed = false;
-  // The programme is additive: a database that has not applied its migration yet still serves the
-  // pairings, because the failed read only costs the extra sections.
-  const [pairingsResult, programmeResult] = await Promise.allSettled([
+  // The programme and release reads are additive: a database that has not applied their migration
+  // still serves the pairings, because the failed read only costs the extra sections.
+  const [pairingsResult, programmeResult, releaseResult] = await Promise.allSettled([
     loadPublicPairings(client),
     loadPublicProgramme(client),
+    loadPublicReleaseState(client),
   ]);
   if (pairingsResult.status === "fulfilled") data = pairingsResult.value;
   else failed = true;
   if (programmeResult.status === "fulfilled") programme = programmeResult.value;
+  if (releaseResult.status === "fulfilled") release = releaseResult.value;
 
   let profile: PublicPlayerProfileData | null = null;
   let team: PublicTeamStanding | null = null;
@@ -151,6 +155,12 @@ export default async function PublicPairingsPage({
   const you = await signedIn;
 
   const published = data?.published ?? null;
+  const eventPublished = programme !== null || published !== null;
+  const pairingsHeld = release?.pairings === false;
+  const teeTimesHeld = release?.teeTimes === false;
+  const rulesHeld = release?.rules === false;
+  const rosterHeld = release?.roster === false;
+  const leaderboardHeld = release?.leaderboard === false;
   const dates = programme?.days.length
     ? programme.days.map((day) => day.playDate)
     : data
@@ -171,7 +181,7 @@ export default async function PublicPairingsPage({
   const skippedRows = data?.skippedRows ?? 0;
   // What this render shows, in the same terms the version endpoint answers with. The live refresher
   // compares the two, so it reloads the page for a publish, an unpublish or a recovery from an error.
-  const liveSignature = failed ? "error" : pairingsSignature(published);
+  const liveSignature = failed ? "error" : pairingsSignature(published, release);
 
   return (
     <main className="public public-pairings mobile-bar-space">
@@ -194,7 +204,7 @@ export default async function PublicPairingsPage({
             <HelpButton audience="player" screen="pairings" />
           </div>
         </div>
-        {data && (
+        {data ? (
           <>
             <p className="overline mt-2 !text-gold-on-forest">
               {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
@@ -205,7 +215,11 @@ export default async function PublicPairingsPage({
             </h1>
             <p className="text-on-forest-muted">{dateLabel}</p>
           </>
-        )}
+        ) : eventPublished ? (
+          <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
+            {t("pairings.title")}
+          </h1>
+        ) : null}
       </header>
 
       {failed ? (
@@ -217,7 +231,7 @@ export default async function PublicPairingsPage({
             {t("pairings.retry")}
           </a>
         </div>
-      ) : !pairings || !published ? (
+      ) : !eventPublished ? (
         <section className="pairings-empty" role="status">
           <h2>{t("pairings.notOutTitle")}</h2>
           <p>{t("pairings.notOutBody")}</p>
@@ -235,59 +249,96 @@ export default async function PublicPairingsPage({
           <PublicTournamentNav active={tab} />
 
           {tab === "profile" ? (
-            <>
-              {!playerId && programme && programme.players.some((player) => player.id !== null) && (
-                <PlayerProfileSearch players={programme.players} selectedId={playerId} />
-              )}
-              {profileFailed ? (
-                <div className="notice" role="alert">
-                  {t("programme.profileFailed")}
-                </div>
-              ) : profile ? (
-                <PlayerProfileView data={profile} team={team} t={t} />
-              ) : playerId ? (
-                <section className="pairings-empty" role="status" data-testid="profile-empty">
-                  <h2>{t("programme.profileNotFoundTitle")}</h2>
-                  <p>{t("programme.profileNotFoundBody")}</p>
-                </section>
-              ) : programme && !programme.players.some((player) => player.id !== null) ? (
-                <div className="notice" role="status">
-                  {t("programme.profileUnavailable")}
-                </div>
-              ) : null}
-            </>
+            rosterHeld || leaderboardHeld ? (
+              <HeldNotice
+                testId={rosterHeld ? "profile-roster-held" : "profile-leaderboard-held"}
+              />
+            ) : (
+              <>
+                {!playerId &&
+                  programme &&
+                  programme.players.some((player) => player.id !== null) && (
+                    <PlayerProfileSearch players={programme.players} selectedId={playerId} />
+                  )}
+                {profileFailed ? (
+                  <div className="notice" role="alert">
+                    {t("programme.profileFailed")}
+                  </div>
+                ) : profile ? (
+                  <PlayerProfileView data={profile} team={team} t={t} />
+                ) : playerId ? (
+                  <section className="pairings-empty" role="status" data-testid="profile-empty">
+                    <h2>{t("programme.profileNotFoundTitle")}</h2>
+                    <p>{t("programme.profileNotFoundBody")}</p>
+                  </section>
+                ) : programme && !programme.players.some((player) => player.id !== null) ? (
+                  <div className="notice" role="status">
+                    {t("programme.profileUnavailable")}
+                  </div>
+                ) : null}
+              </>
+            )
           ) : (
             <>
-              <section
-                className="grid gap-3"
-                id="pairings"
-                style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
-              >
-                <div>
-                  <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
-                  <p className="hint no-print" data-testid="pairings-version">
-                    {published.version
-                      ? t("pairings.version", {
-                          version: published.version,
-                          when: manila.format(new Date(published.at)),
-                        })
-                      : t("pairings.versionNoNumber", {
-                          when: manila.format(new Date(published.at)),
-                        })}
-                  </p>
-                </div>
-                {skippedRows > 0 && (
-                  <p className="notice warn no-print" role="status" data-testid="pairings-skipped">
-                    Part of the published draw could not be read.{" "}
-                    {skippedRows === 1 ? "1 row is" : `${skippedRows} rows are`} not shown.
-                  </p>
-                )}
-                <PairingsView pairings={pairings} headingLevel="section" flightFilter you={you} />
-              </section>
+              {pairingsHeld ? (
+                <HeldNotice testId="pairings-held" />
+              ) : !pairings || !published ? (
+                <section className="pairings-empty" role="status">
+                  <h2>{t("pairings.notOutTitle")}</h2>
+                  <p>{t("pairings.notOutBody")}</p>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <a className="btn ghost no-print" href="/pairings">
+                      {t("pairings.checkAgain")}
+                    </a>
+                    <Link className="btn ghost no-print" href="/">
+                      {t("pairings.home")}
+                    </Link>
+                  </div>
+                </section>
+              ) : (
+                <section
+                  className="grid gap-3"
+                  id="pairings"
+                  style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
+                >
+                  <div>
+                    <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
+                    <p className="hint no-print" data-testid="pairings-version">
+                      {published.version
+                        ? t("pairings.version", {
+                            version: published.version,
+                            when: manila.format(new Date(published.at)),
+                          })
+                        : t("pairings.versionNoNumber", {
+                            when: manila.format(new Date(published.at)),
+                          })}
+                    </p>
+                  </div>
+                  {skippedRows > 0 && (
+                    <p
+                      className="notice warn no-print"
+                      role="status"
+                      data-testid="pairings-skipped"
+                    >
+                      Part of the published draw could not be read.{" "}
+                      {skippedRows === 1 ? "1 row is" : `${skippedRows} rows are`} not shown.
+                    </p>
+                  )}
+                  <PairingsView pairings={pairings} headingLevel="section" flightFilter you={you} />
+                </section>
+              )}
 
-              {programme && <TeeTimesBoard programme={programme} />}
+              {teeTimesHeld ? (
+                <HeldNotice compact testId="tee-times-held" />
+              ) : programme ? (
+                <TeeTimesBoard programme={programme} />
+              ) : null}
 
-              {programme?.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
+              {rulesHeld ? (
+                <HeldNotice compact testId="rules-held" />
+              ) : programme?.rulesOfPlay ? (
+                <RulesOfPlay text={programme.rulesOfPlay} />
+              ) : null}
             </>
           )}
         </>

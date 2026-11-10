@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
+import { PublicReleaseLink } from "@/components/control-room/PublicReleaseLink";
 import { PublishDialog } from "@/components/draw/PublishDialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -356,6 +357,7 @@ export function PublishPanel({
               : "Not published yet"}
         </span>
       </div>
+      {b.tournament && <PublicReleaseLink tournamentId={b.tournament.id} />}
       {!b.draw ? (
         <div className="mt-3 grid gap-2">
           <p className="text-[13px] text-ink-muted">

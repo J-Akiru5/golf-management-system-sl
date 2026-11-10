@@ -755,6 +755,10 @@ export const en = {
       passwordUpdated: "Your password was updated. Sign in with the new one.",
     },
   },
+  release: {
+    heldTitle: "This section is held by the organizer.",
+    heldBody: "The organizer has not released it yet. Check again later.",
+  },
 };
 
 export type Dictionary = typeof en;

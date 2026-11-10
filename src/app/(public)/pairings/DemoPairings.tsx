@@ -6,6 +6,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
+import { HeldNotice } from "@/components/public/HeldNotice";
 import { PlayerProfileSearch } from "@/components/public/PlayerProfileSearch";
 import { PlayerProfileView } from "@/components/public/PlayerProfileView";
 import { RulesOfPlay, TeeTimesBoard } from "@/components/public/ProgrammeView";
@@ -27,6 +28,7 @@ import type {
 } from "@/lib/data/types";
 import { demoPlayerId } from "@/lib/demo/ids";
 import { samplePlayerProfileData, sampleTeamLeaderboardData } from "@/lib/demo/public-leaderboard";
+import { useDemoReleaseState } from "@/lib/demo/public-release";
 import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { manilaToday } from "@/lib/player/dashboard";
@@ -317,8 +319,15 @@ export function DemoPairings({
   const { t } = useI18n();
   const back = pairingsBackLink(tab);
   const { published, tournament, days, entries, registrations, players } = useDesk();
+  const release = useDemoReleaseState(tournament?.id ?? "bamboo-tee-2026");
 
   if (!tournament) return <NeedsTournament what="The player view" />;
+
+  const pairingsHeld = release.pairings === false;
+  const teeTimesHeld = release.teeTimes === false;
+  const rulesHeld = release.rules === false;
+  const rosterHeld = release.roster === false;
+  const leaderboardHeld = release.leaderboard === false;
 
   const programme =
     (published
@@ -391,36 +400,54 @@ export function DemoPairings({
       <PublicTournamentNav active={tab} />
 
       {tab === "profile" ? (
-        <>
-          <PlayerProfileSearch players={programme.players} selectedId={playerId} />
-          {profile ? (
-            <PlayerProfileView data={profile} team={demoTeam} t={t} />
-          ) : playerId ? (
-            <section className="pairings-empty" role="status">
-              <h2>{t("programme.profileNotFoundTitle")}</h2>
-              <p>{t("programme.profileNotFoundBody")}</p>
-            </section>
-          ) : null}
-        </>
+        rosterHeld || leaderboardHeld ? (
+          <HeldNotice
+            testId={rosterHeld ? "demo-profile-roster-held" : "demo-profile-leaderboard-held"}
+          />
+        ) : (
+          <>
+            <PlayerProfileSearch players={programme.players} selectedId={playerId} />
+            {profile ? (
+              <PlayerProfileView data={profile} team={demoTeam} t={t} />
+            ) : playerId ? (
+              <section className="pairings-empty" role="status">
+                <h2>{t("programme.profileNotFoundTitle")}</h2>
+                <p>{t("programme.profileNotFoundBody")}</p>
+              </section>
+            ) : null}
+          </>
+        )
       ) : (
         <>
-          <section
-            className="grid gap-3"
-            id="pairings"
-            style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
-          >
-            <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
-            <PairingsView
-              pairings={pairings}
-              headingLevel="section"
-              flightFilter
-              you={{ id: demoPlayerId(SAMPLE_FEATURED_PLAYER), name: SAMPLE_FEATURED_PLAYER }}
-            />
-          </section>
+          {pairingsHeld ? (
+            <HeldNotice testId="demo-pairings-held" />
+          ) : (
+            <section
+              className="grid gap-3"
+              id="pairings"
+              style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
+            >
+              <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
+              <PairingsView
+                pairings={pairings}
+                headingLevel="section"
+                flightFilter
+                you={{ id: demoPlayerId(SAMPLE_FEATURED_PLAYER), name: SAMPLE_FEATURED_PLAYER }}
+              />
+            </section>
+          )}
 
-          <TeeTimesBoard programme={programme} />
+          {teeTimesHeld ? (
+            <HeldNotice compact testId="demo-tee-times-held" />
+          ) : (
+            <TeeTimesBoard programme={programme} />
+          )}
 
-          {programme.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />}
+          {rulesHeld ? (
+            <HeldNotice compact testId="demo-rules-held" />
+          ) : (
+            programme.rulesOfPlay && <RulesOfPlay text={programme.rulesOfPlay} />
+          )}
         </>
       )}
 

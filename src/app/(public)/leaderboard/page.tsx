@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { HelpButton } from "@/components/help";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { HeldNotice } from "@/components/public/HeldNotice";
 import { ResultTable } from "@/components/public/LeaderboardResults";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
@@ -22,6 +23,7 @@ import {
   teamOptions,
   topTeams,
 } from "@/lib/data/public-team-leaderboard";
+import { loadPublicProgramme, loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
 import { sampleTeamLeaderboardData } from "@/lib/demo/public-leaderboard";
 import { getI18n } from "@/lib/i18n/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -82,7 +84,31 @@ export default async function LeaderboardPage({
     failure = error instanceof Error ? error.message : "Could not load the leaderboard.";
   }
 
+  const [releaseResult, programmeResult] = await Promise.allSettled([
+    loadPublicReleaseState(client),
+    loadPublicProgramme(client),
+  ]);
+  const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
+  const programme = programmeResult.status === "fulfilled" ? programmeResult.value : null;
+
   if (!data && !failure) {
+    if (!programme) {
+      return (
+        <LeaderboardShell>
+          <section className="pairings-empty" role="status" data-testid="leaderboard-unpublished">
+            <h2>{t("pairings.notOutTitle")}</h2>
+            <p>{t("pairings.notOutBody")}</p>
+          </section>
+        </LeaderboardShell>
+      );
+    }
+    if (release?.leaderboard === false) {
+      return (
+        <LeaderboardShell>
+          <HeldNotice testId="leaderboard-held" />
+        </LeaderboardShell>
+      );
+    }
     // The function is missing, so this database predates the team leaderboard. Keep the published
     // per-round tables readable and say why the team view is not there yet.
     return <RoundLeaderboardFallback notice={t("programme.leaderboardNotDeployed")} />;

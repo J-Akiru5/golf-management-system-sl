@@ -7,6 +7,7 @@ import { Avatar } from "@/components/bits";
 import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { HeldNotice } from "@/components/public/HeldNotice";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -28,7 +29,7 @@ import { useI18n } from "@/lib/i18n/context";
  * itself is never filled from a private table.
  */
 
-export type RosterUnavailable = "none" | "unpublished" | "failed";
+export type RosterUnavailable = "none" | "unpublished" | "held" | "failed";
 
 const PRIVACY_NOTICE =
   "Name, home club, handicap index, category and flight only. Nothing else from the player record is shown.";
@@ -81,6 +82,8 @@ export function RosterPage({
             {t("pairings.retry")}
           </a>
         </div>
+      ) : unavailable === "held" ? (
+        <HeldNotice testId="roster-held" />
       ) : unavailable === "unpublished" ? (
         <section className="pairings-empty" role="status" data-testid="roster-empty">
           <h2>{t("pairings.notOutTitle")}</h2>

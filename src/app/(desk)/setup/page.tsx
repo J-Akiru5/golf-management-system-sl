@@ -17,9 +17,10 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CourseCardEditor } from "@/components/course/CourseCardEditor";
 import { CourseHandicapConverter } from "@/components/course/CourseHandicapConverter";
+import { PublicReleaseCard } from "@/components/desk/PublicReleaseCard";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
@@ -101,6 +102,14 @@ export default function SetupPage() {
       canEdit={canEdit}
       fieldSize={entries.length}
       hasDraw={Boolean(state.boards[tournament.id]?.draw)}
+      releaseCard={
+        <PublicReleaseCard
+          tournamentId={tournament.id}
+          tournamentName={tournament.name}
+          canEdit={canEdit}
+          demo={status === "demo"}
+        />
+      }
       save={async (input) => adapters.setup.save(input)}
       confirmCourse={(confirmed) => adapters.setup.confirmCourse(tournament.id, confirmed)}
       saveDayRule={(required, max) =>
@@ -118,6 +127,7 @@ function SetupWizard({
   canEdit,
   fieldSize,
   hasDraw,
+  releaseCard,
   save,
   confirmCourse,
   saveDayRule,
@@ -131,6 +141,8 @@ function SetupWizard({
   fieldSize: number;
   /** An existing board was routed against the numbers this screen edits. */
   hasDraw: boolean;
+  /** The public release controls sit above the event settings; they write a separate policy. */
+  releaseCard: ReactNode;
   save: (input: {
     tournament: Tournament;
     tees: ReturnType<typeof useDesk>["tees"];
@@ -443,6 +455,8 @@ function SetupWizard({
           ? "Demo shell: changes apply to this browser session and are gone on refresh."
           : "Every rule here is a setting for this event, not a fixed law. Save one section or save everything; the session bar shows whether the write landed."}
       </PageHeader>
+
+      {releaseCard}
 
       <div
         id="setup-tabs"

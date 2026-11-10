@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { RosterPage, type RosterUnavailable } from "@/components/public/RosterView";
 import { toPublicRoster } from "@/lib/data/public";
-import { loadPublicProgramme } from "@/lib/data/supabase/public-programme";
+import { loadPublicProgramme, loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
 import type { PublicRosterPlayer } from "@/lib/data/types";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -44,9 +44,19 @@ export default async function PublicRosterPage() {
   let unavailable: RosterUnavailable = "none";
 
   try {
-    const programme = await loadPublicProgramme(client);
-    if (!programme) unavailable = "unpublished";
-    else players = toPublicRoster(programme).players;
+    const [programmeResult, releaseResult] = await Promise.allSettled([
+      loadPublicProgramme(client),
+      loadPublicReleaseState(client),
+    ]);
+    if (programmeResult.status === "rejected") {
+      unavailable = "failed";
+    } else if (!programmeResult.value) {
+      unavailable = "unpublished";
+    } else if (releaseResult.status === "fulfilled" && releaseResult.value?.roster === false) {
+      unavailable = "held";
+    } else {
+      players = toPublicRoster(programmeResult.value).players;
+    }
   } catch {
     unavailable = "failed";
   }
