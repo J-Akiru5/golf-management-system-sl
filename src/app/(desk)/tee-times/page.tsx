@@ -56,6 +56,7 @@ export default function TeeTimesPage() {
   } = useDesk();
   const [batchTime, setBatchTime] = useState("");
   const [batching, setBatching] = useState<"missing" | "all" | "draw" | null>(null);
+  const [sessionView, setSessionView] = useState<"all" | SessionKey>("all");
   const [batchMessage, setBatchMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(
     null,
   );
@@ -133,10 +134,52 @@ export default function TeeTimesPage() {
       .sort((a, b) => a.player.name.localeCompare(b.player.name));
   }, [entries, playerById, day]);
 
+  /**
+   * The morning or afternoon each row belongs to, worked out the same way the row itself does it:
+   * the session the desk recorded, then the session a draw label names, then the time. Rows with no
+   * answer yet stay null and are counted separately, so a session view never hides a player silently.
+   */
+  const rowSessions = useMemo(() => {
+    const byEntry = new Map<string, SessionKey | null>();
+    if (!day) return byEntry;
+    for (const { entry, player } of rows) {
+      byEntry.set(
+        entry.id,
+        sessionForRow({
+          chosen: entry.daySessions?.[day.dayNumber] ?? null,
+          placement: placements.get(player.id)?.session ?? null,
+          time: entry.dayTee?.[day.dayNumber]?.teeTime ?? null,
+          sessions,
+        }),
+      );
+    }
+    return byEntry;
+  }, [rows, day, placements, sessions]);
+
+  const sessionCounts = useMemo(() => {
+    const counts = { AM: 0, PM: 0, unset: 0 };
+    for (const value of rowSessions.values()) {
+      if (value === "AM") counts.AM += 1;
+      else if (value === "PM") counts.PM += 1;
+      else counts.unset += 1;
+    }
+    return counts;
+  }, [rowSessions]);
+
   if (!tournament) return <NeedsTournament what="Tee times" />;
   if (status === "loading") {
     return <div className="notice">Loading the event and its players…</div>;
   }
+
+  /**
+   * The table shows one session at a time when the desk asks for it. "All" keeps the whole day, so
+   * the default is unchanged. A player with no session recorded yet stays in "All" only; the count
+   * on the tab says so rather than hiding them.
+   */
+  const visibleRows =
+    sessionView === "all"
+      ? rows
+      : rows.filter(({ entry }) => rowSessions.get(entry.id) === sessionView);
 
   const assigned = rows.filter(({ entry }) => {
     const tee = day ? entry.dayTee?.[day.dayNumber] : null;
@@ -632,43 +675,95 @@ export default function TeeTimesPage() {
                   player&apos;s entry.
                 </div>
               ) : (
-                <div className="table-wrap !shadow-none">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Player</th>
-                        <th>Index</th>
-                        <th>Membership</th>
-                        <th>Session</th>
-                        <th>Tee time</th>
-                        <th>Start hole</th>
-                        <th>Confirmed</th>
-                        <th>Caddie (optional)</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map(({ entry, player }) => (
-                        <TeeRow
-                          key={`${entry.id}-${day.dayNumber}`}
-                          entry={entry}
-                          player={player}
-                          day={day}
-                          caddies={caddies.filter((caddie) => caddie.active)}
-                          courseHoles={tournament.config.holes}
-                          sessions={sessions}
-                          placementSession={placements.get(player.id)?.session ?? null}
-                          onSave={(assignment) =>
-                            adapters.registrations.assignDayTee(entry.id, day.dayNumber, assignment)
-                          }
-                          onAssignCaddie={(caddieId) =>
-                            adapters.caddies.assign(entry.id, day.dayNumber, caddieId)
-                          }
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="seg" role="tablist" aria-label="Session">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={sessionView === "all"}
+                        aria-pressed={sessionView === "all"}
+                        className="min-h-11"
+                        onClick={() => setSessionView("all")}
+                      >
+                        All · {rows.length}
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={sessionView === "AM"}
+                        aria-pressed={sessionView === "AM"}
+                        className="min-h-11"
+                        onClick={() => setSessionView("AM")}
+                      >
+                        AM · {sessionCounts.AM}
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={sessionView === "PM"}
+                        aria-pressed={sessionView === "PM"}
+                        className="min-h-11"
+                        onClick={() => setSessionView("PM")}
+                      >
+                        PM · {sessionCounts.PM}
+                      </button>
+                    </div>
+                    <span className="hint" role="status">
+                      {sessionView === "all"
+                        ? sessionCounts.unset > 0
+                          ? `${sessionCounts.unset} player${sessionCounts.unset === 1 ? " has" : "s have"} no session recorded yet.`
+                          : "Every player on this day has a morning or an afternoon."
+                        : `Showing ${sessionView} only: ${visibleRows.length} of ${rows.length} players.`}
+                    </span>
+                  </div>
+                  <div className="table-wrap !shadow-none">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Player</th>
+                          <th>Index</th>
+                          <th>Membership</th>
+                          <th>Session</th>
+                          <th>Tee time</th>
+                          <th>Start hole</th>
+                          <th>Confirmed</th>
+                          <th>Caddie (optional)</th>
+                          <th />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleRows.map(({ entry, player }) => (
+                          <TeeRow
+                            key={`${entry.id}-${day.dayNumber}`}
+                            entry={entry}
+                            player={player}
+                            day={day}
+                            caddies={caddies.filter((caddie) => caddie.active)}
+                            courseHoles={tournament.config.holes}
+                            sessions={sessions}
+                            placementSession={placements.get(player.id)?.session ?? null}
+                            onSave={(assignment) =>
+                              adapters.registrations.assignDayTee(
+                                entry.id,
+                                day.dayNumber,
+                                assignment,
+                              )
+                            }
+                            onAssignCaddie={(caddieId) =>
+                              adapters.caddies.assign(entry.id, day.dayNumber, caddieId)
+                            }
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {visibleRows.length === 0 && (
+                    <div className="notice" role="status">
+                      No player on {day.label} is in the {sessionView} session.
+                    </div>
+                  )}
+                </>
               )}
             </SectionCard>
           )}
