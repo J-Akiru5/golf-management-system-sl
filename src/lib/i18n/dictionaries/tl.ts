@@ -785,7 +785,9 @@ export const tl: Dictionary = {
     send: "Ipadala ang feedback",
     sending: "Ipinapadala...",
     success: "Salamat. Babasahin ng organizer ang note mo.",
-    demo: "Hindi konektado ang preview na ito sa database ng club, kaya walang maipapadala.",
+    demo: "Preview mode: sa browser na ito lang nase-save ang note. Hindi nababago ang live na inbox ng organizer.",
+    demoSuccess:
+      "Nai-save sa preview ng browser na ito. Hindi nabago ang live na inbox ng organizer.",
     notReady: "Hindi pa bukas ang feedback. Subukan muli mamaya.",
     rateLimited: "Sobrang dami ng note kamakailan. Maghintay ng ilang minuto at subukan muli.",
     failed: "Hindi naipadala ang note. Tingnan ang koneksyon at subukan muli.",

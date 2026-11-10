@@ -13,6 +13,7 @@ import {
   validateFeedback,
 } from "@/lib/data/feedback";
 import { type FeedbackSubmitCode, submitFeedback } from "@/lib/data/supabase/feedback";
+import { addDemoFeedback } from "@/lib/demo/feedback";
 import { useI18n } from "@/lib/i18n/context";
 import type { TranslationKey } from "@/lib/i18n/t";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -110,16 +111,24 @@ export function FeedbackForm({ sourcePath = null }: { sourcePath?: string | null
       return;
     }
 
-    if (!configured) {
-      show("bad", t("feedback.demo"));
-      return;
-    }
-
     // The page path is context, never a person: the server strips a query string and refuses
     // anything that is not a single absolute path.
     const pagePath =
       sourcePath ??
       (typeof window === "undefined" ? null : normalizePagePath(window.location.pathname));
+
+    if (!configured) {
+      // The local preview has no database. Keep the same validation and the same success state,
+      // then hand the note to the shared demo inbox so the whole loop can be reviewed.
+      addDemoFeedback({ ...validation.value, pagePath });
+      show("ok", t("feedback.demoSuccess"));
+      setMessage("");
+      setContactName("");
+      setContactEmail("");
+      setContactConsent(false);
+      setHoneypot("");
+      return;
+    }
 
     setBusy(true);
     try {
@@ -276,7 +285,7 @@ export function FeedbackForm({ sourcePath = null }: { sourcePath?: string | null
       )}
 
       <div className="row">
-        <button type="submit" className="btn gold" disabled={busy || !configured}>
+        <button type="submit" className="btn gold" disabled={busy}>
           {busy ? t("feedback.sending") : t("feedback.send")}
         </button>
       </div>

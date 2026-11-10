@@ -790,7 +790,9 @@ export const hil: Dictionary = {
     send: "Ipadala ang feedback",
     sending: "Ginapadala...",
     success: "Salamat. Basahon sang organizer ang note mo.",
-    demo: "Wala nakonekta ang preview nga ini sa database sang club, gani wala sang mapadala.",
+    demo: "Preview mode: sa browser lang nga ini nase-save ang note. Wala ginabag-o ang live nga inbox sang organizer.",
+    demoSuccess:
+      "Na-save sa preview sang browser nga ini. Wala ginbag-o ang live nga inbox sang organizer.",
     notReady: "Wala pa bukas ang feedback. Tilawi liwat mamaya.",
     rateLimited:
       "Sobra kadamo nga note sang bag-o lang. Maghulat sang pila ka minuto kag tilawi liwat.",

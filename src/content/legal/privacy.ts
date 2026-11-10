@@ -7,7 +7,7 @@
 export const privacyMarkdown = `# Privacy Policy
 
 **TeeLine Golf at Iloilo Golf and Country Club**
-Version 1.0. 20 October 2026.
+Version 1.1. 10 November 2026.
 
 This policy explains how Iloilo Golf and Country Club ("the Club") handles personal data in TeeLine Golf ("the software"). TeeLine Golf is built and maintained by Syntaxure Labs ("Syntaxure"). The policy is written for players, club staff, and visitors to the public pages.
 
@@ -47,6 +47,12 @@ If you are a player, start with the Club for access, correction, erasure, or a c
 
 - Your sign-in email, display name, and role: owner, organizer, or desk. Passwords are handled by Supabase Auth and are not stored in the tournament tables.
 - Records of entries you registered or last changed, versions you published, import batches you created, and alerts you have read. These are audit and workflow records.
+
+### Public feedback
+
+- If you send a note from \`/feedback\`, the app stores the category you chose, your message, the page you came from, the language, the status and the time. It never shows the note on a public page.
+- Your name and email are optional and are stored only when you tick the contact-consent box.
+- The app also stores a short pseudonymous rate-limit key derived from the connection address and the club. It is not the address itself, and no raw IP address or user agent is stored. The key is used only to stop a flood of notes.
 
 ### Technical data
 
@@ -113,7 +119,7 @@ The Club creates staff accounts. A staff account has one of three roles:
 - **Organizer.** Can read the Club's records, change event settings, publish or unpublish the draw, and manage staff accounts.
 - **Desk.** Can read the Club's records, register players, and edit entries.
 
-All three roles can read the Club's player, entry, and handicap records. The app's write screens follow the role list above. The Club's database rules are the final control.
+All three roles can read the Club's player, entry, and handicap records. All three can read public feedback notes. Only an owner or organizer can change a note's triage status. The app's write screens follow the role list above. The Club's database rules are the final control.
 
 ### Players
 
@@ -165,7 +171,7 @@ If you object to processing based on legitimate interest, contact the Club. The 
 
 ## 7. Retention
 
-The software has no automatic deletion schedule. Records stay until the Club deletes them. That includes player records, entries, handicap history, published versions, photos, and staff audit records.
+The software has no automatic deletion schedule. Records stay until the Club deletes them. That includes player records, entries, handicap history, published versions, photos, staff audit records, and public feedback notes with their pseudonymous rate-limit keys.
 
 Each publish stores a frozen version of the draw, including player names. Unpublishing hides the page but does not delete the older versions. Erasing a player record does not rewrite those frozen copies.
 

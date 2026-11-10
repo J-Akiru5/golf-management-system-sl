@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { FeedbackInbox } from "@/components/feedback/FeedbackInbox";
 import { PageHeader } from "@/components/PageHeader";
 import { DeskAccessError, getDeskMember } from "@/lib/auth/member";
+import { DEMO_CLUB_ID } from "@/lib/demo/feedback";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -25,10 +26,7 @@ export default async function FeedbackInboxPage() {
         <PageHeader overline="Public feedback" title="Feedback inbox">
           Notes sent from the public feedback page. Only club staff can read them.
         </PageHeader>
-        <div className="notice" role="status">
-          Demo mode has no feedback database. Connect the club project to read and triage the notes
-          sent from <code>/feedback</code>.
-        </div>
+        <FeedbackInbox clubId={DEMO_CLUB_ID} role="organizer" displayName="Demo organizer" />
       </div>
     );
   }

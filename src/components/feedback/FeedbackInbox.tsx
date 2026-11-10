@@ -18,6 +18,7 @@ import {
   sortFeedbackNewestFirst,
 } from "@/lib/data/feedback";
 import { loadFeedbackInbox, updateFeedbackStatus } from "@/lib/data/supabase/feedback";
+import { loadDemoFeedback, updateDemoFeedbackStatus } from "@/lib/demo/feedback";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { cn } from "@/lib/ui/cn";
@@ -61,6 +62,7 @@ export function FeedbackInbox({
   displayName: string;
 }) {
   const manager = canTriageFeedback(role);
+  const demo = !isSupabaseConfigured();
   const [rows, setRows] = useState<FeedbackNote[]>([]);
   const [filters, setFilters] = useState<FeedbackFilters>(DEFAULT_FEEDBACK_FILTERS);
   const [loading, setLoading] = useState(true);
@@ -71,8 +73,10 @@ export function FeedbackInbox({
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
+    if (demo) {
+      setRows(loadDemoFeedback());
       setLoading(false);
+      setError("");
       return;
     }
     let active = true;
@@ -95,7 +99,7 @@ export function FeedbackInbox({
     return () => {
       active = false;
     };
-  }, [clubId, reloadKey]);
+  }, [clubId, demo, reloadKey]);
 
   const counts = useMemo(() => {
     const next: Record<FeedbackStatus | "all", number> = {
@@ -124,6 +128,15 @@ export function FeedbackInbox({
       setNotice("");
       // Optimistic: the note moves at once. A refusal puts the old row back and shows why.
       setRows((current) => current.map((row) => (row.id === note.id ? { ...row, status } : row)));
+      if (demo) {
+        const updated = updateDemoFeedbackStatus(note.id, status);
+        if (updated) {
+          setRows((current) => current.map((row) => (row.id === note.id ? updated : row)));
+        }
+        setNotice(`Status changed to ${FEEDBACK_STATUS_LABELS[status]}. This is a local preview.`);
+        setPendingId(null);
+        return;
+      }
       try {
         const updated = await updateFeedbackStatus(
           createSupabaseBrowserClient(),
@@ -144,7 +157,7 @@ export function FeedbackInbox({
         setPendingId(null);
       }
     },
-    [clubId, manager, pendingId],
+    [clubId, demo, manager, pendingId],
   );
 
   return (
@@ -165,6 +178,13 @@ export function FeedbackInbox({
           ? `Signed in as ${displayName || "an organizer"}. You can move a note through new, read, planned, done and dismissed.`
           : "Read-only. An owner or organizer can change a note's status."}
       </p>
+
+      {demo && (
+        <p className="notice m-0" role="note">
+          Demo preview: the notes below are sample and browser-only. Submit one from{" "}
+          <a href="/feedback">/feedback</a> to see it arrive here.
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
         <button
