@@ -23,6 +23,7 @@ export const STAFF_PREFIXES = [
   "/pairs",
   "/caddies",
   "/audit",
+  "/feedback-inbox",
   "/import",
   "/draw",
   "/scores",

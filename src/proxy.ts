@@ -107,6 +107,7 @@ export const config = {
     "/pairs/:path*",
     "/caddies/:path*",
     "/audit/:path*",
+    "/feedback-inbox/:path*",
     "/import/:path*",
     "/draw/:path*",
     "/scores/:path*",

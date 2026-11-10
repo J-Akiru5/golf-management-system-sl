@@ -770,4 +770,47 @@ export const hil: Dictionary = {
     heldTitle: "Ginahawiran anay sang organizer ang seksyon nga ini.",
     heldBody: "Wala pa ini ginapaguwa sang organizer. Palihog tan-awa liwat sa ulihi.",
   },
+  // Pampubliko nga feedback (issue 208). Ini ang mga tinaga nga makita sang bisita.
+  feedback: {
+    link: "Magpadala sang feedback",
+    footerLabel: "Mga link sang site",
+    overline: "Sugiri ang club",
+    title: "Magpadala sang feedback",
+    intro:
+      "May problema ka ukon may mahimo nga mas maayo? Magpadala sang note sa organizer. Nahanungod ini sa site, indi sa draw.",
+    privacy:
+      "Pribado sa club staff ang note mo. Indi ini ginapakita sa pampubliko nga pahina, kag indi ini entry ukon booking.",
+    category: "Nahanungod sa ano ini?",
+    categoryImprovement: "Isang pagpauswag",
+    categoryBug: "Isang problema ukon bug",
+    categoryContent: "Sayop ukon kulang nga nilalaman",
+    message: "Ang mensahe mo",
+    messageHint: "Ano ang natabo, kag ano ang ginalauman mo. Tubtob {max} ka character.",
+    messagePlaceholder: "Sugiri ang club sang nakita mo",
+    contactName: "Pangalan mo (opsyonal)",
+    contactEmail: "Email (opsyonal)",
+    contactHint: "Magbutang sang contact details kon okay lang sa imo nga magsabat ang club.",
+    consent: "Puwede makipag-angot ang club sa akon nahanungod sa sini nga note.",
+    send: "Ipadala ang feedback",
+    sending: "Ginapadala...",
+    success: "Salamat. Basahon sang organizer ang note mo.",
+    demo: "Preview mode: sa browser lang nga ini nase-save ang note. Wala ginabag-o ang live nga inbox sang organizer.",
+    demoSuccess:
+      "Na-save sa preview sang browser nga ini. Wala ginbag-o ang live nga inbox sang organizer.",
+    notReady: "Wala pa bukas ang feedback. Tilawi liwat mamaya.",
+    rateLimited:
+      "Sobra kadamo nga note sang bag-o lang. Maghulat sang pila ka minuto kag tilawi liwat.",
+    failed: "Wala mapadala ang note. Tan-awa ang koneksyon kag tilawi liwat.",
+    errorCategory: "Pilia kon nahanungod sa ano ang note.",
+    errorMessageRequired: "Isulat ang mensahe mo.",
+    errorMessageShort: "Dugangi sang diutay agod maintindihan sang organizer.",
+    errorMessageLong: "Pabilin ang mensahe sa {max} ka character ukon mas diutay.",
+    errorContactName: "Pabilin ang pangalan sa 120 ka character ukon mas diutay.",
+    errorContactEmail: "Mukhang kulang ang email address. Tan-awa ini kag tilawi liwat.",
+    errorConsent:
+      "I-tick ang kahon kon puwede makipag-angot ang club sa imo, ukon kuhaa ang contact details.",
+    errorPage: "Indi husto ang address sang pahina. I-reload ang pahina kag tilawi liwat.",
+    errorLocale: "Pili sang hambal.",
+    backHome: "Balik sa TeeLine",
+  },
 };

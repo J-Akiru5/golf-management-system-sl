@@ -759,6 +759,47 @@ export const en = {
     heldTitle: "This section is held by the organizer.",
     heldBody: "The organizer has not released it yet. Check again later.",
   },
+  // Public feedback (issue 208). Nothing here shows a submission to anyone but the visitor and the
+  // club's staff.
+  feedback: {
+    link: "Send feedback",
+    footerLabel: "Site links",
+    overline: "Tell the club",
+    title: "Send feedback",
+    intro:
+      "Found a problem, or something that could be better? Send a note to the organizer. This is about the site, not the draw.",
+    privacy:
+      "Your note is private to club staff. It is never shown on a public page, and it is not an entry or a booking.",
+    category: "What is this about?",
+    categoryImprovement: "An improvement",
+    categoryBug: "A problem or bug",
+    categoryContent: "Wrong or missing content",
+    message: "Your message",
+    messageHint: "What happened, and what you expected. Up to {max} characters.",
+    messagePlaceholder: "Tell the club what you found",
+    contactName: "Your name (optional)",
+    contactEmail: "Email (optional)",
+    contactHint: "Add contact details only if you are happy for the club to reply.",
+    consent: "The club may contact me about this note.",
+    send: "Send feedback",
+    sending: "Sending...",
+    success: "Thank you. The organizer will read your note.",
+    demo: "Preview mode: the note is saved in this browser only. The live organizer inbox is not changed.",
+    demoSuccess: "Saved in this browser preview. The live organizer inbox was not changed.",
+    notReady: "Feedback is not switched on yet. Please try again later.",
+    rateLimited: "Too many notes were sent just now. Wait a few minutes and try again.",
+    failed: "The note could not be sent. Check your connection and try again.",
+    errorCategory: "Choose what the note is about.",
+    errorMessageRequired: "Write your message.",
+    errorMessageShort: "Write a little more so the organizer can understand it.",
+    errorMessageLong: "Keep the message to {max} characters or fewer.",
+    errorContactName: "Keep the name to 120 characters or fewer.",
+    errorContactEmail: "That email address looks incomplete. Check it and try again.",
+    errorConsent: "Tick the box if the club may contact you, or remove your contact details.",
+    errorPage: "The page address is not valid. Reload the page and try again.",
+    errorLocale: "Choose a language.",
+    backHome: "Back to TeeLine",
+  },
 };
 
 export type Dictionary = typeof en;

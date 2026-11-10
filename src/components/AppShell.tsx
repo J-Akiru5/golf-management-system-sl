@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   Map as MapIcon,
   Menu,
+  MessageSquare,
   MonitorPlay,
   PanelLeftClose,
   PanelLeftOpen,
@@ -152,6 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { href: "/course", label: "Course & holes", icon: MapIcon, group: "more" },
     { href: "/spotlight", label: "Clubhouse display", icon: MonitorPlay, group: "more" },
     { href: "/audit", label: "Audit log", icon: ScrollText, group: "more" },
+    { href: "/feedback-inbox", label: "Feedback inbox", icon: MessageSquare, group: "more" },
     { href: "/pairings", label: "Player view", icon: Smartphone, group: "more" },
   ];
 
