@@ -9,6 +9,7 @@ import {
   FEEDBACK_HONEYPOT_FIELD,
   FEEDBACK_MESSAGE_MAX,
   type FeedbackProblem,
+  normalizeFeedbackTournamentId,
   normalizePagePath,
   validateFeedback,
 } from "@/lib/data/feedback";
@@ -42,6 +43,7 @@ const RESULT_KEYS: Record<FeedbackSubmitCode, TranslationKey> = {
   consent_required: "feedback.errorConsent",
   invalid_page: "feedback.errorPage",
   invalid_locale: "feedback.errorLocale",
+  invalid_event: "feedback.errorEvent",
   rate_limited: "feedback.rateLimited",
   not_configured: "feedback.notReady",
   not_ready: "feedback.notReady",
@@ -59,8 +61,17 @@ const RESULT_KEYS: Record<FeedbackSubmitCode, TranslationKey> = {
  * The hidden honeypot field is off-screen and out of the tab order. If a bot fills it, the client
  * shows the normal success and nothing is sent.
  */
-export function FeedbackForm({ sourcePath = null }: { sourcePath?: string | null }) {
+export function FeedbackForm({
+  sourcePath = null,
+  tournamentId = null,
+}: {
+  sourcePath?: string | null;
+  tournamentId?: string | null;
+}) {
   const { t, locale } = useI18n();
+  // The page validated the query parameter; normalise again so this component cannot pass a
+  // malformed value if it is used from another page later.
+  const eventId = normalizeFeedbackTournamentId(tournamentId);
   const [category, setCategory] = useState("improvement");
   const [message, setMessage] = useState("");
   const [contactName, setContactName] = useState("");
@@ -120,7 +131,7 @@ export function FeedbackForm({ sourcePath = null }: { sourcePath?: string | null
     if (!configured) {
       // The local preview has no database. Keep the same validation and the same success state,
       // then hand the note to the shared demo inbox so the whole loop can be reviewed.
-      addDemoFeedback({ ...validation.value, pagePath });
+      addDemoFeedback({ ...validation.value, pagePath }, undefined, eventId);
       show("ok", t("feedback.demoSuccess"));
       setMessage("");
       setContactName("");
@@ -136,6 +147,7 @@ export function FeedbackForm({ sourcePath = null }: { sourcePath?: string | null
         ...validation.value,
         pagePath,
         honeypot,
+        tournamentId: eventId,
       });
       show(result.ok ? "ok" : "bad", t(result.ok ? "feedback.success" : RESULT_KEYS[result.code]));
       if (result.ok) {

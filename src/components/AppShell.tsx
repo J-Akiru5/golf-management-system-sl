@@ -29,6 +29,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { roleLabel } from "@/components/desk";
+import { useFeedbackAlertCount } from "@/components/feedback/useFeedbackAlertCount";
 import { FirstRunWelcome, HelpButton } from "@/components/help";
 import { DeskBottomBar } from "@/components/MobileTabBar";
 import { AlertsBell } from "@/components/notifications/AlertsBell";
@@ -57,6 +58,8 @@ interface NavItem {
   icon: typeof LayoutGrid;
   /** Alert dot: only for work waiting on that page. */
   alert?: boolean;
+  /** A private count, currently only new feedback. Rendered instead of the dot. */
+  count?: number;
   /** Secondary screens, kept after a divider. */
   group?: "main" | "more";
 }
@@ -109,6 +112,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         ? { name: "Signing in…", detail: "Loading the desk" }
         : { name: "Not signed in", detail: "Session unavailable" };
 
+  // A private count under the staff RLS read, or the demo store when there is no server. It never
+  // comes from a public read and the message itself is never shown here.
+  const feedbackNew = useFeedbackAlertCount({
+    clubId: desk.state.clubId,
+    demo: status === "demo",
+  });
+
   const blocking = useMemo(() => {
     if (!draw || !tournament) return 0;
     return validateDraw({
@@ -153,19 +163,29 @@ export function AppShell({ children }: { children: ReactNode }) {
     { href: "/course", label: "Course & holes", icon: MapIcon, group: "more" },
     { href: "/spotlight", label: "Clubhouse display", icon: MonitorPlay, group: "more" },
     { href: "/audit", label: "Audit log", icon: ScrollText, group: "more" },
-    { href: "/feedback-inbox", label: "Feedback inbox", icon: MessageSquare, group: "more" },
+    {
+      href: "/feedback-inbox",
+      label: "Feedback inbox",
+      icon: MessageSquare,
+      count: feedbackNew,
+      group: "more",
+    },
     { href: "/pairings", label: "Player view", icon: Smartphone, group: "more" },
   ];
 
   const renderNavLink = (n: NavItem, mobile: boolean) => {
     const on = isCurrent(path, n.href);
+    const count = Math.max(0, Math.trunc(n.count ?? 0));
+    const countLabel = count > 99 ? "99+" : String(count);
     const link = (
       <Link
         key={n.href}
         href={n.href}
         onClick={mobile ? () => setMenuOpen(false) : undefined}
         aria-current={on ? "page" : undefined}
-        aria-label={mobile || railExpanded ? undefined : n.label}
+        aria-label={
+          mobile || railExpanded ? undefined : count > 0 ? `${n.label}, ${count} new` : n.label
+        }
         className={cn(
           mobile &&
             "flex h-11 items-center gap-3 rounded-md px-3 font-medium text-ink no-underline",
@@ -182,19 +202,41 @@ export function AppShell({ children }: { children: ReactNode }) {
         {mobile ? (
           <>
             <span className="flex-1">{n.label}</span>
-            {n.alert && (
-              <span className="pill warn" title="Needs attention">
-                Check
+            {count > 0 ? (
+              <span className="pill warn tabular-nums" title={`${count} new`}>
+                {countLabel} new
               </span>
+            ) : (
+              n.alert && (
+                <span className="pill warn" title="Needs attention">
+                  Check
+                </span>
+              )
             )}
           </>
         ) : railExpanded ? (
           <>
             <span className="flex-1 truncate text-[13px] font-medium">{n.label}</span>
-            {n.alert && (
-              <span className="size-2 shrink-0 rounded-full bg-danger" aria-hidden="true" />
+            {count > 0 ? (
+              <span
+                className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white tabular-nums"
+                title={`${count} new`}
+              >
+                {countLabel}
+              </span>
+            ) : (
+              n.alert && (
+                <span className="size-2 shrink-0 rounded-full bg-danger" aria-hidden="true" />
+              )
             )}
           </>
+        ) : count > 0 ? (
+          <span
+            className="absolute top-0.5 right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white tabular-nums shadow-[0_0_0_2px_#1a2a21]"
+            aria-hidden="true"
+          >
+            {countLabel}
+          </span>
         ) : (
           n.alert && (
             <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-danger shadow-[0_0_0_2px_#1a2a21]" />
@@ -206,7 +248,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     return mobile || railExpanded ? (
       link
     ) : (
-      <Tip label={n.alert ? `${n.label} · needs attention` : n.label}>{link}</Tip>
+      <Tip
+        label={
+          count > 0
+            ? `${n.label} · ${count} new`
+            : n.alert
+              ? `${n.label} · needs attention`
+              : n.label
+        }
+      >
+        {link}
+      </Tip>
     );
   };
 

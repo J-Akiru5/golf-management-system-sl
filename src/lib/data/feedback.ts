@@ -24,6 +24,8 @@ export const FEEDBACK_MESSAGE_MAX = 2000;
 export const FEEDBACK_CONTACT_NAME_MAX = 120;
 export const FEEDBACK_CONTACT_EMAIL_MAX = 254;
 export const FEEDBACK_PAGE_PATH_MAX = 300;
+/** The organizer's private answer to the team. Mirrors the column check. */
+export const FEEDBACK_RESOLUTION_NOTE_MAX = 2000;
 
 /** Mirrors the bucket in public.submit_feedback: five notes in ten minutes, per connection. */
 export const FEEDBACK_RATE_LIMIT = 5;
@@ -97,6 +99,10 @@ export type FeedbackValidation =
 export interface FeedbackNote {
   id: string;
   clubId: string;
+  /** The public event the note is about, or null for general site feedback. */
+  tournamentId: string | null;
+  /** The event's display name, loaded by the staff inbox. Null when there is no event link. */
+  eventName: string | null;
   category: FeedbackCategory;
   message: string;
   contactName: string | null;
@@ -105,6 +111,10 @@ export interface FeedbackNote {
   pagePath: string | null;
   locale: FeedbackLocale;
   status: FeedbackStatus;
+  /** Organizer-only. Never part of a public read. */
+  resolutionNote: string | null;
+  resolutionNoteUpdatedAt: string | null;
+  resolutionNoteUpdatedBy: string | null;
   createdAt: string;
   updatedAt: string;
   statusChangedAt: string | null;
@@ -114,16 +124,20 @@ export interface FeedbackNote {
 export interface FeedbackFilters {
   status: FeedbackStatus | "all";
   category: FeedbackCategory | "all";
+  /** A tournament id, or "all". A note with no event stays visible under "all". */
+  event: string | "all";
   query: string;
 }
 
 export const DEFAULT_FEEDBACK_FILTERS: FeedbackFilters = {
   status: "all",
   category: "all",
+  event: "all",
   query: "",
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function asText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -189,6 +203,36 @@ export function normalizePagePath(value: unknown): string | null {
     return null;
   }
   return path;
+}
+
+/**
+ * A public event id is context, not content. Only a UUID shape is passed to the RPC, so a malformed
+ * query parameter is dropped before it reaches the database. The RPC still checks the club and the
+ * public visibility; this function never looks an event up and cannot leak a private one.
+ */
+export function normalizeFeedbackTournamentId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const id = value.trim().toLowerCase();
+  return UUID_PATTERN.test(id) ? id : null;
+}
+
+export type FeedbackResolutionProblem = "tooLong";
+
+export type FeedbackResolution =
+  | { ok: true; value: string | null }
+  | { ok: false; error: FeedbackResolutionProblem };
+
+/** Trims a resolution note and treats an empty note as a cleared one. */
+export function normalizeFeedbackResolutionNote(value: unknown): FeedbackResolution {
+  const text = asNullableText(value);
+  if (text === null) return { ok: true, value: null };
+  if (text.length > FEEDBACK_RESOLUTION_NOTE_MAX) return { ok: false, error: "tooLong" };
+  return { ok: true, value: text };
+}
+
+/** The private badge count: notes still in `new`. Never shown on a public page. */
+export function countNewFeedbackNotes(notes: readonly FeedbackNote[]): number {
+  return notes.reduce((count, note) => (note.status === "new" ? count + 1 : count), 0);
 }
 
 export function isValidFeedbackEmail(value: string): boolean {
@@ -295,6 +339,8 @@ export function parseFeedbackNote(value: unknown): FeedbackNote | null {
   return {
     id,
     clubId,
+    tournamentId: asNullableText(row.tournament_id),
+    eventName: asNullableText(row.event_name),
     category,
     message,
     contactName: asNullableText(row.contact_name),
@@ -303,6 +349,9 @@ export function parseFeedbackNote(value: unknown): FeedbackNote | null {
     pagePath: normalizePagePath(row.page_path),
     locale,
     status,
+    resolutionNote: asNullableText(row.resolution_note),
+    resolutionNoteUpdatedAt: asNullableText(row.resolution_note_updated_at),
+    resolutionNoteUpdatedBy: asNullableText(row.resolution_note_updated_by),
     createdAt,
     updatedAt,
     statusChangedAt: asNullableText(row.status_changed_at),
@@ -322,15 +371,25 @@ function parseFilterCategory(
   return normalizeFeedbackCategory(text) ?? "all";
 }
 
-/** Reads `?status=`, `?category=` and `?q=` into the inbox filter state. Junk falls back to all. */
+function parseFilterEvent(value: string | string[] | null | undefined): string | "all" {
+  const text = firstValue(value);
+  return normalizeFeedbackTournamentId(text) ?? "all";
+}
+
+/**
+ * Reads `?status=`, `?category=`, `?event=` and `?q=` into the inbox filter state. Junk falls back to
+ * all. An invalid event id is dropped rather than used as a filter that silently matches nothing.
+ */
 export function parseFeedbackFilters(input: {
   status?: string | string[] | null;
   category?: string | string[] | null;
+  event?: string | string[] | null;
   q?: string | string[] | null;
 }): FeedbackFilters {
   return {
     status: parseFilterStatus(input.status),
     category: parseFilterCategory(input.category),
+    event: parseFilterEvent(input.event),
     query: (firstValue(input.q) ?? "").trim(),
   };
 }
@@ -338,11 +397,16 @@ export function parseFeedbackFilters(input: {
 export function matchesFeedbackFilters(note: FeedbackNote, filters: FeedbackFilters): boolean {
   if (filters.status !== "all" && note.status !== filters.status) return false;
   if (filters.category !== "all" && note.category !== filters.category) return false;
+  if (filters.event !== "all" && note.tournamentId !== filters.event) return false;
   const query = filters.query.trim().toLowerCase();
   if (query === "") return true;
-  return [note.message, note.contactName ?? "", note.contactEmail ?? "", note.pagePath ?? ""].some(
-    (value) => value.toLowerCase().includes(query),
-  );
+  return [
+    note.message,
+    note.contactName ?? "",
+    note.contactEmail ?? "",
+    note.pagePath ?? "",
+    note.eventName ?? "",
+  ].some((value) => value.toLowerCase().includes(query));
 }
 
 export function filterFeedback(

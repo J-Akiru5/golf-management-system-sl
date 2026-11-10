@@ -810,6 +810,8 @@ export const hil: Dictionary = {
     errorConsent:
       "I-tick ang kahon kon puwede makipag-angot ang club sa imo, ukon kuhaa ang contact details.",
     errorPage: "Indi husto ang address sang pahina. I-reload ang pahina kag tilawi liwat.",
+    errorEvent:
+      "Wala available ang event nga imo para sa feedback. Magpadala sang kinatibuk-an nga note.",
     errorLocale: "Pili sang hambal.",
     backHome: "Balik sa TeeLine",
   },

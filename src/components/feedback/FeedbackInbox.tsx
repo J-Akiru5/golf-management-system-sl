@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, RefreshCw, Search } from "lucide-react";
+import { Mail, MessageSquare, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,27 @@ import {
   DEFAULT_FEEDBACK_FILTERS,
   FEEDBACK_CATEGORIES,
   FEEDBACK_CATEGORY_LABELS,
+  FEEDBACK_RESOLUTION_NOTE_MAX,
   FEEDBACK_STATUS_LABELS,
   FEEDBACK_STATUSES,
   type FeedbackFilters,
   type FeedbackNote,
   type FeedbackStatus,
   filterFeedback,
+  normalizeFeedbackResolutionNote,
   sortFeedbackNewestFirst,
 } from "@/lib/data/feedback";
-import { loadFeedbackInbox, updateFeedbackStatus } from "@/lib/data/supabase/feedback";
-import { loadDemoFeedback, updateDemoFeedbackStatus } from "@/lib/demo/feedback";
+import {
+  loadFeedbackInbox,
+  updateFeedbackResolution,
+  updateFeedbackStatus,
+} from "@/lib/data/supabase/feedback";
+import {
+  loadDemoFeedback,
+  updateDemoFeedbackResolution,
+  updateDemoFeedbackStatus,
+} from "@/lib/demo/feedback";
+import { notifyFeedbackChanged } from "@/lib/feedback-events";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { cn } from "@/lib/ui/cn";
@@ -30,6 +41,12 @@ const STATUS_TONE: Record<FeedbackStatus, string> = {
   done: "ok",
   dismissed: "",
 };
+
+interface DigestResponse {
+  configured?: boolean;
+  queued?: boolean;
+  message?: string;
+}
 
 function when(value: string): string {
   const date = new Date(value);
@@ -44,32 +61,45 @@ function contactLine(note: FeedbackNote): string {
   return parts.length > 0 ? parts.join(" · ") : "No contact details";
 }
 
+function eventLabel(note: FeedbackNote): string {
+  if (note.eventName) return note.eventName;
+  return note.tournamentId ? "Event name unavailable" : "General feedback (no event)";
+}
+
 /**
  * The organizer's private feedback inbox.
  *
  * The page around this component already checked the session and the club membership. RLS is the
  * real guard: this component can read because the signed-in account is a club member, and it can
- * change a status only because the database update policy allows an owner or organizer. A desk
- * account sees the notes and the status select is replaced by a read-only line.
+ * change a status or a resolution note only because the database update policy allows an owner or
+ * organizer. A desk account sees the notes and the edits are replaced by read-only text.
  */
 export function FeedbackInbox({
   clubId,
   role,
   displayName,
+  initialFilters = DEFAULT_FEEDBACK_FILTERS,
+  digestConfigured = false,
 }: {
   clubId: string;
   role: string;
   displayName: string;
+  initialFilters?: FeedbackFilters;
+  /** Server-side truth for the mail channel. The inbox works without it. */
+  digestConfigured?: boolean;
 }) {
   const manager = canTriageFeedback(role);
   const demo = !isSupabaseConfigured();
   const [rows, setRows] = useState<FeedbackNote[]>([]);
-  const [filters, setFilters] = useState<FeedbackFilters>(DEFAULT_FEEDBACK_FILTERS);
+  const [filters, setFilters] = useState<FeedbackFilters>(initialFilters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [resolutionDraft, setResolutionDraft] = useState("");
+  const [mailReady, setMailReady] = useState(digestConfigured);
+  const [digestBusy, setDigestBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -114,9 +144,34 @@ export function FeedbackInbox({
     return next;
   }, [rows]);
 
+  const eventOptions = useMemo(() => {
+    const next = new Map<string, string>();
+    for (const row of rows) {
+      if (!row.tournamentId) continue;
+      next.set(row.tournamentId, row.eventName ?? "Event name unavailable");
+    }
+    if (filters.event !== "all" && !next.has(filters.event)) {
+      next.set(filters.event, "Selected event");
+    }
+    return [...next.entries()].sort((left, right) => left[1].localeCompare(right[1]));
+  }, [rows, filters.event]);
+
   const visible = useMemo(
     () => sortFeedbackNewestFirst(filterFeedback(rows, filters)),
     [rows, filters],
+  );
+
+  const toggleOpen = useCallback(
+    (note: FeedbackNote) => {
+      if (openId === note.id) {
+        setOpenId(null);
+        setResolutionDraft("");
+        return;
+      }
+      setOpenId(note.id);
+      setResolutionDraft(note.resolutionNote ?? "");
+    },
+    [openId],
   );
 
   const changeStatus = useCallback(
@@ -133,6 +188,7 @@ export function FeedbackInbox({
         if (updated) {
           setRows((current) => current.map((row) => (row.id === note.id ? updated : row)));
         }
+        notifyFeedbackChanged();
         setNotice(`Status changed to ${FEEDBACK_STATUS_LABELS[status]}. This is a local preview.`);
         setPendingId(null);
         return;
@@ -144,7 +200,14 @@ export function FeedbackInbox({
           note.id,
           status,
         );
-        setRows((current) => current.map((row) => (row.id === note.id ? updated : row)));
+        setRows((current) =>
+          current.map((row) =>
+            row.id === note.id
+              ? { ...updated, eventName: updated.eventName ?? row.eventName }
+              : row,
+          ),
+        );
+        notifyFeedbackChanged();
         setNotice(`Status changed to ${FEEDBACK_STATUS_LABELS[status]}.`);
       } catch (updateError) {
         setRows((current) => current.map((row) => (row.id === note.id ? previous : row)));
@@ -160,6 +223,104 @@ export function FeedbackInbox({
     [clubId, demo, manager, pendingId],
   );
 
+  const saveResolution = useCallback(
+    async (note: FeedbackNote, draft: string = resolutionDraft) => {
+      if (!manager || pendingId !== null) return;
+      const normalized = normalizeFeedbackResolutionNote(draft);
+      if (!normalized.ok) {
+        setError(
+          `Keep the resolution note to ${FEEDBACK_RESOLUTION_NOTE_MAX} characters or fewer.`,
+        );
+        return;
+      }
+      if (normalized.value === note.resolutionNote) {
+        setResolutionDraft(normalized.value ?? "");
+        setNotice("No change to save.");
+        return;
+      }
+
+      const previous = note;
+      setPendingId(note.id);
+      setError("");
+      setNotice("");
+      const optimistic: FeedbackNote = {
+        ...note,
+        resolutionNote: normalized.value,
+        resolutionNoteUpdatedAt: new Date().toISOString(),
+        resolutionNoteUpdatedBy: null,
+      };
+      setRows((current) => current.map((row) => (row.id === note.id ? optimistic : row)));
+      setResolutionDraft(normalized.value ?? "");
+
+      if (demo) {
+        const updated = updateDemoFeedbackResolution(note.id, normalized.value);
+        if (updated) {
+          setRows((current) => current.map((row) => (row.id === note.id ? updated : row)));
+          setResolutionDraft(updated.resolutionNote ?? "");
+        }
+        notifyFeedbackChanged();
+        setNotice("Resolution note saved. This is a local preview.");
+        setPendingId(null);
+        return;
+      }
+
+      try {
+        const updated = await updateFeedbackResolution(
+          createSupabaseBrowserClient(),
+          clubId,
+          note.id,
+          normalized.value,
+        );
+        setRows((current) =>
+          current.map((row) =>
+            row.id === note.id
+              ? { ...updated, eventName: updated.eventName ?? row.eventName }
+              : row,
+          ),
+        );
+        setResolutionDraft(updated.resolutionNote ?? "");
+        notifyFeedbackChanged();
+        setNotice("Resolution note saved.");
+      } catch (saveError) {
+        setRows((current) => current.map((row) => (row.id === note.id ? previous : row)));
+        setResolutionDraft(previous.resolutionNote ?? "");
+        setError(
+          saveError instanceof Error
+            ? saveError.message
+            : "The resolution note could not be saved. Try again.",
+        );
+      } finally {
+        setPendingId(null);
+      }
+    },
+    [clubId, demo, manager, pendingId, resolutionDraft],
+  );
+
+  const queueDigest = useCallback(async () => {
+    if (!mailReady || digestBusy) return;
+    setDigestBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/feedback/digest", { method: "POST" });
+      const result = (await response.json().catch(() => null)) as DigestResponse | null;
+      if (result?.configured === false) {
+        setMailReady(false);
+        setNotice(result.message ?? "Email is not configured. The inbox still works.");
+        return;
+      }
+      if (!response.ok) {
+        setError(result?.message ?? "The digest could not be queued. Try again.");
+        return;
+      }
+      setNotice(result?.message ?? "The feedback digest was queued.");
+    } catch {
+      setError("The digest could not be queued. Check your connection and try again.");
+    } finally {
+      setDigestBusy(false);
+    }
+  }, [digestBusy, mailReady]);
+
   return (
     <SectionCard
       id="feedback-inbox"
@@ -167,22 +328,42 @@ export function FeedbackInbox({
       title="Notes from the public feedback page"
       subtitle="Newest first. A note is private to club staff; nothing here appears on a public page."
       action={
-        <Button variant="secondary" size="sm" onClick={() => setReloadKey((key) => key + 1)}>
-          <RefreshCw aria-hidden="true" />
-          Refresh
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {manager && !demo && mailReady && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void queueDigest()}
+              disabled={digestBusy}
+            >
+              <Mail aria-hidden="true" />
+              {digestBusy ? "Queuing…" : "Queue digest"}
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={() => setReloadKey((key) => key + 1)}>
+            <RefreshCw aria-hidden="true" />
+            Refresh
+          </Button>
+        </div>
       }
     >
       <p className="hint m-0">
         {manager
-          ? `Signed in as ${displayName || "an organizer"}. You can move a note through new, read, planned, done and dismissed.`
-          : "Read-only. An owner or organizer can change a note's status."}
+          ? `Signed in as ${displayName || "an organizer"}. You can move a note through new, read, planned, done and dismissed, and keep a private resolution note.`
+          : "Read-only. An owner or organizer can change a note's status or resolution note."}
       </p>
 
       {demo && (
         <p className="notice m-0" role="note">
           Demo preview: the notes below are sample and browser-only. Submit one from{" "}
           <a href="/feedback">/feedback</a> to see it arrive here.
+        </p>
+      )}
+
+      {manager && !demo && !mailReady && (
+        <p className="hint m-0">
+          Email is not configured on this deployment, so the digest is unavailable. The inbox still
+          works without it.
         </p>
       )}
 
@@ -220,7 +401,7 @@ export function FeedbackInbox({
         ))}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_14rem]">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_14rem]">
         <label className="field">
           <span>Search notes</span>
           <span className="relative block">
@@ -234,10 +415,26 @@ export function FeedbackInbox({
               onChange={(event) =>
                 setFilters((current) => ({ ...current, query: event.target.value }))
               }
-              placeholder="Message, contact or page"
+              placeholder="Message, contact, page or event"
               className="w-full pl-9"
             />
           </span>
+        </label>
+        <label className="field">
+          <span>Event</span>
+          <select
+            value={filters.event}
+            onChange={(event) =>
+              setFilters((current) => ({ ...current, event: event.target.value }))
+            }
+          >
+            <option value="all">Every event</option>
+            {eventOptions.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="field">
           <span>Category</span>
@@ -295,11 +492,12 @@ export function FeedbackInbox({
                       <span className={`pill ${STATUS_TONE[note.status]}`}>
                         {FEEDBACK_STATUS_LABELS[note.status]}
                       </span>
+                      {note.tournamentId && <span className="pill info">{eventLabel(note)}</span>}
                       {note.contactConsent && <span className="pill info">May reply</span>}
                     </span>
                     <button
                       type="button"
-                      onClick={() => setOpenId(open ? null : note.id)}
+                      onClick={() => toggleOpen(note)}
                       aria-expanded={open}
                       className="mt-2 block w-full text-left font-semibold text-ink"
                     >
@@ -317,6 +515,10 @@ export function FeedbackInbox({
                       <div className="min-w-0">
                         <dt className="overline">Contact</dt>
                         <dd className="m-0 break-words text-[14px]">{contactLine(note)}</dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="overline">Event</dt>
+                        <dd className="m-0 break-words text-[14px]">{eventLabel(note)}</dd>
                       </div>
                       <div className="min-w-0">
                         <dt className="overline">Page</dt>
@@ -359,6 +561,61 @@ export function FeedbackInbox({
                         {`Status: ${FEEDBACK_STATUS_LABELS[note.status]}. Only an owner or organizer can change it.`}
                       </p>
                     )}
+
+                    <div className="grid gap-2 border-t border-line pt-3">
+                      <p className="overline m-0">Resolution note</p>
+                      {manager ? (
+                        <>
+                          <label className="field">
+                            <span className="sr">Resolution note</span>
+                            <textarea
+                              value={resolutionDraft}
+                              rows={3}
+                              maxLength={FEEDBACK_RESOLUTION_NOTE_MAX}
+                              disabled={pendingId !== null}
+                              onChange={(event) => setResolutionDraft(event.target.value)}
+                              placeholder="What was decided, and who is doing it?"
+                            />
+                          </label>
+                          <div className="row">
+                            <Button
+                              size="sm"
+                              onClick={() => void saveResolution(note)}
+                              disabled={pendingId !== null}
+                            >
+                              Save note
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => void saveResolution(note, "")}
+                              disabled={
+                                pendingId !== null ||
+                                (resolutionDraft === "" && note.resolutionNote === null)
+                              }
+                            >
+                              Clear
+                            </Button>
+                            {pendingId === note.id && <span className="hint">Saving…</span>}
+                          </div>
+                          <p className="hint m-0">
+                            Only club staff can read this note. It never appears on a public page.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="m-0 text-[14px] whitespace-pre-wrap">
+                            {note.resolutionNote ?? "No resolution note yet."}
+                          </p>
+                          {note.resolutionNoteUpdatedAt && (
+                            <p className="hint m-0">
+                              Updated {when(note.resolutionNoteUpdatedAt)}. Only an owner or
+                              organizer can change it.
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </li>

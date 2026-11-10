@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { FeedbackInbox } from "@/components/feedback/FeedbackInbox";
 import { PageHeader } from "@/components/PageHeader";
 import { DeskAccessError, getDeskMember } from "@/lib/auth/member";
+import { parseFeedbackFilters } from "@/lib/data/feedback";
 import { DEMO_CLUB_ID } from "@/lib/demo/feedback";
+import { mailChannelConfigured } from "@/lib/email/config";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -19,14 +21,31 @@ export const metadata: Metadata = { title: "Feedback inbox" };
  * account without a club membership is sent to its own area. RLS still decides which rows are
  * visible and who may change a status, so this page is never the only guard.
  */
-export default async function FeedbackInboxPage() {
+export default async function FeedbackInboxPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    status?: string | string[];
+    category?: string | string[];
+    event?: string | string[];
+    q?: string | string[];
+  }>;
+}) {
+  const params = await searchParams;
+  const initialFilters = parseFeedbackFilters(params);
+
   if (!isSupabaseConfigured()) {
     return (
       <div className="grid gap-6">
         <PageHeader overline="Public feedback" title="Feedback inbox">
           Notes sent from the public feedback page. Only club staff can read them.
         </PageHeader>
-        <FeedbackInbox clubId={DEMO_CLUB_ID} role="organizer" displayName="Demo organizer" />
+        <FeedbackInbox
+          clubId={DEMO_CLUB_ID}
+          role="organizer"
+          displayName="Demo organizer"
+          initialFilters={initialFilters}
+        />
       </div>
     );
   }
@@ -46,9 +65,15 @@ export default async function FeedbackInboxPage() {
     <div className="grid gap-6">
       <PageHeader overline="Public feedback" title="Feedback inbox">
         Notes sent from the public feedback page. Newest first. Only club staff can read them, and
-        only an owner or organizer can change a status.
+        only an owner or organizer can change a status or save a resolution note.
       </PageHeader>
-      <FeedbackInbox clubId={member.clubId} role={member.role} displayName={member.displayName} />
+      <FeedbackInbox
+        clubId={member.clubId}
+        role={member.role}
+        displayName={member.displayName}
+        initialFilters={initialFilters}
+        digestConfigured={mailChannelConfigured()}
+      />
     </div>
   );
 }

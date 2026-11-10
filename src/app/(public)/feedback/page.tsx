@@ -4,7 +4,7 @@ import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { FeedbackForm } from "@/components/public/FeedbackForm";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
-import { normalizePagePath } from "@/lib/data/feedback";
+import { normalizeFeedbackTournamentId, normalizePagePath } from "@/lib/data/feedback";
 import { getI18n } from "@/lib/i18n/server";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 
@@ -29,17 +29,21 @@ export const metadata: Metadata = {
  * The public feedback page.
  *
  * It shows a form and nothing else: no submission is ever read back here. `?from=` carries the page
- * the visitor came from, and it is reduced to a single path before the form sends it. The form's
- * own words come from the dictionary, so the page works in English, Tagalog and Hiligaynon.
+ * the visitor came from, and it is reduced to a single path before the form sends it. `?event=`
+ * carries an optional public event id; only a UUID shape is passed on, and the database checks the
+ * club and public visibility. The form's own words come from the dictionary, so the page works in
+ * English, Tagalog and Hiligaynon.
  */
 export default async function FeedbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string | string[] }>;
+  searchParams: Promise<{ from?: string | string[]; event?: string | string[] }>;
 }) {
   const [{ t }, params] = await Promise.all([getI18n(), searchParams]);
   const from = Array.isArray(params.from) ? params.from[0] : params.from;
   const sourcePath = normalizePagePath(from);
+  const eventParam = Array.isArray(params.event) ? params.event[0] : params.event;
+  const tournamentId = normalizeFeedbackTournamentId(eventParam);
 
   return (
     <main className="public mobile-bar-space">
@@ -59,7 +63,7 @@ export default async function FeedbackPage({
         <p className="text-on-forest-muted">{t("feedback.intro")}</p>
       </header>
 
-      <FeedbackForm sourcePath={sourcePath} />
+      <FeedbackForm sourcePath={sourcePath} tournamentId={tournamentId} />
 
       <p className="hint no-print">
         <Link href="/">{t("pairings.home")}</Link>

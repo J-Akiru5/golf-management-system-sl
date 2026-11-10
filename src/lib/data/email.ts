@@ -6,7 +6,7 @@ export interface EmailOutboxMessage {
   registrationId: string | null;
   recipientEmail: string;
   recipientName: string;
-  kind: "confirmation" | "reminder" | "custom";
+  kind: "confirmation" | "reminder" | "custom" | "feedback_digest";
   subject: string;
   body: string;
   status: "queued" | "sending" | "sent" | "failed" | "skipped";

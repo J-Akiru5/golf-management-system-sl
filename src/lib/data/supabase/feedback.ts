@@ -7,9 +7,11 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  FEEDBACK_RESOLUTION_NOTE_MAX,
   type FeedbackNote,
   type FeedbackStatus,
   type FeedbackSubmission,
+  normalizeFeedbackResolutionNote,
   parseFeedbackNote,
   sortFeedbackNewestFirst,
 } from "@/lib/data/feedback";
@@ -26,6 +28,7 @@ export type FeedbackSubmitCode =
   | "consent_required"
   | "invalid_page"
   | "invalid_locale"
+  | "invalid_event"
   | "rate_limited"
   | "not_configured"
   | "not_ready"
@@ -53,6 +56,7 @@ const SUBMIT_CODES: readonly FeedbackSubmitCode[] = [
   "consent_required",
   "invalid_page",
   "invalid_locale",
+  "invalid_event",
   "rate_limited",
   "not_configured",
   "not_ready",
@@ -67,7 +71,7 @@ const GENERIC_FAILURE = "The note could not be sent. Check your connection and t
  * the payload a staff browser receives.
  */
 const FEEDBACK_INBOX_COLUMNS =
-  "id, club_id, category, message, contact_name, contact_email, contact_consent, page_path, locale, status, created_at, updated_at, status_changed_at, status_changed_by";
+  "id, club_id, tournament_id, category, message, contact_name, contact_email, contact_consent, page_path, locale, status, resolution_note, resolution_note_updated_at, resolution_note_updated_by, created_at, updated_at, status_changed_at, status_changed_by";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -103,6 +107,8 @@ function isMissingFunction(error: { code?: string; message?: string }): boolean 
 }
 
 function isMissingTable(error: { code?: string; message?: string }): boolean {
+  // A missing column is not a missing table: the follow-up migration has its own message.
+  if (error.code === "42703") return false;
   return (
     error.code === "42P01" ||
     error.code === "PGRST205" ||
@@ -110,9 +116,14 @@ function isMissingTable(error: { code?: string; message?: string }): boolean {
   );
 }
 
+/** The MVP table exists but the follow-up columns have not reached the project yet. */
+function isMissingFollowupColumn(error: { code?: string; message?: string }): boolean {
+  return error.code === "42703" && /(tournament_id|resolution_note)/i.test(error.message ?? "");
+}
+
 export async function submitFeedback(
   client: SupabaseClient<Database>,
-  submission: FeedbackSubmission & { honeypot?: string },
+  submission: FeedbackSubmission & { honeypot?: string; tournamentId?: string | null },
 ): Promise<FeedbackSubmitResult> {
   const { data, error } = await client.rpc("submit_feedback", {
     p_category: submission.category,
@@ -123,6 +134,9 @@ export async function submitFeedback(
     p_page_path: submission.pagePath,
     p_locale: submission.locale,
     p_honeypot: submission.honeypot ?? "",
+    // Null is a general note. The database checks the club and public visibility; the browser never
+    // decides that an event is valid.
+    p_tournament: submission.tournamentId ?? null,
   });
 
   if (error) {
@@ -157,14 +171,60 @@ export async function loadFeedbackInbox(
         "The feedback inbox is not available yet. The feedback migration has not been applied.",
       );
     }
+    if (isMissingFollowupColumn(error)) {
+      throw new Error(
+        "The feedback inbox is not ready yet. The feedback follow-up migration has not been applied.",
+      );
+    }
     throw new Error(`Could not load feedback: ${error.message}`);
   }
 
-  return sortFeedbackNewestFirst(
+  const notes = sortFeedbackNewestFirst(
     (data ?? [])
       .map((row) => parseFeedbackNote(row))
       .filter((note): note is FeedbackNote => note !== null),
   );
+
+  // The note carries a tournament id, not a name. Load the names with a staff-authorized read so
+  // the inbox can label a note without exposing the event anywhere public.
+  const eventIds = notes.flatMap((note) => (note.tournamentId ? [note.tournamentId] : []));
+  if (eventIds.length === 0) return notes;
+  const names = await loadFeedbackEventNames(client, clubId, eventIds);
+  return notes.map((note) =>
+    note.tournamentId && names.has(note.tournamentId)
+      ? { ...note, eventName: names.get(note.tournamentId) ?? note.eventName }
+      : note,
+  );
+}
+
+/**
+ * The names of the events a set of notes points at. This is a staff read through RLS, scoped to the
+ * caller's club. A name is context for the note; a failed names read must not hide the note itself,
+ * so the inbox falls back to the id and stays usable.
+ */
+export async function loadFeedbackEventNames(
+  client: SupabaseClient<Database>,
+  clubId: string,
+  tournamentIds: readonly string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(tournamentIds.filter((id) => id !== ""))];
+  if (ids.length === 0) return new Map();
+
+  const { data, error } = await client
+    .from("tournaments")
+    .select("id, name")
+    .eq("club_id", clubId)
+    .in("id", ids);
+
+  if (error) return new Map();
+
+  const names = new Map<string, string>();
+  for (const row of data ?? []) {
+    const id = typeof row.id === "string" ? row.id.trim() : "";
+    const name = typeof row.name === "string" ? row.name.trim() : "";
+    if (id !== "" && name !== "") names.set(id, name);
+  }
+  return names;
 }
 
 /**
@@ -191,6 +251,11 @@ export async function updateFeedbackStatus(
         "The feedback inbox is not available yet. The feedback migration has not been applied.",
       );
     }
+    if (isMissingFollowupColumn(error)) {
+      throw new Error(
+        "The feedback inbox is not ready yet. The feedback follow-up migration has not been applied.",
+      );
+    }
     if (error.code === "42501") {
       throw new Error("Only an owner or organizer can change a feedback status.");
     }
@@ -202,4 +267,74 @@ export async function updateFeedbackStatus(
     throw new Error("That note was not found, or this account cannot change its status.");
   }
   return note;
+}
+
+/**
+ * Saves the organizer's private resolution note. The column grant, the update policy and the trigger
+ * all allow an owner or organizer; a desk account gets a clear refusal.
+ */
+export async function updateFeedbackResolution(
+  client: SupabaseClient<Database>,
+  clubId: string,
+  id: string,
+  resolutionNote: string | null,
+): Promise<FeedbackNote> {
+  const normalized = normalizeFeedbackResolutionNote(resolutionNote);
+  if (!normalized.ok) {
+    throw new Error(
+      `Keep the resolution note to ${FEEDBACK_RESOLUTION_NOTE_MAX} characters or fewer.`,
+    );
+  }
+
+  const { data, error } = await client
+    .from("public_feedback")
+    .update({ resolution_note: normalized.value })
+    .eq("club_id", clubId)
+    .eq("id", id)
+    .select(FEEDBACK_INBOX_COLUMNS)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingTable(error)) {
+      throw new Error(
+        "The feedback inbox is not available yet. The feedback migration has not been applied.",
+      );
+    }
+    if (isMissingFollowupColumn(error)) {
+      throw new Error(
+        "The feedback inbox is not ready yet. The feedback follow-up migration has not been applied.",
+      );
+    }
+    if (error.code === "42501") {
+      throw new Error("Only an owner or organizer can change a resolution note.");
+    }
+    throw new Error(`Could not save the resolution note: ${error.message}`);
+  }
+
+  const note = parseFeedbackNote(data);
+  if (!note) {
+    throw new Error("That note was not found, or this account cannot change its resolution note.");
+  }
+  return note;
+}
+
+/**
+ * The private count for the desk badge. RLS still limits the rows to the caller's club; a database
+ * without the feedback table answers zero rather than breaking the shell.
+ */
+export async function countNewFeedback(
+  client: SupabaseClient<Database>,
+  clubId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("public_feedback")
+    .select("id", { count: "exact", head: true })
+    .eq("club_id", clubId)
+    .eq("status", "new");
+
+  if (error) {
+    if (isMissingTable(error)) return 0;
+    throw new Error(`Could not count feedback: ${error.message}`);
+  }
+  return typeof count === "number" && count > 0 ? count : 0;
 }

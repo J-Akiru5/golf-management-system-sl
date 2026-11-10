@@ -9,6 +9,25 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Migrations shipping with this change
+`20261110000300_feedback_followups.sql` is additive and **NOT applied**. It adds the optional
+`tournament_id` link and the private `resolution_note` audit columns to `public_feedback`, replaces
+the submission function with a 9-argument version, and widens the `email_outbox` kind check for
+`feedback_digest`.
+
+### Added
+- **Feedback follows the event and the organizer's resolution.** The public form can pass an
+  optional `?event=` id; the database checks the event belongs to the club and is public. The inbox
+  filters by event, shows the event name, and lets an owner or organizer save a private resolution
+  note. A desk account sees it read-only.
+- **The desk shell shows a private count of new feedback.** The count refreshes on focus, on a
+  one-minute interval, and when the inbox reports a status or resolution change. It is never shown
+  on a public page.
+- **An optional feedback digest can be queued.** `/api/feedback/digest` requires a signed-in owner
+  or organizer and returns `configured: false` when `RESEND_API_KEY` and `EMAIL_FROM` are absent.
+  When configured it queues one `feedback_digest` row in `email_outbox`; delivery is still the
+  existing send route's job.
+
 ## [0.32.2] - 2026-11-10
 
 ### Added

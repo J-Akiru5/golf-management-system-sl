@@ -123,6 +123,8 @@ export type PlayerRow = {
 export type PublicFeedbackRow = {
   id: string;
   club_id: string;
+  /** Added by 20261110000300. Null for general site feedback. */
+  tournament_id: string | null;
   category: "improvement" | "bug" | "content";
   message: string;
   contact_name: string | null;
@@ -131,6 +133,10 @@ export type PublicFeedbackRow = {
   page_path: string | null;
   locale: "en" | "tl" | "hil";
   status: "new" | "read" | "planned" | "done" | "dismissed";
+  /** Added by 20261110000300. Organizer-only. */
+  resolution_note: string | null;
+  resolution_note_updated_at: string | null;
+  resolution_note_updated_by: string | null;
   rate_key: string;
   created_at: string;
   updated_at: string;
@@ -146,7 +152,7 @@ export type EmailOutboxRow = {
   registration_id: string | null;
   recipient_email: string;
   recipient_name: string;
-  kind: "confirmation" | "reminder" | "custom";
+  kind: "confirmation" | "reminder" | "custom" | "feedback_digest";
   subject: string;
   body: string;
   status: "queued" | "sending" | "sent" | "failed" | "skipped";
@@ -680,6 +686,7 @@ export interface Database {
         {
           id?: string;
           club_id: string;
+          tournament_id?: string | null;
           category: PublicFeedbackRow["category"];
           message: string;
           contact_name?: string | null;
@@ -688,6 +695,9 @@ export interface Database {
           page_path?: string | null;
           locale?: PublicFeedbackRow["locale"];
           status?: PublicFeedbackRow["status"];
+          resolution_note?: string | null;
+          resolution_note_updated_at?: string | null;
+          resolution_note_updated_by?: string | null;
           rate_key: string;
           created_at?: string;
           updated_at?: string;
@@ -696,6 +706,9 @@ export interface Database {
         },
         {
           status?: PublicFeedbackRow["status"];
+          resolution_note?: string | null;
+          resolution_note_updated_at?: string | null;
+          resolution_note_updated_by?: string | null;
           updated_at?: string;
           status_changed_at?: string | null;
           status_changed_by?: string | null;
@@ -1186,7 +1199,8 @@ export interface Database {
       public_registration_form: { Args: { p_tournament: string }; Returns: Json };
       /**
        * The one write an anonymous visitor can make on the feedback page. Added by hand with
-       * 20261110000200_public_feedback.sql, which is not applied to the live project yet.
+       * 20261110000200_public_feedback.sql and extended with p_tournament by
+       * 20261110000300_feedback_followups.sql.
        */
       submit_feedback: {
         Args: {
@@ -1198,6 +1212,7 @@ export interface Database {
           p_page_path?: string | null;
           p_locale?: string;
           p_honeypot?: string | null;
+          p_tournament?: string | null;
         };
         Returns: Json;
       };

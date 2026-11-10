@@ -804,6 +804,8 @@ export const tl: Dictionary = {
     errorConsent:
       "I-tick ang kahon kung puwedeng makipag-ugnayan ang club sa iyo, o alisin ang contact details.",
     errorPage: "Hindi wasto ang address ng pahina. I-reload ang pahina at subukan muli.",
+    errorEvent:
+      "Hindi available ang event na iyon para sa feedback. Magpadala ng pangkalahatang note.",
     errorLocale: "Pumili ng wika.",
     backHome: "Bumalik sa TeeLine",
   },

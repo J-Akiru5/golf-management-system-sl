@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   canTriageFeedback,
+  countNewFeedbackNotes,
   DEFAULT_FEEDBACK_FILTERS,
   FEEDBACK_MESSAGE_MAX,
   FEEDBACK_RATE_LIMIT,
+  FEEDBACK_RESOLUTION_NOTE_MAX,
   type FeedbackNote,
   feedbackStatusChoices,
   filterFeedback,
   isFeedbackRateLimited,
   isValidFeedbackEmail,
   matchesFeedbackFilters,
+  normalizeFeedbackResolutionNote,
+  normalizeFeedbackTournamentId,
   normalizePagePath,
   parseFeedbackFilters,
   parseFeedbackNote,
@@ -20,6 +24,8 @@ import {
 const NOTE: FeedbackNote = {
   id: "note-1",
   clubId: "club-1",
+  tournamentId: null,
+  eventName: null,
   category: "bug",
   message: "The pairings page shows the wrong hole.",
   contactName: null,
@@ -28,6 +34,9 @@ const NOTE: FeedbackNote = {
   pagePath: "/pairings",
   locale: "en",
   status: "new",
+  resolutionNote: null,
+  resolutionNoteUpdatedAt: null,
+  resolutionNoteUpdatedBy: null,
   createdAt: "2026-11-10T08:00:00.000Z",
   updatedAt: "2026-11-10T08:00:00.000Z",
   statusChangedAt: null,
@@ -178,6 +187,56 @@ describe("normalizePagePath", () => {
   });
 });
 
+describe("event context", () => {
+  it("accepts a UUID and drops anything else", () => {
+    expect(normalizeFeedbackTournamentId("A0B1C2D3-E4F5-4678-9ABC-DEF012345678")).toBe(
+      "a0b1c2d3-e4f5-4678-9abc-def012345678",
+    );
+    expect(normalizeFeedbackTournamentId("  a0b1c2d3-e4f5-4678-9abc-def012345678  ")).toBe(
+      "a0b1c2d3-e4f5-4678-9abc-def012345678",
+    );
+    expect(normalizeFeedbackTournamentId("bamboo-tee")).toBeNull();
+    expect(normalizeFeedbackTournamentId("")).toBeNull();
+    expect(normalizeFeedbackTournamentId(null)).toBeNull();
+    expect(normalizeFeedbackTournamentId("a0b1c2d3e4f546789abcdef012345678")).toBeNull();
+  });
+
+  it("keeps a note without an event visible under the all filter", () => {
+    expect(matchesFeedbackFilters(NOTE, DEFAULT_FEEDBACK_FILTERS)).toBe(true);
+  });
+});
+
+describe("resolution note", () => {
+  it("trims a note and treats an empty one as cleared", () => {
+    expect(normalizeFeedbackResolutionNote("  Reply sent to the team.  ")).toEqual({
+      ok: true,
+      value: "Reply sent to the team.",
+    });
+    expect(normalizeFeedbackResolutionNote("   ")).toEqual({ ok: true, value: null });
+    expect(normalizeFeedbackResolutionNote(null)).toEqual({ ok: true, value: null });
+  });
+
+  it("refuses a note over the database limit", () => {
+    expect(normalizeFeedbackResolutionNote("x".repeat(FEEDBACK_RESOLUTION_NOTE_MAX))).toEqual({
+      ok: true,
+      value: "x".repeat(FEEDBACK_RESOLUTION_NOTE_MAX),
+    });
+    expect(normalizeFeedbackResolutionNote("x".repeat(FEEDBACK_RESOLUTION_NOTE_MAX + 1))).toEqual({
+      ok: false,
+      error: "tooLong",
+    });
+  });
+});
+
+describe("countNewFeedbackNotes", () => {
+  it("counts only the notes still new", () => {
+    expect(
+      countNewFeedbackNotes([NOTE, { ...NOTE, status: "read" }, { ...NOTE, status: "new" }]),
+    ).toBe(2);
+    expect(countNewFeedbackNotes([])).toBe(0);
+  });
+});
+
 describe("email", () => {
   it("accepts a normal address and refuses an incomplete one", () => {
     expect(isValidFeedbackEmail("jo@example.com")).toBe(true);
@@ -216,6 +275,8 @@ describe("parseFeedbackNote", () => {
       parseFeedbackNote({
         id: "note-1",
         club_id: "club-1",
+        tournament_id: "a0b1c2d3-e4f5-4678-9abc-def012345678",
+        event_name: "24th Bamboo Tee",
         category: "content",
         message: "The rules page is out of date.",
         contact_name: "Jo",
@@ -224,6 +285,9 @@ describe("parseFeedbackNote", () => {
         page_path: "/rules",
         locale: "tl",
         status: "planned",
+        resolution_note: "  Added to the content checklist.  ",
+        resolution_note_updated_at: "2026-11-10T09:30:00.000Z",
+        resolution_note_updated_by: "user-1",
         created_at: "2026-11-10T08:00:00.000Z",
         updated_at: "2026-11-10T09:00:00.000Z",
         status_changed_at: "2026-11-10T09:00:00.000Z",
@@ -232,6 +296,8 @@ describe("parseFeedbackNote", () => {
     ).toMatchObject({
       id: "note-1",
       clubId: "club-1",
+      tournamentId: "a0b1c2d3-e4f5-4678-9abc-def012345678",
+      eventName: "24th Bamboo Tee",
       category: "content",
       contactName: "Jo",
       contactEmail: "jo@example.com",
@@ -239,8 +305,27 @@ describe("parseFeedbackNote", () => {
       pagePath: "/rules",
       locale: "tl",
       status: "planned",
+      resolutionNote: "Added to the content checklist.",
+      resolutionNoteUpdatedBy: "user-1",
       statusChangedBy: "user-1",
     });
+  });
+
+  it("keeps a general note without an event", () => {
+    const note = parseFeedbackNote({
+      id: "note-2",
+      club_id: "club-1",
+      category: "bug",
+      message: "The footer link is broken.",
+      locale: "en",
+      status: "read",
+      created_at: "2026-11-10T08:00:00.000Z",
+      updated_at: "2026-11-10T08:00:00.000Z",
+    });
+    expect(note).not.toBeNull();
+    expect(note?.tournamentId).toBeNull();
+    expect(note?.eventName).toBeNull();
+    expect(note?.resolutionNote).toBeNull();
   });
 
   it("drops a row with an unknown status or category instead of guessing", () => {
@@ -272,11 +357,15 @@ describe("parseFeedbackNote", () => {
 });
 
 describe("inbox filters", () => {
+  const EVENT_ID = "a0b1c2d3-e4f5-4678-9abc-def012345678";
+  const OTHER_EVENT_ID = "b1c2d3e4-f5a6-4789-8abc-def012345678";
   const notes: FeedbackNote[] = [
-    NOTE,
+    { ...NOTE, tournamentId: EVENT_ID, eventName: "24th Bamboo Tee" },
     {
       ...NOTE,
       id: "note-2",
+      tournamentId: OTHER_EVENT_ID,
+      eventName: "Club Championship",
       category: "content",
       message: "The rules page is out of date.",
       pagePath: "/rules",
@@ -305,7 +394,14 @@ describe("inbox filters", () => {
     ).toEqual(["note-1"]);
   });
 
-  it("searches the message, contact and page path without case", () => {
+  it("filters by event and keeps a note without an event under all", () => {
+    expect(
+      filterFeedback(notes, { ...DEFAULT_FEEDBACK_FILTERS, event: EVENT_ID }).map((n) => n.id),
+    ).toEqual(["note-1"]);
+    expect(filterFeedback(notes, DEFAULT_FEEDBACK_FILTERS).map((n) => n.id)).toContain("note-3");
+  });
+
+  it("searches the message, contact, page path and event without case", () => {
     expect(
       filterFeedback(notes, { ...DEFAULT_FEEDBACK_FILTERS, query: "PRINT" }).map((n) => n.id),
     ).toEqual(["note-3"]);
@@ -314,6 +410,11 @@ describe("inbox filters", () => {
     ).toEqual(["note-3"]);
     expect(
       filterFeedback(notes, { ...DEFAULT_FEEDBACK_FILTERS, query: "rules" }).map((n) => n.id),
+    ).toEqual(["note-2"]);
+    expect(
+      filterFeedback(notes, { ...DEFAULT_FEEDBACK_FILTERS, query: "championship" }).map(
+        (n) => n.id,
+      ),
     ).toEqual(["note-2"]);
   });
 
@@ -326,14 +427,25 @@ describe("inbox filters", () => {
   });
 
   it("reads query parameters and falls back to all on junk", () => {
-    expect(parseFeedbackFilters({ status: "done", category: "bug", q: "  print " })).toEqual({
+    expect(
+      parseFeedbackFilters({ status: "done", category: "bug", event: EVENT_ID, q: "  print " }),
+    ).toEqual({
       status: "done",
       category: "bug",
+      event: EVENT_ID,
       query: "print",
     });
-    expect(parseFeedbackFilters({ status: "archived", category: "praise", q: [" x "] })).toEqual({
+    expect(
+      parseFeedbackFilters({
+        status: "archived",
+        category: "praise",
+        event: "not-an-event",
+        q: [" x "],
+      }),
+    ).toEqual({
       status: "all",
       category: "all",
+      event: "all",
       query: "x",
     });
     expect(parseFeedbackFilters({})).toEqual(DEFAULT_FEEDBACK_FILTERS);

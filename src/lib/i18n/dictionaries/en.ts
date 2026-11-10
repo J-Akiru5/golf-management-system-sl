@@ -797,6 +797,7 @@ export const en = {
     errorContactEmail: "That email address looks incomplete. Check it and try again.",
     errorConsent: "Tick the box if the club may contact you, or remove your contact details.",
     errorPage: "The page address is not valid. Reload the page and try again.",
+    errorEvent: "That event is not available for feedback. Send a general note instead.",
     errorLocale: "Choose a language.",
     backHome: "Back to TeeLine",
   },
