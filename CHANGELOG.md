@@ -10,10 +10,12 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Migrations shipping with this change
-`20261110000300_feedback_followups.sql` is additive and **NOT applied**. It adds the optional
-`tournament_id` link and the private `resolution_note` audit columns to `public_feedback`, replaces
-the submission function with a 9-argument version, and widens the `email_outbox` kind check for
-`feedback_digest`.
+`20261110000300_feedback_followups.sql` is additive and **applied to the live project on 11 Nov
+2026** (verified over the API: follow-up columns exist, the 9-argument submission function rejects a
+draft or unknown event, the honeypot writes nothing, and anon still cannot select the table). It adds
+the optional `tournament_id` link and the private `resolution_note` audit columns to
+`public_feedback`, replaces the submission function with a 9-argument version, and widens the
+`email_outbox` kind check for `feedback_digest`.
 
 ### Added
 - **Feedback follows the event and the organizer's resolution.** The public form can pass an
