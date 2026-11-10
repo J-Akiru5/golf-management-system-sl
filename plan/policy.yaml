@@ -32,10 +32,12 @@ verification:
     full:
       resource_class: heavy
       commands:
-        - pnpm typecheck
-        - pnpm lint
-        - pnpm test
-        - pnpm build
+        - pnpm check
+    ui:
+      resource_class: heavy
+      commands:
+        - pnpm check
+        - pnpm check:ui
 
 resources:
   classes:
@@ -60,10 +62,10 @@ deployment:
   provider: vercel
   allowed_branches:
     - main
-    - develop
+    - staging
   production_branch: main
   excluded_branches:
-    - staging
+    - develop
   sensitive_paths:
     - vercel.json
     - render.yaml
@@ -75,7 +77,7 @@ deployment:
     - supabase/migrations/**
     - src/**
     - public/**
-  project_note: "The repository vercel.json enables main and staging and disables develop. The policy keeps the global main-plus-develop allowlist required by agentctl. The conflict is recorded in plan/PROJECT.md and has not been changed."
+  project_note: "Matches vercel.json: main and staging deploy, develop does not. agentctl releases up to 1.6.0 reject this allowlist in plan validate; 1.7.0 reads it from here."
 
 cleanup:
   require_apply_flag: true
