@@ -13,13 +13,31 @@ dependencies: []
 ownership:
   - src/app/(desk)/setup/page.tsx
   - src/app/(desk)/admin/page.tsx
-  - src/components/public/ReleaseState.tsx
-  - src/components/public/PublicReleaseCard.tsx
+  - src/components/public/HeldNotice.tsx
+  - src/components/public/LeaderboardShell.tsx
   - src/app/(public)/pairings/page.tsx
+  - src/app/(public)/pairings/DemoPairings.tsx
   - src/app/(public)/roster/page.tsx
+  - src/app/(public)/roster/DemoRoster.tsx
   - src/app/(public)/leaderboard/page.tsx
-  - src/lib/data/tournaments.ts
-  - src/lib/data/supabase/tournaments.ts
+  - src/app/(public)/leaderboard/DemoLeaderboard.tsx
+  - src/app/api/pairings/version/route.ts
+  - src/components/public/ProgrammeView.tsx
+  - src/components/public/RosterView.tsx
+  - src/components/public/TeamLeaderboard.tsx
+  - src/components/control-room/panels.tsx
+  - src/components/control-room/PublicReleaseLink.tsx
+  - src/components/desk/PublicReleaseCard.tsx
+  - src/lib/data/public.ts
+  - src/lib/data/public-results.ts
+  - src/lib/data/public-profile.ts
+  - src/lib/data/types.ts
+  - src/lib/demo/public-release.ts
+  - src/lib/i18n/dictionaries/en.ts
+  - src/lib/i18n/dictionaries/tl.ts
+  - src/lib/i18n/dictionaries/hil.ts
+  - src/lib/public/pairings-live.ts
+  - src/lib/public/pairings-live.test.ts
   - src/lib/supabase/types.ts
   - src/lib/data/public-release.test.ts
   - src/lib/data/supabase/tournaments.test.ts
@@ -33,7 +51,7 @@ interfaces:
   - the release-state read and setter delivered by T-0010
   - the existing publish_pairings snapshot
 deliverables:
-  - A Public page card in Settings with one switch per surface, owner/organizer only.
+  - A Public page tab in Settings with one switch per surface, owner/organizer only, and a control-room link while any surface is held.
   - A clear held/published state, last change and preview link.
   - Public-page held-by-organizer copy.
   - Revalidation of the affected public pages and the pairings version.
@@ -66,8 +84,9 @@ deployment_verification: "pnpm typecheck, pnpm lint and pnpm test; static check 
 surfaces authoritative and provides a safe release-state read. This task is the desk UI and the
 public held-state copy.
 
-The 24th Bamboo Tee is currently `pairings: false`. The release card must show that state and let
-the organizer release it without republishing the draw.
+The 24th Bamboo Tee is currently `pairings: false`. The Public page tab must show that state and let
+the organizer release it without republishing the draw. The control-room link opens
+`/setup#public` only while a section is held.
 
 The pairings page can be cached and has `/api/pairings/version`; the release change must invalidate
 or version the page so a held surface cannot stay visible until the cache expires.

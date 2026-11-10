@@ -16,11 +16,18 @@ ownership:
   - src/components/public/FeedbackForm.tsx
   - src/components/public/FeedbackLink.tsx
   - src/app/(public)/layout.tsx
+  - src/app/(public)/privacy/page.tsx
+  - src/content/legal/privacy.ts
   - src/lib/data/feedback.ts
   - src/lib/data/feedback.test.ts
   - src/lib/data/supabase/feedback.ts
   - src/lib/data/supabase/feedback.test.ts
-  - src/app/(desk)/feedback/**
+  - src/lib/demo/feedback.ts
+  - src/app/(desk)/feedback-inbox/**
+  - src/components/AppShell.tsx
+  - src/proxy.ts
+  - src/lib/auth/routes.ts
+  - src/lib/auth/routes.test.ts
   - src/lib/supabase/types.ts
 out_of_scope:
   - Feedback notifications, badges and email digest (T-0013).
@@ -35,7 +42,7 @@ interfaces:
 deliverables:
   - An additive public_feedback table, RLS and submit_feedback RPC.
   - A /feedback public page and a footer/help link in three languages.
-  - A desk /feedback inbox with filters, detail and statuses.
+  - A desk /feedback-inbox with filters, detail and statuses. The public form keeps /feedback; the two cannot share a URL.
   - Validation, rate limiting, privacy copy and tests.
 acceptance:
   - "AC1 [test]: Anon can submit feedback, and anon cannot select or update the table or call a staff read."
