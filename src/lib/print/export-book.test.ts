@@ -92,4 +92,26 @@ describe("buildPrintBook", () => {
     expect(result?.scorecards).toHaveLength(1);
     expect(result?.book.tables).toEqual([]);
   });
+
+  it("confirmed scorecards are never stamped as a draft, whatever the pairings state", () => {
+    const result = buildPrintBook({ ...base, kind: "scorecards", course: "official" });
+    expect(result?.book.status).toBe("Course data confirmed");
+    expect(result?.book.status).not.toMatch(/draft/i);
+  });
+
+  it("scorecards with unconfirmed course data say so instead of calling themselves a draft", () => {
+    expect(
+      buildPrintBook({ ...base, kind: "scorecards", course: "placeholder" })?.book.status,
+    ).toBe("Course data not confirmed");
+    expect(buildPrintBook({ ...base, kind: "scorecards", course: "missing" })?.book.status).toBe(
+      "Course data not entered",
+    );
+  });
+
+  it("the start sheet and pairings keep the publish state", () => {
+    expect(buildPrintBook(base)?.book.status).toBe("Draft · not published");
+    expect(buildPrintBook({ ...base, kind: "pairings" })?.book.status).toBe(
+      "Draft · not published",
+    );
+  });
 });

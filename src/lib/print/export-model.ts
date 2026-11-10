@@ -71,6 +71,17 @@ export function courseNote(state: CourseDataState): string | undefined {
   return undefined;
 }
 
+/**
+ * The line stamped on every page of a scorecard file. A scorecard rests on the course numbers, not
+ * on whether the pairings were published, so it never says "Draft · not published". Confirmed
+ * numbers read as confirmed; anything else says what is still unchecked.
+ */
+export function scorecardStatus(state: CourseDataState): string {
+  if (state === "official") return "Course data confirmed";
+  if (state === "missing") return "Course data not entered";
+  return "Course data not confirmed";
+}
+
 const SHEET_NAME_BAD = /[[\]:*?/\\]/g;
 
 /** An Excel-safe tab name: no forbidden characters, at most 31, never empty, never a repeat. */

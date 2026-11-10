@@ -9,6 +9,13 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Fixed
+- **Printed scorecards are no longer stamped "Draft · not published".** That wording is the pairings
+  publish state and it was printed on every page of the scorecard PDF, even with confirmed course
+  data. Scorecards now carry the course-data state instead: "Course data confirmed", "Course data
+  not confirmed" or "Course data not entered". The Print screen pill on the Scorecards tab follows
+  the same rule. The start sheet, counts and pairings keep the publish state. No migration.
+
 ## [0.32.2] - 2026-11-10
 
 ### Added

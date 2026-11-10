@@ -37,7 +37,7 @@ import {
   KIND_LABEL,
   printFileName,
 } from "@/lib/print/export-book";
-import { courseNote, pairingsForDay } from "@/lib/print/export-model";
+import { courseNote, pairingsForDay, scorecardStatus } from "@/lib/print/export-model";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
@@ -513,13 +513,22 @@ export default function PrintCenter() {
             </button>
           ))}
         </div>
-        <span className={cn("pill", published ? "ok" : "info")} data-help="print-version">
-          {published
-            ? changedSincePublish
-              ? "Published, with newer changes on the board"
-              : "Matches the published list"
-            : "Draft · not published"}
-        </span>
+        {tab === "scorecards" ? (
+          <span
+            className={cn("pill", courseDataStatus === "official" ? "ok" : "warn")}
+            data-help="print-version"
+          >
+            {scorecardStatus(courseDataStatus)}
+          </span>
+        ) : (
+          <span className={cn("pill", published ? "ok" : "info")} data-help="print-version">
+            {published
+              ? changedSincePublish
+                ? "Published, with newer changes on the board"
+                : "Matches the published list"
+              : "Draft · not published"}
+          </span>
+        )}
       </div>
 
       {tab !== "howto" && (

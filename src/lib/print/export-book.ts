@@ -16,6 +16,7 @@ import {
   pairingTables,
   type ScorecardPage,
   scorecardPages,
+  scorecardStatus,
   startSheetTable,
 } from "./export-model";
 import type { PrintStartFormat } from "./start-sheet";
@@ -75,10 +76,12 @@ export function buildPrintBook(input: PrintBookInput): PrintBook | null {
   const scope = scopeOf(input.boards);
   const label = `${KIND_LABEL[input.kind]} · ${scope.dayLabel ?? "All days"}`;
   const fileStem = { kind: KIND_LABEL[input.kind], ...scope };
+  // Scorecards are not a pairings list, so the pairings publish state is not stamped on them.
+  const status = input.kind === "scorecards" ? scorecardStatus(input.course) : input.status;
   const book = (tables: ExportTable[]): ExportBook => ({
     eventName: input.eventName,
     label,
-    status: input.status,
+    status,
     tables,
   });
 
