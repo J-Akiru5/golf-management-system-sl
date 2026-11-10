@@ -9,19 +9,29 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
-### Migrations shipping with this change
-`20261110000300_feedback_followups.sql` is additive and **applied to the live project on 11 Nov
-2026** (verified over the API: follow-up columns exist, the 9-argument submission function rejects a
-draft or unknown event, the honeypot writes nothing, and anon still cannot select the table). It adds
-the optional `tournament_id` link and the private `resolution_note` audit columns to
-`public_feedback`, replaces the submission function with a 9-argument version, and widens the
-`email_outbox` kind check for `feedback_digest`.
+## [0.33.0] - 2026-11-11
+
+### Migrations shipping with this release
+All four are applied to the live project:
+`20261110000000_publish_views.sql` (the per-event policy), `20261110000100_public_release_enforcement.sql`
+(the database gates for every public surface), `20261110000200_public_feedback.sql` (the feedback
+table, RLS and submission RPC) and `20261110000300_feedback_followups.sql` (event association,
+resolution notes and the digest kind). The follow-up migration was verified over the API on 11 Nov
+2026.
 
 ### Added
+- **Public release controls.** Settings now has a Public page tab with one switch each for pairings,
+  tee times, player list, leaderboard, photos and rules. A held surface returns no data to an
+  anonymous caller; releasing a frozen section does not republish or change the draw. The public
+  pages distinguish held by the organizer from not published yet, and the control room links to the
+  release tab while a section is held.
+- **Public feedback and a private organizer inbox.** `/feedback` accepts improvement, bug and
+  content notes with optional consented contact, a honeypot and a database-backed rate limit. The
+  desk `/feedback-inbox` reads notes under RLS; only an owner or organizer can triage them.
 - **Feedback follows the event and the organizer's resolution.** The public form can pass an
   optional `?event=` id; the database checks the event belongs to the club and is public. The inbox
-  filters by event, shows the event name, and lets an owner or organizer save a private resolution
-  note. A desk account sees it read-only.
+  filters and labels by event, shows the event name, and lets an owner or organizer save a private
+  resolution note. A desk account sees it read-only.
 - **The desk shell shows a private count of new feedback.** The count refreshes on focus, on a
   one-minute interval, and when the inbox reports a status or resolution change. It is never shown
   on a public page.
@@ -29,6 +39,11 @@ the optional `tournament_id` link and the private `resolution_note` audit column
   or organizer and returns `configured: false` when `RESEND_API_KEY` and `EMAIL_FROM` are absent.
   When configured it queues one `feedback_digest` row in `email_outbox`; delivery is still the
   existing send route's job.
+
+### Fixed
+- **The demo release preview matches the browser checks again.** The demo starts with every public
+  surface released; holding a surface remains the deliberate preview action, while the connected
+  24th Bamboo Tee keeps its real `pairings: false` policy.
 
 ## [0.32.2] - 2026-11-10
 
