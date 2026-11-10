@@ -3,6 +3,7 @@
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { RosterPage } from "@/components/public/RosterView";
 import { toPublicProgramme, toPublicRoster } from "@/lib/data/public";
+import { useDemoReleaseState } from "@/lib/demo/public-release";
 import { useDesk } from "@/lib/store/desk-store";
 import { sampleProgramme } from "../pairings/DemoPairings";
 
@@ -13,6 +14,7 @@ import { sampleProgramme } from "../pairings/DemoPairings";
  */
 export function DemoRoster() {
   const { published, tournament, days, entries, registrations, players } = useDesk();
+  const release = useDemoReleaseState(tournament?.id ?? "bamboo-tee-2026");
 
   if (!tournament) return <NeedsTournament what="The player roster" />;
 
@@ -28,5 +30,10 @@ export function DemoRoster() {
       })
     : sampleProgramme();
 
-  return <RosterPage players={toPublicRoster(programme).players} />;
+  return (
+    <RosterPage
+      players={toPublicRoster(programme).players}
+      unavailable={release.roster ? "none" : "held"}
+    />
+  );
 }

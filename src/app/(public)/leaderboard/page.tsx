@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { HelpButton } from "@/components/help";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { HeldNotice } from "@/components/public/HeldNotice";
 import { ResultTable } from "@/components/public/LeaderboardResults";
-import { PublicBackLink } from "@/components/public/PublicBackLink";
-import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
+import { LeaderboardShell } from "@/components/public/LeaderboardShell";
 import { TeamLeaderboard } from "@/components/public/TeamLeaderboard";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
 import {
   loadPublicPhotos,
   loadPublishedRounds,
@@ -24,10 +19,10 @@ import {
   topTeams,
 } from "@/lib/data/public-team-leaderboard";
 import { loadPublicProgramme, loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
-import { sampleTeamLeaderboardData } from "@/lib/demo/public-leaderboard";
 import { getI18n } from "@/lib/i18n/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
+import { DemoLeaderboard } from "./DemoLeaderboard";
 
 export const metadata: Metadata = { title: "Leaderboard" };
 export const dynamic = "force-dynamic";
@@ -55,24 +50,7 @@ export default async function LeaderboardPage({
   const { t } = await getI18n();
 
   if (!isSupabaseConfigured()) {
-    const data = sampleTeamLeaderboardData();
-    const { teams, unpaired } = buildTeamLeaderboard(data);
-    return (
-      <LeaderboardShell
-        eventName={data.eventName}
-        dateText={data.rounds.map((round) => dateLabel(round.playDate)).join(" · ")}
-      >
-        <TeamLeaderboard
-          teams={topTeams(rankTeams(filterTeams(teams, filters)), 10)}
-          options={teamOptions(data)}
-          filters={filters}
-          rounds={data.rounds}
-          tieBreak={data.tieBreak}
-          unpaired={unpaired}
-          eventName={data.eventName}
-        />
-      </LeaderboardShell>
-    );
+    return <DemoLeaderboard filters={filters} />;
   }
 
   const client = createSupabasePublicClient();
@@ -152,43 +130,6 @@ export default async function LeaderboardPage({
         <Link href="/roster">{t("programme.navPlayers")}</Link>
       </p>
     </LeaderboardShell>
-  );
-}
-
-async function LeaderboardShell({
-  eventName,
-  dateText,
-  children,
-}: {
-  eventName?: string | null;
-  dateText?: string;
-  children: ReactNode;
-}) {
-  const { t } = await getI18n();
-  return (
-    <main className="public public-pairings mobile-bar-space">
-      <header className="public-head !p-4 sm:!p-5">
-        <PublicBackLink label={t("pairings.backHome")} />
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <TeeLineLogo variant="reverse" width={172} />
-            <span className="leading-tight">
-              <b className="block font-display text-[13px] font-semibold">Leaderboard</b>
-              <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-            </span>
-          </div>
-          <HelpButton audience="player" screen="pairings" />
-        </div>
-        <h1 className="mt-3 font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-          {eventName ?? "Leaderboard"}
-        </h1>
-        {dateText && <p className="text-on-forest-muted">{dateText}</p>}
-      </header>
-
-      <PublicTournamentNav active="leaderboard" />
-      {children}
-      <PlayerBottomBar />
-    </main>
   );
 }
 

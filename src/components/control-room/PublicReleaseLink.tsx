@@ -47,7 +47,7 @@ export function PublicReleaseLink({ tournamentId }: { tournamentId: string }) {
       <span>
         {held.length === 1 ? "1 public section is held" : `${held.length} public sections are held`}
       </span>
-      <span className="ml-auto text-forest underline">Release</span>
+      <span className="ml-auto text-ink underline">Release</span>
     </Link>
   );
 }
