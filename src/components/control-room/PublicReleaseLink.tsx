@@ -40,7 +40,7 @@ export function PublicReleaseLink({ tournamentId }: { tournamentId: string }) {
 
   return (
     <Link
-      href="/setup#public-release"
+      href="/setup#public"
       className="mt-2.5 flex items-center gap-2 rounded-[10px] border border-gold/50 bg-gold/10 px-3 py-2 text-[12px] font-semibold text-ink no-underline hover:bg-gold/20"
     >
       <LockKeyhole className="size-4 shrink-0" aria-hidden="true" />
