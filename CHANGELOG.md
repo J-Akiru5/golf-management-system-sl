@@ -9,6 +9,18 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.32.2] - 2026-11-10
+
+### Added
+- **Field maintenance scripts for the 24th Bamboo Tee.** `scripts/seed-bamboo-tee-players.ts`
+  adds the players who are on the club sheet but were never entered, name only and marked for
+  review. `scripts/sync-bamboo-tee-pairs.ts` applies the sheet's pairings.
+  `scripts/apply-bamboo-tee-schedule.ts` sets every registration's playing days and morning or
+  afternoon from `supabase/seed/bamboo-tee-2026-schedule.psv`, the sheet in 602 rows.
+  `scripts/apply-bamboo-tee-zero-index.ts` records index 0 where none was on file. All of them
+  support `--dry-run`, read the project keys from the environment, and are idempotent. No
+  migration. No change to application behaviour, so this release changes no screen.
+
 ## [0.32.1] - 2026-11-09
 
 ### Fixed
