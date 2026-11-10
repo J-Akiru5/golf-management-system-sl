@@ -23,12 +23,18 @@ ownership:
   - src/components/public/ProgrammeView.tsx
   - src/components/public/RosterView.tsx
   - src/components/public/TeamLeaderboard.tsx
+  - src/components/control-room/panels.tsx
+  - src/components/control-room/PublicReleaseLink.tsx
+  - src/components/desk/PublicReleaseCard.tsx
   - src/lib/data/public.ts
   - src/lib/data/public-results.ts
   - src/lib/data/public-profile.ts
   - src/lib/data/types.ts
+  - src/lib/data/public-release.ts
+  - src/lib/data/supabase/public-release.ts
   - src/lib/data/tournaments.ts
   - src/lib/data/supabase/tournaments.ts
+  - src/lib/demo/public-release.ts
   - src/lib/i18n/dictionaries/en.ts
   - src/lib/i18n/dictionaries/tl.ts
   - src/lib/i18n/dictionaries/hil.ts
