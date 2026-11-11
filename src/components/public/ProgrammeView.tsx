@@ -4,13 +4,13 @@ import Link from "next/link";
 import { Fragment, type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/bits";
 import { fmtIso } from "@/lib/data/labels";
-import type { PublicProgramme } from "@/lib/data/types";
+import { daySessionBadge, daySessionSummary } from "@/lib/data/sessions";
+import type { PublicProgramme, PublicTeeTimeDay, PublicTeeTimePlayer } from "@/lib/data/types";
 import { fmtIndex, fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { matchesName } from "@/lib/name-match";
 import { manilaToday } from "@/lib/player/dashboard";
 import { openingDayNumber } from "@/lib/public/programme-day";
-import { confirmedTeeTime, teeBoardSections } from "@/lib/public/tee-board";
 
 /**
  * The public programme: the day's tee times, the player cards and the organizers' rules of play.
@@ -20,27 +20,57 @@ import { confirmedTeeTime, teeBoardSections } from "@/lib/public/tee-board";
  * birthdates, gender, notes and photos are not part of the type and cannot leak from here.
  *
  * The pairings stay separate (`PairingsView`) so the pairings page can put them above the tee-time
- * board and the rules, while the roster and the profile have their own pages. The tee-time board is
- * deliberately only a timetable: one row per player, grouped by the session the day runs (AM, PM, or
- * "time not assigned"), never by group, pair or hole. That is what keeps the board readable while
- * the draw itself is held.
+ * board and the rules, while the roster and the profile have their own pages.
  *
  * Everything here is read one-handed on a phone: the day chips wrap instead of clipping, and every
  * control is at least 44px tall.
  */
 
-/**
- * One player's place on the board, flattened across every day so a search is never day-bound.
- * A row carries the player's own name and time. It deliberately has no room for a group mate, a
- * pair number or a starting hole: the board may not answer those questions.
- */
+const PILL =
+  "inline-flex min-h-6 shrink-0 items-center rounded-full border border-line bg-surface-raised px-2 text-[12px] font-semibold whitespace-nowrap text-ink-muted";
+
+interface TimeGroup {
+  key: string;
+  teeTime: string | null;
+  startHole: number | null;
+  session: "AM" | "PM" | null;
+  players: PublicTeeTimePlayer[];
+}
+
+/** One card per confirmed time and hole; everyone not confirmed shares a final card. */
+function groupByTime(day: PublicTeeTimeDay, dayIndex: number, dayCount: number): TimeGroup[] {
+  const groups = new Map<string, TimeGroup>();
+  for (const player of day.players) {
+    const key =
+      player.teeTime === null
+        ? "to-be-confirmed"
+        : `${player.teeTime}|${player.startHole ?? "no-hole"}`;
+    const session = player.teeTime
+      ? daySessionBadge({ dayIndex, dayCount, teeTime: player.teeTime }).session
+      : null;
+    const group = groups.get(key) ?? {
+      key,
+      teeTime: player.teeTime,
+      startHole: player.startHole,
+      session,
+      players: [],
+    };
+    group.players.push(player);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
+/** One player's place on the board, flattened across every day so a search is never day-bound. */
 interface SearchRow {
   key: string;
   dayNumber: number;
   dayLabel: string;
   playDate: string;
   teeTime: string | null;
+  startHole: number | null;
   name: string;
+  mates: string[];
 }
 
 /** Lower case, no accents, no punctuation: the words the reader typed, without the decoration. */
@@ -83,46 +113,47 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
   const searching = query.trim() !== "";
   const day = programme.days.find((item) => item.dayNumber === selected) ?? programme.days[0];
   const dayIndex = day ? programme.days.findIndex((item) => item.dayNumber === day.dayNumber) : -1;
-  // The day is a timetable: its AM players, its PM players, then anyone whose session cannot be
-  // read from a confirmed time. A section with nobody in it is not printed.
-  const sections = useMemo(
-    () =>
-      day
-        ? teeBoardSections(day, dayIndex, programme.days.length).filter(
-            (section) => section.players.length > 0,
-          )
-        : [],
+  const groups = useMemo(
+    () => (day ? groupByTime(day, dayIndex, programme.days.length) : []),
     [day, dayIndex, programme.days.length],
   );
   const chipRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Every player on every day: their own name and their confirmed time, and nothing about who
-  // they play with. A search looks across all days, so tomorrow answers too.
+  // Every player on every day, with the group they tee off with. A search looks across all days,
+  // so "when does my buddy play?" is answered even when the buddy plays tomorrow.
   const rows = useMemo(() => {
     const all: SearchRow[] = [];
-    for (const item of programme.days) {
-      item.players.forEach((player, playerIndex) => {
-        const name = player.name.trim();
-        if (name === "") return;
-        const teeTime = confirmedTeeTime(player);
-        all.push({
-          key: `${item.dayNumber}|${name}|${teeTime ?? "no-time"}|${playerIndex}`,
-          dayNumber: item.dayNumber,
-          dayLabel: item.label,
-          playDate: item.playDate,
-          teeTime,
-          name,
+    programme.days.forEach((item, index) => {
+      for (const group of groupByTime(item, index, programme.days.length)) {
+        group.players.forEach((player, playerIndex) => {
+          all.push({
+            key: `${item.dayNumber}|${group.key}|${playerIndex}`,
+            dayNumber: item.dayNumber,
+            dayLabel: item.label,
+            playDate: item.playDate,
+            teeTime: group.teeTime,
+            startHole: group.startHole,
+            name: player.name,
+            mates: group.players
+              .filter((_, mateIndex) => mateIndex !== playerIndex)
+              .map((mate) => mate.name),
+          });
         });
-      });
-    }
+      }
+    });
     return all;
   }, [programme.days]);
 
   const results = useMemo(() => {
     if (!searching) return [];
     const order = (row: SearchRow) =>
-      [String(row.dayNumber).padStart(3, "0"), row.teeTime ?? "99:99", row.name].join("|");
+      [
+        String(row.dayNumber).padStart(3, "0"),
+        row.teeTime ?? "99:99",
+        String(row.startHole ?? 99).padStart(2, "0"),
+        row.name,
+      ].join("|");
     return rows
       .filter((row) => matchesName(row.name, query))
       .sort((a, b) => order(a).localeCompare(order(b)));
@@ -203,16 +234,25 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
                   <b className="text-[15px] leading-6 font-semibold text-ink-muted">
                     {row.dayLabel} · {fmtIso(row.playDate)}
                   </b>
-                  {row.teeTime !== null && (
-                    <b className="font-display text-[20px] leading-6 font-bold tabular-nums text-ink">
-                      {fmtTime(row.teeTime)}
-                    </b>
-                  )}
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    {row.teeTime !== null && (
+                      <b className="font-display text-[20px] leading-6 font-bold tabular-nums text-ink">
+                        {fmtTime(row.teeTime)}
+                      </b>
+                    )}
+                    {row.teeTime !== null && row.startHole !== null && (
+                      <span className={PILL}>{t("programme.hole", { hole: row.startHole })}</span>
+                    )}
+                  </span>
                 </div>
-                {/* One name, the player who was searched for. No group mate, no pair, no hole. */}
-                <p className="m-0 text-[16px] leading-6 text-ink" data-testid="tee-search-name">
+                <p className="m-0 text-[16px] leading-6 text-ink">
                   <HighlightedName name={row.name} query={query} />
                 </p>
+                {row.mates.length > 0 && (
+                  <p className="hint m-0">
+                    {t("programme.withGroup", { names: row.mates.join(", ") })}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
@@ -252,41 +292,48 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
             })}
           </div>
 
-          <h3 className="m-0 text-[17px] leading-6">
-            {day.label} · {fmtIso(day.playDate)}
-          </h3>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h3 className="m-0 text-[17px] leading-6">
+              {day.label} · {fmtIso(day.playDate)}
+            </h3>
+            <span className="hint m-0">
+              {daySessionSummary(dayIndex, programme.days.length)}
+              {day.startTime
+                ? ` · ${t("programme.dayStart", { time: fmtTime(day.startTime) })}`
+                : null}
+            </span>
+          </div>
 
-          {sections.length === 0 ? (
+          {groups.length === 0 ? (
             <p className="muted">{t("programme.noPlayersDay")}</p>
           ) : (
-            <div className="grid items-start gap-3 sm:grid-cols-2" data-testid="tee-sessions">
-              {sections.map((section) => (
-                <article
-                  key={section.key}
-                  className="tee-slot"
-                  data-testid="tee-session"
-                  data-session={section.key}
-                >
-                  <h4 className="m-0 text-[13px] leading-5 font-semibold tracking-wide text-ink-muted uppercase">
-                    {section.key === "unassigned" ? t("programme.sessionUnassigned") : section.key}
-                  </h4>
-                  <ul className="plain">
-                    {section.players.map((player, index) => (
+            <div className="tee-slots">
+              {groups.map((group) => (
+                <article key={group.key} className="tee-slot" data-testid="tee-time-group">
+                  {/* A time the desk has not confirmed is not shown at all: no placeholder, and
+                      no head row to leave a gap. */}
+                  {group.teeTime !== null && (
+                    <div className="tee-slot-head flex-wrap">
+                      <b className="font-display text-[22px] leading-7 font-bold tabular-nums text-ink">
+                        {fmtTime(group.teeTime)}
+                      </b>
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        {group.session && <span className={PILL}>{group.session}</span>}
+                        {group.startHole !== null && (
+                          <span className={PILL}>
+                            {t("programme.hole", { hole: group.startHole })}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  <ul className="plain space-y-1">
+                    {group.players.map((player, index) => (
                       <li
                         key={`${player.name}-${index}`}
-                        data-testid="tee-session-player"
-                        className="flex min-h-11 items-center justify-between gap-3 text-[16px] leading-6 text-ink"
+                        className="flex min-h-11 items-center text-[16px] leading-6 text-ink"
                       >
-                        <span data-testid="tee-session-name" className="min-w-0 break-words">
-                          {player.name}
-                        </span>
-                        {/* The time sits beside the name only when the desk confirmed it. A row
-                            with no time belongs under "time not assigned" and prints nothing. */}
-                        {player.teeTime !== null && (
-                          <b className="shrink-0 font-display text-[17px] leading-6 font-bold tabular-nums text-ink">
-                            {fmtTime(player.teeTime)}
-                          </b>
-                        )}
+                        <span className="min-w-0 break-words">{player.name}</span>
                       </li>
                     ))}
                   </ul>
