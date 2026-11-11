@@ -10,6 +10,12 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **The organizer can load their own pairing sheet on the Draw page.** An owner or organizer
+  chooses an .xlsx workbook and the worksheet, reviews matched, fuzzy, ambiguous and not found
+  names, ticks any fuzzy suggestion they accept, and replaces only the playing day on screen. The
+  workbook is read in the browser and nothing is uploaded. Names that are not found or are
+  ambiguous are listed with their hole and session so they can be fixed on the registration desk.
+  No migration.
 - **The theme control is on every public tournament page (issue #217).** `/pairings`, `/roster`,
   `/leaderboard` and `/rules` now show the existing System / Light (Ivory) / Dark (Charcoal)
   selector beside their language and help controls. The theme system, persistence, pre-paint

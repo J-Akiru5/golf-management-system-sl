@@ -114,6 +114,7 @@ export function planDrawJobs(
       if (was?.published && !now.published) jobs.push({ kind: "unpublish", tournamentId });
       return jobs;
     }
+    case "replaceDraw":
     case "move":
     case "withdrawFromDraw":
     case "restoreToDraw":
