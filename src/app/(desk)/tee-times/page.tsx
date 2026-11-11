@@ -34,6 +34,7 @@ import {
   sessionForRow,
 } from "@/lib/draw/tee-times";
 import { fmtIndex, fmtTime } from "@/lib/format";
+import { OFFLINE_WRITE_BLOCKED } from "@/lib/offline/cache";
 import { useDesk } from "@/lib/store/desk-store";
 
 /**
@@ -50,6 +51,7 @@ export default function TeeTimesPage() {
     caddies,
     adapters,
     status,
+    offline,
     draw,
     drawDay,
     setDrawDay,
@@ -490,6 +492,15 @@ export default function TeeTimesPage() {
                   : "No day start time is set, so the event's first tee time is the floor."
               }`}
             >
+              {/* The day starts, the batch buttons, the tick and the caddie picker all write to the
+                  club database. Offline they are refused with nothing queued, so the refusal is
+                  said here, at the top of the screen, before the tap. */}
+              {offline && (
+                <div className="notice warn" role="alert">
+                  <b>Not connected.</b> {OFFLINE_WRITE_BLOCKED}
+                </div>
+              )}
+
               <div className="grid gap-2 rounded-[12px] border border-line bg-surface-sunken p-3">
                 <div className="flex flex-wrap items-end gap-2">
                   <label className="field w-36">
@@ -510,7 +521,7 @@ export default function TeeTimesPage() {
                     variant="secondary"
                     size="sm"
                     className="min-h-11 md:min-h-0"
-                    disabled={dayStartSaving || dayStart === (day.startTime ?? "")}
+                    disabled={dayStartSaving || dayStart === (day.startTime ?? "") || offline}
                     onClick={() => void saveDayStart(dayStart)}
                   >
                     {dayStartSaving ? "Saving…" : "Save day start"}
@@ -544,7 +555,7 @@ export default function TeeTimesPage() {
                     variant="secondary"
                     size="sm"
                     className="min-h-11 md:min-h-0"
-                    disabled={pmStartSaving || pmStart === (day.pmStartTime ?? "")}
+                    disabled={pmStartSaving || pmStart === (day.pmStartTime ?? "") || offline}
                     onClick={() => void savePmStart(pmStart)}
                   >
                     {pmStartSaving ? "Saving…" : "Save PM start"}
@@ -630,7 +641,7 @@ export default function TeeTimesPage() {
                       variant="primary"
                       size="sm"
                       className="min-h-11 md:min-h-0"
-                      disabled={batching !== null || untimed === 0}
+                      disabled={batching !== null || untimed === 0 || offline}
                       onClick={() => void applyBatch("missing")}
                     >
                       {batching === "missing"
@@ -641,7 +652,7 @@ export default function TeeTimesPage() {
                       variant="ghost"
                       size="sm"
                       className="min-h-11 md:min-h-0"
-                      disabled={batching !== null}
+                      disabled={batching !== null || offline}
                       onClick={() => void applyBatch("all")}
                     >
                       {batching === "all" ? "Overwriting…" : `Overwrite all ${rows.length}`}
@@ -650,7 +661,7 @@ export default function TeeTimesPage() {
                       variant="secondary"
                       size="sm"
                       className="min-h-11 md:min-h-0"
-                      disabled={batching !== null || fromDraw === 0}
+                      disabled={batching !== null || fromDraw === 0 || offline}
                       onClick={() => void applyFromDraw()}
                     >
                       {batching === "draw"
@@ -739,6 +750,7 @@ export default function TeeTimesPage() {
                             entry={entry}
                             player={player}
                             day={day}
+                            offline={offline}
                             caddies={caddies.filter((caddie) => caddie.active)}
                             courseHoles={tournament.config.holes}
                             sessions={sessions}
@@ -791,7 +803,7 @@ export default function TeeTimesPage() {
                 variant="secondary"
                 size="sm"
                 className="min-h-11 flex-1"
-                disabled={batching !== null || fromDraw === 0}
+                disabled={batching !== null || fromDraw === 0 || offline}
                 onClick={() => void applyFromDraw()}
               >
                 {batching === "draw" ? "Taking the draw…" : `Take the draw's times (${fromDraw})`}
@@ -808,6 +820,7 @@ function TeeRow({
   entry,
   player,
   day,
+  offline,
   caddies,
   courseHoles,
   sessions,
@@ -818,6 +831,8 @@ function TeeRow({
   entry: RegistrationEntry;
   player: PlayerRecord;
   day: TournamentDay;
+  /** True when the phone has no connection: every write here would be refused. */
+  offline: boolean;
   caddies: Caddie[];
   courseHoles: number;
   /** The morning and afternoon this day runs, read from what the desk stored. */
@@ -915,7 +930,7 @@ function TeeRow({
    * tick back and says why inline.
    */
   async function toggleConfirmed(next: boolean) {
-    if (saving) return;
+    if (saving || offline) return;
     const previous = confirmed;
     const resolved = resolveAssignment(teeTime.trim(), startHole.trim(), next);
     if ("error" in resolved) {
@@ -991,7 +1006,7 @@ function TeeRow({
             type="checkbox"
             className="size-5"
             checked={confirmed}
-            disabled={saving}
+            disabled={saving || offline}
             aria-label={`Confirm the tee time for ${player.name} on ${day.label}`}
             onChange={(e) => void toggleConfirmed(e.target.checked)}
           />
@@ -1002,7 +1017,7 @@ function TeeRow({
       <td>
         <select
           value={caddieId}
-          disabled={caddieSaving}
+          disabled={caddieSaving || offline}
           title="Optional. A player can be timed and confirmed without a caddie."
           aria-label={`Caddie for ${player.name} on ${day.label} (optional)`}
           className="w-36 text-[16px] md:text-sm"
@@ -1040,7 +1055,7 @@ function TeeRow({
             variant="primary"
             size="sm"
             className="min-h-11 md:min-h-0"
-            disabled={saving}
+            disabled={saving || offline}
             onClick={() => void save()}
           >
             <Check aria-hidden="true" /> {saving ? "Saving…" : "Save"}
@@ -1050,7 +1065,7 @@ function TeeRow({
               variant="ghost"
               size="sm"
               className="min-h-11 md:min-h-0"
-              disabled={saving}
+              disabled={saving || offline}
               title="Clear the time and hole for this day"
               onClick={() =>
                 void save({ teeTime: null, startHole: null, wave: null, confirmed: false })
