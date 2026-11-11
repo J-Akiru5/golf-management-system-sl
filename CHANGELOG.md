@@ -9,6 +9,17 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- **The public tee-times board is a timetable, not a draw sheet.** Each playing day is split into
+  its AM and PM starts, and each player appears once, in name order, with their confirmed time. A
+  player with no confirmed time stands under "Time not assigned" and no time is printed. No
+  migration.
+
+### Removed
+- **The tee-times board and its search no longer show the pairings or a starting hole.** No "With
+  …", no group-mate names, no pooled multi-name cards and no hole badge on either the day board or
+  a search result: a player sees their own row only. No migration.
+
 ## [0.34.0] - 2026-11-11
 
 ### Added
