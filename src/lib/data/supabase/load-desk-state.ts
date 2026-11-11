@@ -80,7 +80,8 @@ export function pickRoundForLoad(
   return pickRoundForDay(rows, null);
 }
 
-function toPublished(value: Json | null, tournamentId: string): Published | null {
+/** Reads a stored `published_snapshot` back into the snapshot players were shown. */
+export function toPublished(value: Json | null, tournamentId: string): Published | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
   if (
@@ -97,14 +98,25 @@ function toPublished(value: Json | null, tournamentId: string): Published | null
     version: typeof raw.version === "number" ? raw.version : undefined,
     groups: raw.groups
       .filter((g): g is Record<string, unknown> => typeof g === "object" && g !== null)
-      .map((g) => ({
-        number: Number(g.number),
-        startHole: Number(g.startHole),
-        wave: typeof g.wave === "string" ? g.wave : null,
-        time: String(g.time),
-        flight: String(g.flight),
-        players: Array.isArray(g.players) ? g.players.map(String) : [],
-      })),
+      .map((g) => {
+        // A snapshot published after the desk published every day together carries the day and the
+        // player ids. They must survive a load: publishing one day again keeps the other days by
+        // reading them from this copy, so dropping them drops those days from the public page.
+        const dayNumber =
+          typeof g.dayNumber === "number" && Number.isFinite(g.dayNumber) ? g.dayNumber : undefined;
+        return {
+          number: Number(g.number),
+          startHole: Number(g.startHole),
+          wave: typeof g.wave === "string" ? g.wave : null,
+          time: String(g.time),
+          flight: String(g.flight),
+          players: Array.isArray(g.players) ? g.players.map(String) : [],
+          ...(Array.isArray(g.playerIds) ? { playerIds: g.playerIds.map(String) } : {}),
+          ...(dayNumber === undefined ? {} : { dayNumber }),
+          ...(typeof g.dayLabel === "string" ? { dayLabel: g.dayLabel } : {}),
+          ...(typeof g.playDate === "string" ? { playDate: g.playDate } : {}),
+        };
+      }),
   };
 }
 
