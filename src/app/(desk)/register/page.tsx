@@ -38,6 +38,7 @@ import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Pager } from "@/components/paging/Pager";
 import { usePagedList } from "@/components/paging/usePagedList";
 import { Button } from "@/components/ui/button";
+import { bulkConfirmCopy } from "@/lib/data/bulk-confirm";
 import type { DaySessionChoice } from "@/lib/data/day-selection";
 import { selectIndexForCutOff } from "@/lib/data/frozen";
 import { instructionText } from "@/lib/data/instructions";
@@ -52,6 +53,7 @@ import {
   type RegistrationEntry,
 } from "@/lib/data/types";
 import { displayName, fmtIndex, photoOf } from "@/lib/format";
+import { OFFLINE_WRITE_BLOCKED } from "@/lib/offline/cache";
 import { nextPairNumber } from "@/lib/pairs/pairs";
 import { groupIntoTeams } from "@/lib/pairs/registration-teams";
 import { shrinkPhoto } from "@/lib/photo";
@@ -143,6 +145,7 @@ function RegisterDesk() {
     tees,
     member,
     reload,
+    offline,
   } = useDesk();
   const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
   /** Payment is a desk job: the desk role may record it even though it cannot override routing. */
@@ -303,6 +306,13 @@ function RegisterDesk() {
     () => listRows.filter(({ e }) => e.status === "needs_review").length,
     [listRows],
   );
+  // The batch is the whole filtered list, so the button and the line above the list must say that,
+  // not "shown". `page` counts teams, so only its page count is used here.
+  const bulkCopy = bulkConfirmCopy({
+    count: bulkTargets.length,
+    filtered: listQueryText !== "",
+    pageCount: page.pageCount,
+  });
 
   async function saveDays(
     entry: RegistrationEntry,
@@ -1345,6 +1355,13 @@ function RegisterDesk() {
               title="Review the entry"
               subtitle="Exactly what will be written. Nothing is saved until you confirm."
             >
+              {/* The save is a database write. Offline it will be refused, and the strip at the top
+                  of the screen is easy to miss when the operator is already at the confirm button. */}
+              {offline && (
+                <div className="notice warn" role="alert">
+                  <b>Not connected.</b> {OFFLINE_WRITE_BLOCKED}
+                </div>
+              )}
               <RegisterConfirm
                 event={{
                   name: tournament.name,
@@ -1452,7 +1469,7 @@ function RegisterDesk() {
                   title={
                     bulkTargets.length === 0
                       ? "Every parked entry is either not eligible or shares a name with another entry. Fix or review those rows first."
-                      : "Confirms the entries in the current list filter, not only this page. An entry missing a birthdate, gender or handicap index is confirmed as provisional."
+                      : bulkCopy.note
                   }
                   onClick={() =>
                     setBulkAsk({
@@ -1461,7 +1478,7 @@ function RegisterDesk() {
                     })
                   }
                 >
-                  <BadgeCheck aria-hidden="true" /> Confirm {bulkTargets.length} shown
+                  <BadgeCheck aria-hidden="true" /> {bulkCopy.label}
                 </Button>
               )}
               <Button
@@ -1488,6 +1505,12 @@ function RegisterDesk() {
               placeholder="Filter by name, NGAP ID or role"
             />
           </label>
+          {/* Before the tap: what the batch covers, and that it cannot be undone. */}
+          {canConfirmMany && listedNeedsReview > 0 && bulkTargets.length > 0 && (
+            <p className="hint" role="note">
+              {bulkCopy.note}
+            </p>
+          )}
           {listError && (
             <div className="notice bad" role="alert">
               {listError}
