@@ -9,6 +9,29 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-11-11
+
+### Added
+- **Search on the public tee-times board.** A player can type any part of any name, in any word
+  order, and find their day, time, hole and group mates. The search covers every day, not only the
+  day on screen.
+- **A player's tee time and starting hole on the public profile.** Each playing day shows the
+  confirmed start and hole. A day with no time yet shows nothing rather than a placeholder.
+
+### Changed
+- **The roster search matches names written in any order.** "charles matiling" and "MATILING,
+  CHARLES" both find the player. One shared matcher now serves the roster, the pairings list and the
+  tee-times board; it ignores case, punctuation, accents and word order.
+- **The tee-times board opens on today** in Asia/Manila, else the next upcoming day, else the first
+  day.
+- **The public pages wrap instead of overflowing at 360px.** Day chips and the tournament tabs wrap,
+  and the footer links carry a 44px tap target.
+
+### Removed
+- **"Time to be confirmed" and "Day start time not set" are gone from the public pages.** A time
+  that does not exist is not shown, and no time is guessed. No migration.
+
+
 ### Changed
 - `pnpm check` runs typecheck, lint, tests and build in order, and `pnpm check:ui` starts a dev server, runs the browser checks and stops it. CI calls the same two commands, so a local pass and a CI pass mean the same thing.
 - `pnpm release:check` compares `package.json`, `VERSION`, `CHANGELOG.md` and the tag before a release is tagged.
