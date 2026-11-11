@@ -15,10 +15,12 @@ import {
   groupAlerts,
   isUnreadMarkable,
   markableCount,
+  parseReadBroadcast,
   registrationAlerts,
   type StoredNotification,
   shouldCheckAlerts,
   showsAllClear,
+  splitAlerts,
   storedIdOf,
 } from "@/components/notifications/alerts";
 import { Button } from "@/components/ui/button";
@@ -70,6 +72,32 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
   const [sync, setSync] = useState<AlertCheckState>(connected ? "checking" : "idle");
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const readChannel = useRef<BroadcastChannel | null>(null);
+
+  // A read mark in one tab should not wait for the other tab's next poll. The channel carries only
+  // ids; the receiver applies them to the rows it already has.
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel("teeline:alert-read");
+    readChannel.current = channel;
+    channel.onmessage = (event: MessageEvent) => {
+      const update = parseReadBroadcast(event.data);
+      if (!update) return;
+      const storedIds = new Set(update.storedIds);
+      setStored((current) =>
+        current.map((row) => (storedIds.has(row.id) ? { ...row, read: true } : row)),
+      );
+      setLocalRead((current) => {
+        const next = new Set(current);
+        for (const id of update.localIds) next.add(id);
+        return next;
+      });
+    };
+    return () => {
+      channel.close();
+      readChannel.current = null;
+    };
+  }, []);
 
   // The live draw issues, exactly as the Issues panel sees them.
   const issues = useMemo(
@@ -97,8 +125,9 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     return buildAlerts(stored, issues, pending);
   }, [stored, issues, players, registrations, connected]);
   const alerts = useMemo(() => applyReadState(allAlerts, localRead), [allAlerts, localRead]);
+  const { unread, read } = useMemo(() => splitAlerts(alerts), [alerts]);
   const count = badgeCount(alerts);
-  const groups = groupAlerts(alerts);
+  const groups = useMemo(() => groupAlerts(unread), [unread]);
   const markable = markableCount(alerts);
 
   /**
@@ -251,6 +280,10 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     });
   }
 
+  function broadcastRead(storedIds: string[], localIds: string[]) {
+    readChannel.current?.postMessage({ storedIds, localIds });
+  }
+
   /**
    * Marks one alert read. A stored row gets a per-user read row so the mark survives a refresh; a
    * live info item has no row, so the mark is local and goes when the issue does. Live blocking
@@ -261,14 +294,21 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     const notificationId = storedIdOf(alert);
     if (!notificationId || !connected || !tournamentId) {
       markLocally([alert.id]);
+      broadcastRead([], [alert.id]);
       return;
     }
+    // Move it out of the unread list now. The database write follows; a failure puts the row back
+    // and reports the error, so the panel never claims a read that did not persist.
+    setStored((current) =>
+      current.map((row) => (row.id === notificationId ? { ...row, read: true } : row)),
+    );
     try {
       await markNotificationRead(createSupabaseBrowserClient(), notificationId);
-      setStored((current) =>
-        current.map((row) => (row.id === notificationId ? { ...row, read: true } : row)),
-      );
+      broadcastRead([notificationId], []);
     } catch {
+      setStored((current) =>
+        current.map((row) => (row.id === notificationId ? { ...row, read: false } : row)),
+      );
       setSync("error");
     }
   }
@@ -278,17 +318,21 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
     const targets = alerts.filter(isUnreadMarkable);
     if (targets.length === 0) return;
     const localIds = targets.filter((alert) => storedIdOf(alert) === null).map((alert) => alert.id);
-    const hasStored = targets.some((alert) => storedIdOf(alert) !== null);
+    const storedIds = targets.map(storedIdOf).filter((id): id is string => id !== null);
+    const hasStored = storedIds.length > 0;
     if (hasStored && connected && tournamentId) {
+      const previous = stored;
+      setStored((current) => current.map((row) => ({ ...row, read: true })));
       try {
         await markNotificationsRead(createSupabaseBrowserClient(), tournamentId);
-        setStored((current) => current.map((row) => ({ ...row, read: true })));
       } catch {
+        setStored(previous);
         setSync("error");
         return;
       }
     }
     if (localIds.length > 0) markLocally(localIds);
+    broadcastRead(storedIds, localIds);
   }
 
   return (
@@ -375,7 +419,7 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
             </div>
           )}
 
-          {showsAllClear(sync, alerts.length) && (
+          {showsAllClear(sync, count) && (
             <p className="py-4 text-[14px] text-ink-muted" role="status">
               All clear. Nothing is stopping you from publishing.
             </p>
@@ -430,10 +474,41 @@ export function AlertsBell({ overlay = false }: { overlay?: boolean }) {
             </section>
           ))}
 
+          {read.length > 0 && (
+            <details className="mt-2 border-t border-line pt-2" data-testid="alerts-read">
+              <summary className="cursor-pointer text-[13px] font-semibold text-ink-muted">
+                Read ({read.length})
+              </summary>
+              <div className="mt-2 grid gap-1.5">
+                {read.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="grid gap-1 rounded-[10px] border border-line px-3 py-2 opacity-70"
+                  >
+                    <Link
+                      href={alert.href}
+                      onClick={() => {
+                        setOpen(false);
+                        bellRef.current?.focus();
+                      }}
+                      className="grid gap-0.5 no-underline"
+                    >
+                      <b className="text-[14px] text-ink">{alert.title}</b>
+                      {alert.detail && <span className="hint">{alert.detail}</span>}
+                    </Link>
+                    <span className="hint inline-flex items-center gap-1">
+                      <Check className="size-3.5" aria-hidden="true" /> Read
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
           {markable > 0 && (
             <p className="hint border-t border-line pt-2">
-              Read marks are per person. Blocking and warning issues from the draw stay in the badge
-              until they are fixed.
+              Read marks are per person. Info notices leave the badge when read. Blocking and
+              warning items stay in the badge until the cause is fixed.
             </p>
           )}
         </div>

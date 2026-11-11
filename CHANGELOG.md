@@ -9,6 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Fixed
+- **Marking a notification as read moves it out of the unread list (issue #219, duplicate of #197).**
+  The alert moves optimistically, the database write follows, and a failure puts it back. Read
+  items sit under a collapsed **Read (N)** section instead of staying among the unread items, and a
+  `BroadcastChannel` updates other open tabs immediately. The badge still counts unresolved blocking
+  and warning items until their cause is fixed; that rule is unchanged and now stated in the panel.
+  No migration.
+
 ## [0.34.1] - 2026-11-11
 
 ### Fixed
