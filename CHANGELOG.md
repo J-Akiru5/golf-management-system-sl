@@ -9,6 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.35.1] - 2026-11-12
+
+### Changed
+- **The public pairings page puts the next step on a phone's first screen.** Below 640 px the head
+  is a compact app bar (an arrow back button, the theme, language and help controls, then the event
+  name and dates), the organizer's advisory is one row that opens on a tap, and Pairings, Players
+  and Leaderboard are a three-segment control. The name search and the first group now sit on the
+  first screen at 360 px. Wider screens are unchanged. No migration.
+
 ## [0.35.0] - 2026-11-12
 
 ### Added
