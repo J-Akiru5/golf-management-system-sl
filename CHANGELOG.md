@@ -27,6 +27,9 @@ Supabase project, because the code and the database are released separately.
   burned down.
 
 ### Changed
+- **The public tee-times board runs down the holes.** Each playing day's cards come out session
+  first, then time, then starting hole, so a shotgun start reads 1, 2, 3 instead of first-name
+  order. A start with no hole follows the ones that have one. No migration.
 - **The public tee-times board shows cards and the starting hole again.** The 0.34.1 change that
   cut the board down to one row per player with a name and a time is reverted on the owner's
   instruction: each confirmed start is a card with its time, hole and the players on it, and the
