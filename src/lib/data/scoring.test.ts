@@ -192,7 +192,8 @@ describe("demo scoring repository", () => {
       playerId: "p1",
       scorerId: "s2",
       source: "manual",
-      entries: parEntries().map((entry) => (entry.hole === 4 ? { ...entry, strokes: 5 } : entry)),
+      // Hole 4 is a par 5, so the stored score has to actually move for this to be a correction.
+      entries: parEntries().map((entry) => (entry.hole === 4 ? { ...entry, strokes: 6 } : entry)),
       writtenTotal: 73,
       captureKey: "correction-card",
       reason: "Hole 4 was written as 4; the card says 5.",
@@ -206,6 +207,46 @@ describe("demo scoring repository", () => {
       { revision: 1, status: "approved" },
       { revision: 2, status: "submitted" },
     ]);
+  });
+
+  it("does not write a second card when the same card arrives again with a new capture key", async () => {
+    const repo = repository();
+    await repo.submitCard("tournament-1", {
+      playerId: "p1",
+      scorerId: "s2",
+      source: "manual",
+      entries: parEntries(),
+      writtenTotal: 72,
+      captureKey: "capture-a",
+    });
+
+    const again = await repo.submitCard("tournament-1", {
+      playerId: "p1",
+      scorerId: "s2",
+      source: "manual",
+      entries: parEntries(),
+      writtenTotal: 72,
+      captureKey: "capture-b",
+    });
+
+    expect(again.cards).toHaveLength(1);
+  });
+
+  it("does not create a revision when a correction changed nothing", async () => {
+    const repo = repository();
+    await submitAndApprove(repo, "p1", "s2", "original-card");
+
+    const unchanged = await repo.submitCard("tournament-1", {
+      playerId: "p1",
+      scorerId: "s2",
+      source: "manual",
+      entries: parEntries(),
+      writtenTotal: 72,
+      captureKey: "correction-same",
+      reason: "Checking the card again.",
+    });
+
+    expect(unchanged.cards).toHaveLength(1);
   });
 
   it("refuses to approve a low-confidence value that nobody confirmed", async () => {

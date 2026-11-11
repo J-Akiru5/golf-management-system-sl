@@ -22,6 +22,7 @@ import {
   type VerificationPolicy,
   validateScorecard,
 } from "@/lib/scoring";
+import { checkCardSubmission } from "@/lib/scoring/submission";
 
 export type ScoringRoundStatus = "draft" | "open" | "scoring" | "provisional" | "final";
 
@@ -341,6 +342,21 @@ export function createDemoScoringRepository(
         return view();
       }
 
+      // The same card can arrive again with a new capture key: a second tap, a retried request, or
+      // the same photo scanned twice. Recognising it here keeps a second revision out of the
+      // evidence, even when the screen never asked.
+      const verdict = checkCardSubmission({
+        cards,
+        playerId: input.playerId,
+        scorerId: input.scorerId,
+        entries: input.entries,
+        playerName: seed.players.find((player) => player.playerId === input.playerId)?.playerName,
+        imageSha256: input.image?.sha256,
+        correcting: Boolean(input.reason),
+      });
+      if (verdict.kind === "repeat" || verdict.kind === "same_photo") return view();
+      if (verdict.kind === "needs_correction") throw new Error(verdict.message);
+
       const revision =
         Math.max(
           0,
@@ -362,6 +378,7 @@ export function createDemoScoringRepository(
           entries: input.entries.map((entry) => ({ ...entry })),
           writtenTotal: input.writtenTotal,
           submittedAt: nextIso(),
+          imageSha256: input.image?.sha256 ?? null,
         },
       ];
       captureKeys.set(input.captureKey, cards[cards.length - 1]?.id ?? "");

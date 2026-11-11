@@ -31,6 +31,7 @@ import {
   type TieBreakPolicy,
   type VerificationPolicy,
 } from "@/lib/scoring";
+import { checkCardSubmission } from "@/lib/scoring/submission";
 import type { Database, Json } from "@/lib/supabase/generated-types";
 import type { Database as AppDatabase } from "@/lib/supabase/types";
 
@@ -232,6 +233,15 @@ export function createSupabaseScoringRepository(
       throw new Error(`Could not load card entries: ${cardEntryError.message}`);
     }
 
+    // The photo fingerprint is what lets the screens recognise the same photo scanned twice, since
+    // each scan request carries its own capture key.
+    const { data: cardImages, error: cardImageError } = cardIds.length
+      ? await db.from("scorecard_images").select("scorecard_id, sha256").in("scorecard_id", cardIds)
+      : { data: [], error: null };
+    if (cardImageError) {
+      throw new Error(`Could not load card photos: ${cardImageError.message}`);
+    }
+
     const cards: Scorecard[] = (cardRows ?? []).map((card) => ({
       id: card.id,
       roundId: card.round_id,
@@ -242,6 +252,8 @@ export function createSupabaseScoringRepository(
       status: card.status as CardStatus,
       writtenTotal: card.written_total,
       submittedAt: card.submitted_at,
+      imageSha256:
+        (cardImages ?? []).find((image) => image.scorecard_id === card.id)?.sha256 ?? null,
       entries: (cardEntries ?? [])
         .filter((entry) => entry.scorecard_id === card.id)
         .map((entry) => ({
@@ -531,6 +543,20 @@ export function createSupabaseScoringRepository(
       const view = await refresh(tournamentId);
       const player = view.players.find((candidate) => candidate.playerId === input.playerId);
       if (!player?.roundEntryId) throw new Error("The player has no round entry.");
+
+      // Recognise a card that is already in before writing a new revision. The capture key covers
+      // a retried request; this covers a second tap, a fresh key, and the same photo scanned twice.
+      const verdict = checkCardSubmission({
+        cards: view.cards,
+        playerId: input.playerId,
+        scorerId: input.scorerId,
+        entries: input.entries,
+        playerName: player.playerName,
+        imageSha256: input.image?.sha256,
+        correcting: Boolean(input.reason),
+      });
+      if (verdict.kind === "repeat" || verdict.kind === "same_photo") return view;
+      if (verdict.kind === "needs_correction") throw new Error(verdict.message);
 
       const { data: cardId, error } = await db.rpc("submit_scorecard", {
         p_round_entry: player.roundEntryId,

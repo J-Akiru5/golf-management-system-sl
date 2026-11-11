@@ -173,6 +173,11 @@ export interface Scorecard {
   /** The total written on the paper card, when there is one. */
   writtenTotal: number | null;
   submittedAt: string;
+  /**
+   * The SHA-256 of the attached photo, when the card came from one. Two submissions carrying the
+   * same photo for the same player are the same card, not two pieces of evidence.
+   */
+  imageSha256?: string | null;
 }
 
 export type CardIssueCode =
