@@ -491,6 +491,14 @@ check(
   (await langPage.getByText("Club tournament pairings").count()) > 0,
 );
 
+for (const path of ["/pairings", "/roster", "/leaderboard", "/rules"]) {
+  await langPage.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+  check(
+    `${path} has a colour-theme control`,
+    (await langPage.getByRole("button", { name: /Colour theme:/ }).count()) > 0,
+  );
+}
+
 await setLang("hil");
 check(
   "Hiligaynon is served from the dictionary",

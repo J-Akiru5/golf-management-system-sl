@@ -14,6 +14,7 @@ import { RulesOfPlay, TeeTimesBoard } from "@/components/public/ProgrammeView";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { type PublicReleaseState, toPublicPairings } from "@/lib/data/public";
 import {
@@ -208,6 +209,7 @@ export default async function PublicPairingsPage({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle compact tone="nav" />
             <LanguageSwitcher tone="on-forest" />
             <HelpButton audience="player" screen="pairings" />
           </div>
