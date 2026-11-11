@@ -1,4 +1,5 @@
 import { displayName } from "@/lib/format";
+import { matchesName } from "@/lib/name-match";
 import type { CategoryRule, FlightRule } from "@/lib/routing";
 import { selectedDaysOf } from "./dates";
 import type {
@@ -272,27 +273,19 @@ export function rosterFlights(players: readonly PublicRosterPlayer[]): string[] 
   return [...flights].sort((a, b) => a.localeCompare(b));
 }
 
-/** Lower case, no accents: a search that ignores case and a keyboard without accents. */
-function searchKey(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
 /**
- * The roster's name search and flight filter. The name match is a case-insensitive partial match;
- * an empty query or flight means "all". A player without a flight appears under "all flights" only.
+ * The roster's name search and flight filter. The name match compares words, not the whole line, so
+ * "charles matiling" finds "MATILING, CHARLES" (`matchesName`); an empty query or flight means
+ * "all". A player without a flight appears under "all flights" only.
  */
 export function filterRoster(
   players: readonly PublicRosterPlayer[],
   { query = "", flight = "" }: { query?: string; flight?: string | null } = {},
 ): PublicRosterPlayer[] {
-  const needle = searchKey(query.trim());
   const wantedFlight = flight?.trim() ?? "";
   return players.filter(
     (player) =>
-      (!needle || searchKey(player.name).includes(needle)) &&
+      matchesName(player.name, query) &&
       (!wantedFlight || (player.flight?.trim() ?? "") === wantedFlight),
   );
 }

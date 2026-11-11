@@ -23,6 +23,9 @@ pnpm install
 pnpm dev
 pnpm typecheck && pnpm lint && pnpm test   # run all three before every commit
 pnpm build
+pnpm check        # typecheck, lint, test, build in order; the first CI job runs exactly this
+pnpm check:ui     # starts a dev server, runs the browser checks, stops it; the second CI job runs exactly this
+pnpm release:check --tag vX.Y.Z   # package.json, VERSION, CHANGELOG and the tag must agree
 ```
 
 ## Stack
@@ -51,7 +54,8 @@ by reading the code.
 
 Base branch `develop` is the integration branch and does not deploy. Each issue is built on its own
 branch in its own worktree. The orchestrator merges a finished branch straight into `develop` (no PR)
-after `pnpm typecheck && pnpm lint && pnpm test && pnpm build` pass and the diff is reviewed. When a
+after `pnpm check` passes, `pnpm check:ui` passes for any change a user can see, and the diff is
+reviewed. A local pass is a courtesy, not the gate: CI on the pushed commit is. When a
 batch on `develop` is stable it is promoted to `staging` (the preview deployment). `main` is
 production and moves only on a tagged release. Check the remote (`git ls-remote`) before stating
 what is merged or what a branch contains.

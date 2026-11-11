@@ -24,7 +24,7 @@ export function PublicTournamentNav({ active }: { active: PublicTab }) {
 
   return (
     <nav
-      className="no-print flex w-full min-w-0 gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible"
+      className="no-print flex w-full min-w-0 flex-wrap gap-2 pb-1"
       aria-label={t("programme.navLabel")}
     >
       {tabs.map(({ tab, label }) => {

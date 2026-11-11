@@ -788,6 +788,261 @@ check(
 );
 await playerCrossContext.close();
 
+section("public tee-time board");
+// The board is the only tee-time list left when the pairings are held, so it has to stand alone.
+// Both contexts cover the two paths a player can land on: pairings released, and pairings held.
+const boardContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const boardPage = await boardContext.newPage();
+watch(boardPage);
+await boardPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+const board = boardPage.locator("#tee-times");
+const manilaToday = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Manila",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
+const todayLabel = new Date(`${manilaToday}T00:00:00`).toLocaleDateString("en-PH", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+check(
+  "the board opens on today, not day 1 by default",
+  (await board.locator("h3").first().textContent())?.includes(todayLabel) ?? false,
+  `(${todayLabel})`,
+);
+check(
+  "and the matching day chip is the selected one",
+  (await board.getByRole("tab", { selected: true }).count()) === 1,
+);
+check(
+  "no time is ever called to be confirmed",
+  (await board.getByText("Time to be confirmed").count()) === 0,
+);
+check(
+  "and the day start is never called not set",
+  (await board.getByText("Day start time not set").count()) === 0,
+);
+const boardSearch = board.getByRole("searchbox", { name: "Find a player" });
+check("the board carries a player search", (await boardSearch.count()) === 1);
+await boardSearch.fill("ordonez");
+const boardResult = board.getByTestId("tee-search-result").first();
+await expect(boardResult).toBeVisible({ timeout: 15000 });
+check(
+  "a board search reaches a player on another day",
+  (await boardResult.textContent())?.includes("Day 2") ?? false,
+);
+check(
+  "the matched name is highlighted, accents intact",
+  (await boardResult.locator("mark").first().textContent()) === "Ordoñez",
+);
+const resultText = (await boardResult.textContent()) ?? "";
+check(
+  "a result names the day, date, time, hole and group mates",
+  resultText.includes("Hole") && resultText.includes("With ") && /\d{1,2}:\d{2}/.test(resultText),
+);
+await boardPage.screenshot({ path: `${SHOTS}/public-board-search.png` });
+await boardSearch.fill("zzzzzz");
+check(
+  "an empty result says so",
+  (await board.getByText("No tee time matches that name.").count()) === 1,
+);
+await board.getByRole("button", { name: "Clear", exact: true }).click();
+check(
+  "clearing the search returns to the day board",
+  (await board.getByTestId("tee-search-result").count()) === 0 &&
+    (await board.getByRole("tab").count()) > 1,
+);
+await boardContext.close();
+
+// The held path: the pairings card is replaced by its notice, and the board still answers.
+const heldContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+await heldContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline.demo.public-release.v1",
+      JSON.stringify({ "bamboo-tee-2026": { pairings: false } }),
+    );
+  } catch {
+    // Storage off: the held preview will not apply, and the checks below would fail visibly.
+  }
+});
+const heldPage = await heldContext.newPage();
+watch(heldPage);
+await heldPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+const heldBoard = heldPage.locator("#tee-times");
+await expect(heldPage.getByTestId("demo-pairings-held")).toBeVisible({ timeout: 15000 });
+check("with the pairings held the tee-time board still renders", (await heldBoard.count()) === 1);
+const heldSearch = heldBoard.getByRole("searchbox", { name: "Find a player" });
+await heldSearch.fill("ordonez");
+const heldResult = heldBoard.getByTestId("tee-search-result").first();
+await expect(heldResult).toBeVisible({ timeout: 15000 });
+check(
+  "and its search still reaches another day",
+  (await heldResult.textContent())?.includes("Day 2") ?? false,
+);
+check(
+  "without a placeholder time",
+  (await heldBoard.getByText("Time to be confirmed").count()) === 0,
+);
+await heldPage.screenshot({ path: `${SHOTS}/public-board-search-held.png` });
+await heldContext.close();
+
+// ------------------------------------------------------- public pages on a 360px phone
+// Phone-first checks for the public surfaces. The reference width is 360px, the narrowest Android
+// the club's players use, and no page may scroll sideways there. Every footer link is a thumb
+// target, not a line of text.
+section("public pages on a 360px phone");
+const phoneContext = await browser.newContext({ viewport: { width: 360, height: 800 } });
+await phoneContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+    const seen = { seen: true, step: 0, updatedAt: new Date().toISOString() };
+    window.localStorage.setItem(
+      "teeline-onboarding-v1",
+      JSON.stringify({ player: seen, staff: seen }),
+    );
+  } catch {
+    // Storage off: the checks that need a modal-free page will say so.
+  }
+});
+const phonePage = await phoneContext.newPage();
+watch(phonePage);
+const phoneGo = async (path) => {
+  await phonePage.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+};
+const noSideways = async (name) => {
+  const width = await phonePage.evaluate(() => {
+    const root = document.scrollingElement ?? document.documentElement;
+    return { scroll: root.scrollWidth, client: root.clientWidth };
+  });
+  check(
+    `${name} does not scroll sideways at 360px`,
+    width.scroll <= width.client + 1,
+    `(scrollWidth ${width.scroll}, client ${width.client})`,
+  );
+};
+const tapTargets = async (locator, name) => {
+  const heights = await locator.evaluateAll((nodes) =>
+    nodes.map((node) => Math.round(node.getBoundingClientRect().height)),
+  );
+  check(
+    name,
+    heights.length > 0 && heights.every((height) => height >= 44),
+    `(${heights.join(", ")}px)`,
+  );
+};
+
+await phoneGo("/pairings");
+await noSideways("/pairings");
+check(
+  "the pairings title is printed once, not twice",
+  (await phonePage.getByText("Club tournament pairings", { exact: true }).count()) === 1,
+  `(${await phonePage.getByText("Club tournament pairings", { exact: true }).count()})`,
+);
+check(
+  "the pairings page never says a time is to be confirmed",
+  (await phonePage.getByText("Time to be confirmed").count()) === 0,
+);
+check(
+  "the pairings page never says the day start is not set",
+  (await phonePage.getByText("Day start time not set").count()) === 0,
+);
+await tapTargets(
+  phonePage.locator('footer nav[aria-label="Site links"] a'),
+  "the public footer links are 44px tap targets",
+);
+await tapTargets(
+  phonePage.locator("main p.hint.no-print a"),
+  "the in-page footer links are 44px tap targets",
+);
+const tournamentTabs = phonePage.locator('nav[aria-label="On this page"]');
+const tabWidth = await tournamentTabs.evaluate((element) => ({
+  scroll: element.scrollWidth,
+  client: element.clientWidth,
+  overflow: getComputedStyle(element).overflowX,
+}));
+check(
+  "the tournament tabs wrap instead of hiding a tab off screen",
+  tabWidth.scroll <= tabWidth.client + 1,
+  `(scrollWidth ${tabWidth.scroll}, client ${tabWidth.client}, overflow ${tabWidth.overflow})`,
+);
+const dayChipRow = phonePage.locator('#tee-times div[role="tablist"]');
+const chipWidth = await dayChipRow.evaluate((element) => ({
+  scroll: element.scrollWidth,
+  client: element.clientWidth,
+  overflow: getComputedStyle(element).overflowX,
+}));
+check(
+  "the tee-time day chips wrap rather than clipping",
+  chipWidth.scroll <= chipWidth.client + 1,
+  `(scrollWidth ${chipWidth.scroll}, client ${chipWidth.client}, overflow ${chipWidth.overflow})`,
+);
+
+const phonePairingsSearch = phonePage.getByRole("searchbox", { name: "Find your name" });
+await phonePairingsSearch.fill("Antonio Alcantara");
+const foundGroup = phonePage
+  .locator('[data-testid="pairing-group"]')
+  .filter({ hasText: "Antonio Alcantara" });
+await expect(foundGroup.first()).toBeVisible({ timeout: 15000 });
+check(
+  "the pairings search finds a name typed First Last",
+  (await foundGroup.count()) === 1,
+  `(${await foundGroup.count()} card)`,
+);
+
+await phoneGo("/roster");
+await noSideways("/roster");
+await tapTargets(
+  phonePage.locator('footer nav[aria-label="Site links"] a'),
+  "the roster footer links are 44px tap targets",
+);
+await tapTargets(
+  phonePage.locator("main a.player-card-link"),
+  "the roster player cards are 44px tap targets",
+);
+await phonePage.getByRole("searchbox", { name: "Find a player" }).fill("ordonez");
+const profileLink = phonePage
+  .locator("main a.player-card-link")
+  .filter({ hasText: "ULYSSES ORDO" });
+await expect(profileLink.first()).toBeVisible({ timeout: 15000 });
+await profileLink.first().click();
+await expect(phonePage).toHaveURL(/tab=profile/, { timeout: 15000 });
+await expect(phonePage.getByTestId("player-profile")).toBeVisible({ timeout: 15000 });
+await noSideways("the player profile");
+const profileTimes = phonePage.getByTestId("profile-tee-times");
+await expect(profileTimes).toBeVisible({ timeout: 15000 });
+const profileTimeText = ((await profileTimes.textContent()) ?? "").replace(/\s+/g, " ").trim();
+check(
+  "the player profile shows a tee time when one exists",
+  /\d{1,2}:\d{2}\s*(AM|PM)/.test(profileTimeText),
+  `(${profileTimeText})`,
+);
+check(
+  "the player profile shows the starting hole",
+  /Hole\s+\d+/.test(profileTimeText),
+  `(${profileTimeText})`,
+);
+
+await phoneGo("/leaderboard");
+await noSideways("/leaderboard");
+await tapTargets(
+  phonePage.locator('footer nav[aria-label="Site links"] a'),
+  "the leaderboard footer links are 44px tap targets",
+);
+
+await phoneGo("/my");
+await noSideways("the player home");
+check(
+  "the player home never says a time is to be confirmed",
+  (await phonePage.getByText("Time to be confirmed").count()) === 0,
+);
+await phoneContext.close();
+
 section("first-run welcome");
 const freshContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const freshPage = await freshContext.newPage();

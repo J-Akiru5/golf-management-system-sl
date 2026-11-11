@@ -49,7 +49,7 @@ version expects.
 
 ## How to cut a release
 
-1. Make sure the work is merged into `develop` (the orchestrator merges reviewed issue branches directly, no pull request) and `pnpm typecheck && pnpm lint && pnpm test` pass there. Promote the stable batch to `staging` and check it there.
+1. Make sure the work is merged into `develop` (the orchestrator merges reviewed issue branches directly, no pull request) and `pnpm check` passes there. Before tagging, run `pnpm release:check --tag vX.Y.Z`. Promote the stable batch to `staging` and check it there.
 2. Commit a small change on `develop` that bumps `package.json` and moves the Unreleased notes in `CHANGELOG.md` under the new version with today's date.
 3. Ask the owner before moving `main`.
 4. Tag the merge commit and push the tag:

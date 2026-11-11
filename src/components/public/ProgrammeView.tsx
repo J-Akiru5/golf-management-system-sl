@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import { Fragment, type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/bits";
 import { fmtIso } from "@/lib/data/labels";
 import { daySessionBadge, daySessionSummary } from "@/lib/data/sessions";
-import type { PublicProgramme, PublicTeeTimeDay } from "@/lib/data/types";
+import type { PublicProgramme, PublicTeeTimeDay, PublicTeeTimePlayer } from "@/lib/data/types";
 import { fmtIndex, fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
+import { matchesName } from "@/lib/name-match";
+import { manilaToday } from "@/lib/player/dashboard";
+import { openingDayNumber } from "@/lib/public/programme-day";
 
 /**
  * The public programme: the day's tee times, the player cards and the organizers' rules of play.
@@ -19,8 +22,8 @@ import { useI18n } from "@/lib/i18n/context";
  * The pairings stay separate (`PairingsView`) so the pairings page can put them above the tee-time
  * board and the rules, while the roster and the profile have their own pages.
  *
- * Everything here is read one-handed on a phone: the jump links and the day chips scroll sideways
- * instead of wrapping into several rows, and every control is at least 44px tall.
+ * Everything here is read one-handed on a phone: the day chips wrap instead of clipping, and every
+ * control is at least 44px tall.
  */
 
 const PILL =
@@ -31,7 +34,7 @@ interface TimeGroup {
   teeTime: string | null;
   startHole: number | null;
   session: "AM" | "PM" | null;
-  names: string[];
+  players: PublicTeeTimePlayer[];
 }
 
 /** One card per confirmed time and hole; everyone not confirmed shares a final card. */
@@ -50,18 +53,64 @@ function groupByTime(day: PublicTeeTimeDay, dayIndex: number, dayCount: number):
       teeTime: player.teeTime,
       startHole: player.startHole,
       session,
-      names: [],
+      players: [],
     };
-    group.names.push(player.name);
+    group.players.push(player);
     groups.set(key, group);
   }
   return [...groups.values()];
 }
 
+/** One player's place on the board, flattened across every day so a search is never day-bound. */
+interface SearchRow {
+  key: string;
+  dayNumber: number;
+  dayLabel: string;
+  playDate: string;
+  teeTime: string | null;
+  startHole: number | null;
+  name: string;
+  mates: string[];
+}
+
+/** Lower case, no accents, no punctuation: the words the reader typed, without the decoration. */
+function fold(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+/** Marks the words that made the name match, so a result explains itself. */
+function HighlightedName({ name, query }: { name: string; query: string }) {
+  const tokens = query
+    .split(/\s+/)
+    .map(fold)
+    .filter((token) => token !== "");
+  return (
+    <>
+      {name.split(/(\s+)/).map((part, index) => {
+        const folded = fold(part);
+        const hit = folded !== "" && tokens.some((token) => folded.includes(token));
+        return hit ? (
+          <mark key={`${part}-${index}`}>{part}</mark>
+        ) : (
+          <Fragment key={`${part}-${index}`}>{part}</Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
   const { t } = useI18n();
-  const firstDay = programme.days[0]?.dayNumber ?? 1;
-  const [selected, setSelected] = useState(firstDay);
+  // Today in the club's time zone, then the next day still ahead, then the first day.
+  const [selected, setSelected] = useState<number>(
+    () => openingDayNumber(programme.days, manilaToday()) ?? programme.days[0]?.dayNumber ?? 1,
+  );
+  const [query, setQuery] = useState("");
+  const searching = query.trim() !== "";
   const day = programme.days.find((item) => item.dayNumber === selected) ?? programme.days[0];
   const dayIndex = day ? programme.days.findIndex((item) => item.dayNumber === day.dayNumber) : -1;
   const groups = useMemo(
@@ -69,6 +118,51 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
     [day, dayIndex, programme.days.length],
   );
   const chipRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Every player on every day, with the group they tee off with. A search looks across all days,
+  // so "when does my buddy play?" is answered even when the buddy plays tomorrow.
+  const rows = useMemo(() => {
+    const all: SearchRow[] = [];
+    programme.days.forEach((item, index) => {
+      for (const group of groupByTime(item, index, programme.days.length)) {
+        group.players.forEach((player, playerIndex) => {
+          all.push({
+            key: `${item.dayNumber}|${group.key}|${playerIndex}`,
+            dayNumber: item.dayNumber,
+            dayLabel: item.label,
+            playDate: item.playDate,
+            teeTime: group.teeTime,
+            startHole: group.startHole,
+            name: player.name,
+            mates: group.players
+              .filter((_, mateIndex) => mateIndex !== playerIndex)
+              .map((mate) => mate.name),
+          });
+        });
+      }
+    });
+    return all;
+  }, [programme.days]);
+
+  const results = useMemo(() => {
+    if (!searching) return [];
+    const order = (row: SearchRow) =>
+      [
+        String(row.dayNumber).padStart(3, "0"),
+        row.teeTime ?? "99:99",
+        String(row.startHole ?? 99).padStart(2, "0"),
+        row.name,
+      ].join("|");
+    return rows
+      .filter((row) => matchesName(row.name, query))
+      .sort((a, b) => order(a).localeCompare(order(b)));
+  }, [rows, query, searching]);
+
+  const clearSearch = () => {
+    setQuery("");
+    searchRef.current?.focus();
+  };
 
   // Arrow keys move between day chips, as a tab list should.
   const onChipKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -97,12 +191,78 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
         <p className="hint m-0">{t("programme.teeTimesIntro")}</p>
       </div>
 
-      {!day ? (
+      {programme.days.length > 0 && (
+        <div className="p-search-wrap no-print">
+          <input
+            ref={searchRef}
+            type="search"
+            className={`p-search${query !== "" ? " has-clear" : ""}`}
+            placeholder={t("programme.findPlayer")}
+            aria-label={t("programme.findPlayer")}
+            aria-describedby="tee-search-hint"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            spellCheck={false}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <span id="tee-search-hint" className="sr-only">
+            {t("pairings.searchHint")}
+          </span>
+          {query !== "" && (
+            <button
+              type="button"
+              className="p-clear"
+              aria-label={t("pairings.clearQuery")}
+              onClick={clearSearch}
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
+      {searching ? (
+        results.length === 0 ? (
+          <p className="muted">{t("programme.noTeeTimeMatch")}</p>
+        ) : (
+          <ul className="plain grid gap-2" data-testid="tee-search-results">
+            {results.map((row) => (
+              <li key={row.key} className="tee-slot" data-testid="tee-search-result">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <b className="text-[15px] leading-6 font-semibold text-ink-muted">
+                    {row.dayLabel} · {fmtIso(row.playDate)}
+                  </b>
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    {row.teeTime !== null && (
+                      <b className="font-display text-[20px] leading-6 font-bold tabular-nums text-ink">
+                        {fmtTime(row.teeTime)}
+                      </b>
+                    )}
+                    {row.teeTime !== null && row.startHole !== null && (
+                      <span className={PILL}>{t("programme.hole", { hole: row.startHole })}</span>
+                    )}
+                  </span>
+                </div>
+                <p className="m-0 text-[16px] leading-6 text-ink">
+                  <HighlightedName name={row.name} query={query} />
+                </p>
+                {row.mates.length > 0 && (
+                  <p className="hint m-0">
+                    {t("programme.withGroup", { names: row.mates.join(", ") })}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )
+      ) : !day ? (
         <p className="muted">{t("programme.noDays")}</p>
       ) : (
         <>
           <div
-            className="no-print flex w-full min-w-0 gap-2 overflow-x-auto pb-1"
+            className="no-print flex w-full min-w-0 flex-wrap gap-2 pb-1"
             role="tablist"
             aria-label={t("programme.daysLabel")}
           >
@@ -140,7 +300,7 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
               {daySessionSummary(dayIndex, programme.days.length)}
               {day.startTime
                 ? ` · ${t("programme.dayStart", { time: fmtTime(day.startTime) })}`
-                : ` · ${t("programme.dayStartUnknown")}`}
+                : null}
             </span>
           </div>
 
@@ -150,32 +310,30 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
             <div className="tee-slots">
               {groups.map((group) => (
                 <article key={group.key} className="tee-slot" data-testid="tee-time-group">
-                  <div className="tee-slot-head flex-wrap">
-                    <b
-                      className={
-                        group.teeTime
-                          ? "font-display text-[22px] leading-7 font-bold tabular-nums text-ink"
-                          : "font-display text-[15px] leading-6 font-semibold text-ink-muted"
-                      }
-                    >
-                      {group.teeTime ? fmtTime(group.teeTime) : t("programme.toBeConfirmed")}
-                    </b>
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      {group.session && <span className={PILL}>{group.session}</span>}
-                      {group.teeTime && group.startHole !== null && (
-                        <span className={PILL}>
-                          {t("programme.hole", { hole: group.startHole })}
-                        </span>
-                      )}
-                    </span>
-                  </div>
+                  {/* A time the desk has not confirmed is not shown at all: no placeholder, and
+                      no head row to leave a gap. */}
+                  {group.teeTime !== null && (
+                    <div className="tee-slot-head flex-wrap">
+                      <b className="font-display text-[22px] leading-7 font-bold tabular-nums text-ink">
+                        {fmtTime(group.teeTime)}
+                      </b>
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        {group.session && <span className={PILL}>{group.session}</span>}
+                        {group.startHole !== null && (
+                          <span className={PILL}>
+                            {t("programme.hole", { hole: group.startHole })}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                   <ul className="plain space-y-1">
-                    {group.names.map((name, index) => (
+                    {group.players.map((player, index) => (
                       <li
-                        key={`${name}-${index}`}
+                        key={`${player.name}-${index}`}
                         className="flex min-h-11 items-center text-[16px] leading-6 text-ink"
                       >
-                        <span className="min-w-0 break-words">{name}</span>
+                        <span className="min-w-0 break-words">{player.name}</span>
                       </li>
                     ))}
                   </ul>
