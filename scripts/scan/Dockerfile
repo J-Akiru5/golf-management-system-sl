@@ -21,8 +21,17 @@ RUN pip install --no-cache-dir -r requirements-prod.txt
 COPY igcc_scan ./igcc_scan
 COPY igcc_photo_calibration.json ./igcc_photo_calibration.json
 
+# Committed model inputs: the card-detection template and the class order the
+# local ONNX adapter reads. The .onnx weights are not in Git; the service fetches
+# them into /app/models at startup (see igcc_scan/model_fetch.py).
+COPY models/igcc-card-template.npz ./models/igcc-card-template.npz
+COPY models/classes.json ./models/classes.json
+
 # Do not run as root. The service only reads its own files and calls the model.
-RUN useradd --create-home --uid 10001 reader \
+# /app/models must stay writable by the service user, because the downloaded
+# ONNX file is written there at startup.
+RUN mkdir -p /app/models \
+    && useradd --create-home --uid 10001 reader \
     && chown -R reader:reader /app
 USER reader
 

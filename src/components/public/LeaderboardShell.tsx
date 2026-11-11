@@ -3,19 +3,23 @@
 import type { ReactNode } from "react";
 import { HelpButton } from "@/components/help";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { useI18n } from "@/lib/i18n/context";
+import type { PublicAdvisory } from "@/lib/public/advisory";
 
 /** The shared public leaderboard frame, so the sample preview and the live read look the same. */
 export function LeaderboardShell({
   eventName,
   dateText,
+  advisory = null,
   children,
 }: {
   eventName?: string | null;
   dateText?: string;
+  advisory?: PublicAdvisory | null;
   children: ReactNode;
 }) {
   const { t } = useI18n();
@@ -38,6 +42,8 @@ export function LeaderboardShell({
         </h1>
         {dateText && <p className="text-on-forest-muted">{dateText}</p>}
       </header>
+
+      {advisory && <PublicAdvisoryBanner advisory={advisory} />}
 
       <PublicTournamentNav active="leaderboard" />
       {children}

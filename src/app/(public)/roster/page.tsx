@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { RosterPage, type RosterUnavailable } from "@/components/public/RosterView";
 import { toPublicRoster } from "@/lib/data/public";
+import { loadPublicAdvisory } from "@/lib/data/supabase/public-advisory";
 import { loadPublicProgramme, loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
 import type { PublicRosterPlayer } from "@/lib/data/types";
+import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
@@ -42,11 +44,13 @@ export default async function PublicRosterPage() {
   const client = createSupabasePublicClient();
   let players: PublicRosterPlayer[] = [];
   let unavailable: RosterUnavailable = "none";
+  let advisoryValue: PublicAdvisory | null = null;
 
   try {
-    const [programmeResult, releaseResult] = await Promise.allSettled([
+    const [programmeResult, releaseResult, advisoryResult] = await Promise.allSettled([
       loadPublicProgramme(client),
       loadPublicReleaseState(client),
+      loadPublicAdvisory(client),
     ]);
     if (programmeResult.status === "rejected") {
       unavailable = "failed";
@@ -57,9 +61,16 @@ export default async function PublicRosterPage() {
     } else {
       players = toPublicRoster(programmeResult.value).players;
     }
+    if (advisoryResult.status === "fulfilled") advisoryValue = advisoryResult.value;
   } catch {
     unavailable = "failed";
   }
 
-  return <RosterPage players={players} unavailable={unavailable} />;
+  return (
+    <RosterPage
+      players={players}
+      unavailable={unavailable}
+      advisory={advisoryForToday(advisoryValue)}
+    />
+  );
 }

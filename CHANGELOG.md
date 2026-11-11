@@ -9,6 +9,13 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.34.2] - 2026-11-12
+
+### Added
+- **An organizer advisory on the public pages.** A tinted panel at the top of /pairings, /roster and
+  /leaderboard, dismissible for the session and hidden after its until date. It reads
+  tournaments.public_advisory through a gated public function and shows nothing when the column is
+  empty. Migrations 20261112000100 is applied to the live project.
 ## [0.34.1] - 2026-11-11
 
 ### Fixed
