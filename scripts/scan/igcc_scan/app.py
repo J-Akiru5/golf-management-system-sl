@@ -11,6 +11,7 @@ from __future__ import annotations
 import hmac
 import logging
 from contextlib import asynccontextmanager
+from dataclasses import replace
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse
@@ -23,6 +24,7 @@ from .classify import (
 )
 from .config import ConfigError, Settings
 from .geometry import IGCC_PAPER
+from .model_fetch import ensure_model
 from .pipeline import InvalidScanRequest, UnknownTemplate, scan_image
 from .rectify import CardNotFoundError, ImageDecodeError, decode_image
 
@@ -68,6 +70,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 state.settings = Settings()
                 state.config_error = str(exc)
         state.classifier = None
+        if (
+            settings is None
+            and state.config_error is None
+            and state.settings.backend == "local_onnx"
+        ):
+            # The ONNX weights are not in Git; SCAN_MODEL_URL fetches them once at
+            # startup. A failure here is a configuration error, not a crash, so
+            # /scan keeps answering 503 model_config_error.
+            try:
+                model_file = ensure_model()
+            except ConfigError as exc:
+                LOGGER.error("Card reader model could not be prepared: %s", exc)
+                state.config_error = str(exc)
+            else:
+                if model_file is not None and model_file != state.settings.model_path:
+                    state.settings = replace(state.settings, model_path=model_file)
+                    LOGGER.info("Card reader model file is ready at %s", model_file)
         if state.config_error is None:
             try:
                 state.classifier = build_classifier(state.settings)
