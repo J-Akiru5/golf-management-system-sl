@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.35.1] - 2026-11-12
+
 ### Changed
 - **The public pairings page puts the next step on a phone's first screen.** Below 640 px the head
   is a compact app bar (an arrow back button, the theme, language and help controls, then the event
