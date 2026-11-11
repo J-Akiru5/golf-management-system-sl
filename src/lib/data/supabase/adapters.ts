@@ -528,7 +528,14 @@ export function createSupabaseAdapters(
         row?.photo_public_path ?? state.players.find((p) => p.id === id)?.photoPublicPath ?? null;
       await setPlayerPhotoConsent(client, clubId, id, null, null, null, null);
       if (privatePath) await removeStoredPhoto(client, clubId, privatePath);
-      if (publicPath) await client.storage.from("player-photos-public").remove([publicPath]);
+      // The row update above already dropped the public object through its trigger. The storage call
+      // is belt-and-braces and must not fail the removal when the object is already gone.
+      if (publicPath) {
+        await client.storage
+          .from("player-photos-public")
+          .remove([publicPath])
+          .catch(() => undefined);
+      }
       dispatch({
         type: "updatePlayer",
         id,
@@ -544,7 +551,7 @@ export function createSupabaseAdapters(
     setPhotoPublicConsent: async (id, consent) => {
       const { data: row, error } = await client
         .from("players")
-        .select("photo_path, photo_consent_at, photo_public_path")
+        .select("photo_path, photo_consent_at, photo_public_path, photo_public_token")
         .eq("club_id", clubId)
         .eq("id", id)
         .maybeSingle();
@@ -581,7 +588,12 @@ export function createSupabaseAdapters(
         if (downloadError || !file) {
           throw new Error(`Could not read the private photo: ${downloadError?.message ?? ""}`);
         }
-        publicPath = `${clubId}/${id}.jpg`;
+        if (!row.photo_public_token) {
+          throw new Error(
+            "This player has no public photo token. Apply migration 20261111000100 and reload the player.",
+          );
+        }
+        publicPath = `${clubId}/${row.photo_public_token}.jpg`;
         const { error: uploadError } = await client.storage
           .from("player-photos-public")
           .upload(publicPath, file, { contentType: file.type || "image/jpeg", upsert: true });

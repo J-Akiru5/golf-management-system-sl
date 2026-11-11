@@ -14,6 +14,15 @@ Supabase project, because the code and the database are released separately.
 - `pnpm release:check` compares `package.json`, `VERSION`, `CHANGELOG.md` and the tag before a release is tagged.
 - `plan/policy.yaml` now records the deployment allowlist that `vercel.json` enforces: `main` and `staging`.
 
+### Security
+- **Public player photos are named after a random token, not the player id.** The public roster
+  publishes player ids, so the old `{club_id}/{player_id}.jpg` object could be fetched from the public
+  bucket without `photo_public_consent_at`. `20261111000100_public_photo_token.sql` adds
+  `players.photo_public_token`, requires the public path to be `{club_id}/{token}.jpg`, drops the
+  object when consent is withdrawn, replaced, retired or deleted, and removes the old guessable
+  objects. **Not applied to the live project.** Existing consented public photos must be re-published
+  from the desk (toggle public display off and on); the private originals are untouched.
+
 ## [0.33.0] - 2026-11-11
 
 ### Migrations shipping with this release

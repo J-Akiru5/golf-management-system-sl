@@ -5,7 +5,7 @@ import { saveConsentedPhoto, setPlayerPhotoConsent } from "./players";
 
 const PHOTO = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
 
-function fakePhotoClient() {
+function fakePhotoClient(token: string | null = "token-1") {
   const privateUpload = vi.fn().mockResolvedValue({ error: null });
   const publicUpload = vi.fn().mockResolvedValue({ error: null });
   const remove = vi.fn().mockResolvedValue({ error: null });
@@ -13,6 +13,15 @@ function fakePhotoClient() {
     data: { signedUrl: "https://example.test/private.jpg" },
     error: null,
   });
+  const select = vi.fn(() => ({
+    eq: () => ({
+      eq: () => ({
+        maybeSingle: vi
+          .fn()
+          .mockResolvedValue({ data: token ? { photo_public_token: token } : null, error: null }),
+      }),
+    }),
+  }));
   const update = vi.fn(() => ({
     eq: () => ({
       eq: () => ({
@@ -34,34 +43,45 @@ function fakePhotoClient() {
         throw new Error(`Unexpected bucket ${bucket}`);
       },
     },
-    from: () => ({ update }),
+    from: () => ({ select, update }),
   } as unknown as SupabaseClient<Database>;
-  return { client, privateUpload, publicUpload, remove, update };
+  return { client, privateUpload, publicUpload, remove, select, update };
 }
 
 describe("saveConsentedPhoto", () => {
-  it("writes the private original and only writes a public copy with public consent", async () => {
+  it("names the public object after the player's random token, never the player id", async () => {
     const { client, privateUpload, publicUpload } = fakePhotoClient();
     const saved = await saveConsentedPhoto(client, "club-1", "player-1", PHOTO, true);
 
     expect(privateUpload).toHaveBeenCalledTimes(1);
     expect(publicUpload).toHaveBeenCalledWith(
-      "club-1/player-1.jpg",
+      "club-1/token-1.jpg",
       expect.any(Blob),
       expect.objectContaining({ contentType: "image/jpeg", upsert: true }),
     );
     expect(saved.path).toMatch(/^club-1\/player-1\//);
-    expect(saved.publicPath).toBe("club-1/player-1.jpg");
+    expect(saved.publicPath).toBe("club-1/token-1.jpg");
     expect(saved.publicConsentAt).not.toBeNull();
   });
 
   it("does not write a public copy when the separate consent is off", async () => {
-    const { client, publicUpload } = fakePhotoClient();
+    const { client, publicUpload, select } = fakePhotoClient();
     const saved = await saveConsentedPhoto(client, "club-1", "player-1", PHOTO, false);
 
+    expect(select).not.toHaveBeenCalled();
     expect(publicUpload).not.toHaveBeenCalled();
     expect(saved.publicPath).toBeNull();
     expect(saved.publicConsentAt).toBeNull();
+  });
+
+  it("refuses to publish when the player row has no public token", async () => {
+    const { client, privateUpload, publicUpload } = fakePhotoClient(null);
+
+    await expect(saveConsentedPhoto(client, "club-1", "player-1", PHOTO, true)).rejects.toThrow(
+      "no public photo token",
+    );
+    expect(privateUpload).not.toHaveBeenCalled();
+    expect(publicUpload).not.toHaveBeenCalled();
   });
 
   it("refuses anything that is not a JPEG, PNG or WebP", async () => {
@@ -81,13 +101,13 @@ describe("setPlayerPhotoConsent", () => {
       "player-1",
       "club-1/player-1/private.jpg",
       "2026-10-22T00:00:00.000Z",
-      "club-1/player-1.jpg",
+      "club-1/token-1.jpg",
       "2026-10-22T00:00:00.000Z",
     );
     expect(update).toHaveBeenCalledWith({
       photo_path: "club-1/player-1/private.jpg",
       photo_consent_at: "2026-10-22T00:00:00.000Z",
-      photo_public_path: "club-1/player-1.jpg",
+      photo_public_path: "club-1/token-1.jpg",
       photo_public_consent_at: "2026-10-22T00:00:00.000Z",
     });
   });
