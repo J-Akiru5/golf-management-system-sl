@@ -788,6 +788,107 @@ check(
 );
 await playerCrossContext.close();
 
+section("public tee-time board");
+// The board is the only tee-time list left when the pairings are held, so it has to stand alone.
+// Both contexts cover the two paths a player can land on: pairings released, and pairings held.
+const boardContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const boardPage = await boardContext.newPage();
+watch(boardPage);
+await boardPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+const board = boardPage.locator("#tee-times");
+const manilaToday = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Manila",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
+const todayLabel = new Date(`${manilaToday}T00:00:00`).toLocaleDateString("en-PH", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+check(
+  "the board opens on today, not day 1 by default",
+  (await board.locator("h3").first().textContent())?.includes(todayLabel) ?? false,
+  `(${todayLabel})`,
+);
+check(
+  "and the matching day chip is the selected one",
+  (await board.getByRole("tab", { selected: true }).count()) === 1,
+);
+check(
+  "no time is ever called to be confirmed",
+  (await board.getByText("Time to be confirmed").count()) === 0,
+);
+check(
+  "and the day start is never called not set",
+  (await board.getByText("Day start time not set").count()) === 0,
+);
+const boardSearch = board.getByRole("searchbox", { name: "Find a player" });
+check("the board carries a player search", (await boardSearch.count()) === 1);
+await boardSearch.fill("ordonez");
+const boardResult = board.getByTestId("tee-search-result").first();
+await expect(boardResult).toBeVisible({ timeout: 15000 });
+check(
+  "a board search reaches a player on another day",
+  (await boardResult.textContent())?.includes("Day 2") ?? false,
+);
+check(
+  "the matched name is highlighted, accents intact",
+  (await boardResult.locator("mark").first().textContent()) === "Ordoñez",
+);
+const resultText = (await boardResult.textContent()) ?? "";
+check(
+  "a result names the day, date, time, hole and group mates",
+  resultText.includes("Hole") && resultText.includes("With ") && /\d{1,2}:\d{2}/.test(resultText),
+);
+await boardPage.screenshot({ path: `${SHOTS}/public-board-search.png` });
+await boardSearch.fill("zzzzzz");
+check(
+  "an empty result says so",
+  (await board.getByText("No tee time matches that name.").count()) === 1,
+);
+await board.getByRole("button", { name: "Clear", exact: true }).click();
+check(
+  "clearing the search returns to the day board",
+  (await board.getByTestId("tee-search-result").count()) === 0 &&
+    (await board.getByRole("tab").count()) > 1,
+);
+await boardContext.close();
+
+// The held path: the pairings card is replaced by its notice, and the board still answers.
+const heldContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+await heldContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline.demo.public-release.v1",
+      JSON.stringify({ "bamboo-tee-2026": { pairings: false } }),
+    );
+  } catch {
+    // Storage off: the held preview will not apply, and the checks below would fail visibly.
+  }
+});
+const heldPage = await heldContext.newPage();
+watch(heldPage);
+await heldPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+const heldBoard = heldPage.locator("#tee-times");
+await expect(heldPage.getByTestId("demo-pairings-held")).toBeVisible({ timeout: 15000 });
+check("with the pairings held the tee-time board still renders", (await heldBoard.count()) === 1);
+const heldSearch = heldBoard.getByRole("searchbox", { name: "Find a player" });
+await heldSearch.fill("ordonez");
+const heldResult = heldBoard.getByTestId("tee-search-result").first();
+await expect(heldResult).toBeVisible({ timeout: 15000 });
+check(
+  "and its search still reaches another day",
+  (await heldResult.textContent())?.includes("Day 2") ?? false,
+);
+check(
+  "without a placeholder time",
+  (await heldBoard.getByText("Time to be confirmed").count()) === 0,
+);
+await heldPage.screenshot({ path: `${SHOTS}/public-board-search-held.png` });
+await heldContext.close();
+
 section("first-run welcome");
 const freshContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const freshPage = await freshContext.newPage();
