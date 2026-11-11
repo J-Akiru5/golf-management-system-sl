@@ -245,10 +245,12 @@ export function PlayerHomeHero({
 
         {started && active ? (
           <div className="grid gap-3">
-            <p className="hero-label">{t("player.home.teeTime")}</p>
-            <p className="hero-time">
-              {started.time ? fmtTime(started.time) : t("programme.toBeConfirmed")}
-            </p>
+            {started.time && (
+              <>
+                <p className="hero-label">{t("player.home.teeTime")}</p>
+                <p className="hero-time">{fmtTime(started.time)}</p>
+              </>
+            )}
 
             <div className="flex flex-wrap items-center gap-2">
               {sessionLabel && <span className="hero-pill">{sessionLabel}</span>}

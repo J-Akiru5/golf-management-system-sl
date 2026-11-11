@@ -4,8 +4,10 @@ import type { Database } from "@/lib/supabase/types";
 import {
   loadPublicPlayerProfile,
   parsePublicPlayerProfile,
+  profileTeeTimes,
   searchProfilePlayers,
 } from "./public-profile";
+import type { PublicProgramme } from "./types";
 
 const card = {
   playerId: "p1",
@@ -106,6 +108,64 @@ describe("loadPublicPlayerProfile", () => {
     // public_player_scorecard() joins the event's published flag and its leaderboard key. A held
     // event answers with SQL null, and the page must not render an empty profile as if it existed.
     await expect(loadPublicPlayerProfile(client(null), "p1", "held-event")).resolves.toBeNull();
+  });
+});
+
+describe("profileTeeTimes", () => {
+  const programme: Pick<PublicProgramme, "days"> = {
+    days: [
+      {
+        dayNumber: 1,
+        label: "Day 1",
+        playDate: "2026-11-12",
+        startTime: "06:30",
+        players: [
+          { name: "ORDOÑEZ, ULYSSES", teeTime: "06:40", startHole: 10, confirmed: true },
+          { name: "ANA REYES", teeTime: null, startHole: null, confirmed: false },
+        ],
+      },
+      {
+        dayNumber: 2,
+        label: "Day 2",
+        playDate: "2026-11-13",
+        startTime: "06:30",
+        players: [{ name: "ULYSSES ORDOÑEZ", teeTime: "07:10", startHole: 3, confirmed: true }],
+      },
+      {
+        dayNumber: 3,
+        label: "Day 3",
+        playDate: "2026-11-14",
+        startTime: null,
+        players: [{ name: "ULYSSES ORDOÑEZ", teeTime: null, startHole: null, confirmed: false }],
+      },
+    ],
+  };
+
+  it("finds confirmed starts by word, across name order and accents", () => {
+    expect(profileTeeTimes(programme, "Ulysses Ordoñez")).toEqual([
+      {
+        dayNumber: 1,
+        dayLabel: "Day 1",
+        playDate: "2026-11-12",
+        teeTime: "06:40",
+        startHole: 10,
+      },
+      {
+        dayNumber: 2,
+        dayLabel: "Day 2",
+        playDate: "2026-11-13",
+        teeTime: "07:10",
+        startHole: 3,
+      },
+    ]);
+  });
+
+  it("omits a day with no confirmed time instead of inventing one", () => {
+    expect(profileTeeTimes(programme, "Ulysses Ordoñez").map((row) => row.dayNumber)).toEqual([
+      1, 2,
+    ]);
+    expect(profileTeeTimes({ days: [] }, "Ulysses Ordoñez")).toEqual([]);
+    expect(profileTeeTimes(programme, "Someone Else")).toEqual([]);
   });
 });
 

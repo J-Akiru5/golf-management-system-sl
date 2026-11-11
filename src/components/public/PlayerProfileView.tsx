@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Avatar } from "@/components/bits";
 import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
-import type { PublicPlayerProfileData } from "@/lib/data/public-profile";
+import type { PublicPlayerProfileData, PublicProfileTeeTime } from "@/lib/data/public-profile";
 import type { PublicTeamStanding } from "@/lib/data/public-team-leaderboard";
-import { fmtIndex } from "@/lib/format";
+import { fmtIndex, fmtTime, shortDate } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
 
 /**
@@ -15,10 +15,13 @@ export function PlayerProfileView({
   data,
   team,
   t,
+  teeTimes = [],
 }: {
   data: PublicPlayerProfileData;
   team: PublicTeamStanding | null;
   t: Translate;
+  /** One confirmed start per playing day, already reduced to the public time and hole. */
+  teeTimes?: PublicProfileTeeTime[];
 }) {
   const { player, partner, cards } = data;
   const rank = team ? (team.tied ? `T${team.rank}` : String(team.rank)) : null;
@@ -64,6 +67,31 @@ export function PlayerProfileView({
             </dd>
           </div>
         </dl>
+
+        {teeTimes.length > 0 && (
+          <dl className="m-0 grid gap-2 border-t border-line pt-3" data-testid="profile-tee-times">
+            {teeTimes.map((row) => {
+              const date = shortDate(row.playDate);
+              return (
+                <div
+                  key={row.dayNumber}
+                  className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1"
+                >
+                  <dt className="small-h">
+                    {t("player.home.day", { day: row.dayNumber })}
+                    {date ? ` · ${date}` : ""}
+                  </dt>
+                  <dd className="m-0 flex flex-wrap items-center gap-2 font-semibold">
+                    <span className="tnum">{fmtTime(row.teeTime)}</span>
+                    {row.startHole !== null && (
+                      <span className="pill">{t("programme.hole", { hole: row.startHole })}</span>
+                    )}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        )}
       </section>
 
       {team && (

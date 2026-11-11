@@ -16,6 +16,7 @@ import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { addIsoDays } from "@/lib/data/dates";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings, toPublicProgramme } from "@/lib/data/public";
+import { profileTeeTimes } from "@/lib/data/public-profile";
 import type { PublicTab } from "@/lib/data/public-tabs";
 import { buildTeamLeaderboard } from "@/lib/data/public-team-leaderboard";
 import type {
@@ -408,7 +409,12 @@ export function DemoPairings({
           <>
             <PlayerProfileSearch players={programme.players} selectedId={playerId} />
             {profile ? (
-              <PlayerProfileView data={profile} team={demoTeam} t={t} />
+              <PlayerProfileView
+                data={profile}
+                team={demoTeam}
+                t={t}
+                teeTimes={teeTimesHeld ? [] : profileTeeTimes(programme, profile.player.name)}
+              />
             ) : playerId ? (
               <section className="pairings-empty" role="status">
                 <h2>{t("programme.profileNotFoundTitle")}</h2>
@@ -452,10 +458,22 @@ export function DemoPairings({
       )}
 
       <p className="hint no-print">
-        {t("pairings.demoFooter")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
-        <Link href="/roster">{t("programme.playersTitle")}</Link> ·{" "}
-        <Link href="/rules?from=pairings">{t("programme.navFullRules")}</Link> ·{" "}
-        <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
+        {t("pairings.demoFooter")}{" "}
+        <Link href="/" className="inline-flex min-h-11 items-center">
+          {t("pairings.home")}
+        </Link>{" "}
+        ·{" "}
+        <Link href="/roster" className="inline-flex min-h-11 items-center">
+          {t("programme.playersTitle")}
+        </Link>{" "}
+        ·{" "}
+        <Link href="/rules?from=pairings" className="inline-flex min-h-11 items-center">
+          {t("programme.navFullRules")}
+        </Link>{" "}
+        ·{" "}
+        <Link href="/leaderboard" className="inline-flex min-h-11 items-center">
+          {t("programme.navLeaderboard")}
+        </Link>
       </p>
       <PlayerBottomBar />
     </main>

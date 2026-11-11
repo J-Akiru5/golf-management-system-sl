@@ -104,8 +104,8 @@ function writeStore(key: string, value: string): void {
  * public page, the signed-in player and the organizer's publish preview, so what they check is
  * what players get.
  *
- * A card leads with the tee time, then the hole, then the players, then the flight. A group with
- * no time says so instead of showing a made-up hour.
+ * A card leads with the tee time, then the hole, then the players, then the flight. A group whose
+ * time is empty shows the hole and the players with no time line at all: no placeholder is invented.
  *
  * A multi-day event is read one day at a time through the chips, and the chips remember the last
  * choice on this phone. Within a day the groups are split into AM and PM sessions, each with a
@@ -293,9 +293,7 @@ export function PairingsView({
       if (groups.length === 0) continue;
       const base =
         key === "TBC"
-          ? multiDay
-            ? `${day.label} · ${t("pairings.timeTbc")}`
-            : t("pairings.timeTbc")
+          ? day.label
           : multiDay
             ? t("pairings.daySessionHeading", { day: day.label, session: key })
             : key === "AM"
@@ -362,15 +360,12 @@ export function PairingsView({
         className={`p-card${own ? " is-own" : ""}${own && highlighted ? " is-hit" : ""}`}
       >
         <div className="p-card-top">
-          {headingLevel === "section" ? (
-            <h4 className={`p-time${time ? "" : " is-tbc"}`}>
-              {time ? fmtTime(time) : t("pairings.timeTbc")}
-            </h4>
-          ) : (
-            <b className={`p-time${time ? "" : " is-tbc"}`}>
-              {time ? fmtTime(time) : t("pairings.timeTbc")}
-            </b>
-          )}
+          {time &&
+            (headingLevel === "section" ? (
+              <h4 className="p-time">{fmtTime(time)}</h4>
+            ) : (
+              <b className="p-time">{fmtTime(time)}</b>
+            ))}
           {hole && <span className="p-hole">{hole}</span>}
           {group.flight !== "" && <span className="p-flight-top">{group.flight}</span>}
           {own && <span className="p-own-chip">{t("pairings.ownGroup")}</span>}
