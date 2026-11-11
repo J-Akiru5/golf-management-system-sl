@@ -9,6 +9,22 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.34.3] - 2026-11-12
+
+### Added
+- **A day selector on the public pairings.** Only the days present in the published snapshot
+  appear as chips; the board opens on today in Asia/Manila when that day is published, otherwise
+  the first published day. No new data is exposed.
+
+### Removed
+- **The redundant tee-times section under the public pairings.** The pairings already carry the
+  time and the hole, so the second list was duplication. The desk tee-times board is unchanged.
+
+### Fixed
+- **Republishing one day no longer erases the others.** The published snapshot now keeps each
+  group's day, date, label and player ids, so publishing Day 3 cannot drop Day 1 from the public
+  board or the version history. A group without a day no longer wipes the day-tagged groups.
+  No migration.
 ## [0.34.2] - 2026-11-12
 
 ### Added
