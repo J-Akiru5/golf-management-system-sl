@@ -9,6 +9,24 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Fixed
+- **A scorecard cannot be recorded twice through the ordinary misclicks of a tournament day.** A
+  synchronous gate on both the desk and the staff sheet drops a double click or a second tap while
+  the first request is in flight, and the control says what it is doing. An identical card, a card
+  already in from the same marker, and the same photo scanned twice are recognised by one shared pure
+  guard (`src/lib/scoring/submission.ts`) and reported in plain words instead of being written or
+  shown as an error. A retried submission keeps its capture key only while the card is unchanged. The
+  demo repository and the Supabase adapter run the same guard. No migration.
+- **A scanned card can be corrected cell by cell before it is submitted.** The desk now shows the
+  photo beside all 18 cells, each marked read, check, empty, typed or changed, with OUT, IN and TOTAL
+  updating as cells change; Submit stays locked until every cell the reader left empty is typed and a
+  person confirms the photo. The staff sheet shows the same review with numeric inputs, so a
+  correction opens the number keypad instead of hunting for a stepper. A cell the reader left empty
+  stays empty and is never filled with par, zero or a guess. No migration.
+- **The desk's manual card form starts empty.** It used to start at par for all 18 holes, so Submit
+  without typing recorded a card nobody had read. "Reset to par" is now an explicit "Fill with par",
+  and an empty hole is named in the message. Enter moves to the next hole. No migration.
+
 ## [0.35.0] - 2026-11-12
 
 ### Added
