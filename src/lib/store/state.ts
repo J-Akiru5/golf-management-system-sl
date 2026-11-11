@@ -550,7 +550,14 @@ export function buildPublished(
       playerIds: g.playerIds.filter((id) => nameById.has(id)),
       ...(day ? { dayNumber: day.dayNumber, dayLabel: day.dayLabel, playDate: day.playDate } : {}),
     }));
-  const otherDays = publishedGroupsForOtherDays(alreadyPublished, dayNumber);
+  // A publish that names no day cannot say which day it replaces. On a multi-day event it must not
+  // take the days already on the public page with it, so keep every published group that still
+  // carries its day. A publish that names a day only replaces that day.
+  const multiDay = playingDaysOfEvent(daysOfTournament(tournament)).length > 1;
+  const otherDays =
+    dayNumber === null && multiDay
+      ? (alreadyPublished?.groups ?? []).filter((group) => typeof group.dayNumber === "number")
+      : publishedGroupsForOtherDays(alreadyPublished, dayNumber);
   return {
     tournamentId: tournament.id,
     at,
