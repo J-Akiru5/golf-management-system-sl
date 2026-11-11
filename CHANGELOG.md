@@ -9,6 +9,13 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.35.2] - 2026-11-12
+
+### Changed
+- **The Players and Leaderboard pages use the same compact phone app bar as Pairings.** Below
+  640 px the head is the back arrow and the controls on one row with the page title under it.
+  Wider screens are unchanged. No migration.
+
 ## [0.35.1] - 2026-11-12
 
 ### Changed
