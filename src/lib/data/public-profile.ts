@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { displayName } from "@/lib/format";
+import { matchesName } from "@/lib/name-match";
 import { mapScorecard, type PortalScorecard } from "@/lib/player/portal";
 import type { Database } from "@/lib/supabase/types";
+import type { PublicProgramme } from "./types";
 
 /**
  * One confirmed player's public profile.
@@ -29,6 +31,16 @@ export interface PublicPlayerProfileData {
   player: PublicProfilePlayer;
   partner: PublicProfilePartner | null;
   cards: PortalScorecard[];
+}
+
+/** One confirmed start on one playing day, as the public profile may show it. */
+export interface PublicProfileTeeTime {
+  dayNumber: number;
+  dayLabel: string;
+  playDate: string;
+  /** "HH:MM", never null: a day without a confirmed time is omitted, not padded. */
+  teeTime: string;
+  startHole: number | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -105,6 +117,33 @@ export async function loadPublicPlayerProfile(
     throw new Error(`Could not load the player profile: ${error.message}`);
   }
   return parsePublicPlayerProfile(data);
+}
+
+/**
+ * A player's confirmed starts, one per playing day, read from the public programme the page already
+ * has. A day whose time is not confirmed contributes nothing: the profile shows no time rather than
+ * a placeholder sentence. The player is matched by words, so a snapshot written "ORDOÑEZ, ULYSSES"
+ * finds the profile shown as "ULYSSES ORDOÑEZ".
+ */
+export function profileTeeTimes(
+  programme: Pick<PublicProgramme, "days">,
+  playerName: string,
+): PublicProfileTeeTime[] {
+  const starts: PublicProfileTeeTime[] = [];
+  for (const day of programme.days) {
+    const player = day.players.find(
+      (entry) => entry.confirmed && entry.teeTime !== null && matchesName(entry.name, playerName),
+    );
+    if (!player?.teeTime) continue;
+    starts.push({
+      dayNumber: day.dayNumber,
+      dayLabel: day.label,
+      playDate: day.playDate,
+      teeTime: player.teeTime,
+      startHole: player.startHole,
+    });
+  }
+  return starts.sort((a, b) => a.dayNumber - b.dayNumber);
 }
 
 function normalise(textValue: string): string {

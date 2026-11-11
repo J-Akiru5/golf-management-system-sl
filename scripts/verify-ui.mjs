@@ -889,6 +889,160 @@ check(
 await heldPage.screenshot({ path: `${SHOTS}/public-board-search-held.png` });
 await heldContext.close();
 
+// ------------------------------------------------------- public pages on a 360px phone
+// Phone-first checks for the public surfaces. The reference width is 360px, the narrowest Android
+// the club's players use, and no page may scroll sideways there. Every footer link is a thumb
+// target, not a line of text.
+section("public pages on a 360px phone");
+const phoneContext = await browser.newContext({ viewport: { width: 360, height: 800 } });
+await phoneContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+    const seen = { seen: true, step: 0, updatedAt: new Date().toISOString() };
+    window.localStorage.setItem(
+      "teeline-onboarding-v1",
+      JSON.stringify({ player: seen, staff: seen }),
+    );
+  } catch {
+    // Storage off: the checks that need a modal-free page will say so.
+  }
+});
+const phonePage = await phoneContext.newPage();
+watch(phonePage);
+const phoneGo = async (path) => {
+  await phonePage.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+};
+const noSideways = async (name) => {
+  const width = await phonePage.evaluate(() => {
+    const root = document.scrollingElement ?? document.documentElement;
+    return { scroll: root.scrollWidth, client: root.clientWidth };
+  });
+  check(
+    `${name} does not scroll sideways at 360px`,
+    width.scroll <= width.client + 1,
+    `(scrollWidth ${width.scroll}, client ${width.client})`,
+  );
+};
+const tapTargets = async (locator, name) => {
+  const heights = await locator.evaluateAll((nodes) =>
+    nodes.map((node) => Math.round(node.getBoundingClientRect().height)),
+  );
+  check(
+    name,
+    heights.length > 0 && heights.every((height) => height >= 44),
+    `(${heights.join(", ")}px)`,
+  );
+};
+
+await phoneGo("/pairings");
+await noSideways("/pairings");
+check(
+  "the pairings title is printed once, not twice",
+  (await phonePage.getByText("Club tournament pairings", { exact: true }).count()) === 1,
+  `(${await phonePage.getByText("Club tournament pairings", { exact: true }).count()})`,
+);
+check(
+  "the pairings page never says a time is to be confirmed",
+  (await phonePage.getByText("Time to be confirmed").count()) === 0,
+);
+check(
+  "the pairings page never says the day start is not set",
+  (await phonePage.getByText("Day start time not set").count()) === 0,
+);
+await tapTargets(
+  phonePage.locator('footer nav[aria-label="Site links"] a'),
+  "the public footer links are 44px tap targets",
+);
+await tapTargets(
+  phonePage.locator("main p.hint.no-print a"),
+  "the in-page footer links are 44px tap targets",
+);
+const tournamentTabs = phonePage.locator('nav[aria-label="On this page"]');
+const tabWidth = await tournamentTabs.evaluate((element) => ({
+  scroll: element.scrollWidth,
+  client: element.clientWidth,
+  overflow: getComputedStyle(element).overflowX,
+}));
+check(
+  "the tournament tabs wrap instead of hiding a tab off screen",
+  tabWidth.scroll <= tabWidth.client + 1,
+  `(scrollWidth ${tabWidth.scroll}, client ${tabWidth.client}, overflow ${tabWidth.overflow})`,
+);
+const dayChipRow = phonePage.locator('#tee-times div[role="tablist"]');
+const chipWidth = await dayChipRow.evaluate((element) => ({
+  scroll: element.scrollWidth,
+  client: element.clientWidth,
+  overflow: getComputedStyle(element).overflowX,
+}));
+check(
+  "the tee-time day chips wrap rather than clipping",
+  chipWidth.scroll <= chipWidth.client + 1,
+  `(scrollWidth ${chipWidth.scroll}, client ${chipWidth.client}, overflow ${chipWidth.overflow})`,
+);
+
+const phonePairingsSearch = phonePage.getByRole("searchbox", { name: "Find your name" });
+await phonePairingsSearch.fill("Antonio Alcantara");
+const foundGroup = phonePage
+  .locator('[data-testid="pairing-group"]')
+  .filter({ hasText: "Antonio Alcantara" });
+await expect(foundGroup.first()).toBeVisible({ timeout: 15000 });
+check(
+  "the pairings search finds a name typed First Last",
+  (await foundGroup.count()) === 1,
+  `(${await foundGroup.count()} card)`,
+);
+
+await phoneGo("/roster");
+await noSideways("/roster");
+await tapTargets(
+  phonePage.locator('footer nav[aria-label="Site links"] a'),
+  "the roster footer links are 44px tap targets",
+);
+await tapTargets(
+  phonePage.locator("main a.player-card-link"),
+  "the roster player cards are 44px tap targets",
+);
+await phonePage.getByRole("searchbox", { name: "Find a player" }).fill("ordonez");
+const profileLink = phonePage
+  .locator("main a.player-card-link")
+  .filter({ hasText: "ULYSSES ORDO" });
+await expect(profileLink.first()).toBeVisible({ timeout: 15000 });
+await profileLink.first().click();
+await expect(phonePage).toHaveURL(/tab=profile/, { timeout: 15000 });
+await expect(phonePage.getByTestId("player-profile")).toBeVisible({ timeout: 15000 });
+await noSideways("the player profile");
+const profileTimes = phonePage.getByTestId("profile-tee-times");
+await expect(profileTimes).toBeVisible({ timeout: 15000 });
+const profileTimeText = ((await profileTimes.textContent()) ?? "").replace(/\s+/g, " ").trim();
+check(
+  "the player profile shows a tee time when one exists",
+  /\d{1,2}:\d{2}\s*(AM|PM)/.test(profileTimeText),
+  `(${profileTimeText})`,
+);
+check(
+  "the player profile shows the starting hole",
+  /Hole\s+\d+/.test(profileTimeText),
+  `(${profileTimeText})`,
+);
+
+await phoneGo("/leaderboard");
+await noSideways("/leaderboard");
+await tapTargets(
+  phonePage.locator('footer nav[aria-label="Site links"] a'),
+  "the leaderboard footer links are 44px tap targets",
+);
+
+await phoneGo("/my");
+await noSideways("the player home");
+check(
+  "the player home never says a time is to be confirmed",
+  (await phonePage.getByText("Time to be confirmed").count()) === 0,
+);
+await phoneContext.close();
+
 section("first-run welcome");
 const freshContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const freshPage = await freshContext.newPage();

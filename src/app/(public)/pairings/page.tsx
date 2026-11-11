@@ -16,7 +16,11 @@ import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { type PublicReleaseState, toPublicPairings } from "@/lib/data/public";
-import { loadPublicPlayerProfile, type PublicPlayerProfileData } from "@/lib/data/public-profile";
+import {
+  loadPublicPlayerProfile,
+  type PublicPlayerProfileData,
+  profileTeeTimes,
+} from "@/lib/data/public-profile";
 import { parsePublicTab } from "@/lib/data/public-tabs";
 import {
   buildTeamLeaderboard,
@@ -195,7 +199,11 @@ export default async function PublicPairingsPage({
           <div className="flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
             <span className="leading-tight">
-              <b className="block font-display text-[13px] font-semibold">{t("pairings.title")}</b>
+              {data && (
+                <b className="block font-display text-[13px] font-semibold">
+                  {t("pairings.title")}
+                </b>
+              )}
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
@@ -215,11 +223,11 @@ export default async function PublicPairingsPage({
             </h1>
             <p className="text-on-forest-muted">{dateLabel}</p>
           </>
-        ) : eventPublished ? (
+        ) : (
           <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
             {t("pairings.title")}
           </h1>
-        ) : null}
+        )}
       </header>
 
       {failed ? (
@@ -265,7 +273,16 @@ export default async function PublicPairingsPage({
                     {t("programme.profileFailed")}
                   </div>
                 ) : profile ? (
-                  <PlayerProfileView data={profile} team={team} t={t} />
+                  <PlayerProfileView
+                    data={profile}
+                    team={team}
+                    t={t}
+                    teeTimes={
+                      programme && !teeTimesHeld
+                        ? profileTeeTimes(programme, profile.player.name)
+                        : []
+                    }
+                  />
                 ) : playerId ? (
                   <section className="pairings-empty" role="status" data-testid="profile-empty">
                     <h2>{t("programme.profileNotFoundTitle")}</h2>
@@ -345,14 +362,28 @@ export default async function PublicPairingsPage({
       )}
 
       <p className="hint no-print">
-        {t("pairings.footer")} <Link href="/">{t("pairings.home")}</Link> ·{" "}
-        <Link href="/roster">{t("programme.playersTitle")}</Link> ·{" "}
-        <Link href="/rules?from=pairings">{t("programme.navFullRules")}</Link> ·{" "}
-        <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
+        {t("pairings.footer")}{" "}
+        <Link href="/" className="inline-flex min-h-11 items-center">
+          {t("pairings.home")}
+        </Link>{" "}
+        ·{" "}
+        <Link href="/roster" className="inline-flex min-h-11 items-center">
+          {t("programme.playersTitle")}
+        </Link>{" "}
+        ·{" "}
+        <Link href="/rules?from=pairings" className="inline-flex min-h-11 items-center">
+          {t("programme.navFullRules")}
+        </Link>{" "}
+        ·{" "}
+        <Link href="/leaderboard" className="inline-flex min-h-11 items-center">
+          {t("programme.navLeaderboard")}
+        </Link>
         {tab === "pairings" && programme?.rulesOfPlay && (
           <>
             {" · "}
-            <a href="#rules">{t("programme.navRules")}</a>
+            <a href="#rules" className="inline-flex min-h-11 items-center">
+              {t("programme.navRules")}
+            </a>
           </>
         )}
       </p>

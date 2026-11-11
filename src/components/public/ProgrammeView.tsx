@@ -22,8 +22,8 @@ import { openingDayNumber } from "@/lib/public/programme-day";
  * The pairings stay separate (`PairingsView`) so the pairings page can put them above the tee-time
  * board and the rules, while the roster and the profile have their own pages.
  *
- * Everything here is read one-handed on a phone: the jump links and the day chips scroll sideways
- * instead of wrapping into several rows, and every control is at least 44px tall.
+ * Everything here is read one-handed on a phone: the day chips wrap instead of clipping, and every
+ * control is at least 44px tall.
  */
 
 const PILL =
@@ -262,7 +262,7 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
       ) : (
         <>
           <div
-            className="no-print flex w-full min-w-0 gap-2 overflow-x-auto pb-1"
+            className="no-print flex w-full min-w-0 flex-wrap gap-2 pb-1"
             role="tablist"
             aria-label={t("programme.daysLabel")}
           >

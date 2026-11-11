@@ -126,8 +126,13 @@ export default async function LeaderboardPage({
         eventName={data.eventName}
       />
       <p className="hint no-print">
-        <Link href="/pairings">{t("programme.navPairings")}</Link> ·{" "}
-        <Link href="/roster">{t("programme.navPlayers")}</Link>
+        <Link href="/pairings" className="inline-flex min-h-11 items-center">
+          {t("programme.navPairings")}
+        </Link>{" "}
+        ·{" "}
+        <Link href="/roster" className="inline-flex min-h-11 items-center">
+          {t("programme.navPlayers")}
+        </Link>
       </p>
     </LeaderboardShell>
   );
@@ -196,7 +201,13 @@ async function RoundLeaderboardFallback({ notice }: { notice: string }) {
         </div>
       )}
       <p className="hint no-print">
-        <Link href="/pairings">Pairings</Link> · <Link href="/roster">Players</Link>
+        <Link href="/pairings" className="inline-flex min-h-11 items-center">
+          Pairings
+        </Link>{" "}
+        ·{" "}
+        <Link href="/roster" className="inline-flex min-h-11 items-center">
+          Players
+        </Link>
       </p>
     </LeaderboardShell>
   );

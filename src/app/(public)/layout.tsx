@@ -29,10 +29,13 @@ export default async function PublicLayout({ children }: { children: ReactNode }
             aria-label={t("feedback.footerLabel")}
             className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px]"
           >
-            <Link href="/" className="text-on-forest-muted no-underline hover:text-on-forest">
+            <Link
+              href="/"
+              className="inline-flex min-h-11 items-center text-on-forest-muted no-underline hover:text-on-forest"
+            >
               {t("pairings.home")}
             </Link>
-            <FeedbackLink />
+            <FeedbackLink className="inline-flex min-h-11 items-center" />
           </nav>
         </footer>
         <InstallPrompt />
