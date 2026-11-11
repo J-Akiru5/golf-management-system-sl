@@ -88,7 +88,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
     setLoaded(false);
     setViewError("");
     scoring
-      .loadRound(tournament.id)
+      .loadRound(tournament.id, day?.number ?? null)
       .then((next) => {
         if (cancelled) return;
         setView(next);
@@ -102,7 +102,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [tournament, scoring, loadAttempt]);
+  }, [tournament, scoring, loadAttempt, day?.number]);
 
   const holes = view?.course.holes ?? [];
   const cards = view?.cards ?? [];
@@ -205,30 +205,36 @@ export function GroupScore({ groupId }: { groupId: string }) {
           markerFor(players, row.playerId) ??
           players.find((player) => player.playerId !== row.playerId)?.playerId ??
           "";
-        next = await scoring.submitCard(tournament.id, {
-          playerId: row.playerId,
-          scorerId,
-          source: meta ? "upload" : "manual",
-          entries: holes.map((definition) => {
-            const strokes = playerScores[definition.number];
-            if (typeof strokes !== "number") {
-              throw new Error(`${row.playerName} still has a blank hole.`);
-            }
-            const confidence = meta ? (meta.confidence[definition.number] ?? null) : null;
-            return {
-              hole: definition.number,
-              strokes,
-              confidence,
-              // A high-confidence read, or a cell the volunteer corrected by hand, is checked.
-              // An untouched weak read goes to the desk still unconfirmed, never silently trusted.
-              manuallyConfirmed: meta ? confidence !== null && confidence >= WEAK_CONFIDENCE : true,
-            };
-          }),
-          writtenTotal: row.total,
-          captureKey: key,
-          image: meta?.image ?? undefined,
-          extraction: meta?.extraction ?? undefined,
-        });
+        next = await scoring.submitCard(
+          tournament.id,
+          {
+            playerId: row.playerId,
+            scorerId,
+            source: meta ? "upload" : "manual",
+            entries: holes.map((definition) => {
+              const strokes = playerScores[definition.number];
+              if (typeof strokes !== "number") {
+                throw new Error(`${row.playerName} still has a blank hole.`);
+              }
+              const confidence = meta ? (meta.confidence[definition.number] ?? null) : null;
+              return {
+                hole: definition.number,
+                strokes,
+                confidence,
+                // A high-confidence read, or a cell the volunteer corrected by hand, is checked.
+                // An untouched weak read goes to the desk still unconfirmed, never silently trusted.
+                manuallyConfirmed: meta
+                  ? confidence !== null && confidence >= WEAK_CONFIDENCE
+                  : true,
+              };
+            }),
+            writtenTotal: row.total,
+            captureKey: key,
+            image: meta?.image ?? undefined,
+            extraction: meta?.extraction ?? undefined,
+          },
+          day?.number ?? null,
+        );
         done += 1;
         setSubmittedNow((current) => [...current, row.playerId]);
       }

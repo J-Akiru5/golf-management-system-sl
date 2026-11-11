@@ -23,6 +23,7 @@ import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import type { ClubRole } from "@/lib/auth/member";
+import { fmtIso } from "@/lib/data/labels";
 import { type OpenRoundSnapshot, openRoundErrorMessage } from "@/lib/data/open-round";
 import { canOpenPlayerProfile, playerProfileHref } from "@/lib/data/player-profile";
 import type { OpenRoundInput, ScoringRoundView } from "@/lib/data/scoring";
@@ -31,6 +32,7 @@ import {
   type CardIssue,
   checkHandicapSnapshot,
   type HoleDefinition,
+  parseCardEntry,
   reciprocalRotation,
   type Scorecard,
   type StandingsBoard,
@@ -55,16 +57,22 @@ function issueLabel(issues: CardIssue[]): string {
 }
 
 export default function ScoresPage() {
-  const { member, tournament, scoring, status } = useDesk();
+  const { member, tournament, scoring, status, days, drawDay, setDrawDay } = useDesk();
   const tournamentId = tournament?.id ?? "";
+  const playingDays = days.filter((entry) => entry.isPlayingDay);
+  /** The playing day the desk is scoring. Every read and write names it, so day 3 is never day 1. */
+  const day = drawDay;
   const [view, setView] = useState<ScoringRoundView | null>(null);
   const [roundState, setRoundState] = useState<OpenRoundSnapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [playerId, setPlayerId] = useState("");
   const [scorerId, setScorerId] = useState("");
   const [strokes, setStrokes] = useState<Record<number, string>>({});
+  /** Stable for one entry, so a double tap retries the same card instead of creating revision 2. */
+  const [entryCaptureKey, setEntryCaptureKey] = useState(() => globalThis.crypto.randomUUID());
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
   const [resolutionDrafts, setResolutionDrafts] = useState<
     Record<string, { strokes: string; reason: string }>
@@ -102,9 +110,11 @@ export default function ScoresPage() {
     if (!tournamentId) return;
     let cancelled = false;
     setLoaded(false);
+    setView(null);
     setError(null);
+    setSaved(null);
     scoring
-      .loadRound(tournamentId)
+      .loadRound(tournamentId, day)
       .then((next) => {
         if (cancelled) return;
         setView(next);
@@ -118,14 +128,14 @@ export default function ScoresPage() {
     return () => {
       cancelled = true;
     };
-  }, [scoring, tournamentId]);
+  }, [scoring, tournamentId, day]);
 
   useEffect(() => {
     if (!tournamentId) return;
     let cancelled = false;
     setRoundState(null);
     scoring
-      .loadOpenRoundState(tournamentId)
+      .loadOpenRoundState(tournamentId, day)
       .then((next) => {
         if (cancelled) return;
         setRoundState(next);
@@ -137,11 +147,13 @@ export default function ScoresPage() {
     return () => {
       cancelled = true;
     };
-  }, [scoring, tournamentId]);
+  }, [scoring, tournamentId, day]);
 
   useEffect(() => {
     if (!view) return;
-    setStrokes(strokesFor(view.course.holes));
+    // Every hole starts blank. Par is offered explicitly, never filled in as if it were a score.
+    setStrokes({});
+    setEntryCaptureKey(globalThis.crypto.randomUUID());
     setEditingCard(null);
     setCorrectionReason("");
     setEditCaptureKey("");
@@ -165,10 +177,8 @@ export default function ScoresPage() {
     );
   }, [view]);
 
-  const writtenTotal = holes.reduce((sum, hole) => {
-    const value = Number(strokes[hole.number]);
-    return sum + (Number.isInteger(value) ? value : 0);
-  }, 0);
+  // The total and the entries come from the same cells. A partly filled card has no total at all.
+  const draft = parseCardEntry(holes, strokes);
 
   const scan = useMemo(
     () => scanReview(holes, strokes, scanConfidence),
@@ -176,14 +186,17 @@ export default function ScoresPage() {
   );
   const scanned = Object.keys(scanConfidence).length > 0;
 
-  async function run(action: () => Promise<ScoringRoundView | null>) {
+  async function run(action: () => Promise<ScoringRoundView | null>): Promise<boolean> {
     setBusy(true);
     setError(null);
+    setSaved(null);
     try {
       const next = await action();
       if (next) setView(next);
+      return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -192,11 +205,12 @@ export default function ScoresPage() {
   async function openRound(input: OpenRoundInput) {
     setBusy(true);
     setError(null);
+    setSaved(null);
     try {
       const next = await scoring.openRound(tournamentId, input);
       setView(next);
       try {
-        setRoundState(await scoring.loadOpenRoundState(tournamentId));
+        setRoundState(await scoring.loadOpenRoundState(tournamentId, day));
       } catch (reason) {
         setError(openRoundErrorMessage(reason instanceof Error ? reason.message : String(reason)));
       }
@@ -209,7 +223,7 @@ export default function ScoresPage() {
 
   function reloadRoundState() {
     void scoring
-      .loadOpenRoundState(tournamentId)
+      .loadOpenRoundState(tournamentId, day)
       .then(setRoundState)
       .catch((reason: unknown) =>
         setError(reason instanceof Error ? reason.message : String(reason)),
@@ -235,6 +249,7 @@ export default function ScoresPage() {
     setScanCaptureKey(apply.captureKey);
     setScanConfidence(apply.confidence);
     setError(null);
+    setSaved(null);
   }
 
   function editCard(card: Scorecard) {
@@ -251,6 +266,7 @@ export default function ScoresPage() {
     setScanCaptureKey("");
     setScanConfidence({});
     setError(null);
+    setSaved(null);
     document.getElementById("score-entry")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -263,8 +279,10 @@ export default function ScoresPage() {
     setScanCaptureKey("");
     setScanConfidence({});
     setError(null);
+    setSaved(null);
+    setEntryCaptureKey(globalThis.crypto.randomUUID());
     if (!view) return;
-    setStrokes(strokesFor(view.course.holes));
+    setStrokes({});
     const first = view.players[0]?.playerId ?? "";
     const rotation = reciprocalRotation(view.players.map((player) => player.playerId));
     setPlayerId(first);
@@ -275,9 +293,14 @@ export default function ScoresPage() {
     );
   }
 
-  function submitCard() {
+  async function submitCard() {
+    if (busy) return;
     const targetPlayerId = editingCard?.playerId ?? playerId;
     const targetScorerId = editingCard?.scorerId ?? scorerId;
+    if (!targetPlayerId || !targetScorerId) {
+      setError("Choose the player and the marker before saving.");
+      return;
+    }
     if (targetPlayerId === targetScorerId) {
       setError("A player cannot mark their own card.");
       return;
@@ -286,55 +309,89 @@ export default function ScoresPage() {
       setError("A correction needs a reason of at least 3 characters.");
       return;
     }
-    const entries = holes.map((hole) => ({
-      hole: hole.number,
-      strokes: Number(strokes[hole.number]),
-      confidence: null,
-      manuallyConfirmed: true,
-    }));
-    if (entries.some((entry) => !Number.isInteger(entry.strokes))) {
-      setError("Every hole needs a whole-number score.");
+    if (holes.length === 0) {
+      setError("This round has no holes to score.");
+      return;
+    }
+    if (draft.blankHoles.length > 0 || draft.invalidHoles.length > 0) {
+      const parts: string[] = [];
+      if (draft.blankHoles.length > 0) {
+        parts.push(
+          `${draft.blankHoles.length} ${draft.blankHoles.length === 1 ? "hole is" : "holes are"} still blank`,
+        );
+      }
+      if (draft.invalidHoles.length > 0) {
+        parts.push(
+          `${draft.invalidHoles.length} ${draft.invalidHoles.length === 1 ? "hole is" : "holes are"} not a whole score from 1 to 20`,
+        );
+      }
+      setError(`Every hole needs a score before this card can be saved: ${parts.join("; ")}.`);
+      return;
+    }
+    if (draft.writtenTotal === null) {
+      setError("Every hole needs a score before this card can be saved.");
       return;
     }
     // A correction is a new card revision, so it gets its own capture key. Keeping that key across
     // retries makes the database treat a repeated request as the same revision, not a new one.
     const captureKey = editingCard
       ? editCaptureKey || globalThis.crypto.randomUUID()
-      : scanCaptureKey || globalThis.crypto.randomUUID();
-    void run(async () => {
-      const next = await scoring.submitCard(tournamentId, {
-        playerId: targetPlayerId,
-        scorerId: targetScorerId,
-        source: scanImage ? "upload" : "manual",
-        entries,
-        writtenTotal,
-        captureKey,
-        reason: editingCard ? correctionReason.trim() : undefined,
-        image: scanImage
-          ? {
-              path: scanImage.path,
-              sha256: scanImage.sha256,
-              mime: scanImage.mime,
-              bytes: scanImage.bytes,
-            }
-          : undefined,
-        extraction: scanExtraction ?? undefined,
-      });
-      setEditingCard(null);
-      setCorrectionReason("");
-      setEditCaptureKey("");
-      setScanImage(null);
-      setScanExtraction(null);
-      setScanCaptureKey("");
-      return next;
+      : scanCaptureKey || entryCaptureKey || globalThis.crypto.randomUUID();
+    const correction = Boolean(editingCard);
+    const targetName =
+      players.find((player) => player.playerId === targetPlayerId)?.playerName ?? targetPlayerId;
+    const entries = draft.entries;
+    const writtenTotal = draft.writtenTotal;
+    const ok = await run(async () => {
+      return scoring.submitCard(
+        tournamentId,
+        {
+          playerId: targetPlayerId,
+          scorerId: targetScorerId,
+          source: scanImage ? "upload" : "manual",
+          entries,
+          writtenTotal,
+          captureKey,
+          reason: correction ? correctionReason.trim() : undefined,
+          image: scanImage
+            ? {
+                path: scanImage.path,
+                sha256: scanImage.sha256,
+                mime: scanImage.mime,
+                bytes: scanImage.bytes,
+              }
+            : undefined,
+          extraction: scanExtraction ?? undefined,
+        },
+        day,
+      );
     });
+    if (!ok) return;
+
+    // Clear the card so a second tap cannot save the same values as revision 2.
+    setEditingCard(null);
+    setCorrectionReason("");
+    setEditCaptureKey("");
+    setScanImage(null);
+    setScanExtraction(null);
+    setScanCaptureKey("");
+    setScanConfidence({});
+    setStrokes({});
+    setPlayerId("");
+    setScorerId("");
+    setEntryCaptureKey(globalThis.crypto.randomUUID());
+    setSaved(
+      correction
+        ? `Correction saved for ${targetName}. The new revision needs approval before it counts. The form is cleared.`
+        : `Card saved for ${targetName}. It needs approval before it counts. The form is cleared for the next card.`,
+    );
   }
 
   function resolve(playerIdToResolve: string, hole: number) {
     const key = `${playerIdToResolve}:${hole}`;
-    const draft = resolutionDrafts[key];
-    const value = Number(draft?.strokes);
-    if (!draft || !draft.reason.trim()) {
+    const resolution = resolutionDrafts[key];
+    const value = Number(resolution?.strokes);
+    if (!resolution || !resolution.reason.trim()) {
       setError("A resolution needs a score and a reason.");
       return;
     }
@@ -343,12 +400,16 @@ export default function ScoresPage() {
       return;
     }
     void run(() =>
-      scoring.resolveHole(tournamentId, {
-        playerId: playerIdToResolve,
-        hole,
-        strokes: value,
-        reason: draft.reason,
-      }),
+      scoring.resolveHole(
+        tournamentId,
+        {
+          playerId: playerIdToResolve,
+          hole,
+          strokes: value,
+          reason: resolution.reason,
+        },
+        day,
+      ),
     );
   }
 
@@ -399,12 +460,31 @@ export default function ScoresPage() {
         </div>
       )}
 
+      {playingDays.length > 1 && (
+        <div className="seg" role="tablist" aria-label="Scoring day">
+          {playingDays.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={item.dayNumber === day}
+              aria-pressed={item.dayNumber === day}
+              className="min-h-11"
+              onClick={() => setDrawDay(item.dayNumber)}
+            >
+              {item.label} · {fmtIso(item.playDate)}
+            </button>
+          ))}
+        </div>
+      )}
+
       {roundState && (
         <OpenRoundPanel
-          key={`${roundState.roundStatus ?? "none"}:${roundState.draw.revision}`}
+          key={`${day ?? "none"}:${roundState.roundStatus ?? "none"}:${roundState.draw.revision}`}
           snapshot={roundState}
           role={member?.role}
           busy={busy}
+          dayNumber={day}
           onOpen={openRound}
           onReload={reloadRoundState}
         />
@@ -413,6 +493,12 @@ export default function ScoresPage() {
       {error && (
         <div className="notice bad" role="alert">
           {error}
+        </div>
+      )}
+
+      {saved && (
+        <div className="notice ok" role="status">
+          {saved}
         </div>
       )}
 
@@ -677,8 +763,18 @@ export default function ScoresPage() {
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="hint">
-                    Written total <b className="mono">{writtenTotal}</b> · par{" "}
-                    <b className="mono">{totalPar}</b>
+                    {draft.writtenTotal === null ? (
+                      <>
+                        Written total appears when every hole has a score ·{" "}
+                        {draft.blankHoles.length + draft.invalidHoles.length} of {holes.length}{" "}
+                        still to enter
+                      </>
+                    ) : (
+                      <>
+                        Written total <b className="mono">{draft.writtenTotal}</b> · par{" "}
+                        <b className="mono">{totalPar}</b>
+                      </>
+                    )}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {editingCard && (
@@ -743,7 +839,7 @@ export default function ScoresPage() {
                           }
                           onApprove={() =>
                             void run(() =>
-                              scoring.approveCard(tournamentId, card.id, "Desk approval"),
+                              scoring.approveCard(tournamentId, card.id, "Desk approval", day),
                             )
                           }
                           onReject={() => {
@@ -752,7 +848,7 @@ export default function ScoresPage() {
                               setError("A rejection needs a reason.");
                               return;
                             }
-                            void run(() => scoring.rejectCard(tournamentId, card.id, reason));
+                            void run(() => scoring.rejectCard(tournamentId, card.id, reason, day));
                           }}
                           canEdit={canEdit}
                           onEdit={() => editCard(card)}
@@ -764,7 +860,12 @@ export default function ScoresPage() {
                               return;
                             }
                             void run(async () => {
-                              const next = await scoring.revokeCard(tournamentId, card.id, reason);
+                              const next = await scoring.revokeCard(
+                                tournamentId,
+                                card.id,
+                                reason,
+                                day,
+                              );
                               setRejectReasons((current) => ({ ...current, [card.id]: "" }));
                               return next;
                             });
@@ -889,7 +990,7 @@ export default function ScoresPage() {
             id="score-final"
             icon={<CheckCircle2 />}
             title="Publication and finalization"
-            subtitle="Provisional publication is explicit. Final standings stay blocked until every gate is satisfied."
+            subtitle="Provisional publication is on for a scored round. Final standings stay blocked until every gate is satisfied."
             dataHelp="scores-final"
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -943,7 +1044,9 @@ export default function ScoresPage() {
                   size="sm"
                   disabled={busy || view.roundStatus === "final" || !view.provisionalPublication}
                   onClick={() =>
-                    void run(() => scoring.publishRound(tournamentId, "Provisional publication"))
+                    void run(() =>
+                      scoring.publishRound(tournamentId, "Provisional publication", day),
+                    )
                   }
                 >
                   Publish provisional
@@ -965,13 +1068,19 @@ export default function ScoresPage() {
                     view.roundStatus === "final"
                   }
                   onClick={() =>
-                    void run(() => scoring.finalizeRound(tournamentId, "Final publication"))
+                    void run(() => scoring.finalizeRound(tournamentId, "Final publication", day))
                   }
                 >
                   Finalize results
                 </Button>
               </RoleGate>
             </div>
+            {!view.provisionalPublication && (
+              <p className="hint">
+                Provisional publication is off for this round, so provisional results cannot be
+                published. It is turned on when the round is opened.
+              </p>
+            )}
             <p className="hint">
               {status === "demo"
                 ? "The sample uses a proposed tie-break that is deliberately unconfirmed, so finalization stays blocked. The organizer's written rule is still required."

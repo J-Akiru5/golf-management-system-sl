@@ -99,7 +99,7 @@ export default function StaffGroupPage() {
     if (!tournament || status === "loading") return;
     let cancelled = false;
     scoring
-      .loadRound(tournament.id)
+      .loadRound(tournament.id, groupDay ?? day?.number ?? null)
       .then((next) => {
         if (!cancelled) setView(next);
       })
@@ -109,7 +109,7 @@ export default function StaffGroupPage() {
     return () => {
       cancelled = true;
     };
-  }, [tournament, scoring, status]);
+  }, [tournament, scoring, status, groupDay, day?.number]);
 
   // The claim is keyed by the day in the link, not by whichever day happens to be on screen.
   useEffect(() => {
