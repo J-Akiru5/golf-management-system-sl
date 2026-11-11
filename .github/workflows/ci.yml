@@ -12,9 +12,9 @@ name: CI
 # loosened by accident.
 on:
   pull_request:
-    branches: [develop, main]
+    branches: [develop, main, staging]
   push:
-    branches: [develop, main]
+    branches: [develop, main, staging]
 
 # A new push to the same branch makes the previous run's answer irrelevant.
 concurrency:
