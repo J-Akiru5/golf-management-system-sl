@@ -20,6 +20,8 @@ import type {
 import { fmtTime, shortDate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { publicPhotoUrl } from "@/lib/photo";
+import { manilaToday } from "@/lib/player/dashboard";
+import { openingPairingDay } from "@/lib/public/pairing-day";
 
 /** The signed-in player, when the page could work out who is reading. */
 export interface PairingsYou {
@@ -32,7 +34,6 @@ type Density = "comfortable" | "compact";
 type Bucket = SessionKey | "TBC";
 
 const DENSITY_KEY = "teeline.pairings.density";
-const DAY_KEY = "teeline.pairings.day";
 
 /** "Reyes, Ana" and "Ana Reyes" are the same person: compare the words, not the punctuation. */
 function nameKey(value: string): string {
@@ -107,10 +108,10 @@ function writeStore(key: string, value: string): void {
  * A card leads with the tee time, then the hole, then the players, then the flight. A group whose
  * time is empty shows the hole and the players with no time line at all: no placeholder is invented.
  *
- * A multi-day event is read one day at a time through the chips, and the chips remember the last
- * choice on this phone. Within a day the groups are split into AM and PM sessions, each with a
- * heading that stays under the toolbar while the list scrolls, so a long list always says where
- * the reader is.
+ * A multi-day event is read one day at a time through the chips, opening on today when the
+ * published snapshot has it and on its first day otherwise. Within a day the groups are split into
+ * AM and PM sessions, each with a heading that stays under the toolbar while the list scrolls, so a
+ * long list always says where the reader is.
  *
  * The words come from the i18n context. Outside the player/public layouts (the desk's publish
  * preview) the context falls back to English, which is what the organizer expects there.
@@ -135,7 +136,11 @@ export function PairingsView({
   const [query, setQuery] = useState("");
   const [flight, setFlight] = useState("");
   const [density, setDensity] = useState<Density>("comfortable");
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  // Today in the club's time zone when the published snapshot has it, else its first day. The day
+  // is a choice on this visit, not a stored one: a reader who comes back tomorrow opens on tomorrow.
+  const [selectedDay, setSelectedDay] = useState<number | null>(() =>
+    openingPairingDay(pairings.days ?? [], manilaToday()),
+  );
   const [focusRequest, setFocusRequest] = useState<{
     day: number;
     number: number;
@@ -168,16 +173,15 @@ export function PairingsView({
     ? (pairings.groups.find((group) => group.players.some(isYou)) ?? null)
     : null;
 
-  // The day the reader probably wants: their own day, then the saved choice, then the first day.
-  const requestedDay = selectedDay ?? ownGroup?.dayNumber ?? days[0]?.dayNumber ?? null;
-  const activeDay = days.find((day) => day.dayNumber === requestedDay) ?? days[0] ?? null;
+  // The day the reader wants: the chip they chose, else today when the snapshot has it, else the
+  // first day present. A saved day is deliberately not reused: a chip chosen yesterday should not
+  // hide today's groups.
+  const activeDay = days.find((day) => day.dayNumber === selectedDay) ?? days[0] ?? null;
 
-  // Remember the last day and the last density on this phone.
+  // Remember the last density on this phone.
   useEffect(() => {
     const savedDensity = readStore(DENSITY_KEY);
     if (savedDensity === "compact" || savedDensity === "comfortable") setDensity(savedDensity);
-    const savedDay = Number(readStore(DAY_KEY));
-    if (Number.isFinite(savedDay) && savedDay > 0) setSelectedDay(savedDay);
   }, []);
 
   // The sticky session heading sits directly under the sticky toolbar, so the toolbar's real
@@ -221,7 +225,6 @@ export function PairingsView({
 
   const chooseDay = (dayNumber: number) => {
     setSelectedDay(dayNumber);
-    writeStore(DAY_KEY, String(dayNumber));
   };
 
   const groupLabel = (startHole: number) => {
@@ -262,13 +265,14 @@ export function PairingsView({
     searchRef.current?.focus();
   };
 
-  // A search looks across every day, so "when does my buddy tee off?" is answered even when the
-  // buddy plays tomorrow. Browsing without a search stays on the chosen day.
+  // The chosen day is the only day read: the search finds a name in that day's groups instead of
+  // jumping to a different day, so switching a chip is the way to look at another day. Snapshots
+  // written before days existed stay one flat list.
   const daysToRead: PublicPairingDay[] =
     days.length > 0
-      ? searching || Boolean(flight)
-        ? days
-        : days.filter((day) => day.dayNumber === (activeDay?.dayNumber ?? days[0]?.dayNumber))
+      ? activeDay
+        ? [activeDay]
+        : []
       : [
           {
             dayNumber: 1,
@@ -447,9 +451,14 @@ export function PairingsView({
             </button>
           </div>
 
-          {multiDay && (
+          {days.length > 0 && (
             <div className="p-toolbar-tools">
-              <div className="p-chips" role="group" aria-label={t("pairings.dayChips")}>
+              <div
+                className="p-chips"
+                role="group"
+                aria-label={t("pairings.dayChips")}
+                data-testid="pairings-days"
+              >
                 {days.map((day, index) => {
                   const active = day.dayNumber === activeDay?.dayNumber;
                   const date = shortDate(day.playDate);
@@ -463,6 +472,8 @@ export function PairingsView({
                       className={`p-chip${active ? " is-active" : ""}`}
                       aria-pressed={active}
                       aria-label={date ? `${day.label} · ${date}` : day.label}
+                      data-testid="pairings-day-chip"
+                      data-day-number={day.dayNumber}
                       onKeyDown={onChipKeyDown}
                       onClick={() => chooseDay(day.dayNumber)}
                     >
@@ -517,7 +528,7 @@ export function PairingsView({
                 {t("pairings.densityCompact")}
               </button>
             </div>
-            {!multiDay && flightFilter && flights.length > 1 && (
+            {days.length === 0 && flightFilter && flights.length > 1 && (
               <select
                 aria-label={t("pairings.filterFlight")}
                 data-help="pairings-flight"
@@ -569,7 +580,7 @@ export function PairingsView({
           </section>
         ))}
         {shown === 0 && (
-          <div className="p-empty">
+          <div className="p-empty" data-testid="pairings-empty">
             <p className="m-0">
               {searching || flight ? t("pairings.noMatch") : t("pairings.dayEmpty")}
             </p>

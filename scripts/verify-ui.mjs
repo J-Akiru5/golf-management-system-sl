@@ -788,159 +788,6 @@ check(
 );
 await playerCrossContext.close();
 
-section("public tee-time board");
-// The board is the only tee-time list left when the pairings are held, so it has to stand alone.
-// Both contexts cover the two paths a player can land on: pairings released, and pairings held.
-const boardContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
-const boardPage = await boardContext.newPage();
-watch(boardPage);
-await boardPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
-const board = boardPage.locator("#tee-times");
-const manilaToday = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Manila",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-}).format(new Date());
-const todayLabel = new Date(`${manilaToday}T00:00:00`).toLocaleDateString("en-PH", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-check(
-  "the board opens on today, not day 1 by default",
-  (await board.locator("h3").first().textContent())?.includes(todayLabel) ?? false,
-  `(${todayLabel})`,
-);
-check(
-  "and the matching day chip is the selected one",
-  (await board.getByRole("tab", { selected: true }).count()) === 1,
-);
-check(
-  "no time is ever called to be confirmed",
-  (await board.getByText("Time to be confirmed").count()) === 0,
-);
-check(
-  "and the day start is never called not set",
-  (await board.getByText("Day start time not set").count()) === 0,
-);
-const boardSearch = board.getByRole("searchbox", { name: "Find a player" });
-check("the board carries a player search", (await boardSearch.count()) === 1);
-// The board is a timetable, not a draw sheet: the day is split into sessions, every row is one
-// player, and nothing on it names a partner, a pair number or a starting hole.
-const boardSessions = await board.getByTestId("tee-session").evaluateAll((nodes) =>
-  nodes.map((node) => ({
-    key: node.getAttribute("data-session"),
-    names: [...node.querySelectorAll('[data-testid="tee-session-name"]')].map(
-      (name) => name.textContent?.trim() ?? "",
-    ),
-  })),
-);
-const boardAm = boardSessions.find((item) => item.key === "AM");
-const boardPm = boardSessions.find((item) => item.key === "PM");
-check(
-  "the board groups the day into AM and PM, not into groups",
-  Boolean(boardAm?.names.length) && Boolean(boardPm?.names.length),
-  `(${boardSessions.map((item) => `${item.key}:${item.names.length}`).join(", ")})`,
-);
-const alphabetical = (names) =>
-  names.every(
-    (name, index) =>
-      index === 0 ||
-      names[index - 1].localeCompare(name, "en", { sensitivity: "base" }) <= 0,
-  );
-check(
-  "each session lists its players alphabetically",
-  alphabetical(boardAm?.names ?? []) && alphabetical(boardPm?.names ?? []),
-);
-const boardRows = await board.getByTestId("tee-session-player").count();
-const boardNames = await board.getByTestId("tee-session-name").count();
-check(
-  "no board row carries a group-mate name: one player per row",
-  boardRows > 0 && boardRows === boardNames,
-  `(${boardRows} rows, ${boardNames} names)`,
-);
-const boardText = (await board.textContent()) ?? "";
-check(
-  "the board never names a hole or a group mate",
-  !/Hole\s+\d/.test(boardText) && !boardText.includes("With "),
-);
-await boardSearch.fill("ordonez");
-const boardResult = board.getByTestId("tee-search-result").first();
-await expect(boardResult).toBeVisible({ timeout: 15000 });
-check(
-  "a board search reaches a player on another day",
-  (await boardResult.textContent())?.includes("Day 2") ?? false,
-);
-check(
-  "the matched name is highlighted, accents intact",
-  (await boardResult.locator("mark").first().textContent()) === "Ordoñez",
-);
-const resultText = (await boardResult.textContent()) ?? "";
-check(
-  "a result names the day, date and the player's own time",
-  /Day \d/.test(resultText) && /\d{1,2}:\d{2}/.test(resultText),
-  `(${resultText.replace(/\s+/g, " ").trim()})`,
-);
-check(
-  "a result shows one player, with no group mate, pair or hole",
-  !resultText.includes("Hole") &&
-    !resultText.includes("With ") &&
-    (await boardResult.getByTestId("tee-search-name").count()) === 1,
-  `(${await boardResult.getByTestId("tee-search-name").count()} name)`,
-);
-await boardPage.screenshot({ path: `${SHOTS}/public-board-search.png` });
-await boardSearch.fill("zzzzzz");
-check(
-  "an empty result says so",
-  (await board.getByText("No tee time matches that name.").count()) === 1,
-);
-await board.getByRole("button", { name: "Clear", exact: true }).click();
-check(
-  "clearing the search returns to the day board",
-  (await board.getByTestId("tee-search-result").count()) === 0 &&
-    (await board.getByRole("tab").count()) > 1,
-);
-await boardContext.close();
-
-// The held path: the pairings card is replaced by its notice, and the board still answers.
-const heldContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
-await heldContext.addInitScript(() => {
-  try {
-    window.localStorage.setItem(
-      "teeline.demo.public-release.v1",
-      JSON.stringify({ "bamboo-tee-2026": { pairings: false } }),
-    );
-  } catch {
-    // Storage off: the held preview will not apply, and the checks below would fail visibly.
-  }
-});
-const heldPage = await heldContext.newPage();
-watch(heldPage);
-await heldPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
-const heldBoard = heldPage.locator("#tee-times");
-await expect(heldPage.getByTestId("demo-pairings-held")).toBeVisible({ timeout: 15000 });
-check("with the pairings held the tee-time board still renders", (await heldBoard.count()) === 1);
-const heldSearch = heldBoard.getByRole("searchbox", { name: "Find a player" });
-await heldSearch.fill("ordonez");
-const heldResult = heldBoard.getByTestId("tee-search-result").first();
-await expect(heldResult).toBeVisible({ timeout: 15000 });
-check(
-  "and its search still reaches another day",
-  (await heldResult.textContent())?.includes("Day 2") ?? false,
-);
-check(
-  "without a placeholder time",
-  (await heldBoard.getByText("Time to be confirmed").count()) === 0,
-);
-const heldText = (await heldBoard.textContent()) ?? "";
-check(
-  "and the held board never names a hole or a group mate",
-  !/Hole\s+\d/.test(heldText) && !heldText.includes("With "),
-);
-await heldPage.screenshot({ path: `${SHOTS}/public-board-search-held.png` });
-await heldContext.close();
-
 // ------------------------------------------------------- public pages on a 360px phone
 // Phone-first checks for the public surfaces. The reference width is 360px, the narrowest Android
 // the club's players use, and no page may scroll sideways there. Every footer link is a thumb
@@ -996,14 +843,6 @@ check(
   (await phonePage.getByText("Club tournament pairings", { exact: true }).count()) === 1,
   `(${await phonePage.getByText("Club tournament pairings", { exact: true }).count()})`,
 );
-check(
-  "the pairings page never says a time is to be confirmed",
-  (await phonePage.getByText("Time to be confirmed").count()) === 0,
-);
-check(
-  "the pairings page never says the day start is not set",
-  (await phonePage.getByText("Day start time not set").count()) === 0,
-);
 await tapTargets(
   phonePage.locator('footer nav[aria-label="Site links"] a'),
   "the public footer links are 44px tap targets",
@@ -1023,19 +862,92 @@ check(
   tabWidth.scroll <= tabWidth.client + 1,
   `(scrollWidth ${tabWidth.scroll}, client ${tabWidth.client}, overflow ${tabWidth.overflow})`,
 );
-const dayChipRow = phonePage.locator('#tee-times div[role="tablist"]');
-const chipWidth = await dayChipRow.evaluate((element) => ({
-  scroll: element.scrollWidth,
-  client: element.clientWidth,
-  overflow: getComputedStyle(element).overflowX,
-}));
-check(
-  "the tee-time day chips wrap rather than clipping",
-  chipWidth.scroll <= chipWidth.client + 1,
-  `(scrollWidth ${chipWidth.scroll}, client ${chipWidth.client}, overflow ${chipWidth.overflow})`,
-);
 
+// The separate tee-time board is gone from /pairings. The published groups are the page, and the
+// day chips above them are the only day switch.
+check(
+  "the tee-time board is gone from /pairings",
+  (await phonePage.locator("#tee-times").count()) === 0 &&
+    (await phonePage.getByRole("heading", { name: "Tee times by day" }).count()) === 0,
+);
+const dayChips = phonePage.getByTestId("pairings-day-chip");
+const chipDays = await dayChips.evaluateAll((nodes) =>
+  nodes.map((node) => node.getAttribute("data-day-number")),
+);
+check(
+  "the day chips list only the published days",
+  chipDays.length === 2 && chipDays[0] === "1" && chipDays[1] === "2",
+  `(${chipDays.join(", ")})`,
+);
+const chipTexts = (await dayChips.allTextContents()).map((text) =>
+  text.replace(/\s+/g, " ").trim(),
+);
+check(
+  "every day chip prints its date",
+  chipTexts.length > 1 &&
+    chipTexts.every((text) => /[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}/.test(text)),
+  `(${chipTexts.join(" | ")})`,
+);
+const manilaTodayLabel = new Intl.DateTimeFormat("en-PH", {
+  timeZone: "Asia/Manila",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+}).format(new Date());
+const pressedChip = phonePage.locator(
+  '[data-testid="pairings-day-chip"][aria-pressed="true"]',
+);
+check(
+  "the day chips open on today in Manila",
+  (await pressedChip.count()) === 1 &&
+    ((await pressedChip.textContent()) ?? "").includes(manilaTodayLabel),
+  `(${manilaTodayLabel})`,
+);
+const groupIds = async () =>
+  phonePage.getByTestId("pairing-group").evaluateAll((nodes) => nodes.map((node) => node.id));
+const todayGroupIds = await groupIds();
+await dayChips.filter({ hasText: "Day 2" }).click();
+await expect(pressedChip).toHaveAttribute("data-day-number", "2", { timeout: 15000 });
+const dayTwoGroupIds = await groupIds();
+check(
+  "switching a chip changes the groups shown",
+  dayTwoGroupIds.length > 0 &&
+    dayTwoGroupIds.every((id) => id.startsWith("pairing-group-2-")) &&
+    dayTwoGroupIds.join("|") !== todayGroupIds.join("|"),
+  `(${todayGroupIds.length} groups, then ${dayTwoGroupIds.length})`,
+);
+const sessionHeadings = await phonePage.getByTestId("pairings-session").allTextContents();
+const dayTwoChipText = ((await dayChips.filter({ hasText: "Day 2" }).textContent()) ?? "").replace(
+  /\s+/g,
+  " ",
+);
+const dayTwoDate = dayTwoChipText.match(/[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}/)?.[0] ?? "";
+check(
+  "the chosen day prints its date and its AM and PM sessions",
+  dayTwoDate !== "" &&
+    sessionHeadings.length === 2 &&
+    sessionHeadings.every((text) => text.includes("Day 2") && text.includes(dayTwoDate)) &&
+    sessionHeadings.some((text) => text.includes("AM")) &&
+    sessionHeadings.some((text) => text.includes("PM")),
+  `(${sessionHeadings.join(" | ")})`,
+);
 const phonePairingsSearch = phonePage.getByRole("searchbox", { name: "Find your name" });
+await phonePairingsSearch.fill("Antonio Alcantara");
+await expect(
+  phonePage.getByTestId("pairing-group").filter({ hasText: "Antonio Alcantara" }),
+).toHaveCount(0, { timeout: 15000 });
+check(
+  "the search stays on the chosen day",
+  (await phonePage.getByText("No one found with that name or flight.").count()) === 1,
+);
+await dayChips.filter({ hasText: "Day 1" }).click();
+const dayOneGroup = phonePage
+  .getByTestId("pairing-group")
+  .filter({ hasText: "Antonio Alcantara" });
+await expect(dayOneGroup).toHaveCount(1, { timeout: 15000 });
+check("switching back finds the player on the other day", (await dayOneGroup.count()) === 1);
+await phonePairingsSearch.fill("");
+
 await phonePairingsSearch.fill("Antonio Alcantara");
 const foundGroup = phonePage
   .locator('[data-testid="pairing-group"]')

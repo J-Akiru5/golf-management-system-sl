@@ -9,7 +9,7 @@ import { PairingsView } from "@/components/PairingsView";
 import { HeldNotice } from "@/components/public/HeldNotice";
 import { PlayerProfileSearch } from "@/components/public/PlayerProfileSearch";
 import { PlayerProfileView } from "@/components/public/PlayerProfileView";
-import { RulesOfPlay, TeeTimesBoard } from "@/components/public/ProgrammeView";
+import { RulesOfPlay } from "@/components/public/ProgrammeView";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -441,12 +441,6 @@ export function DemoPairings({
                 you={{ id: demoPlayerId(SAMPLE_FEATURED_PLAYER), name: SAMPLE_FEATURED_PLAYER }}
               />
             </section>
-          )}
-
-          {teeTimesHeld ? (
-            <HeldNotice compact testId="demo-tee-times-held" />
-          ) : (
-            <TeeTimesBoard programme={programme} />
           )}
 
           {rulesHeld ? (
