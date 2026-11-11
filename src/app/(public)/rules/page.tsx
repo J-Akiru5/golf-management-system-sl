@@ -5,6 +5,7 @@ import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { RulesSections } from "@/components/public/RulesSections";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { BAMBOO_TEE_2026_RULES as rules } from "@/lib/public/tournament-rules";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 
@@ -50,7 +51,10 @@ export default function TournamentRulesPage() {
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <span className="rules-pdf-badge">{rules.pdf.pageCount} pages · PDF</span>
+          <div className="flex items-center gap-3">
+            <span className="rules-pdf-badge">{rules.pdf.pageCount} pages · PDF</span>
+            <ThemeToggle compact tone="nav" />
+          </div>
         </div>
 
         <p className="overline mt-2 !text-gold-on-forest">

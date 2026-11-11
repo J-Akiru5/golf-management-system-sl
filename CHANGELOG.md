@@ -9,11 +9,40 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **The theme control is on every public tournament page (issue #217).** `/pairings`, `/roster`,
+  `/leaderboard` and `/rules` now show the existing System / Light (Ivory) / Dark (Charcoal)
+  selector beside their language and help controls. The theme system, persistence, pre-paint
+  script and contrast tokens were already in place; this only exposes the control on those pages
+  and checks it in the browser suite. No migration.
+- **The API regulation is adopted for the HTTP surface (issue #218).** `API_REGULATION.md` is in
+  the repository, `docs/API.md` records the project decisions and deviations, and every wrapped
+  route handler now sends `X-Request-Id` and `Server-Timing`, logs `WARN SLOW` over 300 ms and
+  `ERROR VIOLATION` over 400 ms, and returns the error envelope for an uncaught failure.
+- **`GET /api/v1/pairings/version`** is the versioned, enveloped pairings version endpoint. It and
+  the legacy path share the read, the `s-maxage=10, stale-while-revalidate=20` cache and a weak
+  ETag.
+- **`pnpm api:check`** measures five public pages and the version endpoint, reports measured /
+  skipped / total, and runs in warn mode. CI has a non-blocking API job while the backlog is
+  burned down.
+
 ### Changed
 - **The public tee-times board shows cards and the starting hole again.** The 0.34.1 change that
   cut the board down to one row per player with a name and a time is reverted on the owner's
   instruction: each confirmed start is a card with its time, hole and the players on it, and the
   search results carry the hole and the "With ..." line. No migration.
+- **The public pairings page no longer spends an auth round trip on a signed-out visitor.** It
+  checks for the Supabase session cookie before calling `auth.getUser()`.
+- **The leaderboard starts its three public reads together**, so the page pays the slower read
+  instead of the sum of the leaderboard wait and the release/programme wait.
+
+### Fixed
+- **Marking a notification as read moves it out of the unread list (issue #219, duplicate of #197).**
+  The alert moves optimistically, the database write follows, and a failure puts it back. Read
+  items sit under a collapsed **Read (N)** section instead of staying among the unread items, and a
+  `BroadcastChannel` updates other open tabs immediately. The badge still counts unresolved blocking
+  and warning items until their cause is fixed; that rule is unchanged and now stated in the panel.
+  No migration.
 
 ## [0.34.2] - 2026-11-12
 

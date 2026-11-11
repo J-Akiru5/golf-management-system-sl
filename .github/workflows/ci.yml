@@ -12,9 +12,9 @@ name: CI
 # loosened by accident.
 on:
   pull_request:
-    branches: [develop, main]
+    branches: [develop, main, staging]
   push:
-    branches: [develop, main]
+    branches: [develop, main, staging]
 
 # A new push to the same branch makes the previous run's answer irrelevant.
 concurrency:
@@ -89,3 +89,30 @@ jobs:
       - name: Dev server log when it fails
         if: failure()
         run: tail -100 .tmp/dev-server.log || true
+
+  api:
+    name: API regulation (warn)
+    runs-on: ubuntu-latest
+    needs: checks
+    # API_REGULATION.md §11.3: warn mode for the rollout. The page suite is measured in demo mode;
+    # the version endpoint is only certified when a connected Supabase environment is available.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: API check
+        run: pnpm api:check
+
+      - name: API dev server log when it fails
+        if: failure()
+        run: tail -100 .tmp/api-dev-server.log || true
