@@ -9,6 +9,24 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **The API regulation is adopted for the HTTP surface (issue #218).** `API_REGULATION.md` is in
+  the repository, `docs/API.md` records the project decisions and deviations, and every wrapped
+  route handler now sends `X-Request-Id` and `Server-Timing`, logs `WARN SLOW` over 300 ms and
+  `ERROR VIOLATION` over 400 ms, and returns the error envelope for an uncaught failure.
+- **`GET /api/v1/pairings/version`** is the versioned, enveloped pairings version endpoint. It and
+  the legacy path share the read, the `s-maxage=10, stale-while-revalidate=20` cache and a weak
+  ETag.
+- **`pnpm api:check`** measures five public pages and the version endpoint, reports measured /
+  skipped / total, and runs in warn mode. CI has a non-blocking API job while the backlog is
+  burned down.
+
+### Changed
+- **The public pairings page no longer spends an auth round trip on a signed-out visitor.** It
+  checks for the Supabase session cookie before calling `auth.getUser()`.
+- **The leaderboard starts its three public reads together**, so the page pays the slower read
+  instead of the sum of the leaderboard wait and the release/programme wait.
+
 ## [0.34.1] - 2026-11-11
 
 ### Fixed

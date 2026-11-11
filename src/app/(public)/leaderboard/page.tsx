@@ -54,18 +54,20 @@ export default async function LeaderboardPage({
   }
 
   const client = createSupabasePublicClient();
-  let data: Awaited<ReturnType<typeof loadPublicTeamLeaderboard>> = null;
-  let failure = "";
-  try {
-    data = await loadPublicTeamLeaderboard(client);
-  } catch (error) {
-    failure = error instanceof Error ? error.message : "Could not load the leaderboard.";
-  }
-
-  const [releaseResult, programmeResult] = await Promise.allSettled([
+  // Independent reads start together. Waiting for the leaderboard before asking for the release
+  // state and the programme made the page pay the sum of both waits instead of the slower one.
+  const [leaderboardResult, releaseResult, programmeResult] = await Promise.allSettled([
+    loadPublicTeamLeaderboard(client),
     loadPublicReleaseState(client),
     loadPublicProgramme(client),
   ]);
+  const data = leaderboardResult.status === "fulfilled" ? leaderboardResult.value : null;
+  const failure =
+    leaderboardResult.status === "rejected"
+      ? leaderboardResult.reason instanceof Error
+        ? leaderboardResult.reason.message
+        : "Could not load the leaderboard."
+      : "";
   const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
   const programme = programmeResult.status === "fulfilled" ? programmeResult.value : null;
 
