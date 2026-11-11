@@ -1,6 +1,6 @@
 # Model files
 
-Model binaries are ignored by Git; never commit one. Two routes put a model here.
+Model binaries are ignored by Git; never commit one. Three routes put a model here.
 
 ## Roboflow cannot export this project to ONNX
 
@@ -47,6 +47,31 @@ project's own class folders: `1`..`9`, `blank`, `unreadable` and `x`.
 Set `SCAN_MODEL_INPUT_SIZE`, `SCAN_MODEL_INPUT_CHANNELS`,
 `SCAN_MODEL_INPUT_LAYOUT` and `SCAN_MODEL_INPUT_NORMALIZE` to match the export.
 The service validates a static input shape and refuses a mismatched model.
+
+## Route 3: a private bucket, fetched at container start
+
+The Render container has no model file, because `models/*.onnx` is ignored. The
+owner uploads `igcc-scorecard-digits.onnx` to a private bucket and sets three
+variables on the service. At startup `igcc_scan/model_fetch.py` downloads the
+file into `/app/models`, checks the hash and only then loads it:
+
+```text
+SCAN_MODEL_URL=https://<private bucket>/models/igcc-scorecard-digits.onnx
+SCAN_MODEL_SHA256=<64 hexadecimal characters>
+SCAN_MODEL_URL_TOKEN=<optional bearer token>
+```
+
+Get the hash with `Get-FileHash .\igcc-scorecard-digits.onnx -Algorithm SHA256`.
+The URL must be https, the body is capped at 50 MB, and `SCAN_MODEL_SHA256` is
+required whenever a URL is set: a file whose hash does not match is deleted and
+never loaded. If the fetch fails the service starts anyway and `/scan` answers
+503 `model_config_error`, exactly as for a bad `SCAN_MODEL_PATH`. If the file is
+already at `SCAN_MODEL_PATH`, nothing is downloaded, so an image with the weights
+baked in keeps working. Do not commit the file, the token or a signed URL.
+
+Deployment details are in `docs/SCORECARD_SCAN_HOSTING.md`. Digit accuracy on raw
+phone photos is not production ready yet (`docs/SCORECARD_SCAN_MODEL.md`), so the
+desk review stays.
 
 ## Card detection template
 

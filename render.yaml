@@ -10,10 +10,15 @@ services:
     dockerContext: ./scripts/scan
     healthCheckPath: /health
     envVars:
+      # The card reader runs its own ONNX model. No hosted inference at run time.
       - key: SCAN_MODEL_BACKEND
-        value: roboflow_hosted
-      - key: ROBOFLOW_MODEL_ID
-        value: igcc-scorecard-digits-v2/4
+        value: local_onnx
+      - key: SCAN_MODEL_PATH
+        value: /app/models/igcc-scorecard-digits.onnx
+      - key: SCAN_MODEL_CLASSES
+        value: /app/models/classes.json
+      - key: SCAN_CARD_TEMPLATE
+        value: /app/models/igcc-card-template.npz
       - key: SCAN_CARD_MODE
         value: auto
       - key: SCAN_CONFIDENCE_THRESHOLD
@@ -26,6 +31,12 @@ services:
       # SCAN_INFERENCE_TOKEN after the first deploy.
       - key: SCAN_INFERENCE_TOKEN
         generateValue: true
-      # Never commit the key. Set it in the Render dashboard after rotation.
-      - key: ROBOFLOW_API_KEY
+      # The weights are not in Git. Upload the .onnx to a private bucket and set
+      # these three in the Render dashboard. SCAN_MODEL_SHA256 is required
+      # whenever SCAN_MODEL_URL is set; an unverified file is never loaded.
+      - key: SCAN_MODEL_URL
+        sync: false
+      - key: SCAN_MODEL_SHA256
+        sync: false
+      - key: SCAN_MODEL_URL_TOKEN
         sync: false
