@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { HelpButton } from "@/components/help";
@@ -36,6 +37,7 @@ import { loadPortal } from "@/lib/player/portal";
 import { pairingsSignature } from "@/lib/public/pairings-live";
 import { pairingsBackLink } from "@/lib/public/pairings-nav";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
+import { hasSupabaseAuthCookie } from "@/lib/supabase/cookies";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -85,6 +87,11 @@ const manila = new Intl.DateTimeFormat("en-PH", {
  */
 async function loadSignedInPlayer(): Promise<PairingsYou | null> {
   try {
+    // A signed-out visitor has no Supabase session cookie. Do not spend an auth round trip on the
+    // common case; only the "You" marker is at stake, never the pairings.
+    const jar = await cookies();
+    if (!hasSupabaseAuthCookie(jar.getAll().map((cookie) => cookie.name))) return null;
+
     const client = await createSupabaseServerClient();
     const { data } = await client.auth.getUser();
     if (!data.user) return null;
