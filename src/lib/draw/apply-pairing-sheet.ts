@@ -38,6 +38,13 @@ export interface ApplyPairingSheetInput {
   currentGroups: readonly DrawGroup[];
   /** The flight of a registration, from the day's registrations. */
   flightOf: (registrationId: string) => string | null;
+  /**
+   * The flight a group takes when nobody placed in it has one yet, for example a group made only
+   * of entries still waiting for a handicap index. The database refuses a group with no flight, so
+   * the page hands over one of the event's own flights. It is a property of the group, not a
+   * claim about any player's flight.
+   */
+  fallbackFlightId?: string | null;
 }
 
 export interface ApplyPairingSheetReport {
@@ -86,6 +93,7 @@ export function applyPairingSheet({
   confirmed,
   currentGroups,
   flightOf,
+  fallbackFlightId = null,
 }: ApplyPairingSheetInput): ApplyPairingSheetResult {
   const byKey = new Map<string, PairingNameMatch>();
   for (const entry of match.matches) byKey.set(pairingMatchKey(entry), entry);
@@ -187,10 +195,16 @@ export function applyPairingSheet({
     // A row with nobody placeable is not a group on the board.
     if (playerIds.length === 0) continue;
 
-    // A group needs a flight id. The sheet never names a flight, so the first placed player's
-    // flight stands for the group. A provisional player with no flight leaves it empty.
-    const first = playerIds[0];
-    const flightId = first ? (flightOf(first) ?? "") : "";
+    // A group needs a flight id. The sheet never names a flight, so the flight of the first placed
+    // player who has one stands for the group, and the event's fallback flight when nobody does.
+    let flightId = fallbackFlightId ?? "";
+    for (const id of playerIds) {
+      const flight = flightOf(id);
+      if (flight) {
+        flightId = flight;
+        break;
+      }
+    }
 
     groups.push({
       number: groups.length + 1,
@@ -199,7 +213,8 @@ export function applyPairingSheet({
       startHole: sheetGroup.hole,
       wave: null,
       time: sheetGroup.teeTime,
-      locked: false,
+      // The organizer typed these groups by hand, so a later automatic re-run must not move them.
+      locked: true,
     });
   }
 

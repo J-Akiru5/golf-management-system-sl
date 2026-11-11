@@ -61,7 +61,7 @@ describe("applyPairingSheet", () => {
         startHole: 7,
         wave: null,
         time: "06:30",
-        locked: false,
+        locked: true,
       },
     ]);
     expect(result.report.placed).toBe(2);
@@ -193,7 +193,7 @@ describe("applyPairingSheet", () => {
         startHole: 10,
         wave: null,
         time: "12:30",
-        locked: false,
+        locked: true,
       },
     ];
     const currentDay: DrawGroup[] = [
@@ -204,7 +204,7 @@ describe("applyPairingSheet", () => {
         startHole: 1,
         wave: null,
         time: "06:30",
-        locked: false,
+        locked: true,
       },
     ];
     const otherBefore = JSON.stringify(otherDay);
@@ -250,5 +250,26 @@ describe("applyPairingSheet", () => {
     expect(result.groups[0]?.playerIds).toEqual(["reg-jun"]);
     expect(result.groups[0]?.flightId).toBe("flight-b");
     expect(result.report.unplaced.map((entry) => entry.raw)).toEqual(["UNKNOWN, NAME"]);
+  });
+
+  it("uses the fallback flight when nobody placed in the group has a flight", () => {
+    const groups = [sheetGroup({ names: ["TANAKA, JUN"] })];
+
+    const result = applyPairingSheet({
+      sheetGroups: groups,
+      match: matchOf(groups),
+      confirmed: new Set(),
+      currentGroups: [],
+      flightOf: () => null,
+      fallbackFlightId: "flight-fallback",
+    });
+
+    expect(result.groups[0]?.flightId).toBe("flight-fallback");
+  });
+
+  it("locks every group it creates, so an automatic re-run leaves the sheet's groups alone", () => {
+    const result = apply([sheetGroup({ names: ["TANAKA, JUN"] })]);
+
+    expect(result.groups.every((group) => group.locked)).toBe(true);
   });
 });

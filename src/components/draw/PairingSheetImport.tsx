@@ -58,6 +58,8 @@ export interface PairingSheetImportProps {
   currentGroups: DrawGroup[];
   /** The flight of a registration, from the day's registrations. */
   flightOf: (registrationId: string) => string | null;
+  /** One of the event's flights, for a group in which nobody has a flight yet. */
+  fallbackFlightId: string | null;
   /** A tournament setting, so the parser can warn about a group that is too large. */
   maxGroupSize: number;
   /** Puts the new groups on the board through the page's existing state update. */
@@ -77,13 +79,15 @@ function nameList(candidates: PairingCandidate[]): string {
 /**
  * Reads the organizer's own .xlsx pairing sheet in the browser, shows what will be placed, and
  * replaces only the playing day on screen. It never creates a player, changes a registration or
- * publishes; the board follows the page's normal save and publish steps afterwards.
+ * publishes. Replacing the groups is saved the same way a manual move on the board is saved; the
+ * organizer still presses Publish.
  */
 export function PairingSheetImport({
   dayName,
   candidates,
   currentGroups,
   flightOf,
+  fallbackFlightId,
   maxGroupSize,
   onApply,
 }: PairingSheetImportProps) {
@@ -158,8 +162,9 @@ export function PairingSheetImport({
       confirmed,
       currentGroups,
       flightOf,
+      fallbackFlightId,
     });
-  }, [parsed, match, confirmed, currentGroups, flightOf]);
+  }, [parsed, match, confirmed, currentGroups, flightOf, fallbackFlightId]);
 
   const fuzzy = match ? match.matches.filter((entry) => entry.status === "fuzzy") : [];
   const unplaced = match
@@ -343,6 +348,10 @@ export function PairingSheetImport({
             </>
           )}
 
+          <p className="hint">
+            Replacing the groups saves this day&apos;s board, the same as moving a player by hand.
+            Players do not see it until you press Publish.
+          </p>
           <div className="sticky bottom-0 -mx-5 -mb-5 row between border-t border-line bg-surface-raised px-5 py-3">
             <button
               type="button"

@@ -135,11 +135,13 @@ export default function DrawPage() {
     day === null
       ? ready
       : registrations.filter((r) => r.status === "ok" && onDay(r.playerId)).length;
-  // The same players the day's board is built from, offered to the pairing sheet match by name.
+  // Everyone entered for the day, offered to the pairing sheet match by name. An entry still waiting
+  // for review counts: the organizer put that player on the sheet, and the desk can finish the
+  // entry afterwards. An ineligible entry does not.
   const pairingCandidates = useMemo<PairingCandidate[]>(
     () =>
       registrations
-        .filter((r) => r.status === "ok" && onDay(r.playerId))
+        .filter((r) => r.status !== "ineligible" && onDay(r.playerId))
         .map((r) => ({ registrationId: r.playerId, fullName: r.playerName })),
     [registrations, onDay],
   );
@@ -581,6 +583,7 @@ export default function DrawPage() {
                 candidates={pairingCandidates}
                 currentGroups={draw ?? []}
                 flightOf={(id) => regById.get(id)?.flightId ?? null}
+                fallbackFlightId={tournament?.flights?.[0]?.id ?? null}
                 maxGroupSize={config.groupSize}
                 onApply={(groups) =>
                   dispatch({ type: "replaceDraw", draw: groups, dayNumber: day })
