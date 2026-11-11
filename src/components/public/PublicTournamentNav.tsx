@@ -24,7 +24,7 @@ export function PublicTournamentNav({ active }: { active: PublicTab }) {
 
   return (
     <nav
-      className="no-print flex w-full min-w-0 flex-wrap gap-2 pb-1"
+      className="public-tabs no-print flex w-full min-w-0 flex-wrap gap-2 pb-1"
       aria-label={t("programme.navLabel")}
     >
       {tabs.map(({ tab, label }) => {
@@ -34,7 +34,7 @@ export function PublicTournamentNav({ active }: { active: PublicTab }) {
             key={tab}
             href={publicTabHref(tab)}
             aria-current={current ? "page" : undefined}
-            className={`${TAB} ${
+            className={`public-tab ${TAB} ${
               current
                 ? "border-forest bg-forest text-on-forest"
                 : "border-line bg-surface-raised text-ink hover:bg-fairway-soft"

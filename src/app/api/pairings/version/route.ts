@@ -1,53 +1,46 @@
-import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
-import { loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
-import { pairingsSignature } from "@/lib/public/pairings-live";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { createSupabasePublicClient } from "@/lib/supabase/public";
+import {
+  etagMatches,
+  PAIRINGS_VERSION_CACHE,
+  PAIRINGS_VERSION_NO_STORE,
+  PairingsVersionUnavailable,
+  pairingsVersionEtag,
+  readPairingsVersion,
+} from "@/lib/api/pairings-version";
+import { withApiTiming } from "@/lib/api/timing";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Which published version of the pairings is current. The public pairings page polls this and
- * reloads itself when the answer changes, so a publish reaches open browsers without a refresh.
+ * Legacy response shape, kept for the current `PairingsLive` poller and any old client.
+ * `/api/v1/pairings/version` is the versioned, enveloped contract; this path remains until the
+ * removal date recorded in `docs/API.md`.
  *
- * It answers only what the page already shows to anyone: the version and the time of the published
- * snapshot, built by the same loader the page uses, so the two can never disagree about what
- * "current" means. A draft edit does not change it: the public never sees the live board.
- *
- * Shared caching absorbs the polling. Every open page asking every 30 seconds becomes about one
- * database read per 10 seconds, however many people are watching.
+ * The body is unchanged. The timing layer adds `X-Request-Id` and `Server-Timing`, and the shared
+ * cache and ETag keep the poll from reaching the database on every open page.
  */
-const SHARED = "public, s-maxage=10, stale-while-revalidate=20";
-const NEVER = "no-store";
-
-export async function GET(): Promise<Response> {
-  if (!isSupabaseConfigured()) {
-    return Response.json(
-      { error: "Supabase is not configured." },
-      { status: 404, headers: { "Cache-Control": NEVER } },
-    );
-  }
+export const GET = withApiTiming("GET /api/pairings/version", async (request) => {
   try {
-    const client = createSupabasePublicClient();
-    const [data, release] = await Promise.all([
-      loadPublicPairings(client),
-      loadPublicReleaseState(client).catch(() => null),
-    ]);
-    const published = data?.published ?? null;
-    return Response.json(
-      {
-        signature: pairingsSignature(published, release),
-        published: published !== null,
-        version: published?.version ?? null,
-        at: published?.at ?? null,
-      },
-      { headers: { "Cache-Control": SHARED } },
-    );
-  } catch {
-    // A failed read is never cached, and the page treats it as "ask again later".
+    const version = await readPairingsVersion();
+    const etag = pairingsVersionEtag(version);
+    if (etagMatches(request.headers.get("if-none-match"), etag)) {
+      return new Response(null, {
+        status: 304,
+        headers: { "Cache-Control": PAIRINGS_VERSION_CACHE, ETag: etag },
+      });
+    }
+    return Response.json(version, {
+      headers: { "Cache-Control": PAIRINGS_VERSION_CACHE, ETag: etag },
+    });
+  } catch (error) {
+    if (error instanceof PairingsVersionUnavailable) {
+      return Response.json(
+        { error: "Supabase is not configured." },
+        { status: 404, headers: { "Cache-Control": PAIRINGS_VERSION_NO_STORE } },
+      );
+    }
     return Response.json(
       { error: "The published pairings could not be read." },
-      { status: 502, headers: { "Cache-Control": NEVER } },
+      { status: 502, headers: { "Cache-Control": PAIRINGS_VERSION_NO_STORE } },
     );
   }
-}
+});

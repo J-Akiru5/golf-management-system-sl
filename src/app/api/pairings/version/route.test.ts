@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const configured = vi.fn(() => true);
@@ -17,12 +18,22 @@ beforeEach(() => {
   load.mockReset();
 });
 
+function callGet(headers?: Record<string, string>) {
+  return GET(
+    new NextRequest("http://localhost/api/pairings/version", {
+      headers,
+    }),
+  );
+}
+
 describe("GET /api/pairings/version", () => {
   it("answers the published version and time, and the signature the page compares", async () => {
     const published = { at: "2026-11-12T06:00:00+00:00", version: 4 };
     load.mockResolvedValue({ published });
-    const response = await GET();
+    const response = await callGet();
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-request-id")).toBeTruthy();
+    expect(response.headers.get("server-timing")).toMatch(/^total;dur=/);
     expect(await response.json()).toEqual({
       signature: pairingsSignature(published),
       published: true,
@@ -33,30 +44,42 @@ describe("GET /api/pairings/version", () => {
 
   it("lets shared caches absorb the polling", async () => {
     load.mockResolvedValue({ published: { at: "2026-11-12T06:00:00+00:00", version: 1 } });
-    const cache = (await GET()).headers.get("cache-control") ?? "";
+    const cache = (await callGet()).headers.get("cache-control") ?? "";
     expect(cache).toContain("public");
     expect(cache).toMatch(/s-maxage=\d+/);
   });
 
   it("says nothing is published, rather than failing, when there is no published version", async () => {
     load.mockResolvedValue({ published: null });
-    const body = await (await GET()).json();
+    const body = await (await callGet()).json();
     expect(body).toEqual({ signature: "none", published: false, version: null, at: null });
 
     load.mockResolvedValue(null);
-    expect((await (await GET()).json()).signature).toBe("none");
+    expect((await (await callGet()).json()).signature).toBe("none");
   });
 
   it("answers a publish that has no version number", async () => {
     load.mockResolvedValue({ published: { at: "2026-11-12T06:00:00+00:00" } });
-    const body = await (await GET()).json();
+    const body = await (await callGet()).json();
     expect(body.version).toBeNull();
     expect(body.signature).toBe("v-@2026-11-12T06:00:00+00:00");
   });
 
+  it("answers 304 for its own ETag and still instruments the response", async () => {
+    load.mockResolvedValue({ published: { at: "2026-11-12T06:00:00+00:00", version: 4 } });
+    const first = await callGet();
+    const etag = first.headers.get("etag");
+    expect(etag).toBeTruthy();
+    const second = await callGet({ "if-none-match": etag ?? "" });
+
+    expect(second.status).toBe(304);
+    expect(second.headers.get("x-request-id")).toBeTruthy();
+    expect(second.headers.get("server-timing")).toMatch(/^total;dur=/);
+  });
+
   it("reports a failed read as an error that is never cached", async () => {
     load.mockRejectedValue(new Error("database down"));
-    const response = await GET();
+    const response = await callGet();
     expect(response.status).toBe(502);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(JSON.stringify(await response.json())).not.toContain("database down");
@@ -64,7 +87,7 @@ describe("GET /api/pairings/version", () => {
 
   it("is not found when the build has no Supabase, and not cached", async () => {
     configured.mockReturnValue(false);
-    const response = await GET();
+    const response = await callGet();
     expect(response.status).toBe(404);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(load).not.toHaveBeenCalled();

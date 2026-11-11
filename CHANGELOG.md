@@ -12,19 +12,74 @@ Supabase project, because the code and the database are released separately.
 ## [0.34.3] - 2026-11-12
 
 ### Added
-- **A day selector on the public pairings.** Only the days present in the published snapshot
-  appear as chips; the board opens on today in Asia/Manila when that day is published, otherwise
-  the first published day. No new data is exposed.
+- **A day selector on the public pairings.** Only the days present in the published snapshot appear
+  as chips; the board opens on today in Asia/Manila when that day is published, otherwise the first
+  published day.
 
 ### Removed
-- **The redundant tee-times section under the public pairings.** The pairings already carry the
-  time and the hole, so the second list was duplication. The desk tee-times board is unchanged.
+- **The redundant tee-times section under the public pairings.** The pairings already carry the time
+  and the hole. The desk tee-times board is unchanged.
 
 ### Fixed
-- **Republishing one day no longer erases the others.** The published snapshot now keeps each
-  group's day, date, label and player ids, so publishing Day 3 cannot drop Day 1 from the public
-  board or the version history. A group without a day no longer wipes the day-tagged groups.
+- **Republishing one day no longer erases the others.** The snapshot keeps each group's day, date,
+  label and player ids, so publishing Day 3 cannot drop Day 1. No migration.
+
+## [0.35.2] - 2026-11-12
+
+### Changed
+- **The Players and Leaderboard pages use the same compact phone app bar as Pairings.** Below
+  640 px the head is the back arrow and the controls on one row with the page title under it.
+  Wider screens are unchanged. No migration.
+
+## [0.35.1] - 2026-11-12
+
+### Changed
+- **The public pairings page puts the next step on a phone's first screen.** Below 640 px the head
+  is a compact app bar (an arrow back button, the theme, language and help controls, then the event
+  name and dates), the organizer's advisory is one row that opens on a tap, and Pairings, Players
+  and Leaderboard are a three-segment control. The name search and the first group now sit on the
+  first screen at 360 px. Wider screens are unchanged. No migration.
+
+## [0.35.0] - 2026-11-12
+
+### Added
+- **The theme control is on every public tournament page (issue #217).** `/pairings`, `/roster`,
+  `/leaderboard` and `/rules` now show the existing System / Light (Ivory) / Dark (Charcoal)
+  selector beside their language and help controls. The theme system, persistence, pre-paint
+  script and contrast tokens were already in place; this only exposes the control on those pages
+  and checks it in the browser suite. No migration.
+- **The API regulation is adopted for the HTTP surface (issue #218).** `API_REGULATION.md` is in
+  the repository, `docs/API.md` records the project decisions and deviations, and every wrapped
+  route handler now sends `X-Request-Id` and `Server-Timing`, logs `WARN SLOW` over 300 ms and
+  `ERROR VIOLATION` over 400 ms, and returns the error envelope for an uncaught failure.
+- **`GET /api/v1/pairings/version`** is the versioned, enveloped pairings version endpoint. It and
+  the legacy path share the read, the `s-maxage=10, stale-while-revalidate=20` cache and a weak
+  ETag.
+- **`pnpm api:check`** measures five public pages and the version endpoint, reports measured /
+  skipped / total, and runs in warn mode. CI has a non-blocking API job while the backlog is
+  burned down.
+
+### Changed
+- **The public tee-times board runs down the holes.** Each playing day's cards come out session
+  first, then time, then starting hole, so a shotgun start reads 1, 2, 3 instead of first-name
+  order. A start with no hole follows the ones that have one. No migration.
+- **The public tee-times board shows cards and the starting hole again.** The 0.34.1 change that
+  cut the board down to one row per player with a name and a time is reverted on the owner's
+  instruction: each confirmed start is a card with its time, hole and the players on it, and the
+  search results carry the hole and the "With ..." line. No migration.
+- **The public pairings page no longer spends an auth round trip on a signed-out visitor.** It
+  checks for the Supabase session cookie before calling `auth.getUser()`.
+- **The leaderboard starts its three public reads together**, so the page pays the slower read
+  instead of the sum of the leaderboard wait and the release/programme wait.
+
+### Fixed
+- **Marking a notification as read moves it out of the unread list (issue #219, duplicate of #197).**
+  The alert moves optimistically, the database write follows, and a failure puts it back. Read
+  items sit under a collapsed **Read (N)** section instead of staying among the unread items, and a
+  `BroadcastChannel` updates other open tabs immediately. The badge still counts unresolved blocking
+  and warning items until their cause is fixed; that rule is unchanged and now stated in the panel.
   No migration.
+
 ## [0.34.2] - 2026-11-12
 
 ### Added

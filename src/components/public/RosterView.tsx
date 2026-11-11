@@ -12,6 +12,7 @@ import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { filterRoster, rosterFlights } from "@/lib/data/public";
 import { publicTabHref } from "@/lib/data/public-tabs";
 import type { PublicRosterPlayer } from "@/lib/data/types";
@@ -48,10 +49,10 @@ export function RosterPage({
   const { t } = useI18n();
   return (
     <main className="public public-pairings mobile-bar-space">
-      <header className="public-head !p-4 sm:!p-5">
+      <header className="public-head public-appbar !p-4 sm:!p-5">
         <PublicBackLink label={t("pairings.backHome")} />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="public-appbar-row flex flex-wrap items-start justify-between gap-3">
+          <div className="public-appbar-brand flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
             <span className="leading-tight">
               <b className="block font-display text-[13px] font-semibold">
@@ -60,7 +61,8 @@ export function RosterPage({
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="public-appbar-controls flex items-center gap-2">
+            <ThemeToggle compact tone="nav" />
             <LanguageSwitcher tone="on-forest" />
             <HelpButton audience="player" screen="pairings" />
           </div>

@@ -6767,3 +6767,168 @@ html[data-textsize="large"] {
     break-inside: avoid;
   }
 }
+
+/* ---------- Public tournament pages on a phone ----------
+   The first screen has to answer "what do I do here": find my name, see my time. So on a phone the
+   head is a compact app bar, the advisory is one row that opens on a tap, and the three views are a
+   segmented control. Wider screens keep the full head and the full advisory. */
+.public-advisory-toggle {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+.public-advisory-chevron {
+  display: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  color: var(--gold-ink);
+  transition: transform 160ms ease;
+}
+.public-advisory-body {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 639px) {
+  .public.public-pairings {
+    padding-top: 12px;
+    gap: 14px;
+  }
+
+  /* App bar: the way back and the controls share one row, the event name sits under them. */
+  .public-head.public-appbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 2px;
+    padding: 10px 12px 14px !important;
+    border-radius: 18px;
+  }
+  .public-appbar > * {
+    grid-column: 1 / -1;
+  }
+  .public-appbar > :first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  /* The way back is an arrow button, as in a phone app. Its words stay for screen readers. */
+  .public-appbar > .public-back {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    justify-self: start;
+    border: 1px solid color-mix(in srgb, var(--on-forest) 28%, transparent);
+    border-radius: 999px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .public-appbar > .public-back svg {
+    width: 20px;
+    height: 20px;
+  }
+  .public-appbar > .public-back span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .public-appbar .public-appbar-row {
+    display: contents;
+  }
+  .public-appbar .public-appbar-brand {
+    display: none;
+  }
+  .public-appbar .public-appbar-controls {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 6px;
+  }
+  .public-appbar .public-appbar-kicker {
+    margin-top: 6px;
+  }
+  .public-appbar h1 {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  /* Advisory: one row until it is opened. */
+  .public-advisory {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .public-advisory-toggle {
+    min-height: 44px;
+    align-items: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .public-advisory-chevron {
+    display: block;
+  }
+  .public-advisory[data-expanded="true"] .public-advisory-chevron {
+    transform: rotate(180deg);
+  }
+  .public-advisory[data-expanded="false"] .public-advisory-body {
+    display: none;
+  }
+  .public-advisory-head {
+    align-items: center;
+  }
+
+  /* The three views as a segmented control: equal segments, one filled. */
+  .public-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface-sunken, var(--surface-raised));
+  }
+  .public-tabs .public-tab {
+    justify-content: center;
+    min-width: 0;
+    padding-inline: 6px;
+    border-color: transparent;
+    border-radius: 12px;
+    background: transparent;
+    font-size: 13px;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      transform 120ms ease,
+      background-color 120ms ease;
+  }
+  .public-tabs .public-tab[aria-current="page"] {
+    background: var(--forest);
+    color: var(--on-forest);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+  .public-tabs .public-tab:active {
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .public-tabs .public-tab,
+    .public-advisory-chevron {
+      transition: none;
+    }
+    .public-tabs .public-tab:active {
+      transform: none;
+    }
+  }
+}
