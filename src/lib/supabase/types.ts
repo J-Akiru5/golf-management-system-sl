@@ -234,6 +234,8 @@ export type TournamentRow = {
   /** Added by 20261110000100. Audit only; never exposed by a public read. */
   publish_views_updated_at?: string | null;
   publish_views_updated_by?: string | null;
+  /** Added by 20261112000100. Read only through public_advisory(); the raw object is never public. */
+  public_advisory?: Json | null;
   play_date: string;
   cutoff_date: string;
   start_format: "shotgun" | "two_tee";
@@ -1113,6 +1115,11 @@ export interface Database {
       };
       /** Booleans only: which public surfaces the desk is holding for one event. */
       public_release_state: {
+        Args: { p_tournament?: string | null };
+        Returns: Json;
+      };
+      /** The allow-listed organizer advisory, or null. Added by 20261112000100. */
+      public_advisory: {
         Args: { p_tournament?: string | null };
         Returns: Json;
       };

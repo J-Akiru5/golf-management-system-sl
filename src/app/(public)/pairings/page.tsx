@@ -11,6 +11,7 @@ import { PairingsLive } from "@/components/public/PairingsLive";
 import { PlayerProfileSearch } from "@/components/public/PlayerProfileSearch";
 import { PlayerProfileView } from "@/components/public/PlayerProfileView";
 import { RulesOfPlay, TeeTimesBoard } from "@/components/public/ProgrammeView";
+import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -27,11 +28,13 @@ import {
   loadPublicTeamLeaderboard,
   type PublicTeamStanding,
 } from "@/lib/data/public-team-leaderboard";
+import { loadPublicAdvisory } from "@/lib/data/supabase/public-advisory";
 import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
 import { loadPublicProgramme, loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
 import { fmtTime } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { loadPortal } from "@/lib/player/portal";
+import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
 import { pairingsSignature } from "@/lib/public/pairings-live";
 import { pairingsBackLink } from "@/lib/public/pairings-nav";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
@@ -118,18 +121,23 @@ export default async function PublicPairingsPage({
   let data: Awaited<ReturnType<typeof loadPublicPairings>> = null;
   let programme: Awaited<ReturnType<typeof loadPublicProgramme>> = null;
   let release: PublicReleaseState | null = null;
+  let advisoryValue: PublicAdvisory | null = null;
   let failed = false;
-  // The programme and release reads are additive: a database that has not applied their migration
-  // still serves the pairings, because the failed read only costs the extra sections.
-  const [pairingsResult, programmeResult, releaseResult] = await Promise.allSettled([
-    loadPublicPairings(client),
-    loadPublicProgramme(client),
-    loadPublicReleaseState(client),
-  ]);
+  // The programme, release and advisory reads are additive: a database that has not applied their
+  // migrations still serves the pairings, because the failed read only costs the extra sections.
+  const [pairingsResult, programmeResult, releaseResult, advisoryResult] = await Promise.allSettled(
+    [
+      loadPublicPairings(client),
+      loadPublicProgramme(client),
+      loadPublicReleaseState(client),
+      loadPublicAdvisory(client),
+    ],
+  );
   if (pairingsResult.status === "fulfilled") data = pairingsResult.value;
   else failed = true;
   if (programmeResult.status === "fulfilled") programme = programmeResult.value;
   if (releaseResult.status === "fulfilled") release = releaseResult.value;
+  if (advisoryResult.status === "fulfilled") advisoryValue = advisoryResult.value;
 
   let profile: PublicPlayerProfileData | null = null;
   let team: PublicTeamStanding | null = null;
@@ -186,6 +194,9 @@ export default async function PublicPairingsPage({
   // What this render shows, in the same terms the version endpoint answers with. The live refresher
   // compares the two, so it reloads the page for a publish, an unpublish or a recovery from an error.
   const liveSignature = failed ? "error" : pairingsSignature(published, release);
+  // The advisory is server-checked against the club's calendar day, so the client component never
+  // reads a clock and cannot disagree with the server on first paint.
+  const advisory = advisoryForToday(advisoryValue);
 
   return (
     <main className="public public-pairings mobile-bar-space">
@@ -229,6 +240,8 @@ export default async function PublicPairingsPage({
           </h1>
         )}
       </header>
+
+      {advisory && <PublicAdvisoryBanner advisory={advisory} />}
 
       {failed ? (
         <div className="notice grid gap-3" role="status">

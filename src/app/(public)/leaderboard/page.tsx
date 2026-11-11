@@ -18,8 +18,10 @@ import {
   teamOptions,
   topTeams,
 } from "@/lib/data/public-team-leaderboard";
+import { loadPublicAdvisory } from "@/lib/data/supabase/public-advisory";
 import { loadPublicProgramme, loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
 import { getI18n } from "@/lib/i18n/server";
+import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { DemoLeaderboard } from "./DemoLeaderboard";
@@ -62,17 +64,21 @@ export default async function LeaderboardPage({
     failure = error instanceof Error ? error.message : "Could not load the leaderboard.";
   }
 
-  const [releaseResult, programmeResult] = await Promise.allSettled([
+  const [releaseResult, programmeResult, advisoryResult] = await Promise.allSettled([
     loadPublicReleaseState(client),
     loadPublicProgramme(client),
+    loadPublicAdvisory(client),
   ]);
   const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
   const programme = programmeResult.status === "fulfilled" ? programmeResult.value : null;
+  const advisory = advisoryForToday(
+    advisoryResult.status === "fulfilled" ? advisoryResult.value : null,
+  );
 
   if (!data && !failure) {
     if (!programme) {
       return (
-        <LeaderboardShell>
+        <LeaderboardShell advisory={advisory}>
           <section className="pairings-empty" role="status" data-testid="leaderboard-unpublished">
             <h2>{t("pairings.notOutTitle")}</h2>
             <p>{t("pairings.notOutBody")}</p>
@@ -82,19 +88,24 @@ export default async function LeaderboardPage({
     }
     if (release?.leaderboard === false) {
       return (
-        <LeaderboardShell>
+        <LeaderboardShell advisory={advisory}>
           <HeldNotice testId="leaderboard-held" />
         </LeaderboardShell>
       );
     }
     // The function is missing, so this database predates the team leaderboard. Keep the published
     // per-round tables readable and say why the team view is not there yet.
-    return <RoundLeaderboardFallback notice={t("programme.leaderboardNotDeployed")} />;
+    return (
+      <RoundLeaderboardFallback
+        notice={t("programme.leaderboardNotDeployed")}
+        advisory={advisory}
+      />
+    );
   }
 
   if (failure || !data) {
     return (
-      <LeaderboardShell>
+      <LeaderboardShell advisory={advisory}>
         <div className="notice" role="alert">
           {failure || t("programme.leaderboardFailed")}
         </div>
@@ -105,7 +116,9 @@ export default async function LeaderboardPage({
   if (data.rows.length === 0 && data.rounds.length > 0) {
     // Old publications carry totals but not the cards the team table needs. Keep the per-round
     // tables readable instead of claiming there are no results.
-    return <RoundLeaderboardFallback notice={t("programme.leaderboardNoCards")} />;
+    return (
+      <RoundLeaderboardFallback notice={t("programme.leaderboardNoCards")} advisory={advisory} />
+    );
   }
 
   const { teams, unpaired } = buildTeamLeaderboard(data);
@@ -115,6 +128,7 @@ export default async function LeaderboardPage({
     <LeaderboardShell
       eventName={data.eventName}
       dateText={data.rounds.map((round) => dateLabel(round.playDate)).join(" · ")}
+      advisory={advisory}
     >
       <TeamLeaderboard
         teams={shown}
@@ -142,7 +156,13 @@ export default async function LeaderboardPage({
  * The per-round gross and net tables that shipped before the cumulative team view. It reads the
  * same published snapshots and disappears once the database has the new function.
  */
-async function RoundLeaderboardFallback({ notice }: { notice: string }) {
+async function RoundLeaderboardFallback({
+  notice,
+  advisory,
+}: {
+  notice: string;
+  advisory: PublicAdvisory | null;
+}) {
   const client = createSupabasePublicClient();
   let rounds: Awaited<ReturnType<typeof loadPublishedRounds>> = [];
   let board: Awaited<ReturnType<typeof loadRoundResults>> = null;
@@ -173,6 +193,7 @@ async function RoundLeaderboardFallback({ notice }: { notice: string }) {
     <LeaderboardShell
       eventName={board?.round.eventName ?? null}
       dateText={board ? dateLabel(board.round.playDate) : undefined}
+      advisory={advisory}
     >
       <div className="notice" role="status">
         {notice}

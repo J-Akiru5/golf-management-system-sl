@@ -8,6 +8,7 @@ import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
 import { HeldNotice } from "@/components/public/HeldNotice";
+import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -16,6 +17,7 @@ import { publicTabHref } from "@/lib/data/public-tabs";
 import type { PublicRosterPlayer } from "@/lib/data/types";
 import { fmtIndex } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
+import type { PublicAdvisory } from "@/lib/public/advisory";
 
 /**
  * The public player roster.
@@ -37,9 +39,11 @@ const PRIVACY_NOTICE =
 export function RosterPage({
   players,
   unavailable = "none",
+  advisory = null,
 }: {
   players: PublicRosterPlayer[];
   unavailable?: RosterUnavailable;
+  advisory?: PublicAdvisory | null;
 }) {
   const { t } = useI18n();
   return (
@@ -66,6 +70,8 @@ export function RosterPage({
         </h1>
         <p className="text-on-forest-muted">{t("programme.playersIntro")}</p>
       </header>
+
+      {advisory && <PublicAdvisoryBanner advisory={advisory} />}
 
       <PublicTournamentNav active="players" />
 
