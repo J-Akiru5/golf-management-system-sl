@@ -9,6 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **The public pairings day filter is a dropdown, and a starting-hole filter is beside it.** The
+  day options keep the label and date and remember the last choice. The hole options list only the
+  holes on the selected day, with **All holes** first, and fall back safely when the day changes.
+  The flight filter now stays within the selected day, so the day control remains the browsing
+  authority; a name search still spans every day. The filter row wraps on narrow screens and the
+  empty state offers **Clear filters**. No migration.
+
 ## [0.35.1] - 2026-11-12
 
 ### Changed

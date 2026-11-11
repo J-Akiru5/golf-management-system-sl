@@ -505,6 +505,39 @@ for (const path of ["/pairings", "/roster", "/leaderboard", "/rules"]) {
   );
 }
 
+section("public pairings day and hole filters");
+await langPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+const daySelect = langPage.getByTestId("pairings-day");
+const holeSelect = langPage.getByTestId("pairings-hole");
+await expect(daySelect).toBeVisible({ timeout: 15000 });
+await expect(holeSelect).toBeVisible({ timeout: 15000 });
+const dayValues = await daySelect
+  .locator("option")
+  .evaluateAll((options) => options.map((option) => option.value).filter(Boolean));
+check("the day filter lists the playing days", dayValues.length >= 2, `(${JSON.stringify(dayValues)})`);
+await daySelect.selectOption(dayValues[1]);
+await expect(langPage.locator('[data-testid="pairings-session"]').first()).toContainText(/DAY 2/i, {
+  timeout: 15000,
+});
+check("the day dropdown switches the board", true);
+const holeValues = await holeSelect
+  .locator("option")
+  .evaluateAll((options) => options.map((option) => option.value).filter(Boolean));
+check("the hole filter lists the day's holes", holeValues.length > 0, `(${JSON.stringify(holeValues)})`);
+const chosenHole = holeValues[0];
+await holeSelect.selectOption(chosenHole);
+const pairingCards = langPage.locator('[data-testid="pairing-group"]');
+const holeBadges = await pairingCards.locator(".p-hole").allTextContents();
+const holePattern = new RegExp(`(Hole|Tee) ${chosenHole}$`);
+check(
+  "the hole dropdown limits every card to that hole",
+  holeBadges.length > 0 && holeBadges.every((text) => holePattern.test(text.trim())),
+  `(${chosenHole}: ${JSON.stringify(holeBadges)})`,
+);
+await holeSelect.selectOption("");
+await expect(pairingCards.first()).toBeVisible({ timeout: 15000 });
+check("all holes restores the full day", (await pairingCards.count()) >= holeBadges.length);
+
 await setLang("hil");
 check(
   "Hiligaynon is served from the dictionary",
