@@ -6823,6 +6823,30 @@ html[data-textsize="large"] {
     grid-column: 1;
     grid-row: 1;
   }
+  /* The way back is an arrow button, as in a phone app. Its words stay for screen readers. */
+  .public-appbar > .public-back {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    justify-self: start;
+    border: 1px solid color-mix(in srgb, var(--on-forest) 28%, transparent);
+    border-radius: 999px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .public-appbar > .public-back svg {
+    width: 20px;
+    height: 20px;
+  }
+  .public-appbar > .public-back span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
   .public-appbar .public-appbar-row {
     display: contents;
   }
