@@ -2,7 +2,7 @@
 
 import { ArrowLeft, CheckCircle2, Hand, ScanLine, Undo2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { useStaffDay } from "@/components/staff/day-context";
 import { useStaffToast } from "@/components/staff/StaffToast";
@@ -12,8 +12,9 @@ import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
 import type { ScoringRoundView } from "@/lib/data/scoring";
 import { fmtTime } from "@/lib/format";
-import { scanReview, WEAK_CONFIDENCE } from "@/lib/scoring/scan/review";
+import { reviewScannedCard, type ScanReaderCell } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply } from "@/lib/scoring/scan/types";
+import { cardSignature, checkCardSubmission, createSubmitGate } from "@/lib/scoring/submission";
 import {
   blankScores,
   cardProgress,
@@ -33,7 +34,8 @@ interface ScanMeta {
   image: ScorecardScanApply["image"];
   extraction: ScorecardScanApply["extraction"];
   captureKey: string;
-  confidence: Record<number, number | null>;
+  /** What the reader returned for each hole, so the sheet can show read, weak, empty and changed. */
+  reader: Record<number, ScanReaderCell>;
 }
 
 /**
@@ -69,13 +71,22 @@ export function GroupScore({ groupId }: { groupId: string }) {
   const [reviewing, setReviewing] = useState(false);
   const [scanMeta, setScanMeta] = useState<Record<string, ScanMeta>>({});
   const [scanPlayerId, setScanPlayerId] = useState<string | null>(null);
-  const [captureKeys, setCaptureKeys] = useState<Record<string, string>>({});
+  /**
+   * The capture key of a submission that failed, with the card it was for, per player. A retry of
+   * the same card reuses the key, so a request that reached the database but came back as an error
+   * is not written twice. Editing a cell mints a new key, because that is a different card.
+   */
+  const [pendingCards, setPendingCards] = useState<
+    Record<string, { key: string; signature: string }>
+  >({});
   const [submitting, setSubmitting] = useState(false);
   const [progressLabel, setProgressLabel] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submittedNow, setSubmittedNow] = useState<string[]>([]);
   /** The in-place confirmation after a save. */
   const [saveStatus, setSaveStatus] = useState("");
+  /** Answers on the same tick as the tap, before React can disable the button. */
+  const submitGate = useRef(createSubmitGate());
 
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("tab");
@@ -120,6 +131,15 @@ export function GroupScore({ groupId }: { groupId: string }) {
 
   const scoresFor = (playerId: string): HoleScores => scores[playerId] ?? blankScores(holes);
 
+  const stringsFor = (playerId: string): Record<number, string> => {
+    const values: Record<number, string> = {};
+    for (const holeDefinition of holes) {
+      const value = scores[playerId]?.[holeDefinition.number];
+      values[holeDefinition.number] = value === null || value === undefined ? "" : String(value);
+    }
+    return values;
+  };
+
   const hole = holes[holeIndex] ?? null;
   const review = useMemo(() => reviewRows(holes, players, scores), [holes, players, scores]);
   const readyToSubmit = review.filter((row) => row.complete && !inPlayers.has(row.playerId));
@@ -127,43 +147,43 @@ export function GroupScore({ groupId }: { groupId: string }) {
   const scanMetaCurrent = scanPlayerId ? (scanMeta[scanPlayerId] ?? null) : null;
   const scanCheck = useMemo(() => {
     if (!scanPlayerId || !scanMetaCurrent) return null;
-    const strings: Record<number, string> = {};
-    for (const holeDefinition of holes) {
-      const value = scores[scanPlayerId]?.[holeDefinition.number];
-      strings[holeDefinition.number] = value === null || value === undefined ? "" : String(value);
-    }
-    return scanReview(holes, strings, scanMetaCurrent.confidence);
+    return reviewScannedCard(holes, stringsFor(scanPlayerId), scanMetaCurrent.reader);
   }, [holes, scanMetaCurrent, scanPlayerId, scores]);
   const playersWithCard = players.filter((player) => inPlayers.has(player.playerId));
   const playersToScan = players.filter((player) => !inPlayers.has(player.playerId));
+  /** A photo is being corrected: the sheet shows all 18 cells and the photo until it is submitted. */
+  const scanOpen = Boolean(scanCheck && scanPlayer && !inPlayers.has(scanPlayer.playerId));
 
   function setScore(playerId: string, holeNumber: number, value: number) {
     setScores((current) => ({
       ...current,
       [playerId]: { ...(current[playerId] ?? blankScores(holes)), [holeNumber]: value },
     }));
-    // A hand correction is a person checking that cell against the paper card. The reader's doubt
-    // is replaced by that check, for this hole only; every other weak read stays flagged.
-    setScanMeta((current) => {
-      const meta = current[playerId];
-      if (!meta) return current;
-      return {
-        ...current,
-        [playerId]: { ...meta, confidence: { ...meta.confidence, [holeNumber]: 1 } },
-      };
-    });
+    // The reader's value stays as it was read. The review compares the two, so a corrected cell is
+    // shown as changed and an untouched weak read stays flagged for the desk. Nothing is cleared.
   }
 
   function applyScan(apply: ScorecardScanApply) {
     const next = parseScannedScores(holes, apply.strokes);
     setScores((current) => ({ ...current, [apply.playerId]: next }));
+    // Keep the reader's own value beside its confidence. That is what lets the sheet say "read",
+    // "check", "empty" and "changed" instead of guessing from the value alone.
+    const reader: Record<number, ScanReaderCell> = {};
+    for (const holeDefinition of holes) {
+      const raw = (apply.strokes[holeDefinition.number] ?? "").trim();
+      const value = raw === "" ? null : Number(raw);
+      reader[holeDefinition.number] = {
+        strokes: value !== null && Number.isInteger(value) ? value : null,
+        confidence: apply.confidence[holeDefinition.number] ?? null,
+      };
+    }
     setScanMeta((current) => ({
       ...current,
       [apply.playerId]: {
         image: apply.image,
         extraction: apply.extraction,
         captureKey: apply.captureKey,
-        confidence: apply.confidence,
+        reader,
       },
     }));
     setTab("tap");
@@ -174,56 +194,91 @@ export function GroupScore({ groupId }: { groupId: string }) {
     setSaveStatus("");
     toast.push({
       title: "Card read",
-      detail: "Amber cells need a check against the photo. Tap one to fix it.",
+      detail: "Amber cells need a check against the photo. Every cell can be corrected below.",
       tone: "info",
     });
   }
 
   async function submit() {
     if (!tournament || !view) return;
+    const gate = submitGate.current;
+    // A second tap never reaches the repository, even before the button re-renders as disabled.
+    if (!gate.tryEnter()) return;
     setSubmitError("");
     setSaveStatus("");
-    if (players.length < 2) {
-      setSubmitError("A card needs a marker. This group has fewer than two players.");
-      return;
-    }
-    if (readyToSubmit.length === 0) {
-      setSubmitError("Nothing is ready yet. Fill every hole on at least one card.");
-      return;
-    }
-    setSubmitting(true);
-    let done = 0;
     try {
+      if (players.length < 2) {
+        setSubmitError("A card needs a marker. This group has fewer than two players.");
+        return;
+      }
+      if (readyToSubmit.length === 0) {
+        setSubmitError("Nothing is ready yet. Fill every hole on at least one card.");
+        return;
+      }
+      setSubmitting(true);
+      let done = 0;
+      let alreadyIn = 0;
       let next: ScoringRoundView | null = null;
       for (const row of readyToSubmit) {
         setProgressLabel(`Saving card ${done + 1} of ${readyToSubmit.length}…`);
         const playerScores = scores[row.playerId] ?? {};
         const meta = scanMeta[row.playerId];
-        const key = meta?.captureKey ?? captureKeys[row.playerId] ?? crypto.randomUUID();
-        setCaptureKeys((current) => ({ ...current, [row.playerId]: key }));
         const scorerId =
           markerFor(players, row.playerId) ??
           players.find((player) => player.playerId !== row.playerId)?.playerId ??
           "";
+        // One review of this player's cells, used for the confirmation flags and the duplicate check.
+        const entryReview = meta
+          ? reviewScannedCard(holes, stringsFor(row.playerId), meta.reader)
+          : null;
+        const entries = holes.map((definition) => {
+          const strokes = playerScores[definition.number];
+          if (typeof strokes !== "number") {
+            throw new Error(`${row.playerName} still has a blank hole.`);
+          }
+          const confidence = meta ? (meta.reader[definition.number]?.confidence ?? null) : null;
+          // A high-confidence read, or a cell the volunteer typed or changed, is checked. An
+          // untouched weak read goes to the desk still unconfirmed, never silently trusted.
+          return {
+            hole: definition.number,
+            strokes,
+            confidence,
+            manuallyConfirmed: meta
+              ? entryReview?.cells[definition.number]?.state !== "check"
+              : true,
+          };
+        });
+
+        // A retry of the exact card that failed keeps its capture key, so the database treats it as
+        // the same submission. A scan keeps the key of its photo for the same reason.
+        const signature = cardSignature(entries);
+        const failed = pendingCards[row.playerId];
+        const key =
+          meta?.captureKey ??
+          (failed && failed.signature === signature ? failed.key : crypto.randomUUID());
+        setPendingCards((current) => ({ ...current, [row.playerId]: { key, signature } }));
+
+        // Another phone or the desk may have already sent this card. Recognize it and say so.
+        const verdict = checkCardSubmission({
+          cards: next?.cards ?? cards,
+          playerId: row.playerId,
+          scorerId,
+          entries,
+          playerName: row.playerName,
+          imageSha256: meta?.image?.sha256 ?? null,
+        });
+        if (verdict.kind === "repeat" || verdict.kind === "same_photo") {
+          alreadyIn += 1;
+          setSubmittedNow((current) => [...current, row.playerId]);
+          continue;
+        }
+        if (verdict.kind === "needs_correction") throw new Error(verdict.message);
+
         next = await scoring.submitCard(tournament.id, {
           playerId: row.playerId,
           scorerId,
           source: meta ? "upload" : "manual",
-          entries: holes.map((definition) => {
-            const strokes = playerScores[definition.number];
-            if (typeof strokes !== "number") {
-              throw new Error(`${row.playerName} still has a blank hole.`);
-            }
-            const confidence = meta ? (meta.confidence[definition.number] ?? null) : null;
-            return {
-              hole: definition.number,
-              strokes,
-              confidence,
-              // A high-confidence read, or a cell the volunteer corrected by hand, is checked.
-              // An untouched weak read goes to the desk still unconfirmed, never silently trusted.
-              manuallyConfirmed: meta ? confidence !== null && confidence >= WEAK_CONFIDENCE : true,
-            };
-          }),
+          entries,
           writtenTotal: row.total,
           captureKey: key,
           image: meta?.image ?? undefined,
@@ -235,10 +290,21 @@ export function GroupScore({ groupId }: { groupId: string }) {
       if (next) setView(next);
       setProgressLabel("");
       setReviewing(false);
-      setSaveStatus(`${done} ${done === 1 ? "card" : "cards"} saved and sent to the desk.`);
+      const saved = `${done} ${done === 1 ? "card" : "cards"} saved and sent to the desk.`;
+      setSaveStatus(
+        alreadyIn > 0
+          ? `${saved} ${alreadyIn} ${alreadyIn === 1 ? "card was" : "cards were"} already in and not sent again.`
+          : saved,
+      );
       toast.push({
-        title: `${done} ${done === 1 ? "card" : "cards"} submitted`,
-        detail: "The desk still checks and approves them.",
+        title:
+          done > 0
+            ? `${done} ${done === 1 ? "card" : "cards"} submitted`
+            : "Already in, nothing sent again",
+        detail:
+          done > 0
+            ? "The desk still checks and approves them."
+            : "The desk already has these cards.",
         tone: "ok",
       });
     } catch (reason) {
@@ -246,6 +312,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
       setProgressLabel("");
     } finally {
       setSubmitting(false);
+      gate.leave();
     }
   }
 
@@ -448,53 +515,106 @@ export function GroupScore({ groupId }: { groupId: string }) {
             this phone.
           </p>
         </section>
+      ) : scanOpen && scanPlayer && scanCheck ? (
+        <section aria-label={`Scanned card for ${scanPlayer.playerName}`}>
+          <div className={styles.sectionHead}>
+            <h2>Photo read · {scanPlayer.playerName}</h2>
+            <span>
+              {scanCheck.filled} of {holes.length} filled
+            </span>
+          </div>
+          <p className={styles.hint}>
+            Every hole is on one sheet. Amber cells came back weak, and an empty cell was not read.
+            Type the number written on the card; nothing is submitted until you review the totals
+            and press Submit.
+          </p>
+          {scanMetaCurrent?.image?.previewUrl ? (
+            <figure className={ui.scanFigure}>
+              <img
+                src={scanMetaCurrent.image.previewUrl}
+                alt={`The scanned scorecard for ${scanPlayer.playerName}`}
+                className={ui.scanPhoto}
+              />
+              <figcaption className={styles.hint}>
+                Compare each amber or changed cell with this photo.
+              </figcaption>
+            </figure>
+          ) : null}
+          <p className={ui.scanTotals}>
+            OUT <b>{scanCheck.totals.out}</b> · IN <b>{scanCheck.totals.in}</b> · TOTAL{" "}
+            <b>{scanCheck.totals.total}</b> · par <b>{scanCheck.totals.parTotal}</b>
+          </p>
+          <p className={styles.hint}>
+            {scanCheck.check > 0 ? `${scanCheck.check} to check` : "Nothing weak"} ·{" "}
+            {scanCheck.changed > 0 ? `${scanCheck.changed} changed` : "Nothing changed"} ·{" "}
+            {scanCheck.typed > 0 ? `${scanCheck.typed} typed` : "Nothing typed"} ·{" "}
+            {scanCheck.blank > 0 ? `${scanCheck.blank} empty` : "All filled"}
+          </p>
+          <div className={ui.scanCells} role="group" aria-label="Scanned holes">
+            {holes.map((definition) => {
+              const cell = scanCheck.cells[definition.number];
+              const value = scoresFor(scanPlayer.playerId)[definition.number] ?? null;
+              const tone =
+                cell?.state === "check"
+                  ? ui.scanCellCheck
+                  : cell?.state === "changed"
+                    ? ui.scanCellChanged
+                    : cell?.state === "typed"
+                      ? ui.scanCellTyped
+                      : "";
+              return (
+                <label
+                  key={definition.number}
+                  className={`${ui.scanCellInput} ${tone}`}
+                  data-state={cell?.state ?? "blank"}
+                >
+                  <span>
+                    H{definition.number} · par {definition.par}
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={20}
+                    value={value ?? ""}
+                    aria-label={`Hole ${definition.number} score for ${scanPlayer.playerName}`}
+                    aria-invalid={cell?.state === "check" ? true : undefined}
+                    onChange={(event) => {
+                      const raw = event.target.value.trim();
+                      if (raw === "") {
+                        setScores((current) => ({
+                          ...current,
+                          [scanPlayer.playerId]: {
+                            ...(current[scanPlayer.playerId] ?? blankScores(holes)),
+                            [definition.number]: null,
+                          },
+                        }));
+                        return;
+                      }
+                      const parsed = Number(raw);
+                      if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 20) {
+                        setScore(scanPlayer.playerId, definition.number, parsed);
+                      }
+                    }}
+                  />
+                  <em className={ui.scanBadge}>{cell?.label ?? "Empty"}</em>
+                </label>
+              );
+            })}
+          </div>
+          {scanCheck.blank > 0 && (
+            <p className={`${styles.notice} ${styles.noticeWarn}`} role="status">
+              {scanCheck.blank === 1
+                ? `Hole ${scanCheck.blankHoles[0]} is empty.`
+                : `${scanCheck.blank} holes are empty: ${scanCheck.blankHoles.join(", ")}.`}{" "}
+              Type each score from the card. A blank cell is never filled with par.
+            </p>
+          )}
+        </section>
       ) : !hole ? (
         <p className={styles.notice}>This round has no holes yet. The desk sets up the course.</p>
       ) : (
         <section aria-label={`Hole ${hole.number}`}>
-          {scanCheck && scanPlayer && !inPlayers.has(scanPlayer.playerId) && (
-            <div className={styles.scanReview}>
-              <div className={styles.sectionHead}>
-                <h2>Photo read · {scanPlayer.playerName}</h2>
-                <span>
-                  {scanCheck.filled} filled · {scanCheck.weak} to check · {scanCheck.blank} blank
-                </span>
-              </div>
-              <p className={styles.hint}>
-                Every hole is below. Amber cells came back weak or unreadable; tap one, then use the
-                − and + buttons to correct it against the photo.
-              </p>
-              <div className={styles.scanGrid} role="group" aria-label="Scanned holes">
-                {holes.map((definition, index) => {
-                  const state = scanCheck.holes[definition.number];
-                  const value = scoresFor(scanPlayer.playerId)[definition.number] ?? null;
-                  return (
-                    <button
-                      key={definition.number}
-                      type="button"
-                      className={`${styles.scanCell} ${state === "check" ? styles.scanCellWeak : ""}`}
-                      onClick={() => setHoleIndex(index)}
-                      aria-label={`Hole ${definition.number}, ${value ?? "blank"}${
-                        state === "check" ? ", check the photo" : ""
-                      }`}
-                    >
-                      <span>H{definition.number}</span>
-                      <b>{value ?? "–"}</b>
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                className={styles.secondary}
-                style={{ marginTop: 10 }}
-                onClick={() => setReviewing(true)}
-              >
-                Review totals
-              </button>
-            </div>
-          )}
-
           <div className={ui.holeBand}>
             <b className={ui.holeNumber}>{hole.number}</b>
             <span className={ui.holeMeta}>
@@ -552,7 +672,7 @@ export function GroupScore({ groupId }: { groupId: string }) {
         </section>
       )}
 
-      {withActionBar && !reviewing && hole && (
+      {withActionBar && !reviewing && !scanOpen && hole && (
         <div className={styles.stickyActionBar}>
           <button
             type="button"
@@ -594,6 +714,33 @@ export function GroupScore({ groupId }: { groupId: string }) {
               {saveStatus}
             </p>
           ) : null}
+        </div>
+      )}
+
+      {withActionBar && !reviewing && scanOpen && (
+        <div className={styles.stickyActionBar}>
+          <button
+            type="button"
+            className={styles.primary}
+            data-onboard="score-entry"
+            onClick={() => {
+              setSaveStatus("");
+              setReviewing(true);
+            }}
+          >
+            Review totals
+          </button>
+          <button
+            type="button"
+            className={styles.secondary}
+            onClick={() => {
+              setSaveStatus("");
+              setScanPlayerId(null);
+            }}
+            disabled={submitting}
+          >
+            One hole at a time
+          </button>
         </div>
       )}
 

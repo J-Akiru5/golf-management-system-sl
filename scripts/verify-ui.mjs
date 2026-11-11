@@ -209,7 +209,9 @@ check(
 );
 
 // Two cards for the same player, different markers, one hole apart: the desk flow that fills the
-// Cards table, both boards and the conflict list. Nothing here is new behaviour.
+// Cards table, both boards and the conflict list. Nothing here is new behaviour. A manual card now
+// starts empty, so the form is filled with par first; the score that matters is hole 1.
+await scoresEntry.getByRole("button", { name: "Fill with par" }).click();
 await scoresEntry.locator("input[type=number]").nth(0).fill("5");
 await scoresEntry.getByRole("button", { name: "Submit card" }).click();
 await expect(scoresCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
@@ -254,6 +256,198 @@ for (const [label, locator] of linkSites) {
     `(${count}) ${href ?? "no link"}`,
   );
 }
+
+// ---------------------------------------------------------- the same card twice
+// The desk must never record one card twice. A triple click on Submit is one request, and pressing
+// Submit again on a card that is already in is recognised in plain words, not as an error.
+section("/scores duplicate submit");
+await page.setViewportSize({ width: 1366, height: 768 });
+await go("/scores");
+const dupEntry = page.locator('section[aria-labelledby="score-entry"]');
+const dupCards = page.locator('section[aria-labelledby="score-cards"]');
+const deskWidth = await page.evaluate(() => {
+  const root = document.scrollingElement ?? document.documentElement;
+  return { scroll: root.scrollWidth, client: root.clientWidth };
+});
+check(
+  "/scores does not scroll sideways at 1366 x 768",
+  deskWidth.scroll <= deskWidth.client + 1,
+  `(scrollWidth ${deskWidth.scroll}, client ${deskWidth.client})`,
+);
+
+// A new player with a complete card, submitted three times on the same tick.
+await expect(dupEntry.getByRole("button", { name: "Fill with par" })).toBeVisible({
+  timeout: 30000,
+});
+await dupEntry.getByRole("combobox").nth(0).click();
+await page.getByRole("option", { name: /SAMPLE PLAYER B/ }).click();
+await dupEntry.getByRole("button", { name: "Fill with par" }).click();
+await dupEntry.getByRole("button", { name: /^Submit card$/ }).evaluate((element) => {
+  element.click();
+  element.click();
+  element.click();
+});
+await expect(dupCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
+await page.waitForTimeout(600);
+check(
+  "a triple click on Submit writes one card, not three",
+  (await dupCards.locator("tbody tr").count()) === 1,
+  `(${await dupCards.locator("tbody tr").count()})`,
+);
+
+// The same card again, with the form untouched: recognised, not written, not an error.
+await dupEntry.getByRole("button", { name: /^Submit card$/ }).click();
+await expect(dupEntry.getByText(/already in for/i)).toBeVisible({ timeout: 15000 });
+await page.waitForTimeout(400);
+check(
+  "submitting the identical card again adds no second revision",
+  (await dupCards.locator("tbody tr").count()) === 1,
+  `(${await dupCards.locator("tbody tr").count()})`,
+);
+check(
+  "the repeat is a plain notice, not an error",
+  (await dupEntry.locator(".notice.bad").count()) === 0,
+);
+await page.screenshot({ path: `${SHOTS}/scores-duplicate-submit.png` });
+
+// ------------------------------------------------------------- scan review (desk)
+// The demo reader returns a whole card with weak cells and one cell it could not read. The desk must
+// see the photo and all 18 cells, change any cell, and only then submit.
+section("/scores scan review");
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+async function uploadCard(sectionLocator) {
+  await sectionLocator
+    .locator('input[type="file"]')
+    .setInputFiles({ name: "card.png", mimeType: "image/png", buffer: PNG });
+  await sectionLocator.getByRole("button", { name: "Upload and read" }).click();
+  await expect(sectionLocator.getByRole("button", { name: "Use with card" })).toBeVisible({
+    timeout: 30000,
+  });
+}
+
+await go("/scores");
+const deskScan = page.locator('section[aria-labelledby="score-scan"]');
+await uploadCard(deskScan);
+// Row 4 of the demo card is the row with a cell the reader could not read.
+await deskScan.locator("select").nth(1).selectOption("3");
+await deskScan.getByRole("button", { name: "Use with card" }).click();
+check(
+  "the desk shows the scanned photo beside the cells",
+  await dupEntry.locator('img[alt="The scanned scorecard"]').isVisible({ timeout: 15000 }),
+);
+check(
+  "all 18 cells are editable on one screen",
+  (await dupEntry.locator("input[id^='hole-']").count()) === 18,
+  `(${await dupEntry.locator("input[id^='hole-']").count()})`,
+);
+check(
+  "the reader's empty cell stays empty",
+  (await dupEntry.locator("#hole-16").inputValue()) === "",
+  `(hole 16 = ${JSON.stringify(await dupEntry.locator("#hole-16").inputValue())})`,
+);
+check(
+  "OUT, IN and TOTAL are shown",
+  /OUT \d+ · IN \d+ · TOTAL \d+/.test((await dupEntry.textContent()) ?? ""),
+);
+check(
+  "Submit is disabled while a cell the reader left empty is still empty",
+  await dupEntry.getByRole("button", { name: /^Submit card$/ }).isDisabled(),
+);
+await dupEntry.locator("#hole-1").fill("9");
+check(
+  "a cell the person replaced is marked changed",
+  /changed/.test((await dupEntry.locator("label:has(#hole-1)").textContent()) ?? ""),
+);
+// Enter moves to the next hole, so a whole card can be typed without the mouse.
+await dupEntry.locator("#hole-1").focus();
+await page.keyboard.press("Enter");
+check(
+  "Enter moves the desk to the next hole in order",
+  await dupEntry.locator("#hole-2").evaluate((element) => element === document.activeElement),
+);
+await dupEntry.locator("#hole-16").fill("4");
+check(
+  "the acknowledgement tick is what unlocks Submit",
+  await dupEntry.getByRole("button", { name: /^Submit card$/ }).isDisabled(),
+);
+await dupEntry.getByRole("checkbox").check();
+check(
+  "Submit unlocks once every cell has a score and the card is confirmed",
+  await dupEntry.getByRole("button", { name: /^Submit card$/ }).isEnabled(),
+);
+await page.screenshot({ path: `${SHOTS}/scores-scan-review.png` });
+await dupEntry.getByRole("button", { name: /^Submit card$/ }).click();
+await expect(dupCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
+check("the reviewed card is submitted once", (await dupCards.locator("tbody tr").count()) === 1);
+await page.setViewportSize({ width: 1440, height: 950 });
+
+// ------------------------------------------------------------- staff sheet, 360px
+// The volunteer's phone: no sideways scroll, 44px targets, numeric entry, and the same scan review
+// with the photo, every cell and the OUT/IN/TOTAL the desk reads.
+section("staff score sheet on a 360px phone");
+const staffContext = await browser.newContext({ viewport: { width: 360, height: 800 } });
+await staffContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+    const seen = { seen: true, step: 0, updatedAt: new Date().toISOString() };
+    window.localStorage.setItem(
+      "teeline-onboarding-v1",
+      JSON.stringify({ player: seen, staff: seen }),
+    );
+  } catch {
+    // Storage off: the welcome may cover the sheet, and the checks below will say so.
+  }
+});
+const staffPage = await staffContext.newPage();
+watch(staffPage);
+await staffPage.goto(`${BASE}/staff/score`, { waitUntil: "networkidle", timeout: 120000 });
+const staffNoSideways = async (name) => {
+  const width = await staffPage.evaluate(() => {
+    const root = document.scrollingElement ?? document.documentElement;
+    return { scroll: root.scrollWidth, client: root.clientWidth };
+  });
+  check(
+    `${name} does not scroll sideways at 360px`,
+    width.scroll <= width.client + 1,
+    `(scrollWidth ${width.scroll}, client ${width.client})`,
+  );
+};
+const staffTargets = async (locator, name) => {
+  const heights = await locator.evaluateAll((nodes) =>
+    nodes.map((node) => Math.round(node.getBoundingClientRect().height)),
+  );
+  check(
+    name,
+    heights.length > 0 && heights.every((height) => height >= 44),
+    `(${heights.join(", ")}px)`,
+  );
+};
+await expect(staffPage.getByRole("heading", { name: "Score", exact: true })).toBeVisible({
+  timeout: 30000,
+});
+await staffNoSideways("the staff score picker");
+check(
+  "a day with no draw says so, in plain words",
+  await staffPage
+    .getByText("No groups are drawn for this day yet", { exact: true })
+    .isVisible({ timeout: 15000 }),
+);
+await staffTargets(
+  staffPage.locator('main button[aria-pressed]'),
+  "the playing day chips are 44px tap targets",
+);
+await staffTargets(
+  staffPage.locator('nav[aria-label="Staff app"] a[data-testid^="staff-bar-"]'),
+  "the staff bar items are 44px tap targets",
+);
+await staffPage.screenshot({ path: `${SHOTS}/staff-score-360.png`, fullPage: true });
+await staffContext.close();
 
 // --------------------------------------------------------------- control room cards
 // Issue #96: the hole card forced a dark background but kept the light theme's text tokens, so the

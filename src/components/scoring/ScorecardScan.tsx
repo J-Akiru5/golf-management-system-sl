@@ -99,6 +99,7 @@ export function ScorecardScan({
   const [captureKey, setCaptureKey] = useState("");
   const [cameraOpen, setCameraOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!players.some((player) => player.playerId === playerId)) {
@@ -106,10 +107,14 @@ export function ScorecardScan({
     }
   }, [playerId, players]);
 
+  // The preview URL is handed to the parent screen, which keeps showing the photo after this
+  // component unmounts (the staff sheet switches to the review tab). So the old URL is revoked only
+  // when a new photo replaces it, never on unmount.
   useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
+    if (previewRef.current && previewRef.current !== previewUrl) {
+      URL.revokeObjectURL(previewRef.current);
+    }
+    previewRef.current = previewUrl;
   }, [previewUrl]);
 
   const selectedResult = useMemo(() => {
