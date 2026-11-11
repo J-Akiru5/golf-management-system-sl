@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { matchesName } from "@/lib/name-match";
 import { manilaToday } from "@/lib/player/dashboard";
 import { openingDayNumber } from "@/lib/public/programme-day";
+import { orderTeeCards } from "@/lib/public/tee-card-order";
 
 /**
  * The public programme: the day's tee times, the player cards and the organizers' rules of play.
@@ -114,7 +115,7 @@ export function TeeTimesBoard({ programme }: { programme: PublicProgramme }) {
   const day = programme.days.find((item) => item.dayNumber === selected) ?? programme.days[0];
   const dayIndex = day ? programme.days.findIndex((item) => item.dayNumber === day.dayNumber) : -1;
   const groups = useMemo(
-    () => (day ? groupByTime(day, dayIndex, programme.days.length) : []),
+    () => (day ? orderTeeCards(groupByTime(day, dayIndex, programme.days.length)) : []),
     [day, dayIndex, programme.days.length],
   );
   const chipRefs = useRef<Array<HTMLButtonElement | null>>([]);

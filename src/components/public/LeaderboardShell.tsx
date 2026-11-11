@@ -7,6 +7,7 @@ import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useI18n } from "@/lib/i18n/context";
 import type { PublicAdvisory } from "@/lib/public/advisory";
 
@@ -35,7 +36,10 @@ export function LeaderboardShell({
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <HelpButton audience="player" screen="pairings" />
+          <div className="flex items-center gap-2">
+            <ThemeToggle compact tone="nav" />
+            <HelpButton audience="player" screen="pairings" />
+          </div>
         </div>
         <h1 className="mt-3 font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
           {eventName ?? "Leaderboard"}

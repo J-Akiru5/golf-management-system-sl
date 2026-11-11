@@ -223,6 +223,48 @@ export function applyReadState(alerts: readonly Alert[], read: ReadonlySet<strin
   return alerts.map((alert) => (read.has(alert.id) ? { ...alert, read: true } : alert));
 }
 
+export interface AlertSections {
+  /** Everything still asking for attention, in the existing severity order. */
+  unread: Alert[];
+  /** Everything already marked read, kept out of the unread list but still available. */
+  read: Alert[];
+}
+
+/** A read mark that another open tab should apply. Stored rows and live items use different ids. */
+export interface ReadBroadcast {
+  storedIds: string[];
+  localIds: string[];
+}
+
+/**
+ * Validates a cross-tab message. A malformed message is ignored rather than applied, and an empty
+ * one changes nothing.
+ */
+export function parseReadBroadcast(value: unknown): ReadBroadcast | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as { storedIds?: unknown; localIds?: unknown };
+  const strings = (input: unknown): string[] =>
+    Array.isArray(input) ? input.filter((id): id is string => typeof id === "string") : [];
+  const storedIds = strings(record.storedIds);
+  const localIds = strings(record.localIds);
+  if (storedIds.length === 0 && localIds.length === 0) return null;
+  return { storedIds, localIds };
+}
+
+/**
+ * Splits the list the panel draws. A read mark moves an alert out of the unread section rather than
+ * leaving it next to the unread items, and the original order is preserved in both lists.
+ */
+export function splitAlerts(alerts: readonly Alert[]): AlertSections {
+  const unread: Alert[] = [];
+  const read: Alert[] = [];
+  for (const alert of alerts) {
+    if (alert.read) read.push(alert);
+    else unread.push(alert);
+  }
+  return { unread, read };
+}
+
 export interface AlertGroup {
   severity: AlertSeverity;
   heading: string;

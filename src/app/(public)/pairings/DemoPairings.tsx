@@ -13,6 +13,7 @@ import { RulesOfPlay, TeeTimesBoard } from "@/components/public/ProgrammeView";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { addIsoDays } from "@/lib/data/dates";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings, toPublicProgramme } from "@/lib/data/public";
@@ -382,6 +383,7 @@ export function DemoPairings({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle compact tone="nav" />
             <LanguageSwitcher tone="on-forest" />
             <HelpButton audience="player" screen="pairings" />
           </div>

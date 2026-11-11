@@ -14,10 +14,12 @@ import {
   groupAlerts,
   isUnreadMarkable,
   markableCount,
+  parseReadBroadcast,
   registrationAlerts,
   type StoredNotification,
   shouldCheckAlerts,
   showsAllClear,
+  splitAlerts,
   storedIdOf,
 } from "./alerts";
 
@@ -381,6 +383,26 @@ describe("marking alerts read one item at a time", () => {
     );
   });
 
+  it("moves read alerts out of the unread list and keeps both orders", () => {
+    const alerts = buildAlerts(
+      [
+        stored("needs_review", "warning", true, "n1"),
+        stored("cutoff_soon", "info", true, "n2"),
+        stored("cutoff_soon", "info", false, "n3"),
+      ],
+      [issue("cap-1", "blocking")],
+    );
+    const { unread, read } = splitAlerts(alerts);
+
+    expect(unread.map((alert) => alert.id)).toEqual(["draw:cap-1", "stored:n3"]);
+    expect(read.map((alert) => alert.id)).toEqual(["stored:n1", "stored:n2"]);
+  });
+
+  it("keeps a list with nothing read entirely in the unread section", () => {
+    const alerts = buildAlerts([stored("needs_review", "warning", false, "n1")], []);
+    expect(splitAlerts(alerts)).toEqual({ unread: alerts, read: [] });
+  });
+
   it("still counts a stored warning in the badge after it is marked read", () => {
     const alerts = buildAlerts([stored("needs_review", "warning", false, "n1")], []);
     const marked = applyReadState(alerts, new Set<string>(["stored:n1"]));
@@ -393,5 +415,18 @@ describe("marking alerts read one item at a time", () => {
     const marked = applyReadState(alerts, new Set<string>(["stored:n1"]));
     expect(marked.map((alert) => alert.read)).toEqual([true]);
     expect(badgeCount(marked)).toBe(1);
+  });
+});
+
+describe("cross-tab read marks", () => {
+  it("keeps only string ids and ignores an empty or malformed message", () => {
+    expect(parseReadBroadcast({ storedIds: ["n1", 3], localIds: ["draw:cap-1", null] })).toEqual({
+      storedIds: ["n1"],
+      localIds: ["draw:cap-1"],
+    });
+    expect(parseReadBroadcast(null)).toBeNull();
+    expect(parseReadBroadcast("nope")).toBeNull();
+    expect(parseReadBroadcast({})).toBeNull();
+    expect(parseReadBroadcast({ storedIds: [], localIds: [] })).toBeNull();
   });
 });
