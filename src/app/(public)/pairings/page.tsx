@@ -210,12 +210,12 @@ export default async function PublicPairingsPage({
     <main className="public public-pairings mobile-bar-space">
       <PlayerOfflineNotice path="/pairings" />
       <PairingsLive signature={liveSignature} />
-      <header className="public-head !p-4 sm:!p-5">
+      <header className="public-head public-appbar !p-4 sm:!p-5">
         {/* Inside a player's profile the way back is the pairings list; everywhere else it is the
             main page. */}
         <PublicBackLink label={t(back.labelKey)} href={back.href} />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="public-appbar-row flex flex-wrap items-start justify-between gap-3">
+          <div className="public-appbar-brand flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
             <span className="leading-tight">
               {data && (
@@ -226,7 +226,7 @@ export default async function PublicPairingsPage({
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="public-appbar-controls flex items-center gap-2">
             <ThemeToggle compact tone="nav" />
             <LanguageSwitcher tone="on-forest" />
             <HelpButton audience="player" screen="pairings" />
@@ -234,7 +234,7 @@ export default async function PublicPairingsPage({
         </div>
         {data ? (
           <>
-            <p className="overline mt-2 !text-gold-on-forest">
+            <p className="public-appbar-kicker overline mt-2 !text-gold-on-forest">
               {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
               {fmtTime(data.firstTeeTime)}
             </p>
