@@ -25,6 +25,15 @@ lets a scored round publish without a separate "start scoring" step. Not applied
 - **Saving a card confirms it and clears the form.** The entry key stays stable across retries, so a second tap cannot create revision 2.
 - **A scored round can be published provisionally.** Provisional publication is on by default and `publish_round` accepts a round that is still open, so the public leaderboard is not held until finalization.
 
+### Security
+- **Public player photos are named after a random token, not the player id.** The public roster
+  publishes player ids, so the old `{club_id}/{player_id}.jpg` object could be fetched from the public
+  bucket without `photo_public_consent_at`. `20261111000100_public_photo_token.sql` adds
+  `players.photo_public_token`, requires the public path to be `{club_id}/{token}.jpg`, drops the
+  object when consent is withdrawn, replaced, retired or deleted, and removes the old guessable
+  objects. **Not applied to the live project.** Existing consented public photos must be re-published
+  from the desk (toggle public display off and on); the private originals are untouched.
+
 ## [0.33.0] - 2026-11-11
 
 ### Migrations shipping with this release

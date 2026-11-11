@@ -97,6 +97,11 @@ export type PlayerRow = {
   /** Added by 20261039000000. Optional so the desk still loads before that migration is applied. */
   photo_public_path?: string | null;
   photo_public_consent_at?: string | null;
+  /**
+   * Added by 20261111000100. The random public object name, never the player id. Optional so the
+   * desk still loads before that migration is applied.
+   */
+  photo_public_token?: string | null;
   created_at: string;
   first_name: string | null;
   last_name: string | null;
@@ -608,6 +613,7 @@ export interface Database {
           photo_consent_at?: string | null;
           photo_public_path?: string | null;
           photo_public_consent_at?: string | null;
+          photo_public_token?: string | null;
           created_at?: string;
           first_name?: string | null;
           last_name?: string | null;
@@ -636,6 +642,7 @@ export interface Database {
           photo_consent_at?: string | null;
           photo_public_path?: string | null;
           photo_public_consent_at?: string | null;
+          photo_public_token?: string | null;
           active?: boolean;
           deleted_at?: string | null;
         }
