@@ -9,6 +9,13 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **The theme control is on every public tournament page (issue #217).** `/pairings`, `/roster`,
+  `/leaderboard` and `/rules` now show the existing System / Light (Ivory) / Dark (Charcoal)
+  selector beside their language and help controls. The theme system, persistence, pre-paint
+  script and contrast tokens were already in place; this only exposes the control on those pages
+  and checks it in the browser suite. No migration.
+
 ## [0.34.1] - 2026-11-11
 
 ### Fixed

@@ -11,6 +11,7 @@ import { HeldNotice } from "@/components/public/HeldNotice";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { filterRoster, rosterFlights } from "@/lib/data/public";
 import { publicTabHref } from "@/lib/data/public-tabs";
 import type { PublicRosterPlayer } from "@/lib/data/types";
@@ -57,6 +58,7 @@ export function RosterPage({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle compact tone="nav" />
             <LanguageSwitcher tone="on-forest" />
             <HelpButton audience="player" screen="pairings" />
           </div>
