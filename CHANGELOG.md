@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- **The public tee-times board shows cards and the starting hole again.** The 0.34.1 change that
+  cut the board down to one row per player with a name and a time is reverted on the owner's
+  instruction: each confirmed start is a card with its time, hole and the players on it, and the
+  search results carry the hole and the "With ..." line. No migration.
+
 ## [0.34.2] - 2026-11-12
 
 ### Added

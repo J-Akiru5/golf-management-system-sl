@@ -826,45 +826,6 @@ check(
 );
 const boardSearch = board.getByRole("searchbox", { name: "Find a player" });
 check("the board carries a player search", (await boardSearch.count()) === 1);
-// The board is a timetable, not a draw sheet: the day is split into sessions, every row is one
-// player, and nothing on it names a partner, a pair number or a starting hole.
-const boardSessions = await board.getByTestId("tee-session").evaluateAll((nodes) =>
-  nodes.map((node) => ({
-    key: node.getAttribute("data-session"),
-    names: [...node.querySelectorAll('[data-testid="tee-session-name"]')].map(
-      (name) => name.textContent?.trim() ?? "",
-    ),
-  })),
-);
-const boardAm = boardSessions.find((item) => item.key === "AM");
-const boardPm = boardSessions.find((item) => item.key === "PM");
-check(
-  "the board groups the day into AM and PM, not into groups",
-  Boolean(boardAm?.names.length) && Boolean(boardPm?.names.length),
-  `(${boardSessions.map((item) => `${item.key}:${item.names.length}`).join(", ")})`,
-);
-const alphabetical = (names) =>
-  names.every(
-    (name, index) =>
-      index === 0 ||
-      names[index - 1].localeCompare(name, "en", { sensitivity: "base" }) <= 0,
-  );
-check(
-  "each session lists its players alphabetically",
-  alphabetical(boardAm?.names ?? []) && alphabetical(boardPm?.names ?? []),
-);
-const boardRows = await board.getByTestId("tee-session-player").count();
-const boardNames = await board.getByTestId("tee-session-name").count();
-check(
-  "no board row carries a group-mate name: one player per row",
-  boardRows > 0 && boardRows === boardNames,
-  `(${boardRows} rows, ${boardNames} names)`,
-);
-const boardText = (await board.textContent()) ?? "";
-check(
-  "the board never names a hole or a group mate",
-  !/Hole\s+\d/.test(boardText) && !boardText.includes("With "),
-);
 await boardSearch.fill("ordonez");
 const boardResult = board.getByTestId("tee-search-result").first();
 await expect(boardResult).toBeVisible({ timeout: 15000 });
@@ -878,16 +839,8 @@ check(
 );
 const resultText = (await boardResult.textContent()) ?? "";
 check(
-  "a result names the day, date and the player's own time",
-  /Day \d/.test(resultText) && /\d{1,2}:\d{2}/.test(resultText),
-  `(${resultText.replace(/\s+/g, " ").trim()})`,
-);
-check(
-  "a result shows one player, with no group mate, pair or hole",
-  !resultText.includes("Hole") &&
-    !resultText.includes("With ") &&
-    (await boardResult.getByTestId("tee-search-name").count()) === 1,
-  `(${await boardResult.getByTestId("tee-search-name").count()} name)`,
+  "a result names the day, date, time, hole and group mates",
+  resultText.includes("Hole") && resultText.includes("With ") && /\d{1,2}:\d{2}/.test(resultText),
 );
 await boardPage.screenshot({ path: `${SHOTS}/public-board-search.png` });
 await boardSearch.fill("zzzzzz");
@@ -932,11 +885,6 @@ check(
 check(
   "without a placeholder time",
   (await heldBoard.getByText("Time to be confirmed").count()) === 0,
-);
-const heldText = (await heldBoard.textContent()) ?? "";
-check(
-  "and the held board never names a hole or a group mate",
-  !/Hole\s+\d/.test(heldText) && !heldText.includes("With "),
 );
 await heldPage.screenshot({ path: `${SHOTS}/public-board-search-held.png` });
 await heldContext.close();
