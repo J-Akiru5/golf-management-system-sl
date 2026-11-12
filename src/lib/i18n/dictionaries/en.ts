@@ -349,6 +349,7 @@ export const en = {
     profileIntro: "Search a confirmed player to see their published scorecard.",
     profileSearchPrompt: "Type a name to find a player.",
     profileIndex: "Index",
+    profilePlayingHandicap: "Playing handicap",
     profileClass: "Class",
     profileCategory: "Category",
     profilePartner: "Partner",

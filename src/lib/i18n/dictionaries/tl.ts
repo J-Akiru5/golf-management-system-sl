@@ -349,6 +349,7 @@ export const tl: Dictionary = {
     profileIntro: "Hanapin ang kumpirmadong manlalaro para makita ang na-publish na scorecard.",
     profileSearchPrompt: "Mag-type ng pangalan para makahanap ng manlalaro.",
     profileIndex: "Index",
+    profilePlayingHandicap: "Playing handicap",
     profileClass: "Klase",
     profileCategory: "Kategorya",
     profilePartner: "Kapares",

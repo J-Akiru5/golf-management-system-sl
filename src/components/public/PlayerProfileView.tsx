@@ -3,7 +3,7 @@ import { Avatar } from "@/components/bits";
 import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
 import type { PublicPlayerProfileData, PublicProfileTeeTime } from "@/lib/data/public-profile";
 import type { PublicTeamStanding } from "@/lib/data/public-team-leaderboard";
-import { fmtIndex, fmtTime, shortDate } from "@/lib/format";
+import { fmtHcp, fmtTime, shortDate } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
 
 /**
@@ -25,6 +25,7 @@ export function PlayerProfileView({
 }) {
   const { player, partner, cards } = data;
   const rank = team ? (team.tied ? `T${team.rank}` : String(team.rank)) : null;
+  const playingHandicap = cards[0]?.playingHandicap ?? null;
   return (
     <div className="grid gap-4" data-testid="player-profile">
       <section className="card grid gap-3" aria-labelledby="profile-name">
@@ -45,8 +46,8 @@ export function PlayerProfileView({
 
         <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <div className="grid gap-0.5">
-            <dt className="small-h">{t("programme.profileIndex")}</dt>
-            <dd className="m-0 font-semibold tnum">{fmtIndex(player.index)}</dd>
+            <dt className="small-h">{t("programme.profilePlayingHandicap")}</dt>
+            <dd className="m-0 font-semibold tnum">{fmtHcp(playingHandicap)}</dd>
           </div>
           <div className="grid gap-0.5">
             <dt className="small-h">{t("programme.profileClass")}</dt>

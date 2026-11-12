@@ -351,6 +351,7 @@ export const hil: Dictionary = {
       "Pangitaa ang nakumpirma nga manug hampang agod makita ang na-publish nga scorecard.",
     profileSearchPrompt: "Mag-type sang ngalan agod makakita sang manug hampang.",
     profileIndex: "Index",
+    profilePlayingHandicap: "Playing handicap",
     profileClass: "Klase",
     profileCategory: "Kategorya",
     profilePartner: "Kapares",
