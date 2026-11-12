@@ -60,7 +60,7 @@ The app still only prints scorecards. `docs/PLAN.md` records that no scoring is 
 | Required scorecards per player | **Unconfirmed** | `VerificationPolicy.requiredCards`; `null` blocks verification |
 | Scorer rotation pattern | **Unconfirmed** | Not in the engine; self-scoring is blocked |
 | Rounding for a non-100% allowance | **Unconfirmed** | `HandicapRounding`: `"whs"` or `"single"` |
-| Tie-break procedure | **Unconfirmed** | `TieBreakPolicy`; `null` blocks finalization |
+| Tie-break procedure | **Rule confirmed for the 24th Bamboo Tee** (team countback on the final round: holes 16 to 18, then 13 to 15, then lots; see [`IGCC_Tournament_Desk.md`](IGCC_Tournament_Desk.md)). The procedure is not implemented and no policy row is confirmed in the database | `TieBreakPolicy`; `null` blocks finalization |
 | Multi-day eligibility | **Unconfirmed** | One round per day; no cross-day totals |
 | Provisional publication visibility | **Unconfirmed** | `VerificationPolicy`; default publishes nothing |
 | Final approval authority | **Unconfirmed** | `FinalizationInput.approvedBy`; role check is outside the engine |
@@ -493,7 +493,7 @@ multiplies the ways a score can be wrong.
 | S2 | Required scorecards per player, and whether a single card may show provisionally | `requiredCards: null`, single-card display off; nothing publishes | Verification and finalization |
 | S3 | Scorer rotation patterns and validation rules | Manual assignment; self-scoring blocked | Card identity and rotation checks |
 | S4 | Course/tee data, allowance and rounding for non-100% events | WHS two-step; 100% confirmed so far | Valid net results |
-| S5 | Written tie-break rule and the procedure to implement | `null`; finalization blocked | Official ranking and winners |
+| S5 | Written tie-break rule and the procedure to implement. The written rule for the 24th Bamboo Tee is on file in [`IGCC_Tournament_Desk.md`](IGCC_Tournament_Desk.md) (read from the printed rules sheet, 12 Nov 2026); it is a team countback, so it needs team scoring first | `null`; finalization blocked | Official ranking and winners |
 | S6 | Multi-day eligibility and entry restrictions | One entry per day; no cross-day totals | Registration and per-day eligibility |
 | S7 | Provisional publication: who sees partial scores, and when | Off | Live leaderboard visibility |
 | S8 | Final approval authority: desk alone or a committee | Organizer/owner; finalization not enabled | Official results workflow |
@@ -514,7 +514,7 @@ are **proposals**, not the organizer's confirmed rules.
 | --- | --- | --- |
 | Required cards | 2 independent cards | `competition_rounds.required_cards` |
 | Single-card provisional display | On | `competition_rounds.allow_provisional_single_card` |
-| Tie-break | Back 9, then back 6, then back 3, then the last hole | `tie_break_policies`; the proposed row has empty confirmation fields, so finalization stays blocked |
+| Tie-break | Back 9, then back 6, then back 3, then the last hole. **Not the 24th Bamboo Tee rule**, which is the team countback in [`IGCC_Tournament_Desk.md`](IGCC_Tournament_Desk.md) | `tie_break_policies`; the proposed row has empty confirmation fields, so finalization stays blocked |
 | Finalization authority | Organizer (owner also allowed) | `competition_rounds.finalization_authority` |
 | Provisional publication | Verified holes only | `competition_rounds.provisional_publication` |
 | Scorer rotation | Reciprocal cycle: each player marks the next, last marks the first | `scorer_rotation_policies` / `scorer_assignments`; helper `reciprocalRotation()` |

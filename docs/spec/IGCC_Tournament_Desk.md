@@ -103,6 +103,48 @@ Received as `bamboo-tee-Rules-of-Play.pdf` on 5 November 2026, together with the
 
 Not modelled yet: teams as a stored pair, aggregate team scoring, mulligans, the pick-up penalty and the countback. The desk scores individual players and pairs teams by hand, which the owner chose on 5 November 2026.
 
+### Scoring as worked on the card, confirmed 12 November 2026
+
+On Day 1 the owner checked the desk's calculation against a marked paper card and the printed rules sheet. The card was Oscar Yatco's, Day 1 AM, White tee, HDCP 18: 13 points out, 16 in, 29 for the round, and the desk's numbers matched hole by hole. This is how a card is scored:
+
+| Step | Rule | Source |
+| --- | --- | --- |
+| Handicap | The number in the card's HDCP box is the playing handicap. | Owner, 12 Nov 2026 |
+| Decimal in the HDCP box | The decimal is dropped: 16.7 plays off 16. See the open point below. | Owner, 12 Nov 2026 |
+| No HDCP on the card | No net score. The player is listed unranked until the desk enters the handicap. Nothing is assumed. | Owner, 12 Nov 2026 |
+| Strokes per hole | One stroke on every hole for each full 18 of handicap, then one more on the hardest holes in the order of the card's HANDICAP row. 18 gets one on every hole, 19 gets a second on hole 8, 36 gets two on every hole. | Printed card; worked card |
+| Net score | Strokes written, minus the strokes received on that hole. | Worked card |
+| Points | Net double bogey or worse 0, net bogey 1, net par 2, net birdie 3, net eagle 4, net albatross 5. | Rules sheet |
+| X | A pick-up. 0 points for the hole. The points row on the paper card is left blank under an X. | Rules sheet; worked card |
+| Mulligan and Joker stamps | They do not change the points. The score written on the card is scored as it stands. | Owner, 12 Nov 2026 |
+| Ties | Team level, on the final round cards: net team points over holes 16, 17 and 18, then 13, 14 and 15, then a drawing of lots. Read again from the printed rules sheet; it is the same rule as the Ties row above. | Rules sheet, 12 Nov 2026 |
+
+The HANDICAP row printed on the club card (1 is the hardest hole). Men's par and ladies' par are the same on every hole:
+
+| Hole | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | Out | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | In | Total |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Par | 4 | 4 | 4 | 5 | 3 | 4 | 4 | 4 | 4 | 36 | 3 | 4 | 4 | 3 | 5 | 4 | 3 | 4 | 4 | 34 | 70 |
+| Handicap | 5 | 3 | 7 | 9 | 17 | 15 | 11 | 1 | 13 | | 14 | 6 | 12 | 16 | 2 | 4 | 18 | 8 | 10 | | |
+
+These numbers were read from a photo of one printed card on 12 November 2026. Check them against the card itself before they are entered as the event's course data.
+
+**Open point: a decimal in the HDCP box.** "Course handicap, confirmed 5 November 2026" above says scoring uses the course handicap worked from the index with the tee's rating and slope. A decimal in the HDCP box (16.7, 18.9) looks like an index that was not converted. Dropping the decimal and converting do not always agree: 16.7 on White is 16 dropped and 17 converted; 18.9 on Blue is 18 dropped and 21 converted. Whole numbers on the cards look already converted (34 on Blue and 36 on Red are the capped index of 30 on those tees), so they are not affected. The Day 1 AM draft sheet drops the decimal, as the owner said on 12 November. Four Day 1 AM cards carry a decimal. The organizer should say which rule stands before a result is declared.
+
+**Day 1 working sheet.** Until transcribed cards can be imported, Day 1 AM is scored on a standalone page outside the app, generated from the transcription file. It scores each player with the steps above and ranks individuals by net points. It does not add the two partners together, does not apply the two-point pick-up penalty, and does not break ties. It is a draft for the desk, not a published result.
+
+What the working sheet does, as of 12 November 2026:
+
+| Feature | How it behaves |
+| --- | --- |
+| Correcting a score | Any score, name, group, tee or HDCP can be typed over. Points, OUT, IN and totals recalculate at once. A changed score is marked so the desk can see it differs from the first reading. |
+| A card that was not scanned | **Add card** opens a blank card that is typed in from the paper. It is marked "Added by hand" and can be removed. |
+| Class | Each card and the scoresheet show the team's class. It is read from the field list by the player's name: both partners' indexes, each capped at 30, averaged and rounded, then A 0 to 12, B 13 to 18, C 19 to 23, D 24 and above. The card also names the partner and the team handicap. |
+| Class not known | When the name is not on the field list, or either partner's index is blank there, no class is shown and the desk picks it on the card. A blank index is not counted as zero here. |
+| Class and scores | Class is a label only. It does not change strokes, points or the order of the scoresheet. On the day it was added, all 36 cards kept the same strokes, playing handicap, net points and gross points. |
+| Checked | A card is ticked once it has been compared with the paper. The scoresheet shows which cards are checked. |
+
+Known gap: the field list in the repository (`supabase/seed/bamboo-tee-2026-field.psv`) gave a class for only 11 of the 36 Day 1 AM cards. Players entered after that list was made are not on it, and several teams have no index on it. The class the desk assigned lives in the database, which the working sheet does not read. Until it does, the desk sets the missing classes by hand.
+
 ## How auto-routing works
 
 Every registration passes through the same steps. Each step writes its result onto the registration, so the organizer can see why a player landed where they did and override any step.
