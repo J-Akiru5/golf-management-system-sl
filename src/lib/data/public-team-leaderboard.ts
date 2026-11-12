@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { displayName } from "@/lib/format";
 import { formatToPar } from "@/lib/player/scorecard";
 import type { Database } from "@/lib/supabase/types";
+import type { PublicProgramme } from "./types";
 
 /**
  * The public cumulative team leaderboard.
@@ -260,6 +261,40 @@ function sameRank(a: PublicTeamStanding, b: PublicTeamStanding): boolean {
  * Adds the two partners together. A pair that does not have both partners in the published rows is
  * counted as unpaired and is not ranked: the event is a two-man aggregate Stableford.
  */
+/**
+ * A player's live class, keyed by the stable player id, from the public programme. The programme
+ * already publishes the confirmed roster, so this adds no new read and no private field.
+ */
+export function liveClassesFromProgramme(
+  programme: Pick<PublicProgramme, "players"> | null,
+): Map<string, string> {
+  const classes = new Map<string, string>();
+  for (const player of programme?.players ?? []) {
+    if (player.id && player.flight) classes.set(player.id, player.flight);
+  }
+  return classes;
+}
+
+/**
+ * Replaces the published card's class with the live registration class. The snapshot freezes the
+ * class at publication time; a validated desk correction must show without rebuilding the card
+ * snapshot, which still cannot emit a pick-up. Scores stay frozen; only the class label changes.
+ */
+export function applyLiveClasses(
+  data: PublicTeamLeaderboardData,
+  classesByPlayerId: ReadonlyMap<string, string>,
+): PublicTeamLeaderboardData {
+  if (classesByPlayerId.size === 0) return data;
+  let changed = false;
+  const rows = data.rows.map((row) => {
+    const live = classesByPlayerId.get(row.playerId);
+    if (!live || live === row.flightName) return row;
+    changed = true;
+    return { ...row, flightName: live };
+  });
+  return changed ? { ...data, rows } : data;
+}
+
 export function buildTeamLeaderboard(data: PublicTeamLeaderboardData): PublicTeamLeaderboard {
   const groups = new Map<string, PublicTeamPlayerRow[]>();
   for (const row of data.rows) {

@@ -22,7 +22,9 @@ import { type PublicReleaseState, toPublicPairings } from "@/lib/data/public";
 import { loadPublicPlayerProfile, type PublicPlayerProfileData } from "@/lib/data/public-profile";
 import { parsePublicTab } from "@/lib/data/public-tabs";
 import {
+  applyLiveClasses,
   buildTeamLeaderboard,
+  liveClassesFromProgramme,
   loadPublicTeamLeaderboard,
   type PublicTeamStanding,
 } from "@/lib/data/public-team-leaderboard";
@@ -159,9 +161,9 @@ export default async function PublicPairingsPage({
         const leaderboard = await loadPublicTeamLeaderboard(client);
         if (leaderboard) {
           team =
-            buildTeamLeaderboard(leaderboard).teams.find((entry) =>
-              entry.playerIds.includes(profilePlayerId),
-            ) ?? null;
+            buildTeamLeaderboard(
+              applyLiveClasses(leaderboard, liveClassesFromProgramme(programme)),
+            ).teams.find((entry) => entry.playerIds.includes(profilePlayerId)) ?? null;
         }
       } catch {
         // The pair total is additive. A database without the leaderboard still shows the profile.

@@ -11,8 +11,10 @@ import {
   type PublicResultRow,
 } from "@/lib/data/public-results";
 import {
+  applyLiveClasses,
   buildTeamLeaderboard,
   filterTeams,
+  liveClassesFromProgramme,
   loadPublicTeamLeaderboard,
   rankTeams,
   teamOptions,
@@ -124,7 +126,9 @@ export default async function LeaderboardPage({
     );
   }
 
-  const { teams, unpaired } = buildTeamLeaderboard(data);
+  const { teams, unpaired } = buildTeamLeaderboard(
+    applyLiveClasses(data, liveClassesFromProgramme(programme)),
+  );
   const shown = topTeams(rankTeams(filterTeams(teams, filters)), 10);
 
   return (
