@@ -916,7 +916,7 @@ const dayOptions = await phoneDaySelect.evaluateAll((nodes) =>
   nodes.flatMap((node) =>
     [...node.querySelectorAll("option")].map((option) => ({
       value: option.value,
-      text: (option.textContent ?? "").replace(/s+/g, " ").trim(),
+      text: (option.textContent ?? "").replace(/\s+/g, " ").trim(),
     })),
   ),
 );
@@ -925,7 +925,7 @@ check(
   dayOptions.length === 2 &&
     dayOptions[0]?.value === "1" &&
     dayOptions[1]?.value === "2" &&
-    dayOptions.every((option) => /[A-Z][a-z]{2}, [A-Z][a-z]{2} d{1,2}/.test(option.text)),
+    dayOptions.every((option) => /[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}/.test(option.text)),
   `(${dayOptions.map((option) => option.text).join(" | ")})`,
 );
 const manilaTodayLabel = new Intl.DateTimeFormat("en-PH", {
@@ -936,7 +936,7 @@ const manilaTodayLabel = new Intl.DateTimeFormat("en-PH", {
 }).format(new Date());
 const selectedDayText = (
   await phoneDaySelect.evaluate((node) => node.options[node.selectedIndex]?.textContent ?? "")
-).replace(/s+/g, " ");
+).replace(/\s+/g, " ");
 check(
   "the day dropdown opens on today in Manila when it is published, else the first day",
   selectedDayText.includes(manilaTodayLabel) || (await phoneDaySelect.inputValue()) === "1",
