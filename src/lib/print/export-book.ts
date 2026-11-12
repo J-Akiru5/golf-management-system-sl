@@ -14,19 +14,22 @@ import {
   exportFileName,
   groupCountsTables,
   pairingTables,
+  resultsTables,
   type ScorecardPage,
   scorecardPages,
   startSheetTable,
 } from "./export-model";
+import type { ResultsSheet } from "./results-sheet";
 import type { PrintStartFormat } from "./start-sheet";
 
-export type ExportKind = "start" | "counts" | "pairings" | "scorecards";
+export type ExportKind = "start" | "counts" | "pairings" | "scorecards" | "results";
 
 export const KIND_LABEL: Record<ExportKind, string> = {
   start: "Start sheet",
   counts: "Counts",
   pairings: "Pairings",
   scorecards: "Scorecards",
+  results: "Results",
 };
 
 export interface BoardScope {
@@ -53,6 +56,8 @@ export interface PrintBookInput {
   groupBlocks: readonly DayGroupBlock[];
   groupBy: "session" | "group";
   holes: readonly { number: number; par: number | null; strokeIndex: number | null }[];
+  /** The results sheet for the same day scope. Required only for `kind: "results"`. */
+  resultsSheets?: readonly ResultsSheet[];
 }
 
 export interface PrintBook {
@@ -111,6 +116,13 @@ export function buildPrintBook(input: PrintBookInput): PrintBook | null {
     const hasRows =
       input.groupBy === "group" ? input.groupBlocks.length > 0 : input.countBlocks.length > 0;
     return hasRows ? { book: book(tables), scorecards: null, fileStem } : null;
+  }
+
+  if (input.kind === "results") {
+    const tables = (input.resultsSheets ?? []).flatMap(resultsTables);
+    return tables.some((table) => table.rows.length > 0)
+      ? { book: book(tables), scorecards: null, fileStem }
+      : null;
   }
 
   const scorecards = input.boards.flatMap((board) =>

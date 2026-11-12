@@ -141,6 +141,11 @@ export function ScorecardWorkspace({
   const netStatus = summary.netStatus;
   const filled = summary.holesEntered;
   const writtenMatches = summary.writtenMatches;
+  const pointsByHole: Record<number, number> = {};
+  for (const hole of summary.holes) {
+    pointsByHole[hole.hole] =
+      summary.pointsKind === "net" ? (hole.netPoints ?? 0) : hole.grossPoints;
+  }
 
   return (
     <div className="grid gap-4">
@@ -267,126 +272,24 @@ export function ScorecardWorkspace({
         </div>
       )}
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.6fr)]">
-        <aside className="grid content-start gap-3">
-          <section
-            id="score-scan-card"
-            aria-labelledby="score-scan"
-            data-help="scores-scan"
-            className="grid content-start gap-3"
-          >
-            <h2 id="score-scan" className="sr-only">
-              Scan a card
+      <section
+        id="scorecard-sheet"
+        aria-label="Scorecard"
+        className="rounded-lg border border-line bg-surface-raised p-3 sm:p-5"
+      >
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
+          <div className="grid gap-0.5">
+            <h2 className="text-[18px] font-bold leading-tight text-ink">
+              {selectedPlayer?.playerName ?? "Select a player"}
             </h2>
-            <div className="overflow-hidden rounded-lg border border-line bg-surface-sunken">
-              {scanImage ? (
-                <img
-                  src={scanImage.previewUrl}
-                  alt="The scanned scorecard"
-                  className="max-h-[34rem] w-full object-contain"
-                />
-              ) : (
-                <div className="grid gap-2 p-4">
-                  <ScanLine className="size-5 text-fairway" aria-hidden="true" />
-                  <b className="text-[14px]">No photo attached</b>
-                  <p className="hint m-0">
-                    Enter the card by hand, or add a photo to check every cell against the paper.
-                  </p>
-                </div>
-              )}
-            </div>
-            <details className="card group" open={!scanImage}>
-              <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-semibold">
-                <ScanLine className="size-4 text-fairway" aria-hidden="true" />
-                {scanImage ? "Replace or rescan photo" : "Add photo or scan"}
-              </summary>
-              <div className="mt-3">
-                <ScorecardScan
-                  tournamentId={tournamentId}
-                  role={profileRole}
-                  players={players.map((player) => ({
-                    playerId: player.playerId,
-                    playerName: player.playerName,
-                  }))}
-                  holes={holes}
-                  disabled={busy || Boolean(editingCard)}
-                  onApply={onApplyScan}
-                />
-              </div>
-            </details>
-          </section>
-          {selectedPlayer && (
-            <HandicapSummary
-              playerId={selectedPlayer.playerId}
-              playerName={selectedPlayer.playerName}
-              role={profileRole}
-              handicap={selectedPlayer.handicap}
-              frozenIndex={selectedPlayer.frozenIndex}
-              course={view.course}
-            />
-          )}
-        </aside>
-
-        <div className="grid gap-3">
-          <ScorecardHoleGrid
-            holes={holes}
-            strokes={strokes}
-            cells={scan.cells}
-            scanned={scanned}
-            disabled={busy}
-            outTotal={out}
-            inTotal={inn}
-            onChange={onStrokeChange}
-            onEnter={onEnter}
-          />
-
-          {scanned && scan.check > 0 && (
-            <p id="scan-check-hint" className="hint m-0">
-              Amber cells were read with low confidence. Compare each one with the photo; correcting
-              a cell marks it as changed, and leaving a weak read as it is sends it to review
-              unconfirmed.
+            <p className="hint m-0">
+              Day {view.dayNumber} · Marker {selectedScorer?.playerName ?? "—"} · Playing handicap{" "}
+              {selectedPlayer?.handicap?.playingHandicap ?? "—"}
             </p>
-          )}
-          {scanned && (
-            <label className="flex items-start gap-2 text-[13px]">
-              <input
-                type="checkbox"
-                checked={scanConfirmed}
-                onChange={(event) => onScanConfirmedChange(event.target.checked)}
-                disabled={busy}
-              />
-              <span>
-                I compared every flagged cell with the photo, and every cell the reader left empty
-                now has the score written on the card.
-              </span>
-            </label>
-          )}
-
-          <div className="grid gap-2 rounded-lg border border-line bg-surface-sunken p-3 sm:grid-cols-4">
-            <div>
-              <span className="hint">Gross</span>
-              <b className="mono block text-[22px]">{gross || "—"}</b>
-            </div>
-            <div>
-              <span className="hint">Net Stableford</span>
-              <b className="mono block text-[22px]">{netPoints ?? "—"}</b>
-              {netStatus === "unavailable" && <span className="hint">No handicap snapshot</span>}
-            </div>
-            <div>
-              <span className="hint">OUT / IN / TOTAL</span>
-              <b className="mono block text-[18px]">
-                {out} / {inn} / {out + inn}
-              </b>
-            </div>
-            <div>
-              <span className="hint">Holes entered</span>
-              <b className="mono block text-[22px]">{filled}/18</b>
-            </div>
           </div>
-
           <div className="flex flex-wrap items-end gap-3">
-            <label className="field w-40">
-              <span>Total written on card</span>
+            <label className="field w-36">
+              <span>Total on card</span>
               <input
                 type="number"
                 inputMode="numeric"
@@ -398,38 +301,171 @@ export function ScorecardWorkspace({
                 disabled={busy}
               />
             </label>
-            <p className="hint m-0">
-              {writtenMatches === null
-                ? "Optional. Enter the total written on the paper card to compare it with the numbers above."
-                : writtenMatches
-                  ? `Matches the numbers: ${gross}.`
-                  : `Written ${written}, numbers add to ${gross}. Check the cells.`}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-2">
-              {(editingCard || scanned) && (
-                <Button variant="ghost" size="sm" onClick={onStartAnother} disabled={busy}>
-                  {editingCard ? "Cancel correction" : "Start another card"}
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={onFillPar} disabled={busy}>
-                Fill with par
-              </Button>
-            </div>
-            <span className="hint">
-              {ready ? (
-                <span className="inline-flex items-center gap-1 text-success">
-                  <CheckCircle2 className="size-4" aria-hidden="true" />
-                  Ready to submit
-                </span>
-              ) : (
-                statusLabel
-              )}
-            </span>
+            {scanned ? (
+              <label className="flex min-h-11 items-center gap-2 text-[12px]">
+                <input
+                  type="checkbox"
+                  checked={scanConfirmed}
+                  onChange={(event) => onScanConfirmedChange(event.target.checked)}
+                  disabled={busy}
+                />
+                <span>Checked against the paper card</span>
+              </label>
+            ) : (
+              <span className="pill info">Entered by hand</span>
+            )}
           </div>
         </div>
+
+        <div className="mt-3">
+          <ScorecardHoleGrid
+            holes={holes}
+            strokes={strokes}
+            cells={scan.cells}
+            scanned={scanned}
+            disabled={busy}
+            outTotal={out}
+            inTotal={inn}
+            outPoints={summary.outPoints}
+            inPoints={summary.inPoints}
+            points={pointsByHole}
+            pointsKind={summary.pointsKind}
+            onChange={onStrokeChange}
+            onEnter={onEnter}
+          />
+        </div>
+
+        {scanned && (scan.check > 0 || scan.blank > 0) && (
+          <p id="scan-check-hint" className="hint m-0 mt-2">
+            Amber cells were read with low confidence, and red cells were blank on the photo.
+            Compare each one with the paper card. Correcting a cell marks it as changed; leaving a
+            weak read as it is sends it to review unconfirmed.
+          </p>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-ink-muted">
+          <span>
+            Strokes{" "}
+            <b className="mono text-ink">
+              {filled === 18 ? gross : filled === 0 ? "—" : `${gross} over ${filled} holes`}
+            </b>
+          </span>
+          <span>
+            Holes with a score <b className="mono text-ink">{filled}/18</b>
+          </span>
+          {netStatus === "calculated" ? (
+            <>
+              <span>
+                Playing handicap{" "}
+                <b className="mono text-ink">{selectedPlayer?.handicap?.playingHandicap ?? "—"}</b>
+              </span>
+              <span>
+                Net Stableford <b className="mono text-ink">{netPoints}</b>
+              </span>
+            </>
+          ) : (
+            <span className="text-warning">No handicap snapshot: net not calculated</span>
+          )}
+          <span>
+            Gross Stableford <b className="mono text-ink">{summary.grossPoints}</b>
+          </span>
+          <span>
+            OUT / IN / TOTAL{" "}
+            <b className="mono text-ink">
+              {out} / {inn} / {out + inn}
+            </b>
+          </span>
+        </div>
+
+        <p className="hint m-0 mt-1">
+          {writtenMatches === null
+            ? "Total on card is optional. Enter the total written on the paper card to compare it with the numbers above."
+            : writtenMatches
+              ? `The total on the card matches the numbers: ${gross}.`
+              : `The card says ${written}, but the numbers add to ${gross}. Check the cells.`}
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+          <div className="flex flex-wrap gap-2">
+            {(editingCard || scanned) && (
+              <Button variant="ghost" size="sm" onClick={onStartAnother} disabled={busy}>
+                {editingCard ? "Cancel correction" : "Start another card"}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onFillPar} disabled={busy}>
+              Fill with par
+            </Button>
+          </div>
+          <span className="hint">
+            {ready ? (
+              <span className="inline-flex items-center gap-1 text-success">
+                <CheckCircle2 className="size-4" aria-hidden="true" />
+                Ready to submit
+              </span>
+            ) : (
+              statusLabel
+            )}
+          </span>
+        </div>
+      </section>
+
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        <section
+          id="score-scan-card"
+          aria-labelledby="score-scan"
+          data-help="scores-scan"
+          className="grid content-start gap-3"
+        >
+          <h2 id="score-scan" className="sr-only">
+            Scan a card
+          </h2>
+          <div className="overflow-hidden rounded-lg border border-line bg-surface-sunken">
+            {scanImage ? (
+              <img
+                src={scanImage.previewUrl}
+                alt="The scanned scorecard"
+                className="max-h-[28rem] w-full object-contain"
+              />
+            ) : (
+              <div className="grid gap-2 p-4">
+                <ScanLine className="size-5 text-fairway" aria-hidden="true" />
+                <b className="text-[14px]">No photo attached</b>
+                <p className="hint m-0">
+                  Enter the card by hand, or add a photo to check every cell against the paper.
+                </p>
+              </div>
+            )}
+          </div>
+          <details className="card group" open={!scanImage}>
+            <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-semibold">
+              <ScanLine className="size-4 text-fairway" aria-hidden="true" />
+              {scanImage ? "Replace or rescan photo" : "Add photo or scan"}
+            </summary>
+            <div className="mt-3">
+              <ScorecardScan
+                tournamentId={tournamentId}
+                role={profileRole}
+                players={players.map((player) => ({
+                  playerId: player.playerId,
+                  playerName: player.playerName,
+                }))}
+                holes={holes}
+                disabled={busy || Boolean(editingCard)}
+                onApply={onApplyScan}
+              />
+            </div>
+          </details>
+        </section>
+        {selectedPlayer && (
+          <HandicapSummary
+            playerId={selectedPlayer.playerId}
+            playerName={selectedPlayer.playerName}
+            role={profileRole}
+            handicap={selectedPlayer.handicap}
+            frozenIndex={selectedPlayer.frozenIndex}
+            course={view.course}
+          />
+        )}
       </div>
     </div>
   );

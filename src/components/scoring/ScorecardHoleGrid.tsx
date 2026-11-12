@@ -11,18 +11,30 @@ interface ScorecardHoleGridProps {
   disabled?: boolean;
   outTotal: number;
   inTotal: number;
+  outPoints: number;
+  inPoints: number;
+  points: Readonly<Record<number, number>>;
+  pointsKind: "net" | "gross";
   onChange: (hole: number, value: string) => void;
   onEnter: (hole: number) => void;
 }
 
-function statusClass(state: string | undefined): string {
-  if (state === "check") return "border-warning text-warning";
-  if (state === "blank") return "border-danger text-danger";
-  if (state === "changed" || state === "typed") return "border-info text-info";
-  return "border-line text-ink-muted";
+function stateClasses(state: string | undefined): string {
+  if (state === "check") return "bg-warning/10";
+  if (state === "blank") return "bg-danger/10";
+  if (state === "changed" || state === "typed") return "bg-info/10";
+  return "";
 }
 
-function HoleCell({
+function stateLabel(state: string | undefined): string {
+  if (state === "check") return "Check";
+  if (state === "blank") return "Blank";
+  if (state === "changed") return "Changed";
+  if (state === "typed") return "Typed";
+  return "";
+}
+
+function ScoreCell({
   hole,
   strokes,
   cell,
@@ -42,13 +54,7 @@ function HoleCell({
   const state = scanned ? cell?.state : undefined;
   const flagged = state === "check" || state === "blank";
   return (
-    <div className={`grid gap-1 rounded-md border bg-surface p-1.5 ${statusClass(state)}`}>
-      <div className="flex items-baseline justify-between gap-1 text-[10px] leading-tight">
-        <b className="mono">{hole.number}</b>
-        <span>
-          par {hole.par} · SI {hole.strokeIndex}
-        </span>
-      </div>
+    <div className={`grid gap-0.5 px-0.5 py-0.5 ${stateClasses(state)}`}>
       <input
         id={`hole-${hole.number}`}
         type="number"
@@ -58,9 +64,7 @@ function HoleCell({
         value={strokes[hole.number] ?? ""}
         aria-invalid={flagged ? true : undefined}
         aria-describedby={flagged ? "scan-check-hint" : undefined}
-        className={`min-h-11 w-full rounded border bg-surface-raised px-1 text-center font-mono text-[16px] font-bold text-ink ${
-          state === "check" ? "border-warning" : state === "blank" ? "border-danger" : "border-line"
-        }`}
+        className="h-8 w-full border-0 bg-transparent px-0 text-center font-mono text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-primary"
         onChange={(event) => onChange(hole.number, event.target.value)}
         onKeyDown={(event) => {
           if (event.key !== "Enter") return;
@@ -70,24 +74,141 @@ function HoleCell({
         disabled={disabled}
         aria-label={`Hole ${hole.number}, par ${hole.par}, stroke index ${hole.strokeIndex}`}
       />
-      <span className="text-center text-[10px] leading-tight">
-        {state ? (cell?.label ?? "Empty") : "—"}
+      <span className="min-h-[10px] text-[9px] leading-none text-ink-muted">
+        {stateLabel(state)}
       </span>
     </div>
   );
 }
 
-function TotalCell({ label, value, par }: { label: string; value: number; par: number }) {
+function NineTable({
+  label,
+  rows,
+  strokes,
+  cells,
+  scanned,
+  disabled,
+  points,
+  pointsKind,
+  total,
+  pointsTotal,
+  onChange,
+  onEnter,
+}: {
+  label: "OUT" | "IN";
+  rows: readonly HoleDefinition[];
+  strokes: Record<number, string>;
+  cells: ScanCardReview["cells"];
+  scanned: boolean;
+  disabled?: boolean;
+  points: Readonly<Record<number, number>>;
+  pointsKind: "net" | "gross";
+  total: number;
+  pointsTotal: number;
+  onChange: (hole: number, value: string) => void;
+  onEnter: (hole: number) => void;
+}) {
+  const par = rows.reduce((sum, hole) => sum + hole.par, 0);
+  const cell = "border border-line px-1 py-1 text-center align-middle";
+  const labelCell = `${cell} text-left text-[11px] font-semibold normal-case text-ink-muted`;
   return (
-    <div className="grid content-center gap-0.5 rounded-md border border-line bg-surface-sunken p-1.5 text-center">
-      <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">{label}</span>
-      <b className="mono text-[18px] leading-tight">{value}</b>
-      <span className="text-[10px] text-ink-muted">par {par}</span>
+    <div
+      className="overflow-x-auto rounded-md border border-line"
+      tabIndex={0}
+      role="region"
+      aria-label={`${label === "OUT" ? "Front nine" : "Back nine"} scorecard, scroll sideways if needed`}
+    >
+      <table className="w-full min-w-[640px] border-collapse text-[12px]">
+        <caption className="sr-only">{label === "OUT" ? "Front nine" : "Back nine"}</caption>
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              className="w-16 border border-line bg-primary px-1 py-1.5 text-left text-[11px] font-semibold normal-case tracking-wide text-on-primary"
+            >
+              Hole
+            </th>
+            {rows.map((hole) => (
+              <th
+                key={hole.number}
+                scope="col"
+                className="border border-line bg-primary px-1 py-1.5 text-center text-[12px] font-bold text-on-primary"
+              >
+                {hole.number}
+              </th>
+            ))}
+            <th
+              scope="col"
+              className="border border-line bg-primary px-1 py-1.5 text-center text-[11px] font-bold text-on-primary"
+            >
+              {label}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="bg-surface-sunken">
+            <th scope="row" className={labelCell}>
+              Par
+            </th>
+            {rows.map((hole) => (
+              <td key={hole.number} className={`${cell} font-semibold text-ink`}>
+                {hole.par}
+              </td>
+            ))}
+            <td className={`${cell} bg-surface-sunken font-bold text-ink`}>{par}</td>
+          </tr>
+          <tr>
+            <th scope="row" className={labelCell}>
+              Hcp row
+            </th>
+            {rows.map((hole) => (
+              <td key={hole.number} className={`${cell} text-ink-muted`}>
+                {hole.strokeIndex}
+              </td>
+            ))}
+            <td className={`${cell} bg-surface-sunken`} />
+          </tr>
+          <tr>
+            <th scope="row" className={labelCell}>
+              Score
+            </th>
+            {rows.map((hole) => (
+              <td key={hole.number} className="border border-line p-0.5 text-center align-middle">
+                <ScoreCell
+                  hole={hole}
+                  strokes={strokes}
+                  cell={cells[hole.number]}
+                  scanned={scanned}
+                  disabled={disabled}
+                  onChange={onChange}
+                  onEnter={onEnter}
+                />
+              </td>
+            ))}
+            <td className={`${cell} bg-surface-sunken font-mono text-[14px] font-bold text-ink`}>
+              {total || "–"}
+            </td>
+          </tr>
+          <tr>
+            <th scope="row" className={labelCell}>
+              {pointsKind === "net" ? "Net pts" : "Gross pts"}
+            </th>
+            {rows.map((hole) => (
+              <td key={hole.number} className={`${cell} font-mono font-semibold text-ink`}>
+                {points[hole.number] ?? ""}
+              </td>
+            ))}
+            <td className={`${cell} bg-surface-sunken font-mono text-[14px] font-bold text-ink`}>
+              {pointsTotal}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
 
-/** Two rows of nine holes, with OUT and IN at the end of each row. */
+/** The card as the paper sheet: nine holes to a table, with par, handicap row, score and points. */
 export function ScorecardHoleGrid({
   holes,
   strokes,
@@ -96,44 +217,46 @@ export function ScorecardHoleGrid({
   disabled = false,
   outTotal,
   inTotal,
+  outPoints,
+  inPoints,
+  points,
+  pointsKind,
   onChange,
   onEnter,
 }: ScorecardHoleGridProps) {
   const front = holes.filter((hole) => hole.number <= 9);
   const back = holes.filter((hole) => hole.number >= 10);
-  const par = (list: readonly HoleDefinition[]) => list.reduce((sum, hole) => sum + hole.par, 0);
   return (
     <div className="grid gap-2">
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 xl:grid-cols-10">
-        {front.map((hole) => (
-          <HoleCell
-            key={hole.number}
-            hole={hole}
-            strokes={strokes}
-            cell={cells[hole.number]}
-            scanned={scanned}
-            disabled={disabled}
-            onChange={onChange}
-            onEnter={onEnter}
-          />
-        ))}
-        <TotalCell label="OUT" value={outTotal} par={par(front)} />
-      </div>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 xl:grid-cols-10">
-        {back.map((hole) => (
-          <HoleCell
-            key={hole.number}
-            hole={hole}
-            strokes={strokes}
-            cell={cells[hole.number]}
-            scanned={scanned}
-            disabled={disabled}
-            onChange={onChange}
-            onEnter={onEnter}
-          />
-        ))}
-        <TotalCell label="IN" value={inTotal} par={par(back)} />
-      </div>
+      <p className="hint m-0 sm:hidden">Swipe the card sideways to reach every hole.</p>
+      <NineTable
+        label="OUT"
+        rows={front}
+        strokes={strokes}
+        cells={cells}
+        scanned={scanned}
+        disabled={disabled}
+        points={points}
+        pointsKind={pointsKind}
+        total={outTotal}
+        pointsTotal={outPoints}
+        onChange={onChange}
+        onEnter={onEnter}
+      />
+      <NineTable
+        label="IN"
+        rows={back}
+        strokes={strokes}
+        cells={cells}
+        scanned={scanned}
+        disabled={disabled}
+        points={points}
+        pointsKind={pointsKind}
+        total={inTotal}
+        pointsTotal={inPoints}
+        onChange={onChange}
+        onEnter={onEnter}
+      />
     </div>
   );
 }

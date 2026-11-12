@@ -18,6 +18,10 @@ Supabase project, because the code and the database are released separately.
   on `/scores/results`. A correction saves a new revision and keeps the old one. No migration.
 
 ### Changed
+- **The scorecard prints as the paper card.** The desk shows two nine-hole tables with Hole, Par,
+  Hcp row, Score and Net pts, OUT/IN totals, and the paper-card footer (Strokes, Holes with a score,
+  Playing handicap, Net Stableford, Gross Stableford). The table scrolls inside the card on a phone.
+  No migration.
 - **The printed start sheet is one page per session, split into Flight A and Flight B.** The
   morning waves print on one A4 page and the afternoon waves on the next, under the TeeLine header.
   Inside a page each wave is a flight (the first tee-off time is Flight A, the next is Flight B),

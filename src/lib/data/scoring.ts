@@ -335,8 +335,11 @@ export function createDemoScoringRepository(
   }
 
   return {
-    async loadRound(tournamentId) {
+    async loadRound(tournamentId, dayNumber) {
       if (tournamentId !== seed.tournamentId) return null;
+      if (dayNumber !== undefined && dayNumber !== null && (seed.dayNumber ?? 1) !== dayNumber) {
+        return null;
+      }
       return view();
     },
 

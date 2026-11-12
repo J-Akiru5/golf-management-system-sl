@@ -222,11 +222,11 @@ check(
 // Cards table, both boards and the conflict list. Nothing here is new behaviour. A manual card now
 // starts empty, so the form is filled with par first; the score that matters is hole 1.
 await scoresEntry.getByRole("button", { name: "Fill with par" }).click();
-await scoresEntry.locator("input[type=number]").nth(0).fill("5");
+await scoresEntry.locator("#hole-1").fill("5");
 await scoresEntry.getByRole("button", { name: "Submit card" }).click();
 await scoresEntry.getByRole("combobox").nth(1).click();
 await page.getByRole("option", { name: /SAMPLE PLAYER C/ }).click();
-await scoresEntry.locator("input[type=number]").nth(0).fill("4");
+await scoresEntry.locator("#hole-1").fill("4");
 await scoresEntry.getByRole("button", { name: "Submit card" }).click();
 await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
 await expect(scoresCards.locator("tbody tr")).toHaveCount(2, { timeout: 20000 });
@@ -286,10 +286,8 @@ await scoresCards.getByRole("button", { name: "Edit" }).first().click();
 await expect(page.locator('section[aria-labelledby="score-entry"]')).toBeVisible({
   timeout: 30000,
 });
-check(
-  "Review Edit opens the card as a correction",
-  (await page.getByText(/Correcting revision/).count()) > 0,
-);
+await expect(page.getByText(/Correcting revision/)).toBeVisible({ timeout: 15000 });
+check("Review Edit opens the card as a correction", true);
 await page.getByLabel("Correction reason").fill("Corrected the second hole after checking the card.");
 await page.locator("#hole-2").fill("6");
 await page.getByRole("button", { name: "Submit correction" }).click();
@@ -408,7 +406,7 @@ check(
   /Gross/.test((await dupEntry.textContent()) ?? "") &&
     /Net Stableford/.test((await dupEntry.textContent()) ?? "") &&
     /OUT \/ IN/.test((await dupEntry.textContent()) ?? "") &&
-    /Holes entered/.test((await dupEntry.textContent()) ?? ""),
+    /Holes with a score/.test((await dupEntry.textContent()) ?? ""),
 );
 check(
   "Submit is disabled while a cell the reader left empty is still empty",
