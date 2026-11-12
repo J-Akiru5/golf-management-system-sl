@@ -57,18 +57,18 @@ function NineTable({
   const parTotal = allPresent ? rows.reduce((sum, hole) => sum + (hole?.par ?? 0), 0) : null;
 
   const headCell =
-    "border-b border-line bg-primary px-0 py-2 text-center text-[12px] font-bold text-on-primary tnum";
+    "border-b border-line bg-primary px-0 py-2 text-center text-[11px] font-bold text-on-primary tnum sm:text-[12px]";
   const corner =
-    "sticky left-0 z-20 w-[3.75rem] border-b border-r border-line bg-primary px-1.5 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-on-primary";
+    "sticky left-0 z-20 w-[3.75rem] border-b border-r border-line bg-primary px-1.5 py-2 text-left text-[9px] font-semibold uppercase tracking-wide text-on-primary sm:text-[10px]";
   const totalHead =
-    "border-b border-l border-line bg-primary px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-on-primary";
+    "border-b border-l border-line bg-primary px-1 py-2 text-center text-[9px] font-bold uppercase tracking-wide text-on-primary sm:text-[10px]";
 
   const labelCell = (tint: string) =>
-    `sticky left-0 z-10 w-[3.75rem] whitespace-nowrap border-b border-r border-line px-1.5 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-ink-muted ${tint}`;
+    `sticky left-0 z-10 w-[3.75rem] whitespace-nowrap border-b border-r border-line px-1.5 py-1.5 text-left text-[9px] font-semibold uppercase tracking-wide text-ink-muted sm:text-[10px] ${tint}`;
   const cell = (tint: string) =>
-    `border-b border-line px-0 py-1.5 text-center text-[12px] tnum text-ink ${tint}`;
+    `border-b border-line px-0 py-1.5 text-center text-[11px] tnum text-ink sm:text-[12px] ${tint}`;
   const totalCell = (tint: string) =>
-    `border-b border-l border-line px-1 py-1.5 text-center text-[12px] font-bold tnum text-ink ${tint}`;
+    `border-b border-l border-line px-1 py-1.5 text-center text-[11px] font-bold tnum text-ink sm:text-[12px] ${tint}`;
 
   return (
     <div
@@ -78,14 +78,14 @@ function NineTable({
       aria-label={caption}
       data-testid={`player-scorecard-${card.roundId}-${from}`}
     >
-      <table className="w-full min-w-[25.625rem] table-fixed border-separate border-spacing-0 text-[12px] print:min-w-0">
+      <table className="w-full min-w-[22rem] table-fixed border-separate border-spacing-0 text-[11px] print:min-w-0 sm:text-[12px]">
         <caption className="sr-only">{caption}</caption>
         <colgroup>
           <col className="w-[3.75rem]" />
           {rows.map((_, index) => (
-            <col key={from + index} className="w-[2.125rem]" />
+            <col key={from + index} className="w-[1.75rem]" />
           ))}
-          <col className="w-[2.75rem]" />
+          <col className="w-[2.5rem]" />
         </colgroup>
         <thead>
           <tr>
@@ -208,7 +208,7 @@ export function PlayerScorecardTable({ card, t }: { card: PortalScorecard; t: Tr
 
   return (
     <div className="grid gap-2">
-      <p className="hint m-0 sm:hidden">{t("player.scorecard.swipe")}</p>
+      <p className="hint m-0 hidden max-[389px]:block">{t("player.scorecard.swipe")}</p>
       <NineTable
         card={card}
         rows={rows.slice(0, 9)}

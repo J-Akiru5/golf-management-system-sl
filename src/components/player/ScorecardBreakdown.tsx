@@ -322,7 +322,7 @@ export function ScorecardBreakdown({
           </p>
         </div>
 
-        <dl className="m-0 grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:w-auto sm:grid-cols-5 sm:gap-x-5 sm:text-right">
+        <dl className="m-0 grid w-full grid-cols-3 gap-x-3 gap-y-2 sm:w-auto sm:grid-cols-5 sm:gap-x-5 sm:text-right">
           {[
             { label: t("player.scorecard.gross"), value: card.grossStrokes },
             { label: t("player.scorecard.net"), value: card.netStrokes },

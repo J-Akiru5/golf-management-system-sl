@@ -48,7 +48,7 @@ Supabase project, because the code and the database are released separately.
   override now carries its stored class and card handicap into the draw; the frozen index is only
   the fallback. A pair keeps the stored class instead of being re-cut on the index average. The
   Day 1 AM registrations were set to the validated card handicap and class, with the override
-  recorded. Migration `20261113000100_tee_holes.sql` adds the per-tee hole table for the next step;
+  recorded. Migration `20261113000300_tee_holes.sql` adds the per-tee hole table for the next step;
   it is **not applied**.
 
 ## [0.39.0] - 2026-11-12
