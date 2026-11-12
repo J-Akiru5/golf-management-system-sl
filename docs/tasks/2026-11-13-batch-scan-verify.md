@@ -57,6 +57,10 @@ the read side); the tables below include them.
 | D2 | **The system suggests, the desk confirms.** A scanned card is never assigned to a player without a person confirming it. |
 | D3 | **The app's conversion is the handicap.** Scoring uses the course handicap worked from the index with the tee's rating and slope, as confirmed on 5 November. The number written in the card's HDCP box is shown for comparison only. |
 | D4 | **Build for this event.** The work is wanted before the event ends on 15 November, including the database changes. |
+| D5 | **Migrations are written, not applied.** The pick-up and scan inbox migration files are written on branches for the owner to read. Nothing is applied to a real project until the owner approves each file by name. (Owner, 13 November 2026.) |
+| D6 | **The marker on a scanned card is a player from the other team in the group**, as the rules sheet says. The desk picks the marker; the signed name on the card is a suggestion only. (Owner, 13 November 2026.) |
+| D7 | **Ticking "checked against the paper card" is the approval.** One person checks and approves in one step. This changes the second-person rule in the current submit and approval flow; see "Approval change (D7)" below. (Owner, 13 November 2026.) |
+| D8 | **Day 1 AM is released again on the app conversion**, so all four days use one handicap rule. This changes published results; see "Releasing Day 1 AM again (D8)" below. (Owner, 13 November 2026.) |
 
 D3 settles the open point about a decimal in the HDCP box for the days still to be scored: the box is
 not used, so nothing is dropped. It also means **Day 1 AM, which was released on the card handicap,
@@ -116,7 +120,7 @@ owner approves that migration by name.
 | 2 | **Editable card view on the shared layout.** Extend the table layout and helpers behind `PaperScorecard` into one card the desk workspace and print both use, with the header line, doubtful and changed marks, the checked tick, the saved indicator, Enter to the next hole and three-to-a-page print. `PaperScorecard` itself keeps working for the public pages. Submit, approval and correction stay as they are. | None | Nothing |
 | 3 | **Pick-up on the write side.** A hole can be recorded as picked up: 0 points, counted as a played hole, no gross total shown for that card. The published snapshot and public card already read `pickedUp`; the scoring engine, card validation, canonical scores and card entry learn it, which replaces the "X is 0" stand-in from the Day 1 AM release. | Yes | Owner approves the migration |
 | 4 | **Scan inbox.** A table for scans that are not yet cards (round, session, image, what was read, suggested player, state) and the upload, match and verify screens. The reader's name feeds step 1; tee, HDCP box and group are optional matcher inputs that the reader does not return today. | Yes | Steps 1 to 3; reader status checked |
-| 5 | **Marker for a scanned card.** The rule today is a marker who is another player. Decide how a scanned card gets one (see "Open questions"), then build it. | Maybe | Owner's answer |
+| 5 | **Marker for a scanned card.** The database needs a marker who is another player. By D6 the desk picks one from the other team in the group, and the card's signed name is shown as a suggestion. | Maybe | Step 4 |
 | 6 | **Staff app.** The group score screen uses the shared card view and can open the inbox for its own group. | None | Steps 2 and 4 |
 | 7 | **Team ranking and class in standings.** The Scores screen ranks teams on aggregate net points by class, and lists a player whose partner has no card as not ranked. | None expected | Step 3 |
 
@@ -128,7 +132,7 @@ what a scorecard is in the database.
 | Step | State | Notes |
 | --- | --- | --- |
 | 1 Name matcher | **Built**, `src/lib/scoring/match`, 40 tests, merged to `develop`. | Checked against the seed roster (`supabase/seed/bamboo-tee-2026-schedule.psv`) with surname only: on the 35 players scheduled for Day 1 AM, 8 of the 9 Day 1 misreadings rank first and the ninth (Uhlman for LAGMAN) is not in the pool, because LAGMAN is scheduled for days 2 and 3 in the seed. Against all 301 names, 6 rank first, Homaros ranks second, Um is a tie between the two LIMs, and Uhlman ranks third in a three-way tie. The matcher accepts any player list, so the scan inbox must offer the whole event as a second pool and mark a player who is not scheduled for the session ("not scheduled this session"). |
-| 2 Card view | **First slice built, merged to `develop`**: a context line (day, marker, class, partner, team handicap, tee, group, playing handicap, card HDCP), and a "Print this card" button that prints one card on white with the TeeLine mark. | The desk does not load class, partner, team handicap, tee name or group yet, so for now the line shows day, marker and playing handicap. It leaves out what the caller does not pass and says "Not set" only for a value the caller looked up and found empty. The first review found the card printing dark cells in the dark theme and claiming "Not set" on every card; both are fixed. Print was checked by applying the print rules on screen, not in a real print preview. `class` is available as `flightId` on each round entry, and the desk results table shows that raw id; resolving it to the class name and loading the partner from the registration pairs (`20261108002000_registration_pairs.sql`) are reads of existing data, no schema change; the exact columns are still to be read from the code. |
+| 2 Card view | **First slice built, merged to `develop`**: a context line (day, marker, class, partner, team handicap, tee, group, playing handicap, card HDCP), and a "Print this card" button that prints one card on white with the TeeLine mark. | The desk does not load class, partner, team handicap, tee name or group yet, so for now the line shows day, marker and playing handicap. It leaves out what the caller does not pass and says "Not set" only for a value the caller looked up and found empty. The first review found the card printing dark cells in the dark theme and claiming "Not set" on every card; both are fixed. Print was checked by applying the print rules on screen, not in a real print preview. `class` is the flight on each round entry, and the desk results table shows its raw id. Resolving the id to the class name reads the existing `flights` table and is in progress (branch `agent/desk-class`). The partner and team handicap come from the registration pairs, whose migration (`20261108002000_registration_pairs.sql`) says in its header that it was not applied to the live project; whether it is applied now has to be confirmed before the desk reads it. |
 
 Design findings from the browser check of the desk card (demo mode, `develop` at 4dc4a4d), not yet
 fixed and not part of the first slice:
@@ -168,12 +172,35 @@ step 3 if a quiet window allows, and the rest finished after it.
 - Day 1 AM's cards, entered through the new flow on `staging`, give the same hole scores as the cards released on 12 November.
 - Cards print three to a page.
 
+## Approval change (D7)
+
+Today a card is submitted and then approved through `submit_scorecard` and `approve_scorecard`
+(`20261036000000_scoring_workflow.sql`), with a role check on approval. With D7, ticking "checked
+against the paper card" on a card whose photo is attached is the approval. Before building it, read
+what `approve_scorecard` enforces (who may approve, whether the approver may be the submitter) and
+write down what changes. If the change needs a migration or a change to who may approve, that is a
+change to auth rules: write the migration file, do not apply it, and wait for the owner to approve it
+by name.
+
+## Releasing Day 1 AM again (D8)
+
+Day 1 AM was released on 12 November on the card handicap, with X counted as 0 by hand. D8 asks for
+it to be released again on the app conversion (index, tee rating and slope, as confirmed on 5
+November). This rewrites published results, so it is not done by a builder and not done silently:
+
+- The owner or organizer runs it, or says go after seeing the before and after.
+- It needs each Day 1 AM player's frozen index and tee from the database; the database was not read
+  while writing this plan.
+- The standalone Day 1 page can show both totals side by side (card handicap and app conversion)
+  before anything is released, so the change per player is visible first.
+- The previous publication stays recorded; the new release is a new version, never an edit in place.
+
 ## Open questions
 
 | # | Question | Who | Blocks |
 | --- | --- | --- | --- |
-| Q1 | Day 1 AM was released on the card handicap. Under D3, is it released again on the app conversion, or left as it is? | Owner and organizer | Whether the four days are scored by one rule |
-| Q2 | Who is the marker on a scanned card: the name signed on the card, the other team in the group as the rules sheet says, or the staff member who uploaded it? | Organizer | Step 5 |
+| Q1 | ~~Day 1 AM released again on the app conversion?~~ **Answered: yes (D8).** The re-release itself is not done; see "Releasing Day 1 AM again (D8)". | Owner | Done once the re-release is run |
+| Q2 | ~~Who is the marker on a scanned card?~~ **Answered: a player from the other team in the group (D6).** | Owner | Nothing |
 | Q3 | Is the card reader running in production, and how well did it read the Day 1 cards? | Owner | Step 4; without a reader the inbox still works but every card is typed |
-| Q4 | Does "checked against the paper card" count as approval, or is approval a second person's step? | Organizer | Step 4 |
+| Q4 | ~~Does "checked" count as approval?~~ **Answered: yes (D7).** The rule change still has to be built, and any migration approved by name. | Owner | Nothing |
 | Q5 | Is the two-point pick-up penalty recorded by the desk in the app, or handled on paper? | Organizer | Step 7 |
