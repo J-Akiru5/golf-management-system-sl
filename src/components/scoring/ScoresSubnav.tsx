@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 
-export type ScoresTab = "enter" | "review" | "results";
+export type ScoresTab = "enter" | "scan" | "review" | "results";
 
 const TABS: readonly { key: ScoresTab; href: string; label: string }[] = [
   { key: "enter", href: "/scores", label: "Enter card" },
+  { key: "scan", href: "/scan", label: "Scan cards" },
   { key: "review", href: "/scores/review", label: "Review" },
   { key: "results", href: "/scores/results", label: "Results" },
 ];

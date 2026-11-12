@@ -27,6 +27,7 @@ describe("areaOf", () => {
       "/pairs/124",
       "/draw",
       "/scores",
+      "/scan",
       "/print",
       "/setup",
       "/register",
@@ -166,7 +167,7 @@ describe("landingFor", () => {
 describe("PROXY_MATCHER", () => {
   it("covers both guarded areas, sign-in and the auth handler", () => {
     expect(PROXY_MATCHER).toContain("/auth/:path*");
-    for (const prefix of ["/admin", "/players", "/draw", "/feedback-inbox", "/my"]) {
+    for (const prefix of ["/admin", "/players", "/draw", "/feedback-inbox", "/scan", "/my"]) {
       expect(PROXY_MATCHER).toContain(`${prefix}/:path*`);
     }
   });

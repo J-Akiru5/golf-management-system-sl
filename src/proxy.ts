@@ -111,6 +111,7 @@ export const config = {
     "/import/:path*",
     "/draw/:path*",
     "/scores/:path*",
+    "/scan/:path*",
     "/print/:path*",
     "/setup/:path*",
     "/course/:path*",

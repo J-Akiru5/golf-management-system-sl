@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DayPills } from "@/components/staff/DayPills";
@@ -58,6 +58,14 @@ export default function StaffScorePage() {
 
       <DayPills days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
       {notice && <p className={styles.muted}>{notice}</p>}
+
+      <Link className={`${styles.actionCard} mt-3`} href="/staff/scan">
+        <span>
+          <b>Scan a card</b>
+          <span>Photo, verify, export to the desk</span>
+        </span>
+        <ScanLine aria-hidden="true" size={24} />
+      </Link>
 
       {failed && (
         <div className={styles.blockError} role="alert">
