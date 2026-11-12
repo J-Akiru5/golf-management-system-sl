@@ -9,6 +9,11 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.36.1] - 2026-11-12
+
+### Fixed
+- **The desk role can correct a scorecard.** The Edit button on /scores was limited to owner and organizer, and so was the database function that records the correction reason, so a desk account could not fix a wrong hole. Both now allow owner, organizer and desk. Migration `20261112000200_desk_can_correct_scorecard.sql` (relaxes one role check, no data change); applied to live: see PLAN.md.
+
 ## [0.36.0] - 2026-11-12
 
 ### Changed

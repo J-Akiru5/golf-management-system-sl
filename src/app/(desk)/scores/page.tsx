@@ -82,7 +82,11 @@ export default function ScoresPage() {
 
   const players = view?.players ?? [];
   const holes = view?.course.holes ?? [];
-  const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
+  const canEdit =
+    status === "demo" ||
+    member?.role === "owner" ||
+    member?.role === "organizer" ||
+    member?.role === "desk";
   // Demo has no auth at all (`member` is undefined); a signed-in account always has a role. The
   // profile link is only painted when the account may actually open a staff profile page.
   const profileRole = member === undefined ? undefined : (member?.role ?? null);
