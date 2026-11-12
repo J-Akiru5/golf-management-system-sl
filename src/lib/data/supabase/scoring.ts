@@ -179,6 +179,23 @@ export function createSupabaseScoringRepository(
     if (holeError) throw new Error(`Could not load holes: ${holeError.message}`);
     if (teeError) throw new Error(`Could not load tees: ${teeError.message}`);
 
+    const flightIds = [
+      ...new Set(
+        (entries ?? [])
+          .map((entry) => entry.flight_id)
+          .filter((id): id is string => typeof id === "string"),
+      ),
+    ];
+    const { data: flightRows, error: flightError } = flightIds.length
+      ? await db
+          .from("flights")
+          .select("id, name")
+          .eq("club_id", tournament.club_id)
+          .in("id", flightIds)
+      : { data: [], error: null };
+    if (flightError) throw new Error(`Could not load classes: ${flightError.message}`);
+    const classNameByFlight = new Map((flightRows ?? []).map((flight) => [flight.id, flight.name]));
+
     if (!holes?.length || !tees?.length) return null;
 
     const firstSnapshot = snapshotRows?.find((snapshot) =>
@@ -318,6 +335,10 @@ export function createSupabaseScoringRepository(
           playerId: registration.player_id,
           playerName: player ? displayName(player.full_name) : "Unknown player",
           flightId: entry.flight_id,
+          // The class name, never the stored flight id. An entry with a flight id but no matching
+          // class row reads as no class rather than showing an id the desk cannot read.
+          flightName:
+            entry.flight_id === null ? null : (classNameByFlight.get(entry.flight_id) ?? null),
           handicap,
           // Loaded beside the snapshot so the screen can show whether the two agree. The
           // registration column is nullable; null means no index was frozen, not zero.

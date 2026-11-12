@@ -34,6 +34,11 @@ export interface ScoringPlayerSeed {
   playerId: string;
   playerName: string;
   flightId: string | null;
+  /**
+   * The name of the class the entry was drawn into. `undefined` means the connected repository did
+   * not look it up (the demo); `null` means it looked and the player has no class.
+   */
+  flightName?: string | null;
   handicap: HandicapSnapshot | null;
   /**
    * The registration's frozen index, loaded beside the round snapshot so the desk can compare the

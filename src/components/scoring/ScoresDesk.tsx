@@ -37,6 +37,7 @@ import {
   type StandingsRow,
   validateScorecard,
 } from "@/lib/scoring";
+import { classLabel } from "@/lib/scoring/class-label";
 import { reviewScannedCard, type ScanReaderCell } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import {
@@ -721,6 +722,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   scorerId={scorerId}
                   selectedPlayer={selectedPlayer}
                   selectedScorer={selectedScorer}
+                  context={{ className: selectedPlayer?.flightName }}
                   editingCard={editingCard}
                   editingPlayerName={editingPlayerName}
                   profileRole={profileRole}
@@ -923,7 +925,11 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                 subtitle="Highest points first. Holes counted are shown because the round may still be incomplete."
                 dataHelp="scores-gross"
               >
-                <StandingsTable board={view.standings.gross} role={profileRole} />
+                <StandingsTable
+                  board={view.standings.gross}
+                  players={view.players}
+                  role={profileRole}
+                />
               </SectionCard>
               <SectionCard
                 id="score-net"
@@ -1242,6 +1248,9 @@ function StandingsTable({
   const handicapByPlayer = new Map(
     players.map((player) => [player.playerId, player.handicap?.playingHandicap ?? null]),
   );
+  const classNameByPlayer = new Map(
+    players.map((player) => [player.playerId, player.flightName ?? null]),
+  );
   return (
     <div className="table-wrap">
       <table>
@@ -1269,7 +1278,9 @@ function StandingsTable({
               </td>
               <td>
                 <PlayerLink playerId={row.playerId} name={row.playerName} role={role} />
-                <span className="hint block">{row.flightId ?? "No flight"}</span>
+                <span className="hint block">
+                  {classLabel(classNameByPlayer.get(row.playerId))}
+                </span>
               </td>
               {showHandicap && (
                 <td className="num mono">{fmtHcp(handicapByPlayer.get(row.playerId) ?? null)}</td>
