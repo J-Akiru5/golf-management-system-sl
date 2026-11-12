@@ -18,7 +18,6 @@ import { refreshPublicPage } from "@/lib/data/supabase/draw-sync";
 import { displayName } from "@/lib/format";
 import {
   buildStandings,
-  type CanonicalHole,
   type CardSource,
   type CardStatus,
   checkFinalization,
@@ -46,6 +45,7 @@ export interface SupabaseScoringOptions {
 interface ProposalRow {
   hole: number;
   strokes: number;
+  pickedUp?: boolean;
   verification: "verified" | "provisional";
   provenance: "agreement" | "single_card" | "desk_resolution";
 }
@@ -287,6 +287,7 @@ export function createSupabaseScoringRepository(
         .map((entry) => ({
           hole: entry.hole_number,
           strokes: entry.strokes,
+          ...(entry.picked_up === true ? { pickedUp: true } : {}),
           confidence: entry.confidence === null ? null : Number(entry.confidence),
           manuallyConfirmed: entry.manually_confirmed,
         })),
@@ -298,6 +299,7 @@ export function createSupabaseScoringRepository(
       playerId: resolution.player_id,
       hole: resolution.hole_number,
       strokes: resolution.strokes,
+      ...(resolution.picked_up === true ? { pickedUp: true } : {}),
       resolvedBy: resolution.resolved_by ?? "desk",
       resolvedAt: resolution.resolved_at,
       reason: resolution.reason,
@@ -536,25 +538,22 @@ export function createSupabaseScoringRepository(
   }
 
   function proposalRows(player: ScoringPlayer): ProposalRow[] {
-    return player.canonical.holes
-      .filter(
-        (
-          hole,
-        ): hole is CanonicalHole & {
-          status: "verified" | "provisional";
-          strokes: number;
-          provenance: ProposalRow["provenance"];
-        } =>
-          (hole.status === "verified" || hole.status === "provisional") &&
-          hole.strokes !== null &&
-          hole.provenance !== null,
-      )
-      .map((hole) => ({
+    const rows: ProposalRow[] = [];
+    for (const hole of player.canonical.holes) {
+      if (hole.status !== "verified" && hole.status !== "provisional") continue;
+      if (hole.provenance === null) continue;
+      const pickedUp = hole.pickedUp === true;
+      if (!pickedUp && hole.strokes === null) continue;
+      rows.push({
         hole: hole.hole,
-        strokes: hole.strokes,
+        // A pick-up is sent as 0, the shape the database stores for it.
+        strokes: pickedUp ? 0 : (hole.strokes ?? 0),
+        ...(pickedUp ? { pickedUp: true } : {}),
         verification: hole.status,
         provenance: hole.provenance,
-      }));
+      });
+    }
+    return rows;
   }
 
   async function refresh(
@@ -609,6 +608,7 @@ export function createSupabaseScoringRepository(
         p_entries: input.entries.map((entry) => ({
           hole: entry.hole,
           strokes: entry.strokes,
+          ...(entry.pickedUp === true ? { picked_up: true } : {}),
           confidence: entry.confidence,
           manually_confirmed: entry.manuallyConfirmed,
         })) as unknown as Json,
@@ -713,20 +713,24 @@ export function createSupabaseScoringRepository(
       const player = view.players.find((candidate) => candidate.playerId === input.playerId);
       if (!player) throw new Error("Player not found in this round.");
 
+      const pickedUp = input.pickedUp === true;
+      const strokes = pickedUp ? 0 : input.strokes;
+      const previous = player.canonical.holes.find((hole) => hole.hole === input.hole);
       const temporary: Resolution = {
         id: `pending-${Date.now()}`,
         roundId: view.roundId,
         playerId: input.playerId,
         hole: input.hole,
-        strokes: input.strokes,
+        strokes,
+        ...(pickedUp ? { pickedUp: true } : {}),
         resolvedBy: "desk",
         resolvedAt: new Date().toISOString(),
         reason: input.reason,
         evidenceCardIds: view.cards
           .filter((card) => card.playerId === input.playerId && card.status === "approved")
           .map((card) => card.id),
-        previousStrokes:
-          player.canonical.holes.find((hole) => hole.hole === input.hole)?.strokes ?? null,
+        // A pick-up before this resolution has no number, so it reads as null.
+        previousStrokes: previous?.pickedUp === true ? null : (previous?.strokes ?? null),
       };
       const canonical = deriveCanonicalHoleScores({
         roundId: view.roundId,
@@ -741,7 +745,7 @@ export function createSupabaseScoringRepository(
         p_round: view.roundId,
         p_player: input.playerId,
         p_hole: input.hole,
-        p_strokes: input.strokes,
+        p_strokes: strokes,
         p_reason: input.reason,
         p_canonical: proposalRows({ ...player, canonical }) as unknown as Json,
       });

@@ -145,7 +145,10 @@ export interface SubmitCardInput {
 export interface ResolveHoleInput {
   playerId: string;
   hole: number;
+  /** 0 when the hole is settled as a pick-up. */
   strokes: number;
+  /** True when the desk settles the hole as a pick-up: 0 points and no stroke count. */
+  pickedUp?: boolean;
   reason: string;
 }
 
@@ -499,10 +502,12 @@ export function createDemoScoringRepository(
       if (!seed.course.holes.some((hole) => hole.number === input.hole)) {
         throw new Error("That hole is not part of this round.");
       }
+      const pickedUp = input.pickedUp === true;
       if (
-        !Number.isInteger(input.strokes) ||
-        input.strokes < DEFAULT_STROKE_LIMITS.min ||
-        input.strokes > DEFAULT_STROKE_LIMITS.max
+        !pickedUp &&
+        (!Number.isInteger(input.strokes) ||
+          input.strokes < DEFAULT_STROKE_LIMITS.min ||
+          input.strokes > DEFAULT_STROKE_LIMITS.max)
       ) {
         throw new Error("The resolved score is outside the permitted range.");
       }
@@ -518,14 +523,15 @@ export function createDemoScoringRepository(
           roundId: seed.roundId,
           playerId: input.playerId,
           hole: input.hole,
-          strokes: input.strokes,
+          strokes: pickedUp ? 0 : input.strokes,
+          ...(pickedUp ? { pickedUp: true } : {}),
           resolvedBy: actor,
           resolvedAt: nextIso(),
           reason: input.reason.trim(),
           evidenceCardIds: cards
             .filter((card) => card.playerId === input.playerId && card.status === "approved")
             .map((card) => card.id),
-          previousStrokes: previous?.strokes ?? null,
+          previousStrokes: previous?.pickedUp === true ? null : (previous?.strokes ?? null),
         },
       ];
       return view();

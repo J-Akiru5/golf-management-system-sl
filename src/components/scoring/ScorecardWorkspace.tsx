@@ -160,6 +160,17 @@ export function ScorecardWorkspace({
     pointsByHole[hole.hole] =
       summary.pointsKind === "net" ? (hole.netPoints ?? 0) : hole.grossPoints;
   }
+  // Same wording as the public paper card: strokes first, then the pick-up count in brackets.
+  const pickupSuffix =
+    summary.pickups > 0
+      ? ` (+${summary.pickups} ${summary.pickups === 1 ? "pickup" : "pickups"})`
+      : "";
+  const strokesText =
+    filled === 18
+      ? `${gross}${pickupSuffix}`
+      : filled === 0
+        ? "—"
+        : `${gross} over ${filled} holes${pickupSuffix}`;
 
   const contextParts = buildCardContext({
     dayNumber: view.dayNumber,
@@ -397,10 +408,7 @@ export function ScorecardWorkspace({
 
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-ink-muted">
           <span>
-            Strokes{" "}
-            <b className="mono text-ink">
-              {filled === 18 ? gross : filled === 0 ? "—" : `${gross} over ${filled} holes`}
-            </b>
+            Strokes <b className="mono text-ink">{strokesText}</b>
           </span>
           <span>
             Holes with a score <b className="mono text-ink">{filled}/18</b>
