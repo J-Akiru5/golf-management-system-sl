@@ -137,6 +137,9 @@ export const en = {
       updated: "Version {version}",
       empty: "The club has not published results for this round yet.",
       emptyAll: "The club has not published any results yet.",
+      loadFailed:
+        "The results could not be loaded just now. Your entry is fine. Try again in a moment.",
+      retry: "Try again",
       points: "pts",
       strokes: "strokes",
       you: "You",
@@ -635,6 +638,7 @@ export const en = {
   },
   profile: {
     title: "Profile",
+    loading: "Loading your profile…",
     subtitle: "What the club holds for you, and how it can reach you.",
     back: "Back to My golf",
     optional: "Optional",

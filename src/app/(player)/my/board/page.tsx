@@ -62,19 +62,25 @@ export default async function PlayerBoardPage({
     playerRounds(client),
     loadPortal(client),
   ]);
+  // A rejected read is not an empty board: the club's copy says "nothing published yet", which
+  // would be a lie about a request that never arrived. Keep the failure so the screen can say so.
+  const roundsFailed = roundsResult.status === "rejected";
   const rounds: PublicRoundSummary[] =
     roundsResult.status === "fulfilled" ? roundsResult.value : [];
 
   const selected = rounds.find((round) => round.roundId === params.round) ?? rounds[0] ?? null;
 
   let board: Awaited<ReturnType<typeof playerBoard>> = null;
+  let boardFailed = false;
   if (selected) {
     try {
       board = await playerBoard(client, selected);
     } catch {
       board = null;
+      boardFailed = true;
     }
   }
+  const readFailed = roundsFailed || boardFailed;
 
   const portal = portalResult.status === "fulfilled" ? portalResult.value : null;
   const you = portal?.player ? { playerId: portal.player.id, name: portal.player.name } : null;
@@ -124,14 +130,29 @@ export default async function PlayerBoardPage({
       ) : (
         <div className="notice grid gap-2">
           <p role="status">
-            {rounds.length > 0 ? t("player.board.empty") : t("player.board.emptyAll")}
+            {readFailed
+              ? t("player.board.loadFailed")
+              : rounds.length > 0
+                ? t("player.board.empty")
+                : t("player.board.emptyAll")}
           </p>
-          <Link
-            href="/pairings"
-            className="inline-flex min-h-11 w-fit items-center font-semibold underline"
-          >
-            {t("player.app.openPairings")}
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            {readFailed && (
+              /* The same screen, fetched again. A failure gets an action; an empty board does not. */
+              <Link
+                href={next}
+                className="inline-flex min-h-11 w-fit items-center font-semibold underline"
+              >
+                {t("player.board.retry")}
+              </Link>
+            )}
+            <Link
+              href="/pairings"
+              className="inline-flex min-h-11 w-fit items-center font-semibold underline"
+            >
+              {t("player.app.openPairings")}
+            </Link>
+          </div>
         </div>
       )}
     </div>

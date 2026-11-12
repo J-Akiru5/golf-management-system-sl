@@ -25,6 +25,8 @@
   --forest: #073d2e;
   --on-forest: #f7f5ee;
   --on-forest-muted: #cad7cf;
+  /* The brand board's muted green (the lower ribbon), for the quietest line on the auth panel. */
+  --on-forest-quiet: #8db39b;
   --fairway: #285d47;
   --fairway-soft: #e3ebe3;
   --gold: #b89550;
@@ -94,6 +96,8 @@
     --forest: #0b2b23;
     --on-forest: #f7f5ee;
     --on-forest-muted: #c5d3ca;
+    /* The auth panel is always forest, so this quiet green does not change with the theme. */
+    --on-forest-quiet: #8db39b;
     --fairway: #82c69b;
     --fairway-soft: #1d3428;
     --gold: #d7b568;
@@ -136,6 +140,8 @@
   --forest: #0b2b23;
   --on-forest: #f7f5ee;
   --on-forest-muted: #c5d3ca;
+  /* The auth panel is always forest, so this quiet green does not change with the theme. */
+  --on-forest-quiet: #8db39b;
   --fairway: #82c69b;
   --fairway-soft: #1d3428;
   --gold: #d7b568;
@@ -179,6 +185,8 @@
   --forest: #0b2b23;
   --on-forest: #f7f5ee;
   --on-forest-muted: #c5d3ca;
+  /* The auth panel is always forest, so this quiet green does not change with the theme. */
+  --on-forest-quiet: #8db39b;
   --fairway: #82c69b;
   --fairway-soft: #1d3428;
   --gold: #d7b568;
@@ -221,6 +229,7 @@
   --color-forest: var(--forest);
   --color-on-forest: var(--on-forest);
   --color-on-forest-muted: var(--on-forest-muted);
+  --color-on-forest-quiet: var(--on-forest-quiet);
   --color-fairway: var(--fairway);
   --color-fairway-soft: var(--fairway-soft);
   --color-gold: var(--gold);
