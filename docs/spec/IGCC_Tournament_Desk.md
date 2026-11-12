@@ -132,6 +132,19 @@ These numbers were read from a photo of one printed card on 12 November 2026. Ch
 
 **Day 1 working sheet.** Until transcribed cards can be imported, Day 1 AM is scored on a standalone page outside the app, generated from the transcription file. It scores each player with the steps above and ranks individuals by net points. It does not add the two partners together, does not apply the two-point pick-up penalty, and does not break ties. It is a draft for the desk, not a published result.
 
+What the working sheet does, as of 12 November 2026:
+
+| Feature | How it behaves |
+| --- | --- |
+| Correcting a score | Any score, name, group, tee or HDCP can be typed over. Points, OUT, IN and totals recalculate at once. A changed score is marked so the desk can see it differs from the first reading. |
+| A card that was not scanned | **Add card** opens a blank card that is typed in from the paper. It is marked "Added by hand" and can be removed. |
+| Class | Each card and the scoresheet show the team's class. It is read from the field list by the player's name: both partners' indexes, each capped at 30, averaged and rounded, then A 0 to 12, B 13 to 18, C 19 to 23, D 24 and above. The card also names the partner and the team handicap. |
+| Class not known | When the name is not on the field list, or either partner's index is blank there, no class is shown and the desk picks it on the card. A blank index is not counted as zero here. |
+| Class and scores | Class is a label only. It does not change strokes, points or the order of the scoresheet. On the day it was added, all 36 cards kept the same strokes, playing handicap, net points and gross points. |
+| Checked | A card is ticked once it has been compared with the paper. The scoresheet shows which cards are checked. |
+
+Known gap: the field list in the repository (`supabase/seed/bamboo-tee-2026-field.psv`) gave a class for only 11 of the 36 Day 1 AM cards. Players entered after that list was made are not on it, and several teams have no index on it. The class the desk assigned lives in the database, which the working sheet does not read. Until it does, the desk sets the missing classes by hand.
+
 ## How auto-routing works
 
 Every registration passes through the same steps. Each step writes its result onto the registration, so the organizer can see why a player landed where they did and override any step.
