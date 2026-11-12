@@ -7,13 +7,14 @@ import {
   ClipboardList,
   FileJson,
   Flag,
+  Loader2,
   Pencil,
   RotateCcw,
   ScanLine,
   Trophy,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
@@ -26,7 +27,6 @@ import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import type { ClubRole } from "@/lib/auth/member";
-import { fmtIso } from "@/lib/data/labels";
 import { type OpenRoundSnapshot, openRoundErrorMessage } from "@/lib/data/open-round";
 import { canOpenPlayerProfile, playerProfileHref } from "@/lib/data/player-profile";
 import type { OpenRoundInput, ScoringRoundView } from "@/lib/data/scoring";
@@ -35,19 +35,29 @@ import {
   type CardIssue,
   checkHandicapSnapshot,
   type HoleDefinition,
-  parseCardEntry,
   reciprocalRotation,
   type Scorecard,
   type StandingsBoard,
   type StandingsRow,
   validateScorecard,
 } from "@/lib/scoring";
-import { scanReview } from "@/lib/scoring/scan/review";
+import { reviewScannedCard, type ScanReaderCell } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
+import {
+  cardSignature,
+  checkCardSubmission,
+  createSubmitGate,
+  readCardValues,
+} from "@/lib/scoring/submission";
 import { useDesk } from "@/lib/store/desk-store";
 
 const DEMO_NOTICE =
   "Sample scoring preview. Cards, approvals, resolutions and standings live in this browser only and are not written to the database. The scoring schema and RPCs are applied; this screen is not wired to them yet.";
+
+/** A manual card starts empty. A cell is only ever filled by a person or by the reader. */
+function blankStrokes(holes: readonly HoleDefinition[]): Record<number, string> {
+  return Object.fromEntries(holes.map((hole) => [hole.number, ""]));
+}
 
 function strokesFor(holes: readonly HoleDefinition[]): Record<number, string> {
   return Object.fromEntries(holes.map((hole) => [hole.number, String(hole.par)]));
@@ -60,24 +70,20 @@ function issueLabel(issues: CardIssue[]): string {
 }
 
 export default function ScoresPage() {
-  const { member, tournament, scoring, status, days, drawDay, setDrawDay } = useDesk();
+  const { member, tournament, scoring, status, drawDay } = useDesk();
   const tournamentId = tournament?.id ?? "";
-  const playingDays = days.filter((entry) => entry.isPlayingDay);
-  /** The playing day the desk is scoring. Every read and write names it, so day 3 is never day 1. */
+  /** Every read and write names the playing day, so day 3 is never day 1. */
   const day = drawDay;
   const [view, setView] = useState<ScoringRoundView | null>(null);
   const [roundState, setRoundState] = useState<OpenRoundSnapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  /** A JSON import runs its own long loop, so the rest of the desk waits for it. */
   const [importBusy, setImportBusy] = useState(false);
+  const interactionBusy = busy || importBusy;
   const [playerId, setPlayerId] = useState("");
   const [scorerId, setScorerId] = useState("");
   const [strokes, setStrokes] = useState<Record<number, string>>({});
-  /** Stable for one entry, so a double tap retries the same card instead of creating revision 2. */
-  const [entryCaptureKey, setEntryCaptureKey] = useState(() => globalThis.crypto.randomUUID());
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
   const [resolutionDrafts, setResolutionDrafts] = useState<
     Record<string, { strokes: string; reason: string }>
@@ -85,22 +91,34 @@ export default function ScoresPage() {
   const [scanImage, setScanImage] = useState<ScorecardScanImage | null>(null);
   const [scanExtraction, setScanExtraction] = useState<ScorecardScanApply["extraction"]>(null);
   const [scanCaptureKey, setScanCaptureKey] = useState("");
-  /** Reader confidence per hole, so the card form can flag what needs a person to check. */
-  const [scanConfidence, setScanConfidence] = useState<Record<number, number | null>>({});
+  /** What the reader returned per hole, so the form can show read, weak, empty and changed cells. */
+  const [scanReader, setScanReader] = useState<Record<number, ScanReaderCell>>({});
   /** The card being corrected. A correction is a new revision, never an edit of the old row. */
   const [editingCard, setEditingCard] = useState<Scorecard | null>(null);
   const [correctionReason, setCorrectionReason] = useState("");
   /** Reused across retries, so a failed reason write cannot create a second revision. */
   const [editCaptureKey, setEditCaptureKey] = useState("");
+  /** True while this screen is writing a card, so the button can say what it is doing. */
+  const [submitting, setSubmitting] = useState(false);
+  /** A plain sentence about a card that was already in, or a save that changed nothing. */
+  const [submitNote, setSubmitNote] = useState("");
+  /** What happened after the last save, kept in place so the form does not jump. */
+  const [savedNote, setSavedNote] = useState("");
+  /** A scanned card needs a person to tick that every flag was compared with the photo. */
+  const [scanConfirmed, setScanConfirmed] = useState(false);
+  /**
+   * The capture key of a submission that failed, with the card it was for. A retry of the same card
+   * reuses it, so a request that reached the database but came back as an error is not written twice.
+   */
+  const [pendingSubmit, setPendingSubmit] = useState<{ key: string; signature: string } | null>(
+    null,
+  );
+  /** Answers on the same tick as the click, before React can disable the button. */
+  const submitGate = useRef(createSubmitGate());
 
   const players = view?.players ?? [];
   const holes = view?.course.holes ?? [];
-  const canEdit =
-    status === "demo" ||
-    member?.role === "owner" ||
-    member?.role === "organizer" ||
-    member?.role === "desk";
-  const interactionBusy = busy || importBusy;
+  const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
   // Demo has no auth at all (`member` is undefined); a signed-in account always has a role. The
   // profile link is only painted when the account may actually open a staff profile page.
   const profileRole = member === undefined ? undefined : (member?.role ?? null);
@@ -120,10 +138,8 @@ export default function ScoresPage() {
     if (!tournamentId) return;
     let cancelled = false;
     setLoaded(false);
-    setView(null);
     setError(null);
-    setSaved(null);
-    // The old event's round, cards and import preview must not stay on screen.
+    // The old day's round, cards and import preview must not stay on screen.
     setView(null);
     scoring
       .loadRound(tournamentId, day)
@@ -163,12 +179,17 @@ export default function ScoresPage() {
 
   useEffect(() => {
     if (!view) return;
-    // Every hole starts blank. Par is offered explicitly, never filled in as if it were a score.
-    setStrokes({});
-    setEntryCaptureKey(globalThis.crypto.randomUUID());
+    setStrokes(blankStrokes(view.course.holes));
     setEditingCard(null);
     setCorrectionReason("");
     setEditCaptureKey("");
+    setScanReader({});
+    setScanImage(null);
+    setScanExtraction(null);
+    setScanCaptureKey("");
+    setScanConfirmed(false);
+    setSubmitNote("");
+    setSavedNote("");
     const first = view.players[0]?.playerId ?? "";
     const rotation = reciprocalRotation(view.players.map((player) => player.playerId));
     setPlayerId(first);
@@ -189,26 +210,30 @@ export default function ScoresPage() {
     );
   }, [view]);
 
-  // The total and the entries come from the same cells. A partly filled card has no total at all.
-  const draft = parseCardEntry(holes, strokes);
+  const writtenTotal = holes.reduce((sum, hole) => {
+    const value = Number(strokes[hole.number]);
+    return (
+      sum + (Number.isInteger(value) && (strokes[hole.number] ?? "").trim() !== "" ? value : 0)
+    );
+  }, 0);
 
   const scan = useMemo(
-    () => scanReview(holes, strokes, scanConfidence),
-    [holes, strokes, scanConfidence],
+    () => reviewScannedCard(holes, strokes, scanReader),
+    [holes, strokes, scanReader],
   );
-  const scanned = Object.keys(scanConfidence).length > 0;
+  const scanned = Object.keys(scanReader).length > 0;
+  const cardValues = useMemo(() => readCardValues(holes, strokes), [holes, strokes]);
+  /** A scanned card is not submitted until every empty cell is typed and the person has checked it. */
+  const scanBlocked = scanned && (!scanConfirmed || scan.blankHoles.length > 0);
 
-  async function run(action: () => Promise<ScoringRoundView | null>): Promise<boolean> {
+  async function run(action: () => Promise<ScoringRoundView | null>) {
     setBusy(true);
     setError(null);
-    setSaved(null);
     try {
       const next = await action();
       if (next) setView(next);
-      return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
-      return false;
     } finally {
       setBusy(false);
     }
@@ -217,7 +242,6 @@ export default function ScoresPage() {
   async function openRound(input: OpenRoundInput) {
     setBusy(true);
     setError(null);
-    setSaved(null);
     try {
       const next = await scoring.openRound(tournamentId, input);
       setView(next);
@@ -256,154 +280,191 @@ export default function ScoresPage() {
           "",
       );
     }
+    // Keep the reader's own value beside its confidence. That is what lets the grid say "read",
+    // "check", "empty" and "changed" instead of guessing from the value alone.
+    const reader: Record<number, ScanReaderCell> = {};
+    for (const hole of holes) {
+      const raw = (apply.strokes[hole.number] ?? "").trim();
+      const value = raw === "" ? null : Number(raw);
+      reader[hole.number] = {
+        strokes: value !== null && Number.isInteger(value) ? value : null,
+        confidence: apply.confidence[hole.number] ?? null,
+      };
+    }
     setScanImage(apply.image);
     setScanExtraction(apply.extraction);
     setScanCaptureKey(apply.captureKey);
-    setScanConfidence(apply.confidence);
+    setScanReader(reader);
+    setScanConfirmed(false);
+    setSubmitNote("");
+    setSavedNote("");
     setError(null);
-    setSaved(null);
   }
 
   function editCard(card: Scorecard) {
     setEditingCard(card);
     setCorrectionReason("");
     setEditCaptureKey(globalThis.crypto.randomUUID());
+    setPendingSubmit(null);
     setPlayerId(card.playerId);
     setScorerId(card.scorerId);
     setStrokes(
-      Object.fromEntries(card.entries.map((entry) => [entry.hole, String(entry.strokes)])),
+      Object.fromEntries(
+        card.entries.map((entry) => [
+          entry.hole,
+          entry.strokes === null ? "" : String(entry.strokes),
+        ]),
+      ),
     );
     setScanImage(null);
     setScanExtraction(null);
     setScanCaptureKey("");
-    setScanConfidence({});
+    setScanReader({});
+    setScanConfirmed(false);
+    setSubmitNote("");
+    setSavedNote("");
     setError(null);
-    setSaved(null);
     document.getElementById("score-entry")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function cancelEdit() {
+  function startAnother() {
     setEditingCard(null);
     setCorrectionReason("");
     setEditCaptureKey("");
     setScanImage(null);
     setScanExtraction(null);
     setScanCaptureKey("");
-    setScanConfidence({});
+    setScanReader({});
+    setScanConfirmed(false);
+    setSubmitNote("");
+    setSavedNote("");
+    setPendingSubmit(null);
     setError(null);
-    setSaved(null);
-    setEntryCaptureKey(globalThis.crypto.randomUUID());
     if (!view) return;
-    setStrokes({});
-    const first = view.players[0]?.playerId ?? "";
-    const rotation = reciprocalRotation(view.players.map((player) => player.playerId));
-    setPlayerId(first);
-    setScorerId(
-      rotation.find((assignment) => assignment.playerId === first)?.scorerId ??
-        view.players[1]?.playerId ??
-        "",
-    );
+    setStrokes(blankStrokes(view.course.holes));
+  }
+
+  /** Enter moves to the next hole in order, so a desk can type a whole card without the mouse. */
+  function focusAfter(holeNumber: number) {
+    const next = holes.find((hole) => hole.number > holeNumber);
+    const target = next ? document.getElementById(`hole-${next.number}`) : null;
+    if (target instanceof HTMLInputElement) {
+      target.focus();
+      target.select();
+    } else {
+      document.getElementById("score-submit")?.focus();
+    }
   }
 
   async function submitCard() {
-    if (busy) return;
-    const targetPlayerId = editingCard?.playerId ?? playerId;
-    const targetScorerId = editingCard?.scorerId ?? scorerId;
-    if (!targetPlayerId || !targetScorerId) {
-      setError("Choose the player and the marker before saving.");
-      return;
-    }
-    if (targetPlayerId === targetScorerId) {
-      setError("A player cannot mark their own card.");
-      return;
-    }
-    if (editingCard && correctionReason.trim().length < 3) {
-      setError("A correction needs a reason of at least 3 characters.");
-      return;
-    }
-    if (holes.length === 0) {
-      setError("This round has no holes to score.");
-      return;
-    }
-    if (draft.blankHoles.length > 0 || draft.invalidHoles.length > 0) {
-      const parts: string[] = [];
-      if (draft.blankHoles.length > 0) {
-        parts.push(
-          `${draft.blankHoles.length} ${draft.blankHoles.length === 1 ? "hole is" : "holes are"} still blank`,
-        );
+    const gate = submitGate.current;
+    // A second tap, a double click or a key repeat never reaches the repository.
+    if (!gate.tryEnter()) return;
+    setSubmitNote("");
+    setSavedNote("");
+    try {
+      const targetPlayerId = editingCard?.playerId ?? playerId;
+      const targetScorerId = editingCard?.scorerId ?? scorerId;
+      if (targetPlayerId === targetScorerId) {
+        setError("A player cannot mark their own card.");
+        return;
       }
-      if (draft.invalidHoles.length > 0) {
-        parts.push(
-          `${draft.invalidHoles.length} ${draft.invalidHoles.length === 1 ? "hole is" : "holes are"} not a whole score from 1 to 20`,
-        );
+      if (editingCard && correctionReason.trim().length < 3) {
+        setError("A correction needs a reason of at least 3 characters.");
+        return;
       }
-      setError(`Every hole needs a score before this card can be saved: ${parts.join("; ")}.`);
-      return;
-    }
-    if (draft.writtenTotal === null) {
-      setError("Every hole needs a score before this card can be saved.");
-      return;
-    }
-    // A correction is a new card revision, so it gets its own capture key. Keeping that key across
-    // retries makes the database treat a repeated request as the same revision, not a new one.
-    const captureKey = editingCard
-      ? editCaptureKey || globalThis.crypto.randomUUID()
-      : scanCaptureKey || entryCaptureKey || globalThis.crypto.randomUUID();
-    const correction = Boolean(editingCard);
-    const targetName =
-      players.find((player) => player.playerId === targetPlayerId)?.playerName ?? targetPlayerId;
-    const entries = draft.entries;
-    const writtenTotal = draft.writtenTotal;
-    const ok = await run(async () => {
-      return scoring.submitCard(
-        tournamentId,
-        {
-          playerId: targetPlayerId,
-          scorerId: targetScorerId,
-          source: scanImage ? "upload" : "manual",
-          entries,
-          writtenTotal,
-          captureKey,
-          reason: correction ? correctionReason.trim() : undefined,
-          image: scanImage
-            ? {
-                path: scanImage.path,
-                sha256: scanImage.sha256,
-                mime: scanImage.mime,
-                bytes: scanImage.bytes,
-              }
-            : undefined,
-          extraction: scanExtraction ?? undefined,
-        },
-        day,
-      );
-    });
-    if (!ok) return;
+      if (cardValues.problems.length > 0) {
+        setError(cardValues.problems[0] ?? "Every hole needs a whole-number score.");
+        return;
+      }
+      if (scanned && scan.blankHoles.length > 0) {
+        setError(
+          `${scan.blankHoles.length === 1 ? "Hole" : "Holes"} ${scan.blankHoles.join(", ")} ${scan.blankHoles.length === 1 ? "is" : "are"} still empty. Type the score from the card, or clear the photo to enter the card by hand.`,
+        );
+        return;
+      }
+      if (scanned && !scanConfirmed) {
+        setError("Tick the box to say you compared every flagged cell with the photo.");
+        return;
+      }
 
-    // Clear the card so a second tap cannot save the same values as revision 2.
-    setEditingCard(null);
-    setCorrectionReason("");
-    setEditCaptureKey("");
-    setScanImage(null);
-    setScanExtraction(null);
-    setScanCaptureKey("");
-    setScanConfidence({});
-    setStrokes({});
-    setPlayerId("");
-    setScorerId("");
-    setEntryCaptureKey(globalThis.crypto.randomUUID());
-    setSaved(
-      correction
-        ? `Correction saved for ${targetName}. The new revision needs approval before it counts. The form is cleared.`
-        : `Card saved for ${targetName}. It needs approval before it counts. The form is cleared for the next card.`,
-    );
+      const playerName =
+        players.find((player) => player.playerId === targetPlayerId)?.playerName ?? "";
+      const verdict = checkCardSubmission({
+        cards: view?.cards ?? [],
+        playerId: targetPlayerId,
+        scorerId: targetScorerId,
+        entries: cardValues.entries,
+        playerName,
+        imageSha256: scanImage?.sha256 ?? null,
+        correcting: Boolean(editingCard),
+      });
+      if (verdict.kind !== "new") {
+        // Already in, or a correction with nothing changed: say so calmly and write nothing.
+        setSubmitNote(verdict.message);
+        return;
+      }
+
+      setSubmitting(true);
+      const entries = holes.map((hole) => ({
+        hole: hole.number,
+        strokes: Number(strokes[hole.number]),
+        confidence: scanReader[hole.number]?.confidence ?? null,
+        // A cell the person left as a weak read goes to the desk still unconfirmed.
+        manuallyConfirmed: scanned ? scan.cells[hole.number]?.state !== "check" : true,
+      }));
+      // A correction is a new card revision, so it gets its own capture key. Keeping that key across
+      // retries makes the database treat a repeated request as the same revision, not a new one.
+      const signature = cardSignature(entries);
+      const retryKey =
+        pendingSubmit && pendingSubmit.signature === signature ? pendingSubmit.key : "";
+      const captureKey = editingCard
+        ? editCaptureKey || globalThis.crypto.randomUUID()
+        : scanCaptureKey || retryKey || globalThis.crypto.randomUUID();
+      if (!editingCard) setPendingSubmit({ key: captureKey, signature });
+      await run(async () => {
+        const next = await scoring.submitCard(
+          tournamentId,
+          {
+            playerId: targetPlayerId,
+            scorerId: targetScorerId,
+            source: scanImage ? "upload" : "manual",
+            entries,
+            writtenTotal,
+            captureKey,
+            reason: editingCard ? correctionReason.trim() : undefined,
+            image: scanImage
+              ? {
+                  path: scanImage.path,
+                  sha256: scanImage.sha256,
+                  mime: scanImage.mime,
+                  bytes: scanImage.bytes,
+                }
+              : undefined,
+            extraction: scanExtraction ?? undefined,
+          },
+          day,
+        );
+        setEditingCard(null);
+        setCorrectionReason("");
+        setEditCaptureKey("");
+        setPendingSubmit(null);
+        setSavedNote(
+          `Card saved for ${playerName || "this player"} and sent for approval. It does not count until it is approved.`,
+        );
+        return next;
+      });
+    } finally {
+      setSubmitting(false);
+      gate.leave();
+    }
   }
 
   function resolve(playerIdToResolve: string, hole: number) {
     const key = `${playerIdToResolve}:${hole}`;
-    const resolution = resolutionDrafts[key];
-    const value = Number(resolution?.strokes);
-    if (!resolution || !resolution.reason.trim()) {
+    const draft = resolutionDrafts[key];
+    const value = Number(draft?.strokes);
+    if (!draft || !draft.reason.trim()) {
       setError("A resolution needs a score and a reason.");
       return;
     }
@@ -418,7 +479,7 @@ export default function ScoresPage() {
           playerId: playerIdToResolve,
           hole,
           strokes: value,
-          reason: resolution.reason,
+          reason: draft.reason,
         },
         day,
       ),
@@ -446,7 +507,7 @@ export default function ScoresPage() {
               variant="ghost"
               size="sm"
               onClick={() => window.location.reload()}
-              disabled={interactionBusy}
+              disabled={busy}
             >
               <RotateCcw className="size-4" aria-hidden="true" />
               Refresh
@@ -472,24 +533,6 @@ export default function ScoresPage() {
         </div>
       )}
 
-      {playingDays.length > 1 && (
-        <div className="seg" role="tablist" aria-label="Scoring day">
-          {playingDays.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={item.dayNumber === day}
-              aria-pressed={item.dayNumber === day}
-              className="min-h-11"
-              onClick={() => setDrawDay(item.dayNumber)}
-            >
-              {item.label} · {fmtIso(item.playDate)}
-            </button>
-          ))}
-        </div>
-      )}
-
       {roundState && (
         <OpenRoundPanel
           key={`${day ?? "none"}:${roundState.roundStatus ?? "none"}:${roundState.draw.revision}`}
@@ -508,12 +551,6 @@ export default function ScoresPage() {
         </div>
       )}
 
-      {saved && (
-        <div className="notice ok" role="status">
-          {saved}
-        </div>
-      )}
-
       {!view ? (
         loaded ? (
           <div className="card grid gap-2">
@@ -526,7 +563,7 @@ export default function ScoresPage() {
           </div>
         ) : (
           <div className="card" role="status">
-            Loading the scoring round…
+            Loading the scoring roundGǪ
           </div>
         )
       ) : (
@@ -574,7 +611,7 @@ export default function ScoresPage() {
                   playerName: player.playerName,
                 }))}
                 holes={holes}
-                disabled={interactionBusy || Boolean(editingCard)}
+                disabled={busy || Boolean(editingCard)}
                 onApply={applyScan}
               />
             </RoleGate>
@@ -626,7 +663,7 @@ export default function ScoresPage() {
                 subtitle={
                   editingCard
                     ? "Saving adds a new revision. The old revision stays in the record and the new one needs approval."
-                    : "Manual entry first. The same validation will run behind webcam and upload later."
+                    : "Type the scores from the paper card. Nothing is filled in for you: an empty hole blocks the card."
                 }
                 dataHelp="scores-entry"
               >
@@ -653,26 +690,72 @@ export default function ScoresPage() {
                         onChange={(event) => setCorrectionReason(event.target.value)}
                         placeholder="What is being corrected?"
                         aria-label="Correction reason"
-                        disabled={interactionBusy}
+                        disabled={busy}
                       />
                     </label>
                   </div>
                 )}
-                {scanImage && (
+                {scanImage && !scanned && (
                   <div className="notice info" role="status">
                     <b>Photo attached. </b>This card will be saved with the upload. Submit only
                     after every hole is checked.
                   </div>
                 )}
+                {submitNote && (
+                  <div className="notice info" role="status">
+                    <b>Already recorded. </b>
+                    {submitNote}
+                  </div>
+                )}
+                {savedNote && (
+                  <div className="notice ok" role="status">
+                    <b>Saved. </b>
+                    {savedNote}
+                  </div>
+                )}
                 {scanned && (
                   <div className="notice warn" role="status">
                     <b>Draft from the photo.</b> {scan.filled} of {holes.length} holes filled.
-                    {scan.weak > 0 &&
-                      ` ${scan.weak} ${scan.weak === 1 ? "hole was" : "holes were"} read weakly and need checking against the photo.`}
+                    {scan.check > 0 &&
+                      ` ${scan.check} ${scan.check === 1 ? "hole was" : "holes were"} read weakly and need checking against the photo.`}
+                    {scan.changed > 0 &&
+                      ` ${scan.changed} ${scan.changed === 1 ? "cell was" : "cells were"} changed by hand.`}
+                    {scan.typed > 0 &&
+                      ` ${scan.typed} ${scan.typed === 1 ? "cell was" : "cells were"} empty in the photo and typed in.`}
                     {scan.blank > 0 &&
                       ` ${scan.blank} ${scan.blank === 1 ? "hole is" : "holes are"} still blank.`}
                   </div>
                 )}
+                {scanned && scanImage && (
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                    <figure className="m-0 grid gap-1">
+                      <img
+                        src={scanImage.previewUrl}
+                        alt="The scanned scorecard"
+                        className="max-h-[24rem] w-full rounded-md border border-line bg-surface-sunken object-contain"
+                      />
+                      <figcaption className="hint">
+                        Compare every amber or changed cell with this photo.
+                      </figcaption>
+                    </figure>
+                    <div className="grid content-start gap-2">
+                      <p className="hint m-0">
+                        OUT <b className="mono">{scan.totals.out}</b> -+ IN{" "}
+                        <b className="mono">{scan.totals.in}</b> -+ TOTAL{" "}
+                        <b className="mono">{scan.totals.total}</b> -+ par{" "}
+                        <b className="mono">{scan.totals.parTotal}</b>
+                      </p>
+                      <p className="hint m-0">
+                        <span className="pill">Read</span> from the reader -+{" "}
+                        <span className="pill warn">Check</span> low confidence -+{" "}
+                        <span className="pill">Typed</span> you filled a cell the reader left empty
+                        -+ <span className="pill info">Changed</span> you replaced the reader's
+                        value
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="grid gap-1">
                     <Combobox
@@ -699,7 +782,7 @@ export default function ScoresPage() {
                         }
                       }}
                       placeholder="Type a player's name"
-                      disabled={interactionBusy || players.length < 2 || Boolean(editingCard)}
+                      disabled={busy || players.length < 2 || Boolean(editingCard)}
                     />
                     {/* The picker is a text field, so the name cannot be the link inside it.
                         This is the separate control: choosing a player never navigates away. */}
@@ -723,7 +806,7 @@ export default function ScoresPage() {
                         .map((player) => ({ id: player.playerId, label: player.playerName }))}
                       onChange={setScorerId}
                       placeholder="Type the marker's name"
-                      disabled={interactionBusy || players.length < 2 || Boolean(editingCard)}
+                      disabled={busy || players.length < 2 || Boolean(editingCard)}
                     />
                     {selectedScorer && canOpenProfile && (
                       <p className="hint">
@@ -765,88 +848,136 @@ export default function ScoresPage() {
 
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                   {holes.map((hole) => {
-                    const state = scan.holes[hole.number];
+                    const cell = scan.cells[hole.number];
+                    const check = scanned && cell?.state === "check";
+                    const changed = scanned && cell?.state === "changed";
+                    const typed = scanned && cell?.state === "typed";
+                    const empty = scanned && cell?.state === "blank";
                     return (
                       <label key={hole.number} className="field">
-                        <span
-                          className={
-                            state === "check" ? "text-[11px] !text-warning" : "text-[11px]"
-                          }
-                        >
-                          H{hole.number} · par {hole.par} · SI {hole.strokeIndex}
-                          {state === "check" ? " · check" : ""}
+                        <span className={check ? "text-[11px] !text-warning" : "text-[11px]"}>
+                          H{hole.number} -+ par {hole.par} -+ SI {hole.strokeIndex}
+                          {check ? " -+ check" : ""}
+                          {changed ? " -+ changed" : ""}
+                          {typed ? " -+ typed" : ""}
+                          {empty ? " -+ empty" : ""}
                         </span>
                         <input
+                          id={`hole-${hole.number}`}
                           type="number"
                           inputMode="numeric"
                           min={1}
                           max={20}
                           value={strokes[hole.number] ?? ""}
-                          aria-invalid={state === "check" ? true : undefined}
-                          aria-describedby={state === "check" ? "scan-check-hint" : undefined}
-                          className={state === "check" ? "!border-warning" : undefined}
+                          aria-invalid={check ? true : undefined}
+                          aria-describedby={check ? "scan-check-hint" : undefined}
+                          className={
+                            check ? "!border-warning" : changed ? "!border-info" : undefined
+                          }
                           onChange={(event) =>
                             setStrokes((current) => ({
                               ...current,
                               [hole.number]: event.target.value,
                             }))
                           }
-                          disabled={interactionBusy}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter") return;
+                            event.preventDefault();
+                            focusAfter(hole.number);
+                          }}
+                          disabled={busy}
                         />
                       </label>
                     );
                   })}
                 </div>
-                {scan.weak > 0 && (
+                {scanned && scan.check > 0 && (
                   <p id="scan-check-hint" className="hint">
-                    Amber holes were read with low confidence or not at all. Compare each one with
-                    the photo before submitting; typing a value does not clear the flag until the
-                    card is submitted fresh.
+                    Amber holes were read with low confidence. Compare each one with the photo;
+                    correcting a cell marks it as changed, and leaving a weak read as it is sends it
+                    to the desk still unconfirmed.
+                  </p>
+                )}
+
+                {scanned && (
+                  <label className="flex items-start gap-2 text-[13px]">
+                    <input
+                      type="checkbox"
+                      checked={scanConfirmed}
+                      onChange={(event) => setScanConfirmed(event.target.checked)}
+                      disabled={busy}
+                    />
+                    <span>
+                      I compared every flagged cell with the photo, and every cell the reader left
+                      empty now has the score written on the card.
+                    </span>
+                  </label>
+                )}
+                {scanBlocked && (
+                  <p className="hint" role="status">
+                    {scan.blankHoles.length > 0
+                      ? `Type ${scan.blankHoles.length === 1 ? `hole ${scan.blankHoles[0]}` : `holes ${scan.blankHoles.join(", ")}`} from the card. A cell the reader left empty is never filled in for you.`
+                      : "Tick the box above to confirm you checked the card against the photo."}
                   </p>
                 )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="hint">
-                    {draft.writtenTotal === null ? (
-                      <>
-                        Written total appears when every hole has a score ·{" "}
-                        {draft.blankHoles.length + draft.invalidHoles.length} of {holes.length}{" "}
-                        still to enter
-                      </>
-                    ) : (
-                      <>
-                        Written total <b className="mono">{draft.writtenTotal}</b> · par{" "}
-                        <b className="mono">{totalPar}</b>
-                      </>
-                    )}
+                    Written total <b className="mono">{writtenTotal}</b> -+ OUT{" "}
+                    <b className="mono">
+                      {holes.reduce((sum, hole) => {
+                        if (hole.number > 9) return sum;
+                        const value = Number(strokes[hole.number]);
+                        return sum + (Number.isInteger(value) ? value : 0);
+                      }, 0)}
+                    </b>{" "}
+                    -+ IN{" "}
+                    <b className="mono">
+                      {holes.reduce((sum, hole) => {
+                        if (hole.number < 10) return sum;
+                        const value = Number(strokes[hole.number]);
+                        return sum + (Number.isInteger(value) ? value : 0);
+                      }, 0)}
+                    </b>{" "}
+                    -+ par <b className="mono">{totalPar}</b>
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {editingCard && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={cancelEdit}
-                        disabled={interactionBusy}
-                      >
-                        Cancel correction
+                    {(editingCard || scanned) && (
+                      <Button variant="ghost" size="sm" onClick={startAnother} disabled={busy}>
+                        {editingCard ? "Cancel correction" : "Start another card"}
                       </Button>
                     )}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setStrokes(strokesFor(holes))}
-                      disabled={interactionBusy}
+                      disabled={busy}
                     >
-                      Reset to par
+                      Fill with par
                     </Button>
                     <Button
+                      id="score-submit"
                       variant="primary"
                       size="sm"
-                      onClick={submitCard}
-                      disabled={interactionBusy || players.length < 2}
+                      onClick={() => void submitCard()}
+                      disabled={busy || players.length < 2 || scanBlocked}
+                      title={
+                        scanBlocked
+                          ? "Finish every empty cell and tick the check box before submitting."
+                          : undefined
+                      }
                       data-help="scores-submit"
                     >
-                      {editingCard ? "Submit correction" : "Submit card"}
+                      {submitting ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                          Saving cardGǪ
+                        </>
+                      ) : editingCard ? (
+                        "Submit correction"
+                      ) : (
+                        "Submit card"
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -880,7 +1011,7 @@ export default function ScoresPage() {
                           key={card.id}
                           card={card}
                           view={view}
-                          busy={interactionBusy}
+                          busy={busy}
                           role={profileRole}
                           rejectReason={rejectReasons[card.id] ?? ""}
                           onRejectReason={(value) =>
@@ -951,7 +1082,7 @@ export default function ScoresPage() {
                             name={playerName}
                             role={profileRole}
                           />{" "}
-                          <span className="font-semibold">· hole {hole.hole}</span>
+                          <span className="font-semibold">-+ hole {hole.hole}</span>
                         </p>
                         <p className="hint mt-0.5">{hole.note ?? "The cards disagree."}</p>
                       </div>
@@ -973,7 +1104,7 @@ export default function ScoresPage() {
                                 };
                               });
                             }}
-                            disabled={interactionBusy}
+                            disabled={busy}
                           />
                         </label>
                         <label className="field min-w-[16rem] flex-1">
@@ -991,14 +1122,14 @@ export default function ScoresPage() {
                               });
                             }}
                             placeholder="What did the desk check?"
-                            disabled={interactionBusy}
+                            disabled={busy}
                           />
                         </label>
                         <Button
                           variant="gold"
                           size="sm"
                           onClick={() => resolve(conflictPlayerId, hole.hole)}
-                          disabled={interactionBusy}
+                          disabled={busy}
                         >
                           Resolve
                         </Button>
@@ -1039,7 +1170,7 @@ export default function ScoresPage() {
             id="score-final"
             icon={<CheckCircle2 />}
             title="Publication and finalization"
-            subtitle="Provisional publication is on for a scored round. Final standings stay blocked until every gate is satisfied."
+            subtitle="Provisional publication is explicit. Final standings stay blocked until every gate is satisfied."
             dataHelp="scores-final"
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -1091,9 +1222,7 @@ export default function ScoresPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={
-                    interactionBusy || view.roundStatus === "final" || !view.provisionalPublication
-                  }
+                  disabled={busy || view.roundStatus === "final" || !view.provisionalPublication}
                   onClick={() =>
                     void run(() =>
                       scoring.publishRound(tournamentId, "Provisional publication", day),
@@ -1126,12 +1255,6 @@ export default function ScoresPage() {
                 </Button>
               </RoleGate>
             </div>
-            {!view.provisionalPublication && (
-              <p className="hint">
-                Provisional publication is off for this round, so provisional results cannot be
-                published. It is turned on when the round is opened.
-              </p>
-            )}
             <p className="hint">
               {status === "demo"
                 ? "The sample uses a proposed tie-break that is deliberately unconfirmed, so finalization stays blocked. The organizer's written rule is still required."
@@ -1211,7 +1334,7 @@ function CardRow({
         <span className="hint block">Revision {card.revision}</span>
         {player?.handicap ? (
           <span className="hint block">
-            Index {fmtIndex(player.handicap.index)} · PH {fmtHcp(player.handicap.playingHandicap)}
+            Index {fmtIndex(player.handicap.index)} -+ PH {fmtHcp(player.handicap.playingHandicap)}
           </span>
         ) : (
           <span className="hint block">No handicap snapshot</span>
@@ -1378,7 +1501,7 @@ function StandingsTable({
                 {row[board.kind === "gross" ? "grossPoints" : "netPoints"]}
               </td>
               <td className="num mono">
-                {row[board.kind === "gross" ? "grossStrokes" : "netStrokes"] ?? "—"}
+                {row[board.kind === "gross" ? "grossStrokes" : "netStrokes"] ?? "G��"}
               </td>
               <td className="num mono">
                 {row.holesCounted}/{row.totalHoles}

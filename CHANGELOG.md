@@ -34,6 +34,20 @@ lets a scored round publish without a separate "start scoring" step. Not applied
 - **A scored round can be published provisionally.** Provisional publication is on by default and
   `publish_round` accepts a round that is still open, so the public leaderboard is not held until
   finalization.
+- **A scorecard cannot be recorded twice through the ordinary misclicks of a tournament day.** A
+  synchronous gate on both the desk and the staff sheet drops a double click or a second tap while
+  the first request is in flight, and the control says what it is doing. An identical card, a card
+  already in from the same marker, and the same photo scanned twice are recognised by one shared pure
+  guard (`src/lib/scoring/submission.ts`) and reported in plain words instead of being written or
+  shown as an error. A retried submission keeps its capture key only while the card is unchanged. The
+  demo repository and the Supabase adapter run the same guard. No migration.
+- **A scanned card can be corrected cell by cell before it is submitted.** The desk shows the photo
+  beside all 18 cells, each marked read, check, empty, typed or changed, with OUT, IN and TOTAL
+  updating as cells change; Submit stays locked until every cell the reader left empty is typed and a
+  person confirms the photo. The staff sheet shows the same review with numeric inputs. No migration.
+- **The desk's manual card form starts empty.** It used to start at par for all 18 holes, so Submit
+  without typing recorded a card nobody had read. "Fill with par" is now explicit, and Enter moves to
+  the next hole. No migration.
 
 ## [0.38.0] - 2026-11-12
 
