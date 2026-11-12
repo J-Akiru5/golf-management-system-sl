@@ -38,6 +38,12 @@ Supabase project, because the code and the database are released separately.
   the checked-in `build_round_scorecards` writes integer strokes only, so a republish through the
   current builder would replace X with a proxy stroke. Keep the external v5 snapshot until the
   writer carries the flag.
+- **A public class follows the validated desk sheet.** The profile shows the card playing handicap
+  instead of the frozen index, and the profile and leaderboard class use the live registration
+  class. The leaderboard overlays the class on the frozen snapshot rows, so a validated correction
+  appears without republishing the cards; scores stay frozen. The Day 1 AM registrations and round
+  results were corrected to the validated JSON class for the paired players. The nine solo players
+  stay `needs_review` until their pairs are supplied. No migration.
 
 ## [0.39.0] - 2026-11-12
 
