@@ -1007,6 +1007,72 @@ check(
 );
 await phoneContext.close();
 
+// ------------------------------------------------------- one public tee time per session
+// The owner's display rule: the public pages show the session start, the same for Flight A and
+// Flight B, never a flight's wave offset (06:12, 12:42). The stored draw keeps its real times.
+section("public tee times: one per session");
+const teeTimeContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const teeTimePage = await teeTimeContext.newPage();
+watch(teeTimePage);
+const noWaveOffset = (text) => !/\b6:12\b|\b12:42\b/.test(text);
+await teeTimePage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+const firstCardTime = (
+  (await teeTimePage.locator('[data-testid="pairing-group"] .p-time').first().textContent()) ?? ""
+).trim();
+check("a Day 1 pairings card shows 6:30 AM", firstCardTime === "6:30 AM", `(${firstCardTime})`);
+const daySections = teeTimePage.locator("section.p-session");
+const morningTimes = (await daySections.nth(0).locator(".p-time").allTextContents()).map((time) =>
+  time.trim(),
+);
+check(
+  "every Day 1 morning card, both flights, shows 6:30 AM",
+  morningTimes.length > 0 && morningTimes.every((time) => time === "6:30 AM"),
+  `(${morningTimes.join(", ")})`,
+);
+const afternoonTimes = (await daySections.nth(1).locator(".p-time").allTextContents()).map(
+  (time) => time.trim(),
+);
+check(
+  "every Day 1 afternoon card shows 12:30 PM",
+  afternoonTimes.length > 0 && afternoonTimes.every((time) => time === "12:30 PM"),
+  `(${afternoonTimes.join(", ")})`,
+);
+check(
+  "the pairings page shows no 6:12 or 12:42",
+  noWaveOffset(await teeTimePage.locator("body").innerText()),
+);
+
+// The profile rows come from the programme, so they follow the same rule.
+await teeTimePage.goto(`${BASE}/roster`, { waitUntil: "networkidle", timeout: 120000 });
+await teeTimePage.getByRole("searchbox", { name: "Find a player" }).fill("ordonez");
+const teeTimeProfileLink = teeTimePage
+  .locator("main a.player-card-link")
+  .filter({ hasText: "ULYSSES ORDO" });
+await expect(teeTimeProfileLink.first()).toBeVisible({ timeout: 15000 });
+await teeTimeProfileLink.first().click();
+await expect(teeTimePage.getByTestId("player-profile")).toBeVisible({ timeout: 15000 });
+const profileRowText = (
+  (await teeTimePage.getByTestId("profile-tee-times").textContent()) ?? ""
+)
+  .replace(/\s+/g, " ")
+  .trim();
+check(
+  "the profile tee-time row shows a session time",
+  /(6:30 AM|6:00 AM|12:30 PM|11:30 PM)/.test(profileRowText),
+  `(${profileRowText})`,
+);
+check("the profile shows no 6:12 or 12:42", noWaveOffset(profileRowText), `(${profileRowText})`);
+
+for (const path of ["/", "/pairings", "/roster", "/leaderboard", "/rules"]) {
+  await teeTimePage.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+  check(
+    `${path} shows no 6:12 or 12:42`,
+    noWaveOffset(await teeTimePage.locator("body").innerText()),
+  );
+}
+await teeTimePage.screenshot({ path: `${SHOTS}/public-session-times.png` });
+await teeTimeContext.close();
+
 section("first-run welcome");
 const freshContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const freshPage = await freshContext.newPage();

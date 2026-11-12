@@ -17,7 +17,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { addIsoDays } from "@/lib/data/dates";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { toPublicPairings, toPublicProgramme } from "@/lib/data/public";
-import { profileTeeTimes } from "@/lib/data/public-profile";
 import type { PublicTab } from "@/lib/data/public-tabs";
 import { buildTeamLeaderboard } from "@/lib/data/public-team-leaderboard";
 import type {
@@ -36,6 +35,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { manilaToday } from "@/lib/player/dashboard";
 import { SAMPLE_PLAYER } from "@/lib/player/demo-identity";
 import { pairingsBackLink } from "@/lib/public/pairings-nav";
+import { publicProfileTeeTimes } from "@/lib/public/public-profile-tee-times";
 import { useDesk } from "@/lib/store/desk-store";
 
 /** Ten morning start times and eight afternoon start times, a normal shotgun day at the club. */
@@ -415,7 +415,7 @@ export function DemoPairings({
                 data={profile}
                 team={demoTeam}
                 t={t}
-                teeTimes={teeTimesHeld ? [] : profileTeeTimes(programme, profile.player.name)}
+                teeTimes={teeTimesHeld ? [] : publicProfileTeeTimes(programme, profile.player.name)}
               />
             ) : playerId ? (
               <section className="pairings-empty" role="status">
@@ -441,6 +441,7 @@ export function DemoPairings({
                 headingLevel="section"
                 flightFilter
                 you={{ id: demoPlayerId(SAMPLE_FEATURED_PLAYER), name: SAMPLE_FEATURED_PLAYER }}
+                publicTimes
               />
             </section>
           )}
