@@ -80,6 +80,16 @@ const go = async (path) => {
   await page.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
 };
 
+// The demo scoring repository is in memory. Move between the three scoring tabs with a client
+// navigation so the cards entered in this browser survive the route change.
+const scoresTab = async (name, readySelector) => {
+  await page
+    .locator('nav[aria-label="Scoring sections"]')
+    .getByRole("link", { name, exact: true })
+    .click();
+  await expect(page.locator(readySelector)).toBeVisible({ timeout: 30000 });
+};
+
 // --------------------------------------------------------------- long lists
 section("/players paging");
 await go("/players");
@@ -214,17 +224,17 @@ check(
 await scoresEntry.getByRole("button", { name: "Fill with par" }).click();
 await scoresEntry.locator("input[type=number]").nth(0).fill("5");
 await scoresEntry.getByRole("button", { name: "Submit card" }).click();
-await expect(scoresCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
 await scoresEntry.getByRole("combobox").nth(1).click();
 await page.getByRole("option", { name: /SAMPLE PLAYER C/ }).click();
 await scoresEntry.locator("input[type=number]").nth(0).fill("4");
 await scoresEntry.getByRole("button", { name: "Submit card" }).click();
+await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
 await expect(scoresCards.locator("tbody tr")).toHaveCount(2, { timeout: 20000 });
 for (let approved = 1; approved <= 2; approved += 1) {
   await scoresCards.getByRole("button", { name: "Approve" }).first().click();
   await expect(scoresCards.locator("tbody tr .pill.ok")).toHaveCount(approved, { timeout: 20000 });
 }
-const linkSites = [
+const reviewLinkSites = [
   [
     "Cards table: player name",
     scoresCards.locator('tbody tr td:nth-child(1) a[href^="/players/"]'),
@@ -233,6 +243,20 @@ const linkSites = [
     "Cards table: marked-by name",
     scoresCards.locator('tbody tr td:nth-child(2) a[href^="/players/"]'),
   ],
+  ["Conflicts: player name", scoresConflicts.locator('a[href^="/players/"]')],
+];
+for (const [label, locator] of reviewLinkSites) {
+  const count = await locator.count();
+  const href = count > 0 ? await locator.first().getAttribute("href") : null;
+  check(
+    label,
+    count > 0 && /^\/players\/[^/]+$/.test(href ?? ""),
+    `(${count}) ${href ?? "no link"}`,
+  );
+}
+
+await scoresTab("Results", 'section[aria-labelledby="score-gross"]');
+const resultsLinkSites = [
   [
     "Gross Stableford: player name",
     page.locator(
@@ -245,9 +269,8 @@ const linkSites = [
       'section[aria-labelledby="score-net"] tbody tr td:nth-child(2) a[href^="/players/"]',
     ),
   ],
-  ["Conflicts: player name", scoresConflicts.locator('a[href^="/players/"]')],
 ];
-for (const [label, locator] of linkSites) {
+for (const [label, locator] of resultsLinkSites) {
   const count = await locator.count();
   const href = count > 0 ? await locator.first().getAttribute("href") : null;
   check(
@@ -256,6 +279,36 @@ for (const [label, locator] of linkSites) {
     `(${count}) ${href ?? "no link"}`,
   );
 }
+
+// The Review page hands the card back to the editor, and the editor writes a new revision.
+await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
+await scoresCards.getByRole("button", { name: "Edit" }).first().click();
+await expect(page.locator('section[aria-labelledby="score-entry"]')).toBeVisible({
+  timeout: 30000,
+});
+check(
+  "Review Edit opens the card as a correction",
+  (await page.getByText(/Correcting revision/).count()) > 0,
+);
+await page.getByLabel("Correction reason").fill("Corrected the second hole after checking the card.");
+await page.locator("#hole-2").fill("6");
+await page.getByRole("button", { name: "Submit correction" }).click();
+await expect(page.getByText(/Card saved for/)).toBeVisible({ timeout: 20000 });
+await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
+await expect(scoresCards.locator("tbody tr")).toHaveCount(3, { timeout: 20000 });
+check(
+  "a correction is saved as a new revision",
+  (await scoresCards.locator("tbody tr").count()) === 3,
+  `(${await scoresCards.locator("tbody tr").count()})`,
+);
+
+await scoresTab("Enter card", 'section[aria-labelledby="score-entry"]');
+await scoresEntry.getByRole("combobox").nth(0).click();
+await page.getByRole("option", { name: /SAMPLE PLAYER A/ }).click();
+check(
+  "the player picker loads the player's current card for correction",
+  (await page.getByText(/Correcting revision/).count()) > 0,
+);
 
 // ---------------------------------------------------------- the same card twice
 // The desk must never record one card twice. A triple click on Submit is one request, and pressing
@@ -287,28 +340,30 @@ await dupEntry.getByRole("button", { name: /^Submit card$/ }).evaluate((element)
   element.click();
   element.click();
 });
-await expect(dupCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
 await page.waitForTimeout(600);
-check(
-  "a triple click on Submit writes one card, not three",
-  (await dupCards.locator("tbody tr").count()) === 1,
-  `(${await dupCards.locator("tbody tr").count()})`,
-);
 
 // The same card again, with the form untouched: recognised, not written, not an error.
 await dupEntry.getByRole("button", { name: /^Submit card$/ }).click();
 await expect(dupEntry.getByText(/already in for/i)).toBeVisible({ timeout: 15000 });
 await page.waitForTimeout(400);
 check(
-  "submitting the identical card again adds no second revision",
-  (await dupCards.locator("tbody tr").count()) === 1,
-  `(${await dupCards.locator("tbody tr").count()})`,
-);
-check(
   "the repeat is a plain notice, not an error",
   (await dupEntry.locator(".notice.bad").count()) === 0,
 );
 await page.screenshot({ path: `${SHOTS}/scores-duplicate-submit.png` });
+
+await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
+await expect(dupCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
+check(
+  "a triple click on Submit writes one card, not three",
+  (await dupCards.locator("tbody tr").count()) === 1,
+  `(${await dupCards.locator("tbody tr").count()})`,
+);
+check(
+  "submitting the identical card again adds no second revision",
+  (await dupCards.locator("tbody tr").count()) === 1,
+  `(${await dupCards.locator("tbody tr").count()})`,
+);
 
 // ------------------------------------------------------------- scan review (desk)
 // The demo reader returns a whole card with weak cells and one cell it could not read. The desk must
@@ -349,8 +404,11 @@ check(
   `(hole 16 = ${JSON.stringify(await dupEntry.locator("#hole-16").inputValue())})`,
 );
 check(
-  "OUT, IN and TOTAL are shown",
-  /OUT \d+ · IN \d+ · TOTAL \d+/.test((await dupEntry.textContent()) ?? ""),
+  "Gross, net Stableford and OUT/IN are shown",
+  /Gross/.test((await dupEntry.textContent()) ?? "") &&
+    /Net Stableford/.test((await dupEntry.textContent()) ?? "") &&
+    /OUT \/ IN/.test((await dupEntry.textContent()) ?? "") &&
+    /Holes entered/.test((await dupEntry.textContent()) ?? ""),
 );
 check(
   "Submit is disabled while a cell the reader left empty is still empty",
@@ -359,7 +417,7 @@ check(
 await dupEntry.locator("#hole-1").fill("9");
 check(
   "a cell the person replaced is marked changed",
-  /changed/.test((await dupEntry.locator("label:has(#hole-1)").textContent()) ?? ""),
+  /changed/i.test((await dupEntry.locator("div:has(> input#hole-1)").textContent()) ?? ""),
 );
 // Enter moves to the next hole, so a whole card can be typed without the mouse.
 await dupEntry.locator("#hole-1").focus();
@@ -380,6 +438,7 @@ check(
 );
 await page.screenshot({ path: `${SHOTS}/scores-scan-review.png` });
 await dupEntry.getByRole("button", { name: /^Submit card$/ }).click();
+await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
 await expect(dupCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
 check("the reviewed card is submitted once", (await dupCards.locator("tbody tr").count()) === 1);
 await page.setViewportSize({ width: 1440, height: 950 });
