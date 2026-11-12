@@ -10,6 +10,7 @@ import type { PublicPairingGroup, PublicPairings } from "@/lib/data/types";
 import { fmtHcp, fmtIndex, fmtTime } from "@/lib/format";
 import type { DayCountBlock, DayGroupBlock } from "./day-counts";
 import { groupRowLabels, pairingsColumns } from "./pairings";
+import { type ResultsSheet, resultHoles, resultPosition, resultScore } from "./results-sheet";
 import { groupStartGroups, type PrintStartFormat } from "./start-sheet";
 
 export type ExportCell = string | number | null;
@@ -305,6 +306,40 @@ export interface ScorecardPage {
     playingHandicap: number | null;
   }[];
   holes: { number: number; par: number | null; strokeIndex: number | null }[];
+}
+
+/**
+ * The results sheet as export tables: one worksheet per session, using the same rows the browser
+ * sheet prints. Day 1 therefore exports an AM and a PM table; other days export one table.
+ */
+export function resultsTables(sheet: ResultsSheet): ExportTable[] {
+  return sheet.tables.map((table) => ({
+    sheetName: table.title,
+    title: `Results · ${table.title}`,
+    subtitle: `${sheet.eventName} · ${sheet.dayLabel} · ${sheet.dateLabel} · ${
+      table.session ? `${table.session} · ` : ""
+    }net Stableford`,
+    columns: [
+      { header: "Pos", width: 6, align: "center" },
+      { header: "Player", width: 36 },
+      { header: "PH", width: 6, align: "right" },
+      { header: "Gross", width: 8, align: "right" },
+      { header: "Net", width: 8, align: "right" },
+      { header: "Points", width: 8, align: "right" },
+      { header: "Holes", width: 8, align: "right" },
+    ],
+    rows: table.rows.map((row) => [
+      resultPosition(row),
+      row.playerName,
+      fmtHcp(row.playingHandicap),
+      resultScore(row.grossStrokes),
+      resultScore(row.netStrokes),
+      resultScore(row.points),
+      resultHoles(row),
+    ]),
+    orientation: "portrait",
+    note: "Points are net Stableford. A dash means no scorecard; Holes shows the holes played.",
+  }));
 }
 
 /** One card per non-empty group, with all 18 holes present even when course data is incomplete. */

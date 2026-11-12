@@ -520,3 +520,13 @@ describe("demo scoring repository opening a round", () => {
     );
   });
 });
+
+describe("demo scoring repository by day", () => {
+  it("loads only the round for the day it was given, and the first round when no day is named", async () => {
+    const repo = repository({ dayNumber: 2 });
+
+    expect((await repo.loadRound("tournament-1", 2))?.dayNumber).toBe(2);
+    expect(await repo.loadRound("tournament-1", 1)).toBeNull();
+    expect((await repo.loadRound("tournament-1"))?.dayNumber).toBe(2);
+  });
+});
