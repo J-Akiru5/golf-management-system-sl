@@ -48,60 +48,70 @@ export const DESK_GUIDES: HelpGuide[] = [
           "Open the round from the published draw before the first card. Round setup names the card count, the approval authority, the tie-break policy and the rules version.",
         ),
         anchor: "scores-round",
+        route: "/scores/review",
       },
       {
         text: literal(
           "The round opens only when the draw is published and has not moved, and when every setting is present. The screen names the setting that is missing.",
         ),
         anchor: "scores-round-open",
+        route: "/scores/review",
       },
       {
         text: literal(
           "Take a photo of the paper card. A reader can propose scores, but the desk checks every value before submitting.",
         ),
         anchor: "scores-scan",
+        route: "/scores",
       },
       {
         text: literal(
           "This is a sample scoring round. It uses placeholder pars and stroke indexes and does not write to the database.",
         ),
         anchor: "scores-entry",
+        route: "/scores",
       },
       {
         text: literal(
           "Pick the player and the person who marked the card, enter all 18 hole scores, then submit.",
         ),
         anchor: "scores-submit",
+        route: "/scores",
       },
       {
         text: literal(
           "The cards list shows what still blocks approval. Low-confidence values need a person to confirm them.",
         ),
         anchor: "scores-cards",
+        route: "/scores/review",
       },
       {
         text: literal(
           "When two cards disagree, the hole is a conflict. Record the value the desk checked and why.",
         ),
         anchor: "scores-conflicts",
+        route: "/scores/review",
       },
       {
         text: literal(
           "Gross and net boards count only holes that met the verification rule. An incomplete round says how many holes it counts.",
         ),
         anchor: "scores-gross",
+        route: "/scores/results",
       },
       {
         text: literal(
           "The net board uses each player's Playing Handicap snapshot. A player without one is left out rather than estimated.",
         ),
         anchor: "scores-net",
+        route: "/scores/results",
       },
       {
         text: literal(
           "Finalization stays blocked until every card, hole, net result, tie-break rule and authority is in place.",
         ),
         anchor: "scores-final",
+        route: "/scores/results",
       },
     ],
   },

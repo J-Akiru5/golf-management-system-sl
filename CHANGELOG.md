@@ -9,6 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **The scoring desk is one card at a time.** `/scores` is the scoring input only: a searchable
+  player picker that loads the player's current card or starts a new one, a marker picker, a
+  readiness state, a photo or scan panel, an 18-hole grid with per-cell check states, and a live
+  gross/net Stableford, OUT/IN, holes-entered and written-total summary. Cards, approvals, conflicts,
+  bulk import and round setup are on `/scores/review`; standings, publication and finalization are
+  on `/scores/results`. A correction saves a new revision and keeps the old one. No migration.
+
 ## [0.39.0] - 2026-11-12
 
 ### Migrations shipping with this release

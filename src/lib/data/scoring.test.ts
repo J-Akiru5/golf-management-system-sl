@@ -1,10 +1,13 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
+import { createSupabaseScoringRepository } from "@/lib/data/supabase/scoring";
 import {
   makeSnapshotFor,
   parEntries,
   TEST_COURSE,
   TEST_POLICY,
 } from "@/lib/scoring/__tests__/fixtures";
+import type { Database } from "@/lib/supabase/types";
 import { assessOpenRound, missingSettingsMessage, OPEN_ROUND_MESSAGES } from "./open-round";
 import { createDemoScoringRepository, type OpenRoundInput, type ScoringRoundSeed } from "./scoring";
 
@@ -518,5 +521,237 @@ describe("demo scoring repository opening a round", () => {
     await expect(settingsRepo.openRound("tournament-1", missingInput)).rejects.toThrow(
       OPEN_ROUND_MESSAGES.missingSettingsPrefix + "required cards.",
     );
+  });
+});
+
+type Row = Record<string, unknown>;
+
+interface Chain {
+  select: () => Chain;
+  eq: (column: string, value: unknown) => Chain;
+  in: () => Chain;
+  is: () => Chain;
+  order: () => Chain;
+  limit: () => Chain;
+  maybeSingle: () => Promise<{ data: Row | null; error: null }>;
+  then: (
+    resolve: (value: { data: Row[]; error: null }) => unknown,
+    reject?: (reason: unknown) => unknown,
+  ) => Promise<unknown>;
+}
+
+const WIRE_ROUND: Row = {
+  id: TEST_COURSE.roundId,
+  tournament_id: "t1",
+  day_number: 1,
+  status: "open",
+  required_cards: 2,
+  allow_provisional_single_card: true,
+  min_ocr_confidence: 0.85,
+  tie_break_policy_id: null,
+  finalization_authority: "organizer",
+  rules_version: "rules-v1",
+  provisional_publication: "off",
+  stroke_min: 1,
+  stroke_max: 20,
+};
+
+const WIRE_HOLES: Row[] = TEST_COURSE.holes.map((hole) => ({
+  number: hole.number,
+  par: hole.par,
+  stroke_index: hole.strokeIndex,
+}));
+
+const WIRE_TEE: Row = {
+  id: TEST_COURSE.tee.id,
+  name: TEST_COURSE.tee.name,
+  course_rating: TEST_COURSE.tee.courseRating,
+  slope: TEST_COURSE.tee.slope,
+  par: TEST_COURSE.tee.par,
+};
+
+const WIRE_PLAYER_ID = "p1";
+
+/**
+ * A fake client for the card writes, in the style of `supabase/scoring-day.test.ts`.
+ *
+ * It stores the row `submit_scorecard` would insert only so the repository's refresh can return it;
+ * the revision number and its idempotency are the SQL function's contract, not this fake's.
+ */
+function fakeScoringClient(seedCards: Row[] = [], seedEntries: Row[] = []) {
+  const cards = seedCards.map((card) => ({ ...card }));
+  const entries = seedEntries.map((entry) => ({ ...entry }));
+  const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+
+  function rowsFor(table: string): Row[] {
+    switch (table) {
+      case "competition_rounds":
+        return [WIRE_ROUND];
+      case "round_entries":
+        return [
+          {
+            id: "entry-p1",
+            round_id: TEST_COURSE.roundId,
+            registration_id: "reg-p1",
+            status: "active",
+            flight_id: null,
+          },
+        ];
+      case "registrations":
+        return [{ id: "reg-p1", player_id: WIRE_PLAYER_ID, frozen_index: 10 }];
+      case "players":
+        return [{ id: WIRE_PLAYER_ID, full_name: "Alpha One" }];
+      case "holes":
+        return WIRE_HOLES;
+      case "tees":
+        return [WIRE_TEE];
+      case "scorecards":
+        return cards;
+      case "scorecard_entries":
+        return entries;
+      default:
+        // Handicap snapshots, card images, resolutions and publications are empty for this fixture.
+        return [];
+    }
+  }
+
+  function query(table: string): Chain {
+    const chain: Chain = {
+      select: () => chain,
+      eq: () => chain,
+      in: () => chain,
+      is: () => chain,
+      order: () => chain,
+      limit: () => chain,
+      maybeSingle: async () => {
+        if (table === "tournaments") {
+          return {
+            data: { id: "t1", club_id: "club-1", course_id: "course-1" },
+            error: null,
+          };
+        }
+        return { data: rowsFor(table)[0] ?? null, error: null };
+      },
+      then: (resolve, reject) =>
+        Promise.resolve({ data: rowsFor(table), error: null }).then(resolve, reject),
+    };
+    return chain;
+  }
+
+  const client = {
+    from: (table: string) => query(table),
+    auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      rpcCalls.push({ name, args });
+      if (name !== "submit_scorecard") return { data: null, error: null };
+
+      const scorerId = String(args.p_scorer_id);
+      const previous = cards.filter(
+        (card) => card.player_id === WIRE_PLAYER_ID && card.scorer_id === scorerId,
+      );
+      const revision = Math.max(0, ...previous.map((card) => Number(card.revision))) + 1;
+      const id = `card-${cards.length + 1}`;
+      cards.push({
+        id,
+        round_id: TEST_COURSE.roundId,
+        player_id: WIRE_PLAYER_ID,
+        scorer_id: scorerId,
+        source: args.p_source,
+        revision,
+        status: "submitted",
+        written_total: args.p_written_total ?? null,
+        capture_key: args.p_capture_key,
+        submitted_at: "2026-11-12T00:00:00.000Z",
+      });
+      for (const entry of Array.isArray(args.p_entries) ? (args.p_entries as Row[]) : []) {
+        entries.push({
+          scorecard_id: id,
+          hole_number: entry.hole,
+          strokes: entry.strokes,
+          confidence: entry.confidence,
+          manually_confirmed: entry.manually_confirmed,
+        });
+      }
+      return { data: id, error: null };
+    },
+  };
+
+  return { client: client as unknown as SupabaseClient<Database>, rpcCalls };
+}
+
+describe("connected scoring repository writing a card", () => {
+  it("sends a first card with its capture key and records no correction", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    const view = await repo.submitCard("t1", {
+      playerId: WIRE_PLAYER_ID,
+      scorerId: "p2",
+      source: "manual",
+      entries: parEntries(),
+      writtenTotal: 72,
+      captureKey: "capture-first",
+    });
+
+    expect(fake.rpcCalls.map((call) => call.name)).toEqual(["submit_scorecard"]);
+    expect(fake.rpcCalls[0]?.args).toMatchObject({
+      p_round_entry: "entry-p1",
+      p_capture_key: "capture-first",
+    });
+    expect(view.cards).toEqual([
+      expect.objectContaining({ id: "card-1", revision: 1, status: "submitted" }),
+    ]);
+  });
+
+  it("writes a correction as a new revision and records its reason", async () => {
+    const reason = "Hole 4 was written as 4; the card says 5.";
+    const fake = fakeScoringClient(
+      [
+        {
+          id: "card-1",
+          round_id: TEST_COURSE.roundId,
+          player_id: WIRE_PLAYER_ID,
+          scorer_id: "p2",
+          source: "manual",
+          revision: 1,
+          status: "approved",
+          written_total: 72,
+          capture_key: "capture-first",
+          submitted_at: "2026-11-11T00:00:00.000Z",
+        },
+      ],
+      parEntries().map((entry) => ({
+        scorecard_id: "card-1",
+        hole_number: entry.hole,
+        strokes: entry.strokes,
+        confidence: entry.confidence,
+        manually_confirmed: entry.manuallyConfirmed,
+      })),
+    );
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    const view = await repo.submitCard("t1", {
+      playerId: WIRE_PLAYER_ID,
+      scorerId: "p2",
+      source: "manual",
+      entries: parEntries().map((entry) => (entry.hole === 4 ? { ...entry, strokes: 6 } : entry)),
+      writtenTotal: 73,
+      captureKey: "capture-correction",
+      reason,
+    });
+
+    expect(fake.rpcCalls.map((call) => call.name)).toEqual([
+      "submit_scorecard",
+      "record_scorecard_correction",
+    ]);
+    expect(fake.rpcCalls[0]?.args).toMatchObject({ p_capture_key: "capture-correction" });
+    // A correction is its own revision, so it never reuses the original card's key.
+    expect(fake.rpcCalls[0]?.args.p_capture_key).not.toBe("capture-first");
+    // The reason belongs to the revision that was just written, not to the card being corrected.
+    expect(fake.rpcCalls[1]?.args).toEqual({ p_card: "card-2", p_reason: reason });
+    expect(view.cards).toEqual([
+      expect.objectContaining({ id: "card-1", revision: 1, status: "approved" }),
+      expect.objectContaining({ id: "card-2", revision: 2, status: "submitted" }),
+    ]);
   });
 });
