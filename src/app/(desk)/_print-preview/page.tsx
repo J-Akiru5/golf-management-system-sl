@@ -132,6 +132,7 @@ export default function PrintPreview() {
 
       <StartSheet
         title="Start sheet · preview"
+        eventName="Print Preview Invitational (fictional)"
         subtitle="Print Preview Invitational (fictional) · Saturday, 14 November 2026"
         groups={PREVIEW_GROUPS}
         startFormat="shotgun"
