@@ -238,9 +238,9 @@ export function createSupabaseScoringRepository(
     const { data: cardImages, error: cardImageError } = cardIds.length
       ? await db.from("scorecard_images").select("scorecard_id, sha256").in("scorecard_id", cardIds)
       : { data: [], error: null };
-    if (cardImageError) {
-      throw new Error(`Could not load card photos: ${cardImageError.message}`);
-    }
+    // The fingerprints only feed the same-photo notice. If they cannot be read, the cards still
+    // load and that one notice is skipped; scoring must not stop for it.
+    const cardImageRows = cardImageError ? [] : (cardImages ?? []);
 
     const cards: Scorecard[] = (cardRows ?? []).map((card) => ({
       id: card.id,
@@ -252,8 +252,7 @@ export function createSupabaseScoringRepository(
       status: card.status as CardStatus,
       writtenTotal: card.written_total,
       submittedAt: card.submitted_at,
-      imageSha256:
-        (cardImages ?? []).find((image) => image.scorecard_id === card.id)?.sha256 ?? null,
+      imageSha256: cardImageRows.find((image) => image.scorecard_id === card.id)?.sha256 ?? null,
       entries: (cardEntries ?? [])
         .filter((entry) => entry.scorecard_id === card.id)
         .map((entry) => ({
