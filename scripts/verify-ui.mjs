@@ -286,10 +286,8 @@ await scoresCards.getByRole("button", { name: "Edit" }).first().click();
 await expect(page.locator('section[aria-labelledby="score-entry"]')).toBeVisible({
   timeout: 30000,
 });
-check(
-  "Review Edit opens the card as a correction",
-  (await page.getByText(/Correcting revision/).count()) > 0,
-);
+await expect(page.getByText(/Correcting revision/)).toBeVisible({ timeout: 15000 });
+check("Review Edit opens the card as a correction", true);
 await page.getByLabel("Correction reason").fill("Corrected the second hole after checking the card.");
 await page.locator("#hole-2").fill("6");
 await page.getByRole("button", { name: "Submit correction" }).click();
