@@ -38,13 +38,25 @@ const playerRow = (over: Partial<PlayerRow> = {}): PlayerRow => ({
 });
 
 describe("name handling", () => {
-  it("splits on the last word and joins back losslessly", () => {
+  it("splits a name without a comma on the last word", () => {
     expect(splitName("Carmela Dela Cruz Reyes")).toEqual({
       firstName: "Carmela Dela Cruz",
       lastName: "Reyes",
     });
     expect(splitName("Fe")).toEqual({ firstName: "Fe", lastName: "" });
-    expect(joinName("Carmela Dela Cruz", "Reyes")).toBe("Carmela Dela Cruz Reyes");
+  });
+
+  it("reads SURNAME, GIVEN with the surname first", () => {
+    expect(splitName("ADORIO, RONNEL")).toEqual({ firstName: "RONNEL", lastName: "ADORIO" });
+    expect(splitName("DE LA CRUZ, MARIA CLARA")).toEqual({
+      firstName: "MARIA CLARA",
+      lastName: "DE LA CRUZ",
+    });
+  });
+
+  it("joins into the club form, surname first", () => {
+    expect(joinName("Carmela Dela Cruz", "Reyes")).toBe("REYES, CARMELA DELA CRUZ");
+    expect(joinName("RONNEL", "ADORIO")).toBe("ADORIO, RONNEL");
   });
 });
 

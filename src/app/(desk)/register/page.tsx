@@ -52,6 +52,7 @@ import {
   type RegistrationEntry,
 } from "@/lib/data/types";
 import { displayName, fmtIndex, photoOf } from "@/lib/format";
+import { formatName, matchesText } from "@/lib/names";
 import { nextPairNumber } from "@/lib/pairs/pairs";
 import { groupIntoTeams } from "@/lib/pairs/registration-teams";
 import { shrinkPhoto } from "@/lib/photo";
@@ -253,7 +254,7 @@ function RegisterDesk() {
   const rowMatchesQuery = useCallback(
     ({ e, p }: ListRow) =>
       !listQueryText ||
-      p.name.toLowerCase().includes(listQueryText) ||
+      matchesText(p.name, listQueryText) ||
       (p.ngapId ?? "").toLowerCase().includes(listQueryText) ||
       e.role.includes(listQueryText),
     [listQueryText],
@@ -1320,8 +1321,8 @@ function RegisterDesk() {
                   firstName: draft.firstName,
                   lastName: draft.lastName,
                   nickname: draft.nickname || null,
-                  name: displayName(`${draft.firstName} ${draft.lastName}`.trim() || "New player"),
-                  fullName: `${draft.firstName} ${draft.lastName}`.trim() || "New player",
+                  name: displayName(formatName(draft.firstName, draft.lastName) || "New player"),
+                  fullName: formatName(draft.firstName, draft.lastName) || "New player",
                   birthdate: draft.birthdate || null,
                   gender: draft.gender,
                   homeCourse: draft.homeCourse || null,
