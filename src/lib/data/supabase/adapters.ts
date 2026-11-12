@@ -45,6 +45,7 @@ import {
 import type { Database, Json } from "@/lib/supabase/types";
 import { detachDroppedClassGroups } from "./classes";
 import { toPlayerInsert, toRegistrationAnswers } from "./domain";
+import { refreshPublicPage } from "./draw-sync";
 import { createSupabaseEmailRepository } from "./email";
 import { deleteEventLogo, saveEventLogo } from "./event-logo";
 import {
@@ -254,6 +255,18 @@ export function createSupabaseAdapters(
    * the rejection for the caller. The queue still reports it too, so the session bar and the caller
    * cannot disagree. A screen that does not wait is unaffected.
    */
+  /**
+   * Says that what a public page shows may have changed, so the next visitor reads the new state.
+   *
+   * Any desk write can do that: a name or an index on the roster, a tee time, a playing day, a
+   * player's public photo, a release, a published round. Every writer calls this, whether it goes
+   * through `queuedWrite` or straight to the database. It is never awaited, because a save must not
+   * wait on a cache, and a failed clear only costs the 30-second window.
+   */
+  function publicDataChanged() {
+    void refreshPublicPage(client);
+  }
+
   function queuedWrite(work: () => Promise<void>): Promise<void> {
     let resolveWrite!: () => void;
     let rejectWrite!: (error: unknown) => void;
@@ -274,6 +287,7 @@ export function createSupabaseAdapters(
     enqueue(async () => {
       try {
         await work();
+        publicDataChanged();
         resolveWrite();
       } catch (error) {
         rejectWrite(error);
@@ -439,6 +453,7 @@ export function createSupabaseAdapters(
           .eq("club_id", clubId)
           .eq("id", id);
         fail("Could not save the player", error);
+        publicDataChanged();
       });
     },
     linkAccount: async (id, email) => {
@@ -499,6 +514,7 @@ export function createSupabaseAdapters(
           .remove([stalePublic])
           .catch(() => undefined);
       }
+      publicDataChanged();
       dispatch({
         type: "updatePlayer",
         id,
@@ -525,6 +541,7 @@ export function createSupabaseAdapters(
       await setPlayerPhotoConsent(client, clubId, id, null, null, null, null);
       if (privatePath) await removeStoredPhoto(client, clubId, privatePath);
       if (publicPath) await client.storage.from("player-photos-public").remove([publicPath]);
+      publicDataChanged();
       dispatch({
         type: "updatePlayer",
         id,
@@ -559,6 +576,7 @@ export function createSupabaseAdapters(
           null,
           null,
         );
+        publicDataChanged();
         dispatch({
           type: "updatePlayer",
           id,
@@ -603,6 +621,7 @@ export function createSupabaseAdapters(
         }
         throw error;
       }
+      publicDataChanged();
       dispatch({
         type: "updatePlayer",
         id,
@@ -625,6 +644,7 @@ export function createSupabaseAdapters(
       }
       const result = data as unknown as { ok?: boolean; message?: string } | null;
       if (!result?.ok) throw new Error(result?.message ?? "The membership was refused.");
+      publicDataChanged();
       dispatch({
         type: "updatePlayer",
         id,
@@ -753,6 +773,7 @@ export function createSupabaseAdapters(
       }
       const result = data as unknown as { ok?: boolean; message?: string } | null;
       if (!result?.ok) throw new Error(result?.message ?? "The day rule was refused.");
+      publicDataChanged();
       const tournament = state.tournaments.find((t) => t.id === tournamentId);
       if (tournament) {
         dispatch({
@@ -789,6 +810,7 @@ export function createSupabaseAdapters(
           "This event has no stored row for that day. Save the event dates in Settings first.",
         );
       }
+      publicDataChanged();
       dispatch({ type: "setDayStart", tournamentId, dayNumber, time });
       options.onSaved();
     },
@@ -820,6 +842,7 @@ export function createSupabaseAdapters(
           "This event has no stored row for that day. Save the event dates in Settings first.",
         );
       }
+      publicDataChanged();
       dispatch({ type: "setDayPmStart", tournamentId, dayNumber, time });
       options.onSaved();
     },
@@ -1176,6 +1199,7 @@ export function createSupabaseAdapters(
       // outside this event, is not counted, so the screen reports the database's answer.
       const count = typeof data === "number" ? data : Number(data ?? 0);
       if (!Number.isFinite(count)) throw new Error("The database did not say how many changed.");
+      publicDataChanged();
       options.onSaved();
       return count;
     },
@@ -1196,6 +1220,7 @@ export function createSupabaseAdapters(
       }
       const result = data as unknown as { ok?: boolean; message?: string } | null;
       if (!result?.ok) throw new Error(result?.message ?? "The playing days were refused.");
+      publicDataChanged();
       const entry = state.entries.find((item) => item.id === entryId);
       const caddieByDay = { ...(entry?.caddieByDay ?? {}) };
       for (const key of Object.keys(caddieByDay)) {
@@ -1227,6 +1252,7 @@ export function createSupabaseAdapters(
       }
       const result = data as unknown as { ok?: boolean; message?: string } | null;
       if (!result?.ok) throw new Error(result?.message ?? "The tee time was refused.");
+      publicDataChanged();
       const entry = state.entries.find((item) => item.id === entryId);
       dispatch({
         type: "updateEntry",
@@ -1351,6 +1377,8 @@ export function createSupabaseAdapters(
           message: result.message ?? "The import was refused. Nothing was written.",
         };
       }
+      // The imported indexes are shown on the roster and used by the draw.
+      publicDataChanged();
       if (result.partial) {
         options.onError(
           `${result.rejected ?? 0} row(s) were rejected and recorded in the batch. The valid rows were committed.`,

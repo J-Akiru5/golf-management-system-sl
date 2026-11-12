@@ -14,6 +14,7 @@ import type {
   ScoringRoundView,
   SubmitCardInput,
 } from "@/lib/data/scoring";
+import { refreshPublicPage } from "@/lib/data/supabase/draw-sync";
 import { displayName } from "@/lib/format";
 import {
   buildStandings,
@@ -114,6 +115,12 @@ export function createSupabaseScoringRepository(
   options: SupabaseScoringOptions,
 ): ScoringRepository {
   const db = options.client as unknown as SupabaseClient<Database>;
+  /**
+   * The scoring client is typed from the generated schema, which is a step ahead of the app's
+   * Database type; the public clear only needs `auth.getSession`, so the cast stays local.
+   */
+  const publicDataChanged = () =>
+    void refreshPublicPage(db as unknown as SupabaseClient<AppDatabase>);
 
   async function roundFor(
     tournamentId: string,
@@ -749,6 +756,8 @@ export function createSupabaseScoringRepository(
         p_note: note,
       });
       if (error) throw new Error(`Could not publish the round: ${error.message}`);
+      // A publication changes the team leaderboard, the published rounds and the player's card.
+      publicDataChanged();
       return refresh(tournamentId, dayNumber);
     },
 
@@ -759,6 +768,8 @@ export function createSupabaseScoringRepository(
         p_note: note,
       });
       if (error) throw new Error(`Could not finalize the round: ${error.message}`);
+      // Final results replace the provisional ones on the same public tables.
+      publicDataChanged();
       return refresh(tournamentId, dayNumber);
     },
   };
