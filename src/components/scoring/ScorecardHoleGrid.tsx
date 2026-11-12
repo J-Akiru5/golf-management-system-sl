@@ -228,7 +228,9 @@ export function ScorecardHoleGrid({
   const back = holes.filter((hole) => hole.number >= 10);
   return (
     <div className="grid gap-2">
-      <p className="hint m-0 sm:hidden">Swipe the card sideways to reach every hole.</p>
+      <p className="hint m-0 sm:hidden print:hidden">
+        Swipe the card sideways to reach every hole.
+      </p>
       <NineTable
         label="OUT"
         rows={front}

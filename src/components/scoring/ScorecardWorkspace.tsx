@@ -1,8 +1,9 @@
 "use client";
 
-import { CheckCircle2, Loader2, ScanLine } from "lucide-react";
+import { CheckCircle2, Loader2, Printer, ScanLine } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { CardContextLine } from "@/components/scoring/CardContextLine";
 import { HandicapSummary } from "@/components/scoring/HandicapSummary";
 import { PlayerLink } from "@/components/scoring/PlayerLink";
 import { ScorecardHoleGrid } from "@/components/scoring/ScorecardHoleGrid";
@@ -13,6 +14,7 @@ import type { ClubRole } from "@/lib/auth/member";
 import { playerProfileHref } from "@/lib/data/player-profile";
 import type { ScoringPlayer, ScoringRoundView } from "@/lib/data/scoring";
 import type { HoleDefinition, Scorecard } from "@/lib/scoring";
+import { buildCardContext } from "@/lib/scoring/card-context";
 import type { ScanCardReview } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import {
@@ -20,6 +22,15 @@ import {
   scorecardReadiness,
   summariseScorecard,
 } from "@/lib/scoring/workspace";
+
+export interface ScorecardContext {
+  className?: string | null;
+  partnerName?: string | null;
+  teamHandicap?: number | null;
+  teeName?: string | null;
+  groupLabel?: string | null;
+  cardHandicap?: number | null;
+}
 
 export interface ScorecardWorkspaceProps {
   tournamentId: string;
@@ -32,6 +43,8 @@ export interface ScorecardWorkspaceProps {
   selectedScorer: ScoringPlayer | null;
   editingCard: Scorecard | null;
   editingPlayerName: string;
+  /** Class, partner, team handicap, tee, group and the card's HDCP box, when the caller has them. */
+  context?: ScorecardContext;
   profileRole?: ClubRole | null;
   canOpenProfile: boolean;
   busy: boolean;
@@ -74,6 +87,7 @@ export function ScorecardWorkspace({
   selectedScorer,
   editingCard,
   editingPlayerName,
+  context,
   profileRole,
   canOpenProfile,
   busy,
@@ -146,6 +160,18 @@ export function ScorecardWorkspace({
     pointsByHole[hole.hole] =
       summary.pointsKind === "net" ? (hole.netPoints ?? 0) : hole.grossPoints;
   }
+
+  const contextParts = buildCardContext({
+    dayNumber: view.dayNumber,
+    markerName: selectedScorer?.playerName ?? null,
+    playingHandicap: selectedPlayer?.handicap?.playingHandicap ?? null,
+    cardHandicap: context?.cardHandicap ?? null,
+    className: context?.className ?? null,
+    partnerName: context?.partnerName ?? null,
+    teamHandicap: context?.teamHandicap ?? null,
+    teeName: context?.teeName ?? null,
+    groupLabel: context?.groupLabel ?? null,
+  });
 
   return (
     <div className="grid gap-4">
@@ -274,20 +300,23 @@ export function ScorecardWorkspace({
 
       <section
         id="scorecard-sheet"
+        data-print="scorecard"
         aria-label="Scorecard"
-        className="rounded-lg border border-line bg-surface-raised p-3 sm:p-5"
+        className="print-sheet-scope relative rounded-lg border border-line bg-surface-raised p-3 sm:p-5"
       >
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
+        <img
+          src="/brand/teeline-horizontal-primary.svg"
+          alt="TeeLine Golf"
+          className="hidden print:absolute print:top-0 print:right-0 print:block print:w-[25mm]"
+        />
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3 print:items-start print:pr-[30mm] print:pb-2">
           <div className="grid gap-0.5">
             <h2 className="text-[18px] font-bold leading-tight text-ink">
               {selectedPlayer?.playerName ?? "Select a player"}
             </h2>
-            <p className="hint m-0">
-              Day {view.dayNumber} · Marker {selectedScorer?.playerName ?? "—"} · Playing handicap{" "}
-              {selectedPlayer?.handicap?.playingHandicap ?? "—"}
-            </p>
+            <CardContextLine parts={contextParts} />
           </div>
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-end gap-3 print:hidden">
             <label className="field w-36">
               <span>Total on card</span>
               <input
@@ -301,6 +330,10 @@ export function ScorecardWorkspace({
                 disabled={busy}
               />
             </label>
+            <Button variant="ghost" size="sm" className="min-h-11" onClick={() => window.print()}>
+              <Printer className="size-4" aria-hidden="true" />
+              Print card
+            </Button>
             {scanned ? (
               <label className="flex min-h-11 items-center gap-2 text-[12px]">
                 <input
@@ -336,7 +369,7 @@ export function ScorecardWorkspace({
         </div>
 
         {scanned && (scan.check > 0 || scan.blank > 0) && (
-          <p id="scan-check-hint" className="hint m-0 mt-2">
+          <p id="scan-check-hint" className="hint m-0 mt-2 print:hidden">
             Amber cells were read with low confidence, and red cells were blank on the photo.
             Compare each one with the paper card. Correcting a cell marks it as changed; leaving a
             weak read as it is sends it to review unconfirmed.
@@ -377,7 +410,7 @@ export function ScorecardWorkspace({
           </span>
         </div>
 
-        <p className="hint m-0 mt-1">
+        <p className="hint m-0 mt-1 print:hidden">
           {writtenMatches === null
             ? "Total on card is optional. Enter the total written on the paper card to compare it with the numbers above."
             : writtenMatches
@@ -386,7 +419,7 @@ export function ScorecardWorkspace({
         </p>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 print:hidden">
             {(editingCard || scanned) && (
               <Button variant="ghost" size="sm" onClick={onStartAnother} disabled={busy}>
                 {editingCard ? "Cancel correction" : "Start another card"}
