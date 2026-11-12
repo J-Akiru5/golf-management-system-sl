@@ -10,6 +10,22 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **A pick-up (an X on the card) scores 0 and counts as a played hole.** The scoring engine now holds
+  a hole with no stroke count: it scores 0 gross and 0 net points, counts toward holes played, stays
+  out of the stroke totals, and a card with an X skips the written-total comparison because the
+  numbers cannot add up to it. A typed `X` is read as a pick-up by the entry code. Nothing on the desk
+  lets a person type an X yet, and the data layer does not save one yet. **Migration written, not
+  applied:** `20261113000200_pickup_scores.sql` adds `picked_up` to three scoring tables and replaces
+  seven scoring functions so approval, canonical scores, results and the published card carry the
+  flag. It changes existing tables and functions, so it waits for the owner's approval by name.
+- **The scan inbox has its database and its rules, but no screen yet.** The inbox holds photographed
+  cards that are not scorecards yet and moves each one through uploaded, read, matched, confirmed and
+  card created (or set aside). The app assigns the marker from the other team in the group and the desk
+  can change it; the desk confirms the player. The rules are pure functions in
+  `src/lib/scoring/inbox` (state changes, what blocks a confirm, marker assignment, duplicate photos in
+  a batch). **Migration written, not applied:** `20261113000100_scorecard_scans.sql` adds one new table
+  with member-read security and seven functions limited to the owner, organizers and the desk. It is
+  additive and waits for the owner's approval by name.
 - **The desk shows each player's class name.** The scorecard line reads `Class A` for the player on
   screen, and the standings table prints the class name under each player instead of the stored
   flight id. A player with no class reads `Class Not set` on the card and `No class` in the table.
