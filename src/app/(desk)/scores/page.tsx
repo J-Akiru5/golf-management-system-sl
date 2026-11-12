@@ -939,7 +939,8 @@ export default function ScoresPage() {
                         return sum + (Number.isInteger(value) ? value : 0);
                       }, 0)}
                     </b>{" "}
-                    -+ par <b className="mono">{totalPar}</b>
+                    -+ TOTAL <b className="mono">{writtenTotal}</b> -+ par{" "}
+                    <b className="mono">{totalPar}</b>
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {(editingCard || scanned) && (
