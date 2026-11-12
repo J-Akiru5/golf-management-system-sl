@@ -136,6 +136,8 @@ export const tl: Dictionary = {
       updated: "Bersyon {version}",
       empty: "Wala pang inilathalang resulta ang club para sa round na ito.",
       emptyAll: "Wala pang inilathalang resulta ang club.",
+      loadFailed: "Hindi ma-load ang resulta ngayon. Ayos lang ang entry mo. Subukan muli mamaya.",
+      retry: "Subukan muli",
       points: "pts",
       strokes: "strokes",
       you: "Ikaw",
@@ -637,6 +639,7 @@ export const tl: Dictionary = {
   },
   profile: {
     title: "Profile",
+    loading: "Nilo-load ang profile mo…",
     subtitle: "Ang nakatala sa club tungkol sa iyo, at paano ka nila maaabot.",
     back: "Bumalik sa My golf",
     optional: "Opsyonal",

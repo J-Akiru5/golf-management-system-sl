@@ -137,6 +137,8 @@ export const hil: Dictionary = {
       updated: "Bersyon {version}",
       empty: "Wala pa ginpahayag sang club ang resulta para sa sini nga round.",
       emptyAll: "Wala pa sing resulta nga ginpahayag ang club.",
+      loadFailed: "Indi ma-load ang resulta subong. Maayo man ang entry mo. Tilawi liwat later.",
+      retry: "Tilawi liwat",
       points: "pts",
       strokes: "strokes",
       you: "Ikaw",
@@ -641,6 +643,7 @@ export const hil: Dictionary = {
   },
   profile: {
     title: "Profile",
+    loading: "Ginakarga ang profile mo…",
     subtitle: "Ang nakarekord sa club parte sa imo, kag paano ka nila maabot.",
     back: "Balik sa My golf",
     optional: "Opsyonal",
