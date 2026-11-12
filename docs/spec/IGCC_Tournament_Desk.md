@@ -209,7 +209,18 @@ Every table carries `club_id` with row-level security from day one. Adding it no
 - Photo at the desk: take it with the tablet or phone camera, or upload one the player sent
 - Pairings board: drag, lock, re-run
 - Print: start sheet, pairings, scorecards with handicap dots
-- Score encoding and results (Phase 2)
+- Scorecard desk:
+  - `/scores` is the single-card scoring input. The top bar holds the searchable player picker, the
+    marker picker, the readiness state and the submit/correction actions. The body pairs the card
+    photo or scan with the 18-hole grid, the handicap strip and the live gross/net Stableford,
+    OUT/IN, holes-entered and written-total summary. Scan fills the editor; bulk JSON import is on
+    Review.
+  - `/scores/review` holds the cards list, approvals, rejections, revocations, conflicts, bulk JSON
+    import and round setup.
+  - `/scores/results` holds gross/net standings, provisional publication and finalization.
+  - Selecting a player loads their current card for correction; a new card starts when none exists.
+    Readiness to submit requires 18 valid holes, a player and a different marker, no blocking
+    validation issue and no unchecked low-confidence cell. Corrections require a reason.
 
 ### Players
 

@@ -194,7 +194,7 @@ export function ScorecardImportPanel({
     setResult(null);
     try {
       // The page could have moved to another event or round since the preview.
-      const current = await scoring.loadRound(tournament.id);
+      const current = await scoring.loadRound(tournament.id, view.dayNumber);
       if (!current || current.roundId !== view.roundId) {
         setError(
           "The Scores screen is showing a different round from the one this page would write to. Reload the page and open the round again.",
