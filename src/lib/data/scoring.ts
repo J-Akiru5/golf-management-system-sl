@@ -54,6 +54,8 @@ export interface ScoringPublication {
 export interface ScoringRoundSeed {
   roundId: string;
   tournamentId: string;
+  /** The playing day. The demo defaults to day 1. */
+  dayNumber?: number;
   course: RoundCourse;
   policy: VerificationPolicy;
   players: readonly ScoringPlayerSeed[];
@@ -86,6 +88,8 @@ export interface ScoringDrawSeed {
 export interface ScoringRoundView {
   roundId: string;
   tournamentId: string;
+  /** The playing day this round belongs to. */
+  dayNumber: number;
   course: RoundCourse;
   policy: VerificationPolicy;
   players: ScoringPlayer[];
@@ -230,6 +234,7 @@ export function createDemoScoringRepository(
     return {
       roundId: seed.roundId,
       tournamentId: seed.tournamentId,
+      dayNumber: seed.dayNumber ?? 1,
       course: seed.course,
       policy,
       players,

@@ -365,6 +365,7 @@ export function createSupabaseScoringRepository(
     return {
       roundId: round.id,
       tournamentId: round.tournament_id,
+      dayNumber: round.day_number,
       course,
       policy,
       players: scoringPlayers,

@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
+  FileJson,
   Flag,
   Pencil,
   RotateCcw,
@@ -19,6 +20,7 @@ import { HandicapSummary } from "@/components/scoring/HandicapSummary";
 import { OpenRoundPanel } from "@/components/scoring/OpenRoundPanel";
 import { PlayerLink } from "@/components/scoring/PlayerLink";
 import { ReaderAccuracyLine } from "@/components/scoring/ReaderAccuracy";
+import { ScorecardImportPanel } from "@/components/scoring/ScorecardImportPanel";
 import { ScorecardScan } from "@/components/scoring/ScorecardScan";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
@@ -485,6 +487,32 @@ export default function ScoresPage() {
               />
             </RoleGate>
           </SectionCard>
+
+          <details className="card" id="score-import">
+            <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-2">
+              <FileJson className="size-4 text-fairway" aria-hidden="true" />
+              <span className="font-semibold">Import cards from JSON</span>
+              <span className="hint">
+                For a transcription made outside the app. Every card is checked first and still
+                needs approval.
+              </span>
+            </summary>
+            <div className="mt-3">
+              <RoleGate
+                role={member?.role}
+                allow={["owner", "organizer", "desk"]}
+                mode="disable"
+                disabledReason="Only club staff can import cards."
+              >
+                <ScorecardImportPanel
+                  view={view}
+                  roundState={roundState}
+                  busy={busy}
+                  onImported={setView}
+                />
+              </RoleGate>
+            </div>
+          </details>
 
           <div className="grid items-start gap-6 xl:grid-cols-2">
             <RoleGate
