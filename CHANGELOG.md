@@ -10,6 +10,13 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **Both partners' scorecards open from the team leaderboard row.** A Scorecards button shows each
+  partner's frozen card in the paper-card layout (a new reusable `PaperScorecard`). The row shows the
+  team's accumulated Gross Stableford points and each partner's own net and gross points. No
+  migration.
+- **The landing page shows the leaderboard.** After the "For players" section: as of Day N of the
+  event, in Philippine time, with a Provisional or Final badge, the top 5 teams and a link to the
+  full leaderboard. It appears only when the leaderboard is released. No migration.
 - **Player names read one way and search finds them.** Names are `SURNAME, GIVEN`. Search ignores
   accents, capitals, punctuation and word order across the desk, registration, staff app and public
   programme. The player edit form no longer reads `ADORIO, RONNEL` as first name `ADORIO,`. No
@@ -21,6 +28,11 @@ Supabase project, because the code and the database are released separately.
   gross/net Stableford, OUT/IN, holes-entered and written-total summary. Cards, approvals, conflicts,
   bulk import and round setup are on `/scores/review`; standings, publication and finalization are
   on `/scores/results`. A correction saves a new revision and keeps the old one. No migration.
+
+### Fixed
+- **A pickup no longer blanks a team's gross.** The team row showed `—` for gross, net and to par
+  whenever one partner picked up a hole, and the public card dropped the pickup hole. The team row
+  now shows accumulated Gross Stableford points; the card keeps the hole and marks it X.
 
 ### Changed
 - **The scorecard prints as the paper card.** The desk shows two nine-hole tables with Hole, Par,

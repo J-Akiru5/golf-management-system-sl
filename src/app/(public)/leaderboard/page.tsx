@@ -10,6 +10,7 @@ import {
   loadRoundResults,
   type PublicResultRow,
 } from "@/lib/data/public-results";
+import { loadPublicTeamCards } from "@/lib/data/public-team-cards";
 import {
   buildTeamLeaderboard,
   filterTeams,
@@ -126,6 +127,12 @@ export default async function LeaderboardPage({
 
   const { teams, unpaired } = buildTeamLeaderboard(data);
   const shown = topTeams(rankTeams(filterTeams(teams, filters)), 10);
+  // Both partners' frozen cards for the teams on screen, so a row can open them without a trip back.
+  const cards = await loadPublicTeamCards(
+    client,
+    shown.flatMap((team) => team.playerIds),
+    data.tournamentId,
+  );
 
   return (
     <LeaderboardShell
@@ -135,6 +142,7 @@ export default async function LeaderboardPage({
     >
       <TeamLeaderboard
         teams={shown}
+        cards={cards}
         options={teamOptions(data)}
         filters={filters}
         rounds={data.rounds}

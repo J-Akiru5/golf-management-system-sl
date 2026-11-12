@@ -3,12 +3,15 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { LeaderboardTeaser } from "@/components/public/LeaderboardTeaser";
 import { MotionLayer } from "@/components/public/MotionLayer";
 import { TournamentCarousel } from "@/components/public/TournamentCarousel";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { loadPublicTeamLeaderboard } from "@/lib/data/public-team-leaderboard";
 import { loadPublicEvents } from "@/lib/data/supabase/public-events";
+import { loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
 import { demoOpenEvents } from "@/lib/public/demo-events";
 import {
   cutOffLabel,
@@ -18,6 +21,10 @@ import {
   type PublicEvent,
   VENUE_LABEL,
 } from "@/lib/public/highlights";
+import {
+  buildLeaderboardTeaser,
+  type LeaderboardTeaser as LeaderboardTeaserData,
+} from "@/lib/public/leaderboard-teaser";
 import {
   openGraphFor,
   SITE_DESCRIPTION,
@@ -54,6 +61,31 @@ async function openEvents(today: string): Promise<PublicEvent[]> {
     return (await loadPublicEvents(createSupabasePublicClient())) ?? [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * The top of the public leaderboard, or nothing.
+ *
+ * It follows the leaderboard page: the section appears only when the desk has released the
+ * leaderboard and the payload has at least one ranked team. A missing function, a held release or a
+ * failed leaderboard read all render no section. A landing page that guesses a score is worse than
+ * one with a section fewer.
+ */
+async function leaderboardTeaser(): Promise<LeaderboardTeaserData | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const client = createSupabasePublicClient();
+    const [boardResult, releaseResult] = await Promise.allSettled([
+      loadPublicTeamLeaderboard(client),
+      loadPublicReleaseState(client),
+    ]);
+    if (boardResult.status !== "fulfilled" || !boardResult.value) return null;
+    const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
+    if (release?.leaderboard === false) return null;
+    return buildLeaderboardTeaser(boardResult.value);
+  } catch {
+    return null;
   }
 }
 
@@ -154,7 +186,9 @@ const steps = [
 
 export default async function HomePage() {
   const today = todayInManila();
-  const events = await openEvents(today);
+  // Independent reads start together: the events strip and the leaderboard teaser do not wait on
+  // each other.
+  const [events, teaser] = await Promise.all([openEvents(today), leaderboardTeaser()]);
   const featured = events[0] ?? null;
 
   // Formatted here, on the server, so the stat strip cannot differ between browsers.
@@ -414,6 +448,8 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      {teaser && <LeaderboardTeaser teaser={teaser} />}
 
       <footer className="site-footer">
         <div className="footer-grid">
