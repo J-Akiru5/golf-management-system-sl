@@ -11,7 +11,7 @@ import { HeldNotice } from "@/components/public/HeldNotice";
 import { PairingsLive } from "@/components/public/PairingsLive";
 import { PlayerProfileSearch } from "@/components/public/PlayerProfileSearch";
 import { PlayerProfileView } from "@/components/public/PlayerProfileView";
-import { RulesOfPlay, TeeTimesBoard } from "@/components/public/ProgrammeView";
+import { RulesOfPlay } from "@/components/public/ProgrammeView";
 import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
@@ -366,12 +366,6 @@ export default async function PublicPairingsPage({
                   <PairingsView pairings={pairings} headingLevel="section" flightFilter you={you} />
                 </section>
               )}
-
-              {teeTimesHeld ? (
-                <HeldNotice compact testId="tee-times-held" />
-              ) : programme ? (
-                <TeeTimesBoard programme={programme} />
-              ) : null}
 
               {rulesHeld ? (
                 <HeldNotice compact testId="rules-held" />
