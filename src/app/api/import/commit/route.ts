@@ -1,4 +1,6 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
+import { PUBLIC_DATA_TAG } from "@/lib/data/supabase/public-cache";
 import { idempotencyKey, parseWorkbook } from "@/lib/import/file";
 import { validateDayColumns, validateMapping } from "@/lib/import/mapping";
 import { buildPreview, toCommitRows } from "@/lib/import/preview";
@@ -193,6 +195,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         : `The import was refused: ${error.message}`,
     );
   }
+
+  // The import writes players, registrations and tee times, which the public roster, tee times and
+  // pairings read. Drop the shared copies before this request answers.
+  revalidateTag(PUBLIC_DATA_TAG, "max");
 
   const result = (data ?? {}) as Record<string, unknown>;
   const batchId = typeof result.batchId === "string" ? result.batchId : "";
