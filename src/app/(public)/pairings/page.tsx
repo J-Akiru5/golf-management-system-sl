@@ -19,11 +19,7 @@ import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { type PublicReleaseState, toPublicPairings } from "@/lib/data/public";
-import {
-  loadPublicPlayerProfile,
-  type PublicPlayerProfileData,
-  profileTeeTimes,
-} from "@/lib/data/public-profile";
+import { loadPublicPlayerProfile, type PublicPlayerProfileData } from "@/lib/data/public-profile";
 import { parsePublicTab } from "@/lib/data/public-tabs";
 import {
   buildTeamLeaderboard,
@@ -39,6 +35,7 @@ import { loadPortal } from "@/lib/player/portal";
 import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
 import { pairingsSignature } from "@/lib/public/pairings-live";
 import { pairingsBackLink } from "@/lib/public/pairings-nav";
+import { publicProfileTeeTimes } from "@/lib/public/public-profile-tee-times";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { hasSupabaseAuthCookie } from "@/lib/supabase/cookies";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -301,7 +298,7 @@ export default async function PublicPairingsPage({
                     t={t}
                     teeTimes={
                       programme && !teeTimesHeld
-                        ? profileTeeTimes(programme, profile.player.name)
+                        ? publicProfileTeeTimes(programme, profile.player.name)
                         : []
                     }
                   />
@@ -363,7 +360,13 @@ export default async function PublicPairingsPage({
                       {skippedRows === 1 ? "1 row is" : `${skippedRows} rows are`} not shown.
                     </p>
                   )}
-                  <PairingsView pairings={pairings} headingLevel="section" flightFilter you={you} />
+                  <PairingsView
+                    pairings={pairings}
+                    headingLevel="section"
+                    flightFilter
+                    you={you}
+                    publicTimes
+                  />
                 </section>
               )}
 

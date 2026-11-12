@@ -20,6 +20,7 @@ import type {
 import { fmtTime, shortDate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { publicPhotoUrl } from "@/lib/photo";
+import { publicTeeTime } from "@/lib/public/public-tee-time";
 
 /** The signed-in player, when the page could work out who is reading. */
 export interface PairingsYou {
@@ -114,6 +115,11 @@ function writeStore(key: string, value: string): void {
  *
  * The words come from the i18n context. Outside the player/public layouts (the desk's publish
  * preview) the context falls back to English, which is what the organizer expects there.
+ *
+ * With `publicTimes`, a card leads with the session's one published time instead of the group's
+ * stored wave time. The desk's publish preview leaves it off, because the organizer is checking the
+ * draw itself. The session is still worked out from the stored time, so AM/PM, ordering and holes
+ * never change.
  */
 export function PairingsView({
   pairings,
@@ -121,6 +127,7 @@ export function PairingsView({
   headingLevel = "group",
   flightFilter = false,
   you = null,
+  publicTimes = false,
 }: {
   pairings: PublicPairings;
   searchable?: boolean;
@@ -130,6 +137,8 @@ export function PairingsView({
   headingLevel?: "group" | "section";
   /** The signed-in player, so their own group can be found and marked "You". */
   you?: PairingsYou | null;
+  /** Show one time per session on the public pages. Off for the desk's publish preview. */
+  publicTimes?: boolean;
 }) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
@@ -344,7 +353,17 @@ export function PairingsView({
       focusRequest !== null &&
       focusRequest.number === group.number &&
       focusRequest.day === dayOf(group);
-    const time = group.time.trim();
+    const dayNumber = dayOf(group);
+    const storedTime = group.time.trim();
+    // The session is read from the stored time exactly as the AM/PM split does, so the canonical
+    // time can never move a group to another session. An unreadable or empty time stays as it is.
+    const dayIndex = days.length > 0 ? days.findIndex((day) => day.dayNumber === dayNumber) : 0;
+    const session = storedTime
+      ? sessionForTime(storedTime, dayIndex, Math.max(1, days.length))
+      : null;
+    const sessionTime =
+      publicTimes && session ? publicTeeTime({ dayNumber, afternoon: session.key === "PM" }) : null;
+    const time = sessionTime ?? storedTime;
     const hole = groupLabel(group.startHole);
     return (
       <article
