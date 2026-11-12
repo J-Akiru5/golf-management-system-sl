@@ -55,3 +55,46 @@ describe("parseCardEntry", () => {
     expect(draft.entries.map((entry) => entry.hole)).toEqual(TEST_HOLES.map((hole) => hole.number));
   });
 });
+
+describe("parseCardEntry pick-ups", () => {
+  it("reads X, x and a padded X as a filled pick-up with no stroke count", () => {
+    const cells = parCells();
+    cells[1] = "X";
+    cells[2] = "x";
+    cells[3] = " X ";
+
+    const draft = parseCardEntry(TEST_HOLES, cells);
+
+    expect(draft.blankHoles).toEqual([]);
+    expect(draft.invalidHoles).toEqual([]);
+    for (const hole of [1, 2, 3]) {
+      expect(draft.entries.find((entry) => entry.hole === hole)).toMatchObject({
+        strokes: null,
+        pickedUp: true,
+      });
+    }
+  });
+
+  it("leaves pick-ups out of the written total", () => {
+    const cells = parCells();
+    cells[1] = "X";
+    cells[2] = "x";
+
+    const draft = parseCardEntry(TEST_HOLES, cells);
+
+    // Hole 1 par 4 and hole 2 par 4 add nothing.
+    expect(draft.writtenTotal).toBe(64);
+  });
+
+  it("still rejects other text, zero and a dash", () => {
+    const cells = parCells();
+    cells[1] = "XX";
+    cells[2] = "0";
+    cells[3] = "-";
+
+    const draft = parseCardEntry(TEST_HOLES, cells);
+
+    expect(draft.invalidHoles).toEqual([1, 2, 3]);
+    expect(draft.writtenTotal).toBeNull();
+  });
+});

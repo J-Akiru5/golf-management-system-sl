@@ -341,6 +341,118 @@ describe("multi-card reconciliation", () => {
     );
   });
 
+  it("verifies a hole when both cards report a pick-up", () => {
+    const cards = [
+      withHole(makeCard({ id: "card-a", scorerId: "scorer-a" }), 5, {
+        strokes: null,
+        pickedUp: true,
+      }),
+      withHole(makeCard({ id: "card-b", scorerId: "scorer-b" }), 5, {
+        strokes: null,
+        pickedUp: true,
+      }),
+    ];
+
+    const result = canonical(cards);
+
+    expect(at(result, 5)).toMatchObject({
+      status: "verified",
+      strokes: null,
+      pickedUp: true,
+      provenance: "agreement",
+      evidenceCardIds: ["card-a", "card-b"],
+    });
+    expect(result.counts.verified).toBe(18);
+    expect(result.complete).toBe(true);
+  });
+
+  it("flags a number against a pick-up as a conflict", () => {
+    const cards = [
+      makeCard({ id: "card-a", scorerId: "scorer-a" }),
+      withHole(makeCard({ id: "card-b", scorerId: "scorer-b" }), 5, {
+        strokes: null,
+        pickedUp: true,
+      }),
+    ];
+
+    const result = canonical(cards);
+    const hole = at(result, 5);
+
+    expect(hole).toMatchObject({
+      status: "conflict",
+      strokes: null,
+      provenance: null,
+      evidenceCardIds: ["card-a", "card-b"],
+    });
+    expect(hole?.note).toContain("pick-up");
+    expect(hole?.note).toContain("4 on card-a");
+    expect(result.counts).toEqual({ verified: 17, provisional: 0, conflict: 1, pending: 0 });
+  });
+
+  it("settles a hole as a pick-up when the desk resolves it that way", () => {
+    const cards = [
+      makeCard({ id: "card-a", scorerId: "scorer-a" }),
+      withHole(makeCard({ id: "card-b", scorerId: "scorer-b" }), 5, {
+        strokes: null,
+        pickedUp: true,
+      }),
+    ];
+    const resolution: Resolution = {
+      id: "res-1",
+      roundId: "round-1",
+      playerId: "player-1",
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      resolvedBy: "desk-anna",
+      resolvedAt: "2026-11-14T10:00:00.000Z",
+      reason: "The marker confirmed the player picked up.",
+      evidenceCardIds: ["card-a", "card-b"],
+      previousStrokes: null,
+    };
+
+    const result = canonical(cards, [resolution]);
+
+    expect(at(result, 5)).toMatchObject({
+      status: "verified",
+      strokes: null,
+      pickedUp: true,
+      provenance: "desk_resolution",
+      evidenceCardIds: ["card-a", "card-b"],
+    });
+    expect(result.complete).toBe(true);
+  });
+
+  it("ignores a pick-up resolution that carries a real stroke count", () => {
+    const cards = [
+      makeCard({ id: "card-a", scorerId: "scorer-a" }),
+      withHole(makeCard({ id: "card-b", scorerId: "scorer-b" }), 5, {
+        strokes: null,
+        pickedUp: true,
+      }),
+    ];
+    const resolution: Resolution = {
+      id: "res-1",
+      roundId: "round-1",
+      playerId: "player-1",
+      hole: 5,
+      strokes: 4,
+      pickedUp: true,
+      resolvedBy: "desk-anna",
+      resolvedAt: "2026-11-14T10:00:00.000Z",
+      reason: "Checked with the player.",
+      evidenceCardIds: ["card-a", "card-b"],
+      previousStrokes: null,
+    };
+
+    const result = canonical(cards, [resolution]);
+
+    expect(at(result, 5)?.status).toBe("conflict");
+    expect(result.problems).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "invalid_resolution", hole: 5 })]),
+    );
+  });
+
   it("fails closed when the course belongs to another round", () => {
     const result = deriveCanonicalHoleScores({
       roundId: "round-2",

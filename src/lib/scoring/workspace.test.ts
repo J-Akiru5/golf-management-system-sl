@@ -383,7 +383,8 @@ const SUMMARY_CASES: readonly SummaryCase[] = [
   },
   {
     name: "skips invalid cells and totals only the valid holes",
-    input: { strokes: { 1: "4", 2: "x", 3: "", 4: "4.5", 5: "25" } },
+    // "XX" is unreadable text. A single X is a pick-up and is covered separately.
+    input: { strokes: { 1: "4", 2: "XX", 3: "", 4: "4.5", 5: "25" } },
     gross: 4,
     out: 4,
     back: 0,
@@ -413,7 +414,7 @@ describe("summariseScorecard", () => {
 
   it("names invalid cells and leaves blank cells out of the problems", () => {
     const result = summariseScorecard(
-      summaryInput({ strokes: { 1: "4", 2: "x", 3: "", 4: "4.5", 5: "25" } }),
+      summaryInput({ strokes: { 1: "4", 2: "XX", 3: "", 4: "4.5", 5: "25" } }),
     );
 
     expect(result.problems).toEqual([
@@ -484,5 +485,64 @@ describe("summariseScorecard", () => {
     expect(result.holes[0]?.grossPoints).toBe(2);
     expect(result.holes[0]?.netPoints).toBeNull();
     expect(result.outPoints).toBe(result.grossPoints - result.inPoints);
+  });
+});
+
+describe("pick-ups in the workspace", () => {
+  it("accepts X and x as filled holes that need nothing else", () => {
+    const result = scorecardReadiness(
+      readinessInput({ strokes: { ...parStrokes(), 1: "X", 10: "x" } }),
+    );
+
+    expect(result.ready).toBe(true);
+    expect(result.label).toBe("Ready to submit");
+    expect(result.blockers).toEqual([]);
+  });
+
+  it("still asks for a check when other text is unreadable", () => {
+    const result = scorecardReadiness(readinessInput({ strokes: { ...parStrokes(), 1: "XX" } }));
+
+    expect(result.ready).toBe(false);
+    expect(result.label).toBe("Needs 1 hole");
+    expect(result.blockers).toContain("Hole 1 needs a whole-number score between 1 and 20.");
+  });
+
+  it("counts pick-ups as filled, scores them 0 and leaves them out of the stroke totals", () => {
+    const result = summariseScorecard(
+      summaryInput({ strokes: { ...parStrokes(), 1: "X", 10: "x" }, writtenTotal: 64 }),
+    );
+
+    expect(result.holesEntered).toBe(18);
+    expect(result.pickups).toBe(2);
+    expect(result.gross).toBe(64);
+    expect(result.out).toBe(32);
+    expect(result.in).toBe(32);
+    expect(result.grossPoints).toBe(32);
+    // Holes 1 and 10 each lose the 3 net points they would have scored at par.
+    expect(result.netPoints).toBe(46);
+    expect(result.problems).toEqual([]);
+
+    const pickup = result.holes.find((hole) => hole.hole === 1);
+    expect(pickup).toMatchObject({
+      pickedUp: true,
+      grossStrokes: 0,
+      grossPoints: 0,
+      netStrokes: null,
+      netPoints: 0,
+    });
+    expect(result.outPoints).toBe(
+      result.holes
+        .filter((hole) => hole.hole <= 9)
+        .reduce((sum, hole) => sum + (hole.netPoints ?? 0), 0),
+    );
+  });
+
+  it("does not compare a written total against a card with a pick-up", () => {
+    const result = summariseScorecard(
+      summaryInput({ strokes: { ...parStrokes(), 1: "X" }, writtenTotal: 68 }),
+    );
+
+    expect(result.writtenTotal).toBe(68);
+    expect(result.writtenMatches).toBeNull();
   });
 });
