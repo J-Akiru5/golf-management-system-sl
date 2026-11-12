@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-11-12
+
 ### Migrations shipping with this release
 `20261110000400_provisional_publication.sql` turns provisional publication on for opened rounds and
 lets a scored round publish without a separate "start scoring" step. Not applied in this branch.
@@ -48,6 +50,9 @@ lets a scored round publish without a separate "start scoring" step. Not applied
 - **The desk's manual card form starts empty.** It used to start at par for all 18 holes, so Submit
   without typing recorded a card nobody had read. "Fill with par" is now explicit, and Enter moves to
   the next hole. No migration.
+- **An imported card with a blank hole can be corrected.** Opening a card with an unreadable hole
+  shows an empty cell instead of the word `null`; the desk fills it and saves a new revision. No
+  migration.
 
 ## [0.38.0] - 2026-11-12
 
