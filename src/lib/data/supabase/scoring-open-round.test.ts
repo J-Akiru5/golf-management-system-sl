@@ -123,6 +123,20 @@ describe("publishedGroupsFromJson", () => {
     ]);
   });
 
+  it("keeps the day on a group when the publish carries it", () => {
+    const snapshot = {
+      groups: [
+        { number: 1, playerIds: ["p1"], dayNumber: 1 },
+        { number: 2, playerIds: ["p2"], dayNumber: 2 },
+      ],
+    };
+
+    expect(publishedGroupsFromJson(snapshot)).toEqual([
+      { number: 1, playerIds: ["p1"], dayNumber: 1 },
+      { number: 2, playerIds: ["p2"], dayNumber: 2 },
+    ]);
+  });
+
   it("treats a names-only publish as absent instead of matching by name", () => {
     const snapshot = {
       groups: [{ number: 1, players: ["Alpha", "Bravo"] }],
