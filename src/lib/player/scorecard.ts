@@ -55,7 +55,8 @@ export function relationToPar(
   from = 1,
   to = card.holesTotal,
 ): number | null {
-  const holes = holesBetween(card, from, to);
+  // A hole the player picked up has no stroke count, so it is left out of the comparison.
+  const holes = holesBetween(card, from, to).filter((hole) => !hole.pickedUp);
   if (holes.length === 0) return null;
   return holes.reduce((total, hole) => total + (hole.grossStrokes - hole.par), 0);
 }

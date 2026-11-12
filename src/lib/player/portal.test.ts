@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n/t";
-import { mapPortalState, paymentLabel, startLabel, statusLabel } from "./portal";
+import { mapPortalState, mapScorecard, paymentLabel, startLabel, statusLabel } from "./portal";
 
 /** The jsonb the database function returns for a linked player with one entry. */
 const raw = {
@@ -237,5 +237,60 @@ describe("portal wording", () => {
       start: { dayNumber: 1, hole: 1, wave: null, time: "12:00" },
     };
     expect(startLabel(twoTee, t, (time) => time)).toBe("Tee 1 · 12:00");
+  });
+});
+
+describe("mapScorecard pickups", () => {
+  const hole = (n: number, over: Record<string, unknown> = {}) => ({
+    hole: n,
+    par: 4,
+    strokeIndex: n,
+    grossStrokes: 5,
+    handicapStrokes: 1,
+    netStrokes: 4,
+    grossPoints: 1,
+    netPoints: 2,
+    ...over,
+  });
+
+  it("keeps a hole the player picked up on, marked, with no stroke count", () => {
+    const card = mapScorecard({
+      roundId: "r1",
+      holesTotal: 3,
+      holesCounted: 3,
+      grossStrokes: null,
+      netStrokes: null,
+      grossPoints: 2,
+      netPoints: 4,
+      holes: [
+        hole(1),
+        hole(2, {
+          pickedUp: true,
+          grossStrokes: null,
+          netStrokes: null,
+          grossPoints: 0,
+          netPoints: 0,
+        }),
+        hole(3),
+      ],
+    });
+    expect(card?.holes).toHaveLength(3);
+    expect(card?.holes[1]).toMatchObject({
+      hole: 2,
+      pickedUp: true,
+      grossStrokes: 0,
+      netPoints: 0,
+    });
+    expect(card?.pickups).toBe(1);
+    expect(card?.grossStrokes).toBe(10);
+  });
+
+  it("still drops a hole with no strokes that was not a pickup", () => {
+    const card = mapScorecard({
+      roundId: "r1",
+      holes: [hole(1), hole(2, { grossStrokes: null })],
+    });
+    expect(card?.holes).toHaveLength(1);
+    expect(card?.pickups).toBeUndefined();
   });
 });
