@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-11-12
+
 ### Fixed
 - **The public roster's View scores link is readable in the dark theme.** The card CTA now uses the
   theme-aware primary colour instead of the dark forest token, and the card stacks so the link stays
