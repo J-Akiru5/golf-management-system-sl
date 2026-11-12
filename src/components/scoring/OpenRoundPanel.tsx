@@ -38,12 +38,15 @@ export function OpenRoundPanel({
   snapshot,
   role,
   busy,
+  dayNumber,
   onOpen,
   onReload,
 }: {
   snapshot: OpenRoundSnapshot;
   role?: DeskRole | null;
   busy: boolean;
+  /** The playing day the desk is on. The round opened is that day's round, not the first one. */
+  dayNumber?: number | null;
   onOpen: (input: OpenRoundInput) => Promise<void>;
   onReload: () => void;
 }) {
@@ -177,6 +180,11 @@ export function OpenRoundPanel({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        <p className="hint m-0 flex-1">
+          {dayNumber === null || dayNumber === undefined
+            ? "No playing day is selected, so the earliest day's round is opened."
+            : `This opens day ${dayNumber}'s round. Cards entered on this screen go to that round.`}
+        </p>
         <RoleGate
           role={role}
           allow={["owner", "organizer"]}
@@ -189,7 +197,11 @@ export function OpenRoundPanel({
             data-help="scores-round-open"
             disabled={busy || readiness.state !== "ready"}
             onClick={() => {
-              void onOpen({ ...proposed, expectedRevision: snapshot.draw.revision });
+              void onOpen({
+                ...proposed,
+                expectedRevision: snapshot.draw.revision,
+                dayNumber: dayNumber ?? undefined,
+              });
             }}
           >
             {busy ? "Opening…" : "Open the round"}
