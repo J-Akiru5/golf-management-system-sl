@@ -161,6 +161,56 @@ describe("buildTeamLeaderboard", () => {
     expect(team?.playerNames).toEqual(["Ana", "Ben"]);
   });
 
+  it("keeps each partner's own points and still totals the team when a partner picked up", () => {
+    const rows = [
+      row({
+        playerId: "a",
+        playerName: "Ana",
+        pairKey: "pair:1",
+        side: "member",
+        grossStrokes: null,
+        netStrokes: null,
+        grossPoints: 20,
+        netPoints: 31,
+      }),
+      row({
+        ...roundTwo,
+        playerId: "a",
+        playerName: "Ana",
+        pairKey: "pair:1",
+        side: "member",
+        grossPoints: 22,
+        netPoints: 30,
+      }),
+      row({
+        playerId: "b",
+        playerName: "Ben",
+        pairKey: "pair:1",
+        side: "guest",
+        grossPoints: 11,
+        netPoints: 33,
+      }),
+      row({
+        ...roundTwo,
+        playerId: "b",
+        playerName: "Ben",
+        pairKey: "pair:1",
+        side: "guest",
+        grossPoints: 9,
+        netPoints: 29,
+      }),
+    ];
+    const team = buildTeamLeaderboard(data(rows)).teams[0];
+
+    expect(team?.members).toEqual([
+      { playerId: "a", name: "Ana", side: "member", grossPoints: 42, netPoints: 61 },
+      { playerId: "b", name: "Ben", side: "guest", grossPoints: 20, netPoints: 62 },
+    ]);
+    expect(team?.grossPoints).toBe(62);
+    expect(team?.netPoints).toBe(123);
+    expect(team?.grossStrokes).toBeNull();
+  });
+
   it("counts a player without a complete pair and does not rank them", () => {
     const rows = [row({ playerId: "solo", playerName: "Sol", pairKey: "solo:solo" })];
     const { teams, unpaired } = buildTeamLeaderboard(data(rows));
@@ -201,6 +251,7 @@ describe("ranking and filters", () => {
       playerIds: [over.key],
       memberName: over.name,
       guestName: null,
+      members: [],
       flightName: "Class A",
       categories: ["Regular"],
       holesCounted: 18,
