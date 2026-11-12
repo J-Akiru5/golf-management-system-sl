@@ -23,6 +23,7 @@ import {
   type VerificationPolicy,
   validateScorecard,
 } from "@/lib/scoring";
+import { checkCardSubmission } from "@/lib/scoring/submission";
 
 export type ScoringRoundStatus = "draft" | "open" | "scoring" | "provisional" | "final";
 
@@ -151,21 +152,56 @@ export interface OpenRoundInput extends OpenRoundSettingsInput {
 }
 
 export interface ScoringRepository {
-  loadRound(tournamentId: string): Promise<ScoringRoundView | null>;
+  /**
+   * The round for the playing day the desk is on. A null or missing day reads the earliest round,
+   * which is what a caller with no day on screen has always had.
+   */
+  loadRound(tournamentId: string, dayNumber?: number | null): Promise<ScoringRoundView | null>;
   /** What the desk needs to decide whether the round can be opened, and why not. */
-  loadOpenRoundState(tournamentId: string): Promise<OpenRoundSnapshot>;
+  loadOpenRoundState(tournamentId: string, dayNumber?: number | null): Promise<OpenRoundSnapshot>;
   /**
    * Copies the published draw into the round, its entries and handicap snapshots in one
    * transaction. Safe to call again for the same revision.
    */
   openRound(tournamentId: string, input: OpenRoundInput): Promise<ScoringRoundView>;
-  submitCard(tournamentId: string, input: SubmitCardInput): Promise<ScoringRoundView>;
-  approveCard(tournamentId: string, cardId: string, reason?: string): Promise<ScoringRoundView>;
-  rejectCard(tournamentId: string, cardId: string, reason: string): Promise<ScoringRoundView>;
-  revokeCard(tournamentId: string, cardId: string, reason: string): Promise<ScoringRoundView>;
-  resolveHole(tournamentId: string, input: ResolveHoleInput): Promise<ScoringRoundView>;
-  publishRound(tournamentId: string, note?: string): Promise<ScoringRoundView>;
-  finalizeRound(tournamentId: string, note?: string): Promise<ScoringRoundView>;
+  submitCard(
+    tournamentId: string,
+    input: SubmitCardInput,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  approveCard(
+    tournamentId: string,
+    cardId: string,
+    reason?: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  rejectCard(
+    tournamentId: string,
+    cardId: string,
+    reason: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  revokeCard(
+    tournamentId: string,
+    cardId: string,
+    reason: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  resolveHole(
+    tournamentId: string,
+    input: ResolveHoleInput,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  publishRound(
+    tournamentId: string,
+    note?: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  finalizeRound(
+    tournamentId: string,
+    note?: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
 }
 
 export interface DemoScoringOptions {
@@ -352,6 +388,21 @@ export function createDemoScoringRepository(
         return view();
       }
 
+      // The same card can arrive again with a new capture key: a second tap, a retried request, or
+      // the same photo scanned twice. Recognising it here keeps a second revision out of the
+      // evidence, even when the screen never asked.
+      const verdict = checkCardSubmission({
+        cards,
+        playerId: input.playerId,
+        scorerId: input.scorerId,
+        entries: input.entries,
+        playerName: seed.players.find((player) => player.playerId === input.playerId)?.playerName,
+        imageSha256: input.image?.sha256,
+        correcting: Boolean(input.reason),
+      });
+      if (verdict.kind === "repeat" || verdict.kind === "same_photo") return view();
+      if (verdict.kind === "needs_correction") throw new Error(verdict.message);
+
       const revision =
         Math.max(
           0,
@@ -373,6 +424,7 @@ export function createDemoScoringRepository(
           entries: input.entries.map((entry) => ({ ...entry })),
           writtenTotal: input.writtenTotal,
           submittedAt: nextIso(),
+          imageSha256: input.image?.sha256 ?? null,
         },
       ];
       captureKeys.set(input.captureKey, cards[cards.length - 1]?.id ?? "");
