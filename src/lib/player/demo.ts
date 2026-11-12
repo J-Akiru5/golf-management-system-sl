@@ -63,6 +63,7 @@ export function demoScorecard(playDate: string): PortalScorecard {
       netStrokes,
       grossPoints,
       netPoints,
+      pickedUp: false,
     };
   });
   const grossStrokes = holes.reduce((sum, hole) => sum + hole.grossStrokes, 0);
@@ -112,6 +113,7 @@ export function demoPartnerCard(playDate: string): PortalScorecard {
       netStrokes,
       grossPoints: stablefordPoints(par, grossStrokes),
       netPoints: stablefordPoints(par, netStrokes),
+      pickedUp: false,
     };
   });
   return {
@@ -151,6 +153,7 @@ export function demoScrambleCard(playDate: string): PortalScorecard {
       netStrokes: null,
       grossPoints: stablefordPoints(par, grossStrokes),
       netPoints: null,
+      pickedUp: false,
     };
   });
   return {

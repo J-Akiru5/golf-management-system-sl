@@ -29,16 +29,21 @@ export interface PortalScorecardHole {
   hole: number;
   par: number;
   strokeIndex: number;
-  grossStrokes: number;
+  /** Null on a pick-up (X): the hole is complete, but there is no gross stroke total. */
+  grossStrokes: number | null;
   /** Null when the round had no handicap snapshot. Negative for a plus handicap. */
   handicapStrokes: number | null;
   netStrokes: number | null;
   grossPoints: number;
   netPoints: number | null;
+  /** True for an X on the paper card. It counts as a completed hole worth 0 points. */
+  pickedUp: boolean;
 }
 
 /** A daily round's frozen card, as stored in the publication snapshot. */
 export interface PortalScorecard {
+  /** The player the published card belongs to, when the snapshot names one. */
+  playerId?: string | null;
   roundId: string;
   dayNumber: number;
   playDate: string | null;
@@ -47,9 +52,10 @@ export interface PortalScorecard {
   publishedAt: string | null;
   playingHandicap: number | null;
   courseHandicap: number | null;
-  grossStrokes: number;
+  /** Null when the card has a pick-up or is incomplete: the holes are not a full gross total. */
+  grossStrokes: number | null;
   netStrokes: number | null;
-  grossPoints: number;
+  grossPoints: number | null;
   netPoints: number | null;
   holesCounted: number;
   holesTotal: number;
@@ -132,6 +138,7 @@ function mapScorecardHole(value: unknown): PortalScorecardHole | null {
   const hole = asWholeNumber(raw.hole);
   const par = asWholeNumber(raw.par);
   const strokeIndex = asWholeNumber(raw.strokeIndex);
+  const pickedUp = raw.pickedUp === true;
   const grossStrokes = asWholeNumber(raw.grossStrokes);
   const grossPoints = asWholeNumber(raw.grossPoints);
 
@@ -139,20 +146,36 @@ function mapScorecardHole(value: unknown): PortalScorecardHole | null {
     hole === null ||
     par === null ||
     strokeIndex === null ||
-    grossStrokes === null ||
-    grossPoints === null ||
     hole < 1 ||
     par < 1 ||
-    strokeIndex < 1 ||
-    grossStrokes < 1 ||
-    grossPoints < 0
+    strokeIndex < 1
   ) {
     return null;
   }
 
   const handicapStrokes = asWholeNumber(raw.handicapStrokes);
-  const netStrokes = asWholeNumber(raw.netStrokes);
   const netPoints = asWholeNumber(raw.netPoints);
+  const cleanNetPoints = netPoints !== null && netPoints >= 0 ? netPoints : null;
+
+  if (pickedUp) {
+    // X is a completed hole. The flag wins over any proxy stroke a writer may have left behind:
+    // there is no gross or net stroke, and the hole is worth 0 points.
+    return {
+      hole,
+      par,
+      strokeIndex,
+      grossStrokes: null,
+      handicapStrokes,
+      netStrokes: null,
+      grossPoints: 0,
+      netPoints: 0,
+      pickedUp: true,
+    };
+  }
+
+  if (grossStrokes === null || grossPoints === null || grossStrokes < 1 || grossPoints < 0) {
+    return null;
+  }
 
   return {
     hole,
@@ -160,9 +183,10 @@ function mapScorecardHole(value: unknown): PortalScorecardHole | null {
     strokeIndex,
     grossStrokes,
     handicapStrokes,
-    netStrokes,
-    netPoints: netPoints !== null && netPoints >= 0 ? netPoints : null,
+    netStrokes: asWholeNumber(raw.netStrokes),
+    netPoints: cleanNetPoints,
     grossPoints,
+    pickedUp: false,
   };
 }
 
@@ -186,20 +210,37 @@ export function mapScorecard(value: unknown): PortalScorecard | null {
 
   const rawHolesTotal = asWholeNumber(raw.holesTotal) ?? 0;
   const highestHole = holes[holes.length - 1]?.hole ?? 0;
-  const holesTotal = Math.max(1, rawHolesTotal, highestHole);
+  const holesTotal = Math.min(36, Math.max(1, rawHolesTotal, highestHole));
+  const anyPickup = holes.some((hole) => hole.pickedUp);
+  const allHoles = holes.length === holesTotal;
 
-  const grossStrokes =
-    asWholeNumber(raw.grossStrokes) ?? holes.reduce((total, hole) => total + hole.grossStrokes, 0);
-  const grossPoints =
-    asWholeNumber(raw.grossPoints) ?? holes.reduce((total, hole) => total + hole.grossPoints, 0);
-  const netStrokes = hasOwn(raw, "netStrokes")
-    ? asWholeNumber(raw.netStrokes)
-    : sumIfComplete(holes.map((hole) => hole.netStrokes));
+  const grossStrokes = anyPickup
+    ? null
+    : hasOwn(raw, "grossStrokes")
+      ? asWholeNumber(raw.grossStrokes)
+      : allHoles
+        ? holes.reduce((total, hole) => total + (hole.grossStrokes ?? 0), 0)
+        : null;
+  const grossPoints = hasOwn(raw, "grossPoints")
+    ? asWholeNumber(raw.grossPoints)
+    : allHoles
+      ? holes.reduce((total, hole) => total + hole.grossPoints, 0)
+      : null;
+  const netStrokes = anyPickup
+    ? null
+    : hasOwn(raw, "netStrokes")
+      ? asWholeNumber(raw.netStrokes)
+      : allHoles
+        ? sumIfComplete(holes.map((hole) => hole.netStrokes))
+        : null;
   const netPoints = hasOwn(raw, "netPoints")
     ? asWholeNumber(raw.netPoints)
-    : sumIfComplete(holes.map((hole) => hole.netPoints));
+    : allHoles
+      ? sumIfComplete(holes.map((hole) => hole.netPoints))
+      : null;
 
   return {
+    playerId: asString(raw.playerId),
     roundId,
     dayNumber: asWholeNumber(raw.dayNumber) ?? 1,
     playDate: asString(raw.playDate),

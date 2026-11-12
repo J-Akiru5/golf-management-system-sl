@@ -24,6 +24,7 @@ function hole(number: number, overrides: Partial<PortalScorecardHole> = {}): Por
     netStrokes: 4,
     grossPoints: 1,
     netPoints: 2,
+    pickedUp: false,
     ...overrides,
   };
 }
@@ -107,14 +108,73 @@ describe("scorecard totals", () => {
     expect(totals.netPoints).toBeNull();
   });
 
-  it("returns an unknown total for an empty range", () => {
+  it("returns an unknown total for an empty or incomplete range", () => {
     const source = card({ holes: [hole(1)], holesTotal: 18 });
     expect(totalsFor(source, 10, 18)).toEqual({
       holes: 0,
-      grossStrokes: 0,
+      grossStrokes: null,
+      netStrokes: null,
+      grossPoints: null,
+      netPoints: null,
+    });
+    expect(totalsFor(source, 1, 9)).toEqual({
+      holes: 1,
+      grossStrokes: null,
+      netStrokes: null,
+      grossPoints: null,
+      netPoints: null,
+    });
+  });
+
+  it("keeps a pick-up out of the stroke totals and counts it as zero points", () => {
+    const source = card({
+      holes: Array.from({ length: 18 }, (_, index) =>
+        index + 1 === 4
+          ? hole(4, {
+              pickedUp: true,
+              grossStrokes: null,
+              netStrokes: null,
+              grossPoints: 0,
+              netPoints: 0,
+            })
+          : hole(index + 1),
+      ),
+    });
+
+    const front = totalsFor(source, 1, 9);
+    expect(front.holes).toBe(9);
+    expect(front.grossStrokes).toBeNull();
+    expect(front.netStrokes).toBeNull();
+    expect(front.grossPoints).toBe(8);
+    expect(front.netPoints).toBe(16);
+
+    const all = totalsFor(source);
+    expect(all.holes).toBe(18);
+    expect(all.grossStrokes).toBeNull();
+    expect(all.netStrokes).toBeNull();
+    expect(all.grossPoints).toBe(17);
+    expect(all.netPoints).toBe(34);
+  });
+
+  it("keeps every total null on an all-pick-up card", () => {
+    const source = card({
+      holes: Array.from({ length: 18 }, (_, index) =>
+        hole(index + 1, {
+          pickedUp: true,
+          grossStrokes: null,
+          netStrokes: null,
+          grossPoints: 0,
+          netPoints: 0,
+        }),
+      ),
+    });
+
+    expect(totalsFor(source)).toEqual({
+      holes: 18,
+      grossStrokes: null,
       netStrokes: null,
       grossPoints: 0,
-      netPoints: null,
+      netPoints: 0,
     });
   });
 });
@@ -129,7 +189,7 @@ describe("handicap stroke label", () => {
 });
 
 describe("relation to par", () => {
-  it("counts the holes that have a score, for a nine and for the card", () => {
+  it("counts a complete nine or card", () => {
     const source = card({
       holes: Array.from({ length: 18 }, (_, index) => hole(index + 1, { grossStrokes: 5, par: 4 })),
     });
@@ -137,6 +197,30 @@ describe("relation to par", () => {
     expect(relationToPar(source, 1, 9)).toBe(9);
     expect(relationToPar(source)).toBe(18);
     expect(relationToPar(source, 10, 18)).toBe(9);
+  });
+
+  it("returns null for a partial nine or a card with a pick-up", () => {
+    const partial = card({
+      holes: Array.from({ length: 8 }, (_, index) => hole(index + 1)),
+    });
+    expect(relationToPar(partial, 1, 9)).toBeNull();
+
+    const picked = card({
+      holes: Array.from({ length: 18 }, (_, index) =>
+        index + 1 === 4
+          ? hole(4, {
+              pickedUp: true,
+              grossStrokes: null,
+              netStrokes: null,
+              grossPoints: 0,
+              netPoints: 0,
+            })
+          : hole(index + 1),
+      ),
+    });
+    expect(relationToPar(picked)).toBeNull();
+    expect(relationToPar(picked, 1, 9)).toBeNull();
+    expect(relationToPar(picked, 5, 9)).toBe(5);
   });
 
   it("returns null when there is no hole to count", () => {
@@ -161,6 +245,9 @@ describe("unsaved gross edit", () => {
     expect(first?.netStrokes).toBe(3);
     expect(first?.grossPoints).toBe(2);
     expect(first?.netPoints).toBe(3);
+    if (source.grossStrokes === null || source.grossPoints === null) {
+      throw new Error("The sample card should have gross totals.");
+    }
     expect(edited.grossStrokes).toBe(source.grossStrokes - 1);
     expect(edited.grossPoints).toBe(source.grossPoints + 1);
     if (source.netStrokes === null || source.netPoints === null) {
@@ -191,6 +278,34 @@ describe("unsaved gross edit", () => {
     expect(edited.holes[0]?.netPoints).toBeNull();
     expect(edited.netStrokes).toBeNull();
     expect(edited.netPoints).toBeNull();
+  });
+
+  it("never turns a pick-up into a stroke score", () => {
+    const source = card({
+      holes: [
+        hole(1, {
+          pickedUp: true,
+          grossStrokes: null,
+          netStrokes: null,
+          grossPoints: 0,
+          netPoints: 0,
+        }),
+        hole(2),
+      ],
+      holesTotal: 2,
+      grossStrokes: null,
+      netStrokes: null,
+      grossPoints: 1,
+      netPoints: 2,
+    });
+
+    const edited = withGrossEdits(source, { 1: 4 });
+
+    expect(edited).toBe(source);
+    expect(edited.holes[0]?.pickedUp).toBe(true);
+    expect(edited.holes[0]?.grossStrokes).toBeNull();
+    expect(edited.grossStrokes).toBeNull();
+    expect(edited.netStrokes).toBeNull();
   });
 });
 

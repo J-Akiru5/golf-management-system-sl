@@ -183,6 +183,163 @@ describe("mapPortalState", () => {
     });
   });
 
+  it("keeps a pick-up hole as X and never invents a card stroke total", () => {
+    const state = mapPortalState({
+      linked: true,
+      player: { id: "p1", name: "Ana" },
+      entries: [
+        {
+          tournamentId: "t1",
+          scorecards: [
+            {
+              playerId: "p1",
+              roundId: "r1",
+              holesTotal: 3,
+              holesCounted: 3,
+              grossStrokes: null,
+              netStrokes: null,
+              grossPoints: 3,
+              netPoints: 5,
+              holes: [
+                {
+                  hole: 1,
+                  par: 4,
+                  strokeIndex: 1,
+                  grossStrokes: 5,
+                  handicapStrokes: 1,
+                  netStrokes: 4,
+                  grossPoints: 1,
+                  netPoints: 2,
+                },
+                {
+                  hole: 2,
+                  par: 3,
+                  strokeIndex: 2,
+                  grossStrokes: null,
+                  handicapStrokes: 1,
+                  netStrokes: null,
+                  grossPoints: 0,
+                  netPoints: 0,
+                  pickedUp: true,
+                },
+                {
+                  hole: 3,
+                  par: 4,
+                  strokeIndex: 3,
+                  grossStrokes: 4,
+                  handicapStrokes: 1,
+                  netStrokes: 3,
+                  grossPoints: 2,
+                  netPoints: 3,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const card = state.entries[0]?.scorecards[0];
+    expect(card).not.toBeNull();
+    expect(card?.holes.map((hole) => hole.hole)).toEqual([1, 2, 3]);
+    expect(card?.holes[1]).toMatchObject({
+      hole: 2,
+      par: 3,
+      strokeIndex: 2,
+      grossStrokes: null,
+      netStrokes: null,
+      grossPoints: 0,
+      netPoints: 0,
+      pickedUp: true,
+    });
+    expect(card?.grossStrokes).toBeNull();
+    expect(card?.netStrokes).toBeNull();
+    expect(card?.grossPoints).toBe(3);
+    expect(card?.netPoints).toBe(5);
+    expect(card?.holesCounted).toBe(3);
+  });
+
+  it("keeps an all-pick-up card instead of dropping it", () => {
+    const state = mapPortalState({
+      linked: true,
+      player: { id: "p1", name: "Ana" },
+      entries: [
+        {
+          tournamentId: "t1",
+          scorecards: [
+            {
+              roundId: "r2",
+              holesTotal: 2,
+              holesCounted: 2,
+              grossStrokes: null,
+              netStrokes: null,
+              grossPoints: 0,
+              netPoints: 0,
+              holes: [1, 2].map((hole) => ({
+                hole,
+                par: 4,
+                strokeIndex: hole,
+                grossStrokes: null,
+                handicapStrokes: 0,
+                netStrokes: null,
+                grossPoints: 0,
+                netPoints: 0,
+                pickedUp: true,
+              })),
+            },
+          ],
+        },
+      ],
+    });
+
+    const card = state.entries[0]?.scorecards[0];
+    expect(card).not.toBeNull();
+    expect(card?.holes).toHaveLength(2);
+    expect(card?.holes.every((hole) => hole.pickedUp)).toBe(true);
+    expect(card?.grossStrokes).toBeNull();
+    expect(card?.grossPoints).toBe(0);
+  });
+
+  it("does not invent a partial card total when the snapshot has none", () => {
+    const state = mapPortalState({
+      linked: true,
+      player: { id: "p1", name: "Ana" },
+      entries: [
+        {
+          tournamentId: "t1",
+          scorecards: [
+            {
+              roundId: "r3",
+              holesTotal: 18,
+              holesCounted: 2,
+              grossStrokes: null,
+              netStrokes: null,
+              grossPoints: null,
+              netPoints: null,
+              holes: [1, 2].map((hole) => ({
+                hole,
+                par: 4,
+                strokeIndex: hole,
+                grossStrokes: 4,
+                handicapStrokes: 0,
+                netStrokes: 4,
+                grossPoints: 2,
+                netPoints: 2,
+              })),
+            },
+          ],
+        },
+      ],
+    });
+
+    const card = state.entries[0]?.scorecards[0];
+    expect(card).not.toBeNull();
+    expect(card?.holes).toHaveLength(2);
+    expect(card?.grossStrokes).toBeNull();
+    expect(card?.grossPoints).toBeNull();
+    expect(card?.netPoints).toBeNull();
+  });
+
   it("drops a malformed card and keeps the rest of the entry", () => {
     const state = mapPortalState({
       linked: true,

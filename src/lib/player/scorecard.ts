@@ -5,9 +5,11 @@ import type { PortalScorecard, PortalScorecardHole } from "./portal";
 
 export interface ScorecardTotals {
   holes: number;
-  grossStrokes: number;
+  /** Null when the range is incomplete or has a pick-up: the holes are not a stroke total. */
+  grossStrokes: number | null;
   netStrokes: number | null;
-  grossPoints: number;
+  /** Null when the range is incomplete: a partial nine is not a points total. */
+  grossPoints: number | null;
   netPoints: number | null;
 }
 
@@ -34,12 +36,18 @@ function sumIfComplete(values: readonly (number | null)[]): number | null {
 /** Subtotals for a nine or for the whole card. Missing values are not filled in with zero. */
 export function totalsFor(card: PortalScorecard, from = 1, to = card.holesTotal): ScorecardTotals {
   const holes = holesBetween(card, from, to);
+  const expected = Math.max(0, to - from + 1);
+  const rangeComplete = holes.length === expected;
+  // A pick-up has no stroke total but still counts as a hole and scores 0 points.
+  const strokesKnown = rangeComplete && !holes.some((hole) => hole.pickedUp);
   return {
     holes: holes.length,
-    grossStrokes: holes.reduce((total, hole) => total + hole.grossStrokes, 0),
-    netStrokes: holes.length === 0 ? null : sumIfComplete(holes.map((hole) => hole.netStrokes)),
-    grossPoints: holes.reduce((total, hole) => total + hole.grossPoints, 0),
-    netPoints: holes.length === 0 ? null : sumIfComplete(holes.map((hole) => hole.netPoints)),
+    grossStrokes: strokesKnown
+      ? holes.reduce((total, hole) => total + (hole.grossStrokes ?? 0), 0)
+      : null,
+    netStrokes: strokesKnown ? sumIfComplete(holes.map((hole) => hole.netStrokes)) : null,
+    grossPoints: rangeComplete ? holes.reduce((total, hole) => total + hole.grossPoints, 0) : null,
+    netPoints: rangeComplete ? sumIfComplete(holes.map((hole) => hole.netPoints)) : null,
   };
 }
 
@@ -56,8 +64,10 @@ export function relationToPar(
   to = card.holesTotal,
 ): number | null {
   const holes = holesBetween(card, from, to);
-  if (holes.length === 0) return null;
-  return holes.reduce((total, hole) => total + (hole.grossStrokes - hole.par), 0);
+  const expected = Math.max(0, to - from + 1);
+  if (holes.length === 0 || holes.length !== expected) return null;
+  if (holes.some((hole) => hole.pickedUp || hole.grossStrokes === null)) return null;
+  return holes.reduce((total, hole) => total + ((hole.grossStrokes ?? 0) - hole.par), 0);
 }
 
 /** "E" for level par, "+4" over, "-2" under, "-" when there is nothing to show. */
@@ -160,6 +170,8 @@ export function withGrossEdits(
 ): PortalScorecard {
   let changed = false;
   const holes = card.holes.map((hole) => {
+    // An X is not a stroke score. The preview must not turn a pick-up into one.
+    if (hole.pickedUp) return hole;
     const next = edits[hole.hole];
     if (next === undefined || !Number.isInteger(next) || next < 1 || next === hole.grossStrokes) {
       return hole;
@@ -173,17 +185,22 @@ export function withGrossEdits(
       netStrokes,
       grossPoints: stablefordPoints(hole.par, next),
       netPoints: netStrokes === null ? null : stablefordPoints(hole.par, netStrokes),
+      pickedUp: false,
     };
   });
 
   if (!changed) return card;
 
+  const anyPickup = holes.some((hole) => hole.pickedUp);
+  const complete = holes.length === card.holesTotal;
   return {
     ...card,
     holes,
-    grossStrokes: holes.reduce((total, hole) => total + hole.grossStrokes, 0),
-    grossPoints: holes.reduce((total, hole) => total + hole.grossPoints, 0),
-    netStrokes: sumIfComplete(holes.map((hole) => hole.netStrokes)),
-    netPoints: sumIfComplete(holes.map((hole) => hole.netPoints)),
+    grossStrokes: anyPickup
+      ? null
+      : holes.reduce((total, hole) => total + (hole.grossStrokes ?? 0), 0),
+    grossPoints: complete ? holes.reduce((total, hole) => total + hole.grossPoints, 0) : null,
+    netStrokes: anyPickup ? null : sumIfComplete(holes.map((hole) => hole.netStrokes)),
+    netPoints: complete ? sumIfComplete(holes.map((hole) => hole.netPoints)) : null,
   };
 }

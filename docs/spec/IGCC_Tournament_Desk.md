@@ -161,6 +161,8 @@ This is the release method used for Day 1 AM on 12 November 2026. The public rel
 | Field additions | MANGALINDAN, VICTOR and DELA CRUZ, FRANCIS were added to the Day 1 round. MANGALINDAN has a card; DELA CRUZ has no card and is not on the board. |
 | Publication correction | v4 wrote the pick-up field as a hole list and left some multi-pick-up stroke totals visible. v5 writes a count and hides the stroke totals on every pick-up card. |
 
+**Public player card, 13 November 2026.** The public player profile now prints the same paper-card layout as the desk: two nine-hole tables with Hole, Par, SI, Gross, Hcp, Net, Gross pts and Net pts, OUT/IN totals, and the row labels pinned on a phone. A pick-up in the published snapshot is shown as X: the hole counts, scores 0 points and has no stroke total. A card with a pick-up shows `-` for its gross and net totals, while its points still sum. A partial card is labelled with the holes counted and does not print a partial sum as its card total. Known limit: `build_round_scorecards` writes integer strokes only, so the checked-in builder cannot produce an X; do not republish a card that depends on the external v5 snapshot through the current builder.
+
 ## How auto-routing works
 
 Every registration passes through the same steps. Each step writes its result onto the registration, so the organizer can see why a player landed where they did and override any step.

@@ -22,6 +22,22 @@ Supabase project, because the code and the database are released separately.
   Hcp row, Score and Net pts, OUT/IN totals, and the paper-card footer (Strokes, Holes with a score,
   Playing handicap, Net Stableford, Gross Stableford). The table scrolls inside the card on a phone.
   No migration.
+- **The public player profile prints the paper card too.** The frozen card now renders as two
+  nine-hole tables with Hole, Par, SI, Gross, Hcp, Net, Gross pts and Net pts, OUT/IN totals, and
+  the same pinned row labels and contained sideways scroll on a phone. The card sits directly under
+  the player's identity, before the pair score. No migration.
+
+### Fixed
+- **A public card never invents a score for a pick-up or a partial round.** A hole flagged
+  `pickedUp` in the published snapshot stays an X with its par and stroke index: it counts as a
+  hole, scores 0 points and has no stroke total. A card with a pick-up shows `-` for its published
+  gross and net, while its points still sum. A partial card no longer prints a partial sum as its
+  card total, the hole count is clamped, and a card naming another player is dropped. The profile
+  summary reads the published card totals instead of a hole sum. A profile tee time now requires the
+  same full name, so a junior or a namesake cannot receive another player's start. **Known limit:**
+  the checked-in `build_round_scorecards` writes integer strokes only, so a republish through the
+  current builder would replace X with a proxy stroke. Keep the external v5 snapshot until the
+  writer carries the flag.
 
 ## [0.39.0] - 2026-11-12
 

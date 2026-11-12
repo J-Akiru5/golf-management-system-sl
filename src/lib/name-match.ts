@@ -34,3 +34,17 @@ export function matchesName(haystack: string, query: string): boolean {
   const words = nameWords(haystack);
   return tokens.every((token) => words.includes(token));
 }
+
+/**
+ * True when two names use exactly the same words, in any order.
+ *
+ * Use this where a near match is not good enough, such as attaching a tee time to a profile:
+ * a prefix match would let "JUAN CRUZ" take "JUAN CRUZ JR"'s start. Case, accents, punctuation
+ * and word order are still ignored.
+ */
+export function sameName(left: string, right: string): boolean {
+  const leftWords = nameWords(left).split(" ").filter(Boolean).sort();
+  const rightWords = nameWords(right).split(" ").filter(Boolean).sort();
+  if (leftWords.length === 0 || leftWords.length !== rightWords.length) return false;
+  return leftWords.every((word, index) => word === rightWords[index]);
+}
