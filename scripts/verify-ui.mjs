@@ -436,8 +436,14 @@ check(
 );
 const readLabelBefore = await bell.getAttribute("aria-label");
 await panel.getByRole("button", { name: "Mark as read" }).first().click();
+const readSummary = panel.locator('details[data-testid="alerts-read"] summary');
+await expect(readSummary).toBeVisible({ timeout: 10000 });
+await readSummary.click();
 await expect(panel.getByText("Read", { exact: true }).first()).toBeVisible({ timeout: 10000 });
-check("marking one as read leaves a Read mark and keeps the item listed", (await panel.getByRole("link", { name: /Fix/ }).count()) > 0);
+check(
+  "marking one as read moves it out of the unread list into Read",
+  (await panel.locator('details[data-testid="alerts-read"]').getByText("Read", { exact: true }).count()) > 0,
+);
 const readLabelAfter = await bell.getAttribute("aria-label");
 check(
   "the badge drops only the notice that was read",
@@ -1176,8 +1182,9 @@ check(
   (await mobPanel.getByRole("button", { name: "Mark all as read" }).count()) === 1,
 );
 await mobPanel.getByRole("button", { name: "Mark all as read" }).click();
-await expect(mobPanel.getByText("Read", { exact: true }).first()).toBeVisible({ timeout: 10000 });
-check("mark all as read works on the phone sheet", true);
+const mobReadSummary = mobPanel.locator('details[data-testid="alerts-read"] summary');
+await expect(mobReadSummary).toHaveText(/Read \(\d+\)/, { timeout: 10000 });
+check("mark all as read moves the items into Read on the phone sheet", true);
 await mob.keyboard.press("Escape");
 check(
   "closing the phone sheet releases the scroll lock",
