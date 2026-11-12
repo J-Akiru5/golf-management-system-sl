@@ -4372,7 +4372,8 @@
 }
 
 .player-card {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   list-style: none;
   border: 1px solid var(--line);
@@ -4382,7 +4383,8 @@
 }
 
 .player-cards > li {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   list-style: none;
 }
@@ -4397,21 +4399,28 @@
 }
 
 .player-card-link:hover {
-  border-color: var(--forest);
+  border-color: var(--primary);
   background: var(--fairway-soft);
 }
 
 .player-card-link:focus-visible {
-  outline: 2px solid var(--forest);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
 .player-card-cta {
-  align-self: end;
-  font-size: 11px;
+  margin-top: auto;
+  align-self: flex-start;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--forest);
+  color: var(--primary);
+}
+
+.player-card-link:hover .player-card-cta,
+.player-card-link:focus-visible .player-card-cta {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .player-card .who {
