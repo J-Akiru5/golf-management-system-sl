@@ -9,6 +9,16 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-11-12
+
+### Added
+- **Bulk scorecard import from JSON.** The Scores screen has an **Import cards from JSON** panel for
+  cards transcribed outside the app. It downloads a fill-in template for the open round, checks every
+  card against the round's players and published groups, and submits only the cards that pass. The
+  file is checked against the same identity, self-scoring, idempotency and written-total rules as
+  manual entry. Imported cards are `submitted`, never auto-approved. The format is documented for the
+  transcriber in `docs/SCORING_IMPORT.md` with an example file. No migration.
+
 ## [0.37.0] - 2026-11-12
 
 ### Fixed
