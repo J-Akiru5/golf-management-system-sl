@@ -145,6 +145,18 @@ What the working sheet does, as of 12 November 2026:
 
 Known gap: the field list in the repository (`supabase/seed/bamboo-tee-2026-field.psv`) gave a class for only 11 of the 36 Day 1 AM cards. Players entered after that list was made are not on it, and several teams have no index on it. The class the desk assigned lives in the database, which the working sheet does not read. Until it does, the desk sets the missing classes by hand.
 
+### Day 1 AM final scoring release, 12 November 2026
+
+This is the release method for Day 1 AM. It is not a claim that the public release is finished.
+
+| Point | What the release does |
+| --- | --- |
+| Playing handicap | The handicap written on the card is the playing handicap. A decimal is dropped, so 16.7 plays off 16. |
+| X on a card | The fast provisional release gives X 0 points so a partial card can be approved. This is a proxy, not the pick-up rule. The true pick-up model is a follow-up. |
+| Markers | Marker names are not published. |
+| Scope | Only Day 1 AM is released publicly. The other days are not part of this release. |
+| Pick-up penalty | The two-point pick-up penalty is not applied. |
+
 ## How auto-routing works
 
 Every registration passes through the same steps. Each step writes its result onto the registration, so the organizer can see why a player landed where they did and override any step.
