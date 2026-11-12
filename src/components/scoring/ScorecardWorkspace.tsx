@@ -165,12 +165,12 @@ export function ScorecardWorkspace({
     dayNumber: view.dayNumber,
     markerName: selectedScorer?.playerName ?? null,
     playingHandicap: selectedPlayer?.handicap?.playingHandicap ?? null,
-    cardHandicap: context?.cardHandicap ?? null,
-    className: context?.className ?? null,
-    partnerName: context?.partnerName ?? null,
-    teamHandicap: context?.teamHandicap ?? null,
-    teeName: context?.teeName ?? null,
-    groupLabel: context?.groupLabel ?? null,
+    cardHandicap: context?.cardHandicap,
+    className: context?.className,
+    partnerName: context?.partnerName,
+    teamHandicap: context?.teamHandicap,
+    teeName: context?.teeName,
+    groupLabel: context?.groupLabel,
   });
 
   return (
@@ -332,7 +332,7 @@ export function ScorecardWorkspace({
             </label>
             <Button variant="ghost" size="sm" className="min-h-11" onClick={() => window.print()}>
               <Printer className="size-4" aria-hidden="true" />
-              Print card
+              Print this card
             </Button>
             {scanned ? (
               <label className="flex min-h-11 items-center gap-2 text-[12px]">
@@ -418,7 +418,7 @@ export function ScorecardWorkspace({
               : `The card says ${written}, but the numbers add to ${gross}. Check the cells.`}
         </p>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 print:hidden">
           <div className="flex flex-wrap gap-2 print:hidden">
             {(editingCard || scanned) && (
               <Button variant="ghost" size="sm" onClick={onStartAnother} disabled={busy}>

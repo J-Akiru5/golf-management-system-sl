@@ -2212,6 +2212,7 @@
     box-shadow: none !important;
     break-inside: avoid;
     page-break-inside: avoid;
+    color-scheme: light;
   }
 
   body:has([data-print="scorecard"]) [data-print="scorecard"] .border-line,
@@ -2220,7 +2221,19 @@
     border-color: #000 !important;
   }
 
-  /* The hole-number header row prints as dark text on a light band, whatever the dark theme does. */
+  /* In the dark theme the card keeps dark surfaces on the par row, the row-label column and the
+     OUT/IN total cells. On paper every row and cell is white with black ink, whatever the screen
+     theme is doing, so the par digits and the totals stay readable. */
+  body:has([data-print="scorecard"]) [data-print="scorecard"] tr,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] th,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] td,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] tbody th {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* The hole-number header row prints as dark text on a light band, whatever the dark theme does.
+     Declared after the white rule so it wins. */
   body:has([data-print="scorecard"]) [data-print="scorecard"] thead th {
     background: #dfe7e2 !important;
     color: #000 !important;

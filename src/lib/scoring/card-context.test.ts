@@ -36,7 +36,7 @@ describe("buildCardContext", () => {
   });
 
   it("leaves out an absent day, marker, team handicap, tee and group", () => {
-    expect(keys({ playingHandicap: 12 })).toEqual(["class", "partner", "playingHandicap"]);
+    expect(keys({ playingHandicap: 12 })).toEqual(["playingHandicap"]);
     expect(keys({ ...full, dayNumber: null })).not.toContain("day");
     expect(keys({ ...full, markerName: null })).not.toContain("marker");
     expect(keys({ ...full, teamHandicap: null })).not.toContain("teamHandicap");
@@ -44,20 +44,27 @@ describe("buildCardContext", () => {
     expect(keys({ ...full, groupLabel: undefined })).not.toContain("group");
   });
 
+  it("leaves out a class, partner or playing handicap the caller does not have", () => {
+    expect(keys({ dayNumber: 2 })).toEqual(["day"]);
+    expect(part({ className: undefined }, "class")).toBeUndefined();
+    expect(part({ partnerName: undefined }, "partner")).toBeUndefined();
+    expect(part({ playingHandicap: undefined }, "playingHandicap")).toBeUndefined();
+  });
+
   it("shows a missing class, partner and playing handicap in words", () => {
-    expect(part({}, "class")).toEqual({
+    expect(part({ className: null }, "class")).toEqual({
       key: "class",
       label: "Class",
       value: "Not set",
       tone: "missing",
     });
-    expect(part({}, "partner")).toEqual({
+    expect(part({ partnerName: null }, "partner")).toEqual({
       key: "partner",
       label: "Partner",
       value: "None on file",
       tone: "missing",
     });
-    expect(part({}, "playingHandicap")).toEqual({
+    expect(part({ playingHandicap: null }, "playingHandicap")).toEqual({
       key: "playingHandicap",
       label: "Playing handicap",
       value: "Not calculated",
@@ -86,23 +93,14 @@ describe("buildCardContext", () => {
     expect(part({ playingHandicap: -2 }, "playingHandicap")?.value).toBe("+2");
   });
 
-  it("returns only the three missing parts for an empty input", () => {
-    expect(buildCardContext({})).toEqual([
-      { key: "class", label: "Class", value: "Not set", tone: "missing" },
-      { key: "partner", label: "Partner", value: "None on file", tone: "missing" },
-      {
-        key: "playingHandicap",
-        label: "Playing handicap",
-        value: "Not calculated",
-        tone: "missing",
-      },
-    ]);
+  it("returns nothing for an empty input, because nothing was passed", () => {
+    expect(buildCardContext({})).toEqual([]);
   });
 
   it("treats blank strings as missing", () => {
     expect(
       keys({ className: "   ", partnerName: "", markerName: " ", teeName: "", groupLabel: "\t" }),
-    ).toEqual(["class", "partner", "playingHandicap"]);
+    ).toEqual(["class", "partner"]);
     expect(part({ className: "" }, "class")?.tone).toBe("missing");
     expect(part({ partnerName: "  " }, "partner")?.value).toBe("None on file");
   });
