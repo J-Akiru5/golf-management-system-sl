@@ -215,3 +215,56 @@ describe("arguments", () => {
     expect(readiness.canConfirm).toBe(true);
   });
 });
+
+describe("marker chosen on screen", () => {
+  it("lets a matched scan be confirmed with a pending marker", () => {
+    const readiness = scanReadiness(scan({ state: "matched", markerId: null }), {
+      playerName: PLAYER_NAME,
+      markerId: "marker-1",
+    });
+    expect(readiness.blockers).toEqual([]);
+    expect(readiness.canConfirm).toBe(true);
+    expect(readiness.canCreateCard).toBe(false);
+  });
+
+  it("still raises no_marker on a matched scan with no saved or pending marker", () => {
+    const readiness = scanReadiness(scan({ state: "matched", markerId: null }), {
+      playerName: PLAYER_NAME,
+    });
+    expect(codes(readiness.blockers)).toEqual(["no_marker"]);
+    expect(readiness.canConfirm).toBe(false);
+  });
+
+  it("raises marker_is_player when the pending marker is the player", () => {
+    const readiness = scanReadiness(scan({ state: "matched", markerId: null }), {
+      playerName: PLAYER_NAME,
+      markerId: "player-1",
+    });
+    expect(codes(readiness.blockers)).toEqual(["marker_is_player"]);
+    expect(readiness.canConfirm).toBe(false);
+  });
+
+  it("prefers a saved marker over a pending one", () => {
+    const readiness = scanReadiness(scan({ state: "matched", markerId: "marker-1" }), {
+      playerName: PLAYER_NAME,
+      markerId: "player-1",
+    });
+    expect(readiness.blockers).toEqual([]);
+    expect(readiness.canConfirm).toBe(true);
+  });
+
+  it("lets a confirmed scan create its card with the saved marker", () => {
+    const readiness = scanReadiness(
+      scan({
+        state: "confirmed",
+        markerId: "marker-1",
+        confirmedBy: "desk-1",
+        confirmedAt: READ_AT,
+      }),
+      { playerName: PLAYER_NAME },
+    );
+    expect(readiness.blockers).toEqual([]);
+    expect(readiness.canCreateCard).toBe(true);
+    expect(readiness.canConfirm).toBe(false);
+  });
+});

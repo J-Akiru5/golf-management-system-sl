@@ -54,6 +54,11 @@ export interface ScanReadinessOptions {
   lowConfidenceThreshold?: number;
   /** The picked player's registered name, when the caller has it. */
   playerName?: string | null;
+  /**
+   * The marker the desk has chosen on screen but not confirmed yet. A matched scan has no saved
+   * marker because the `confirm` event sets it, so this counts as the marker until then.
+   */
+  markerId?: string | null;
 }
 
 function isPlayerList(value: readonly string[] | ScanReadinessOptions): value is readonly string[] {
@@ -113,7 +118,7 @@ function warningsFor(
   return warnings;
 }
 
-function blockersFor(scan: ScanRecord): ScanBlocker[] {
+function blockersFor(scan: ScanRecord, markerId: string | null): ScanBlocker[] {
   if (scan.state === "set_aside") {
     return [{ code: "set_aside", message: "This scan was set aside. Restore it before using it." }];
   }
@@ -125,12 +130,12 @@ function blockersFor(scan: ScanRecord): ScanBlocker[] {
   if (scan.playerId === null) {
     blockers.push({ code: "no_player", message: "Pick the player on the card." });
   }
-  if (scan.markerId === null) {
+  if (markerId === null) {
     blockers.push({
       code: "no_marker",
       message: "Pick a marker from the other team in the group.",
     });
-  } else if (scan.markerId === scan.playerId) {
+  } else if (markerId === scan.playerId) {
     blockers.push({
       code: "marker_is_player",
       message: "The marker must be another player, not the player on the card.",
@@ -146,6 +151,10 @@ function blockersFor(scan: ScanRecord): ScanBlocker[] {
  * Reports what is ready. Confirming needs a matched scan; creating a card needs a confirmed one.
  * Both also need a player, a different marker and an image. The blockers explain anything missing.
  *
+ * The marker may still be pending on a matched scan, because the `confirm` event is what saves it.
+ * Pass the marker chosen on screen as `markerId` in the options and it counts; a saved marker wins
+ * when there is one.
+ *
  * Call it as `scanReadiness(scan, options)` or
  * `scanReadiness(scan, playersWithCards, lowConfidenceThreshold, playerName)`.
  */
@@ -159,12 +168,13 @@ export function scanReadiness(
     ? { playersWithCards: context, lowConfidenceThreshold, playerName }
     : context;
   const threshold = resolvedThreshold(options.lowConfidenceThreshold);
-  const blockers = blockersFor(scan);
+  const markerId = scan.markerId ?? options.markerId ?? null;
+  const blockers = blockersFor(scan, markerId);
   const warnings = warningsFor(scan, options, threshold);
   const ready = blockers.length === 0;
 
   return {
-    canConfirm: ready && scan.state === "matched",
+    canConfirm: ready && scan.state === "matched" && scan.playerId !== null && scan.image !== null,
     canCreateCard: ready && scan.state === "confirmed",
     blockers,
     warnings,
