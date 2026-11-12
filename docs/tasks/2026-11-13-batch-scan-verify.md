@@ -58,7 +58,7 @@ the read side); the tables below include them.
 | D3 | **The app's conversion is the handicap.** Scoring uses the course handicap worked from the index with the tee's rating and slope, as confirmed on 5 November. The number written in the card's HDCP box is shown for comparison only. |
 | D4 | **Build for this event.** The work is wanted before the event ends on 15 November, including the database changes. |
 | D5 | **Migrations are written, not applied.** The pick-up and scan inbox migration files are written on branches for the owner to read. Nothing is applied to a real project until the owner approves each file by name. (Owner, 13 November 2026.) |
-| D6 | **The marker on a scanned card is a player from the other team in the group**, as the rules sheet says. The desk picks the marker; the signed name on the card is a suggestion only. (Owner, 13 November 2026.) |
+| D6 | **The marker on a scanned card is a player from the other team in the group**, as the rules sheet says. The app assigns that player; nobody has to pick or type the marker, and the signed name on the card is not used. When the group has more than one player from the other team, the app fills the first one in group order and the desk can change it. The "more than one" part is my reading of "just assign the other player on other team" and the owner can correct it. (Owner, 13 November 2026.) |
 | D7 | **Ticking "checked against the paper card" is the approval.** One person checks and approves in one step. This changes the second-person rule in the current submit and approval flow; see "Approval change (D7)" below. (Owner, 13 November 2026.) |
 | D8 | **Day 1 AM is released again on the app conversion**, so all four days use one handicap rule. This changes published results; see "Releasing Day 1 AM again (D8)" below. (Owner, 13 November 2026.) |
 
@@ -120,7 +120,7 @@ owner approves that migration by name.
 | 2 | **Editable card view on the shared layout.** Extend the table layout and helpers behind `PaperScorecard` into one card the desk workspace and print both use, with the header line, doubtful and changed marks, the checked tick, the saved indicator, Enter to the next hole and three-to-a-page print. `PaperScorecard` itself keeps working for the public pages. Submit, approval and correction stay as they are. | None | Nothing |
 | 3 | **Pick-up on the write side.** A hole can be recorded as picked up: 0 points, counted as a played hole, no gross total shown for that card. The published snapshot and public card already read `pickedUp`; the scoring engine, card validation, canonical scores and card entry learn it, which replaces the "X is 0" stand-in from the Day 1 AM release. | Yes | Owner approves the migration |
 | 4 | **Scan inbox.** A table for scans that are not yet cards (round, session, image, what was read, suggested player, state) and the upload, match and verify screens. The reader's name feeds step 1; tee, HDCP box and group are optional matcher inputs that the reader does not return today. | Yes | Steps 1 to 3; reader status checked |
-| 5 | **Marker for a scanned card.** The database needs a marker who is another player. By D6 the desk picks one from the other team in the group, and the card's signed name is shown as a suggestion. | Maybe | Step 4 |
+| 5 | **Marker for a scanned card.** The database needs a marker who is another player. By D6 the app assigns the player from the other team in the group, the desk can change it, and the card's signed name is not used. | Maybe | Step 4 |
 | 6 | **Staff app.** The group score screen uses the shared card view and can open the inbox for its own group. | None | Steps 2 and 4 |
 | 7 | **Team ranking and class in standings.** The Scores screen ranks teams on aggregate net points by class, and lists a player whose partner has no card as not ranked. | None expected | Step 3 |
 
@@ -199,8 +199,8 @@ November). This rewrites published results, so it is not done by a builder and n
 
 | # | Question | Who | Blocks |
 | --- | --- | --- | --- |
-| Q1 | ~~Day 1 AM released again on the app conversion?~~ **Answered: yes (D8).** The re-release itself is not done; see "Releasing Day 1 AM again (D8)". | Owner | Done once the re-release is run |
-| Q2 | ~~Who is the marker on a scanned card?~~ **Answered: a player from the other team in the group (D6).** | Owner | Nothing |
-| Q3 | Is the card reader running in production, and how well did it read the Day 1 cards? | Owner | Step 4; without a reader the inbox still works but every card is typed |
-| Q4 | ~~Does "checked" count as approval?~~ **Answered: yes (D7).** The rule change still has to be built, and any migration approved by name. | Owner | Nothing |
-| Q5 | Is the two-point pick-up penalty recorded by the desk in the app, or handled on paper? | Organizer | Step 7 |
+| Q1 | ~~Day 1 AM released again on the app conversion?~~ **Answered: yes (D8), confirmed again on 13 November.** The re-release itself is not done; see "Releasing Day 1 AM again (D8)". | Owner | Done once the re-release is run |
+| Q2 | ~~Who is the marker on a scanned card?~~ **Answered: the other-team player in the group, assigned by the app (D6).** | Owner | Nothing |
+| Q3 | ~~Is the card reader running in production, and how well did it read the Day 1 cards?~~ **Answered: it runs and it reads, but the control per hole is not good enough.** So the verify screen has to let the desk accept, correct or clear each hole one at a time, and show which holes the reader was unsure of. The inbox does not depend on the reader being right. | Owner | Nothing |
+| Q4 | ~~Does "checked" count as approval?~~ **Answered: yes (D7), confirmed again on 13 November.** The rule change still has to be built, and any migration approved by name. | Owner | Nothing |
+| Q5 | ~~Is the two-point pick-up penalty recorded by the desk in the app, or handled on paper?~~ **Answered: a pick-up just equals 0.** No penalty is recorded in the app; this matches the spec, which says the two-point pick-up penalty is not applied. Nothing to build for a penalty. | Organizer | Nothing |
