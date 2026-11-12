@@ -401,6 +401,10 @@ export function routingInputFor(
       birthdate: p.birthdate,
       gender: p.gender,
       index: entry.frozen.index,
+      // A desk override carries the validated card class and card handicap. Without the override
+      // the draw keeps the index path, so uncarded events behave exactly as before.
+      classId: entry.overridden === true ? entry.flightId : null,
+      cardHandicap: entry.overridden === true ? entry.playingHandicap : null,
       teamKey: entry.teamNo === null || entry.teamNo === undefined ? null : `team-${entry.teamNo}`,
     });
   }
