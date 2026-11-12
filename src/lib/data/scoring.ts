@@ -151,21 +151,56 @@ export interface OpenRoundInput extends OpenRoundSettingsInput {
 }
 
 export interface ScoringRepository {
-  loadRound(tournamentId: string): Promise<ScoringRoundView | null>;
+  /**
+   * The round for the playing day the desk is on. A null or missing day reads the earliest round,
+   * which is what a caller with no day on screen has always had.
+   */
+  loadRound(tournamentId: string, dayNumber?: number | null): Promise<ScoringRoundView | null>;
   /** What the desk needs to decide whether the round can be opened, and why not. */
-  loadOpenRoundState(tournamentId: string): Promise<OpenRoundSnapshot>;
+  loadOpenRoundState(tournamentId: string, dayNumber?: number | null): Promise<OpenRoundSnapshot>;
   /**
    * Copies the published draw into the round, its entries and handicap snapshots in one
    * transaction. Safe to call again for the same revision.
    */
   openRound(tournamentId: string, input: OpenRoundInput): Promise<ScoringRoundView>;
-  submitCard(tournamentId: string, input: SubmitCardInput): Promise<ScoringRoundView>;
-  approveCard(tournamentId: string, cardId: string, reason?: string): Promise<ScoringRoundView>;
-  rejectCard(tournamentId: string, cardId: string, reason: string): Promise<ScoringRoundView>;
-  revokeCard(tournamentId: string, cardId: string, reason: string): Promise<ScoringRoundView>;
-  resolveHole(tournamentId: string, input: ResolveHoleInput): Promise<ScoringRoundView>;
-  publishRound(tournamentId: string, note?: string): Promise<ScoringRoundView>;
-  finalizeRound(tournamentId: string, note?: string): Promise<ScoringRoundView>;
+  submitCard(
+    tournamentId: string,
+    input: SubmitCardInput,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  approveCard(
+    tournamentId: string,
+    cardId: string,
+    reason?: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  rejectCard(
+    tournamentId: string,
+    cardId: string,
+    reason: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  revokeCard(
+    tournamentId: string,
+    cardId: string,
+    reason: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  resolveHole(
+    tournamentId: string,
+    input: ResolveHoleInput,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  publishRound(
+    tournamentId: string,
+    note?: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  finalizeRound(
+    tournamentId: string,
+    note?: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
 }
 
 export interface DemoScoringOptions {

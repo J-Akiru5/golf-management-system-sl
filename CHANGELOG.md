@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to TeeLine Golf. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning rules are in [`docs/VERSIONING.md`](docs/VERSIONING.md). Versions before 1.0.0 are
@@ -8,6 +8,32 @@ Each entry lists the database migrations that ship with it and whether they are 
 Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
+
+### Migrations shipping with this release
+`20261110000400_provisional_publication.sql` turns provisional publication on for opened rounds and
+lets a scored round publish without a separate "start scoring" step. Not applied in this branch.
+
+### Changed
+- `pnpm check` runs typecheck, lint, tests and build in order, and `pnpm check:ui` starts a dev
+  server, runs the browser checks and stops it. CI calls the same two commands, so a local pass and a
+  CI pass mean the same thing.
+- `pnpm release:check` compares `package.json`, `VERSION`, `CHANGELOG.md` and the tag before a
+  release is tagged.
+- `plan/policy.yaml` now records the deployment allowlist that `vercel.json` enforces: `main` and
+  `staging`.
+
+### Fixed
+- **Scoring follows the playing day on screen.** The scores desk, the round setup panel and the
+  staff group score sheet read and write the selected day's round instead of the earliest round, so a
+  day-3 card lands on the day-3 entry.
+- **A card is only saved when every hole has a score.** The entry form starts blank, the written
+  total appears only when all holes are filled, and a partly filled card is refused instead of being
+  saved with par.
+- **Saving a card confirms it and clears the form.** The entry key stays stable across retries, so
+  a second tap cannot create revision 2.
+- **A scored round can be published provisionally.** Provisional publication is on by default and
+  `publish_round` accepts a round that is still open, so the public leaderboard is not held until
+  finalization.
 
 ## [0.38.0] - 2026-11-12
 
@@ -133,7 +159,7 @@ Supabase project, because the code and the database are released separately.
 
 ### Removed
 - **The tee-times board and its search no longer show the pairings or a starting hole.** No "With
-  …", no group-mate names, no pooled multi-name cards and no hole badge on either the day board or
+  ΓÇª", no group-mate names, no pooled multi-name cards and no hole badge on either the day board or
   a search result: a player sees their own row only. No migration.
 
 ## [0.34.0] - 2026-11-11
@@ -325,7 +351,7 @@ No new migration. `20261108002100_fix_save_draw_round_id.sql` was applied to the
 - **Saving the draw no longer fails on `group_members.round_id`.** Migration `20261108000900`
   replaced `save_draw` with a body copied from before `group_members.round_id` existed, so the
   member insert omitted the column and every save failed with a not-null violation, leaving the desk
-  on “Not saved”. Migration `20261108002100` restores the round_id copy while keeping the null-round
+  on ΓÇ£Not savedΓÇ¥. Migration `20261108002100` restores the round_id copy while keeping the null-round
   guard. **Applied to the live project by the owner on 8 November 2026** and verified by saving a
   Move. No app deploy was needed.
 
@@ -391,7 +417,7 @@ capped fails at the handicap snapshot.
   token and CORS rule and set the environment variables. No migration.
 - **The print center can print the player pairings while the draw is still a draft.** When no
   published snapshot exists, the Pairings tab builds the club's sheet from the current board, marks
-  every page "DRAFT · NOT PUBLISHED · FOR DESK USE ONLY", and enables the PDF and Excel download.
+  every page "DRAFT ┬╖ NOT PUBLISHED ┬╖ FOR DESK USE ONLY", and enables the PDF and Excel download.
   The public pages still read only the published snapshot, so players never see a draft. No
   migration.
 - **The player roster filters by pairing status (issue #191).** The players list now has All
@@ -564,10 +590,10 @@ All additive. Reported applied to the live project by the owner on 8 Nov 2026 (n
   that guide, and a phone held upright is asked to turn sideways. Upload a photo sits in the same
   window as a button, and a blocked camera never stops the desk from attaching a photo.
 - **The control room map zooms under the pointer.** Scroll the wheel over the illustrated course, or
-  pinch it on a touch screen, and the map scales between 1× and 2.5× around the point you are
+  pinch it on a touch screen, and the map scales between 1├ù and 2.5├ù around the point you are
   looking at. The drag still pans, its travel grows with the zoom so no bare edge can show, and
   Reset view returns to the whole course. The map is an illustration drawn on a canvas, so zooming
-  past 2.5× would only blur it.
+  past 2.5├ù would only blur it.
 
 ### Fixed
 - **The calendar marks today.** The month grid rings the current day in gold, fills its date circle
@@ -720,10 +746,10 @@ Player mobile/PWA pass, public programme, player scorecard and scorecard correct
   with player shortcuts, and the player bar appears on the public home, pairings, leaderboard, entry
   and FAQ. The leaderboard gets a phone card list instead of a six-column table. No migration.
 - **The public programme on `/pairings`**: the page now shows the confirmed tee times for each
-  playing day (Day 1, Day 2, …), a public player list (name, home club, frozen index, category and
+  playing day (Day 1, Day 2, ΓÇª), a public player list (name, home club, frozen index, category and
   flight) and the organizers' rules of play, before the published pairings. A tee time is withheld
   until the desk ticks it confirmed, so a partly entered schedule cannot read as a confirmed start.
-  The rules are written in **Settings → Rules of play** and stored on `tournaments.rules_of_play`.
+  The rules are written in **Settings ΓåÆ Rules of play** and stored on `tournaments.rules_of_play`.
   The anonymous read is `public_programme()`, which returns null unless the event is published; the
   pairings themselves still come from the frozen published snapshot. Migration
   `20261041000000_public_programme_rules.sql` is **applied to the live project on 26 Oct 2026**.
@@ -906,7 +932,7 @@ membership/caddie functions and the public projections.
 
 ### Fixed
 - **Registration workbook day columns**: workbooks that mark each playing day in its own column
-  (`DAY 1` … `DAY N`, or an export such as `day_1` … `day_4`) are now read correctly. A TRUE, 1 or YES
+  (`DAY 1` ΓÇª `DAY N`, or an export such as `day_1` ΓÇª `day_4`) are now read correctly. A TRUE, 1 or YES
   cell selects that day; blank cells are not treated as FALSE. The event's playing-day rule is applied
   exactly as it is for a single `GAME DATES` cell, and a row that does not meet it is rejected and
   recorded with its reason instead of being guessed. No migration.
@@ -926,10 +952,10 @@ The scorecard workflow now writes through the guarded database functions.
 - **Proposed scoring defaults** (`src/lib/scoring/defaults.ts`): two independent cards, single-card
   provisional display, a proposed back-9 tie-break that stays **unconfirmed**, organizer finalization
   authority, verified-holes provisional publication, a reciprocal scorer cycle, 100% allowance, WHS
-  rounding, independent days, 0.85 OCR confidence and a 1–20 stroke range. They are starting values
+  rounding, independent days, 0.85 OCR confidence and a 1ΓÇô20 stroke range. They are starting values
   stored per round, not hard-coded rules; finalization still blocks until the tie-break is confirmed.
 - **Generated database types** in `src/lib/supabase/generated-types.ts`, used by the scoring adapter.
-  The app’s existing hand-written types remain in place until the wider type migration is scheduled.
+  The appΓÇÖs existing hand-written types remain in place until the wider type migration is scheduled.
 
 ## [0.22.0] - 2026-10-21
 
@@ -1042,7 +1068,7 @@ A real footer, and the legal pages the site was missing.
 - **`/privacy` and `/terms`**, written from the data model rather than invented: what is collected,
   what the public pairings page is allowed to show, that photographs need recorded consent, and the
   rights under RA 10173. Both are marked **draft** at the top, because the club has not reviewed them,
-  and the two answers only the club can give — the retention period and the privacy contact — are left
+  and the two answers only the club can give ΓÇö the retention period and the privacy contact ΓÇö are left
   as visible placeholders rather than guessed.
 - **A four-column footer** with the club, product and legal links, a copyright bar carrying the
   version, and a photography credit. The old footer was a logo, one line and a sign-in link, which is
@@ -1247,7 +1273,7 @@ together. No migration.
   than covered with an older copy.
 
 ### Known
-- The bottom bars were checked with headless Chrome at 390×844 and 1280×900 but are not yet covered by
+- The bottom bars were checked with headless Chrome at 390├ù844 and 1280├ù900 but are not yet covered by
   `pnpm verify:ui`, which stands at 78 checks. Their item lists have unit tests.
 - The offline player view reads in English only, as the note above describes.
 
@@ -1305,7 +1331,7 @@ What a signed-in pass against the live project found, written down. Documentatio
 ### Known issues
 - **The desk does not load on the first client render after signing in.** Found on the live project
   on 19 Oct 2026 and reproducible: the redirect lands on `/admin` correctly, but the desk says "The
-  tournament desk did not load" and the account chip reads "Not signed in · Session unavailable".
+  tournament desk did not load" and the account chip reads "Not signed in ┬╖ Session unavailable".
   Reloading fixes it every time and every later navigation works. Measured rather than guessed: the
   auth cookie is set and readable at the moment of failure, and **no `/auth/v1/user` request is made
   at all**, so `getUser()` reported a missing session locally rather than being refused. That points
@@ -1358,35 +1384,35 @@ A new function is private unless the migration that creates it grants it.
 ### Security
 - **A new function is private unless the migration that creates it says otherwise.** Two defaults
   stood in the way and they needed different tools. Supabase's *stored* default grants `EXECUTE` on
-  new functions in `public` to `anon`, and `alter default privileges … revoke` removes that one.
-  Postgres's `EXECUTE` to `PUBLIC` is **hard-coded** and no default-privileges setting can touch it —
+  new functions in `public` to `anon`, and `alter default privileges ΓÇª revoke` removes that one.
+  Postgres's `EXECUTE` to `PUBLIC` is **hard-coded** and no default-privileges setting can touch it ΓÇö
   measured, not assumed: after the anon revoke, a probe function's ACL still read
-  `{=X/postgres, …}`, and every role inherits through PUBLIC, so anon was still in. An event trigger
+  `{=X/postgres, ΓÇª}`, and every role inherits through PUBLIC, so anon was still in. An event trigger
   on `CREATE FUNCTION` now revokes the new function from PUBLIC and anon the moment it exists. A
-  function that is meant to be public still says so with its own `grant … to anon`, which runs after
-  the trigger and survives it — so the exception is written down where a reader looks, instead of
+  function that is meant to be public still says so with its own `grant ΓÇª to anon`, which runs after
+  the trigger and survives it ΓÇö so the exception is written down where a reader looks, instead of
   being the default for everything.
 
 ### Database
 - `20261031000000_private_functions_by_default.sql`: **applied live**. Self-verifying: it creates a
   function inside its own transaction, reads the ACL the trigger produced, and raises unless the
   posture is right, so a silent no-op cannot be recorded as applied. It did exactly that on the first
-  attempt — the PUBLIC half had not worked — which is why the event trigger exists.
+  attempt ΓÇö the PUBLIC half had not worked ΓÇö which is why the event trigger exists.
 - `20261030000000_revoke_anon_execute.sql`: **applied live**. Reaches anon grants that
-  `revoke … from public` misses.
+  `revoke ΓÇª from public` misses.
 
 ## [0.10.0] - 2026-10-18
 
 One hardening fix, with the migration it needs.
 
 ### Security
-- **The staff-only functions are no longer reachable by an anonymous caller.** The `revoke … from
+- **The staff-only functions are no longer reachable by an anonymous caller.** The `revoke ΓÇª from
   public` line in the earlier migrations does not do what it reads as: `public` is Postgres's PUBLIC
   pseudo-role, while Supabase grants `EXECUTE` to the `anon` role **by name**, so revoking from PUBLIC
   leaves that grant in place. `save_draw`, `unpublish_pairings`, `save_event_setup` and
-  `sync_notifications` could all be called with the anon key and no session. Nothing was exploitable —
+  `sync_notifications` could all be called with the anon key and no session. Nothing was exploitable ΓÇö
   each function resolves the event and then requires an owner or organizer through `has_club_role`,
-  and `auth.uid()` is null for anon, so every one refused — but an unauthenticated request should not
+  and `auth.uid()` is null for anon, so every one refused ΓÇö but an unauthenticated request should not
   be able to make the database do that work at all, and one mistake in one role test would be a live
   hole. `20261030000000_revoke_anon_execute.sql` revokes the anon grant and restates the authenticated
   one. The genuinely public functions (`public_pairings`, `public_registration_form`,
@@ -1395,7 +1421,7 @@ One hardening fix, with the migration it needs.
 
 ### Database
 - `20261030000000_revoke_anon_execute.sql`: **applied live**. Reaches anon grants that
-  `revoke … from public` misses. Safe to re-run. Note that Supabase's default privileges grant
+  `revoke ΓÇª from public` misses. Safe to re-run. Note that Supabase's default privileges grant
   `EXECUTE` on new functions in `public` to anon, so a future `create or replace function` re-opens
   this unless the revoke is repeated there or the default privileges are changed.
 
@@ -1466,7 +1492,7 @@ Help inside the app, a tidier shell, and a fix for a save that was refused when 
   not only the page around it.
 
 ### Changed
-- The theme control is one dropdown — System, Light (Ivory), Dark (Charcoal) — in place of the
+- The theme control is one dropdown ΓÇö System, Light (Ivory), Dark (Charcoal) ΓÇö in place of the
   segmented group and the cycling button (#32). The storage contract is unchanged: `starter-theme`,
   with `auto` meaning the key is absent, so saved choices and the pre-paint script keep working.
 

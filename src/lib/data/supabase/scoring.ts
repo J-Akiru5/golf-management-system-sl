@@ -390,13 +390,19 @@ export function createSupabaseScoringRepository(
     };
   }
 
-  async function loadRound(tournamentId: string): Promise<ScoringRoundView | null> {
-    const round = await roundFor(tournamentId);
+  async function loadRound(
+    tournamentId: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView | null> {
+    const round = await roundFor(tournamentId, dayNumber ?? undefined);
     if (!round) return null;
     return buildView(round);
   }
 
-  async function loadOpenRoundState(tournamentId: string): Promise<OpenRoundSnapshot> {
+  async function loadOpenRoundState(
+    tournamentId: string,
+    dayNumber?: number | null,
+  ): Promise<OpenRoundSnapshot> {
     const { data: tournament, error: tournamentError } = await db
       .from("tournaments")
       .select("id, club_id, draw_revision, published, published_snapshot")
@@ -409,7 +415,7 @@ export function createSupabaseScoringRepository(
       throw new Error("This event could not be found, so its round cannot be opened.");
     }
 
-    const round = await roundFor(tournamentId);
+    const round = await roundFor(tournamentId, dayNumber ?? undefined);
 
     let liveGroups: OpenRoundDrawGroup[] = [];
     if (round) {
@@ -512,8 +518,11 @@ export function createSupabaseScoringRepository(
       }));
   }
 
-  async function refresh(tournamentId: string): Promise<ScoringRoundView> {
-    const view = await loadRound(tournamentId);
+  async function refresh(
+    tournamentId: string,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView> {
+    const view = await loadRound(tournamentId, dayNumber);
     if (!view) throw new Error("No scoring round is configured for this tournament.");
     return view;
   }
@@ -534,8 +543,8 @@ export function createSupabaseScoringRepository(
       return view;
     },
 
-    async submitCard(tournamentId, input: SubmitCardInput) {
-      const view = await refresh(tournamentId);
+    async submitCard(tournamentId, input: SubmitCardInput, dayNumber?: number | null) {
+      const view = await refresh(tournamentId, dayNumber);
       const player = view.players.find((candidate) => candidate.playerId === input.playerId);
       if (!player?.roundEntryId) throw new Error("The player has no round entry.");
 
@@ -574,11 +583,11 @@ export function createSupabaseScoringRepository(
           );
         }
       }
-      return refresh(tournamentId);
+      return refresh(tournamentId, dayNumber);
     },
 
-    async approveCard(tournamentId, cardId, reason) {
-      const view = await refresh(tournamentId);
+    async approveCard(tournamentId, cardId, reason, dayNumber) {
+      const view = await refresh(tournamentId, dayNumber);
       const card = view.cards.find((candidate) => candidate.id === cardId);
       if (!card) throw new Error("Scorecard not found.");
 
@@ -603,18 +612,18 @@ export function createSupabaseScoringRepository(
         p_reason: reason,
       });
       if (error) throw new Error(`Could not approve the card: ${error.message}`);
-      return refresh(tournamentId);
+      return refresh(tournamentId, dayNumber);
     },
 
-    async rejectCard(tournamentId, cardId, reason) {
-      await refresh(tournamentId);
+    async rejectCard(tournamentId, cardId, reason, dayNumber) {
+      await refresh(tournamentId, dayNumber);
       const { error } = await db.rpc("reject_scorecard", { p_card: cardId, p_reason: reason });
       if (error) throw new Error(`Could not reject the card: ${error.message}`);
-      return refresh(tournamentId);
+      return refresh(tournamentId, dayNumber);
     },
 
-    async revokeCard(tournamentId, cardId, reason) {
-      const view = await refresh(tournamentId);
+    async revokeCard(tournamentId, cardId, reason, dayNumber) {
+      const view = await refresh(tournamentId, dayNumber);
       const card = view.cards.find((candidate) => candidate.id === cardId);
       if (!card) throw new Error("Scorecard not found.");
       if (card.status !== "approved") {
@@ -643,11 +652,11 @@ export function createSupabaseScoringRepository(
         p_reason: reason,
       });
       if (error) throw new Error(`Could not revoke the card: ${error.message}`);
-      return refresh(tournamentId);
+      return refresh(tournamentId, dayNumber);
     },
 
-    async resolveHole(tournamentId, input: ResolveHoleInput) {
-      const view = await refresh(tournamentId);
+    async resolveHole(tournamentId, input: ResolveHoleInput, dayNumber) {
+      const view = await refresh(tournamentId, dayNumber);
       const player = view.players.find((candidate) => candidate.playerId === input.playerId);
       if (!player) throw new Error("Player not found in this round.");
 
@@ -684,27 +693,27 @@ export function createSupabaseScoringRepository(
         p_canonical: proposalRows({ ...player, canonical }) as unknown as Json,
       });
       if (error) throw new Error(`Could not resolve the hole: ${error.message}`);
-      return refresh(tournamentId);
+      return refresh(tournamentId, dayNumber);
     },
 
-    async publishRound(tournamentId, note) {
-      const view = await refresh(tournamentId);
+    async publishRound(tournamentId, note, dayNumber) {
+      const view = await refresh(tournamentId, dayNumber);
       const { error } = await db.rpc("publish_round", {
         p_round: view.roundId,
         p_note: note,
       });
       if (error) throw new Error(`Could not publish the round: ${error.message}`);
-      return refresh(tournamentId);
+      return refresh(tournamentId, dayNumber);
     },
 
-    async finalizeRound(tournamentId, note) {
-      const view = await refresh(tournamentId);
+    async finalizeRound(tournamentId, note, dayNumber) {
+      const view = await refresh(tournamentId, dayNumber);
       const { error } = await db.rpc("finalize_round", {
         p_round: view.roundId,
         p_note: note,
       });
       if (error) throw new Error(`Could not finalize the round: ${error.message}`);
-      return refresh(tournamentId);
+      return refresh(tournamentId, dayNumber);
     },
   };
 }
