@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   ClipboardList,
   FileJson,
   Flag,
@@ -64,6 +65,8 @@ export default function ScoresPage() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** A JSON import runs its own long loop, so the rest of the desk waits for it. */
+  const [importBusy, setImportBusy] = useState(false);
   const [playerId, setPlayerId] = useState("");
   const [scorerId, setScorerId] = useState("");
   const [strokes, setStrokes] = useState<Record<number, string>>({});
@@ -89,6 +92,7 @@ export default function ScoresPage() {
     member?.role === "owner" ||
     member?.role === "organizer" ||
     member?.role === "desk";
+  const interactionBusy = busy || importBusy;
   // Demo has no auth at all (`member` is undefined); a signed-in account always has a role. The
   // profile link is only painted when the account may actually open a staff profile page.
   const profileRole = member === undefined ? undefined : (member?.role ?? null);
@@ -109,6 +113,8 @@ export default function ScoresPage() {
     let cancelled = false;
     setLoaded(false);
     setError(null);
+    // The old event's round, cards and import preview must not stay on screen.
+    setView(null);
     scoring
       .loadRound(tournamentId)
       .then((next) => {
@@ -379,7 +385,7 @@ export default function ScoresPage() {
               variant="ghost"
               size="sm"
               onClick={() => window.location.reload()}
-              disabled={busy}
+              disabled={interactionBusy}
             >
               <RotateCcw className="size-4" aria-hidden="true" />
               Refresh
@@ -409,8 +415,8 @@ export default function ScoresPage() {
         <OpenRoundPanel
           key={`${roundState.roundStatus ?? "none"}:${roundState.draw.revision}`}
           snapshot={roundState}
-          role={member?.role}
-          busy={busy}
+          role={profileRole}
+          busy={interactionBusy}
           onOpen={openRound}
           onReload={reloadRoundState}
         />
@@ -469,7 +475,7 @@ export default function ScoresPage() {
           >
             <ReaderAccuracyLine />
             <RoleGate
-              role={member?.role}
+              role={profileRole}
               allow={["owner", "organizer", "desk"]}
               mode="disable"
               disabledReason="Only club staff can scan a card."
@@ -482,13 +488,13 @@ export default function ScoresPage() {
                   playerName: player.playerName,
                 }))}
                 holes={holes}
-                disabled={busy || Boolean(editingCard)}
+                disabled={interactionBusy || Boolean(editingCard)}
                 onApply={applyScan}
               />
             </RoleGate>
           </SectionCard>
 
-          <details className="card" id="score-import">
+          <details className="card group" id="score-import">
             <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-2">
               <FileJson className="size-4 text-fairway" aria-hidden="true" />
               <span className="font-semibold">Import cards from JSON</span>
@@ -496,19 +502,25 @@ export default function ScoresPage() {
                 For a transcription made outside the app. Every card is checked first and still
                 needs approval.
               </span>
+              <ChevronDown
+                className="ml-auto size-4 transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
             </summary>
             <div className="mt-3">
               <RoleGate
-                role={member?.role}
+                role={profileRole}
                 allow={["owner", "organizer", "desk"]}
                 mode="disable"
                 disabledReason="Only club staff can import cards."
               >
                 <ScorecardImportPanel
+                  key={view.roundId}
                   view={view}
                   roundState={roundState}
                   busy={busy}
                   onImported={setView}
+                  onImportingChange={setImportBusy}
                 />
               </RoleGate>
             </div>
@@ -516,7 +528,7 @@ export default function ScoresPage() {
 
           <div className="grid items-start gap-6 xl:grid-cols-2">
             <RoleGate
-              role={member?.role}
+              role={profileRole}
               allow={["owner", "organizer", "desk"]}
               mode="disable"
               disabledReason="Only club staff can enter or approve cards."
@@ -555,7 +567,7 @@ export default function ScoresPage() {
                         onChange={(event) => setCorrectionReason(event.target.value)}
                         placeholder="What is being corrected?"
                         aria-label="Correction reason"
-                        disabled={busy}
+                        disabled={interactionBusy}
                       />
                     </label>
                   </div>
@@ -601,7 +613,7 @@ export default function ScoresPage() {
                         }
                       }}
                       placeholder="Type a player's name"
-                      disabled={busy || players.length < 2 || Boolean(editingCard)}
+                      disabled={interactionBusy || players.length < 2 || Boolean(editingCard)}
                     />
                     {/* The picker is a text field, so the name cannot be the link inside it.
                         This is the separate control: choosing a player never navigates away. */}
@@ -625,7 +637,7 @@ export default function ScoresPage() {
                         .map((player) => ({ id: player.playerId, label: player.playerName }))}
                       onChange={setScorerId}
                       placeholder="Type the marker's name"
-                      disabled={busy || players.length < 2 || Boolean(editingCard)}
+                      disabled={interactionBusy || players.length < 2 || Boolean(editingCard)}
                     />
                     {selectedScorer && canOpenProfile && (
                       <p className="hint">
@@ -693,7 +705,7 @@ export default function ScoresPage() {
                               [hole.number]: event.target.value,
                             }))
                           }
-                          disabled={busy}
+                          disabled={interactionBusy}
                         />
                       </label>
                     );
@@ -714,7 +726,12 @@ export default function ScoresPage() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {editingCard && (
-                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={busy}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={cancelEdit}
+                        disabled={interactionBusy}
+                      >
                         Cancel correction
                       </Button>
                     )}
@@ -722,7 +739,7 @@ export default function ScoresPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setStrokes(strokesFor(holes))}
-                      disabled={busy}
+                      disabled={interactionBusy}
                     >
                       Reset to par
                     </Button>
@@ -730,7 +747,7 @@ export default function ScoresPage() {
                       variant="primary"
                       size="sm"
                       onClick={submitCard}
-                      disabled={busy || players.length < 2}
+                      disabled={interactionBusy || players.length < 2}
                       data-help="scores-submit"
                     >
                       {editingCard ? "Submit correction" : "Submit card"}
@@ -767,7 +784,7 @@ export default function ScoresPage() {
                           key={card.id}
                           card={card}
                           view={view}
-                          busy={busy}
+                          busy={interactionBusy}
                           role={profileRole}
                           rejectReason={rejectReasons[card.id] ?? ""}
                           onRejectReason={(value) =>
@@ -855,7 +872,7 @@ export default function ScoresPage() {
                                 };
                               });
                             }}
-                            disabled={busy}
+                            disabled={interactionBusy}
                           />
                         </label>
                         <label className="field min-w-[16rem] flex-1">
@@ -873,14 +890,14 @@ export default function ScoresPage() {
                               });
                             }}
                             placeholder="What did the desk check?"
-                            disabled={busy}
+                            disabled={interactionBusy}
                           />
                         </label>
                         <Button
                           variant="gold"
                           size="sm"
                           onClick={() => resolve(conflictPlayerId, hole.hole)}
-                          disabled={busy}
+                          disabled={interactionBusy}
                         >
                           Resolve
                         </Button>
@@ -965,7 +982,7 @@ export default function ScoresPage() {
 
             <div className="flex flex-wrap gap-2">
               <RoleGate
-                role={member?.role}
+                role={profileRole}
                 allow={["owner", "organizer", "desk"]}
                 mode="disable"
                 disabledReason="Only club staff can publish provisional results."
@@ -973,7 +990,9 @@ export default function ScoresPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={busy || view.roundStatus === "final" || !view.provisionalPublication}
+                  disabled={
+                    interactionBusy || view.roundStatus === "final" || !view.provisionalPublication
+                  }
                   onClick={() =>
                     void run(() => scoring.publishRound(tournamentId, "Provisional publication"))
                   }
@@ -982,7 +1001,7 @@ export default function ScoresPage() {
                 </Button>
               </RoleGate>
               <RoleGate
-                role={member?.role}
+                role={profileRole}
                 allow={["owner", "organizer"]}
                 mode="disable"
                 disabledReason="Only an owner or organizer can finalize."

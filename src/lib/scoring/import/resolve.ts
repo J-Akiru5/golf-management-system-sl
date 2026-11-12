@@ -55,6 +55,7 @@ export interface ResolveScorecardImportInput {
   file: ScorecardImportFile;
   roundId: string;
   tournamentId: string;
+  dayNumber: number;
   players: readonly ScorecardImportRosterPlayer[];
   groups: readonly ScorecardImportDrawGroup[] | null;
   cards: readonly ScorecardImportExistingCard[];
@@ -82,19 +83,20 @@ function resolvePerson(
   }
 
   const matches = input.name === null ? [] : (byName.get(normalizeImportName(input.name)) ?? []);
-  if (input.name !== null && matches.length === 0) {
-    problems.push({
-      path: `${path}.name`,
-      message: `No player in the open round matches ${input.name}.`,
-    });
-  } else if (matches.length > 1) {
-    problems.push({
-      path: `${path}.name`,
-      message: `More than one player in the open round matches ${input.name}. Use the ${label} id.`,
-    });
-  }
-
-  if (fromId !== null && matches.length === 1 && matches[0]?.playerId !== fromId.playerId) {
+  if (fromId === null) {
+    if (input.name !== null && matches.length === 0) {
+      problems.push({
+        path: `${path}.name`,
+        message: `No player in the open round matches ${input.name}.`,
+      });
+    } else if (matches.length > 1) {
+      problems.push({
+        path: `${path}.name`,
+        message: `More than one player in the open round matches ${input.name}. Use the ${label} id.`,
+      });
+    }
+  } else if (matches.length === 1 && matches[0]?.playerId !== fromId.playerId) {
+    // The id decides the player. A name that points at a different player is still a real conflict.
     problems.push({
       path: `${path}.name`,
       message: `The ${label} id and name point at two different players.`,
@@ -155,6 +157,12 @@ export function resolveScorecardImport(input: ResolveScorecardImportInput): Scor
     problems.push({
       path: "tournamentId",
       message: "This file is for another event. Check the event before importing.",
+    });
+  }
+  if (input.file.dayNumber !== input.dayNumber) {
+    problems.push({
+      path: "dayNumber",
+      message: `This file is for day ${input.file.dayNumber}, but the open round is day ${input.dayNumber}.`,
     });
   }
 
@@ -269,14 +277,34 @@ export function resolveScorecardImport(input: ResolveScorecardImportInput): Scor
     }
     plannedPairs.add(pairKey);
 
-    const existing = input.cards.filter(
+    const forPair = input.cards.filter(
       (candidate) =>
-        candidate.playerId === resolved.playerId &&
-        candidate.scorerId === resolved.markerPlayerId &&
-        ACTIVE_CARD_STATUSES.has(candidate.status),
+        candidate.playerId === resolved.playerId && candidate.scorerId === resolved.markerPlayerId,
     );
+    const retired = forPair.find(
+      (candidate) => candidate.status === "rejected" || candidate.status === "revoked",
+    );
+    if (retired) {
+      blocked.push({
+        card,
+        reasons: [
+          {
+            path,
+            message:
+              "This card was rejected or revoked. Enter a new card from the Cards table; re-importing the same card returns the old one.",
+          },
+        ],
+      });
+      continue;
+    }
 
-    if (existing.some((candidate) => holesMatch(candidate, card))) {
+    const existing = forPair.filter((candidate) => ACTIVE_CARD_STATUSES.has(candidate.status));
+
+    if (
+      existing.some(
+        (candidate) => holesMatch(candidate, card) && candidate.writtenTotal === card.writtenTotal,
+      )
+    ) {
       alreadyIn.push(resolved);
       continue;
     }
@@ -287,7 +315,7 @@ export function resolveScorecardImport(input: ResolveScorecardImportInput): Scor
           {
             path,
             message:
-              "A card from this marker is already in for this player with different scores. Correct the existing card from the Cards table instead.",
+              "A card from this marker is already in for this player with different scores or a different written total. Correct the existing card from the Cards table instead.",
           },
         ],
       });
@@ -321,7 +349,10 @@ export function importCardEntries(card: ResolvedScorecardImportCard): CardEntry[
     .sort((left, right) => left.hole - right.hole);
 }
 
-/** A stable key so re-importing the same card does not create a second revision. */
-export function importCaptureKey(cardKey: string): string {
-  return `import:${cardKey}`;
+/**
+ * A stable key so re-importing the same card does not create a second revision. The round id is
+ * part of the key because the database's uniqueness is per club, not per round.
+ */
+export function importCaptureKey(roundId: string, cardKey: string): string {
+  return `import:${roundId}:${cardKey}`;
 }

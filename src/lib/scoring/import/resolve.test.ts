@@ -60,6 +60,7 @@ function resolve(
     file: file(overrides),
     roundId: ROUND_ID,
     tournamentId: TOURNAMENT_ID,
+    dayNumber: 1,
     players,
     groups,
     cards: input.cards ?? [],
@@ -94,6 +95,7 @@ describe("resolveScorecardImport", () => {
       file: file(),
       roundId: ROUND_ID,
       tournamentId: TOURNAMENT_ID,
+      dayNumber: 1,
       players,
       groups: [{ number: 9, playerIds: [MARKER_ID] }],
       cards: [],
@@ -122,6 +124,63 @@ describe("resolveScorecardImport", () => {
     const plan = resolve({ roundId: "11111111-1111-4111-8111-111111111111" });
     expect(plan.ready).toEqual([]);
     expect(plan.problems[0]?.path).toBe("roundId");
+  });
+
+  it("blocks a file for another day", () => {
+    const plan = resolve({ dayNumber: 2 });
+    expect(plan.ready).toEqual([]);
+    expect(plan.problems[0]?.path).toBe("dayNumber");
+  });
+
+  it("lets the id decide when the name is not in the roster", () => {
+    const plan = resolve({ cards: [card({ playerName: "PAPER SPELLING" })] });
+    expect(plan.ready).toHaveLength(1);
+    expect(plan.ready[0]?.playerName).toBe("ADORIO, RONNEL");
+  });
+
+  it("blocks a rejected card instead of returning the old one", () => {
+    const plan = resolve(
+      {},
+      {
+        cards: [
+          {
+            playerId: PLAYER_ID,
+            scorerId: MARKER_ID,
+            status: "rejected",
+            entries: Object.entries(holes()).map(([hole, strokes]) => ({
+              hole: Number(hole),
+              strokes,
+            })),
+            writtenTotal: 90,
+          },
+        ],
+      },
+    );
+    expect(plan.ready).toEqual([]);
+    expect(plan.blocked[0]?.reasons[0]?.message).toContain("rejected or revoked");
+  });
+
+  it("blocks an identical card with a different written total", () => {
+    const plan = resolve(
+      {},
+      {
+        cards: [
+          {
+            playerId: PLAYER_ID,
+            scorerId: MARKER_ID,
+            status: "submitted",
+            entries: Object.entries(holes()).map(([hole, strokes]) => ({
+              hole: Number(hole),
+              strokes,
+            })),
+            writtenTotal: 89,
+          },
+        ],
+      },
+    );
+    expect(plan.ready).toEqual([]);
+    expect(plan.alreadyIn).toEqual([]);
+    expect(plan.blocked[0]?.reasons[0]?.message).toContain("written total");
   });
 
   it("skips an identical card that is already in", () => {
@@ -210,8 +269,10 @@ describe("resolveScorecardImport", () => {
     expect(entries.every((entry) => entry.confidence === null)).toBe(true);
   });
 
-  it("uses a stable capture key", () => {
-    expect(importCaptureKey("d1-g1-adorio-sulpico")).toBe("import:d1-g1-adorio-sulpico");
+  it("uses a stable capture key scoped to the round", () => {
+    expect(importCaptureKey("round-1", "d1-g1-adorio-sulpico")).toBe(
+      "import:round-1:d1-g1-adorio-sulpico",
+    );
   });
 
   it("normalises names for matching", () => {

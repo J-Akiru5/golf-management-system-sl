@@ -69,7 +69,12 @@ export function publishedGroupsFromJson(snapshot: unknown): OpenRoundDrawGroup[]
     const playerIds = record.playerIds;
     if (!Array.isArray(playerIds) || playerIds.length === 0) return null;
     if (!playerIds.every((id) => typeof id === "string" && id !== "")) return null;
-    result.push({ number, playerIds });
+    const dayNumber = record.dayNumber;
+    result.push({
+      number,
+      playerIds,
+      ...(typeof dayNumber === "number" && Number.isFinite(dayNumber) ? { dayNumber } : {}),
+    });
   }
   return result;
 }
@@ -366,6 +371,7 @@ export function createSupabaseScoringRepository(
       roundId: round.id,
       tournamentId: round.tournament_id,
       dayNumber: round.day_number,
+      strokeLimits: { min: round.stroke_min, max: round.stroke_max },
       course,
       policy,
       players: scoringPlayers,

@@ -1,17 +1,35 @@
 # Scorecard JSON import
 
 This is the file format for paper scorecards that are read outside the app and brought back as JSON.
-It is for the organizer's data encoder. It is **not** the card reader contract; the photo reader has
-its own format in [`SCORECARD_SCAN.md`](SCORECARD_SCAN.md).
+The desk downloads a template, sends it to the transcriber, and imports the completed file on the
+Scores screen. The desk still approves every card after the import.
 
-The unit is one physical scorecard: one player, one marker, 18 gross hole scores. A group sheet with
-four players becomes four entries in the `cards` array. One file covers one competition round, which
-is one playing day.
+This is **not** the photo-reader format. The photo reader is described in
+[`SCORECARD_SCAN.md`](SCORECARD_SCAN.md).
 
-The Scores screen has an **Import cards from JSON** panel. It downloads a fill-in template for the
-open round, then reads the completed file, checks every card against the round and the published
-groups, and submits only the cards that pass. The desk still approves every card afterwards. Nothing
-in this file is auto-approved.
+## Words used here
+
+- **Player**: the golfer whose score is on the card.
+- **Marker**: the other golfer who kept and signed the score. A player cannot mark their own card.
+- **Group**: the players who played together, as printed on the start sheet.
+- **Card**: one player's paper scorecard. A four-player group sheet is one piece of paper but four
+  cards in this file.
+
+## What the desk sends you
+
+The desk downloads the template for the correct round and day and sends it to you. You do not need
+to open the app.
+
+The template already contains:
+
+- the round id, tournament id and day;
+- every player's id and printed name;
+- the published group;
+- a proposed marker for each card;
+- all 18 hole keys, with empty scores.
+
+Your job is to fill the scores, check the marker against the paper card, put your name in
+`extractedBy`, and put the time in `extractedAt`.
 
 ## The whole file
 
@@ -60,44 +78,52 @@ in this file is auto-approved.
 }
 ```
 
-The ids and names above are examples. Do not send them as real data.
+The ids and names above are examples. Do not send them as real data. The same file is in
+[`examples/scorecard-import.example.json`](examples/scorecard-import.example.json).
 
 ## Top-level fields
 
 | Field | Type | Required | Rule |
 | --- | --- | --- | --- |
-| `format` | string | yes | Exactly `teeline-scorecard-import`. |
-| `version` | integer | yes | `1`. |
-| `roundId` | UUID | yes | The open competition round, from the Scores screen. A file for another round is refused. |
-| `tournamentId` | UUID | yes | The event. It is checked against the round. |
-| `dayNumber` | integer | yes | The playing day, 1 to 4. It is a label and a cross-check; `roundId` is the real key. |
-| `extractedBy` | string | yes | Your name. |
-| `extractedAt` | ISO 8601 date and time | yes | When you finished the file, with the time zone. |
-| `cards` | array | yes | One entry per physical scorecard. At least one. |
-| `skipped` | array | no | Cards that could not be read. See below. |
+| `format` | text | yes | Exactly `teeline-scorecard-import`. |
+| `version` | number | yes | The number `1`, without quotes. |
+| `roundId` | text | yes | The long id already in the template. A file for another round is refused. |
+| `tournamentId` | text | yes | The long id already in the template. It is checked against the round. |
+| `dayNumber` | number | yes | The playing day, 1 to 4. It is checked against the round. |
+| `extractedBy` | text | yes | Your name. |
+| `extractedAt` | text | yes | When you finished, in the shape shown in the example: `2026-11-12T18:40:00+08:00`. The `T` and the `+08:00` are required. |
+| `cards` | list | yes | One entry per physical scorecard. At least one. |
+| `skipped` | list | no | Cards you could not read. See below. |
 
 ## One card
 
 | Field | Type | Required | Rule |
 | --- | --- | --- | --- |
-| `cardKey` | string | yes | Unique in the file. 1 to 120 characters: letters, numbers, dot, colon, underscore, hyphen. This is the idempotency key, so re-importing the same card does not create a second revision. |
-| `groupNumber` | integer or null | yes | The group number printed on the start sheet. `null` means the card does not show one; the player is then matched by name only. |
-| `playerId` | UUID or null | one of `playerId` / `playerName` | The exact player. Preferred when the desk can supply it. |
-| `playerName` | string or null | one of `playerId` / `playerName` | The name exactly as printed on the start sheet, in capitals: `LAST, FIRST`. |
-| `markerPlayerId` | UUID or null | one of `markerPlayerId` / `markerName` | The exact marker. The marker must be a different player in the same round. |
-| `markerName` | string or null | one of `markerPlayerId` / `markerName` | The marker's printed name. A player cannot mark their own card. |
-| `writtenTotal` | integer or null | yes | The total written on the paper card. `null` when there is no written total. |
-| `holes` | object | yes | Exactly the keys `"1"` to `"18"`, each a whole gross score from 1 to 20. See the hole rules below. |
-| `notes` | string or null | no | A correction, an initialled change, or another fact the desk should see. Not a place for a score. |
+| `cardKey` | text | yes | A name for this card that stays the same if you send the file again. It must be unique in the file for this round. Keep the template's key unless you have a reason to change it. |
+| `groupNumber` | number or null | yes | The group number printed on the start sheet. `null` means the card does not show one. The player is still matched by id or name and must still be in the published draw; only the group-number comparison is skipped. |
+| `playerId` | text or null | one of `playerId` / `playerName` | The long player id from the template. It is the safest identity. |
+| `playerName` | text or null | one of `playerId` / `playerName` | The name from the template, in capitals: `LAST, FIRST`. When the id is present, the id decides the player. The name is a cross-check. |
+| `markerPlayerId` | text or null | one of `markerPlayerId` / `markerName` | The long marker id. Change it only with the name, never on its own. |
+| `markerName` | text or null | one of `markerPlayerId` / `markerName` | The marker's name from the template. A player cannot mark their own card. |
+| `writtenTotal` | number or null | yes | The total written on the paper card. `null` when the card has no written total. |
+| `holes` | block | yes | Exactly the keys `"1"` to `"18"`, one line per hole. See the hole rules below. |
+| `notes` | text or null | no | A correction, an initialled change, or another fact the desk should see. Keep it on one line. Not a place for a score. |
 
-### Hole rules
+## Hole rules
 
-- `holes` is an object, not an array. The key is the hole number as a string.
-- Every hole from 1 to 18 appears exactly once. No hole 19, no missing hole, no duplicate.
-- The value is **gross strokes**, not Stableford points and not net strokes.
-- The value is a whole number from 1 to 20. `"5"` is accepted and read as `5`; `0`, `21`, `4.5`, `""` and `null` are refused.
-- A blank or illegible cell is never guessed. Move that whole card to `skipped` and let the desk enter it by hand.
-- If the paper card has a written total, `writtenTotal` must equal the sum of the 18 holes. If the paper total is wrong, set `writtenTotal` to `null` and write the paper total in `notes`. Do not change a hole to make the sum work.
+- `holes` is a block with one line per hole, not a list. The key is the hole number in quotes.
+- Every hole from 1 to 18 appears exactly once. No hole 19, no missing hole. Do not repeat a hole
+  key: JSON keeps only the last value if a key is repeated, so the importer cannot reliably detect it.
+- The value is **gross strokes**, not Stableford points and not net strokes. The importer cannot tell
+  a gross score from a Stableford point; transcribing gross strokes is your responsibility.
+- The value is a whole number. `"5"` is accepted and read as `5`; `0`, `21`, `4.5`, `""` and `null`
+  are refused.
+- The round can set a narrower range than the default 1 to 20; the preview names any hole outside it.
+- A blank or illegible cell is never guessed. Move that whole card to `skipped` and let the desk enter
+  it by hand.
+- If the paper card has a written total, `writtenTotal` must equal the sum of the 18 holes. If the
+  paper total is wrong, set `writtenTotal` to `null` and write the paper total in `notes`. Do not
+  change a hole to make the sum work.
 
 ## Skipped cards
 
@@ -116,118 +142,151 @@ card is missing without anyone guessing a score.
 
 | Field | Type | Required | Rule |
 | --- | --- | --- | --- |
-| `groupNumber` | integer or null | no | The group, when it is known. |
-| `playerName` | string | yes | The player whose card could not be read. |
-| `reason` | string | yes | What is unreadable or missing. The desk will enter the card by hand. |
+| `groupNumber` | number or null | no | The group, when it is known. |
+| `playerName` | text | yes | The player whose card could not be read. |
+| `reason` | text | yes | What is unreadable, missing or not returned. The desk will enter the card by hand. |
 
-## How a card is matched
+If a player in the template has no paper card because they were a no-show, withdrew, or the card was
+not returned, delete that card from `cards` and add an entry to `skipped` with a reason such as
+`No card returned`. Do not leave an empty card in `cards`.
 
-1. If `playerId` is present, the player is found by id. `playerName` is checked as well; a name that
-   points at a different player is an error.
-2. Otherwise the player is matched by `playerName` against the open round. Case, extra spaces and
-   commas are ignored, so `ADORIO, RONNEL` and `ADORIO RONNEL` match. If two players match, the card
-   is refused; use the player id.
-3. When `groupNumber` is present, the player must be in that group in the published draw. This is the
-   check that catches a card filed under the wrong group.
-4. The marker is matched the same way and must be a different player. A marker who is not in the open
-   round is refused. If the round has assigned markers, the assigned marker must be used; the
-   database refuses a different one.
-5. A card that is already in for the same player and marker is skipped when the 18 holes are
-   identical. If the holes differ, the card is refused: correct the existing card from the Cards
-   table instead of importing a second one.
+## If a player has more than one card
+
+A player may have one card per marker. If the event requires two cards, the player has two entries in
+`cards`, one for each marker.
+
+1. Copy the player's entry.
+2. Give the copy a new `cardKey`.
+3. Change `markerPlayerId` and `markerName` together to the second marker.
+4. Enter that marker's 18 scores.
+
+Do not average or combine the two cards. The desk reconciles them. Do not include two cards for the
+same player and the same marker in one file; the import refuses the second one.
+
+## If a marker is not a player
+
+The import only accepts a marker who is a player in the round. If a marshal or another official who is
+not a player marked the card, put the whole card in `skipped` and tell the desk; the desk enters it by
+hand.
+
+## If a card is already in
+
+- An identical card that is already in is shown as **already in** and is not written again.
+- A card with different scores or a different written total for the same player and marker is
+  **blocked**. Do not send a correction by importing a second card. The desk corrects the card on the
+  Cards table.
+- If a card was rejected or revoked, the import blocks it too. The desk enters a new card from the
+  Cards table.
+- A correction made on the paper **before** you send the file is fine: fix the score, update
+  `writtenTotal` if needed, keep the same `cardKey`, and explain the initialled change in `notes`.
+
+## How the desk matches a card
+
+1. When `playerId` is present and found, the id decides the player. A `playerName` that is missing
+   from the roster, shared by two players, or spelled differently on the paper card does not block the
+   card; the id wins.
+2. When only `playerName` is present, the desk matches it against the open round. Case, extra spaces
+   and commas are ignored, so `ADORIO, RONNEL` and `ADORIO RONNEL` match. If two players match, the
+   card is refused; use the player id.
+3. When `groupNumber` is present, the player must be in that group in the published draw for that day.
+4. The marker is matched the same way and must be a different player. If the round has assigned
+   markers, the assigned marker must be used; the database refuses a different one.
+
+## What the preview means
+
+| Word | Meaning |
+| --- | --- |
+| **Ready** | The card passed every check and will be written when you press Import. |
+| **Already in** | The same card is already there. Nothing is written again. |
+| **Blocked** | The card is refused. The reason is shown. The rest of the file can still be imported. |
+| **Skipped** | You could not read the card. The desk enters it by hand. |
 
 ## What the import checks
 
 A file is refused as a whole when:
 
 - `format` or `version` is wrong.
-- `roundId` does not match the open round, or `tournamentId` does not match the event.
-- `cards` is empty, or a `cardKey` appears twice.
+- `roundId`, `tournamentId` or `dayNumber` does not match the open round.
+- `cards` is empty.
 
-A card is refused, and the rest of the file can still be imported, when:
+A card is left out or refused when:
 
-- a hole is missing, duplicated, out of range, or `null`.
+- a hole is missing, out of range, or `null`.
 - `writtenTotal` is present and does not equal the sum of the holes.
 - the player or marker cannot be matched, or the player and marker are the same person.
 - the player is not in the stated group.
-- the card is already in for the same player and marker with different scores.
+- the same player and marker appear more than once in the file.
+- the card is already in for the same player and marker with different scores or a different written
+  total, or was rejected or revoked.
 
-A card is skipped, not refused, when the identical card is already in.
+A repeated `cardKey` is a card problem: the second card is left out, the preview names it, and the rest
+of the file can still be imported.
 
 ## What happens to an imported card
 
-- The source is `manual`. The file is a transcription, not a machine read.
+- The source is a typed card, not a photo.
 - Every hole is marked as confirmed by the person who read the card.
-- There are no confidence values. This is not the photo reader.
-- The card is `submitted`, not approved. The desk still checks it and approves it.
+- The transcriber's name, time and the card's notes are stored with the card in the connected desk.
+- The card is sent to the desk, not approved. The desk still checks it and approves it.
 - The normal scoring rules still apply: a player cannot mark their own card, conflicts need a desk
   resolution, and publication and finalization keep their own gates.
-- Re-importing the same `cardKey` is safe. It does not create a second revision.
+- Sending the same `cardKey` again is safe. It does not create a second copy of the card.
+
+## Limits
+
+- Names and ids: up to 120 characters.
+- `notes`: up to 2,000 characters, on one line.
+- A skipped reason: up to 500 characters, on one line.
+- `extractedAt`: up to 40 characters.
+- `groupNumber`: 1 to 999.
+- `writtenTotal`: 1 up to 18 times the round's maximum hole score (360 with the default maximum of 20).
+- Scores: whole numbers, normally 1 to 20, or the round's narrower range.
+
+Write numbers without quotes. The importer tolerates `"5"` for a score, but `version` must be the
+number `1`. Use the ids from the template. In the demo they may look like `demo-round-1`, not a long
+UUID; that is fine.
 
 ## Getting the template
 
 1. Open **Scores** in the tournament desk and select the playing day you are importing into. A file
    for another day is refused.
 2. Open **Import cards from JSON**.
-3. Press **Download template**. The file already carries the round id, each player's id and name,
-   the published group, the proposed marker and all 18 hole keys.
-4. Fill `extractedBy`, `extractedAt` and the 18 scores. Do not change the ids or group numbers unless
-   the desk tells you they are wrong.
-5. Send the file back. The desk opens the same panel and checks the preview before importing.
+3. Press **Download template**.
+4. Fill `extractedBy`, `extractedAt`, `writtenTotal` where the paper has one, and the 18 scores.
+5. Check the marker against the paper card. The template's marker is only a proposal. If the card was
+   marked by a different player, change both `markerPlayerId` and `markerName` to that player. Change
+   the id and the name together; a name that points at a different player is refused. Do not change
+   the player's id or name, or the group number, unless the desk tells you they are wrong.
+6. Send the file back. The desk opens the same panel and checks the preview before importing.
 
 If the round has no published draw, the template cannot fill the groups. Ask the desk to publish the
 draw and open the round first.
 
-## Blank template
+## Editing and saving the file
 
-Copy this for each card. Replace every `null` hole with the score from the paper card. The import
-refuses a card while a hole is still `null`.
-
-```json
-{
-  "cardKey": "d1-g1-player-marker",
-  "groupNumber": 1,
-  "playerId": null,
-  "playerName": "LAST, FIRST",
-  "markerPlayerId": null,
-  "markerName": "LAST, FIRST",
-  "writtenTotal": null,
-  "holes": {
-    "1": null,
-    "2": null,
-    "3": null,
-    "4": null,
-    "5": null,
-    "6": null,
-    "7": null,
-    "8": null,
-    "9": null,
-    "10": null,
-    "11": null,
-    "12": null,
-    "13": null,
-    "14": null,
-    "15": null,
-    "16": null,
-    "17": null,
-    "18": null
-  },
-  "notes": null
-}
-```
+- Edit it in a plain text editor, not Word or Excel.
+- Save it as UTF-8 with a `.json` extension.
+- Keep every `notes` and `reason` on one line. Do not use double quotes inside them.
+- If the preview says the file is not valid JSON, check for a missing comma, a missing quote, or a
+  line break inside a quoted value.
+- Replace `LAST, FIRST` placeholders with the real name, or use the downloaded template.
 
 ## Checklist before sending
 
-1. One file per playing day. Ask the desk for that day's `roundId` and `tournamentId`.
+1. One file per playing day. Use the `roundId`, `tournamentId` and `dayNumber` already in the
+   template; do not type them.
 2. One card per physical scorecard. A four-player group sheet is four cards.
-3. Use the exact printed names from the start sheet. If the desk can give you player and marker ids,
-   use both the id and the name.
-4. Transcribe gross strokes only. Never enter Stableford points or a net score.
-5. A blank or unreadable cell goes in `skipped`. Never guess, never fill it with par.
-6. Check each card adds up. If the paper total is wrong, use `null` and explain it in `notes`.
-7. Give every card a stable `cardKey`. Reuse the same key when you re-send the same card. A correction
-   after a card is already in is made on the desk's Cards table, not by importing a second card.
-8. Send the file to the desk for a preview before it is written.
+3. A second card for the same player goes in the same file with a different marker, a new `cardKey`,
+   and that marker's scores.
+4. Use the player and marker ids from the template. Check the marker against the paper card and
+   change the id and name together when they differ.
+5. Transcribe gross strokes only. Never enter Stableford points or a net score.
+6. A blank or unreadable cell goes in `skipped`. Never guess, never fill it with par.
+7. If a player has no card, remove it from `cards` and add it to `skipped`.
+8. Check each card adds up. If the paper total is wrong, use `null` and explain it in `notes`.
+9. Keep every `cardKey` stable for this round. Do not re-send a correction after the card is in; the
+   desk corrects it on the Cards table.
+10. Send the file to the desk for a preview before it is written.
 
 ## Validate the file
 

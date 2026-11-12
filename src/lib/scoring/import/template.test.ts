@@ -108,6 +108,7 @@ describe("buildScorecardImportTemplate", () => {
       file: parsed.file,
       roundId: "demo-round-1",
       tournamentId: "bamboo-tee-2026",
+      dayNumber: 1,
       players: [
         { playerId: "demo-p1", playerName: "ADORIO, RONNEL" },
         { playerId: "demo-p2", playerName: "SULPICO, RANDY" },

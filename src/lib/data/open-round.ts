@@ -75,6 +75,8 @@ export function normalizeOpenRoundSettings(input: OpenRoundSettingsInput): OpenR
 export interface OpenRoundDrawGroup {
   number: number;
   playerIds: readonly string[];
+  /** The playing day the group belongs to, when the published snapshot carries one. */
+  dayNumber?: number;
 }
 
 export interface OpenRoundDraw {

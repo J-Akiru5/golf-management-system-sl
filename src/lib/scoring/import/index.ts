@@ -1,4 +1,8 @@
-export { parseScorecardImport, type ScorecardImportParseResult } from "./parse";
+export {
+  parseScorecardImport,
+  type ScorecardImportParseOptions,
+  type ScorecardImportParseResult,
+} from "./parse";
 export {
   type BlockedScorecardImportCard,
   importCaptureKey,

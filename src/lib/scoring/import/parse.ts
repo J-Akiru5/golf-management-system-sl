@@ -1,3 +1,4 @@
+import type { StrokeLimits } from "../types";
 import { DEFAULT_STROKE_LIMITS } from "../validation";
 import {
   SCORECARD_IMPORT_FORMAT,
@@ -20,6 +21,13 @@ export interface ScorecardImportParseResult {
   file: ScorecardImportFile | null;
   /** Every problem found, including the cards that were left out of `file.cards`. */
   problems: ScorecardImportProblem[];
+  /** How many cards the raw file listed, before invalid cards were left out. */
+  cardCount: number;
+}
+
+export interface ScorecardImportParseOptions {
+  /** The round's own stroke range. Defaults to the scoring engine's 1-20. */
+  strokeLimits?: StrokeLimits;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -149,6 +157,7 @@ function readHoles(
   value: unknown,
   path: string,
   problems: ScorecardImportProblem[],
+  limits: StrokeLimits,
 ): ScorecardImportHoles | null {
   if (!isRecord(value)) {
     problems.push({ path, message: "Holes must be an object keyed from 1 to 18." });
@@ -181,8 +190,8 @@ function readHoles(
       continue;
     }
     const strokes = wholeNumber(raw, `${path}.${key}`, problems, {
-      min: DEFAULT_STROKE_LIMITS.min,
-      max: DEFAULT_STROKE_LIMITS.max,
+      min: limits.min,
+      max: limits.max,
       label: `Hole ${number}`,
     });
     if (strokes !== null) holes[key] = strokes;
@@ -213,6 +222,7 @@ function readHoles(
 function readCard(
   value: unknown,
   path: string,
+  limits: StrokeLimits,
 ): { card: ScorecardImportCard | null; problems: ScorecardImportProblem[] } {
   const problems: ScorecardImportProblem[] = [];
   if (!isRecord(value)) {
@@ -272,11 +282,11 @@ function readCard(
 
   const writtenTotal = wholeNumberOrNull(value.writtenTotal, `${path}.writtenTotal`, problems, {
     min: 1,
-    max: 300,
+    max: 18 * limits.max,
     label: "Written total",
   });
 
-  const holes = readHoles(value.holes, `${path}.holes`, problems);
+  const holes = readHoles(value.holes, `${path}.holes`, problems, limits);
 
   if (writtenTotal !== null && holes !== null) {
     const sum = Object.values(holes).reduce((total, strokes) => total + strokes, 0);
@@ -368,15 +378,21 @@ function readSkipped(
  * a different card in the same file from being usable: every valid card is returned and every
  * problem names the path that caused it.
  */
-export function parseScorecardImport(value: unknown): ScorecardImportParseResult {
+export function parseScorecardImport(
+  value: unknown,
+  options: ScorecardImportParseOptions = {},
+): ScorecardImportParseResult {
   const problems: ScorecardImportProblem[] = [];
+  const limits = options.strokeLimits ?? DEFAULT_STROKE_LIMITS;
 
   if (!isRecord(value)) {
     return {
       file: null,
       problems: [{ path: "", message: "The file must contain a JSON object." }],
+      cardCount: 0,
     };
   }
+  const cardCount = Array.isArray(value.cards) ? value.cards.length : 0;
 
   if (value.format !== SCORECARD_IMPORT_FORMAT) {
     problems.push({
@@ -414,7 +430,7 @@ export function parseScorecardImport(value: unknown): ScorecardImportParseResult
   } else {
     const seen = new Set<string>();
     for (const [index, candidate] of value.cards.entries()) {
-      const parsed = readCard(candidate, `cards[${index}]`);
+      const parsed = readCard(candidate, `cards[${index}]`, limits);
       problems.push(...parsed.problems);
       if (!parsed.card) continue;
       if (seen.has(parsed.card.cardKey)) {
@@ -441,7 +457,7 @@ export function parseScorecardImport(value: unknown): ScorecardImportParseResult
       extractedBy === null ||
       extractedAt === null)
   ) {
-    return { file: null, problems };
+    return { file: null, problems, cardCount };
   }
 
   if (
@@ -451,7 +467,7 @@ export function parseScorecardImport(value: unknown): ScorecardImportParseResult
     extractedBy === null ||
     extractedAt === null
   ) {
-    return { file: null, problems };
+    return { file: null, problems, cardCount };
   }
 
   return {
@@ -467,5 +483,6 @@ export function parseScorecardImport(value: unknown): ScorecardImportParseResult
       skipped,
     },
     problems,
+    cardCount,
   };
 }

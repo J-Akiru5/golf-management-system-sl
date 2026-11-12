@@ -125,6 +125,16 @@ describe("parseScorecardImport", () => {
     expect(result.problems.some((problem) => problem.path === "cards[0].holes.7")).toBe(true);
   });
 
+  it("uses the round's narrower stroke limits", () => {
+    const input = validFile();
+    const card = (input.cards as Record<string, unknown>[])[0];
+    if (!card) throw new Error("fixture");
+    card.holes = { ...holes(), "7": 11 };
+    const result = parseScorecardImport(input, { strokeLimits: { min: 1, max: 10 } });
+    expect(result.file?.cards).toEqual([]);
+    expect(result.problems.some((problem) => problem.path === "cards[0].holes.7")).toBe(true);
+  });
+
   it("refuses a written total that does not add up", () => {
     const input = validFile();
     const card = (input.cards as Record<string, unknown>[])[0];

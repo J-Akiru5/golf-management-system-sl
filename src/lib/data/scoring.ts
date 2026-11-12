@@ -18,6 +18,7 @@ import {
   type RoundCourse,
   type Scorecard,
   type StandingsResult,
+  type StrokeLimits,
   type TieBreakPolicy,
   type VerificationPolicy,
   validateScorecard,
@@ -56,6 +57,8 @@ export interface ScoringRoundSeed {
   tournamentId: string;
   /** The playing day. The demo defaults to day 1. */
   dayNumber?: number;
+  /** The round's own stroke range. The demo defaults to 1-20. */
+  strokeLimits?: StrokeLimits;
   course: RoundCourse;
   policy: VerificationPolicy;
   players: readonly ScoringPlayerSeed[];
@@ -90,6 +93,8 @@ export interface ScoringRoundView {
   tournamentId: string;
   /** The playing day this round belongs to. */
   dayNumber: number;
+  /** The round's own stroke range, which can be narrower than the engine default. */
+  strokeLimits: StrokeLimits;
   course: RoundCourse;
   policy: VerificationPolicy;
   players: ScoringPlayer[];
@@ -235,6 +240,7 @@ export function createDemoScoringRepository(
       roundId: seed.roundId,
       tournamentId: seed.tournamentId,
       dayNumber: seed.dayNumber ?? 1,
+      strokeLimits: seed.strokeLimits ?? DEFAULT_STROKE_LIMITS,
       course: seed.course,
       policy,
       players,
