@@ -60,6 +60,15 @@ export interface PublicTeamLeaderboardData {
   rows: PublicTeamPlayerRow[];
 }
 
+/** One partner's published points, added over every counted round. Null when no round has a value. */
+export interface PublicTeamMember {
+  playerId: string;
+  name: string;
+  side: "member" | "guest" | null;
+  grossPoints: number | null;
+  netPoints: number | null;
+}
+
 export interface PublicTeamStanding {
   key: string;
   pairNumber: number | null;
@@ -69,6 +78,8 @@ export interface PublicTeamStanding {
   /** The member and guest names, member first. Null when that side is not on file. */
   memberName: string | null;
   guestName: string | null;
+  /** Each partner with their own accumulated points, member first. */
+  members: PublicTeamMember[];
   flightName: string | null;
   categories: string[];
   holesCounted: number;
@@ -252,6 +263,12 @@ function sumNullable(values: Array<number | null>): number | null {
   return values.reduce<number>((total, value) => total + (value ?? 0), 0);
 }
 
+/** A player's total over their rows. Null only when every row is null. */
+function sumKnown(values: Array<number | null>): number | null {
+  const known = values.filter((value): value is number => value !== null);
+  return known.length === 0 ? null : known.reduce((total, value) => total + value, 0);
+}
+
 function sameRank(a: PublicTeamStanding, b: PublicTeamStanding): boolean {
   return a.netPoints === b.netPoints && a.grossPoints === b.grossPoints;
 }
@@ -338,6 +355,16 @@ export function buildTeamLeaderboard(data: PublicTeamLeaderboardData): PublicTea
       playerIds,
       memberName: ordered[0]?.playerName ?? null,
       guestName: ordered[1]?.playerName ?? null,
+      members: ordered.map((row) => {
+        const own = rows.filter((candidate) => candidate.playerId === row.playerId);
+        return {
+          playerId: row.playerId,
+          name: row.playerName,
+          side: row.side,
+          grossPoints: sumKnown(own.map((candidate) => candidate.grossPoints)),
+          netPoints: sumKnown(own.map((candidate) => candidate.netPoints)),
+        };
+      }),
       flightName: flights.length > 0 ? flights.join(" / ") : null,
       categories,
       holesCounted,
