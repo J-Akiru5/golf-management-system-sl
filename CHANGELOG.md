@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-11-12
+
 ### Added
 - **Bulk scorecard import from JSON.** The Scores screen has an **Import cards from JSON** panel for
   cards transcribed outside the app. It downloads a fill-in template for the open round, checks every
