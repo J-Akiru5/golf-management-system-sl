@@ -5,7 +5,7 @@ import { PlayerHomeDesktop } from "@/components/player/desktop/PlayerHomeDesktop
 import { PlayerOfflineNotice, RememberPortal } from "@/components/player/OfflinePortal";
 import { PlayerHomeHero } from "@/components/player/PlayerHomeHero";
 import { PortalEntries } from "@/components/player/PortalView";
-import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
+import { readPublicPairings } from "@/lib/data/supabase/public-cache";
 import { getI18n } from "@/lib/i18n/server";
 import type { Translate } from "@/lib/i18n/t";
 import { claimPlayerRecord } from "@/lib/player/actions";
@@ -20,7 +20,6 @@ import {
   portalErrorMessage,
 } from "@/lib/player/portal";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function generateMetadata() {
@@ -41,20 +40,21 @@ const claimNotice = (t: Translate, code: string): { tone: "ok" | "bad"; text: st
 /**
  * The group around the player, for the hero card. It is an optional read from the same public
  * pairings the player can already open, so a failure here costs the names and nothing else.
+ *
+ * The read itself starts before the portal is waited on (see the page below), because the two do
+ * not depend on each other and the hero card was paying for both waits in turn.
  */
-async function loadGroupMates(entry: PortalEntry, name: string): Promise<string[]> {
-  if (!entry.start) return [];
-  try {
-    const data = await loadPublicPairings(createSupabasePublicClient());
-    if (!data?.published) return [];
-    return groupMates(data.published.groups, {
-      name,
-      time: entry.start.time,
-      hole: entry.start.hole,
-    });
-  } catch {
-    return [];
-  }
+function groupMatesFrom(
+  data: Awaited<ReturnType<typeof readPublicPairings>>,
+  entry: PortalEntry,
+  name: string,
+): string[] {
+  if (!entry.start || !data?.published) return [];
+  return groupMates(data.published.groups, {
+    name,
+    time: entry.start.time,
+    hole: entry.start.hole,
+  });
 }
 
 /**
@@ -291,6 +291,9 @@ export default async function MyGolfPage({
   }
 
   const client = await createSupabaseServerClient();
+  // Started here so the public group read runs alongside the session check and the portal read
+  // instead of after them. A failure is silent: it only costs the names on the hero card.
+  const pairings = readPublicPairings().catch(() => null);
   const { data: user } = await client.auth.getUser();
   if (!user.user) {
     redirect("/login?next=%2Fmy&error=sign_in_required");
@@ -346,7 +349,7 @@ export default async function MyGolfPage({
   }
 
   const next = nextUp(state.entries, manilaToday());
-  const mates = next ? await loadGroupMates(next.entry, state.player.name) : [];
+  const mates = next ? groupMatesFrom(await pairings, next.entry, state.player.name) : [];
 
   return (
     <>
