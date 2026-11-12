@@ -123,6 +123,25 @@ owner approves that migration by name.
 Steps 1 and 2 change no data and can go out during the event with little risk. Steps 3 to 5 change
 what a scorecard is in the database.
 
+## Progress, 13 November 2026
+
+| Step | State | Notes |
+| --- | --- | --- |
+| 1 Name matcher | **Built**, `src/lib/scoring/match`, 40 tests, merged to `develop`. | Checked against the seed roster (`supabase/seed/bamboo-tee-2026-schedule.psv`) with surname only: on the 35 players scheduled for Day 1 AM, 8 of the 9 Day 1 misreadings rank first and the ninth (Uhlman for LAGMAN) is not in the pool, because LAGMAN is scheduled for days 2 and 3 in the seed. Against all 301 names, 6 rank first, Homaros ranks second, Um is a tie between the two LIMs, and Uhlman ranks third in a three-way tie. The matcher accepts any player list, so the scan inbox must offer the whole event as a second pool and mark a player who is not scheduled for the session ("not scheduled this session"). |
+| 2 Card view | **First slice in review**: a context line (day, marker, class, partner, team handicap, tee, group, playing handicap, card HDCP), and a single-card print with the TeeLine mark. | The desk does not load class, partner, team handicap, tee name or group yet. The line leaves out what the caller does not pass and says "Not set" only for a value the caller looked up and found empty. Loading those values for the desk is a separate piece of work, with no schema change. |
+
+Design findings from the browser check of the desk card (demo mode, `develop` at 4dc4a4d), not yet
+fixed and not part of the first slice:
+
+- The sticky player and marker block is 318px tall on a 375px phone, 39% of the screen, and hides the
+  player name and the context line when the card is scrolled into view.
+- Score cells are 32px high; the design system's standard button is 44px.
+- A nine-hole table is 640px wide inside a phone, so each nine scrolls sideways and shows four holes
+  at a time.
+- Labels differ between the desk ("Hcp row", "Net pts" or "Gross pts") and the public paper card
+  ("SI", both point rows).
+- "Fill with par" writes scores nobody read, next to Submit.
+
 ## Releasing during the event
 
 D4 asks for everything before 15 November. These rules keep a playing day safe:
