@@ -147,7 +147,7 @@ Known gap: the field list in the repository (`supabase/seed/bamboo-tee-2026-fiel
 
 ### Day 1 AM final scoring release, 12 November 2026
 
-This is the release method for Day 1 AM. It is not a claim that the public release is finished.
+This is the release method used for Day 1 AM on 12 November 2026. The public release is live on the Day 1 AM round.
 
 | Point | What the release does |
 | --- | --- |
@@ -156,6 +156,10 @@ This is the release method for Day 1 AM. It is not a claim that the public relea
 | Markers | Marker names are not published. |
 | Scope | Only Day 1 AM is released publicly. The other days are not part of this release. |
 | Pick-up penalty | The two-point pick-up penalty is not applied. |
+| Published result | Publication v5, 36 cards, 36 gross rows and 36 net rows. Ten complete teams are ranked; 16 players are in an incomplete pair and are not ranked. |
+| Handicap snapshot caveat | The live handicap snapshot table is frozen once scoring starts. The release applied the card playing handicap to `round_results` and to the published cards; the snapshot rows themselves were not changed. |
+| Field additions | MANGALINDAN, VICTOR and DELA CRUZ, FRANCIS were added to the Day 1 round. MANGALINDAN has a card; DELA CRUZ has no card and is not on the board. |
+| Publication correction | v4 wrote the pick-up field as a hole list and left some multi-pick-up stroke totals visible. v5 writes a count and hides the stroke totals on every pick-up card. |
 
 ## How auto-routing works
 
