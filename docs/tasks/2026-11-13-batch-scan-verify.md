@@ -18,7 +18,9 @@ on a card view like the one used on Day 1.
 
 ## What the system does today
 
-Read from `origin/develop` at `ee47785` on 13 November 2026. The database was not read.
+Read from `origin/develop` at `36fc89b` on 13 November 2026. The database was not read. Three commits
+landed on `develop` after the first draft of this plan (the team leaderboard cards and a pickup fix on
+the read side); the tables below include them.
 
 | Area | What exists | Where |
 | --- | --- | --- |
@@ -30,6 +32,7 @@ Read from `origin/develop` at `ee47785` on 13 November 2026. The database was no
 | File import | A transcription file is matched to the open round by player id, or by name when the name matches exactly after case, commas and spaces are ignored. | `src/lib/scoring/import` |
 | Names | Stored as `SURNAME, GIVEN`. Search ignores case, accents, punctuation and word order. | `src/lib/names` |
 | Corrections | The desk corrects a card with a reason; the earlier revision is kept. | `20261043000000_scorecard_correction.sql`, `20261112000200_desk_can_correct_scorecard.sql` |
+| Paper card, read only | The public leaderboard opens both partners' frozen cards in the paper layout: Hole, Par, SI, Score, Net pts, Gross pts, OUT/IN/TOT, footer. A published hole can carry `pickedUp: true`; it shows a red X and adds no strokes. Copied from the Day 1 sheet; no class, partner, tee, checked tick, saved indicator, editing or print layout. | `src/components/public/PaperScorecard.tsx`, `src/lib/player/paper-scorecard.ts`, `src/lib/player/portal.ts` |
 | Teams | Aggregate, four-ball and scramble are computed for the player's own card page. | `src/lib/scoring/team.ts` |
 | Results | A printable results sheet, and a public release per round. | `src/lib/print/results-sheet.ts`, `/scores/results` |
 
@@ -40,9 +43,9 @@ Read from `origin/develop` at `ee47785` on 13 November 2026. The database was no
 | **A photo cannot exist without a player.** The scan screen asks for the player first, and a scorecard row needs a player and a marker. | A stack of photos cannot be uploaded and sorted out afterwards. |
 | **The name the reader returns is not used.** No screen compares it with the round's players. | Every card's player was found by a person. |
 | **Name matching is exact only.** The file import refuses a name that is not an exact match. | "Wormley" does not find GORMLEY; the whole Day 1 file would have been refused. |
-| **No pick-up.** A hole is a whole number or it is missing, and a missing hole blocks the card. | Day 1 AM was released with X counted as 0 by hand, as a stand-in. 28 of 36 cards had at least one X. |
+| **No pick-up on the write side.** The published snapshot and the public card read `pickedUp`, but the scoring engine, card entry, validation and canonical scores do not: a hole is a whole number or it is missing, and a missing hole blocks the card. | Day 1 AM was released with X counted as 0 by hand, as a stand-in. 28 of 36 cards had at least one X. |
 | **No marker, no card.** The database requires a marker who is another player. | The Day 1 cards were read without a marker. |
-| **The desk card view lacks the Day 1 fields.** It does not show class, partner or team handicap beside the scores, and has no "checked against the paper" tick separate from approval. | The standalone page was built to show them. |
+| **The desk card view lacks the Day 1 fields.** It does not show class, partner or team handicap beside the scores, and has no "checked against the paper" tick separate from approval. The new public `PaperScorecard` is read only and has the same gaps. | The standalone page was built to show them. |
 | **Team ranking is not in the standings.** The standings rank individuals. | Day 1 AM team ranks were produced by the release, not by the Scores screen. |
 | **Reader status in production is not known.** The reader is optional and set by `SCAN_INFERENCE_URL`. | Day 1 cards were read by a person, not by the reader. This needs checking before step 4. |
 
@@ -81,14 +84,16 @@ conversion is not decided; see "Open questions".
 ## The card view to copy
 
 The standalone Day 1 page is the reference. It is kept outside the repository because it holds real
-names and scores; its behaviour is listed in the spec under "Day 1 working sheet". One shared
-component should serve the desk, the staff app and print:
+names and scores; its behaviour is listed in the spec under "Day 1 working sheet". The public
+`PaperScorecard` is already a read-only copy of its layout, with its numbers in
+`src/lib/player/paper-scorecard.ts`. The desk and staff card must reuse those helpers and that table
+layout, so the public card and the editing card never drift apart. Already covered by `PaperScorecard`:
+the two nine tables, par, SI, score, net and gross points, OUT/IN/TOT, the X for a pick-up and the
+footer. To add for the desk, the staff app and print:
 
-- two tables, holes 1 to 9 with OUT and 10 to 18 with IN;
-- rows for par, the hole's handicap number, the score, and net points;
 - a header line with class, partner and team handicap, group, tee, playing handicap and the total written on the card;
 - a doubtful reading shaded, a changed score marked, an X shown in red;
-- totals under the tables: strokes, holes with a score, playing handicap, net and gross Stableford;
+- under the tables, the playing handicap and the total written on the card (the public footer already has strokes, holes with a score, net and gross Stableford);
 - a "checked against the paper card" tick, and a saved indicator that says when the last change was stored;
 - Enter moves to the next hole;
 - print: three cards to a page at a fixed height, dark hole numbers on a light band so they survive a printer that drops backgrounds, the TeeLine mark top right.
@@ -106,8 +111,8 @@ owner approves that migration by name.
 | Step | What | Schema | Depends on |
 | --- | --- | --- | --- |
 | 1 | **Name matcher.** A pure function in `src/lib/scoring/match`: given the name, tee, handicap and group read from a card and the round's players, return ranked candidates with reasons. It never picks one. Built on `src/lib/names`. Tests use the Day 1 misreadings as fixtures: Wormley for GORMLEY, Um for LIM, Lorona for LORENA, Homaros for HENARES, Uhlman for LAGMAN, Aunsanan for ALINSANGAN, Alquinos for ALQUIROS, Jabinugay for JABINIGAY, Clayero for CLAVERO. | None | Nothing |
-| 2 | **Shared card view.** One component from the list above, used by the desk workspace and by print. It replaces the layout only; submit, approval and correction stay as they are. | None | Nothing |
-| 3 | **Pick-up.** A hole can be recorded as picked up: 0 points, counted as a played hole, no gross total shown for that card. This replaces the "X is 0" stand-in from the Day 1 AM release. Engine, card validation, canonical scores and the public card all learn it. | Yes | Owner approves the migration |
+| 2 | **Editable card view on the shared layout.** Extend the table layout and helpers behind `PaperScorecard` into one card the desk workspace and print both use, with the header line, doubtful and changed marks, the checked tick, the saved indicator, Enter to the next hole and three-to-a-page print. `PaperScorecard` itself keeps working for the public pages. Submit, approval and correction stay as they are. | None | Nothing |
+| 3 | **Pick-up on the write side.** A hole can be recorded as picked up: 0 points, counted as a played hole, no gross total shown for that card. The published snapshot and public card already read `pickedUp`; the scoring engine, card validation, canonical scores and card entry learn it, which replaces the "X is 0" stand-in from the Day 1 AM release. | Yes | Owner approves the migration |
 | 4 | **Scan inbox.** A table for scans that are not yet cards (round, session, image, what was read, suggested player, state) and the upload, match and verify screens. The reader's name, tee and HDCP fields feed step 1. | Yes | Steps 1 to 3; reader status checked |
 | 5 | **Marker for a scanned card.** The rule today is a marker who is another player. Decide how a scanned card gets one (see "Open questions"), then build it. | Maybe | Owner's answer |
 | 6 | **Staff app.** The group score screen uses the shared card view and can open the inbox for its own group. | None | Steps 2 and 4 |
