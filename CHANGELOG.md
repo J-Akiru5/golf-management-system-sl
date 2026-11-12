@@ -10,6 +10,10 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **The desk shows each player's class name.** The scorecard line reads `Class A` for the player on
+  screen, and the standings table prints the class name under each player instead of the stored
+  flight id. A player with no class reads `Class Not set` on the card and `No class` in the table.
+  It reads the existing `flights` table. No migration.
 - **A name read off a scorecard can be matched to registered players.** `matchPlayers` in
   `src/lib/scoring/match` returns up to four candidates, best first, each with the reasons in plain
   words (surname one letter off, given name matches, same group). It never picks one: the desk
