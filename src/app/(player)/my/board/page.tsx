@@ -56,12 +56,14 @@ export default async function PlayerBoardPage({
 
   const client = await signedInClient(next);
 
-  let rounds: PublicRoundSummary[] = [];
-  try {
-    rounds = await playerRounds(client);
-  } catch {
-    rounds = [];
-  }
+  // The round list and the player's own record do not depend on each other, so they are asked for
+  // together. Waiting for one before starting the other is what made this screen feel slow.
+  const [roundsResult, portalResult] = await Promise.allSettled([
+    playerRounds(client),
+    loadPortal(client),
+  ]);
+  const rounds: PublicRoundSummary[] =
+    roundsResult.status === "fulfilled" ? roundsResult.value : [];
 
   const selected = rounds.find((round) => round.roundId === params.round) ?? rounds[0] ?? null;
 
@@ -74,13 +76,8 @@ export default async function PlayerBoardPage({
     }
   }
 
-  let you: { playerId: string | null; name: string } | null = null;
-  try {
-    const portal = await loadPortal(client);
-    if (portal.player) you = { playerId: portal.player.id, name: portal.player.name };
-  } catch {
-    you = null;
-  }
+  const portal = portalResult.status === "fulfilled" ? portalResult.value : null;
+  const you = portal?.player ? { playerId: portal.player.id, name: portal.player.name } : null;
 
   return (
     <div className="player-column grid gap-4">
