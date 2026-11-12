@@ -9,6 +9,13 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- **The public pages show one tee time per session, the same for both flights.** The pairings cards
+  and the public player profile's tee-time rows read 6:30 AM on the Day 1 and Day 2 mornings, 6:00 AM
+  on the Day 3 and Day 4 mornings, 12:30 PM on the Day 1 to Day 3 afternoons and 11:30 AM on Sunday's
+  afternoon. The staggered flight wave times (6:12, 12:42) stay in the stored draw, the snapshot and
+  the desk screens; this is presentation only. No migration.
+
 ## [0.35.2] - 2026-11-12
 
 ### Removed
