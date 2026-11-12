@@ -291,6 +291,7 @@ export default function StaffPrintPage() {
             {kind === "start" ? (
               <StartSheet
                 title="Start sheet"
+                eventName={tournament.name}
                 subtitle={subtitle}
                 groups={selectedGroups}
                 startFormat={tournament.config.startFormat}

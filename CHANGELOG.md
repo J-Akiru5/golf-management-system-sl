@@ -9,6 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- **The printed start sheet is one page per session, split into Flight A and Flight B.** The
+  morning waves print on one A4 page and the afternoon waves on the next, under the TeeLine header.
+  Inside a page each wave is a flight (the first tee-off time is Flight A, the next is Flight B),
+  groups run in hole order, and a group's class is a small label under its hole. Each player shows
+  the tee, handicap index and playing handicap, and a player with no index prints "NH", not a
+  guessed number. Player photos no longer print on the start sheet. The flight band keeps its white
+  on forest ink in print. Tee times are the stored ones. No migration.
+
 ## [0.38.0] - 2026-11-12
 
 ### Added
