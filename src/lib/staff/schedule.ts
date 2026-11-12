@@ -4,6 +4,7 @@
  * be tested for any day and any moment.
  */
 import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
+import { matchesText } from "@/lib/names";
 import type { ScheduleGroup } from "./rows";
 
 export type SessionFilter = SessionKey | "all";
@@ -186,7 +187,7 @@ export function matchGroup(
 
   const digits = needle.replace(/\D/g, "");
   const playerIds = group.players
-    .filter((player) => player.playerName.toLowerCase().includes(needle))
+    .filter((player) => matchesText(player.playerName, needle))
     .map((player) => player.playerId);
 
   const byName = playerIds.length > 0;

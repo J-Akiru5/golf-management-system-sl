@@ -7,6 +7,7 @@ import { StaffLoading } from "@/components/staff/StaffLoading";
 import { useStaffToast } from "@/components/staff/StaffToast";
 import styles from "@/components/staff/staff.module.css";
 import type { RegistrationEntry } from "@/lib/data/types";
+import { matchesText } from "@/lib/names";
 import { fmtDayDate } from "@/lib/staff/day";
 import { placeWalkUp } from "@/lib/staff/place";
 import { useDesk } from "@/lib/store/desk-store";
@@ -49,11 +50,10 @@ export default function StaffAddPage() {
 
   const alreadyIn = useMemo(() => new Set(entries.map((entry) => entry.playerId)), [entries]);
   const matches = useMemo(() => {
-    const needle = query.trim().toLowerCase();
     return players
       .filter((player) => !player.deletedAt && player.active !== false)
       .filter((player) => !alreadyIn.has(player.id))
-      .filter((player) => (needle === "" ? true : player.name.toLowerCase().includes(needle)))
+      .filter((player) => matchesText(player.name, query))
       .slice(0, 8);
   }, [players, alreadyIn, query]);
 

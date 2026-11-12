@@ -2,13 +2,14 @@
 
 import type { SpotlightData } from "@/components/spotlight/PlayerSpotlight";
 import { fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
+import { parseName } from "@/lib/names";
 import { useDesk } from "@/lib/store/desk-store";
 
-/** "Maria Clara Santos" -> first "Maria Clara", surname "Santos". */
+/** "ADORIO, RONNEL" -> first "RONNEL", surname "ADORIO"; "Maria Clara Santos" -> "Maria Clara", "Santos". */
 export function splitName(name: string): { first: string; last: string } {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length < 2) return { first: name.trim(), last: "" };
-  return { first: parts.slice(0, -1).join(" "), last: parts.at(-1) ?? "" };
+  const parsed = parseName(name);
+  if (!parsed.certain && parsed.given === "") return { first: name.trim(), last: "" };
+  return { first: parsed.given, last: parsed.surname };
 }
 
 /**

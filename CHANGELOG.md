@@ -10,6 +10,11 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **Player names read one way and search finds them.** Names are `SURNAME, GIVEN`. Search ignores
+  accents, capitals, punctuation and word order across the desk, registration, staff app and public
+  programme. The player edit form no longer reads `ADORIO, RONNEL` as first name `ADORIO,`. No
+  migration. The live directory was corrected with `scripts/fix-player-names.ts`; published
+  pairings were not touched.
 - **The scoring desk is one card at a time.** `/scores` is the scoring input only: a searchable
   player picker that loads the player's current card or starts a new one, a marker picker, a
   readiness state, a photo or scan panel, an 18-hole grid with per-cell check states, and a live

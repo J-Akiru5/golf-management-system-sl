@@ -19,6 +19,7 @@ import type {
 } from "@/lib/data/types";
 import { SAMPLE_NGAP_CSV } from "@/lib/demo/data";
 import { displayName } from "@/lib/format";
+import { formatName, matchesText } from "@/lib/names";
 import {
   buildMergeQueue,
   type ColumnMapping,
@@ -334,14 +335,9 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
   const players: PlayerRepository = {
     list: () => state.players,
     search: (query) => {
-      const q = query.trim().toLowerCase();
-      if (!q) return state.players;
-      return state.players.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.ngapId ?? "").toLowerCase().includes(q) ||
-          (p.homeCourse ?? "").toLowerCase().includes(q) ||
-          (p.nickname ?? "").toLowerCase().includes(q),
+      if (!query.trim()) return state.players;
+      return state.players.filter((p) =>
+        matchesText([p.name, p.ngapId, p.homeCourse, p.nickname], query),
       );
     },
     get: (id) => state.players.find((p) => p.id === id) ?? null,
@@ -358,7 +354,7 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
       }
       const first = input.firstName.trim();
       const last = input.lastName.trim();
-      const fullName = nameOf(`${first} ${last}`, "Unnamed player");
+      const fullName = nameOf(formatName(first, last), "Unnamed player");
       const player: PlayerRecord = {
         id: nextId("p"),
         clubId: state.clubId,

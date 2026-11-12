@@ -30,6 +30,7 @@ import {
 } from "@/lib/data/pairing-status";
 import { isPlayerRemoved, playerStateLabel } from "@/lib/data/player-state";
 import { fmtHcp, fmtIndex, photoOf } from "@/lib/format";
+import { matchesText } from "@/lib/names";
 import { shrinkPhoto } from "@/lib/photo";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
@@ -164,12 +165,7 @@ function Players() {
       if (home !== "all" && p.homeCourse !== home) return false;
       if (category !== "all" && reg?.categoryId !== category) return false;
       if (!text) return true;
-      return (
-        p.name.toLowerCase().includes(text) ||
-        (p.nickname ?? "").toLowerCase().includes(text) ||
-        (p.ngapId ?? "").toLowerCase().includes(text) ||
-        (p.homeCourse ?? "").toLowerCase().includes(text)
-      );
+      return matchesText([p.name, p.nickname, p.ngapId, p.homeCourse], text);
     });
   }, [players, regById, entryByPlayer, filter, query, gender, home, category]);
 

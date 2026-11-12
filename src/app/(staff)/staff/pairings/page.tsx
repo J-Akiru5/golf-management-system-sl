@@ -11,6 +11,7 @@ import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
 import { dropCheck } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
+import { matchesText } from "@/lib/names";
 import { unplacedRows } from "@/lib/staff/rows";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -82,12 +83,12 @@ export default function StaffPairingsPage() {
           needle === "" ||
           String(group.number).includes(needle) ||
           group.flightName.toLowerCase().includes(needle) ||
-          group.players.some((player) => player.playerName.toLowerCase().includes(needle)),
+          group.players.some((player) => matchesText(player.playerName, needle)),
       ),
     [schedule, needle],
   );
   const visibleUnplaced = useMemo(
-    () => unplacedHere.filter((row) => needle === "" || row.name.toLowerCase().includes(needle)),
+    () => unplacedHere.filter((row) => needle === "" || matchesText(row.name, needle)),
     [unplacedHere, needle],
   );
 
