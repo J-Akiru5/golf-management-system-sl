@@ -55,6 +55,8 @@ const PAIRS: [string, string, number][] = [
   ["ink", "info-soft", 4.5],
   ["ink", "gold-soft", 4.5],
   ["fairway", "fairway-soft", 4.5],
+  ["primary", "surface-sunken", 4.5],
+  ["primary", "fairway-soft", 4.5],
   ["gold-ink", "gold-soft", 4.5],
   ["success", "success-soft", 4.5],
   ["warning", "warning-soft", 4.5],
@@ -131,5 +133,23 @@ describe("public dark bands", () => {
 
   it.each(BANDS)("keeps an ivory heading readable on %s", (band) => {
     expect(ratio("#fffdf7", band)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("roster player cards", () => {
+  it("stacks the card content and pins the CTA to the bottom", () => {
+    const start = css.indexOf(".player-card {");
+    expect(start).toBeGreaterThan(-1);
+    const body = css.slice(start, css.indexOf("}", start));
+    expect(body).toContain("display: flex");
+    expect(body).toContain("flex-direction: column");
+  });
+
+  it("uses the theme-aware primary token for the CTA", () => {
+    const start = css.indexOf(".player-card-cta {");
+    expect(start).toBeGreaterThan(-1);
+    const body = css.slice(start, css.indexOf("}", start));
+    expect(body).toContain("margin-top: auto");
+    expect(body).toContain("color: var(--primary)");
   });
 });

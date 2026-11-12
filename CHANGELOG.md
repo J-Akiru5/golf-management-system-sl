@@ -17,6 +17,13 @@ Supabase project, because the code and the database are released separately.
   manual entry. Imported cards are `submitted`, never auto-approved. The format is documented for the
   transcriber in `docs/SCORING_IMPORT.md` with an example file. No migration.
 
+## [0.37.0] - 2026-11-12
+
+### Fixed
+- **The public roster's View scores link is readable in the dark theme.** The card CTA now uses the
+  theme-aware primary colour instead of the dark forest token, and the card stacks so the link stays
+  at the bottom. The hover border and focus ring use the same theme-aware tokens. No migration.
+
 ## [0.36.1] - 2026-11-12
 
 ### Fixed
