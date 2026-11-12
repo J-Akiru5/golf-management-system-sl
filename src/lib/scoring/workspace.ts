@@ -39,6 +39,15 @@ export interface ScorecardSummaryInput {
   writtenTotal?: number | null;
 }
 
+export interface ScorecardSummaryHole {
+  hole: number;
+  grossStrokes: number;
+  grossPoints: number;
+  netStrokes: number | null;
+  netPoints: number | null;
+  handicapStrokes: number | null;
+}
+
 export interface ScorecardSummary {
   gross: number;
   /** Holes 1 to 9, from the scores that are filled and valid. */
@@ -49,6 +58,12 @@ export interface ScorecardSummary {
   grossPoints: number;
   netPoints: number | null;
   netStatus: "calculated" | "unavailable";
+  /** Per-hole points for the card table. Only filled and valid holes appear. */
+  holes: ScorecardSummaryHole[];
+  outPoints: number;
+  inPoints: number;
+  /** The row the card table prints: net when a handicap is available, otherwise gross. */
+  pointsKind: "net" | "gross";
   writtenTotal: number | null;
   /** Null while the card is incomplete or no written total was supplied. */
   writtenMatches: boolean | null;
@@ -217,6 +232,10 @@ export function summariseScorecard(input: ScorecardSummaryInput): ScorecardSumma
       grossPoints: 0,
       netPoints: null,
       netStatus: "unavailable",
+      holes: [],
+      outPoints: 0,
+      inPoints: 0,
+      pointsKind: "gross",
       writtenTotal,
       writtenMatches: null,
       problems: [...problems, ...round.problems.map((problem) => problem.message)],
@@ -231,6 +250,24 @@ export function summariseScorecard(input: ScorecardSummaryInput): ScorecardSumma
     else back += hole.grossStrokes;
   }
 
+  const pointsKind = result.netStatus === "calculated" ? "net" : "gross";
+  const holes: ScorecardSummaryHole[] = result.holes.map((hole) => ({
+    hole: hole.hole,
+    grossStrokes: hole.grossStrokes,
+    grossPoints: hole.grossPoints,
+    netStrokes: hole.netStrokes,
+    netPoints: hole.netPoints,
+    handicapStrokes: hole.handicapStrokes,
+  }));
+  const pointsFor = (hole: ScorecardSummaryHole) =>
+    pointsKind === "net" ? (hole.netPoints ?? 0) : hole.grossPoints;
+  const outPoints = holes
+    .filter((hole) => hole.hole <= 9)
+    .reduce((sum, hole) => sum + pointsFor(hole), 0);
+  const inPoints = holes
+    .filter((hole) => hole.hole >= 10)
+    .reduce((sum, hole) => sum + pointsFor(hole), 0);
+
   const complete = result.totalHoles > 0 && result.holesCompleted === result.totalHoles;
   const writtenMatches =
     writtenTotal !== null && complete ? writtenTotal === result.grossStrokes : null;
@@ -243,6 +280,10 @@ export function summariseScorecard(input: ScorecardSummaryInput): ScorecardSumma
     grossPoints: result.grossPoints,
     netPoints: result.netPoints,
     netStatus: result.netStatus,
+    holes,
+    outPoints,
+    inPoints,
+    pointsKind,
     writtenTotal,
     writtenMatches,
     problems: [...problems, ...warnings.map((warning) => warning.message)],

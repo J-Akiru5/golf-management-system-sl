@@ -270,9 +270,10 @@ Every table carries `club_id` with row-level security from day one. Adding it no
 - Scorecard desk:
   - `/scores` is the single-card scoring input. The top bar holds the searchable player picker, the
     marker picker, the readiness state and the submit/correction actions. The body pairs the card
-    photo or scan with the 18-hole grid, the handicap strip and the live gross/net Stableford,
-    OUT/IN, holes-entered and written-total summary. Scan fills the editor; bulk JSON import is on
-    Review.
+    photo or scan with the two nine-hole paper-card tables (Hole, Par, Hcp row, Score and Net pts,
+    with OUT/IN totals), the handicap strip and the live gross/net Stableford, Holes with a score and
+    written-total footer. The table scrolls inside the card on a phone. Scan fills the editor; bulk
+    JSON import is on Review.
   - `/scores/review` holds the cards list, approvals, rejections, revocations, conflicts, bulk JSON
     import and round setup.
   - `/scores/results` holds gross/net standings, provisional publication and finalization.

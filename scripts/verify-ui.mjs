@@ -222,11 +222,11 @@ check(
 // Cards table, both boards and the conflict list. Nothing here is new behaviour. A manual card now
 // starts empty, so the form is filled with par first; the score that matters is hole 1.
 await scoresEntry.getByRole("button", { name: "Fill with par" }).click();
-await scoresEntry.locator("input[type=number]").nth(0).fill("5");
+await scoresEntry.locator("#hole-1").fill("5");
 await scoresEntry.getByRole("button", { name: "Submit card" }).click();
 await scoresEntry.getByRole("combobox").nth(1).click();
 await page.getByRole("option", { name: /SAMPLE PLAYER C/ }).click();
-await scoresEntry.locator("input[type=number]").nth(0).fill("4");
+await scoresEntry.locator("#hole-1").fill("4");
 await scoresEntry.getByRole("button", { name: "Submit card" }).click();
 await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
 await expect(scoresCards.locator("tbody tr")).toHaveCount(2, { timeout: 20000 });
@@ -406,7 +406,7 @@ check(
   /Gross/.test((await dupEntry.textContent()) ?? "") &&
     /Net Stableford/.test((await dupEntry.textContent()) ?? "") &&
     /OUT \/ IN/.test((await dupEntry.textContent()) ?? "") &&
-    /Holes entered/.test((await dupEntry.textContent()) ?? ""),
+    /Holes with a score/.test((await dupEntry.textContent()) ?? ""),
 );
 check(
   "Submit is disabled while a cell the reader left empty is still empty",

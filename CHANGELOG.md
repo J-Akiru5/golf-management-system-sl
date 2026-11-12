@@ -17,6 +17,12 @@ Supabase project, because the code and the database are released separately.
   bulk import and round setup are on `/scores/review`; standings, publication and finalization are
   on `/scores/results`. A correction saves a new revision and keeps the old one. No migration.
 
+### Changed
+- **The scorecard prints as the paper card.** The desk shows two nine-hole tables with Hole, Par,
+  Hcp row, Score and Net pts, OUT/IN totals, and the paper-card footer (Strokes, Holes with a score,
+  Playing handicap, Net Stableford, Gross Stableford). The table scrolls inside the card on a phone.
+  No migration.
+
 ## [0.39.0] - 2026-11-12
 
 ### Migrations shipping with this release

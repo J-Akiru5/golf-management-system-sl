@@ -452,4 +452,37 @@ describe("summariseScorecard", () => {
     expect(result.netStatus).toBe("unavailable");
     expect(result.problems.join(" ")).toContain("different tee");
   });
+
+  it("exposes the per-hole points and the points row the card prints", () => {
+    const result = summariseScorecard(summaryInput());
+
+    expect(result.pointsKind).toBe("net");
+    expect(result.holes).toHaveLength(18);
+    expect(result.holes[0]).toMatchObject({
+      hole: 1,
+      grossStrokes: 4,
+      grossPoints: 2,
+      netPoints: 3,
+    });
+    expect(result.outPoints).toBe(
+      result.holes
+        .filter((hole) => hole.hole <= 9)
+        .reduce((sum, hole) => sum + (hole.netPoints ?? 0), 0),
+    );
+    expect(result.inPoints).toBe(
+      result.holes
+        .filter((hole) => hole.hole >= 10)
+        .reduce((sum, hole) => sum + (hole.netPoints ?? 0), 0),
+    );
+  });
+
+  it("prints gross points when there is no handicap", () => {
+    const result = summariseScorecard(summaryInput({ handicap: null }));
+
+    expect(result.pointsKind).toBe("gross");
+    expect(result.holes).toHaveLength(18);
+    expect(result.holes[0]?.grossPoints).toBe(2);
+    expect(result.holes[0]?.netPoints).toBeNull();
+    expect(result.outPoints).toBe(result.grossPoints - result.inPoints);
+  });
 });
