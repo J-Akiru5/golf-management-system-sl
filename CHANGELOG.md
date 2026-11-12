@@ -10,6 +10,14 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **A name read off a scorecard can be matched to registered players.** `matchPlayers` in
+  `src/lib/scoring/match` returns up to four candidates, best first, each with the reasons in plain
+  words (surname one letter off, given name matches, same group). It never picks one: the desk
+  confirms. Not on any screen yet; the scan inbox will use it. No migration.
+- **The desk scorecard shows a context line and prints on its own.** A "Print this card" button
+  prints one card on white with the TeeLine mark, in the dark theme too. The line shows day, marker
+  and playing handicap, and will show class, partner, team handicap, tee and group once the desk
+  loads them; it leaves out a value it was not given instead of saying "Not set". No migration.
 - **Both partners' scorecards open from the team leaderboard row.** A Scorecards button shows each
   partner's frozen card in the paper-card layout (a new reusable `PaperScorecard`). The row shows the
   team's accumulated Gross Stableford points and each partner's own net and gross points. No
