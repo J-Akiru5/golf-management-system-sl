@@ -72,6 +72,31 @@ describe("buildCardContext", () => {
     });
   });
 
+  it("drops a leading 'Class' word from the class value, because the part is already labelled", () => {
+    expect(part({ className: "Class A" }, "class")).toEqual({
+      key: "class",
+      label: "Class",
+      value: "A",
+      tone: "normal",
+    });
+    expect(part({ className: "class b" }, "class")?.value).toBe("b");
+    expect(part({ className: "CLASS C" }, "class")?.value).toBe("C");
+    expect(part({ className: "  Class D  " }, "class")?.value).toBe("D");
+  });
+
+  it("keeps a class name that does not start with the word 'Class' as passed", () => {
+    expect(part({ className: "Classic" }, "class")?.value).toBe("Classic");
+    expect(part({ className: "Gold" }, "class")?.value).toBe("Gold");
+    expect(part({ className: "A" }, "class")?.value).toBe("A");
+  });
+
+  it("says 'Not set' for a class only when the caller passed nothing there", () => {
+    expect(part({ className: null }, "class")?.value).toBe("Not set");
+    expect(part({ className: "" }, "class")?.value).toBe("Not set");
+    expect(part({ className: "   " }, "class")?.value).toBe("Not set");
+    expect(part({ className: "Class A" }, "class")?.value).not.toBe("Not set");
+  });
+
   it("shows Card HDCP only when it differs from the playing handicap", () => {
     expect(keys({ playingHandicap: 14, cardHandicap: 14 })).not.toContain("cardHandicap");
     expect(part({ playingHandicap: 14, cardHandicap: 16 }, "cardHandicap")).toEqual({

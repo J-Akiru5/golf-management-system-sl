@@ -50,6 +50,19 @@ function asText(value: string | null | undefined): string | null {
 }
 
 /**
+ * The value of the class part. Stored class names already carry the word "Class" ("Class A") and
+ * the part has its own label, so that leading word is dropped: the desk reads "Class A", not
+ * "Class Class A". The word must stand alone before a space, so "Classic" is left as it is, and a
+ * name that does not start with it is shown as stored.
+ */
+function asClassName(value: string | null | undefined): string | null {
+  const name = asText(value);
+  if (name === null) return null;
+  const withoutWord = name.replace(/^class\s+/i, "").trim();
+  return withoutWord === "" ? name : withoutWord;
+}
+
+/**
  * The facts shown beside a desk scorecard, in the order the desk reads them. Values are shown as
  * passed and never worked out here: the class bands and team handicap rules are tournament
  * settings, not this module's business.
@@ -72,7 +85,7 @@ export function buildCardContext(input: CardContextInput): CardContextPart[] {
   }
 
   if (input.className !== undefined) {
-    const className = asText(input.className);
+    const className = asClassName(input.className);
     parts.push({
       key: "class",
       label: "Class",
