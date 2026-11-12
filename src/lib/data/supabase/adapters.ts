@@ -33,6 +33,7 @@ import type {
   Tournament,
 } from "@/lib/data/types";
 import { displayName } from "@/lib/format";
+import { formatName, matchesText } from "@/lib/names";
 import { OFFLINE_WRITE_NOTICE } from "@/lib/offline/cache";
 import type { Tee } from "@/lib/routing";
 import {
@@ -320,14 +321,9 @@ export function createSupabaseAdapters(
   const players: Adapters["players"] = {
     list: () => state.players,
     search: (query) => {
-      const q = query.trim().toLowerCase();
-      if (!q) return state.players;
-      return state.players.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.ngapId ?? "").toLowerCase().includes(q) ||
-          (p.homeCourse ?? "").toLowerCase().includes(q) ||
-          (p.nickname ?? "").toLowerCase().includes(q),
+      if (!query.trim()) return state.players;
+      return state.players.filter((p) =>
+        matchesText([p.name, p.ngapId, p.homeCourse, p.nickname], query),
       );
     },
     get: (id) => state.players.find((p) => p.id === id) ?? null,
@@ -344,7 +340,7 @@ export function createSupabaseAdapters(
       }
       const first = input.firstName.trim();
       const last = input.lastName.trim();
-      const fullName = `${first} ${last}`.trim() || "Unnamed player";
+      const fullName = formatName(first, last) || "Unnamed player";
       const player: PlayerRecord = {
         id: uuid(),
         clubId,

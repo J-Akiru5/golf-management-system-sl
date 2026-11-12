@@ -4,6 +4,8 @@ import { displayName, shortDate } from "./format";
 describe("displayName", () => {
   it("shows a player name in capitals and trims the stored spelling", () => {
     expect(displayName("  Carmela Dela Cruz Reyes ")).toBe("CARMELA DELA CRUZ REYES");
+    expect(displayName("braga,nonoy")).toBe("BRAGA, NONOY");
+    expect(displayName("Tañada, Jose")).toBe("TAÑADA, JOSE");
   });
 });
 

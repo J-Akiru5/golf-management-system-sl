@@ -10,6 +10,7 @@
  */
 import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
 import type { RegistrationEntry } from "@/lib/data/types";
+import { matchesText } from "@/lib/names";
 
 /** A group's address in the staff app. The day is in the id so a shared phone's link is complete. */
 export function staffGroupId(dayNumber: number, groupNumber: number): string {
@@ -189,7 +190,7 @@ export function arrivalFilterFromQuery(value: string | null | undefined): Arriva
 export function matchesQuery(row: StaffRow, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (needle === "") return true;
-  if (row.name.toLowerCase().includes(needle)) return true;
+  if (matchesText(row.name, needle)) return true;
   const digits = needle.replace(/\D/g, "");
   if (digits.length >= 3 && (row.phone ?? "").replace(/\D/g, "").includes(digits)) return true;
   return String(row.group?.number ?? "").includes(needle) && /^\d{1,3}$/.test(needle);

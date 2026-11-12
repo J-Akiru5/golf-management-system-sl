@@ -9,6 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.39.1] - 2026-11-13
+
+### Fixed
+- **Player names read one way and search finds them.** Names are `SURNAME, GIVEN`. Search ignores
+  accents, capitals, punctuation and word order across the desk, registration, staff app and public
+  programme. The player edit form no longer reads `ADORIO, RONNEL` as first name `ADORIO,`. No
+  migration. The live directory was corrected with `scripts/fix-player-names.ts`; published
+  pairings were not touched.
+
 ## [0.39.0] - 2026-11-12
 
 ### Migrations shipping with this release

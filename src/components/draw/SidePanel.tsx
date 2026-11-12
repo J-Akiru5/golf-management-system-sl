@@ -7,6 +7,7 @@ import type { RoutingExplanation } from "@/lib/data/explain";
 import type { DeskRegistration, PlayerRecord } from "@/lib/data/types";
 import type { DrawGroup } from "@/lib/draw/validate";
 import { fmtHcp, fmtTime, photoOf } from "@/lib/format";
+import { matchesText } from "@/lib/names";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { cn } from "@/lib/ui/cn";
 
@@ -116,10 +117,10 @@ export function SidePanel(props: {
 }) {
   const { tab, draw, unplaced, players, regs, names, selection } = props;
   const [q, setQ] = useState("");
-  const query = q.trim().toLowerCase();
+  const query = q.trim();
   const found = query
     ? [...players.values()]
-        .filter((p) => p.name.toLowerCase().includes(query))
+        .filter((p) => matchesText(p.name, query))
         .slice(0, 8)
         .map((p) => ({ p, group: draw.find((g) => g.playerIds.includes(p.id)) }))
     : [];
