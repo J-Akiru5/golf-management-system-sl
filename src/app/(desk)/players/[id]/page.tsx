@@ -35,6 +35,7 @@ import { fmtIso } from "@/lib/data/labels";
 import { registeredDayBadges } from "@/lib/data/sessions";
 import { PAYMENT_LABEL } from "@/lib/data/types";
 import { displayName, fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
+import { formatName } from "@/lib/names";
 import { nextPairNumber } from "@/lib/pairs/pairs";
 import { shrinkPhoto } from "@/lib/photo";
 import { rawCourseHandicap } from "@/lib/routing";
@@ -720,7 +721,7 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
             player={player}
             canEdit={!member || member.role === "owner" || member.role === "organizer"}
             onSave={(patch) => {
-              const fullName = `${patch.firstName} ${patch.lastName}`.trim();
+              const fullName = formatName(patch.firstName, patch.lastName);
               adapters.players.update(player.id, {
                 ...patch,
                 name: displayName(fullName),

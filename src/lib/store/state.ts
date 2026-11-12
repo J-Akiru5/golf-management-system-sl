@@ -38,6 +38,7 @@ import {
   restorePlayerToDraw,
 } from "@/lib/draw/withdraw";
 import { displayName } from "@/lib/format";
+import { formatName } from "@/lib/names";
 import type { MergeRow, ResolvedImportRow } from "@/lib/ngap";
 import {
   defaultCategoryFor,
@@ -603,7 +604,7 @@ const stubPlayer = (
   ngapId: string | null,
 ): PlayerRecord => {
   const { firstName, lastName } = splitName(name);
-  const fullName = `${firstName} ${lastName}`.trim();
+  const fullName = formatName(firstName, lastName);
   return {
     id: `p-${seq}`,
     clubId: s.clubId,

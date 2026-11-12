@@ -7,6 +7,7 @@ import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { Caddie } from "@/lib/data/types";
+import { matchesText } from "@/lib/names";
 import { useDesk } from "@/lib/store/desk-store";
 
 interface CaddieDraft {
@@ -44,8 +45,7 @@ export default function CaddiesPage() {
       .filter(
         (caddie) =>
           !q ||
-          caddie.fullName.toLowerCase().includes(q) ||
-          (caddie.nickname ?? "").toLowerCase().includes(q) ||
+          matchesText([caddie.fullName, caddie.nickname], q) ||
           (caddie.phone ?? "").toLowerCase().includes(q),
       )
       .sort((a, b) => Number(b.active) - Number(a.active) || a.fullName.localeCompare(b.fullName));

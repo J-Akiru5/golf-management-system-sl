@@ -6,6 +6,7 @@ import { Avatar } from "@/components/bits";
 import type { PublicProgramme } from "@/lib/data/types";
 import { fmtIndex } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
+import { matchesText } from "@/lib/names";
 
 /**
  * The public programme: the player cards and the organizers' rules of play.
@@ -22,12 +23,8 @@ import { useI18n } from "@/lib/i18n/context";
 export function PlayerDirectory({ programme }: { programme: PublicProgramme }) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
-  const matches = programme.players.filter(
-    (player) =>
-      !q ||
-      player.name.toLowerCase().includes(q) ||
-      (player.homeCourse ?? "").toLowerCase().includes(q),
+  const matches = programme.players.filter((player) =>
+    matchesText([player.name, player.homeCourse], query),
   );
 
   return (

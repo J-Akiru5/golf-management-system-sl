@@ -15,6 +15,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { SavePairInput, SwapPairInput } from "@/lib/data/adapters";
 import type { PlayerRecord, RegistrationEntry } from "@/lib/data/types";
 import { fmtHcp, fmtIndex } from "@/lib/format";
+import { matchesText } from "@/lib/names";
 import {
   nextPairNumber,
   type PairSide,
@@ -146,10 +147,7 @@ export function PairDialog({
     if (!query) return list;
     return list.filter((entry) => {
       const player = players.find((candidate) => candidate.id === entry.playerId);
-      return (
-        (player?.name ?? "").toLowerCase().includes(query) ||
-        (player?.ngapId ?? "").toLowerCase().includes(query)
-      );
+      return matchesText([player?.name, player?.ngapId], query);
     });
   }, [
     entries,

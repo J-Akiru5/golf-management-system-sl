@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { PlayerSpotlight } from "@/components/spotlight/PlayerSpotlight";
 import { Button } from "@/components/ui/button";
 import { fmtIndex, initials } from "@/lib/format";
+import { matchesText } from "@/lib/names";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
 import { useSpotlightData } from "@/lib/ui/spotlight";
@@ -28,7 +29,7 @@ export default function SpotlightPicker() {
     return () => ro.disconnect();
   }, []);
   const d = useSpotlightData(id, slot ? "silhouette" : "none");
-  const list = ready.filter((r) => r.playerName.toLowerCase().includes(q.trim().toLowerCase()));
+  const list = ready.filter((r) => matchesText(r.playerName, q));
   const suffix = slot ? "" : "?slot=none";
 
   return (
