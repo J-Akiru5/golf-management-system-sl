@@ -740,17 +740,16 @@ export default function ScoresPage() {
                     </figure>
                     <div className="grid content-start gap-2">
                       <p className="hint m-0">
-                        OUT <b className="mono">{scan.totals.out}</b> -+ IN{" "}
-                        <b className="mono">{scan.totals.in}</b> -+ TOTAL{" "}
-                        <b className="mono">{scan.totals.total}</b> -+ par{" "}
+                        OUT <b className="mono">{scan.totals.out}</b> · IN{" "}
+                        <b className="mono">{scan.totals.in}</b> · TOTAL{" "}
+                        <b className="mono">{scan.totals.total}</b> · par{" "}
                         <b className="mono">{scan.totals.parTotal}</b>
                       </p>
                       <p className="hint m-0">
-                        <span className="pill">Read</span> from the reader -+{" "}
-                        <span className="pill warn">Check</span> low confidence -+{" "}
+                        <span className="pill">Read</span> from the reader ·{" "}
+                        <span className="pill warn">Check</span> low confidence ·{" "}
                         <span className="pill">Typed</span> you filled a cell the reader left empty
-                        -+ <span className="pill info">Changed</span> you replaced the reader's
-                        value
+                        · <span className="pill info">Changed</span> you replaced the reader's value
                       </p>
                     </div>
                   </div>
@@ -856,11 +855,11 @@ export default function ScoresPage() {
                     return (
                       <label key={hole.number} className="field">
                         <span className={check ? "text-[11px] !text-warning" : "text-[11px]"}>
-                          H{hole.number} -+ par {hole.par} -+ SI {hole.strokeIndex}
-                          {check ? " -+ check" : ""}
-                          {changed ? " -+ changed" : ""}
-                          {typed ? " -+ typed" : ""}
-                          {empty ? " -+ empty" : ""}
+                          H{hole.number} · par {hole.par} · SI {hole.strokeIndex}
+                          {check ? " · check" : ""}
+                          {changed ? " · changed" : ""}
+                          {typed ? " · typed" : ""}
+                          {empty ? " · empty" : ""}
                         </span>
                         <input
                           id={`hole-${hole.number}`}
@@ -923,7 +922,7 @@ export default function ScoresPage() {
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="hint">
-                    Written total <b className="mono">{writtenTotal}</b> -+ OUT{" "}
+                    Written total <b className="mono">{writtenTotal}</b> · OUT{" "}
                     <b className="mono">
                       {holes.reduce((sum, hole) => {
                         if (hole.number > 9) return sum;
@@ -931,7 +930,7 @@ export default function ScoresPage() {
                         return sum + (Number.isInteger(value) ? value : 0);
                       }, 0)}
                     </b>{" "}
-                    -+ IN{" "}
+                    · IN{" "}
                     <b className="mono">
                       {holes.reduce((sum, hole) => {
                         if (hole.number < 10) return sum;
@@ -939,7 +938,7 @@ export default function ScoresPage() {
                         return sum + (Number.isInteger(value) ? value : 0);
                       }, 0)}
                     </b>{" "}
-                    -+ TOTAL <b className="mono">{writtenTotal}</b> -+ par{" "}
+                    · TOTAL <b className="mono">{writtenTotal}</b> · par{" "}
                     <b className="mono">{totalPar}</b>
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -1083,7 +1082,7 @@ export default function ScoresPage() {
                             name={playerName}
                             role={profileRole}
                           />{" "}
-                          <span className="font-semibold">-+ hole {hole.hole}</span>
+                          <span className="font-semibold">· hole {hole.hole}</span>
                         </p>
                         <p className="hint mt-0.5">{hole.note ?? "The cards disagree."}</p>
                       </div>
@@ -1335,7 +1334,7 @@ function CardRow({
         <span className="hint block">Revision {card.revision}</span>
         {player?.handicap ? (
           <span className="hint block">
-            Index {fmtIndex(player.handicap.index)} -+ PH {fmtHcp(player.handicap.playingHandicap)}
+            Index {fmtIndex(player.handicap.index)} · PH {fmtHcp(player.handicap.playingHandicap)}
           </span>
         ) : (
           <span className="hint block">No handicap snapshot</span>
@@ -1502,7 +1501,7 @@ function StandingsTable({
                 {row[board.kind === "gross" ? "grossPoints" : "netPoints"]}
               </td>
               <td className="num mono">
-                {row[board.kind === "gross" ? "grossStrokes" : "netStrokes"] ?? "G��"}
+                {row[board.kind === "gross" ? "grossStrokes" : "netStrokes"] ?? "G··"}
               </td>
               <td className="num mono">
                 {row.holesCounted}/{row.totalHoles}
