@@ -6,17 +6,28 @@ import {
   Camera,
   CheckCircle2,
   ClipboardCheck,
+  Download,
+  FileJson,
   ScanLine,
   Send,
   ShieldCheck,
   Upload,
 } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { ScoresSubnav } from "@/components/scoring/ScoresSubnav";
 import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
+import type { ScoringRoundView } from "@/lib/data/scoring";
+import { reciprocalRotation } from "@/lib/scoring";
+import {
+  buildScorecardImportTemplate,
+  parseScorecardImport,
+  type ScorecardImportFile,
+  type ScorecardImportProblem,
+  type ScorecardImportTemplate,
+} from "@/lib/scoring/import";
 import { SCAN_STATION_STEPS } from "@/lib/scoring/scan/station";
 import { useDesk } from "@/lib/store/desk-store";
 
@@ -26,6 +37,7 @@ interface ScanStationProps {
   mode: ScanStationMode;
   tournamentName: string;
   dayLabel: string;
+  dayNumber: number | null;
   /** The staff day chips. The desk keeps its day control on the Scores screen. */
   dayPicker?: ReactNode;
 }
@@ -83,17 +95,145 @@ function Rule({ children }: { children: ReactNode }) {
  * The scan station shell. The camera, reader and export are deliberately not wired here yet.
  * This screen proves the route, the four steps and the one hard rule: every hole needs a value.
  */
-export function ScanStation({ mode, tournamentName, dayLabel, dayPicker }: ScanStationProps) {
+export function ScanStation({
+  mode,
+  tournamentName,
+  dayLabel,
+  dayNumber,
+  dayPicker,
+}: ScanStationProps) {
+  const { scoring, tournament, member } = useDesk();
+  const [roundView, setRoundView] = useState<ScoringRoundView | null>(null);
+  const [roundLoading, setRoundLoading] = useState(false);
+  const [roundError, setRoundError] = useState("");
+  const [importedFile, setImportedFile] = useState<ScorecardImportFile | null>(null);
+  const [importProblems, setImportProblems] = useState<ScorecardImportProblem[]>([]);
+  const [importName, setImportName] = useState("");
+  const [jsonMessage, setJsonMessage] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const tournamentId = tournament?.id ?? "";
+    if (!tournamentId || dayNumber === null) {
+      setRoundView(null);
+      setRoundError("");
+      setRoundLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setRoundLoading(true);
+    setRoundError("");
+    scoring
+      .loadRound(tournamentId, dayNumber)
+      .then((next) => {
+        if (cancelled) return;
+        setRoundView(next);
+        setRoundLoading(false);
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        setRoundView(null);
+        setRoundError(reason instanceof Error ? reason.message : String(reason));
+        setRoundLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scoring, tournament?.id, dayNumber]);
+
   const liveHref = mode === "desk" ? "/scores" : "/staff/score";
   const liveLabel = mode === "desk" ? "Open the live card desk" : "Back to the group list";
+  const mismatch =
+    importedFile !== null &&
+    roundView !== null &&
+    (importedFile.tournamentId !== roundView.tournamentId ||
+      importedFile.roundId !== roundView.roundId ||
+      importedFile.dayNumber !== roundView.dayNumber);
+
+  function templateForRound(): ScorecardImportTemplate | null {
+    if (!roundView) return null;
+    const players = roundView.players.map((player) => ({
+      playerId: player.playerId,
+      playerName: player.playerName,
+    }));
+    const template = buildScorecardImportTemplate({
+      tournamentId: roundView.tournamentId,
+      roundId: roundView.roundId,
+      dayNumber: roundView.dayNumber,
+      players,
+      groups: null,
+      holes: roundView.course.holes,
+      markers: reciprocalRotation(players.map((player) => player.playerId)),
+    });
+    template.extractedBy = member?.displayName?.trim() || "Scan station";
+    template.extractedAt = new Date().toISOString();
+    return template;
+  }
+
+  async function importJson(file: File | null) {
+    setImportName(file?.name ?? "");
+    setImportedFile(null);
+    setImportProblems([]);
+    setJsonMessage("");
+    if (!file) return;
+    try {
+      const parsed = parseScorecardImport(JSON.parse(await file.text()), {
+        strokeLimits: roundView?.strokeLimits,
+      });
+      setImportProblems(parsed.problems);
+      if (parsed.file) {
+        setImportedFile(parsed.file);
+        setJsonMessage(
+          `Read ${parsed.file.cards.length} card(s) from ${file.name}. ${parsed.problems.length === 0 ? "No structural problems." : `${parsed.problems.length} problem(s) below.`}`,
+        );
+      } else {
+        setJsonMessage("The file cannot be used because a top-level field is wrong.");
+      }
+    } catch (reason) {
+      setJsonMessage(
+        reason instanceof SyntaxError
+          ? "That file is not valid JSON."
+          : reason instanceof Error
+            ? reason.message
+            : String(reason),
+      );
+    }
+  }
+
+  function exportJson() {
+    const file = importedFile ?? templateForRound();
+    if (!file) {
+      setJsonMessage("Open a scoring round before exporting a template.");
+      return;
+    }
+    const text = JSON.stringify(file, null, 2);
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `scorecard-scan-day-${file.dayNumber}-${importedFile ? "imported" : "template"}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    globalThis.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setJsonMessage(
+      importedFile
+        ? `Exported ${importedFile.cards.length} imported card(s).`
+        : `Downloaded a blank template for ${roundView?.players.length ?? 0} player(s). Fill every hole before importing it.`,
+    );
+  }
 
   const body = (
     <div className="grid gap-5">
       <div className="notice info" role="note">
         <b>Scaffold only. </b>
-        The camera, reader and export are not wired on this screen yet. Use the live card desk for
-        today&apos;s cards. The workflow and the export rule below are the contract the next phase
-        will implement.
+        The camera, reader and score export are not wired on this screen yet. Use the live card desk
+        for today&apos;s cards. The workflow and the export rule below are the contract the next
+        phase will implement.{" "}
+        <a href="#scan-json" className="font-semibold underline underline-offset-2">
+          Import or export a JSON file
+        </a>
+        .
       </div>
 
       <div className="card grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
@@ -141,16 +281,62 @@ export function ScanStation({ mode, tournamentName, dayLabel, dayPicker }: ScanS
           subtitle="The photo is the evidence. The reader only proposes values; a person checks them."
         >
           <div className="grid gap-3">
-            <div className="grid min-h-40 place-items-center rounded-lg border border-dashed border-line-strong bg-surface-sunken p-5 text-center">
-              <div className="grid max-w-sm justify-items-center gap-2">
-                <ScanLine className="size-7 text-fairway" aria-hidden="true" />
-                <b>No card in this batch yet</b>
-                <span className="hint">
-                  The next phase reuses the existing camera, signed upload and reader from the
-                  Scores card desk.
-                </span>
+            {importedFile ? (
+              <div className="grid gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <b className="text-[14px]">
+                    {importedFile.cards.length} {importedFile.cards.length === 1 ? "card" : "cards"}{" "}
+                    read from the file
+                  </b>
+                  <span className="pill info">Day {importedFile.dayNumber}</span>
+                  <span className="pill">{importedFile.extractedBy || "No transcriber named"}</span>
+                </div>
+                {importedFile.cards.length === 0 ? (
+                  <p className="m-0 text-[13px] text-ink-muted">The file has no cards.</p>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th scope="col">Player</th>
+                          <th scope="col">Group</th>
+                          <th scope="col">Marker</th>
+                          <th scope="col">Holes</th>
+                          <th scope="col">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importedFile.cards.slice(0, 8).map((card) => (
+                          <tr key={card.cardKey}>
+                            <td>{card.playerName ?? card.playerId ?? "Unnamed"}</td>
+                            <td className="mono">{card.groupNumber ?? "—"}</td>
+                            <td>{card.markerName ?? card.markerPlayerId ?? "—"}</td>
+                            <td className="mono">{Object.keys(card.holes).length}/18</td>
+                            <td className="mono">{card.writtenTotal ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {importedFile.cards.length > 8 && (
+                      <p className="hint m-0 pt-2">
+                        Showing the first 8. {importedFile.cards.length - 8} more in the file.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="grid min-h-40 place-items-center rounded-lg border border-dashed border-line-strong bg-surface-sunken p-5 text-center">
+                <div className="grid max-w-sm justify-items-center gap-2">
+                  <ScanLine className="size-7 text-fairway" aria-hidden="true" />
+                  <b>No card in this batch yet</b>
+                  <span className="hint">
+                    Use the camera or upload in the next phase, or import a JSON transcription below
+                    to see the batch.
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn small" disabled>
                 <Camera className="size-4" aria-hidden="true" />
@@ -231,6 +417,100 @@ export function ScanStation({ mode, tournamentName, dayLabel, dayPicker }: ScanS
         </div>
       </div>
 
+      <SectionCard
+        id="scan-json"
+        icon={<FileJson />}
+        title="JSON import and export"
+        subtitle="The same file format as Scores > Review. Use it to hand a batch to someone else or recover it."
+      >
+        <div
+          className="grid gap-3"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            void importJson(event.dataTransfer.files?.[0] ?? null);
+          }}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="btn small" onClick={() => fileInput.current?.click()}>
+              <Upload className="size-4" aria-hidden="true" />
+              Import JSON
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".json,application/json"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                event.target.value = "";
+                void importJson(file);
+              }}
+            />
+            <button
+              type="button"
+              className="btn ghost small"
+              onClick={exportJson}
+              disabled={!importedFile && !roundView}
+            >
+              <Download className="size-4" aria-hidden="true" />
+              Export JSON
+            </button>
+            {importedFile && (
+              <button
+                type="button"
+                className="btn ghost small"
+                onClick={() => {
+                  setImportedFile(null);
+                  setImportProblems([]);
+                  setImportName("");
+                  setJsonMessage("");
+                }}
+              >
+                Clear imported file
+              </button>
+            )}
+            {roundLoading && <span className="pill info">Loading round…</span>}
+          </div>
+          <p className="hint m-0">
+            Import reads a <b>teeline-scorecard-import</b> file. Export after an import returns that
+            file. With nothing imported it downloads a blank template for the open round, which must
+            be filled before it can be imported again.
+          </p>
+          {roundError && (
+            <div className="notice warn" role="status">
+              The round could not be loaded, so a blank template cannot be built. {roundError}
+            </div>
+          )}
+          {mismatch && (
+            <div className="notice warn" role="status">
+              This file names another tournament, round or day. It is shown for preview only.
+            </div>
+          )}
+          {jsonMessage && (
+            <div className={`notice ${importProblems.length > 0 ? "warn" : "info"}`} role="status">
+              {jsonMessage}
+            </div>
+          )}
+          {importName && <p className="hint m-0">File: {importName}</p>}
+          {importProblems.length > 0 && (
+            <div className="notice bad" role="alert">
+              <b>{importProblems.length} problem(s) in the file.</b>
+              <ul className="m-0 grid gap-1 pl-5 text-[13px]">
+                {importProblems.slice(0, 8).map((problem) => (
+                  <li key={`${problem.path}:${problem.message}`}>
+                    {problem.path ? <b className="mono">{problem.path}</b> : null}
+                    {problem.path ? " " : null}
+                    {problem.message}
+                  </li>
+                ))}
+                {importProblems.length > 8 && <li>{importProblems.length - 8} more.</li>}
+              </ul>
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
       <div className="notice warn" role="note">
         <b>X cards are not exportable yet. </b>
         The scoring table records a stroke number on every hole and has no pick-up field. Until the
@@ -287,6 +567,7 @@ export function DeskScanStation() {
       mode="desk"
       tournamentName={tournament?.name ?? "No event selected"}
       dayLabel={drawDay ? `Playing day ${drawDay}` : "No playing day selected"}
+      dayNumber={drawDay ?? null}
     />
   );
 }
@@ -300,6 +581,7 @@ export function StaffScanStation() {
       mode="staff"
       tournamentName={tournament?.name ?? "No event selected"}
       dayLabel={day ? `Playing day ${day.number}` : "No playing day selected"}
+      dayNumber={day?.number ?? null}
       dayPicker={<DayPills days={days} selected={day?.number ?? null} onSelect={setDayNumber} />}
     />
   );

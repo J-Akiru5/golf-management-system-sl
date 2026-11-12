@@ -202,11 +202,20 @@ The batch is a client-side object in phase 1:
 A server-side `scan_batches` table is a phase 4 option. It would need owner approval because it is
 a schema change. It is not required to prove the flow.
 
-### JSON fallback
+### JSON import and export
 
-The station can also download the batch in the existing `scorecard-import` format. That gives the
-desk a recoverable file if the connection drops and lets the existing bulk import path be used as a
-fallback. The direct `submitCard` path remains the primary export.
+The scaffold implements a JSON round-trip in the existing `teeline-scorecard-import` format.
+
+- Import reads a file, validates it with `parseScorecardImport`, and shows the cards and every
+  structural problem. A valid file loads its cards into the station preview.
+- Export returns the imported file. When nothing is imported, it downloads a blank template for
+  the open round with every player and proposed marker and null holes. The template must be filled
+  before it can be imported again.
+- The same file can be imported on `/scores/review` through the existing bulk import panel.
+- The direct `submitCard` path remains the primary export for the wired station.
+
+The scaffold’s export is deliberately a file download only. It does not write a score or call the
+reader.
 
 ### X and pick-up scores
 
@@ -329,6 +338,8 @@ Integration acceptance, after the workflow is wired:
 - Plan document.
 - `/scan` and `/staff/scan` routes.
 - Shared `ScanStation` shell with the four steps and the export rule.
+- JSON import and export in the existing `teeline-scorecard-import` format, with a validated
+  import preview and a blank template export for the open round.
 - Desk rail and Scores subnav entry.
 - Staff Score action link.
 - Pure export-readiness helper and tests.
@@ -410,6 +421,8 @@ Checked on 12 November 2026 in this worktree.
 - `pnpm check:ui` with `UI_PORT=3101` passed 192 checks and 0 failures, with 0 console errors.
 - A separate Playwright check opened `/scan` and `/staff/scan` against the production build and
   found the heading “Scan a card”, the export rule, the scaffold notice and no console errors.
+- The JSON round-trip was checked in the browser: the template downloaded, four cards were filled
+  and imported with 0 structural problems, and the imported file downloaded again.
 - The first `pnpm check:ui` used an unrelated server already running on port 3100 and failed at
   `/players` because that server showed the sign-in page. It was not a failure of this branch. The
   rerun on a clean port passed.
