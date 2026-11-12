@@ -67,8 +67,10 @@ conversion is not decided; see "Open questions".
 
 1. **Upload.** Staff or the desk pick a round and session and add photos or a scanned PDF, many at
    once. Each page becomes one scan in an inbox. Nothing is a scorecard yet.
-2. **Read.** Where a reader is connected it proposes the 18 scores, the name, the tee letter and the
-   number in the HDCP box. Where it is not, the scan waits with its photo and nothing is invented.
+2. **Read.** Where a reader is connected it proposes the 18 scores, a confidence for each, the name
+   and the total written on the card. Its contract today (`docs/SCORECARD_SCAN.md`) has no tee, no
+   HDCP-box number and no group, so those stay empty or are typed by the desk until the reader is
+   extended. Where no reader is connected, the scan waits with its photo and nothing is invented.
 3. **Match.** For each scan the system lists up to four players from that round and session, best
    first, with the reason for each ("surname one letter off, same group, handicap within 1"). A player
    who already has a card for the round is marked. The desk confirms one, searches for another, or
@@ -113,13 +115,32 @@ owner approves that migration by name.
 | 1 | **Name matcher.** A pure function in `src/lib/scoring/match`: given the name, tee, handicap and group read from a card and the round's players, return ranked candidates with reasons. It never picks one. Built on `src/lib/names`. Tests use the Day 1 misreadings as fixtures: Wormley for GORMLEY, Um for LIM, Lorona for LORENA, Homaros for HENARES, Uhlman for LAGMAN, Aunsanan for ALINSANGAN, Alquinos for ALQUIROS, Jabinugay for JABINIGAY, Clayero for CLAVERO. | None | Nothing |
 | 2 | **Editable card view on the shared layout.** Extend the table layout and helpers behind `PaperScorecard` into one card the desk workspace and print both use, with the header line, doubtful and changed marks, the checked tick, the saved indicator, Enter to the next hole and three-to-a-page print. `PaperScorecard` itself keeps working for the public pages. Submit, approval and correction stay as they are. | None | Nothing |
 | 3 | **Pick-up on the write side.** A hole can be recorded as picked up: 0 points, counted as a played hole, no gross total shown for that card. The published snapshot and public card already read `pickedUp`; the scoring engine, card validation, canonical scores and card entry learn it, which replaces the "X is 0" stand-in from the Day 1 AM release. | Yes | Owner approves the migration |
-| 4 | **Scan inbox.** A table for scans that are not yet cards (round, session, image, what was read, suggested player, state) and the upload, match and verify screens. The reader's name, tee and HDCP fields feed step 1. | Yes | Steps 1 to 3; reader status checked |
+| 4 | **Scan inbox.** A table for scans that are not yet cards (round, session, image, what was read, suggested player, state) and the upload, match and verify screens. The reader's name feeds step 1; tee, HDCP box and group are optional matcher inputs that the reader does not return today. | Yes | Steps 1 to 3; reader status checked |
 | 5 | **Marker for a scanned card.** The rule today is a marker who is another player. Decide how a scanned card gets one (see "Open questions"), then build it. | Maybe | Owner's answer |
 | 6 | **Staff app.** The group score screen uses the shared card view and can open the inbox for its own group. | None | Steps 2 and 4 |
 | 7 | **Team ranking and class in standings.** The Scores screen ranks teams on aggregate net points by class, and lists a player whose partner has no card as not ranked. | None expected | Step 3 |
 
 Steps 1 and 2 change no data and can go out during the event with little risk. Steps 3 to 5 change
 what a scorecard is in the database.
+
+## Progress, 13 November 2026
+
+| Step | State | Notes |
+| --- | --- | --- |
+| 1 Name matcher | **Built**, `src/lib/scoring/match`, 40 tests, merged to `develop`. | Checked against the seed roster (`supabase/seed/bamboo-tee-2026-schedule.psv`) with surname only: on the 35 players scheduled for Day 1 AM, 8 of the 9 Day 1 misreadings rank first and the ninth (Uhlman for LAGMAN) is not in the pool, because LAGMAN is scheduled for days 2 and 3 in the seed. Against all 301 names, 6 rank first, Homaros ranks second, Um is a tie between the two LIMs, and Uhlman ranks third in a three-way tie. The matcher accepts any player list, so the scan inbox must offer the whole event as a second pool and mark a player who is not scheduled for the session ("not scheduled this session"). |
+| 2 Card view | **First slice in review**: a context line (day, marker, class, partner, team handicap, tee, group, playing handicap, card HDCP), and a single-card print with the TeeLine mark. | The desk does not load class, partner, team handicap, tee name or group yet. The line leaves out what the caller does not pass and says "Not set" only for a value the caller looked up and found empty. Loading those values for the desk is a separate piece of work, with no schema change. |
+
+Design findings from the browser check of the desk card (demo mode, `develop` at 4dc4a4d), not yet
+fixed and not part of the first slice:
+
+- The sticky player and marker block is 318px tall on a 375px phone, 39% of the screen, and hides the
+  player name and the context line when the card is scrolled into view.
+- Score cells are 32px high; the design system's standard button is 44px.
+- A nine-hole table is 640px wide inside a phone, so each nine scrolls sideways and shows four holes
+  at a time.
+- Labels differ between the desk ("Hcp row", "Net pts" or "Gross pts") and the public paper card
+  ("SI", both point rows).
+- "Fill with par" writes scores nobody read, next to Submit.
 
 ## Releasing during the event
 
