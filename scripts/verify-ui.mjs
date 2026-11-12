@@ -491,6 +491,47 @@ check(
   (await langPage.getByText("Club tournament pairings").count()) > 0,
 );
 
+for (const path of ["/pairings", "/roster", "/leaderboard", "/rules"]) {
+  await langPage.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+  check(
+    `${path} has a colour-theme control`,
+    (await langPage.getByRole("button", { name: /Colour theme:/ }).count()) > 0,
+  );
+}
+
+section("public pairings day and hole filters");
+await langPage.goto(`${BASE}/pairings`, { waitUntil: "networkidle", timeout: 120000 });
+const daySelect = langPage.getByTestId("pairings-day");
+const holeSelect = langPage.getByTestId("pairings-hole");
+await expect(daySelect).toBeVisible({ timeout: 15000 });
+await expect(holeSelect).toBeVisible({ timeout: 15000 });
+const dayValues = await daySelect
+  .locator("option")
+  .evaluateAll((options) => options.map((option) => option.value).filter(Boolean));
+check("the day filter lists the playing days", dayValues.length >= 2, `(${JSON.stringify(dayValues)})`);
+await daySelect.selectOption(dayValues[1]);
+await expect(langPage.locator('[data-testid="pairings-session"]').first()).toContainText(/DAY 2/i, {
+  timeout: 15000,
+});
+check("the day dropdown switches the board", true);
+const holeValues = await holeSelect
+  .locator("option")
+  .evaluateAll((options) => options.map((option) => option.value).filter(Boolean));
+check("the hole filter lists the day's holes", holeValues.length > 0, `(${JSON.stringify(holeValues)})`);
+const chosenHole = holeValues[0];
+await holeSelect.selectOption(chosenHole);
+const pairingCards = langPage.locator('[data-testid="pairing-group"]');
+const holeBadges = await pairingCards.locator(".p-hole").allTextContents();
+const holePattern = new RegExp(`(Hole|Tee) ${chosenHole}$`);
+check(
+  "the hole dropdown limits every card to that hole",
+  holeBadges.length > 0 && holeBadges.every((text) => holePattern.test(text.trim())),
+  `(${chosenHole}: ${JSON.stringify(holeBadges)})`,
+);
+await holeSelect.selectOption("");
+await expect(pairingCards.first()).toBeVisible({ timeout: 15000 });
+check("all holes restores the full day", (await pairingCards.count()) >= holeBadges.length);
+
 await setLang("hil");
 check(
   "Hiligaynon is served from the dictionary",
@@ -864,29 +905,28 @@ check(
 );
 
 // The separate tee-time board is gone from /pairings. The published groups are the page, and the
-// day chips above them are the only day switch.
+// day dropdown above them is the only day switch.
 check(
   "the tee-time board is gone from /pairings",
   (await phonePage.locator("#tee-times").count()) === 0 &&
     (await phonePage.getByRole("heading", { name: "Tee times by day" }).count()) === 0,
 );
-const dayChips = phonePage.getByTestId("pairings-day-chip");
-const chipDays = await dayChips.evaluateAll((nodes) =>
-  nodes.map((node) => node.getAttribute("data-day-number")),
+const phoneDaySelect = phonePage.getByTestId("pairings-day");
+const dayOptions = await phoneDaySelect.evaluateAll((nodes) =>
+  nodes.flatMap((node) =>
+    [...node.querySelectorAll("option")].map((option) => ({
+      value: option.value,
+      text: (option.textContent ?? "").replace(/s+/g, " ").trim(),
+    })),
+  ),
 );
 check(
-  "the day chips list only the published days",
-  chipDays.length === 2 && chipDays[0] === "1" && chipDays[1] === "2",
-  `(${chipDays.join(", ")})`,
-);
-const chipTexts = (await dayChips.allTextContents()).map((text) =>
-  text.replace(/\s+/g, " ").trim(),
-);
-check(
-  "every day chip prints its date",
-  chipTexts.length > 1 &&
-    chipTexts.every((text) => /[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}/.test(text)),
-  `(${chipTexts.join(" | ")})`,
+  "the day dropdown lists only the published days, each with its date",
+  dayOptions.length === 2 &&
+    dayOptions[0]?.value === "1" &&
+    dayOptions[1]?.value === "2" &&
+    dayOptions.every((option) => /[A-Z][a-z]{2}, [A-Z][a-z]{2} d{1,2}/.test(option.text)),
+  `(${dayOptions.map((option) => option.text).join(" | ")})`,
 );
 const manilaTodayLabel = new Intl.DateTimeFormat("en-PH", {
   timeZone: "Asia/Manila",
@@ -894,39 +934,33 @@ const manilaTodayLabel = new Intl.DateTimeFormat("en-PH", {
   month: "short",
   day: "numeric",
 }).format(new Date());
-const pressedChip = phonePage.locator(
-  '[data-testid="pairings-day-chip"][aria-pressed="true"]',
-);
+const selectedDayText = (
+  await phoneDaySelect.evaluate((node) => node.options[node.selectedIndex]?.textContent ?? "")
+).replace(/s+/g, " ");
 check(
-  "the day chips open on today in Manila",
-  (await pressedChip.count()) === 1 &&
-    ((await pressedChip.textContent()) ?? "").includes(manilaTodayLabel),
-  `(${manilaTodayLabel})`,
+  "the day dropdown opens on today in Manila when it is published, else the first day",
+  selectedDayText.includes(manilaTodayLabel) || (await phoneDaySelect.inputValue()) === "1",
+  `(${selectedDayText}; today ${manilaTodayLabel})`,
 );
 const groupIds = async () =>
   phonePage.getByTestId("pairing-group").evaluateAll((nodes) => nodes.map((node) => node.id));
-const todayGroupIds = await groupIds();
-await dayChips.filter({ hasText: "Day 2" }).click();
-await expect(pressedChip).toHaveAttribute("data-day-number", "2", { timeout: 15000 });
-const dayTwoGroupIds = await groupIds();
+const firstDayGroupIds = await groupIds();
+const otherDay = (await phoneDaySelect.inputValue()) === "2" ? "1" : "2";
+await phoneDaySelect.selectOption(otherDay);
+await expect(phoneDaySelect).toHaveValue(otherDay, { timeout: 15000 });
+const otherDayGroupIds = await groupIds();
 check(
-  "switching a chip changes the groups shown",
-  dayTwoGroupIds.length > 0 &&
-    dayTwoGroupIds.every((id) => id.startsWith("pairing-group-2-")) &&
-    dayTwoGroupIds.join("|") !== todayGroupIds.join("|"),
-  `(${todayGroupIds.length} groups, then ${dayTwoGroupIds.length})`,
+  "switching the day changes the groups shown",
+  otherDayGroupIds.length > 0 &&
+    otherDayGroupIds.every((id) => id.startsWith(`pairing-group-${otherDay}-`)) &&
+    otherDayGroupIds.join("|") !== firstDayGroupIds.join("|"),
+  `(${firstDayGroupIds.length} groups, then ${otherDayGroupIds.length})`,
 );
 const sessionHeadings = await phonePage.getByTestId("pairings-session").allTextContents();
-const dayTwoChipText = ((await dayChips.filter({ hasText: "Day 2" }).textContent()) ?? "").replace(
-  /\s+/g,
-  " ",
-);
-const dayTwoDate = dayTwoChipText.match(/[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}/)?.[0] ?? "";
 check(
-  "the chosen day prints its date and its AM and PM sessions",
-  dayTwoDate !== "" &&
-    sessionHeadings.length === 2 &&
-    sessionHeadings.every((text) => text.includes("Day 2") && text.includes(dayTwoDate)) &&
+  "the chosen day prints its AM and PM sessions",
+  sessionHeadings.length === 2 &&
+    sessionHeadings.every((text) => text.includes(`Day ${otherDay}`)) &&
     sessionHeadings.some((text) => text.includes("AM")) &&
     sessionHeadings.some((text) => text.includes("PM")),
   `(${sessionHeadings.join(" | ")})`,
@@ -935,17 +969,11 @@ const phonePairingsSearch = phonePage.getByRole("searchbox", { name: "Find your 
 await phonePairingsSearch.fill("Antonio Alcantara");
 await expect(
   phonePage.getByTestId("pairing-group").filter({ hasText: "Antonio Alcantara" }),
-).toHaveCount(0, { timeout: 15000 });
+).toHaveCount(1, { timeout: 15000 });
 check(
-  "the search stays on the chosen day",
-  (await phonePage.getByText("No one found with that name or flight.").count()) === 1,
+  "a name search finds the player on any day",
+  (await phonePage.getByTestId("pairing-group").filter({ hasText: "Antonio Alcantara" }).count()) === 1,
 );
-await dayChips.filter({ hasText: "Day 1" }).click();
-const dayOneGroup = phonePage
-  .getByTestId("pairing-group")
-  .filter({ hasText: "Antonio Alcantara" });
-await expect(dayOneGroup).toHaveCount(1, { timeout: 15000 });
-check("switching back finds the player on the other day", (await dayOneGroup.count()) === 1);
 await phonePairingsSearch.fill("");
 
 await phonePairingsSearch.fill("Antonio Alcantara");

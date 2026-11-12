@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  type CSSProperties,
-  type KeyboardEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/bits";
 import { datedHeading } from "@/lib/data/pairing-day";
 import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
@@ -109,10 +102,10 @@ function writeStore(key: string, value: string): void {
  * A card leads with the tee time, then the hole, then the players, then the flight. A group whose
  * time is empty shows the hole and the players with no time line at all: no placeholder is invented.
  *
- * A multi-day event is read one day at a time through the chips, opening on today when the
- * published snapshot has it and on its first day otherwise. Within a day the groups are split into
- * AM and PM sessions, each with a heading that stays under the toolbar while the list scrolls, so a
- * long list always says where the reader is.
+ * A multi-day event is read one day at a time through the day dropdown, and the choice is
+ * remembered on this phone. A second dropdown narrows the day to one starting hole. Within a day
+ * the groups are split into AM and PM sessions, each with a heading that stays under the toolbar
+ * while the list scrolls, so a long list always says where the reader is.
  *
  * The words come from the i18n context. Outside the player/public layouts (the desk's publish
  * preview) the context falls back to English, which is what the organizer expects there.
@@ -144,6 +137,7 @@ export function PairingsView({
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [flight, setFlight] = useState("");
+  const [hole, setHole] = useState("");
   const [density, setDensity] = useState<Density>("comfortable");
   // Today in the club's time zone when the published snapshot has it, else its first day. The day
   // is a choice on this visit, not a stored one: a reader who comes back tomorrow opens on tomorrow.
@@ -161,7 +155,6 @@ export function PairingsView({
   const [actionsVisible, setActionsVisible] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const chipRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const seq = useRef(0);
 
   const tokens = useMemo(() => tokensOf(query), [query]);
@@ -187,14 +180,36 @@ export function PairingsView({
   // hide today's groups.
   const activeDay = days.find((day) => day.dayNumber === selectedDay) ?? days[0] ?? null;
 
-  // Remember the last density on this phone.
+  // The hole filter only offers holes that the current view actually contains. A search or a
+  // flight looks across every day, so its hole options are the whole event's holes; browsing a
+  // day offers that day's holes.
+  const holeOptions = useMemo(() => {
+    const scope =
+      days.length === 0
+        ? pairings.groups
+        : (searching
+            ? days
+            : days.filter((day) => day.dayNumber === (activeDay?.dayNumber ?? days[0]?.dayNumber))
+          ).flatMap((day) => day.groups);
+    const holes = new Set<number>();
+    for (const group of scope) if (group.startHole > 0) holes.add(group.startHole);
+    return [...holes].sort((a, b) => a - b);
+  }, [activeDay, days, pairings.groups, searching]);
+
+  // A selected hole that is not on the new day (or not in the new search scope) falls back to
+  // all holes instead of leaving an empty board behind a filter the reader cannot see.
+  useEffect(() => {
+    if (hole !== "" && !holeOptions.includes(Number(hole))) setHole("");
+  }, [hole, holeOptions]);
+
+  // Remember the last day and the last density on this phone.
   useEffect(() => {
     const savedDensity = readStore(DENSITY_KEY);
     if (savedDensity === "compact" || savedDensity === "comfortable") setDensity(savedDensity);
   }, []);
 
   // The sticky session heading sits directly under the sticky toolbar, so the toolbar's real
-  // height is measured instead of guessed (the day chips and the flight filter change it).
+  // height is measured instead of guessed (the day, hole and flight filters change it).
   useEffect(() => {
     const element = toolbarRef.current;
     if (!element) return;
@@ -234,6 +249,9 @@ export function PairingsView({
 
   const chooseDay = (dayNumber: number) => {
     setSelectedDay(dayNumber);
+    setHole("");
+    setFocusRequest(null);
+    setNotListed(false);
   };
 
   const groupLabel = (startHole: number) => {
@@ -244,6 +262,7 @@ export function PairingsView({
 
   const matched = (group: PublicPairingGroup) =>
     (!flight || group.flight === flight) &&
+    (!hole || group.startHole === Number(hole)) &&
     (!searching || group.players.some((player) => matchesName(player.name, tokens)));
 
   /** Without a known name there is nothing to match, so the search field is the honest action. */
@@ -259,6 +278,7 @@ export function PairingsView({
     }
     setNotListed(false);
     setFlight("");
+    setHole("");
     const own = ownGroup.players.find(isYou);
     setQuery(own?.name ?? you.name);
     if (ownGroup.dayNumber) chooseDay(ownGroup.dayNumber);
@@ -269,6 +289,7 @@ export function PairingsView({
   const clearSearch = () => {
     setQuery("");
     setFlight("");
+    setHole("");
     setFocusRequest(null);
     setNotListed(false);
     searchRef.current?.focus();
@@ -279,9 +300,9 @@ export function PairingsView({
   // written before days existed stay one flat list.
   const daysToRead: PublicPairingDay[] =
     days.length > 0
-      ? activeDay
-        ? [activeDay]
-        : []
+      ? searching
+        ? days
+        : days.filter((day) => day.dayNumber === (activeDay?.dayNumber ?? days[0]?.dayNumber))
       : [
           {
             dayNumber: 1,
@@ -332,24 +353,6 @@ export function PairingsView({
       : t("pairings.groupCountGroups", { count: shown });
   const isOwnGroup = (group: PublicPairingGroup) => group.players.some(isYou);
   const dayOf = (group: PublicPairingGroup) => group.dayNumber ?? activeDay?.dayNumber ?? 1;
-
-  const onChipKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    const index = days.findIndex((day) => day.dayNumber === activeDay?.dayNumber);
-    if (index < 0) return;
-    const count = days.length;
-    const next =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? count - 1
-          : (index + (event.key === "ArrowRight" ? 1 : -1) + count) % count;
-    const target = days[next];
-    if (!target) return;
-    chooseDay(target.dayNumber);
-    chipRefs.current[next]?.focus();
-  };
 
   const renderGroup = (group: PublicPairingGroup) => {
     const own = isOwnGroup(group);
@@ -470,57 +473,74 @@ export function PairingsView({
             </button>
           </div>
 
-          {days.length > 0 && (
+          {(multiDay || holeOptions.length > 1 || (flightFilter && flights.length > 1)) && (
             <div className="p-toolbar-tools">
-              <div
-                className="p-chips"
-                role="group"
-                aria-label={t("pairings.dayChips")}
-                data-testid="pairings-days"
-              >
-                {days.map((day, index) => {
-                  const active = day.dayNumber === activeDay?.dayNumber;
-                  const date = shortDate(day.playDate);
-                  return (
-                    <button
-                      key={day.dayNumber}
-                      ref={(element) => {
-                        chipRefs.current[index] = element;
-                      }}
-                      type="button"
-                      className={`p-chip${active ? " is-active" : ""}`}
-                      aria-pressed={active}
-                      aria-label={date ? `${day.label} · ${date}` : day.label}
-                      data-testid="pairings-day-chip"
-                      data-day-number={day.dayNumber}
-                      onKeyDown={onChipKeyDown}
-                      onClick={() => chooseDay(day.dayNumber)}
-                    >
-                      <span className="p-chip-day">{day.label}</span>
-                      {date && <span className="p-chip-date">{date}</span>}
-                    </button>
-                  );
-                })}
-              </div>
+              {multiDay && (
+                <label className="p-filter">
+                  <span className="p-filter-label">{t("pairings.filterDay")}</span>
+                  <select
+                    aria-label={t("pairings.filterDay")}
+                    data-testid="pairings-day"
+                    className="p-flight-select"
+                    value={String(activeDay?.dayNumber ?? "")}
+                    onChange={(e) => chooseDay(Number(e.target.value))}
+                  >
+                    {days.map((day) => {
+                      const date = shortDate(day.playDate);
+                      return (
+                        <option key={day.dayNumber} value={String(day.dayNumber)}>
+                          {date ? `${day.label} · ${date}` : day.label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              )}
+              {holeOptions.length > 1 && (
+                <label className="p-filter">
+                  <span className="p-filter-label">{t("pairings.filterHole")}</span>
+                  <select
+                    aria-label={t("pairings.filterHole")}
+                    data-testid="pairings-hole"
+                    className="p-flight-select"
+                    value={hole}
+                    onChange={(e) => {
+                      setHole(e.target.value);
+                      setFocusRequest(null);
+                      setNotListed(false);
+                    }}
+                  >
+                    <option value="">{t("pairings.allHoles")}</option>
+                    {holeOptions.map((startHole) => (
+                      <option key={startHole} value={String(startHole)}>
+                        {groupLabel(startHole)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {flightFilter && flights.length > 1 && (
-                <select
-                  aria-label={t("pairings.filterFlight")}
-                  data-help="pairings-flight"
-                  className="p-flight-select"
-                  value={flight}
-                  onChange={(e) => {
-                    setFlight(e.target.value);
-                    setFocusRequest(null);
-                    setNotListed(false);
-                  }}
-                >
-                  <option value="">{t("pairings.allFlights")}</option>
-                  {flights.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
+                <label className="p-filter">
+                  <span className="p-filter-label">{t("pairings.filterFlightShort")}</span>
+                  <select
+                    aria-label={t("pairings.filterFlight")}
+                    data-help="pairings-flight"
+                    className="p-flight-select"
+                    value={flight}
+                    onChange={(e) => {
+                      setFlight(e.target.value);
+                      setFocusRequest(null);
+                      setNotListed(false);
+                    }}
+                  >
+                    <option value="">{t("pairings.allFlights")}</option>
+                    {flights.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               )}
             </div>
           )}
@@ -547,26 +567,6 @@ export function PairingsView({
                 {t("pairings.densityCompact")}
               </button>
             </div>
-            {days.length === 0 && flightFilter && flights.length > 1 && (
-              <select
-                aria-label={t("pairings.filterFlight")}
-                data-help="pairings-flight"
-                className="p-flight-select"
-                value={flight}
-                onChange={(e) => {
-                  setFlight(e.target.value);
-                  setFocusRequest(null);
-                  setNotListed(false);
-                }}
-              >
-                <option value="">{t("pairings.allFlights")}</option>
-                {flights.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            )}
             <div className="p-toolbar-actions">
               <button type="button" className="btn p-action-primary" onClick={findMe}>
                 {t("pairings.findMe")}
@@ -601,11 +601,11 @@ export function PairingsView({
         {shown === 0 && (
           <div className="p-empty" data-testid="pairings-empty">
             <p className="m-0">
-              {searching || flight ? t("pairings.noMatch") : t("pairings.dayEmpty")}
+              {searching || flight || hole ? t("pairings.noMatch") : t("pairings.dayEmpty")}
             </p>
-            {(searching || flight) && (
+            {(searching || flight || hole) && (
               <button type="button" className="btn ghost" onClick={clearSearch}>
-                {t("pairings.clearSearch")}
+                {searching ? t("pairings.clearSearch") : t("pairings.clearFilters")}
               </button>
             )}
           </div>

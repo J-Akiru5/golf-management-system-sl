@@ -12,14 +12,20 @@ Supabase project, because the code and the database are released separately.
 ## [0.36.0] - 2026-11-12
 
 ### Changed
-- **Branches brought back together.** Carries the compact phone app bar on Players and Leaderboard, the day filter dropdowns and hole filter from staging, and everything on production (one public tee time per session, tee-times section removed, republishing one day keeps the others). No migration.
-
-### Changed
+- **Branches brought back together.** Carries the compact phone app bar on Players and Leaderboard and everything on production, with Karl's day and hole dropdowns on the public pairings in place of the day chips. No migration.
 - **The public pages show one tee time per session, the same for both flights.** The pairings cards
   and the public player profile's tee-time rows read 6:30 AM on the Day 1 and Day 2 mornings, 6:00 AM
   on the Day 3 and Day 4 mornings, 12:30 PM on the Day 1 to Day 3 afternoons and 11:30 AM on Sunday's
   afternoon. The staggered flight wave times (6:12, 12:42) stay in the stored draw, the snapshot and
   the desk screens; this is presentation only. No migration.
+
+### Added
+- **The public pairings day filter is a dropdown, and a starting-hole filter is beside it.** The
+  day options keep the label and date and remember the last choice. The hole options list only the
+  holes on the selected day, with **All holes** first, and fall back safely when the day changes.
+  The flight filter now stays within the selected day, so the day control remains the browsing
+  authority; a name search still spans every day. The filter row wraps on narrow screens and the
+  empty state offers **Clear filters**. No migration.
 
 ## [0.35.2] - 2026-11-12
 
