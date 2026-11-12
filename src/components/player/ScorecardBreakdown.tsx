@@ -49,7 +49,9 @@ function ScoreRow({ number, hole }: { number: number; hole: PortalScorecardHole 
       </td>
       <td className="num">{hole ? hole.par : "-"}</td>
       <td className="num">{hole ? hole.strokeIndex : "-"}</td>
-      <td className="num bg-surface-sunken font-semibold">{hole ? hole.grossStrokes : "-"}</td>
+      <td className="num bg-surface-sunken font-semibold">
+        {hole ? (hole.pickedUp ? "X" : hole.grossStrokes) : "-"}
+      </td>
       <td className="num">{hole ? handicapStrokeLabel(hole.handicapStrokes) : "-"}</td>
       <td className="num border-l border-line bg-fairway-soft font-semibold">
         {hole ? numberText(hole.netStrokes) : "-"}

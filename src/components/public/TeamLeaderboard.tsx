@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useId, useState } from "react";
 import { Avatar } from "@/components/bits";
+import { PaperScorecard } from "@/components/public/PaperScorecard";
 import { publicTabHref } from "@/lib/data/public-tabs";
+import type { PublicTeamCards } from "@/lib/data/public-team-cards";
 import type {
   PublicTeamFilters,
   PublicTeamOptions,
@@ -32,11 +35,14 @@ function PairPlayer({
   label,
   name,
   href,
+  figures,
   className = "",
 }: {
   label: string;
   name: string | null;
   href: string | null;
+  /** The partner's own net and gross points, already formatted. */
+  figures: string;
   className?: string;
 }) {
   return (
@@ -55,7 +61,120 @@ function PairPlayer({
           <b className="min-w-0 break-words">{name ?? "—"}</b>
         )}
       </span>
+      <span className="text-[12px] text-ink-muted tnum">{figures}</span>
     </div>
+  );
+}
+
+/**
+ * One ranked team. The row keeps its own open state, so opening a team's cards leaves the other
+ * rows alone. The panel stays in the page but hidden until the button opens it, which is what
+ * `aria-controls` expects.
+ */
+function TeamRow({ team, cards }: { team: PublicTeamStanding; cards: PublicTeamCards }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+
+  const memberId = team.playerIds[0] ?? null;
+  const guestId = team.playerIds[1] ?? null;
+
+  // A partner's own figures, looked up by player id as the leaderboard built them.
+  const figures = (playerId: string | null): string => {
+    const member = playerId ? team.members.find((entry) => entry.playerId === playerId) : undefined;
+    return t("programme.leaderboardPlayerFigures", {
+      net: member?.netPoints ?? "-",
+      gross: member?.grossPoints ?? "-",
+    });
+  };
+
+  const partners = [
+    { label: t("programme.leaderboardMember"), id: memberId, name: team.memberName },
+    { label: t("programme.leaderboardGuest"), id: guestId, name: team.guestName },
+  ];
+
+  return (
+    <li className="overflow-hidden rounded-[14px] border border-line bg-surface-raised">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-sunken px-3 py-2">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-gold-soft text-[12px] font-bold text-gold-ink">
+          {rankLabel(team)}
+        </span>
+        <span className="pill gold">
+          {t("programme.leaderboardPair", { number: team.pairNumber ?? "—" })}
+        </span>
+        <span className="pill">{team.flightName ?? "—"}</span>
+        {team.categories.length > 0 && <span className="pill">{team.categories.join(" · ")}</span>}
+        <span className="hint">{t("programme.leaderboardTogether")}</span>
+        <span className="ml-auto grid shrink-0 text-right">
+          <b className="text-[20px] leading-5 tnum">{score(team.netPoints)}</b>
+          <span className="text-[11px] text-ink-muted">{t("programme.leaderboardPts")}</span>
+        </span>
+      </div>
+      <div className="grid grid-cols-2">
+        <PairPlayer
+          label={t("programme.leaderboardMember")}
+          name={team.memberName}
+          href={memberId ? publicTabHref("profile", { player: memberId }) : null}
+          figures={figures(memberId)}
+          className="border-r border-line"
+        />
+        <PairPlayer
+          label={t("programme.leaderboardGuest")}
+          name={team.guestName}
+          href={guestId ? publicTabHref("profile", { player: guestId }) : null}
+          figures={figures(guestId)}
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2">
+        <dl className="m-0 grid grid-cols-2 gap-4 text-[12px]">
+          <div>
+            <dt className="small-h">{t("programme.leaderboardThru")}</dt>
+            <dd className="m-0 font-semibold tnum">
+              {team.holesCounted}/{team.holesTotal || "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="small-h">{t("programme.leaderboardGrossPts")}</dt>
+            <dd className="m-0 font-semibold tnum">{score(team.grossPoints)}</dd>
+          </div>
+        </dl>
+        <button
+          type="button"
+          className="ml-auto inline-flex min-h-11 items-center justify-center rounded-full border border-line px-4 text-[13px] font-semibold text-ink"
+          aria-expanded={open}
+          aria-controls={panelId}
+          data-testid="team-scorecards-toggle"
+          onClick={() => setOpen((current) => !current)}
+        >
+          {open ? t("programme.leaderboardHideScorecards") : t("programme.leaderboardScorecards")}
+        </button>
+      </div>
+      <div id={panelId} hidden={!open} data-testid="team-scorecards">
+        {open && (
+          <div className="grid gap-4 border-t border-line px-3 py-3">
+            {partners.map((partner) => {
+              const partnerCards = partner.id ? (cards[partner.id] ?? []) : [];
+              return (
+                <div key={partner.label} className="grid gap-3">
+                  <h4 className="m-0 text-[15px] leading-5">{partner.name ?? "—"}</h4>
+                  {partnerCards.length > 0 ? (
+                    partnerCards.map((card) => (
+                      <PaperScorecard
+                        key={card.roundId}
+                        card={card}
+                        title={`${partner.name ?? "—"} · Day ${card.dayNumber}`}
+                      />
+                    ))
+                  ) : (
+                    <p className="hint m-0">{t("programme.leaderboardNoCardYet")}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </li>
   );
 }
 
@@ -68,6 +187,7 @@ function PairPlayer({
  */
 export function TeamLeaderboard({
   teams,
+  cards,
   options,
   filters,
   rounds,
@@ -76,6 +196,8 @@ export function TeamLeaderboard({
   eventName,
 }: {
   teams: PublicTeamStanding[];
+  /** Both partners' frozen cards for the teams on screen, keyed by player id. */
+  cards?: PublicTeamCards;
   options: PublicTeamOptions;
   filters: PublicTeamFilters;
   rounds: PublicTeamRound[];
@@ -86,6 +208,7 @@ export function TeamLeaderboard({
   const { t } = useI18n();
   const router = useRouter();
   const provisional = rounds.some((round) => round.state === "provisional");
+  const teamCards = cards ?? {};
 
   const applyFilters = (next: PublicTeamFilters) => {
     const query = new URLSearchParams();
@@ -166,69 +289,9 @@ export function TeamLeaderboard({
         </div>
       ) : (
         <ol className="grid gap-3" data-testid="leaderboard-cards">
-          {teams.map((team) => {
-            const memberId = team.playerIds[0] ?? null;
-            const guestId = team.playerIds[1] ?? null;
-            return (
-              <li
-                key={team.key}
-                className="overflow-hidden rounded-[14px] border border-line bg-surface-raised"
-              >
-                <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-sunken px-3 py-2">
-                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-gold-soft text-[12px] font-bold text-gold-ink">
-                    {rankLabel(team)}
-                  </span>
-                  <span className="pill gold">
-                    {t("programme.leaderboardPair", { number: team.pairNumber ?? "—" })}
-                  </span>
-                  <span className="pill">{team.flightName ?? "—"}</span>
-                  {team.categories.length > 0 && (
-                    <span className="pill">{team.categories.join(" · ")}</span>
-                  )}
-                  <span className="hint">{t("programme.leaderboardTogether")}</span>
-                  <span className="ml-auto grid shrink-0 text-right">
-                    <b className="text-[20px] leading-5 tnum">{score(team.netPoints)}</b>
-                    <span className="text-[11px] text-ink-muted">
-                      {t("programme.leaderboardPts")}
-                    </span>
-                  </span>
-                </div>
-                <div className="grid grid-cols-2">
-                  <PairPlayer
-                    label={t("programme.leaderboardMember")}
-                    name={team.memberName}
-                    href={memberId ? publicTabHref("profile", { player: memberId }) : null}
-                    className="border-r border-line"
-                  />
-                  <PairPlayer
-                    label={t("programme.leaderboardGuest")}
-                    name={team.guestName}
-                    href={guestId ? publicTabHref("profile", { player: guestId }) : null}
-                  />
-                </div>
-                <dl className="m-0 grid grid-cols-4 gap-2 border-t border-line px-3 py-2 text-[12px]">
-                  <div>
-                    <dt className="small-h">{t("programme.leaderboardThru")}</dt>
-                    <dd className="m-0 font-semibold tnum">
-                      {team.holesCounted}/{team.holesTotal || "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="small-h">{t("programme.leaderboardGross")}</dt>
-                    <dd className="m-0 font-semibold tnum">{score(team.grossStrokes)}</dd>
-                  </div>
-                  <div>
-                    <dt className="small-h">{t("programme.leaderboardNet")}</dt>
-                    <dd className="m-0 font-semibold tnum">{score(team.netStrokes)}</dd>
-                  </div>
-                  <div>
-                    <dt className="small-h">{t("programme.leaderboardToPar")}</dt>
-                    <dd className="m-0 font-semibold tnum">{team.toPar}</dd>
-                  </div>
-                </dl>
-              </li>
-            );
-          })}
+          {teams.map((team) => (
+            <TeamRow key={team.key} team={team} cards={teamCards} />
+          ))}
         </ol>
       )}
 

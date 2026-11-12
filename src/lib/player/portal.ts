@@ -29,7 +29,10 @@ export interface PortalScorecardHole {
   hole: number;
   par: number;
   strokeIndex: number;
+  /** Strokes on the hole. 0 when the player picked up: there is no stroke count to show. */
   grossStrokes: number;
+  /** True when the player picked up on this hole. It scores no points and has no stroke count. */
+  pickedUp?: boolean;
   /** Null when the round had no handicap snapshot. Negative for a plus handicap. */
   handicapStrokes: number | null;
   netStrokes: number | null;
@@ -53,6 +56,8 @@ export interface PortalScorecard {
   netPoints: number | null;
   holesCounted: number;
   holesTotal: number;
+  /** Holes the player picked up on. Absent when none. A card with pickups has no stroke total. */
+  pickups?: number;
   holes: PortalScorecardHole[];
 }
 
@@ -132,7 +137,10 @@ function mapScorecardHole(value: unknown): PortalScorecardHole | null {
   const hole = asWholeNumber(raw.hole);
   const par = asWholeNumber(raw.par);
   const strokeIndex = asWholeNumber(raw.strokeIndex);
-  const grossStrokes = asWholeNumber(raw.grossStrokes);
+  // A pickup has no stroke count by design. It used to be dropped here, so a card with a pickup
+  // showed fewer holes than were played. Keep it, marked, with 0 strokes and its points.
+  const pickedUp = raw.pickedUp === true;
+  const grossStrokes = pickedUp ? 0 : asWholeNumber(raw.grossStrokes);
   const grossPoints = asWholeNumber(raw.grossPoints);
 
   if (
@@ -144,7 +152,7 @@ function mapScorecardHole(value: unknown): PortalScorecardHole | null {
     hole < 1 ||
     par < 1 ||
     strokeIndex < 1 ||
-    grossStrokes < 1 ||
+    (!pickedUp && grossStrokes < 1) ||
     grossPoints < 0
   ) {
     return null;
@@ -163,6 +171,7 @@ function mapScorecardHole(value: unknown): PortalScorecardHole | null {
     netStrokes,
     netPoints: netPoints !== null && netPoints >= 0 ? netPoints : null,
     grossPoints,
+    ...(pickedUp ? { pickedUp: true } : {}),
   };
 }
 
@@ -214,6 +223,9 @@ export function mapScorecard(value: unknown): PortalScorecard | null {
     netPoints,
     holesCounted: Math.min(asWholeNumber(raw.holesCounted) ?? holes.length, holesTotal),
     holesTotal,
+    ...(holes.some((hole) => hole.pickedUp)
+      ? { pickups: holes.filter((hole) => hole.pickedUp).length }
+      : {}),
     holes,
   };
 }
