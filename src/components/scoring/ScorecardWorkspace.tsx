@@ -174,27 +174,69 @@ export function ScorecardWorkspace({
   });
 
   return (
-    <div className="grid gap-4">
-      <div className="sticky top-0 z-20 grid gap-2 rounded-lg border border-line bg-surface-raised p-3 shadow-sm">
-        <div className="grid gap-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_auto] lg:items-end">
-          <Combobox
-            label="Player"
-            value={playerId}
-            options={players.map((player) => ({ id: player.playerId, label: player.playerName }))}
-            onChange={onPlayerChange}
-            placeholder="Type a player's name"
-            disabled={busy || players.length < 2 || Boolean(editingCard)}
-          />
-          <Combobox
-            label="Marked by"
-            value={scorerId}
-            options={players
-              .filter((player) => player.playerId !== playerId)
-              .map((player) => ({ id: player.playerId, label: player.playerName }))}
-            onChange={onScorerChange}
-            placeholder="Type the marker's name"
-            disabled={busy || players.length < 2 || Boolean(editingCard)}
-          />
+    <div className="flex flex-col gap-4">
+      {/*
+        Below `lg` this whole block dissolves (`contents`): the comboboxes and profile line scroll
+        with the page inside their own card, and only the slim bar below stays stuck at the top.
+        From `lg` up it is the one sticky card it always was, with Player and Marked by on the
+        first row and the pill and Submit on the right.
+      */}
+      <div className="contents lg:sticky lg:top-0 lg:z-20 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_auto] lg:items-end lg:gap-2 lg:rounded-lg lg:border lg:border-line lg:bg-surface-raised lg:p-3 lg:shadow-sm">
+        <div className="grid gap-2 rounded-lg border border-line bg-surface-raised p-3 shadow-sm lg:contents">
+          <div className="grid gap-2 lg:contents">
+            <Combobox
+              label="Player"
+              value={playerId}
+              options={players.map((player) => ({ id: player.playerId, label: player.playerName }))}
+              onChange={onPlayerChange}
+              placeholder="Type a player's name"
+              disabled={busy || players.length < 2 || Boolean(editingCard)}
+            />
+            <Combobox
+              label="Marked by"
+              value={scorerId}
+              options={players
+                .filter((player) => player.playerId !== playerId)
+                .map((player) => ({ id: player.playerId, label: player.playerName }))}
+              onChange={onScorerChange}
+              placeholder="Type the marker's name"
+              disabled={busy || players.length < 2 || Boolean(editingCard)}
+            />
+          </div>
+          {!ready && blockers.length > 1 && (
+            <p className="hint m-0 lg:col-span-3" role="status">
+              {blockers.slice(1, 4).join(" · ")}
+              {blockers.length > 4 ? " …" : ""}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-3 text-[12px] text-ink-muted lg:col-span-3">
+            {selectedPlayer && (
+              <span>
+                {selectedPlayer.playerName} · index {selectedPlayer.handicap?.index ?? "—"} · PH{" "}
+                {selectedPlayer.handicap?.playingHandicap ?? "—"}
+              </span>
+            )}
+            {selectedPlayer && canOpenProfile && (
+              <Link
+                href={playerProfileHref(selectedPlayer.playerId)}
+                className="underline underline-offset-2"
+              >
+                Open profile
+              </Link>
+            )}
+            {selectedScorer && <span>Marker: {selectedScorer.playerName}</span>}
+          </div>
+        </div>
+        {/*
+          The phone's stuck bar. It comes after the comboboxes in the DOM so Tab still goes
+          Player, Marker, Submit; `order-first` puts it at the top of the page below `lg`, and from
+          `lg` up it is the third column of the sticky card. `bg-surface-raised` is solid so the
+          card scrolling underneath never shows through.
+        */}
+        <div className="order-first sticky top-0 z-20 flex flex-col gap-1 rounded-lg border border-line bg-surface-raised p-2 shadow-sm lg:static lg:z-auto lg:col-start-3 lg:row-start-1 lg:order-none lg:flex-row lg:items-center lg:justify-end lg:gap-2 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
+          <span className="truncate text-[13px] font-semibold text-ink lg:hidden">
+            {selectedPlayer?.playerName ?? "No player selected"}
+          </span>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <Pill tone={ready ? "ok" : "warn"}>{statusLabel}</Pill>
             <Button
@@ -217,29 +259,6 @@ export function ScorecardWorkspace({
               )}
             </Button>
           </div>
-        </div>
-        {!ready && blockers.length > 1 && (
-          <p className="hint m-0" role="status">
-            {blockers.slice(1, 4).join(" · ")}
-            {blockers.length > 4 ? " …" : ""}
-          </p>
-        )}
-        <div className="flex flex-wrap items-center gap-3 text-[12px] text-ink-muted">
-          {selectedPlayer && (
-            <span>
-              {selectedPlayer.playerName} · index {selectedPlayer.handicap?.index ?? "—"} · PH{" "}
-              {selectedPlayer.handicap?.playingHandicap ?? "—"}
-            </span>
-          )}
-          {selectedPlayer && canOpenProfile && (
-            <Link
-              href={playerProfileHref(selectedPlayer.playerId)}
-              className="underline underline-offset-2"
-            >
-              Open profile
-            </Link>
-          )}
-          {selectedScorer && <span>Marker: {selectedScorer.playerName}</span>}
         </div>
       </div>
 

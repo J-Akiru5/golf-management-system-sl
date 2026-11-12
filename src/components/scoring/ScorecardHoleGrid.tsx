@@ -64,7 +64,7 @@ function ScoreCell({
         value={strokes[hole.number] ?? ""}
         aria-invalid={flagged ? true : undefined}
         aria-describedby={flagged ? "scan-check-hint" : undefined}
-        className="h-8 w-full border-0 bg-transparent px-0 text-center font-mono text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+        className="h-11 w-full border-0 bg-transparent px-0 text-center font-mono text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-primary lg:h-9"
         onChange={(event) => onChange(hole.number, event.target.value)}
         onKeyDown={(event) => {
           if (event.key !== "Enter") return;
@@ -110,7 +110,9 @@ function NineTable({
 }) {
   const par = rows.reduce((sum, hole) => sum + hole.par, 0);
   const cell = "border border-line px-1 py-1 text-center align-middle";
-  const labelCell = `${cell} text-left text-[11px] font-semibold normal-case text-ink-muted`;
+  // The label column stays put while the nine holes scroll sideways. A solid background keeps the
+  // moving cells from showing through, and the same sunken tone works in light and dark mode.
+  const labelCell = `${cell} sticky left-0 z-10 bg-surface-sunken text-left text-[11px] font-semibold normal-case text-ink-muted`;
   return (
     <div
       className="overflow-x-auto rounded-md border border-line"
@@ -124,7 +126,7 @@ function NineTable({
           <tr>
             <th
               scope="col"
-              className="w-16 border border-line bg-primary px-1 py-1.5 text-left text-[11px] font-semibold normal-case tracking-wide text-on-primary"
+              className="sticky left-0 z-10 w-16 border border-line bg-primary px-1 py-1.5 text-left text-[11px] font-semibold normal-case tracking-wide text-on-primary"
             >
               Hole
             </th>
@@ -159,7 +161,8 @@ function NineTable({
           </tr>
           <tr>
             <th scope="row" className={labelCell}>
-              Hcp row
+              <abbr title="Stroke index">SI</abbr>
+              <span className="sr-only"> (stroke index)</span>
             </th>
             {rows.map((hole) => (
               <td key={hole.number} className={`${cell} text-ink-muted`}>
