@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PublicPairings } from "@/lib/data/types";
 import { type BoardScope, buildPrintBook, type PrintBookInput, printFileName } from "./export-book";
 import type { ExportGroup } from "./export-model";
+import type { ResultsSheet } from "./results-sheet";
 
 const player = (name: string) => ({
   name,
@@ -52,6 +53,36 @@ const base: PrintBookInput = {
   holes: [],
 };
 
+const resultsSheet: ResultsSheet = {
+  eventName: "24th Bamboo Tee",
+  dayNumber: 1,
+  dayLabel: "Day 1",
+  playDate: "2026-11-14",
+  dateLabel: "Sat, 14 Nov 2026",
+  tables: [
+    {
+      key: "1-AM",
+      title: "Day 1 · AM",
+      session: "AM",
+      rows: [
+        {
+          playerId: "p1",
+          playerName: "ANA",
+          position: 1,
+          tied: false,
+          playingHandicap: 10,
+          grossStrokes: 82,
+          netStrokes: 72,
+          points: 34,
+          holesPlayed: 18,
+          holesTotal: 18,
+          noCard: false,
+        },
+      ],
+    },
+  ],
+};
+
 describe("buildPrintBook", () => {
   it("one day: one start sheet, labelled and named for that day", () => {
     const result = buildPrintBook(base);
@@ -91,5 +122,32 @@ describe("buildPrintBook", () => {
     const result = buildPrintBook({ ...base, kind: "scorecards" });
     expect(result?.scorecards).toHaveLength(1);
     expect(result?.book.tables).toEqual([]);
+  });
+
+  it("results go through the same export tables and keep their session label", () => {
+    const result = buildPrintBook({
+      ...base,
+      kind: "results",
+      boards: [board(1, [group(1, "06:30", ["Ana", "Bo"])])],
+      resultsSheets: [resultsSheet],
+    });
+
+    expect(result?.scorecards).toBeNull();
+    expect(result?.book.tables).toHaveLength(1);
+    expect(result?.book.tables[0]?.title).toBe("Results · Day 1 · AM");
+    expect(result?.book.tables[0]?.rows[0]).toEqual(["1", "ANA", "10", 82, 72, 34, "18/18"]);
+    expect(result && printFileName(result, "pdf")).toBe(
+      "24th-bamboo-tee_results_day-1_2026-11-12.pdf",
+    );
+  });
+
+  it("results with no player rows return null instead of an empty file", () => {
+    expect(
+      buildPrintBook({
+        ...base,
+        kind: "results",
+        resultsSheets: [{ ...resultsSheet, tables: [{ ...resultsSheet.tables[0]!, rows: [] }] }],
+      }),
+    ).toBeNull();
   });
 });

@@ -2,22 +2,23 @@
 
 import {
   CircleHelp,
-  Download,
   FileText,
   Flag,
   Printer,
   Smartphone,
   TableProperties,
+  Trophy,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheatSheet } from "@/components/help";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader } from "@/components/PageHeader";
 import { type CountsGrouping, DayCounts } from "@/components/print/DayCounts";
 import { ExportBar, type ExportFormat } from "@/components/print/ExportBar";
 import { PairingsSheet } from "@/components/print/PairingsSheet";
+import { ResultsSheet as ResultsSheetView } from "@/components/print/ResultsSheet";
 import { Scorecards } from "@/components/print/Scorecards";
 import { StartSheet } from "@/components/print/StartSheet";
 import type { PrintGroup } from "@/components/print/types";
@@ -26,7 +27,13 @@ import { courseDataStatus as deriveCourseDataStatus } from "@/lib/data/course-da
 import { playingDaysOf } from "@/lib/data/dates";
 import { fmtDateLabel, fmtIso } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
-import { daySessionSummary } from "@/lib/data/sessions";
+import type { ScoringRoundView } from "@/lib/data/scoring";
+import {
+  daySessionSummary,
+  type SessionKey,
+  sessionForTimeIn,
+  sessionsForDay,
+} from "@/lib/data/sessions";
 import { downloadBlob } from "@/lib/export/download";
 import { photoOf } from "@/lib/format";
 import { buildDayCountBlocks, buildGroupBlocks } from "@/lib/print/day-counts";
@@ -38,19 +45,21 @@ import {
   printFileName,
 } from "@/lib/print/export-book";
 import { courseNote, pairingsForDay } from "@/lib/print/export-model";
+import { buildResultsSheet, resultsPlayersFromRound } from "@/lib/print/results-sheet";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/ui/cn";
 
-type Tab = "start" | "counts" | "pairings" | "scorecards" | "howto";
+type Tab = "start" | "counts" | "pairings" | "scorecards" | "results" | "howto";
 
 const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
   { id: "start", label: "Start sheet", icon: TableProperties },
   { id: "counts", label: "Counts", icon: Users },
   { id: "pairings", label: "Pairings", icon: Flag },
   { id: "scorecards", label: "Scorecards", icon: FileText },
+  { id: "results", label: "Results", icon: Trophy },
   { id: "howto", label: "How to", icon: CircleHelp },
 ];
 
@@ -62,6 +71,7 @@ export default function PrintCenter() {
     regById,
     registrations,
     entries,
+    entryByPlayer,
     names,
     tees,
     holes,
@@ -70,6 +80,7 @@ export default function PrintCenter() {
     days,
     drawDay,
     setDrawDay,
+    scoring,
   } = useDesk();
   const [tab, setTab] = useState<Tab>("start");
   // Printing follows the desk's day: picking a day here loads that day's board, so the sheets never
@@ -87,6 +98,12 @@ export default function PrintCenter() {
   const [exportError, setExportError] = useState("");
   // The organisers read the same players two ways: by AM/PM session, or by the draw's groups.
   const [groupBy, setGroupBy] = useState<CountsGrouping>("session");
+  // Results follow one round at a time. Day 1 is split into its two sessions; every other day is
+  // one table for the whole round.
+  const [resultsSession, setResultsSession] = useState<SessionKey | "all">("all");
+  const [resultsRound, setResultsRound] = useState<ScoringRoundView | null>(null);
+  const [resultsLoading, setResultsLoading] = useState(false);
+  const [resultsError, setResultsError] = useState("");
   // The organisers' headcount: players per playing day, split into AM and PM, with tee-off times.
   const countBlocks = useMemo(
     () =>
@@ -120,6 +137,39 @@ export default function PrintCenter() {
       }),
     [playingDays, everyDay],
   );
+
+  const tournamentId = tournament?.id ?? null;
+  // Results are read one day at a time. The scoring repository keeps the day's entries and the
+  // cards, so the sheet is built from the same engine the Scores screen uses, never from a guess.
+  useEffect(() => {
+    if (tab !== "results" || !tournamentId || !chosenDay) {
+      setResultsRound(null);
+      setResultsError("");
+      setResultsLoading(false);
+      return;
+    }
+    let active = true;
+    setResultsLoading(true);
+    setResultsError("");
+    scoring
+      .loadRound(tournamentId, chosenDay.dayNumber)
+      .then((round) => {
+        if (active) setResultsRound(round);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setResultsRound(null);
+        setResultsError(
+          error instanceof Error ? error.message : "Could not read this day's results.",
+        );
+      })
+      .finally(() => {
+        if (active) setResultsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [tab, tournamentId, chosenDay, scoring]);
 
   const publishedPairings = useMemo(() => {
     if (!tournament) return null;
@@ -175,6 +225,72 @@ export default function PrintCenter() {
     }),
   });
   const printGroups = groups.map(toPrintGroup);
+
+  // The session a player actually played in on the selected day: the draw's group first, then the
+  // desk's recorded choice, then a confirmed tee time. Nothing is given a session by default.
+  const daySessions = sessionsForDay(chosenDay ?? {}, {
+    eventPmStart: tournament.config.pmFirstTeeTime,
+    finalDay: chosenDay?.dayNumber === playingDays[playingDays.length - 1]?.dayNumber,
+  });
+  const sessionOfPlayer = (playerId: string): SessionKey | null => {
+    if (!chosenDay) return null;
+    const group = groups.find((candidate) => candidate.playerIds.includes(playerId));
+    if (group) {
+      const wave = group.wave ? /(?:^|[-_ ])(AM|PM)(?:$|[-_ ])/i.exec(group.wave)?.[1] : null;
+      if (wave === "AM" || wave === "PM") return wave;
+      const fromGroup = sessionForTimeIn(daySessions, group.time);
+      if (fromGroup) return fromGroup.key;
+    }
+    const entry = entryByPlayer.get(playerId);
+    const chosen = entry?.daySessions?.[chosenDay.dayNumber];
+    if (chosen === "AM" || chosen === "PM") return chosen;
+    const teeTime = entry?.dayTee?.[chosenDay.dayNumber]?.teeTime ?? null;
+    if (teeTime) {
+      const fromTee = sessionForTimeIn(daySessions, teeTime);
+      if (fromTee) return fromTee.key;
+    }
+    return null;
+  };
+  const resultsSheet =
+    chosenDay && resultsRound
+      ? buildResultsSheet({
+          eventName: tournament.name,
+          dayNumber: chosenDay.dayNumber,
+          dayLabel: chosenDay.label,
+          playDate: chosenDay.playDate,
+          dateLabel: fmtIso(chosenDay.playDate),
+          players: resultsPlayersFromRound(resultsRound, sessionOfPlayer),
+          splitBySession: chosenDay.dayNumber === 1,
+          session: resultsSession,
+        })
+      : null;
+  const resultsTablesCount = resultsSheet?.tables.length ?? 0;
+  const resultsPlayersCount =
+    resultsSheet?.tables.reduce((sum, table) => sum + table.rows.length, 0) ?? 0;
+  const resultsMissingCards =
+    resultsSheet?.tables.reduce(
+      (sum, table) => sum + table.rows.filter((row) => row.noCard).length,
+      0,
+    ) ?? 0;
+  const resultsSessionWords =
+    chosenDay?.dayNumber !== 1
+      ? "whole round"
+      : resultsSheet?.tables.length === 1 && resultsSheet.tables[0]?.session === null
+        ? "session not set"
+        : resultsSession === "all"
+          ? "AM and PM"
+          : resultsSession;
+  const resultsSummary = resultsLoading
+    ? "Reading this day's results…"
+    : !chosenDay
+      ? "Choose a playing day to print its results."
+      : !resultsRound
+        ? `${chosenDay.label} · no scoring round is open for this day`
+        : `${chosenDay.label} · ${resultsSessionWords} · ${resultsTablesCount} table${
+            resultsTablesCount === 1 ? "" : "s"
+          } · ${resultsPlayersCount} player${resultsPlayersCount === 1 ? "" : "s"}${
+            resultsMissingCards > 0 ? ` · ${resultsMissingCards} without a card` : ""
+          }`;
 
   // The player-facing pairings sheet before the draw is published. It is built from the same board
   // as the start sheet, goes through the same allow-list projection, and is marked as a draft. The
@@ -325,9 +441,14 @@ export default function PrintCenter() {
       : [{ dayLabel: null, pairings }];
   })();
 
-  const scopeWords = `${KIND_LABEL[tab === "howto" ? "start" : tab]} · ${
-    everyDayScope ? "All playing days" : (chosenDay?.label ?? "")
-  }`;
+  const scopeWords =
+    tab === "results"
+      ? `${KIND_LABEL.results} · ${chosenDay?.label ?? "No day"}${
+          chosenDay?.dayNumber === 1 && resultsSession !== "all" ? ` · ${resultsSession}` : ""
+        }`
+      : `${KIND_LABEL[tab === "howto" ? "start" : tab]} · ${
+          everyDayScope ? "All playing days" : (chosenDay?.label ?? "")
+        }`;
   const status = published
     ? changedSincePublish
       ? "Published · board has newer changes"
@@ -336,17 +457,27 @@ export default function PrintCenter() {
 
   // Why the download buttons are off, in words. Null means they work.
   const exportBlock: string | null =
-    tab === "pairings"
-      ? pairings
-        ? null
-        : draw
-          ? "No players are placed on this day's board yet."
-          : "Make the draw first."
-      : !draw
-        ? "Make the draw first."
-        : (allDays && !everyDay) || (tab === "counts" && !everyDay)
-          ? "Reading every day's board…"
-          : null;
+    tab === "results"
+      ? resultsLoading
+        ? "Reading this day's results…"
+        : resultsError
+          ? resultsError
+          : !resultsRound
+            ? "No scoring round is open for this day. Open it in Scores first."
+            : !resultsSheet || resultsSheet.tables.every((table) => table.rows.length === 0)
+              ? "No results to print for this day."
+              : null
+      : tab === "pairings"
+        ? pairings
+          ? null
+          : draw
+            ? "No players are placed on this day's board yet."
+            : "Make the draw first."
+        : !draw
+          ? "Make the draw first."
+          : (allDays && !everyDay) || (tab === "counts" && !everyDay)
+            ? "Reading every day's board…"
+            : null;
 
   const runExport = async (format: ExportFormat) => {
     if (tab === "howto") return;
@@ -365,6 +496,7 @@ export default function PrintCenter() {
         groupBlocks: scopedGroupBlocks,
         groupBy,
         holes,
+        resultsSheets: resultsSheet ? [resultsSheet] : [],
       });
       if (!result) {
         setExportError("Nothing to download for this day yet.");
@@ -426,7 +558,7 @@ export default function PrintCenter() {
         crumbs={[{ label: tournament.name, href: "/tournaments" }, { label: "Print center" }]}
         actions={
           <>
-            {playingDays.length > 0 && (
+            {playingDays.length > 0 && tab !== "results" && (
               <label className="no-print grid w-full min-w-0 gap-1 sm:w-auto">
                 <span className="overline !text-[10px]">Day to print</span>
                 <select
@@ -447,18 +579,20 @@ export default function PrintCenter() {
                 </select>
               </label>
             )}
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setAllDays(true);
-                void loadEveryDay();
-              }}
-              disabled={preparingAll}
-              className="no-print min-h-11 md:min-h-0"
-              data-help="print-all"
-            >
-              <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
-            </Button>
+            {tab !== "results" && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setAllDays(true);
+                  void loadEveryDay();
+                }}
+                disabled={preparingAll}
+                className="no-print min-h-11 md:min-h-0"
+                data-help="print-all"
+              >
+                <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
+              </Button>
+            )}
             <Button variant="secondary" asChild className="min-h-11">
               <Link href="/pairings">
                 <Smartphone aria-hidden="true" /> Public preview
@@ -494,7 +628,7 @@ export default function PrintCenter() {
       )}
 
       <div className="no-print flex flex-wrap items-center gap-3" data-help="print-tabs">
-        <div className="tabs !w-auto grid-cols-5">
+        <div className="tabs !w-auto grid-cols-3 sm:grid-cols-6">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -503,10 +637,16 @@ export default function PrintCenter() {
               aria-selected={tab === t.id}
               onClick={() => {
                 setTab(t.id);
+                // Results print one round at a time; the earlier all-days choice is left behind.
+                if (t.id === "results") {
+                  setAllDays(false);
+                  setResultsLoading(true);
+                  if (!chosenDay && playingDays[0]) setDrawDay(playingDays[0].dayNumber);
+                }
                 // The counts sheet reads each player's pairing, so it needs every day's board once.
                 if (t.id === "counts" && !everyDay && !preparingAll) void loadEveryDay(false);
               }}
-              className="flex min-h-11 items-center gap-2 px-4"
+              className="flex min-h-11 items-center gap-2 px-3"
             >
               <t.icon className="size-4" aria-hidden="true" />
               {t.label}
@@ -549,6 +689,74 @@ export default function PrintCenter() {
           <section className="grid gap-3">
             <h2 className="text-[20px]">How to use the desk</h2>
             <CheatSheet />
+          </section>
+        ) : tab === "results" ? (
+          <section className="grid gap-4">
+            <div className="no-print flex flex-wrap items-end gap-3">
+              <label className="grid gap-1">
+                <span className="overline !text-[10px]">Day</span>
+                <select
+                  value={chosenDay?.dayNumber ?? ""}
+                  onChange={(e) => {
+                    setAllDays(false);
+                    setResultsLoading(true);
+                    setDrawDay(Number(e.target.value));
+                  }}
+                  className="w-full min-w-0 text-[16px] md:text-sm sm:w-auto"
+                >
+                  {playingDays.map((d) => (
+                    <option key={d.id} value={d.dayNumber}>
+                      {d.label} · {fmtIso(d.playDate)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {chosenDay?.dayNumber === 1 && (
+                <label className="grid gap-1">
+                  <span className="overline !text-[10px]">Session</span>
+                  <select
+                    value={resultsSession}
+                    onChange={(e) => setResultsSession(e.target.value as SessionKey | "all")}
+                    className="w-full min-w-0 text-[16px] md:text-sm sm:w-auto"
+                  >
+                    <option value="all">AM and PM</option>
+                    <option value="AM">AM only</option>
+                    <option value="PM">PM only</option>
+                  </select>
+                </label>
+              )}
+              <p className="hint" role="status">
+                {resultsSummary}
+              </p>
+            </div>
+            {resultsError && (
+              <p className="notice warn text-[13px]" role="alert">
+                {resultsError}
+              </p>
+            )}
+            {resultsLoading ? (
+              <p className="notice" role="status">
+                Reading this day&apos;s results…
+              </p>
+            ) : !resultsRound && !resultsError ? (
+              <div className="card grid min-h-[220px] place-items-center text-center">
+                <div className="grid justify-items-center gap-2">
+                  <Trophy className="size-6 text-ink-muted" aria-hidden="true" />
+                  <h2>No scoring round is open</h2>
+                  <p className="muted">
+                    {chosenDay
+                      ? `${chosenDay.label} has no scoring round yet.`
+                      : "Choose a playing day first."}{" "}
+                    Open the round in Scores, then return here to print its results.
+                  </p>
+                  <Button variant="primary" asChild className="mt-2 no-print">
+                    <Link href="/scores">Open Scores</Link>
+                  </Button>
+                </div>
+              </div>
+            ) : resultsSheet ? (
+              <ResultsSheetView sheet={resultsSheet} />
+            ) : null}
           </section>
         ) : !draw ? (
           <div className="card grid min-h-[220px] place-items-center text-center">
@@ -670,18 +878,20 @@ export default function PrintCenter() {
       {/* Phone only: the header actions sit at the top of a long sheet, so the two print actions
           stay within reach above the app's bottom tab bar. The header actions remain. */}
       <div className="no-print sticky bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-line bg-surface/95 px-4 py-2 backdrop-blur md:hidden">
-        <Button
-          variant="secondary"
-          size="sm"
-          className="min-h-11 flex-1"
-          onClick={() => {
-            setAllDays(true);
-            void loadEveryDay();
-          }}
-          disabled={preparingAll}
-        >
-          <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
-        </Button>
+        {tab !== "results" && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="min-h-11 flex-1"
+            onClick={() => {
+              setAllDays(true);
+              void loadEveryDay();
+            }}
+            disabled={preparingAll}
+          >
+            <Printer aria-hidden="true" /> {preparingAll ? "Preparing…" : "Print all days"}
+          </Button>
+        )}
         <Button variant="gold" size="sm" className="min-h-11 flex-1" onClick={() => window.print()}>
           <Printer aria-hidden="true" /> Print this sheet
         </Button>
