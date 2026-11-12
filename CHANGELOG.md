@@ -9,6 +9,17 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.35.2] - 2026-11-12
+
+### Removed
+- **The redundant tee-times section under the public pairings.** The pairings already carry the time
+  and the hole, so the second list duplicated it. The desk tee-times board is unchanged.
+
+### Fixed
+- **Republishing one day no longer erases the others.** The published snapshot keeps each group's
+  day, date, label and player ids, so publishing one day cannot drop another from the public board
+  or the version history. No migration.
+
 ## [0.35.1] - 2026-11-12
 
 ### Changed
