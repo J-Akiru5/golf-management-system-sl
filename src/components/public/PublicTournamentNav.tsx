@@ -1,5 +1,6 @@
 "use client";
 
+import { Flag, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { type PublicTab, publicTabHref } from "@/lib/data/public-tabs";
 import { useI18n } from "@/lib/i18n/context";
@@ -15,10 +16,10 @@ const TAB =
  */
 export function PublicTournamentNav({ active }: { active: PublicTab }) {
   const { t } = useI18n();
-  const tabs: Array<{ tab: PublicTab; label: string }> = [
-    { tab: "pairings", label: t("programme.navPairings") },
-    { tab: "players", label: t("programme.navPlayers") },
-    { tab: "leaderboard", label: t("programme.navLeaderboard") },
+  const tabs: Array<{ tab: PublicTab; label: string; Icon: typeof Flag }> = [
+    { tab: "pairings", label: t("programme.navPairings"), Icon: Flag },
+    { tab: "players", label: t("programme.navPlayers"), Icon: Users },
+    { tab: "leaderboard", label: t("programme.navLeaderboard"), Icon: Trophy },
   ];
   const shownActive = active === "profile" ? "players" : active;
 
@@ -27,7 +28,7 @@ export function PublicTournamentNav({ active }: { active: PublicTab }) {
       className="public-tabs no-print flex w-full min-w-0 flex-wrap gap-2 pb-1"
       aria-label={t("programme.navLabel")}
     >
-      {tabs.map(({ tab, label }) => {
+      {tabs.map(({ tab, label, Icon }) => {
         const current = tab === shownActive;
         return (
           <Link
@@ -40,7 +41,8 @@ export function PublicTournamentNav({ active }: { active: PublicTab }) {
                 : "border-line bg-surface-raised text-ink hover:bg-fairway-soft"
             }`}
           >
-            {label}
+            <Icon className="public-tab-icon" aria-hidden="true" />
+            <span>{label}</span>
           </Link>
         );
       })}

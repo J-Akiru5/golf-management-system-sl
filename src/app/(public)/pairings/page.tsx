@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBottomBar } from "@/components/MobileTabBar";
 import { PairingsView, type PairingsYou } from "@/components/PairingsView";
 import { PlayerOfflineNotice } from "@/components/player/OfflinePortal";
 import { HeldNotice } from "@/components/public/HeldNotice";
@@ -81,12 +81,6 @@ export const metadata: Metadata = {
  * profile tab reads one player's frozen card through `public_player_scorecard()`; the leaderboard
  * lives on its own page because the team table adds every published round together.
  */
-const manila = new Intl.DateTimeFormat("en-PH", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Asia/Manila",
-});
-
 /**
  * Who is reading, when they are signed in. The page is public, so a failed lookup is silent: it
  * only costs the "You" marker, never the pairings.
@@ -212,7 +206,12 @@ export default async function PublicPairingsPage({
         {/* Inside a player's profile the way back is the pairings list; everywhere else it is the
             main page. */}
         <PublicBackLink label={t(back.labelKey)} href={back.href} />
-        <div className="public-appbar-row flex flex-wrap items-start justify-between gap-3">
+        <div className="public-appbar-controls flex items-center gap-2">
+          <ThemeToggle compact tone="nav" />
+          <LanguageSwitcher tone="on-forest" />
+          <HelpButton audience="player" screen="pairings" />
+        </div>
+        <div className="appbar-foot">
           <div className="public-appbar-brand flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
             <span className="leading-tight">
@@ -224,28 +223,25 @@ export default async function PublicPairingsPage({
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <div className="public-appbar-controls flex items-center gap-2">
-            <ThemeToggle compact tone="nav" />
-            <LanguageSwitcher tone="on-forest" />
-            <HelpButton audience="player" screen="pairings" />
+          <div className="appbar-title">
+            {data ? (
+              <>
+                <p className="public-appbar-kicker overline !text-gold-on-forest">
+                  {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
+                  {fmtTime(data.firstTeeTime)}
+                </p>
+                <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
+                  {data.name}
+                </h1>
+                <p className="text-on-forest-muted">{dateLabel}</p>
+              </>
+            ) : (
+              <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
+                {t("pairings.title")}
+              </h1>
+            )}
           </div>
         </div>
-        {data ? (
-          <>
-            <p className="public-appbar-kicker overline mt-2 !text-gold-on-forest">
-              {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
-              {fmtTime(data.firstTeeTime)}
-            </p>
-            <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
-              {data.name}
-            </h1>
-            <p className="text-on-forest-muted">{dateLabel}</p>
-          </>
-        ) : (
-          <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
-            {t("pairings.title")}
-          </h1>
-        )}
       </header>
 
       {advisory && <PublicAdvisoryBanner advisory={advisory} />}
@@ -338,19 +334,6 @@ export default async function PublicPairingsPage({
                   id="pairings"
                   style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
                 >
-                  <div>
-                    <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
-                    <p className="hint no-print" data-testid="pairings-version">
-                      {published.version
-                        ? t("pairings.version", {
-                            version: published.version,
-                            when: manila.format(new Date(published.at)),
-                          })
-                        : t("pairings.versionNoNumber", {
-                            when: manila.format(new Date(published.at)),
-                          })}
-                    </p>
-                  </div>
                   {skippedRows > 0 && (
                     <p
                       className="notice warn no-print"
@@ -381,33 +364,19 @@ export default async function PublicPairingsPage({
         </>
       )}
 
-      <p className="hint no-print">
-        {t("pairings.footer")}{" "}
-        <Link href="/" className="inline-flex min-h-11 items-center">
-          {t("pairings.home")}
-        </Link>{" "}
-        ·{" "}
-        <Link href="/roster" className="inline-flex min-h-11 items-center">
-          {t("programme.playersTitle")}
-        </Link>{" "}
-        ·{" "}
-        <Link href="/rules?from=pairings" className="inline-flex min-h-11 items-center">
-          {t("programme.navFullRules")}
-        </Link>{" "}
-        ·{" "}
-        <Link href="/leaderboard" className="inline-flex min-h-11 items-center">
-          {t("programme.navLeaderboard")}
-        </Link>
-        {tab === "pairings" && programme?.rulesOfPlay && (
-          <>
-            {" · "}
-            <a href="#rules" className="inline-flex min-h-11 items-center">
-              {t("programme.navRules")}
-            </a>
-          </>
-        )}
-      </p>
-      <PlayerBottomBar />
+      <div className="pairings-foot no-print">
+        <p className="pairings-foot-note">{t("pairings.footer")}</p>
+        <nav className="pairings-foot-nav" aria-label={t("feedback.footerLabel")}>
+          <Link href="/">{t("pairings.home")}</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/roster">{t("programme.playersTitle")}</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/rules?from=pairings">{t("programme.navFullRules")}</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
+        </nav>
+      </div>
+      <PublicBottomBar />
     </main>
   );
 }

@@ -1,7 +1,7 @@
 import { Download, ExternalLink, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBottomBar } from "@/components/MobileTabBar";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { RulesSections } from "@/components/public/RulesSections";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -139,13 +139,18 @@ export default function TournamentRulesPage() {
         </div>
       </section>
 
-      <p className="hint no-print">
-        <Link href="/">TEELINE GOLF HOME</Link> ·{" "}
-        <Link href="/pairings">Tee times and pairings</Link> ·{" "}
-        <Link href="/roster">Player roster</Link> · <Link href="/leaderboard">Leaderboard</Link> ·{" "}
+      <nav className="site-foot-nav no-print" aria-label="Footer">
+        <Link href="/">TEELINE GOLF HOME</Link>
+        <span aria-hidden="true">·</span>
+        <Link href="/pairings">Tee times and pairings</Link>
+        <span aria-hidden="true">·</span>
+        <Link href="/roster">Player roster</Link>
+        <span aria-hidden="true">·</span>
+        <Link href="/leaderboard">Leaderboard</Link>
+        <span aria-hidden="true">·</span>
         <Link href="/faq">NGAP FAQ</Link>
-      </p>
-      <PlayerBottomBar />
+      </nav>
+      <PublicBottomBar />
     </main>
   );
 }

@@ -9,6 +9,21 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-11-13
+
+### Changed
+- **The public pages are redesigned for older, non-technical members.** Names are the largest thing
+  on the page and the avatar circles are gone: pairings are nameplate cards with a serif hole number,
+  a time pill and a small flag motif, and leaderboard rows carry a gold flag with a crown on first
+  place. The pairings masthead reads as one block, with the back control at the top left, the theme,
+  language and help controls at the top right, the brand at the bottom left and the event, shotgun
+  line and date at the bottom right. Tabs are a segmented control, the language picker is a labelled
+  menu instead of a native select, and the advisory keeps its own dismiss control for the rest of the
+  Manila day. Every public page now carries the public bottom bar (Club home, Pairings, Players,
+  Board), the result tags always show their count, and the footer strips are hairlines with 44 px
+  links. The sign-in page replaces the red "Sign in to continue" alert with a calm note and a way
+  back to the pairings. No migration.
+
 ## [0.44.1] - 2026-11-13
 
 ### Changed

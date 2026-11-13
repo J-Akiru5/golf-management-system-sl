@@ -2405,8 +2405,8 @@
 .capability a svg,
 .button-outline svg,
 .button-dark svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex: none;
 }
 .hero-content {
@@ -2474,14 +2474,14 @@
 .button-dark,
 .button-outline {
   display: inline-flex;
-  min-height: 50px;
+  min-height: 56px;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 0 20px;
+  padding: 0 26px;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 650;
   text-decoration: none;
   transition:
@@ -2493,24 +2493,38 @@
 .button-light {
   background: #f7f5ee;
   color: #073d2e;
+  box-shadow: 0 14px 30px -16px rgb(0 0 0 / 0.55);
 }
 .button-light:hover {
   transform: translateY(-2px);
   background: #fff;
 }
+/* The hero's second action. It stays quiet in colour but never stops looking like a button:
+   the border is what tells older readers the whole pill is tappable. */
 .button-quiet {
   display: inline-flex;
-  min-height: 44px;
+  min-height: 56px;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 26px;
+  border: 1px solid rgb(247 245 238 / 0.42);
+  border-radius: 999px;
   color: #f7f5ee;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 650;
   text-decoration: none;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+.button-quiet:hover {
+  background: rgb(247 245 238 / 0.09);
+  border-color: rgb(247 245 238 / 0.65);
 }
 .button-quiet svg {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   color: #d8bd81;
 }
 .hero-note {
@@ -3209,10 +3223,11 @@
     justify-content: space-between;
     width: 100%;
   }
-  .button-light {
-    min-height: 48px;
-    padding-inline: 17px;
-    font-size: 12px;
+  .button-light,
+  .hero-actions .button-quiet {
+    min-height: 56px;
+    padding-inline: 22px;
+    font-size: 14px;
   }
   .hero-note {
     right: 20px;
@@ -6066,16 +6081,9 @@ html[data-textsize="large"] {
   line-height: inherit;
 }
 
-.is-compact .p-row + .p-row::before {
-  content: "·";
-  margin: 0 5px;
-  color: var(--ink-muted);
-}
-
 .is-compact .p-row.is-hit {
   background: var(--gold-soft);
-  border-radius: 4px;
-  padding: 0 2px;
+  border-radius: 6px;
 }
 
 .is-compact .p-you {
@@ -6935,32 +6943,8 @@ html[data-textsize="large"] {
 
 /* ---------- Public tournament pages on a phone ----------
    The first screen has to answer "what do I do here": find my name, see my time. So on a phone the
-   head is a compact app bar, the advisory is one row that opens on a tap, and the three views are a
-   segmented control. Wider screens keep the full head and the full advisory. */
-.public-advisory-toggle {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: default;
-}
-.public-advisory-chevron {
-  display: none;
-  flex: none;
-  width: 20px;
-  height: 20px;
-  margin-top: 1px;
-  color: var(--gold-ink);
-  transition: transform 160ms ease;
-}
+   head is a compact app bar and the three views are a segmented control. The advisory stays fully
+   open at every width: its readers do not tap a row to find out whether it says anything. */
 .public-advisory-body {
   display: grid;
   gap: 8px;
@@ -7031,28 +7015,13 @@ html[data-textsize="large"] {
     line-height: 28px;
   }
 
-  /* Advisory: one row until it is opened. */
+  /* The advisory is always fully open: the club's players do not tap a row to read a notice. */
   .public-advisory {
     padding: 10px 12px;
     gap: 6px;
   }
-  .public-advisory-toggle {
-    min-height: 44px;
-    align-items: center;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .public-advisory-chevron {
-    display: block;
-  }
-  .public-advisory[data-expanded="true"] .public-advisory-chevron {
-    transform: rotate(180deg);
-  }
-  .public-advisory[data-expanded="false"] .public-advisory-body {
-    display: none;
-  }
   .public-advisory-head {
-    align-items: center;
+    align-items: flex-start;
   }
 
   /* The three views as a segmented control: equal segments, one filled. */
@@ -7095,5 +7064,1809 @@ html[data-textsize="large"] {
     .public-tabs .public-tab:active {
       transform: none;
     }
+  }
+}
+/* ============================================================ pairings board, 2026 surface
+
+   The player-facing pairings page, rebuilt as a club scorecard. The flat ivory page becomes a
+   sage-and-bone canvas; the header becomes a deep emerald masthead with brass contour rings (the
+   way a course map draws a green); the cards carry their flight's colour along the top edge.
+
+   Everything here is scoped to `.public-pairings` and kept out of print, so the desk's publish
+   preview, the rest of the player portal and the printed sheet keep the layout they already use.
+   The type hierarchy from issue #244 is preserved: the starting hole still leads the card and is
+   still the largest thing in its header. */
+@media screen {
+  /* ---------- the canvas: a quiet surveyor's grid and green contours under the soft washes */
+  body:has(.public-pairings) {
+    background:
+      radial-gradient(
+        circle,
+        light-dark(rgba(7, 53, 42, 0.08), rgba(235, 244, 237, 0.085)) 1px,
+        transparent 1.25px
+      ),
+      repeating-radial-gradient(
+        circle at 112% 96%,
+        transparent 0 46px,
+        light-dark(rgba(7, 53, 42, 0.052), rgba(235, 244, 237, 0.052)) 46px 47px,
+        transparent 47px 94px
+      ),
+      repeating-radial-gradient(
+        circle at -8% 108%,
+        transparent 0 64px,
+        light-dark(rgba(181, 149, 80, 0.055), rgba(216, 185, 111, 0.055)) 64px 65px,
+        transparent 65px 128px
+      ),
+      radial-gradient(1200px 620px at 0% -12%, light-dark(#c9dfcf, #14352a) 0%, transparent 58%),
+      radial-gradient(900px 480px at 100% 0%, light-dark(#eee0c4, #1d2b23) 0%, transparent 55%),
+      linear-gradient(
+        180deg,
+        light-dark(#e4ede4, #0f1512) 0%,
+        light-dark(#eef2eb, #121814) 42%,
+        light-dark(#dfe8de, #0d1310) 100%
+      );
+    background-size:
+      26px 26px,
+      auto,
+      auto,
+      auto,
+      auto,
+      auto;
+    background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  }
+
+  /* ---------- masthead */
+  .public-pairings .public-head {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--gold) 34%, transparent);
+    border-radius: 24px;
+    background:
+      radial-gradient(
+        115% 150% at 90% -25%,
+        color-mix(in srgb, var(--gold) 26%, transparent) 0%,
+        transparent 58%
+      ),
+      linear-gradient(158deg, #04231a 0%, #07352a 52%, #0c4432 100%);
+    box-shadow:
+      0 30px 60px -44px rgba(4, 30, 23, 0.95),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  /* Brass contour rings, fading out towards the title. */
+  .public-pairings .public-head::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: repeating-radial-gradient(
+      circle at 96% 122%,
+      transparent 0 26px,
+      rgba(215, 181, 104, 0.22) 26px 27px
+    );
+    mask-image: linear-gradient(205deg, transparent 6%, #000 52%);
+    opacity: 0.55;
+  }
+
+  /* A caption line, not a badge: gold rule, then the start format in tracked sans caps. The date
+     below it carries the matching rule, so the two bracket the headline without any boxes. */
+  .public-pairings .public-head .public-appbar-kicker {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--gold-on-forest) !important;
+    font: 700 11px / 1 var(--f-sans);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .public-pairings .public-head .public-appbar-kicker::before {
+    content: "";
+    width: 22px;
+    height: 1px;
+    flex: none;
+    background: var(--gold-on-forest);
+  }
+
+  .public-pairings .public-head h1 {
+    margin-top: 4px;
+    font-family: var(--f-serif);
+    font-size: 27px;
+    font-weight: 600;
+    line-height: 1.06;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .public-pairings .public-head h1 + p {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 2px 0 0;
+    color: var(--on-forest-muted);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+
+  .public-pairings .public-head h1 + p::before {
+    content: "";
+    width: 26px;
+    height: 1px;
+    flex: none;
+    background: var(--gold-on-forest);
+  }
+
+  @media (min-width: 640px) {
+    .public-pairings .public-head {
+      padding: 30px 36px 32px !important;
+      gap: 10px;
+    }
+    .public-pairings .public-head h1 {
+      font-size: clamp(38px, 4.2vw, 54px);
+      line-height: 1.02;
+    }
+  }
+
+  /* ---------- the three tournament tabs */
+  .public-pairings .public-tabs {
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid light-dark(color-mix(in srgb, var(--forest) 12%, transparent), #2a3a31);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-raised) 62%, transparent);
+    backdrop-filter: blur(10px);
+  }
+
+  .public-pairings .public-tab {
+    border-color: transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-muted);
+    font-size: 13px;
+    letter-spacing: 0.01em;
+    transition:
+      background-color 140ms ease,
+      color 140ms ease;
+  }
+
+  .public-pairings .public-tab:hover {
+    background: color-mix(in srgb, var(--forest) 8%, transparent);
+    color: var(--ink);
+  }
+
+  .public-pairings .public-tab[aria-current="page"] {
+    background: var(--forest);
+    color: var(--on-forest);
+    box-shadow: 0 10px 22px -16px rgba(4, 32, 24, 0.9);
+  }
+
+  @media (min-width: 640px) {
+    .public-pairings .public-tabs {
+      width: fit-content;
+    }
+  }
+
+  /* ---------- the sticky toolbar, as a strip of glass */
+  .public-pairings .p-toolbar {
+    gap: 8px;
+    padding: 10px 10px 8px;
+    border-bottom: 1px solid light-dark(color-mix(in srgb, var(--forest) 14%, transparent), #2a3a31);
+    background: color-mix(in srgb, var(--surface) 78%, transparent);
+    backdrop-filter: blur(16px) saturate(1.1);
+  }
+
+  .public-pairings .p-search,
+  .public-pairings .p-flight-select {
+    border-color: light-dark(#dfe6dd, #2b3a32);
+    border-radius: 999px;
+    background-color: light-dark(#ffffff, #1a231e);
+    box-shadow: 0 1px 2px rgba(6, 40, 28, 0.05);
+  }
+
+  /* Our own chevron, so the arrow sits a fixed 12px inside the pill instead of wherever the
+     browser puts its native control (which sat against the edge and looked cut off). */
+  .public-pairings .p-flight-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236f7a72' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px 14px;
+    flex: 0 0 auto;
+    width: auto;
+    padding: 8px 34px 8px 14px;
+    text-overflow: ellipsis;
+  }
+
+  .public-pairings .p-search {
+    padding: 10px 16px;
+  }
+
+  .public-pairings .p-search.has-clear {
+    padding-right: 46px;
+  }
+
+  .public-pairings .p-filter-label {
+    color: var(--ink-muted);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .public-pairings .p-clear {
+    right: 2px;
+    border-radius: 999px;
+  }
+
+  .public-pairings .p-density {
+    border-radius: 999px;
+    background: light-dark(#edf1ea, #1a231e);
+  }
+
+  .public-pairings .p-density-btn {
+    border-radius: 999px;
+    font-size: 12px;
+  }
+
+  .public-pairings .p-density-btn[aria-pressed="true"] {
+    background: var(--surface-raised);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(6, 40, 28, 0.14);
+  }
+
+  .public-pairings .p-action-primary {
+    border-radius: 999px;
+    background: var(--forest);
+    color: var(--on-forest);
+    box-shadow: 0 12px 24px -16px rgba(4, 32, 24, 0.9);
+  }
+
+  .public-pairings .p-action-primary:hover {
+    background: light-dark(#0b4a38, #0f4534);
+  }
+
+  .public-pairings .btn.ghost {
+    border-color: light-dark(#d7dfd6, #33443a);
+    border-radius: 999px;
+  }
+  /* ---------- the session rule: a brass diamond, then the heading */
+  /* One dark band per session. It anchors the middle of a long page and makes the AM/PM break
+     unmistakable at a glance, which is the whole job of this heading. */
+  .public-pairings .p-session-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(100deg, #062b21 0%, #0a3a2c 68%, #0d4333 100%);
+    color: var(--on-forest);
+    font: 700 11px / 1.2 var(--f-sans);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-shadow: 0 10px 22px -20px rgba(4, 32, 24, 0.9);
+  }
+
+  .public-pairings .p-session-bar::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    flex: none;
+    transform: rotate(45deg);
+    background: var(--gold-on-forest);
+  }
+
+  /* A hairline of brass runs out of the heading to the end of the band. */
+  .public-pairings .p-session-bar::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    min-width: 24px;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--gold-on-forest) 55%, transparent),
+      transparent
+    );
+  }
+
+  /* ---------- the group cards */
+  .public-pairings .p-groups {
+    gap: 14px;
+  }
+
+  /* The flight's colour runs along the top, the left spine and the right side; the bottom keeps a
+     plain hairline so the card closes without a green line across the foot. */
+  .public-pairings .p-card {
+    position: relative;
+    border: 2px solid var(--p-tone, var(--forest));
+    border-left-width: 7px;
+    border-bottom: 1px solid light-dark(color-mix(in srgb, var(--forest) 12%, #e6ece4), #27362e);
+    border-radius: 18px 18px 0 0;
+    background: var(--surface-raised);
+    box-shadow:
+      0 1px 1px rgba(6, 40, 28, 0.04),
+      0 18px 36px -30px rgba(6, 40, 28, 0.65);
+  }
+
+  .public-pairings .p-card[data-tone="0"] {
+    --p-tone: light-dark(#3f7d58, #7cc99b);
+    --p-tone-ink: light-dark(#245840, #a9e0bf);
+  }
+  .public-pairings .p-card[data-tone="1"] {
+    --p-tone: light-dark(#a5823d, #d8b970);
+    --p-tone-ink: light-dark(#6f5316, #f0d69c);
+  }
+  .public-pairings .p-card[data-tone="2"] {
+    --p-tone: light-dark(#44688c, #8fb9dc);
+    --p-tone-ink: light-dark(#2b5070, #bcdcf2);
+  }
+  .public-pairings .p-card[data-tone="3"] {
+    --p-tone: light-dark(#9d5a41, #dfa288);
+    --p-tone-ink: light-dark(#7a3f28, #f2c8b6);
+  }
+
+  @media (hover: hover) {
+    .public-pairings .p-card:hover {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--p-tone, var(--forest)) 72%, var(--line));
+      box-shadow:
+        0 2px 2px rgba(6, 40, 28, 0.05),
+        0 26px 48px -34px rgba(6, 40, 28, 0.7);
+    }
+  }
+
+  .public-pairings .p-card.is-own {
+    border-color: var(--gold);
+    border-bottom-color: light-dark(color-mix(in srgb, var(--gold) 24%, #e6ece4), #27362e);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--gold) 9%, var(--surface-raised)) 0%,
+      var(--surface-raised) 46%
+    );
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--gold) 30%, transparent),
+      0 18px 36px -30px rgba(6, 40, 28, 0.65);
+  }
+
+  .public-pairings .p-card-top {
+    gap: 9px;
+    padding: 15px 15px 11px;
+    border-bottom: 1px solid light-dark(#eef1ec, #26332b);
+    background: linear-gradient(180deg, light-dark(#f7faf6, #1b241f) 0%, transparent 100%);
+  }
+
+  .public-pairings .p-hole {
+    font-family: var(--f-display);
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 26px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .public-pairings .p-time {
+    min-height: 24px;
+    padding: 0 10px;
+    border: 0;
+    background: light-dark(var(--forest), #17453a);
+    color: light-dark(var(--on-forest), #d6ecdf);
+    font: 700 12px / 1 var(--f-sans);
+    letter-spacing: 0.05em;
+  }
+
+  /* The flight tag is always in the header here, not repeated in a footer. */
+  .public-pairings .p-flight-top {
+    display: inline-flex;
+    margin-left: auto;
+    align-items: center;
+    gap: 6px;
+    min-height: 22px;
+    padding: 0 9px;
+    border: 1px solid color-mix(in srgb, var(--p-tone, var(--forest)) 40%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--p-tone, var(--forest)) 12%, transparent);
+    color: var(--p-tone-ink, var(--fairway));
+    font: 700 10px / 1 var(--f-sans);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .public-pairings .p-flight-top::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .public-pairings .p-own-chip {
+    margin-left: 0;
+    background: var(--gold);
+    font-size: 10px;
+  }
+
+  .public-pairings .p-players {
+    padding: 5px 0 6px;
+  }
+
+  /* Names only, no initials circle: the name is what a player scans for, so it carries the row's
+     type. More height for a thumb, a quiet zebra to keep the eye on one line, and a brass rule
+     under the reader's own name. */
+  .public-pairings .p-row {
+    min-height: 58px;
+    padding: 13px 16px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 26px;
+    letter-spacing: 0.01em;
+  }
+
+  .public-pairings .p-row + .p-row {
+    border-top: 1px solid light-dark(#eef2ec, #232e27);
+  }
+
+  .public-pairings .p-row:nth-child(even) {
+    background: light-dark(#f7faf6, #1d2621);
+  }
+
+  .public-pairings .p-row[data-you="true"] {
+    background: color-mix(in srgb, var(--gold) 15%, transparent);
+  }
+
+  .public-pairings .p-row[data-you="true"] .is-you-name {
+    text-decoration: underline;
+    text-decoration-color: var(--gold);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+
+  .public-pairings .p-row.is-hit {
+    background: color-mix(in srgb, var(--gold) 16%, transparent);
+  }
+
+  .public-pairings .p-card-foot {
+    display: none;
+  }
+
+  .public-pairings .p-empty {
+    padding: 22px;
+    border: 1px dashed light-dark(color-mix(in srgb, var(--forest) 28%, transparent), #3a4c41);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--surface-raised) 70%, transparent);
+  }
+
+  /* The organizer's notice reads as a note, not a warning box: one brass edge, serif title. */
+  .public-pairings .public-advisory {
+    padding: 14px 18px 16px;
+    border: 1px solid color-mix(in srgb, var(--gold) 36%, var(--line));
+    border-left: 3px solid var(--gold);
+    border-radius: 16px;
+    background: light-dark(#fffdf6, #241f15);
+    box-shadow: 0 12px 30px -28px rgba(6, 40, 28, 0.7);
+  }
+
+  .public-pairings .public-advisory h2 {
+    font-family: var(--f-serif);
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+
+  /* Compact density still wins: the reader's choice halves the card without losing the hole. */
+  .public-pairings .p-pairings.is-compact .p-card-top {
+    gap: 7px;
+    padding: 8px 12px 6px;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-hole {
+    font-size: 18px;
+    line-height: 22px;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-time {
+    min-height: 20px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-players {
+    display: block;
+    padding: 5px 12px 7px;
+    font-size: 13.5px;
+    line-height: 19px;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-row {
+    display: inline;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-row + .p-row {
+    border-top: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .public-pairings .p-card,
+    .public-pairings .p-card:hover {
+      transform: none;
+      transition: none;
+    }
+  }
+
+  /* A phone keeps the toolbar in the flow: pinned, it covered a third of the screen while reading
+     the draw. The bottom action bar still repeats Find me and Print inside the list. */
+  @media (max-width: 899px) {
+    .public-pairings .p-toolbar {
+      position: static;
+    }
+    .public-pairings .p-session-bar {
+      top: 0;
+    }
+    /* The filters take two tidy rows instead of three stacked ones or a row that ran off the
+       screen: the day gets the full width, the hole and the flight share the second row. Nothing
+       is clipped, so every chevron stays inside its pill. The labels stay for screen readers. */
+    .public-pairings .p-toolbar-tools {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      overflow: visible;
+    }
+    .public-pairings .p-toolbar-tools .p-filter:first-child {
+      grid-column: 1 / -1;
+    }
+    .public-pairings .p-filter {
+      display: flex;
+      min-width: 0;
+    }
+    .public-pairings .p-filter .p-filter-label {
+      display: none;
+    }
+    .public-pairings .p-filter .p-flight-select {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      min-height: 40px;
+      padding: 6px 34px 6px 12px;
+      font-size: 14px;
+    }
+  }
+
+  @media (min-width: 900px) {
+    .public-pairings .p-card-top {
+      padding: 17px 18px 12px;
+    }
+    .public-pairings .p-row {
+      padding-inline: 18px;
+    }
+    .public-pairings .p-hole {
+      font-size: 23px;
+      line-height: 28px;
+    }
+    /* The count anchors the left of the toolbar's second row and the controls end it, so the row
+       reads across instead of floating in the middle. */
+    .public-pairings .p-toolbar-meta {
+      width: 100%;
+      margin-left: 0;
+    }
+    .public-pairings .p-toolbar-meta .p-count {
+      margin-right: auto;
+    }
+    .public-pairings .p-toolbar-actions {
+      margin-left: 0;
+    }
+  }
+}
+/* ============================================================ leaderboard, 2026 surface
+
+   The public team board, built to be read down a list on a phone: the rank and the points are the
+   two things the eye should catch, the two names come next, and the administrative detail (pair
+   number, class, categories, holes counted, gross) sits in one quiet meta line underneath.
+   Scoped to `.public-pairings`, which the leaderboard shell already carries, and screen only. */
+@media screen {
+  /* ---------- the heading and the frame (the heading block itself lives in the reading pass below) */
+  .public-pairings .pill {
+    min-height: 28px;
+    padding: 4px 11px;
+    font-size: 12px;
+  }
+
+  /* ---------- filters, as the same pills the pairings page uses */
+  .public-pairings .lb-filter {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .public-pairings .lb-filter-label {
+    color: var(--ink-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .public-pairings .lb-select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 44px 10px 16px;
+    border: 1px solid light-dark(#dfe6dd, #2b3a32);
+    border-radius: 999px;
+    background-color: light-dark(#ffffff, #1a231e);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236f7a72' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 16px 16px;
+    color: var(--ink);
+    font-size: 16px;
+    box-shadow: 0 1px 2px rgba(6, 40, 28, 0.05);
+    text-overflow: ellipsis;
+  }
+
+  .public-pairings .lb-select:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  /* ---------- one ranked team: a club scoreboard row, not an app card. The rank is a large serif
+     numeral, the names are serif at display size, and the leader carries a gold flag. */
+  .public-pairings .lb-team {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid light-dark(color-mix(in srgb, var(--forest) 11%, #e6ece4), #27362e);
+    border-radius: 18px;
+    background: var(--surface-raised);
+    box-shadow:
+      0 1px 1px rgba(6, 40, 28, 0.04),
+      0 18px 36px -30px rgba(6, 40, 28, 0.65);
+  }
+
+  /* First place gets the brass edge, as a clubhouse board would mark it, plus a warm wash and a
+     fading dot field so the champion row carries its own light and never reads as a plain card. */
+  .public-pairings .lb-team[data-leader="true"] {
+    border-color: color-mix(in srgb, var(--gold) 70%, var(--line));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--gold) 32%, transparent),
+      0 18px 36px -30px rgba(6, 40, 28, 0.65);
+  }
+
+  .public-pairings .lb-team[data-leader="true"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(
+        circle at 1px 1px,
+        color-mix(in srgb, var(--gold) 30%, transparent) 1.2px,
+        transparent 1.7px
+      ),
+      linear-gradient(102deg, color-mix(in srgb, var(--gold) 9%, transparent) 0%, transparent 55%);
+    background-size:
+      15px 15px,
+      100% 100%;
+    -webkit-mask-image: radial-gradient(120% 150% at 100% 0%, #000 30%, transparent 75%);
+    mask-image: radial-gradient(120% 150% at 100% 0%, #000 30%, transparent 75%);
+  }
+
+  .public-pairings .lb-team-head {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+    padding: 16px 18px 14px;
+  }
+
+  .public-pairings .lb-rank {
+    padding-top: 1px;
+    color: light-dark(#6b7f73, #8fa79a);
+    font-family: var(--f-serif);
+    font-size: 40px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-rank {
+    color: var(--gold);
+  }
+
+  .public-pairings .lb-names {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .public-pairings .lb-player {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .public-pairings .lb-role {
+    color: light-dark(#5d6d63, #a9bcb2);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .public-pairings .lb-name {
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    text-decoration: none;
+  }
+
+  .public-pairings .lb-name:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--gold);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
+  .public-pairings .lb-figures {
+    color: var(--ink-muted);
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .public-pairings .lb-points {
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+  }
+
+  .public-pairings .lb-points b {
+    color: var(--ink);
+    font-family: var(--f-display);
+    font-size: 32px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-points b {
+    color: var(--gold-ink);
+  }
+
+  .public-pairings .lb-points span {
+    color: var(--ink-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .public-pairings .lb-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    padding: 2px 18px 4px;
+    color: light-dark(#5d6d63, #a9bcb2);
+    font-size: 13.5px;
+    line-height: 1.4;
+  }
+
+  .public-pairings .lb-meta b {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .public-pairings .lb-meta-strong {
+    color: var(--ink);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .public-pairings .lb-team-foot {
+    padding: 6px 18px 16px;
+  }
+
+  /* The flag motif ties the board to the pairing and roster cards. Gold, small, and quiet: the
+     leader's flies at near full strength, the rest sit at a whisper. */
+  .public-pairings .lb-flag {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 24px;
+    height: 24px;
+    color: var(--gold);
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-flag {
+    opacity: 0.8;
+  }
+
+  .public-pairings .lb-flag path {
+    fill: currentColor;
+  }
+
+  .public-pairings .lb-flag path:first-child {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+  }
+
+  .public-pairings .lb-flag circle {
+    fill: currentColor;
+  }
+
+  /* The leader's crown: the one trophy on the board, same gold as everything else that matters. */
+  .public-pairings .lb-crown {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 30px;
+    height: 30px;
+    color: var(--gold);
+    pointer-events: none;
+  }
+
+  .public-pairings .lb-crown path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .public-pairings .lb-crown circle {
+    fill: currentColor;
+  }
+
+  /* The leader's stage, flipped per theme. Light mode: the deep-green gradient with ivory type.
+     Dark mode: the pale ivory card with dark ink, so first place always inverts its neighbours.
+     Type is tuned to the card, not the theme: dark ink on the pale card, ivory on the green one.
+     Using var(--ink) here would match the surface instead of opposing it. */
+  .public-pairings .lb-team[data-leader="true"] {
+    border-color: color-mix(in srgb, var(--gold) 55%, light-dark(#0a3527, #f8f4ec));
+    background: linear-gradient(
+      135deg,
+      light-dark(#0d4d39, #f8f4ec) 0%,
+      light-dark(#07352a, #efe9dc) 46%,
+      light-dark(#03231a, #e6dfd0) 100%
+    );
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-rank {
+    color: light-dark(#d9b96a, #a5803c);
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-role,
+  .public-pairings .lb-team[data-leader="true"] .lb-figures,
+  .public-pairings .lb-team[data-leader="true"] .lb-meta,
+  .public-pairings .lb-team[data-leader="true"] .lb-points span {
+    color: light-dark(rgba(246, 242, 231, 0.72), #5d6d63);
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-name,
+  .public-pairings .lb-team[data-leader="true"] .lb-meta-strong,
+  .public-pairings .lb-team[data-leader="true"] .lb-meta b {
+    color: light-dark(#f6f2e7, #202522);
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-points b {
+    color: light-dark(#e3c67e, #755719);
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-toggle {
+    border-color: light-dark(rgba(246, 242, 231, 0.35), #c9d2c6);
+    color: light-dark(#f6f2e7, #202522);
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-toggle:hover {
+    background: light-dark(
+      rgba(227, 198, 126, 0.12),
+      color-mix(in srgb, var(--forest) 7%, transparent)
+    );
+  }
+
+  .public-pairings .lb-team[data-leader="true"] .lb-crown {
+    color: light-dark(#e3c67e, #a5803c);
+  }
+
+  .public-pairings .lb-toggle {
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 18px;
+    border: 1px solid light-dark(#d7dfd6, #33443a);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink);
+    font: 650 14px / 1 var(--f-sans);
+    cursor: pointer;
+  }
+
+  .public-pairings .lb-toggle:hover {
+    background: color-mix(in srgb, var(--forest) 7%, transparent);
+  }
+
+  .public-pairings .lb-toggle svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 160ms ease;
+  }
+
+  .public-pairings .lb-toggle svg.is-open {
+    transform: rotate(180deg);
+  }
+
+  .public-pairings .lb-team > [data-testid="team-scorecards"] {
+    border-top: 1px solid light-dark(#eef1ec, #26332b);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .public-pairings .lb-toggle svg {
+      transition: none;
+    }
+  }
+
+  /* A wide screen reads the two partners side by side without squeezing either name. */
+  @media (min-width: 900px) {
+    .public-pairings .lb-team-head {
+      grid-template-columns: 54px minmax(0, 1fr) auto;
+      gap: 18px;
+      padding: 18px 20px 14px;
+    }
+    .public-pairings .lb-names {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .public-pairings .lb-meta,
+    .public-pairings .lb-team-foot {
+      padding-inline: 20px;
+    }
+  }
+}
+/* ============================================================ roster, 2026 surface
+
+   The players list on the public site: no initials circle, the name carries the card, and the way
+   into a player's scores is a filled pill rather than a line of small caps that reads like a caption.
+   Scoped to `.public-pairings`, which the roster shell carries, and screen only. */
+@media screen {
+  .public-pairings .p-search {
+    min-height: 48px;
+    padding-inline: 16px;
+    border-radius: 999px;
+    border-color: light-dark(#dfe6dd, #2b3a32);
+  }
+
+  .public-pairings .player-cards {
+    gap: 12px;
+  }
+
+  .public-pairings .player-card {
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid light-dark(color-mix(in srgb, var(--forest) 11%, #e6ece4), #27362e);
+    border-radius: 16px;
+    background: var(--surface-raised);
+    box-shadow:
+      0 1px 1px rgba(6, 40, 28, 0.04),
+      0 16px 32px -28px rgba(6, 40, 28, 0.6);
+  }
+
+  .public-pairings .player-card-link:hover {
+    border-color: color-mix(in srgb, var(--gold) 60%, var(--line));
+    background: var(--surface-raised);
+  }
+
+  .public-pairings .player-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .public-pairings .player-card-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--ink);
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.25;
+    letter-spacing: 0.005em;
+    overflow-wrap: anywhere;
+  }
+
+  .public-pairings .player-card-arrow {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    color: var(--ink-muted);
+  }
+
+  .public-pairings .player-card-meta {
+    color: light-dark(#46594d, #b3c6bb);
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .public-pairings .player-facts {
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+
+  /* The number is what members read: larger, bolder, tabular so a column of indexes lines up.
+     The home club stays quieter in the same row. */
+  .public-pairings .player-facts dd.player-fact-index {
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  /* A real button, full width of the card, 46px tall: the card is the link, this is its affordance. */
+  .public-pairings .player-card-cta {
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: var(--forest);
+    color: var(--on-forest);
+    font: 700 14px / 1 var(--f-sans);
+    letter-spacing: 0.05em;
+    box-shadow: 0 12px 24px -16px rgba(4, 32, 24, 0.85);
+  }
+
+  .public-pairings .player-card-cta svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+
+  .public-pairings .player-card-link:hover .player-card-cta,
+  .public-pairings .player-card-link:focus-visible .player-card-cta {
+    background: light-dark(#0b4a38, #134e3a);
+    text-decoration: none;
+  }
+
+  /* The same flag the pairing cards carry, in brand gold, parked at the card's bottom-right so the
+     two lists read as one product. Quiet by design: 26px and half-transparent, never a watermark. */
+  .public-pairings .player-card {
+    position: relative;
+  }
+
+  .public-pairings .player-card-flag {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    width: 26px;
+    height: 26px;
+    color: var(--gold);
+    opacity: 0.42;
+    pointer-events: none;
+  }
+
+  .public-pairings .player-card-flag path {
+    fill: currentColor;
+  }
+
+  .public-pairings .player-card-flag path:first-child {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+  }
+
+  .public-pairings .player-card-flag circle {
+    fill: currentColor;
+  }
+}
+/* ============================================================ player profile, 2026 surface
+
+   The profile header leads with the name at heading size. No initials circle, same as every other
+   public list. Screen only, scoped to the public shell. */
+@media screen {
+  .public-pairings #profile-name {
+    font-family: var(--f-serif);
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+
+  .public-pairings [data-testid="player-profile"] > .card:first-child {
+    gap: 14px;
+    border-radius: 16px;
+    padding: 18px;
+  }
+}
+/* ============================================================ reading pass
+
+   Three things the club asked for after using the site on a phone: the leaderboard's opening block
+   reads at body size instead of caption size; the three tabs look like buttons rather than labels;
+   and the advisory drops its gold left bar for a plain bordered notice with real body type. */
+
+@media screen {
+  /* ---------- leaderboard heading block: a broadcast title, not a form label. The event name is
+     the kicker, the heading carries the page, and one gold status speaks while the rest stays
+     quiet. Everything is sized for readers in their seventies. */
+  .public-pairings .lb-head {
+    display: grid;
+    gap: 10px;
+  }
+
+  .public-pairings .lb-event {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: var(--gold);
+    font: 700 11px / 1 var(--f-sans);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .public-pairings .lb-event::before {
+    content: "";
+    width: 22px;
+    height: 1px;
+    flex: none;
+    background: var(--gold);
+  }
+
+  .public-pairings #leaderboard-heading {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--f-display);
+    font-size: clamp(30px, 4.5vw, 42px);
+    font-weight: 800;
+    line-height: 1.06;
+    letter-spacing: -0.022em;
+  }
+
+  .public-pairings .lb-intro {
+    max-width: 60ch;
+    margin: 0;
+    color: light-dark(#33463c, #c9d8cf);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .public-pairings .lb-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 2px;
+  }
+
+  .public-pairings .lb-status .pill {
+    min-height: 34px;
+    padding-inline: 13px;
+    border: 1px solid
+      light-dark(
+        color-mix(in srgb, var(--forest) 42%, transparent),
+        color-mix(in srgb, var(--forest) 60%, transparent)
+      );
+    background: light-dark(
+      color-mix(in srgb, var(--forest) 9%, transparent),
+      color-mix(in srgb, var(--forest) 26%, transparent)
+    );
+    color: var(--ink);
+    font-size: 13px;
+  }
+
+  /* Provisional is a status word, not a badge: bold ink with its info mark and no fill, beside the
+     outlined Published pill. The gold-filled pill was what made this row read as a sticker. */
+  .public-pairings .lb-status .pill.info {
+    border-color: transparent;
+    background: transparent;
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  /* ---------- the three tabs: each one is a button, the current one is filled */
+  .public-pairings .public-tabs {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .public-pairings .public-tab {
+    gap: 5px;
+    min-height: 54px;
+    padding-inline: 5px;
+    font-size: 14px;
+    letter-spacing: 0.01em;
+  }
+
+  .public-pairings .public-tab:not([aria-current="page"]) {
+    background: light-dark(#ffffff, #1a231e);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(6, 40, 28, 0.07);
+  }
+
+  .public-pairings .public-tab:not([aria-current="page"]):hover {
+    background: light-dark(#f4f8f2, #22302a);
+  }
+
+  .public-pairings .public-tab-icon {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    opacity: 0.72;
+  }
+
+  /* Three labels plus three icons do not fit a small phone; the label wins, the icon goes. */
+  @media (max-width: 479px) {
+    .public-pairings .public-tab-icon {
+      display: none;
+    }
+  }
+
+  .public-pairings .public-tab[aria-current="page"] .public-tab-icon {
+    opacity: 1;
+  }
+
+  /* ---------- the organizer's notice: a plain card, no accent bar */
+  .public-pairings .public-advisory {
+    gap: 10px;
+    padding: 16px 18px 18px;
+    border: 1px solid light-dark(color-mix(in srgb, var(--gold) 26%, #e7e3d7), #3a3226);
+    border-radius: 18px;
+    background: light-dark(#fffdf7, #241f15);
+    box-shadow: 0 14px 34px -30px rgba(6, 40, 28, 0.75);
+  }
+
+  .public-pairings .public-advisory h2 {
+    color: light-dark(#1f3d31, #f1ece0);
+    font-family: var(--f-sans);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.005em;
+  }
+
+  .public-pairings .public-advisory-body {
+    display: grid;
+    gap: 10px;
+  }
+
+  .public-pairings .public-advisory-lines {
+    gap: 10px;
+    padding-left: 0;
+    list-style: none;
+    color: light-dark(#2f4239, #e6dfd1);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .public-pairings .public-advisory-lines li {
+    margin: 0;
+  }
+
+  .public-pairings .public-advisory-signature {
+    margin: 2px 0 0;
+    padding-top: 11px;
+    border-top: 1px solid light-dark(#ece6d6, #3a3226);
+    color: light-dark(#3c4f45, #cfc7b6);
+    font-size: 14.5px;
+    font-weight: 650;
+    line-height: 1.45;
+  }
+
+  .public-pairings .public-advisory-dismiss {
+    margin: -8px -8px -8px 0;
+    color: light-dark(#5b6b61, #b9c3bb);
+  }
+
+  .public-pairings .public-advisory-dismiss:hover {
+    background: light-dark(#f2ede0, #332c20);
+  }
+}
+/* ============================================================ the nameplate card
+
+   A tee-sheet nameplate, not a framed poster. One quiet card per group: the hole set large in a
+   serif, the time in a single pill, then the names at reading size with hairlines between them.
+   The flight's colour is only a 3px tick down the left edge, so the design carries the colour
+   without shouting it, and there is no logo or watermark competing with the names. */
+@media screen {
+  /* A quiet card: paper surface, one hairline, and a small golf flag in the header corner tuned to
+     the flight's own colour. No spine, no frame, nothing shouting. */
+  .public-pairings .p-card {
+    border: 1px solid light-dark(#dfe4dc, #2a362f);
+    border-radius: 16px;
+    background: linear-gradient(180deg, light-dark(#ffffff, #1f2823), light-dark(#f8f9f5, #1b241f));
+    box-shadow:
+      0 1px 2px rgba(6, 40, 28, 0.05),
+      0 20px 36px -34px rgba(6, 40, 28, 0.4);
+  }
+
+  .public-pairings .p-card-top {
+    background: linear-gradient(
+      180deg,
+      light-dark(color-mix(in srgb, var(--p-tone, var(--forest)) 6%, #f5f8f3), #1d2721),
+      transparent
+    );
+  }
+
+  .public-pairings .p-card.is-own {
+    border-color: light-dark(color-mix(in srgb, var(--gold) 55%, #dfe4dc), #3a3226);
+  }
+
+  @media (hover: hover) {
+    .public-pairings .p-card:hover {
+      border-color: light-dark(#cfd8cd, #3a4a40);
+      box-shadow:
+        0 2px 2px rgba(6, 40, 28, 0.05),
+        0 26px 48px -36px rgba(6, 40, 28, 0.45);
+    }
+  }
+
+  .public-pairings .p-card-top {
+    padding: 18px 20px 13px;
+    border-bottom: 1px solid light-dark(#edf0ea, #26332b);
+    background: none;
+  }
+
+  .public-pairings .p-hole {
+    color: var(--ink);
+    font-family: var(--f-serif);
+    font-size: 29px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    font-variant-numeric: lining-nums;
+    line-height: 1;
+  }
+
+  .public-pairings .p-time {
+    min-height: 30px;
+    padding: 0 12px;
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  /* The flag on the green: small, tuned to the flight, parked at the header's right end. */
+  .public-pairings .p-golf-flag {
+    width: 34px;
+    height: 34px;
+    margin-left: auto;
+    color: var(--p-tone, var(--forest));
+    opacity: 0.5;
+  }
+
+  .public-pairings .p-golf-flag path {
+    fill: currentColor;
+  }
+
+  .public-pairings .p-golf-flag path:first-child {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+  }
+
+  .public-pairings .p-golf-flag circle {
+    fill: currentColor;
+  }
+
+  .public-pairings .p-players {
+    padding: 4px 0;
+  }
+
+  .public-pairings .p-row {
+    min-height: 48px;
+    padding: 11px 20px;
+    font-size: 19px;
+    font-weight: 550;
+    line-height: 26px;
+  }
+
+  .public-pairings .p-row + .p-row {
+    border-top: 1px solid light-dark(#f0f2ee, #232f29);
+  }
+
+  /* Own row: a warm tint, never stripes. */
+  .public-pairings .p-row:nth-child(even) {
+    background: transparent;
+  }
+
+  /* Compact is still stacked names, two to a line, rather than one run-on sentence. */
+  .public-pairings .p-pairings.is-compact .p-card-top {
+    padding: 12px 16px 10px;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-hole {
+    font-size: 23px;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-golf-flag {
+    width: 28px;
+    height: 28px;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-time {
+    min-height: 25px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-card .p-players {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+    gap: 0 20px;
+    padding: 6px 16px 10px;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-card .p-row {
+    display: block;
+    min-height: 0;
+    padding: 6px 0;
+    border-top: 0;
+    font-size: 16px;
+    line-height: 23px;
+    font-weight: 550;
+  }
+
+  /* Masthead chrome: Back, theme, language and help all speak the same 44px pill language. */
+  .public-pairings .public-back {
+    display: inline-flex;
+    width: fit-content;
+    min-height: 44px;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 0 16px;
+    border: 1px solid rgba(247, 245, 238, 0.38);
+    border-radius: 999px;
+    background: rgba(247, 245, 238, 0.07);
+    color: #f7f5ee;
+    font-size: 14px;
+    font-weight: 650;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .public-pairings .public-back:hover {
+    background: rgba(247, 245, 238, 0.14);
+    color: #ffffff;
+    text-decoration: none;
+  }
+
+  .public-pairings .public-back:focus-visible {
+    outline: 2px solid var(--gold-on-forest);
+    outline-offset: 2px;
+  }
+
+  .public-pairings .public-appbar-controls {
+    gap: 8px;
+  }
+
+  .public-pairings .public-appbar-controls button {
+    height: 44px;
+    border: 1px solid rgba(247, 245, 238, 0.38);
+    border-radius: 999px;
+    background: rgba(247, 245, 238, 0.07);
+    color: #f7f5ee;
+    box-shadow: none;
+  }
+
+  /* The two icon buttons are squares; the language control sizes to its own label instead. */
+  .public-pairings .public-appbar-controls button:not(.lang-menu-btn) {
+    width: 44px;
+    flex: none;
+  }
+
+  .public-pairings .public-appbar-controls button:hover {
+    background: rgba(247, 245, 238, 0.14);
+    color: #ffffff;
+  }
+
+  .public-pairings .public-appbar-controls button:focus-visible {
+    outline: 2px solid var(--gold-on-forest);
+    outline-offset: 2px;
+  }
+
+  /* On a phone the masthead row holds four 44px controls, so the language pill goes globe-only the
+     same way the back link goes arrow-only; the full name appears as soon as there is room. */
+  @media (max-width: 639px) {
+    .public-pairings .public-appbar > .public-back {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+    }
+
+    .public-pairings .lang-menu-btn {
+      width: 44px;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .public-pairings .lang-menu-btn > span,
+    .public-pairings .lang-menu-btn > svg:last-child {
+      display: none;
+    }
+  }
+
+  /* Masthead, composed like a broadcast lower-third: navigation across the top, the club's brand
+     lower-left, the event headline lower-right with its start note and date. The brand and the
+     headline share a baseline so the card reads as one designed object. */
+  .public-pairings .public-head.public-appbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 20px;
+    row-gap: 12px;
+  }
+
+  .public-pairings .public-head.public-appbar > .public-back {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .public-pairings .public-head.public-appbar > .public-appbar-controls {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: start;
+  }
+
+  .public-pairings .appbar-foot {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px 20px;
+    margin-top: 2px;
+  }
+
+  .public-pairings .appbar-title {
+    display: grid;
+    justify-items: end;
+    text-align: right;
+    gap: 4px;
+  }
+
+  .public-pairings .appbar-title > h1,
+  .public-pairings .appbar-title > p {
+    margin: 0;
+  }
+
+  .public-pairings .appbar-title .public-appbar-kicker {
+    margin: 0;
+    justify-self: end;
+  }
+
+  /* On a phone the brand itself stays visible, smaller: logo and club name on one line, then the
+     headline below, left-aligned the way a reader scans a sign. */
+  @media (max-width: 639px) {
+    .public-pairings .appbar-foot {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .public-pairings .public-appbar .public-appbar-brand {
+      display: flex;
+    }
+
+    .public-pairings .public-appbar-brand svg {
+      width: 104px;
+      height: auto;
+    }
+
+    .public-pairings .appbar-title {
+      justify-items: start;
+      text-align: left;
+    }
+
+    .public-pairings .appbar-title .public-appbar-kicker {
+      justify-self: start;
+    }
+  }
+
+  /* On a wide screen the brand carries its weight next to the headline instead of reading as a
+     footnote: the logo and its two lines step up, the phone keeps the compact mark. */
+  @media (min-width: 640px) {
+    .public-pairings .public-appbar-brand {
+      gap: 18px;
+    }
+
+    .public-pairings .public-appbar-brand svg {
+      width: 196px;
+      height: auto;
+    }
+
+    .public-pairings .public-appbar-brand b {
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .public-pairings .public-appbar-brand .text-xs {
+      font-size: 13px;
+    }
+  }
+
+  /* The three views as one segmented control: a single bordered bar, three even segments, the
+     current view filled solid so anyone can see what is selected and that the rest are tappable. */
+  .public-pairings .public-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid light-dark(#d7ded4, #2a362f);
+    border-radius: 14px;
+    background: light-dark(#ffffff, #131b17);
+    backdrop-filter: none;
+  }
+
+  .public-pairings .public-tab {
+    position: relative;
+    min-height: 56px;
+    padding-inline: 10px;
+    border: 0;
+    border-right: 1px solid light-dark(#e4e9e1, #26332b);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: 0.03em;
+  }
+
+  .public-pairings .public-tab:last-child {
+    border-right: 0;
+  }
+
+  .public-pairings .public-tab:not([aria-current="page"]) {
+    background: transparent;
+    color: var(--ink);
+    box-shadow: none;
+  }
+
+  .public-pairings .public-tab:not([aria-current="page"]):hover {
+    background: light-dark(rgba(7, 53, 42, 0.06), rgba(247, 245, 238, 0.06));
+  }
+
+  .public-pairings .public-tab[aria-current="page"] {
+    background: var(--forest);
+    color: var(--on-forest);
+    box-shadow: none;
+  }
+
+  .public-pairings .public-tab[aria-current="page"]::after {
+    content: none;
+  }
+
+  .public-pairings .public-tab-icon {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    opacity: 0.85;
+  }
+
+  /* At phone width the labels alone fit the three segments; the icons go. */
+  @media (max-width: 479px) {
+    .public-pairings .public-tab {
+      font-size: 13.5px;
+      gap: 4px;
+      padding-inline: 6px;
+    }
+
+    .public-pairings .public-tab-icon {
+      display: none;
+    }
+  }
+}
+
+/* ============================================================ the public footbar
+
+   The closing bar on every public page: a gold rule and a faint dot field over the forest, the
+   same two notes as the leader's card, so the page ends on the brand instead of two bare links. */
+@media screen {
+  .public-footbar {
+    border-top: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      color-mix(in srgb, var(--gold) 16%, transparent) 1px,
+      transparent 1.6px
+    );
+    background-size: 16px 16px;
+  }
+
+  /* The pairings foot: what is shown, then where else to go, as two clean lines instead of one
+     paragraph. The note stays small and muted; the links are semibold caps with gold underlines,
+     so the strip reads as navigation at a glance. */
+  .pairings-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 28px;
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+
+  .pairings-foot-note {
+    max-width: 52ch;
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+
+  .pairings-foot-nav,
+  .site-foot-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    margin-left: auto;
+  }
+
+  /* The nav-only strips on the other public pages get the same rule above them. */
+  .site-foot-nav {
+    margin-top: 28px;
+    margin-left: 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+
+  .pairings-foot-nav a,
+  .site-foot-nav a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    color: var(--ink);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .pairings-foot-nav a:hover,
+  .site-foot-nav a:hover {
+    color: var(--gold-ink);
+    text-decoration: underline;
+    text-decoration-color: var(--gold);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+
+  .pairings-foot-nav span[aria-hidden="true"],
+  .site-foot-nav span[aria-hidden="true"] {
+    color: var(--ink-muted);
+    font-size: 12px;
   }
 }
