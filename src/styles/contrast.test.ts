@@ -64,6 +64,7 @@ const PAIRS: [string, string, number][] = [
   ["info", "info-soft", 4.5],
   ["on-forest", "forest", 4.5],
   ["on-forest-muted", "forest", 4.5],
+  ["on-forest-quiet", "forest", 4.5],
   ["gold", "forest", 3],
   // The gold used for 11px labels on the forest band. `gold` itself is only 4.34:1 there in the
   // light theme, so anything small on forest asks for this token instead.

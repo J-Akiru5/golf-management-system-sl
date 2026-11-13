@@ -42,6 +42,10 @@ export interface Player {
   gender: Gender | null;
   /** Handicap index frozen at the tournament cut-off date (from the NGAP export). */
   index: number | null;
+  /** The desk's stored class, when a validated card overrides the index cut. */
+  classId?: string | null;
+  /** The card playing handicap, already converted. Null when the card has no HDCP. */
+  cardHandicap?: number | null;
   /**
    * The club's team or pair, when the event is played in teams. Players with the same key are kept
    * in one group; null or missing means the player is drawn on their own.
@@ -141,6 +145,8 @@ export interface Registration {
   /** Rounded playing handicap after allowance. */
   playingHandicap: number | null;
   flightId: string | null;
+  /** "stored" when the desk's card class is authoritative; "index" when cut from the index. */
+  classSource?: "index" | "stored";
   /** True only for a desk-confirmed entry that is still missing a routing fact. Derived, not stored. */
   provisional?: boolean;
 }

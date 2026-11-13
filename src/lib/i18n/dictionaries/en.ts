@@ -80,7 +80,9 @@ export const en = {
       partial: "{count} of {total} holes counted",
       noHandicap: "No handicap was recorded for this round, so net points are not shown.",
       help: "Hcp is the stroke received on the hole. Net is score minus Hcp. Points: 2 for a net par, 3 for a net birdie, 1 for a net bogey.",
-      swipe: "Swipe the card sideways to see every column. The hole number stays in place.",
+      swipe: "Swipe the card sideways to see every hole. The row labels stay in place.",
+      pickedUp: "Picked up",
+      pickupHelp: "X is a pick-up: the hole counts, scores no points and has no stroke total.",
       empty:
         "Your hole-by-hole scorecard appears here after the organizer publishes the day's results.",
       toPar: "To par",
@@ -137,6 +139,9 @@ export const en = {
       updated: "Version {version}",
       empty: "The club has not published results for this round yet.",
       emptyAll: "The club has not published any results yet.",
+      loadFailed:
+        "The results could not be loaded just now. Your entry is fine. Try again in a moment.",
+      retry: "Try again",
       points: "pts",
       strokes: "strokes",
       you: "You",
@@ -347,6 +352,7 @@ export const en = {
     profileIntro: "Search a confirmed player to see their published scorecard.",
     profileSearchPrompt: "Type a name to find a player.",
     profileIndex: "Index",
+    profilePlayingHandicap: "Playing handicap",
     profileClass: "Class",
     profileCategory: "Category",
     profilePartner: "Partner",
@@ -635,6 +641,7 @@ export const en = {
   },
   profile: {
     title: "Profile",
+    loading: "Loading your profile…",
     subtitle: "What the club holds for you, and how it can reach you.",
     back: "Back to My golf",
     optional: "Optional",

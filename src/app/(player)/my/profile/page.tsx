@@ -251,25 +251,26 @@ export default async function PlayerProfilePage() {
 
   const player = portal.player;
 
-  // A failed read is not a broken page: the portal already knows the name, the NGAP number and the
-  // index it last used, so the record card still shows real data.
-  let profile: OwnProfile | null = null;
-  try {
-    const { data } = await client.rpc("player_own_profile");
-    profile = mapOwnProfile(data);
-  } catch {
-    profile = null;
-  }
+  // The record, the photo and the account email are three independent reads. Started together,
+  // the page waits for the slowest one instead of for all three in turn.
+  const [profileResult, photos, authResult] = await Promise.all([
+    // A failed read is not a broken page: the portal already knows the name, the NGAP number and
+    // the index it last used, so the record card still shows real data.
+    (async () => {
+      try {
+        const { data } = await client.rpc("player_own_profile");
+        return mapOwnProfile(data);
+      } catch {
+        return null;
+      }
+    })(),
+    loadPublicPhotos(client, [player.id]).catch((): Record<string, string> => ({})),
+    client.auth.getUser(),
+  ]);
 
-  if (!profile) profile = recordFromPortal(player, portal.entries);
-
-  const photos = await loadPublicPhotos(client, [player.id]).catch(
-    (): Record<string, string> => ({}),
-  );
+  const profile = profileResult ?? recordFromPortal(player, portal.entries);
   const photoUrl = publicPhotoUrl(photos[player.id]);
-
-  const { data: auth } = await client.auth.getUser();
-  const accountEmail = auth.user?.email ?? null;
+  const accountEmail = authResult.data.user?.email ?? null;
 
   return (
     <ProfileScreen

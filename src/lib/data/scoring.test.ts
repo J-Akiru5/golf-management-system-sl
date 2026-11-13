@@ -1,10 +1,13 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
+import { createSupabaseScoringRepository } from "@/lib/data/supabase/scoring";
 import {
   makeSnapshotFor,
   parEntries,
   TEST_COURSE,
   TEST_POLICY,
 } from "@/lib/scoring/__tests__/fixtures";
+import type { Database } from "@/lib/supabase/types";
 import { assessOpenRound, missingSettingsMessage, OPEN_ROUND_MESSAGES } from "./open-round";
 import { createDemoScoringRepository, type OpenRoundInput, type ScoringRoundSeed } from "./scoring";
 
@@ -75,6 +78,15 @@ async function submitAndApprove(
   );
   if (!card) throw new Error("Submitted card was not found.");
   return repo.approveCard("tournament-1", card.id);
+}
+
+/** The par card with one hole written as an X instead of a score. */
+function pickupEntries(hole: number) {
+  return parEntries().map((entry) =>
+    entry.hole === hole
+      ? { hole, strokes: null, pickedUp: true as const, confidence: null, manuallyConfirmed: true }
+      : entry,
+  );
 }
 
 describe("demo scoring repository", () => {
@@ -356,6 +368,77 @@ describe("demo scoring repository", () => {
       /final/i,
     );
   });
+
+  it("submits and approves a pick-up, counts the hole and gives it 0 points", async () => {
+    const repo = repository();
+    const submitted = await repo.submitCard("tournament-1", {
+      playerId: "p1",
+      scorerId: "s2",
+      source: "manual",
+      entries: pickupEntries(5),
+      writtenTotal: 72,
+      captureKey: "pickup-card",
+    });
+    const card = submitted.cards[0];
+    if (!card) throw new Error("Card not found.");
+
+    const approved = await repo.approveCard("tournament-1", card.id);
+
+    expect(approved.players[0]?.canonical.holes.find((hole) => hole.hole === 5)).toMatchObject({
+      status: "provisional",
+      strokes: null,
+      pickedUp: true,
+    });
+    const row = approved.standings.gross.rows.find((candidate) => candidate.playerId === "p1");
+    // 17 holes at par score 2 points each; the pick-up counts as played and scores 0.
+    expect(row?.holesCounted).toBe(18);
+    expect(row?.grossPoints).toBe(34);
+  });
+
+  it("resolves a number-against-X conflict as a pick-up", async () => {
+    const repo = repository();
+    await submitAndApprove(repo, "p1", "s2", "capture-1");
+
+    const submitted = await repo.submitCard("tournament-1", {
+      playerId: "p1",
+      scorerId: "s3",
+      source: "manual",
+      entries: pickupEntries(5),
+      writtenTotal: 72,
+      captureKey: "capture-2",
+    });
+    const card = submitted.cards.find(
+      (candidate) => candidate.playerId === "p1" && candidate.scorerId === "s3",
+    );
+    if (!card) throw new Error("Card not found.");
+    const conflicted = await repo.approveCard("tournament-1", card.id);
+
+    expect(conflicted.players[0]?.canonical.holes.find((hole) => hole.hole === 5)).toMatchObject({
+      status: "conflict",
+      strokes: null,
+    });
+
+    const resolved = await repo.resolveHole("tournament-1", {
+      playerId: "p1",
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      reason: "The card shows an X on hole 5.",
+    });
+
+    expect(resolved.players[0]?.canonical.holes.find((hole) => hole.hole === 5)).toMatchObject({
+      status: "verified",
+      strokes: null,
+      pickedUp: true,
+      provenance: "desk_resolution",
+    });
+    expect(resolved.resolutions.at(-1)).toMatchObject({
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      previousStrokes: null,
+    });
+  });
 });
 
 const SEEDED_GROUP = [{ number: 1, playerIds: ["p1", "p2"] }];
@@ -521,6 +604,307 @@ describe("demo scoring repository opening a round", () => {
   });
 });
 
+type Row = Record<string, unknown>;
+
+interface Chain {
+  select: () => Chain;
+  eq: (column: string, value: unknown) => Chain;
+  in: () => Chain;
+  is: () => Chain;
+  order: () => Chain;
+  limit: () => Chain;
+  maybeSingle: () => Promise<{ data: Row | null; error: null }>;
+  then: (
+    resolve: (value: { data: Row[]; error: null }) => unknown,
+    reject?: (reason: unknown) => unknown,
+  ) => Promise<unknown>;
+}
+
+const WIRE_ROUND: Row = {
+  id: TEST_COURSE.roundId,
+  tournament_id: "t1",
+  day_number: 1,
+  status: "open",
+  required_cards: 2,
+  allow_provisional_single_card: true,
+  min_ocr_confidence: 0.85,
+  tie_break_policy_id: null,
+  finalization_authority: "organizer",
+  rules_version: "rules-v1",
+  provisional_publication: "off",
+  stroke_min: 1,
+  stroke_max: 20,
+};
+
+const WIRE_HOLES: Row[] = TEST_COURSE.holes.map((hole) => ({
+  number: hole.number,
+  par: hole.par,
+  stroke_index: hole.strokeIndex,
+}));
+
+const WIRE_TEE: Row = {
+  id: TEST_COURSE.tee.id,
+  name: TEST_COURSE.tee.name,
+  course_rating: TEST_COURSE.tee.courseRating,
+  slope: TEST_COURSE.tee.slope,
+  par: TEST_COURSE.tee.par,
+};
+
+const WIRE_PLAYER_ID = "p1";
+
+/**
+ * A fake client for the card writes, in the style of `supabase/scoring-day.test.ts`.
+ *
+ * It stores the row `submit_scorecard` would insert only so the repository's refresh can return it;
+ * the revision number and its idempotency are the SQL function's contract, not this fake's.
+ */
+function fakeScoringClient(
+  seedCards: Row[] = [],
+  seedEntries: Row[] = [],
+  seedResolutions: Row[] = [],
+) {
+  const cards = seedCards.map((card) => ({ ...card }));
+  const entries = seedEntries.map((entry) => ({ ...entry }));
+  const resolutions = seedResolutions.map((resolution) => ({ ...resolution }));
+  const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+
+  function rowsFor(table: string): Row[] {
+    switch (table) {
+      case "competition_rounds":
+        return [WIRE_ROUND];
+      case "round_entries":
+        return [
+          {
+            id: "entry-p1",
+            round_id: TEST_COURSE.roundId,
+            registration_id: "reg-p1",
+            status: "active",
+            flight_id: null,
+          },
+        ];
+      case "registrations":
+        return [{ id: "reg-p1", player_id: WIRE_PLAYER_ID, frozen_index: 10 }];
+      case "players":
+        return [{ id: WIRE_PLAYER_ID, full_name: "Alpha One" }];
+      case "holes":
+        return WIRE_HOLES;
+      case "tees":
+        return [WIRE_TEE];
+      case "scorecards":
+        return cards;
+      case "scorecard_entries":
+        return entries;
+      case "hole_resolutions":
+        return resolutions;
+      default:
+        // Handicap snapshots, card images, resolutions and publications are empty for this fixture.
+        return [];
+    }
+  }
+
+  function query(table: string): Chain {
+    const chain: Chain = {
+      select: () => chain,
+      eq: () => chain,
+      in: () => chain,
+      is: () => chain,
+      order: () => chain,
+      limit: () => chain,
+      maybeSingle: async () => {
+        if (table === "tournaments") {
+          return {
+            data: { id: "t1", club_id: "club-1", course_id: "course-1" },
+            error: null,
+          };
+        }
+        return { data: rowsFor(table)[0] ?? null, error: null };
+      },
+      then: (resolve, reject) =>
+        Promise.resolve({ data: rowsFor(table), error: null }).then(resolve, reject),
+    };
+    return chain;
+  }
+
+  const client = {
+    from: (table: string) => query(table),
+    auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      rpcCalls.push({ name, args });
+      if (name !== "submit_scorecard") return { data: null, error: null };
+
+      const scorerId = String(args.p_scorer_id);
+      const previous = cards.filter(
+        (card) => card.player_id === WIRE_PLAYER_ID && card.scorer_id === scorerId,
+      );
+      const revision = Math.max(0, ...previous.map((card) => Number(card.revision))) + 1;
+      const id = `card-${cards.length + 1}`;
+      cards.push({
+        id,
+        round_id: TEST_COURSE.roundId,
+        player_id: WIRE_PLAYER_ID,
+        scorer_id: scorerId,
+        source: args.p_source,
+        revision,
+        status: "submitted",
+        written_total: args.p_written_total ?? null,
+        capture_key: args.p_capture_key,
+        submitted_at: "2026-11-12T00:00:00.000Z",
+      });
+      for (const entry of Array.isArray(args.p_entries) ? (args.p_entries as Row[]) : []) {
+        entries.push({
+          scorecard_id: id,
+          hole_number: entry.hole,
+          strokes: entry.strokes,
+          confidence: entry.confidence,
+          manually_confirmed: entry.manually_confirmed,
+        });
+      }
+      return { data: id, error: null };
+    },
+  };
+
+  return { client: client as unknown as SupabaseClient<Database>, rpcCalls };
+}
+
+describe("connected scoring repository writing a card", () => {
+  it("sends a first card with its capture key and records no correction", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    const view = await repo.submitCard("t1", {
+      playerId: WIRE_PLAYER_ID,
+      scorerId: "p2",
+      source: "manual",
+      entries: parEntries(),
+      writtenTotal: 72,
+      captureKey: "capture-first",
+    });
+
+    expect(fake.rpcCalls.map((call) => call.name)).toEqual(["submit_scorecard"]);
+    expect(fake.rpcCalls[0]?.args).toMatchObject({
+      p_round_entry: "entry-p1",
+      p_capture_key: "capture-first",
+    });
+    expect(view.cards).toEqual([
+      expect.objectContaining({ id: "card-1", revision: 1, status: "submitted" }),
+    ]);
+  });
+
+  it("writes a correction as a new revision and records its reason", async () => {
+    const reason = "Hole 4 was written as 4; the card says 5.";
+    const fake = fakeScoringClient(
+      [
+        {
+          id: "card-1",
+          round_id: TEST_COURSE.roundId,
+          player_id: WIRE_PLAYER_ID,
+          scorer_id: "p2",
+          source: "manual",
+          revision: 1,
+          status: "approved",
+          written_total: 72,
+          capture_key: "capture-first",
+          submitted_at: "2026-11-11T00:00:00.000Z",
+        },
+      ],
+      parEntries().map((entry) => ({
+        scorecard_id: "card-1",
+        hole_number: entry.hole,
+        strokes: entry.strokes,
+        confidence: entry.confidence,
+        manually_confirmed: entry.manuallyConfirmed,
+      })),
+    );
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    const view = await repo.submitCard("t1", {
+      playerId: WIRE_PLAYER_ID,
+      scorerId: "p2",
+      source: "manual",
+      entries: parEntries().map((entry) => (entry.hole === 4 ? { ...entry, strokes: 6 } : entry)),
+      writtenTotal: 73,
+      captureKey: "capture-correction",
+      reason,
+    });
+
+    expect(fake.rpcCalls.map((call) => call.name)).toEqual([
+      "submit_scorecard",
+      "record_scorecard_correction",
+    ]);
+    expect(fake.rpcCalls[0]?.args).toMatchObject({ p_capture_key: "capture-correction" });
+    // A correction is its own revision, so it never reuses the original card's key.
+    expect(fake.rpcCalls[0]?.args.p_capture_key).not.toBe("capture-first");
+    // The reason belongs to the revision that was just written, not to the card being corrected.
+    expect(fake.rpcCalls[1]?.args).toEqual({ p_card: "card-2", p_reason: reason });
+    expect(view.cards).toEqual([
+      expect.objectContaining({ id: "card-1", revision: 1, status: "approved" }),
+      expect.objectContaining({ id: "card-2", revision: 2, status: "submitted" }),
+    ]);
+  });
+
+  it("sends a pick-up entry with null strokes and picked_up true", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.submitCard("t1", {
+      playerId: WIRE_PLAYER_ID,
+      scorerId: "p2",
+      source: "manual",
+      entries: parEntries().map((entry) =>
+        entry.hole === 5
+          ? {
+              hole: 5,
+              strokes: null,
+              pickedUp: true as const,
+              confidence: null,
+              manuallyConfirmed: true,
+            }
+          : entry,
+      ),
+      writtenTotal: 72,
+      captureKey: "capture-pickup",
+    });
+
+    const sent = fake.rpcCalls[0]?.args.p_entries as Row[];
+    expect(sent.find((entry) => entry.hole === 5)).toEqual({
+      hole: 5,
+      strokes: null,
+      confidence: null,
+      manually_confirmed: true,
+      picked_up: true,
+    });
+    expect(sent.find((entry) => entry.hole === 1)).toEqual({
+      hole: 1,
+      strokes: 4,
+      confidence: null,
+      manually_confirmed: true,
+    });
+  });
+
+  it("sends a card with no pick-up exactly as it did before", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.submitCard("t1", {
+      playerId: WIRE_PLAYER_ID,
+      scorerId: "p2",
+      source: "manual",
+      entries: parEntries(),
+      writtenTotal: 72,
+      captureKey: "capture-plain",
+    });
+
+    expect(fake.rpcCalls[0]?.args.p_entries).toEqual(
+      parEntries().map((entry) => ({
+        hole: entry.hole,
+        strokes: entry.strokes,
+        confidence: entry.confidence,
+        manually_confirmed: entry.manuallyConfirmed,
+      })),
+    );
+  });
+});
+
 describe("demo scoring repository by day", () => {
   it("loads only the round for the day it was given, and the first round when no day is named", async () => {
     const repo = repository({ dayNumber: 2 });
@@ -528,5 +912,181 @@ describe("demo scoring repository by day", () => {
     expect((await repo.loadRound("tournament-1", 2))?.dayNumber).toBe(2);
     expect(await repo.loadRound("tournament-1", 1)).toBeNull();
     expect((await repo.loadRound("tournament-1"))?.dayNumber).toBe(2);
+  });
+});
+
+const READ_CARD_ID = "card-read";
+
+function wireCard(id: string, scorerId: string, status: string): Row {
+  return {
+    id,
+    round_id: TEST_COURSE.roundId,
+    player_id: WIRE_PLAYER_ID,
+    scorer_id: scorerId,
+    source: "manual",
+    revision: 1,
+    status,
+    written_total: 72,
+    submitted_at: "2026-11-12T00:00:00.000Z",
+  };
+}
+
+/** The 18 entry rows for a card, with one hole written as a pick-up when asked. */
+function wireCardEntries(cardId: string, pickupHole?: number): Row[] {
+  return parEntries().map((entry) => ({
+    scorecard_id: cardId,
+    hole_number: entry.hole,
+    strokes: entry.hole === pickupHole ? null : entry.strokes,
+    ...(entry.hole === pickupHole ? { picked_up: true } : {}),
+    confidence: entry.confidence,
+    manually_confirmed: entry.manuallyConfirmed,
+  }));
+}
+
+describe("connected scoring repository reading pick-ups", () => {
+  it("reads a pick-up entry as pickedUp and leaves an ordinary entry unchanged", async () => {
+    const fake = fakeScoringClient(
+      [wireCard(READ_CARD_ID, "p2", "approved")],
+      wireCardEntries(READ_CARD_ID, 5),
+    );
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    const view = await repo.loadRound("t1");
+    const entries = view?.cards[0]?.entries ?? [];
+
+    expect(entries.find((entry) => entry.hole === 5)).toEqual({
+      hole: 5,
+      strokes: null,
+      pickedUp: true,
+      confidence: null,
+      manuallyConfirmed: true,
+    });
+    expect(entries.find((entry) => entry.hole === 1)).toEqual({
+      hole: 1,
+      strokes: 4,
+      confidence: null,
+      manuallyConfirmed: true,
+    });
+  });
+
+  it("reads a pick-up resolution as pickedUp and an ordinary one as before", async () => {
+    const resolutions: Row[] = [
+      {
+        id: "res-1",
+        round_id: TEST_COURSE.roundId,
+        player_id: WIRE_PLAYER_ID,
+        hole_number: 5,
+        strokes: 0,
+        picked_up: true,
+        resolved_by: "desk",
+        resolved_at: "2026-11-12T00:00:00.000Z",
+        reason: "The card shows an X.",
+        evidence_card_ids: [],
+        previous_strokes: null,
+      },
+      {
+        id: "res-2",
+        round_id: TEST_COURSE.roundId,
+        player_id: WIRE_PLAYER_ID,
+        hole_number: 6,
+        strokes: 4,
+        resolved_by: "desk",
+        resolved_at: "2026-11-12T00:01:00.000Z",
+        reason: "Both markers agreed.",
+        evidence_card_ids: [],
+        previous_strokes: null,
+      },
+    ];
+    const fake = fakeScoringClient([], [], resolutions);
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    const view = await repo.loadRound("t1");
+
+    expect(view?.resolutions.find((resolution) => resolution.hole === 5)).toEqual({
+      id: "res-1",
+      roundId: TEST_COURSE.roundId,
+      playerId: WIRE_PLAYER_ID,
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      resolvedBy: "desk",
+      resolvedAt: "2026-11-12T00:00:00.000Z",
+      reason: "The card shows an X.",
+      evidenceCardIds: [],
+      previousStrokes: null,
+    });
+    expect(view?.resolutions.find((resolution) => resolution.hole === 6)).toEqual({
+      id: "res-2",
+      roundId: TEST_COURSE.roundId,
+      playerId: WIRE_PLAYER_ID,
+      hole: 6,
+      strokes: 4,
+      resolvedBy: "desk",
+      resolvedAt: "2026-11-12T00:01:00.000Z",
+      reason: "Both markers agreed.",
+      evidenceCardIds: [],
+      previousStrokes: null,
+    });
+  });
+});
+
+describe("connected scoring repository proposing canonical pick-ups", () => {
+  it("sends a verified pick-up as 0 strokes with pickedUp and leaves a number unchanged", async () => {
+    const fake = fakeScoringClient(
+      [wireCard("card-1", "p2", "approved"), wireCard("card-2", "p3", "submitted")],
+      [...wireCardEntries("card-1", 5), ...wireCardEntries("card-2", 5)],
+    );
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.approveCard("t1", "card-2");
+
+    const approved = fake.rpcCalls.find((call) => call.name === "approve_scorecard");
+    const canonical = approved?.args.p_canonical as Row[];
+    expect(canonical.find((row) => row.hole === 5)).toEqual({
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      verification: "verified",
+      provenance: "agreement",
+    });
+    expect(canonical.find((row) => row.hole === 1)).toEqual({
+      hole: 1,
+      strokes: 4,
+      verification: "verified",
+      provenance: "agreement",
+    });
+  });
+});
+
+describe("connected scoring repository resolving a hole", () => {
+  it("sends 0 strokes when the hole is settled as a pick-up", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.resolveHole("t1", {
+      playerId: WIRE_PLAYER_ID,
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      reason: "The card shows an X.",
+    });
+
+    const resolved = fake.rpcCalls.find((call) => call.name === "resolve_hole");
+    expect(resolved?.args.p_strokes).toBe(0);
+  });
+
+  it("sends the number when the hole is settled with a score", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.resolveHole("t1", {
+      playerId: WIRE_PLAYER_ID,
+      hole: 5,
+      strokes: 4,
+      reason: "Both markers agreed.",
+    });
+
+    const resolved = fake.rpcCalls.find((call) => call.name === "resolve_hole");
+    expect(resolved?.args.p_strokes).toBe(4);
   });
 });

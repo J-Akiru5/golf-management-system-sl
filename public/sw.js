@@ -116,14 +116,57 @@ async function cacheFirst(request) {
   return response;
 }
 
+/*
+ * The last-resort offline screen. It is only reached on the first visit with no signal, before
+ * /offline itself has been cached. It carries the app's forest band, gold label and product name so
+ * even that page looks like TeeLine; everything in it is inline, so nothing else is requested.
+ */
+function offlineHtml() {
+  return `<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#073d2e">
+<title>Offline · TeeLine Golf</title>
+<style>
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: #073d2e;
+    color: #f7f5ee;
+    font: 16px/1.55 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    display: grid;
+    place-items: center;
+    padding: 32px 20px calc(32px + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+  }
+  b { display: block; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: #d7b568; margin-bottom: 8px; }
+  h1 { font-size: 26px; line-height: 1.25; margin: 0 0 10px; }
+  p { max-width: 34ch; margin: 0 auto 20px; color: #cad7cf; }
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 10px;
+    background: #d7b568;
+    color: #202522;
+    font-weight: 600;
+    text-decoration: none;
+  }
+</style>
+<b>TeeLine Golf</b>
+<h1>No connection</h1>
+<p>There is no saved copy of this page on this phone, and a page needs a connection the first time it opens.</p>
+<a href="/">Try again</a>`;
+}
+
 async function offlinePage() {
   const cache = await caches.open(SHELL_CACHE);
   const page = await cache.match(OFFLINE_URL);
   if (page) return page;
-  return new Response(
-    "<!doctype html><meta charset=utf-8><title>Offline</title><p>No connection and no saved copy on this phone.</p>",
-    { status: 503, headers: { "content-type": "text/html; charset=utf-8" } },
-  );
+  return new Response(offlineHtml(), {
+    status: 503,
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
 }
 
 self.addEventListener("fetch", (event) => {

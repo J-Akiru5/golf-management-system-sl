@@ -157,3 +157,11 @@ export const NO_DESK_SNAPSHOT_NOTICE =
 /** Shown when a desk change is attempted with no connection. Nothing is queued. */
 export const OFFLINE_WRITE_NOTICE =
   "You are offline, so this change was not saved. Nothing is queued and nothing is sent later. Reconnect, then try again.";
+
+/**
+ * Shown next to a write control while the phone is offline, before the operator taps it. The product
+ * rule is no offline writes and no queue, so the refusal has to be legible in advance rather than
+ * arriving as an error after the tap.
+ */
+export const OFFLINE_WRITE_BLOCKED =
+  "Nothing is queued, so this cannot be saved until the connection returns. Reconnect, then save.";

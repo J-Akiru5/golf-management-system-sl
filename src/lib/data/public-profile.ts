@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { displayName } from "@/lib/format";
-import { matchesName } from "@/lib/name-match";
+import { sameName } from "@/lib/name-match";
 import { mapScorecard, type PortalScorecard } from "@/lib/player/portal";
 import type { Database } from "@/lib/supabase/types";
 import type { PublicProgramme } from "./types";
@@ -86,7 +86,9 @@ export function parsePublicPlayerProfile(value: unknown): PublicPlayerProfileDat
   if (Array.isArray(value.cards)) {
     for (const raw of value.cards) {
       const card = mapScorecard(raw);
-      if (card) cards.push(card);
+      // The RPC already scopes cards to this player. Keep the boundary here too: a card that
+      // names another player is dropped rather than shown on the wrong profile.
+      if (card && (!card.playerId || card.playerId === id)) cards.push(card);
     }
   }
   cards.sort((a, b) => a.dayNumber - b.dayNumber || a.roundId.localeCompare(b.roundId));
@@ -132,7 +134,7 @@ export function profileTeeTimes(
   const starts: PublicProfileTeeTime[] = [];
   for (const day of programme.days) {
     const player = day.players.find(
-      (entry) => entry.confirmed && entry.teeTime !== null && matchesName(entry.name, playerName),
+      (entry) => entry.confirmed && entry.teeTime !== null && sameName(entry.name, playerName),
     );
     if (!player?.teeTime) continue;
     starts.push({

@@ -4,6 +4,7 @@ import type {
   FinalizationBlocker,
   FinalizationInput,
   FinalizationReadiness,
+  HoleScore,
   NetExclusion,
   PlayerRoundTotals,
   RoundCourse,
@@ -21,10 +22,10 @@ import {
   validateVerificationPolicy,
 } from "./validation";
 
-type CountedHole = CanonicalHole & { strokes: number };
-
-function countedHole(hole: CanonicalHole): hole is CountedHole {
-  return (hole.status === "verified" || hole.status === "provisional") && hole.strokes !== null;
+function countedHole(hole: CanonicalHole): boolean {
+  const settled = hole.status === "verified" || hole.status === "provisional";
+  // A pick-up is a played hole even though it has no stroke count.
+  return settled && (hole.strokes !== null || hole.pickedUp === true);
 }
 
 /**
@@ -108,9 +109,18 @@ export function buildStandings(input: StandingsInput): StandingsResult {
         }
       : input.course;
 
+    const scores: HoleScore[] = [];
+    for (const hole of holes) {
+      if (hole.pickedUp === true) {
+        scores.push({ hole: hole.hole, grossStrokes: 0, pickedUp: true });
+      } else if (hole.strokes !== null) {
+        scores.push({ hole: hole.hole, grossStrokes: hole.strokes });
+      }
+    }
+
     const scored = scoreRound({
       course: playerCourse,
-      scores: holes.map((hole) => ({ hole: hole.hole, grossStrokes: hole.strokes })),
+      scores,
       handicap: player.handicap,
       requireComplete: false,
     });

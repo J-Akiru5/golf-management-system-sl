@@ -48,6 +48,25 @@ describe("a playing day's routing input", () => {
     for (const player of input.players) expect(dayThree.has(player.id)).toBe(false);
   });
 
+  it("carries the stored card class and card handicap into the draw", () => {
+    const state = splitDays();
+    const target = state.entries.find((entry) => (entry.selectedDays ?? []).includes(1));
+    expect(target).toBeDefined();
+    if (!target) return;
+    const patched: DeskState = {
+      ...state,
+      entries: state.entries.map((entry) =>
+        entry.id === target.id
+          ? { ...entry, overridden: true, flightId: "r-c", playingHandicap: 18 }
+          : entry,
+      ),
+    };
+
+    const player = routingInputFor(patched, 1)?.players.find((row) => row.id === target.playerId);
+    expect(player?.classId).toBe("r-c");
+    expect(player?.cardHandicap).toBe(18);
+  });
+
   it("draws nobody on a day no one chose", () => {
     const input = routingInputFor(splitDays(), 2);
     expect(input?.players).toEqual([]);

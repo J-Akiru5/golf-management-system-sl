@@ -5,9 +5,11 @@ import type { PortalScorecard, PortalScorecardHole } from "./portal";
 
 export interface ScorecardTotals {
   holes: number;
-  grossStrokes: number;
+  /** Null when the range is incomplete or has a pick-up: the holes are not a stroke total. */
+  grossStrokes: number | null;
   netStrokes: number | null;
-  grossPoints: number;
+  /** Null when the range is incomplete: a partial nine is not a points total. */
+  grossPoints: number | null;
   netPoints: number | null;
 }
 
@@ -34,12 +36,18 @@ function sumIfComplete(values: readonly (number | null)[]): number | null {
 /** Subtotals for a nine or for the whole card. Missing values are not filled in with zero. */
 export function totalsFor(card: PortalScorecard, from = 1, to = card.holesTotal): ScorecardTotals {
   const holes = holesBetween(card, from, to);
+  const expected = Math.max(0, to - from + 1);
+  const rangeComplete = holes.length === expected;
+  // A pick-up has no stroke total but still counts as a hole and scores 0 points.
+  const strokesKnown = rangeComplete && !holes.some((hole) => hole.pickedUp);
   return {
     holes: holes.length,
-    grossStrokes: holes.reduce((total, hole) => total + hole.grossStrokes, 0),
-    netStrokes: holes.length === 0 ? null : sumIfComplete(holes.map((hole) => hole.netStrokes)),
-    grossPoints: holes.reduce((total, hole) => total + hole.grossPoints, 0),
-    netPoints: holes.length === 0 ? null : sumIfComplete(holes.map((hole) => hole.netPoints)),
+    grossStrokes: strokesKnown
+      ? holes.reduce((total, hole) => total + (hole.grossStrokes ?? 0), 0)
+      : null,
+    netStrokes: strokesKnown ? sumIfComplete(holes.map((hole) => hole.netStrokes)) : null,
+    grossPoints: rangeComplete ? holes.reduce((total, hole) => total + hole.grossPoints, 0) : null,
+    netPoints: rangeComplete ? sumIfComplete(holes.map((hole) => hole.netPoints)) : null,
   };
 }
 
@@ -55,8 +63,13 @@ export function relationToPar(
   from = 1,
   to = card.holesTotal,
 ): number | null {
-  // A hole the player picked up has no stroke count, so it is left out of the comparison.
-  const holes = holesBetween(card, from, to).filter((hole) => !hole.pickedUp);
+  // Only a complete range is compared, and a hole the player picked up has no stroke count, so it
+  // is left out of the comparison rather than counted as par. That matches the scoring rule: a
+  // pick-up scores 0 and stays out of the stroke totals.
+  const all = holesBetween(card, from, to);
+  const expected = Math.max(0, to - from + 1);
+  if (all.length === 0 || all.length !== expected) return null;
+  const holes = all.filter((hole) => !hole.pickedUp);
   if (holes.length === 0) return null;
   return holes.reduce((total, hole) => total + (hole.grossStrokes - hole.par), 0);
 }
@@ -161,6 +174,8 @@ export function withGrossEdits(
 ): PortalScorecard {
   let changed = false;
   const holes = card.holes.map((hole) => {
+    // An X is not a stroke score. The preview must not turn a pick-up into one.
+    if (hole.pickedUp) return hole;
     const next = edits[hole.hole];
     if (next === undefined || !Number.isInteger(next) || next < 1 || next === hole.grossStrokes) {
       return hole;
@@ -174,6 +189,7 @@ export function withGrossEdits(
       netStrokes,
       grossPoints: stablefordPoints(hole.par, next),
       netPoints: netStrokes === null ? null : stablefordPoints(hole.par, netStrokes),
+      pickedUp: false,
     };
   });
 

@@ -96,18 +96,29 @@ export type HandicapCalculation =
 
 export interface HoleScore {
   hole: number;
+  /**
+   * Strokes taken on the hole. Ignored when `pickedUp` is true; callers pass 0 for a pick-up,
+   * because a pick-up has no stroke count.
+   */
   grossStrokes: number;
+  /** True when the player picked up on the hole. The hole scores 0 points. */
+  pickedUp?: boolean;
 }
 
 export interface ScoredHole {
   hole: number;
   par: number;
   strokeIndex: number;
+  /** 0 on a pick-up: there is no stroke count to record. */
   grossStrokes: number;
+  /** True when the player picked up on the hole. */
+  pickedUp?: boolean;
   /** Strokes received on this hole. Negative for a plus handicap. Null when no snapshot. */
   handicapStrokes: number | null;
+  /** Null on a pick-up: the hole has no stroke count, so it cannot carry a net score. */
   netStrokes: number | null;
   grossPoints: number;
+  /** 0 on a pick-up when a snapshot exists, because a pick-up always scores 0 points. */
   netPoints: number | null;
 }
 
@@ -129,12 +140,17 @@ export interface ScoringProblem {
 export interface RoundScoring {
   holes: ScoredHole[];
   totalHoles: number;
+  /** Holes with a score or a pick-up. A pick-up is a played hole. */
   holesCompleted: number;
+  /** Strokes taken. Pick-ups add nothing because they have no stroke count. */
   grossStrokes: number;
   grossPoints: number;
+  /** Net strokes taken. Pick-ups add nothing. Null when no snapshot. */
   netStrokes: number | null;
   netPoints: number | null;
   netStatus: "calculated" | "unavailable";
+  /** Holes the player picked up on. 0 when none. */
+  pickups: number;
 }
 
 export type RoundScoringResult =
@@ -152,8 +168,13 @@ export type CardStatus =
 
 export interface CardEntry {
   hole: number;
-  /** Null when the entry is missing or illegible. */
+  /**
+   * Null when the entry is missing or illegible, and on a pick-up. Valid shapes are
+   * `{strokes: number}` and `{strokes: null, pickedUp: true}`.
+   */
   strokes: number | null;
+  /** True when the scorer wrote an X for a pick-up. Then `strokes` stays null. */
+  pickedUp?: boolean;
   /** OCR confidence 0..1. Null for a manual entry. */
   confidence: number | null;
   /** A person has checked this value against the paper card. */
@@ -215,7 +236,10 @@ export type HoleProvenance = "agreement" | "single_card" | "desk_resolution";
 export interface CanonicalHole {
   hole: number;
   status: HoleVerificationStatus;
+  /** Null when there is no usable evidence, and on a pick-up, which has no stroke count. */
   strokes: number | null;
+  /** True when the hole is settled as a pick-up: 0 points and no stroke count. */
+  pickedUp?: boolean;
   provenance: HoleProvenance | null;
   evidenceCardIds: string[];
   note: string | null;
@@ -226,7 +250,10 @@ export interface Resolution {
   roundId: string;
   playerId: string;
   hole: number;
+  /** 0 when the resolution settles the hole as a pick-up. */
   strokes: number;
+  /** True when the desk settled this hole as a pick-up. Then `strokes` must be 0. */
+  pickedUp?: boolean;
   resolvedBy: string;
   resolvedAt: string;
   /** Required. The operations desk records why it chose this value. */

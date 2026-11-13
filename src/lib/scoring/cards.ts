@@ -139,7 +139,17 @@ export function validateScorecard(
       });
     }
 
-    if (entry.strokes === null) {
+    if (entry.pickedUp === true) {
+      // A pick-up is filled by the X. It cannot also carry a stroke count.
+      if (entry.strokes !== null) {
+        issues.push({
+          code: "invalid_strokes",
+          severity: "blocking",
+          hole: entry.hole,
+          message: `Hole ${entry.hole} is marked as a pick-up, so it cannot also carry a score.`,
+        });
+      }
+    } else if (entry.strokes === null) {
       issues.push({
         code: "missing_hole",
         severity: "review",
@@ -169,8 +179,11 @@ export function validateScorecard(
 
   const completeEntries = input.course.holes.every((hole) => {
     const entry = byHole.get(hole.number);
-    return entry !== undefined && entry.strokes !== null;
+    return entry !== undefined && (entry.strokes !== null || entry.pickedUp === true);
   });
+
+  // A pick-up has no stroke count, so the holes on such a card cannot add up to a written total.
+  const hasPickup = card.entries.some((entry) => entry.pickedUp === true);
 
   if (card.writtenTotal === null) {
     issues.push({
@@ -186,9 +199,10 @@ export function validateScorecard(
       hole: null,
       message: "The written total is not a positive whole number.",
     });
-  } else if (completeEntries) {
+  } else if (completeEntries && !hasPickup) {
     const sum = input.course.holes.reduce((total, hole) => {
       const entry = byHole.get(hole.number);
+      if (entry?.pickedUp === true) return total;
       return total + (entry?.strokes ?? 0);
     }, 0);
     if (sum !== card.writtenTotal) {

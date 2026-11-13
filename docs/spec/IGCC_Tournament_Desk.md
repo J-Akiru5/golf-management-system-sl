@@ -130,6 +130,10 @@ These numbers were read from a photo of one printed card on 12 November 2026. Ch
 
 **Open point: a decimal in the HDCP box.** "Course handicap, confirmed 5 November 2026" above says scoring uses the course handicap worked from the index with the tee's rating and slope. A decimal in the HDCP box (16.7, 18.9) looks like an index that was not converted. Dropping the decimal and converting do not always agree: 16.7 on White is 16 dropped and 17 converted; 18.9 on Blue is 18 dropped and 21 converted. Whole numbers on the cards look already converted (34 on Blue and 36 on Red are the capped index of 30 on those tees), so they are not affected. The Day 1 AM draft sheet drops the decimal, as the owner said on 12 November. Four Day 1 AM cards carry a decimal. The organizer should say which rule stands before a result is declared.
 
+**Settled for the remaining days, owner, 13 November 2026.** The app's conversion is the handicap: scoring uses the course handicap worked from the index with the tee's rating and slope, as confirmed on 5 November. The number in the card's HDCP box is shown for comparison only, so no decimal is dropped. Day 1 AM is the exception: it was released on 12 November on the card handicap. The owner decided on 13 November that it is released again on the app conversion so all four days use one rule. That release is not done yet; until it is, Day 1 AM and the other days are scored by different handicap rules.
+
+**Scoring cards in the app, plan of 13 November 2026.** The owner chose batch scan, then verify: a session's cards are photographed together, the system suggests which registered player each card belongs to, a person confirms every match, and the desk checks each card against its photo on a card view modelled on the Day 1 working sheet. The diagnosis, the steps and the open questions are in [`docs/tasks/2026-11-13-batch-scan-verify.md`](../tasks/2026-11-13-batch-scan-verify.md). Nothing in that plan is built yet.
+
 **Day 1 working sheet.** Until transcribed cards can be imported, Day 1 AM is scored on a standalone page outside the app, generated from the transcription file. It scores each player with the steps above and ranks individuals by net points. It does not add the two partners together, does not apply the two-point pick-up penalty, and does not break ties. It is a draft for the desk, not a published result.
 
 What the working sheet does, as of 12 November 2026:
@@ -144,6 +148,24 @@ What the working sheet does, as of 12 November 2026:
 | Checked | A card is ticked once it has been compared with the paper. The scoresheet shows which cards are checked. |
 
 Known gap: the field list in the repository (`supabase/seed/bamboo-tee-2026-field.psv`) gave a class for only 11 of the 36 Day 1 AM cards. Players entered after that list was made are not on it, and several teams have no index on it. The class the desk assigned lives in the database, which the working sheet does not read. Until it does, the desk sets the missing classes by hand.
+
+### Day 1 AM final scoring release, 12 November 2026
+
+This is the release method used for Day 1 AM on 12 November 2026. The public release is live on the Day 1 AM round.
+
+| Point | What the release does |
+| --- | --- |
+| Playing handicap | The handicap written on the card is the playing handicap. A decimal is dropped, so 16.7 plays off 16. |
+| X on a card | The fast provisional release gives X 0 points so a partial card can be approved. This is a proxy, not the pick-up rule. The true pick-up model is a follow-up. |
+| Markers | Marker names are not published. |
+| Scope | Only Day 1 AM is released publicly. The other days are not part of this release. |
+| Pick-up penalty | The two-point pick-up penalty is not applied. |
+| Published result | Publication v5, 36 cards, 36 gross rows and 36 net rows. Ten complete teams are ranked; 16 players are in an incomplete pair and are not ranked. |
+| Handicap snapshot caveat | The live handicap snapshot table is frozen once scoring starts. The release applied the card playing handicap to `round_results` and to the published cards; the snapshot rows themselves were not changed. |
+| Field additions | MANGALINDAN, VICTOR and DELA CRUZ, FRANCIS were added to the Day 1 round. MANGALINDAN has a card; DELA CRUZ has no card and is not on the board. |
+| Publication correction | v4 wrote the pick-up field as a hole list and left some multi-pick-up stroke totals visible. v5 writes a count and hides the stroke totals on every pick-up card. |
+
+**Public player card, 13 November 2026.** The public player profile now prints the same paper-card layout as the desk: two nine-hole tables with Hole, Par, SI, Gross, Hcp, Net, Gross pts and Net pts, OUT/IN totals, and the row labels pinned on a phone. A pick-up in the published snapshot is shown as X: the hole counts, scores 0 points and has no stroke total. A card with a pick-up shows `-` for its gross and net totals, while its points still sum. A partial card is labelled with the holes counted and does not print a partial sum as its card total. Known limit: `build_round_scorecards` writes integer strokes only, so the checked-in builder cannot produce an X; do not republish a card that depends on the external v5 snapshot through the current builder.
 
 ## How auto-routing works
 
@@ -251,7 +273,19 @@ Every table carries `club_id` with row-level security from day one. Adding it no
 - Photo at the desk: take it with the tablet or phone camera, or upload one the player sent
 - Pairings board: drag, lock, re-run
 - Print: start sheet, pairings, scorecards with handicap dots
-- Score encoding and results (Phase 2)
+- Scorecard desk:
+  - `/scores` is the single-card scoring input. The top bar holds the searchable player picker, the
+    marker picker, the readiness state and the submit/correction actions. The body pairs the card
+    photo or scan with the two nine-hole paper-card tables (Hole, Par, Hcp row, Score and Net pts,
+    with OUT/IN totals), the handicap strip and the live gross/net Stableford, Holes with a score and
+    written-total footer. The table scrolls inside the card on a phone. Scan fills the editor; bulk
+    JSON import is on Review.
+  - `/scores/review` holds the cards list, approvals, rejections, revocations, conflicts, bulk JSON
+    import and round setup.
+  - `/scores/results` holds gross/net standings, provisional publication and finalization.
+  - Selecting a player loads their current card for correction; a new card starts when none exists.
+    Readiness to submit requires 18 valid holes, a player and a different marker, no blocking
+    validation issue and no unchecked low-confidence cell. Corrections require a reason.
 
 ### Players
 
