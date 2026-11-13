@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-11-13
+
 ### Added
 - **The organizer can load their own pairing sheet on the Draw page.** An owner or organizer
   chooses an .xlsx workbook and the worksheet, reviews matched, fuzzy, ambiguous and not found
@@ -117,6 +119,12 @@ Supabase project, because the code and the database are released separately.
   Day 1 AM registrations were set to the validated card handicap and class, with the override
   recorded. Migration `20261113000300_tee_holes.sql` adds the per-tee hole table for the next step;
   it is **not applied**.
+
+### Migrations shipping with this release
+
+- `20261111000100_public_photo_token.sql`: **written, not applied.** Run it on its own in the SQL editor.
+- `20261113000100_scorecard_scans.sql`: **written, not applied.** The scan inbox has no screen yet.
+- `20261113000300_tee_holes.sql`: **written, not applied.** The table is created; no code reads it yet.
 
 ## [0.40.0] - 2026-11-13
 
