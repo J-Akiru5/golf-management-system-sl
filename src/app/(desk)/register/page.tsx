@@ -607,14 +607,14 @@ function RegisterDesk() {
             disabled={!canRecordPayment}
             onSave={(next) => savePayment(e.id, next)}
           />
-          {canEdit && r?.status === "needs_review" && (
+          {canEdit && r && (
             <Button
               variant="secondary"
               size="sm"
               onClick={() => setOverride({ player: p, entry: e, registration: r })}
             >
               <BadgeCheck aria-hidden="true" />
-              Mark ready
+              {r.status === "needs_review" ? "Mark ready" : "Edit index"}
             </Button>
           )}
           <RegistrationDaysEditor

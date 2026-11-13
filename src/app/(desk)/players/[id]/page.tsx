@@ -25,12 +25,14 @@ import {
   RegistrationDaysEditor,
   RoleGate,
 } from "@/components/desk";
+import { ReadyOverrideDialog } from "@/components/desk/ReadyOverrideDialog";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { SectionCard } from "@/components/PageHeader";
 import { PlayerCard } from "@/components/PlayerCard";
 import { type PosterFactOption, PosterStudio } from "@/components/PosterStudio";
 import { PlayerDetailsForm } from "@/components/player/PlayerDetailsForm";
 import { Button } from "@/components/ui/button";
+import { selectIndexForCutOff } from "@/lib/data/frozen";
 import { fmtIso } from "@/lib/data/labels";
 import { registeredDayBadges } from "@/lib/data/sessions";
 import { PAYMENT_LABEL } from "@/lib/data/types";
@@ -87,6 +89,9 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkMessage, setLinkMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [pairTarget, setPairTarget] = useState<PairDialogTarget | null>(null);
+  const [editingIndex, setEditingIndex] = useState(false);
+  const canEditIndex =
+    status === "demo" || member?.role === "owner" || member?.role === "organizer";
   const canPair =
     status === "demo" ||
     member?.role === "owner" ||
@@ -117,6 +122,7 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
     .recordsFor(player.id)
     .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
   const latest = records[0] ?? null;
+  const cutOff = selectIndexForCutOff(records, tournament.cutOffDate ?? "");
   const teeDef = reg?.teeId ? tees.find((t) => t.id === reg.teeId) : undefined;
   const raw =
     teeDef && reg && reg.frozenIndex !== null ? rawCourseHandicap(reg.frozenIndex, teeDef) : null;
@@ -309,6 +315,14 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
                 : "Tee ratings are not confirmed against the club scorecard yet, so treat playing handicaps as provisional."}{" "}
               The app never computes an official WHS index; it only reads what the import supplies.
             </p>
+            {canEditIndex && reg && entry && (
+              <div>
+                <Button variant="secondary" size="sm" onClick={() => setEditingIndex(true)}>
+                  <Pencil aria-hidden="true" />
+                  Edit index
+                </Button>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard
@@ -752,6 +766,29 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
           options={options}
         />
       </section>
+
+      {editingIndex && reg && entry && (
+        <ReadyOverrideDialog
+          key={player.id}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditingIndex(false);
+          }}
+          player={player}
+          entry={entry}
+          registration={reg}
+          tournament={tournament}
+          tees={tees}
+          cutOffDate={tournament.cutOffDate ?? null}
+          cutOffIndex={cutOff.index}
+          cutOffIndexDate={cutOff.record?.effectiveDate ?? null}
+          newerIndexDate={cutOff.newer?.effectiveDate ?? null}
+          onSave={(input) => {
+            void adapters.registrations.overrideReady(entry.id, input);
+            setEditingIndex(false);
+          }}
+        />
+      )}
 
       {pairTarget && (
         <PairDialog
