@@ -789,6 +789,54 @@ await holeSelect.selectOption("");
 await expect(pairingCards.first()).toBeVisible({ timeout: 15000 });
 check("all holes restores the full day", (await pairingCards.count()) >= holeBadges.length);
 
+// Issue #244: the starting hole leads the card and owns the display type; the tee time is a
+// secondary pill. Compact and print must keep the same hierarchy.
+section("pairing card hierarchy: the starting hole leads");
+const cardHeader = langPage
+  .locator('[data-testid="pairing-group"] .p-card-top')
+  .filter({ has: langPage.locator(".p-hole") })
+  .first();
+const cardSizes = async () =>
+  cardHeader.evaluate((row) => {
+    const hole = row.querySelector(".p-hole");
+    const time = row.querySelector(".p-time");
+    const size = (element) =>
+      element ? Number.parseFloat(getComputedStyle(element).fontSize) : 0;
+    return {
+      holeFirst: row.firstElementChild === hole,
+      holeSize: size(hole),
+      timeSize: size(time),
+    };
+  });
+const comfortableCard = await cardSizes();
+check(
+  "the starting hole is the card's first, largest element",
+  comfortableCard.holeFirst && comfortableCard.holeSize > comfortableCard.timeSize,
+  `(hole ${comfortableCard.holeSize}px, time ${comfortableCard.timeSize}px)`,
+);
+await langPage.locator(".p-density-btn").nth(1).click();
+await expect(langPage.locator('[data-testid="pairings-view"]')).toHaveClass(/is-compact/, {
+  timeout: 5000,
+});
+const compactCard = await cardSizes();
+check(
+  "compact mode keeps the hole ahead of the time",
+  compactCard.holeFirst && compactCard.holeSize > compactCard.timeSize,
+  `(hole ${compactCard.holeSize}px, time ${compactCard.timeSize}px)`,
+);
+await langPage.locator(".p-density-btn").nth(0).click();
+await expect(langPage.locator('[data-testid="pairings-view"]')).not.toHaveClass(/is-compact/, {
+  timeout: 5000,
+});
+await langPage.emulateMedia({ media: "print" });
+const printedCard = await cardSizes();
+check(
+  "print keeps the hole as the larger element",
+  printedCard.holeFirst && printedCard.holeSize > printedCard.timeSize,
+  `(hole ${printedCard.holeSize}px, time ${printedCard.timeSize}px)`,
+);
+await langPage.emulateMedia({ media: "screen" });
+
 await setLang("hil");
 check(
   "Hiligaynon is served from the dictionary",

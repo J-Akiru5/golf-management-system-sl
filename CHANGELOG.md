@@ -9,6 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-11-13
+
+### Changed
+- **A pairing card leads with the starting hole, not the tee time.** The hole is now the largest
+  text in the card header and the tee time follows as a smaller muted pill, in comfortable and
+  compact views and on the printed sheet. The hole filter, the session headings and the published
+  times are unchanged. No migration.
+
+
 ## [0.41.0] - 2026-11-13
 
 ### Added
@@ -343,7 +352,6 @@ lets a scored round publish without a separate "start scoring" step. Not applied
 ### Removed
 - **"Time to be confirmed" and "Day start time not set" are gone from the public pages.** A time
   that does not exist is not shown, and no time is guessed. No migration.
-
 
 ### Changed
 - `pnpm check` runs typecheck, lint, tests and build in order, and `pnpm check:ui` starts a dev server, runs the browser checks and stops it. CI calls the same two commands, so a local pass and a CI pass mean the same thing.
@@ -935,7 +943,6 @@ Player mobile/PWA pass, public programme, player scorecard and scorecard correct
   the screen shows its short note until the organizer publishes one; old publications also stay
   summary-only.
 
-
 - **Scorecard corrections (issue #113).** A submitted or approved card has an **Edit** action for
   an owner or organizer. Saving writes a new revision, keeps the old revision in the record, and
   puts the new revision back in the approval queue. The correction reason is required and is
@@ -995,7 +1002,6 @@ Player mobile/PWA pass, public programme, player scorecard and scorecard correct
   still controls whether a new account gets a session immediately. No migration.
 
 
-
 ## [0.26.0] - 2026-10-25
 
 Event branding, calendar and queued email, plus the optional scorecard reader service.
@@ -1048,7 +1054,6 @@ Event branding, calendar and queued email, plus the optional scorecard reader se
   and `stamp_updated_at` from earlier migrations.
 - No other migration ships with this work. The previous migration, `20261039000000`, is recorded as
   applied on 22 Oct 2026.
-
 
 ## [0.25.0] - 2026-10-24
 

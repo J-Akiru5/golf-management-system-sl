@@ -5863,35 +5863,42 @@ html[data-textsize="large"] {
   border-bottom: 1px solid var(--line);
 }
 
-.p-time {
-  margin: 0;
-  font-family: var(--f-display);
-  font-size: 26px;
-  line-height: 30px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-
-.p-time.is-tbc {
-  font-size: 15px;
-  line-height: 20px;
-  font-weight: 600;
-  color: var(--ink-muted);
-}
-
+/* The starting hole is the card's anchor: it is the first thing a player looks for, so it carries
+   the card's display type. The tee time follows as a quiet pill, and the empty-time card simply
+   starts with the hole. */
 .p-hole {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
+  color: var(--ink);
+  font-family: var(--f-display);
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.p-time {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  margin: 0;
+  padding: 0 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--fairway-soft);
-  color: var(--ink);
-  font: 700 13px / 1 var(--f-sans);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font: 600 13px / 1 var(--f-sans);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
   white-space: nowrap;
+}
+
+.p-time.is-tbc {
+  min-height: 22px;
+  padding: 0 8px;
+  font: 600 12px / 1 var(--f-sans);
+  color: var(--ink-muted);
 }
 
 .p-own-chip {
@@ -6002,14 +6009,14 @@ html[data-textsize="large"] {
   padding: 6px 10px 4px;
 }
 
-.is-compact .p-time {
-  font-size: 24px;
+.is-compact .p-hole {
+  font-size: 20px;
   line-height: 24px;
 }
 
-.is-compact .p-hole {
-  min-height: 24px;
-  padding: 0 8px;
+.is-compact .p-time {
+  min-height: 22px;
+  padding: 0 7px;
   font-size: 12px;
 }
 
@@ -6230,6 +6237,14 @@ html[data-textsize="large"] {
   }
   .p-card.is-own {
     border-left-color: #000;
+  }
+  .p-hole {
+    color: #000;
+  }
+  .p-time {
+    border-color: #000;
+    background: transparent;
+    color: #000;
   }
 }
 
