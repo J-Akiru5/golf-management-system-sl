@@ -114,6 +114,34 @@ Supabase project, because the code and the database are released separately.
   recorded. Migration `20261113000300_tee_holes.sql` adds the per-tee hole table for the next step;
   it is **not applied**.
 
+## [0.40.0] - 2026-11-13
+
+### Added
+- **Both partners' scorecards open from the team leaderboard row.** A Scorecards button shows each
+  partner's frozen card in the paper-card layout (a new reusable `PaperScorecard`). The row shows the
+  team's accumulated Gross Stableford points and each partner's own net and gross points. No
+  migration.
+- **The landing page shows the leaderboard.** After the "For players" section: as of Day N of the
+  event, in Philippine time, with a Provisional or Final badge, the top 5 teams and a link to the
+  full leaderboard. It appears only when the leaderboard is released. No migration.
+
+### Fixed
+- **A pickup no longer blanks a team's gross.** The team row showed `—` for gross, net and to par
+  whenever one partner picked up a hole, and the public card dropped the pickup hole. The team row
+  now shows accumulated Gross Stableford points; the card keeps the hole and marks it X.
+
+### Migrations shipping with this release
+None.
+
+## [0.39.1] - 2026-11-13
+
+### Fixed
+- **Player names read one way and search finds them.** Names are `SURNAME, GIVEN`. Search ignores
+  accents, capitals, punctuation and word order across the desk, registration, staff app and public
+  programme. The player edit form no longer reads `ADORIO, RONNEL` as first name `ADORIO,`. No
+  migration. The live directory was corrected with `scripts/fix-player-names.ts`; published
+  pairings were not touched.
+
 ## [0.39.0] - 2026-11-12
 
 ### Migrations shipping with this release
