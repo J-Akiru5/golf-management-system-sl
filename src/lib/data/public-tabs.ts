@@ -3,7 +3,7 @@
  * so a shared link opens the same tab and the back button works.
  */
 
-export const PUBLIC_TABS = ["pairings", "players", "profile", "leaderboard"] as const;
+export const PUBLIC_TABS = ["pairings", "players", "profile", "leaderboard", "scores"] as const;
 
 export type PublicTab = (typeof PUBLIC_TABS)[number];
 
@@ -25,6 +25,7 @@ export function parsePublicTab(value: string | string[] | undefined): PublicTab 
  */
 export function publicTabHref(tab: PublicTab, params: PublicTabParams = {}): string {
   if (tab === "players") return "/roster";
+  if (tab === "scores") return "/results";
   if (tab === "leaderboard") {
     const query = new URLSearchParams();
     if (params.category) query.set("category", params.category);

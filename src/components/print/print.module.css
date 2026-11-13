@@ -736,3 +736,196 @@
 .countsPlayers {
   width: 55%;
 }
+
+/* ---------- Start sheet: one page per session, Flight A and Flight B inside ---------- */
+.startSessions {
+  display: grid;
+  gap: 10mm;
+}
+
+.startPage {
+  display: grid;
+  gap: 3mm;
+  align-content: start;
+}
+
+.startHeader {
+  display: grid;
+  grid-template-columns: 40mm minmax(0, 1fr);
+  align-items: center;
+  gap: 5mm;
+  padding-bottom: 2.5mm;
+  border-bottom: 2px solid #b89550;
+}
+
+.startEvent {
+  display: grid;
+  gap: 0.6mm;
+  min-width: 0;
+}
+
+.startEvent h2 {
+  margin: 0;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15pt;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.drawTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #000;
+  background: #fff;
+}
+
+.drawTable th,
+.drawTable td {
+  padding: 0.5mm 1.8mm;
+  border: 1px solid #000;
+  color: #000;
+  background: #fff;
+  text-align: left;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.drawTable thead th {
+  padding: 1mm 1.8mm;
+  background: #eee;
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.drawTable thead {
+  display: table-header-group;
+}
+
+/* The flight band. The browser's print rules force black ink on everything inside the print
+   scope, so the white-on-forest text is restored in globals.css through [data-print-band]. */
+.drawBand td {
+  padding: 1mm 2mm;
+  border-color: #073d2e;
+  color: #fff;
+  background: #073d2e;
+  font-size: 9pt;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.drawRow {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.drawTable th.drawHole {
+  width: 22mm;
+  background: #f2f2f2;
+  font-size: 8pt;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.drawHole small {
+  display: block;
+  font-size: 6.2pt;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.drawName {
+  display: block;
+  font-size: 7.6pt;
+  font-weight: 700;
+  line-height: 1.08;
+}
+
+.drawFacts {
+  display: block;
+  font-size: 6pt;
+}
+
+.density_compact .drawTable th,
+.density_compact .drawTable td {
+  padding-block: 0.15mm;
+}
+
+.density_compact .drawName {
+  font-size: 7pt;
+}
+
+.density_compact .drawFacts {
+  font-size: 5.6pt;
+}
+
+.density_compact .drawTable th.drawHole {
+  font-size: 7.4pt;
+}
+
+.density_compact .drawHole small {
+  font-size: 5.8pt;
+}
+
+.density_compact .drawBand td {
+  padding-block: 0.5mm;
+  font-size: 8.5pt;
+}
+
+.density_tight .drawTable th,
+.density_tight .drawTable td {
+  padding-block: 0;
+}
+
+.density_tight .drawName {
+  font-size: 6.2pt;
+}
+
+.density_tight .drawFacts {
+  font-size: 5pt;
+}
+
+.density_tight .drawTable th.drawHole {
+  font-size: 6.4pt;
+}
+
+.density_tight .drawHole small {
+  font-size: 4.9pt;
+}
+
+.density_tight .drawBand td {
+  padding-block: 0.3mm;
+  font-size: 7.5pt;
+}
+
+@media print {
+  .startPage + .startPage {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .drawBand {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .drawBand td {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .drawTable th.drawHole {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

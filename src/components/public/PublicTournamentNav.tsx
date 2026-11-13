@@ -1,6 +1,6 @@
 "use client";
 
-import { Flag, Trophy, Users } from "lucide-react";
+import { Flag, ListOrdered, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { type PublicTab, publicTabHref } from "@/lib/data/public-tabs";
 import { useI18n } from "@/lib/i18n/context";
@@ -20,6 +20,7 @@ export function PublicTournamentNav({ active }: { active: PublicTab }) {
     { tab: "pairings", label: t("programme.navPairings"), Icon: Flag },
     { tab: "players", label: t("programme.navPlayers"), Icon: Users },
     { tab: "leaderboard", label: t("programme.navLeaderboard"), Icon: Trophy },
+    { tab: "scores", label: t("programme.navScores"), Icon: ListOrdered },
   ];
   const shownActive = active === "profile" ? "players" : active;
 

@@ -9,6 +9,84 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- **The start sheet prints one page per session, with Flight A and Flight B.** Morning waves print
+  first and the afternoon on the next page; each start wave is a flight in tee-off order, groups run
+  in hole order, and each player shows tee, index and playing handicap (`NH` when there is none).
+  Photos no longer print on the start sheet. The morning and afternoon split is at 12:00. From PR
+  #233, by Karl.
+
+### Docs
+- **The complaint desk is in `docs/RUNBOOK.md`:** who files, the four forms and labels, the privacy
+  rule while the repository is public, the five states, the evidence that settles each type, and the
+  `needs-verification` rule (#263).
+- **A code check of index edits, board edits and their audit trail** is in
+  `docs/handoffs/2026-11-14-board-edit-check.md`, with 14 gaps and a manual test list for production
+  (#264). The gaps are filed as #268, #269, #270 and on #265.
+
+No migration.
+
+## [0.47.0] - 2026-11-14
+
+### Added
+- **Every player can find their own score on the public site.** The new **All scores** page at
+  `/results` lists every player with a published card, where the team board stops at ten teams. It
+  opens on all days, then narrows by day, and by morning or afternoon once a day is chosen, and the
+  name search finds a player by any of their words while ignoring capitals, accents and word order.
+  Each card lists the player's rounds with the day and session each was played in and that round's
+  own net and gross points, above the total. It carries no rank number and no leader styling,
+  because it is the whole field, not a ranking. The public tab row gains a fourth tab, the phone
+  bottom bar's **Board** now opens All scores, and the shared results shell carries the language
+  control it was missing. No migration.
+- **The home hero links to All scores**, between the pairings and leaderboard buttons.
+
+### Changed
+- **The team leaderboard points to the whole field.** A "See every score" link under the top ten
+  says that the board stops at ten teams and opens the full list.
+
+### Docs
+- **The plan for the second half of the 24th Bamboo Tee is in `docs/PLAN.md`**, with the owner's
+  feedback of 14 Nov 2026 filed as issues #258 to #266 and assigned. The agent section now records
+  the one-orchestrator, DeepSeek v4.1 Flash builder protocol. GitHub issue forms for the complaint
+  desk (index, schedule, name, score) are added. No code change, no migration.
+
+## [0.46.0] - 2026-11-14
+
+### Added
+- **The scorecard page scans a card or takes a photo of it.** **Scan card** takes one or more photos
+  and **Take photo** opens the camera. The card reader drafts the scores, then the desk chooses
+  **Review now**, **Review later in a batch** or **Discard**. Later scans in the same visit join one
+  waiting batch. Every cell the reader was unsure of is named on the card, an unreadable cell is left
+  blank, and nothing from a photo is marked checked. The photo is not stored. It needs
+  `SCAN_INFERENCE_URL` (and `SCAN_INFERENCE_TOKEN`); without it the page says the reader is not
+  connected.
+- **Tabulators sign in without typing a URL, and can sign out.** A tabulation account (the
+  `scorecard_role` app role or an email in `SCORECARD_TABULATION_EMAILS`) lands on the scorecard after
+  sign-in. The page shows the account, has **Sign out**, and gives club staff a link back to the desk
+  or the staff app. The desk menu links the staff app.
+- **The pairings board can swap and move players.** Swap two players (even between full groups), move
+  or swap a pair or a set together, and use a type-to-edit command box ("swap A with B", "move A to
+  hole 12"). A player's index can be edited from the board: the class updates, the player stays in
+  their group, and a note shows when the class no longer matches.
+- **Live mode on the board.** Board edits publish by themselves after about two seconds as one
+  version, and **Undo last change** steps back one edit. Publishing sends no notifications.
+
+### Fixed
+- **Importing a JSON file no longer fails to save.** The save refused the whole day if any one cell
+  was not 1 to 20 or X, and scan files write blanks as `0`, `null` or `-`, so every later save
+  failed. Blanks are accepted in every spelling and stored as empty text, a cell that cannot be read
+  is blanked and noted on the card, and a real out-of-range score is still refused with the card and
+  hole named. Save errors on the page now show the HTTP code.
+- **One dropped Supabase connection no longer stops saving until the server restarts.** The store
+  forgets a failed bucket check and tries again, and an upload that throws is reported as a store
+  error with a message.
+- **The scorecard buttons say what they do.** **Import JSON** adds cards and downloads nothing;
+  **Export JSON (download)** and **Save, then download a copy** are the two that download;
+  **Replace all from export…** is its own button.
+
+### Migrations
+None.
+
 ## [0.45.0] - 2026-11-13
 
 ### Changed
