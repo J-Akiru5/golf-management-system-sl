@@ -13,6 +13,42 @@ Anything not marked is a plan, not a fact.
 
 ---
 
+## Live event override (internal, 13 Nov 2026)
+
+**The 24th Bamboo Tee is running. The event follows the organiser's field list, not the other way
+round.** This applies to the whole event, not only its data.
+
+For this event the official member-guest sheet (as of 10 Nov 2026) is the authority for the field.
+The event's own settings are working values: when the sheet and a setting disagree, change the
+setting.
+
+- **Adopt the sheet.** Statuses, indices, playing days, pairs, classes and the event's day rule may be
+  corrected straight from it. No separate approval round, and no waiting for a "final" state.
+- **Speed first.** Apply the sheet, then verify. Drop release ceremony that does not protect live
+  scoring. Keep the checks that do: a round's frozen snapshot is what scoring reads, so changing a
+  registration's frozen index does not rewrite a posted score.
+- **Internal only.** No public page, player copy, email, print output or deck describes the event as
+  provisional, draft or subject to change. The override changes how agents work, not what players are
+  told.
+
+Applied on 13 Nov 2026 and checked against the live project and `https://golf.syntaxure.dev/roster`:
+
+| Change | Result |
+| --- | --- |
+| 33 official `needs_review` entries confirmed, each with the sheet's index | public roster 286 → 319 |
+| `CAMOT, ARRIANE` corrected to `CAMOT, ARIANNE` | one name, now spelled as the sheet spells it |
+| `LOCSIN, WILSON` (30.5) and `TOBES, JEROME` (30.6) moved to confirmed | both are above the 30 cap; routing still caps at 30 |
+| `SEBASTIAN, BUTCH` and `ALAS-AS, FRED` added with their sheet schedules | two players the system had never registered |
+| 8 registrations publishing `Index 0` given their sheet index | CAPARROS 8.2, LEVISTE 15.9, PANAGUITON 17.8, PAUIG 5.5, SUMULONG 1.1, CABANAYAN 20.1, TAN 21.7, YATCO 18.3 |
+| `LIM, APOY` added for Day 3 AM only, as the sheet lists him | the event's `required_days` relaxed from 2 to null; `max_days` stays 2, so a one-day entry is valid |
+| Public roster | **324 of 325 registrations**; the one `needs_review` row, `VILLASIS, VEL`, is not on the sheet |
+
+Not blockers for the roster, still open: 39 public players have no class and 47 no category, because
+their entries were never routed. `SIASON, TIM` carries `203` on the sheet; the live index is 20.3 and
+is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, VICTOR`.
+
+---
+
 ## 1. Where we are, in short
 
 | Area | State | Evidence |
