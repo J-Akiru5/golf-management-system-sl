@@ -321,7 +321,14 @@ FIELDS[DOC_DAY] = {};
 (SRC.field || []).forEach(p => { FIELDS[DOC_DAY][nameKey(p.name)] = p; });
 const fieldFor = c => (FIELDS[dayOf(c)] || {})[nameKey(c.name)] || null;
 let PLAY_DAYS = [1, 2, 3, 4];
-const dayOptions = (selected) => PLAY_DAYS.map(d => `<option value="${d}"${String(d) === String(selected) ? " selected" : ""}>Day ${d}</option>`).join("");
+const dayOptions = (selected) => {
+  const days = PLAY_DAYS.map(String);
+  const chosen = String(selected ?? "");
+  // A card may name a day the event list does not have yet (an old export, or a day added later).
+  // Keep that day in the dropdown instead of silently showing no day at all.
+  if (chosen && !days.includes(chosen)) days.push(chosen);
+  return days.sort((a, b) => Number(a) - Number(b)).map(d => `<option value="${d}"${d === chosen ? " selected" : ""}>Day ${d}</option>`).join("");
+};
 const classOf = c => c.cls || (fieldFor(c) ? fieldFor(c).cls : "");
 function classNote(c) {
   const f = fieldFor(c);
@@ -2134,8 +2141,9 @@ window.__scorecard = {
 
   apply();
   void loadSession();
-  void loadDocument();
-  void loadField();
+  // The saved document decides which playing days are on the page, so the field list is read after
+  // it has loaded; otherwise a Day 2 card in a saved document would be checked against no list.
+  void loadDocument().then(() => loadField());
 })();
 </script>
 
