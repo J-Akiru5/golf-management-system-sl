@@ -9,6 +9,16 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.44.1] - 2026-11-13
+
+### Changed
+- **The desk can correct a ready player's index.** The registration desk shows **Edit index** on every
+  entry (**Mark ready** stays for entries in review), and the player page has the same button in the
+  Handicap card. The dialog starts from the index the event uses now, works out the playing handicap
+  again and moves the player to the flight the new index falls in unless the desk picks one. The
+  change is saved as an override with a required reason, so the old frozen record no longer locks the
+  index. The board is not redrawn on its own. No migration.
+
 ## [0.44.0] - 2026-11-13
 
 ### Added
