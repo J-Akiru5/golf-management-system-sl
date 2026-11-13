@@ -7990,6 +7990,13 @@ html[data-textsize="large"] {
     color: light-dark(#e3c67e, #a5803c);
   }
 
+  /* The opened cards panel sits on the leader's green stage, so its headings take the stage's own
+     type colour rather than the page ink, which would be near-black on dark green. */
+  .public-pairings .lb-team[data-leader="true"] [data-testid="team-scorecards"] h4,
+  .public-pairings .lb-team[data-leader="true"] [data-testid="team-scorecards"] .hint {
+    color: light-dark(#f6f2e7, #202522);
+  }
+
   .public-pairings .lb-toggle {
     display: inline-flex;
     min-height: 46px;
