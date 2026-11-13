@@ -95,7 +95,8 @@ export function ReadyOverrideDialog({
   const adjustmentValid =
     Number.isInteger(adjustmentValue) && Math.abs(adjustmentValue) <= ADJUSTMENT_MAX;
   const adjusted = playing === null ? null : playing + adjustmentValue;
-  const flightOptions = tournament.flights.filter((item) => item.categoryId === categoryId);
+  // Classes are cut over the whole field; the category a flight row hangs off is storage only.
+  const flightOptions = tournament.flights;
   const matchingFlights = useMemo(() => {
     if (indexValue === null || !indexValid || !category || playing === null) return [];
     const value = tournament.config.flightBasis === "index" ? indexValue : playing;
@@ -220,7 +221,9 @@ export function ReadyOverrideDialog({
                 ? cutOffDate
                   ? `No NGAP record on or before the cut-off (${cutOffDate}). Leave it blank when there is none yet: the player still plays today.`
                   : "Leave it blank when there is no NGAP record yet. The player still plays today."
-                : `The index the event accepts: the NGAP record dated ${cutOffIndexDate}, the last one on or before the cut-off${cutOffDate ? ` (${cutOffDate})` : ""}.`}
+                : editing
+                  ? `The event uses this index now. The NGAP record on or before the cut-off${cutOffDate ? ` (${cutOffDate})` : ""} says ${cutOffIndex}.`
+                  : `The index the event accepts: the NGAP record dated ${cutOffIndexDate}, the last one on or before the cut-off${cutOffDate ? ` (${cutOffDate})` : ""}.`}
               {newerIndexDate
                 ? ` A later record dated ${newerIndexDate} is not used for this event.`
                 : ""}
@@ -248,10 +251,7 @@ export function ReadyOverrideDialog({
             <span>Category and tee</span>
             <select
               value={categoryId}
-              onChange={(event) => {
-                setCategoryId(event.target.value);
-                setFlightId("");
-              }}
+              onChange={(event) => setCategoryId(event.target.value)}
               aria-label="Category"
             >
               <option value="">Not set yet (Unclassified)</option>
