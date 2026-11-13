@@ -30,6 +30,12 @@ export interface FieldLookup {
   tournamentId: string;
   dayNumber: number | null;
   playDate: string;
+  /** The event's maximum index: a player's index is capped here before the course handicap. */
+  maxIndex: number | null;
+  /** The event's handicap allowance as a fraction, 1 for 100%. */
+  allowance: number | null;
+  /** Every playing day the event has, so a card can be assigned to the day it was played. */
+  days: { day: number; date: string }[];
   players: FieldPlayer[];
 }
 
@@ -123,7 +129,7 @@ export async function loadField(
 
   let tournamentQuery = supabase
     .from("tournaments")
-    .select("id,club_id,name,play_date,first_tee_time,pm_first_tee_time")
+    .select("id,club_id,name,play_date,first_tee_time,pm_first_tee_time,max_index,allowance")
     .order("play_date", { ascending: false })
     .limit(8);
   if (eventName.trim()) {
@@ -313,5 +319,17 @@ export async function loadField(
     });
   }
   players.sort((left, right) => left.name.localeCompare(right.name));
-  return { event, tournamentId, dayNumber, playDate, players };
+  return {
+    event,
+    tournamentId,
+    dayNumber,
+    playDate,
+    maxIndex: numberOrNull(tournament.max_index),
+    allowance: numberOrNull(tournament.allowance),
+    days: rounds.flatMap((row) => {
+      const day = numberOrNull(row.day_number);
+      return day === null ? [] : [{ day, date: text(row.play_date) }];
+    }),
+    players,
+  };
 }
