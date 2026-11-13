@@ -1375,6 +1375,60 @@ await tapTargets(
   phonePage.locator('footer nav[aria-label="Site links"] a'),
   "the leaderboard footer links are 44px tap targets",
 );
+check(
+  "the team board points at All scores",
+  (await phonePage.locator('[data-testid="leaderboard-see-all"]').count()) === 1,
+);
+
+// ------------------------------------------- All scores: the whole field, by day and session
+await phoneGo("/results");
+await noSideways("/results");
+const scoreRows = phonePage.locator('[data-testid="scores-list"] .lb-team');
+const fieldSize = await scoreRows.count();
+check("All scores lists more than a top 10", fieldSize > 10, `(${fieldSize} rows)`);
+const scoreRanks = await phonePage.locator('[data-testid="scores-list"] .lb-rank').count();
+check("All scores shows no rank numerals", scoreRanks === 0, `(${scoreRanks})`);
+const greenLeaders = await phonePage
+  .locator('[data-testid="scores-list"] .lb-team[data-leader]')
+  .count();
+check("no All scores card is dressed as a winner", greenLeaders === 0, `(${greenLeaders})`);
+const roundBreakdowns = await phonePage.locator('[data-testid="scores-rounds"]').count();
+check(
+  "every card shows its rounds with the morning or afternoon",
+  roundBreakdowns === fieldSize,
+  `(${roundBreakdowns} of ${fieldSize})`,
+);
+const firstRoundLabels = await phonePage
+  .locator('[data-testid="scores-rounds"] .scores-round-label')
+  .evaluateAll((nodes) => nodes.map((node) => node.textContent ?? ""));
+check(
+  "the first cards name a day and a session",
+  firstRoundLabels.length > 0 &&
+    firstRoundLabels.every((text) => /Day \d/.test(text) && /(Morning|Afternoon)/.test(text)),
+  `(${firstRoundLabels.slice(0, 2).join(" / ")})`,
+);
+await phonePage.locator('[data-testid="scores-day"]').selectOption("1");
+await phonePage.locator('[data-testid="scores-session"]').selectOption("PM");
+await phonePage.waitForTimeout(250);
+const pmRows = await scoreRows.count();
+check(
+  "the afternoon filter shortens the list",
+  pmRows > 0 && pmRows < fieldSize,
+  `(${pmRows} of ${fieldSize})`,
+);
+const pmRoles = await scoreRows
+  .locator(".lb-role")
+  .evaluateAll((nodes) => nodes.map((node) => node.textContent ?? ""));
+check(
+  "every row in the afternoon list says Afternoon",
+  pmRoles.length > 0 && pmRoles.every((text) => /Afternoon/.test(text)),
+  `(${pmRoles.length} rows)`,
+);
+await phonePage.locator('[data-testid="scores-day"]').selectOption("");
+await phonePage.locator('[data-testid="scores-search"]').fill("antonio");
+await phonePage.waitForTimeout(250);
+const foundRows = await scoreRows.count();
+check("the name search narrows the list to one player", foundRows === 1, `(${foundRows})`);
 
 await phoneGo("/my");
 await noSideways("the player home");

@@ -155,7 +155,15 @@ export default async function LeaderboardPage({
         unpaired={unpaired}
         eventName={data.eventName}
       />
+      <div className="lb-more no-print">
+        <p className="hint m-0">{t("programme.leaderboardOnlyTop")}</p>
+        <Link className="btn ghost" href="/results" data-testid="leaderboard-see-all">
+          {t("programme.scoresSeeAll")}
+        </Link>
+      </div>
       <nav className="site-foot-nav no-print" aria-label="Footer">
+        <Link href="/results">{t("programme.navScores")}</Link>
+        <span aria-hidden="true">·</span>
         <Link href="/pairings">{t("programme.navPairings")}</Link>
         <span aria-hidden="true">·</span>
         <Link href="/roster">{t("programme.navPlayers")}</Link>

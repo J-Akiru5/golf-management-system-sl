@@ -1,0 +1,44 @@
+name: "Complaint: score"
+description: A posted score is disputed, or a card was published before it was checked.
+title: "complaint(score): "
+labels: ["complaint", "complaint:score"]
+body:
+  - type: markdown
+    attributes:
+      value: "While this repository is public, write the pair number or player ID only. No names, no contact details."
+  - type: input
+    id: who
+    attributes:
+      label: Player or pair reference
+      description: Pair number or player ID.
+    validations:
+      required: true
+  - type: input
+    id: when
+    attributes:
+      label: Day and session
+      placeholder: "Day 2 PM"
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: What is claimed
+      description: The hole or total the system shows, and what the paper card says.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: The paper card (scorecard file and page). Say where it can be seen.
+  - type: dropdown
+    id: state
+    attributes:
+      label: Already changed in the system?
+      options:
+        - "No, waiting for a decision"
+        - "Yes, changed first and to be checked here"
+        - "Published without a check; needs verification"
+    validations:
+      required: true

@@ -9,6 +9,30 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-11-14
+
+### Added
+- **Every player can find their own score on the public site.** The new **All scores** page at
+  `/results` lists every player with a published card, where the team board stops at ten teams. It
+  opens on all days, then narrows by day, and by morning or afternoon once a day is chosen, and the
+  name search finds a player by any of their words while ignoring capitals, accents and word order.
+  Each card lists the player's rounds with the day and session each was played in and that round's
+  own net and gross points, above the total. It carries no rank number and no leader styling,
+  because it is the whole field, not a ranking. The public tab row gains a fourth tab, the phone
+  bottom bar's **Board** now opens All scores, and the shared results shell carries the language
+  control it was missing. No migration.
+- **The home hero links to All scores**, between the pairings and leaderboard buttons.
+
+### Changed
+- **The team leaderboard points to the whole field.** A "See every score" link under the top ten
+  says that the board stops at ten teams and opens the full list.
+
+### Docs
+- **The plan for the second half of the 24th Bamboo Tee is in `docs/PLAN.md`**, with the owner's
+  feedback of 14 Nov 2026 filed as issues #258 to #266 and assigned. The agent section now records
+  the one-orchestrator, DeepSeek v4.1 Flash builder protocol. GitHub issue forms for the complaint
+  desk (index, schedule, name, score) are added. No code change, no migration.
+
 ## [0.46.0] - 2026-11-14
 
 ### Added

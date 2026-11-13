@@ -309,6 +309,9 @@ export default async function HomePage() {
             <Link className="button-light" href="/pairings">
               View published pairings <ArrowRight aria-hidden="true" />
             </Link>
+            <Link className="button-quiet" href="/results">
+              See all scores <ArrowRight aria-hidden="true" />
+            </Link>
             <Link className="button-quiet" href="/leaderboard">
               View the leaderboard <ArrowRight aria-hidden="true" />
             </Link>
