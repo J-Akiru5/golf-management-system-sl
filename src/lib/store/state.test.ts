@@ -287,3 +287,117 @@ describe("the afternoon start of a playing day", () => {
     }
   });
 });
+
+describe("hand edits of who is in a group", () => {
+  /** A drawn board, with the groups a test needs. The demo field fills a group of four. */
+  function drawn() {
+    const state = run(initialState(), { type: "generate", preserveLocks: false });
+    const id = state.activeTournamentId;
+    const draw = (id ? state.boards[id]?.draw : null) ?? [];
+    const [first, second] = draw;
+    if (!first || !second || !id) throw new Error("Expected two groups on the board");
+    return { state, tournamentId: id, first, second };
+  }
+
+  const drawOf = (state: DeskState) => {
+    const id = state.activeTournamentId;
+    if (!id) throw new Error("Expected an active tournament");
+    const draw = state.boards[id]?.draw;
+    if (!draw) throw new Error("Expected a draw");
+    return draw;
+  };
+  const groupOf = (state: DeskState, number: number) => {
+    const g = drawOf(state).find((x) => x.number === number);
+    if (!g) throw new Error(`Expected group ${number}`);
+    return g;
+  };
+
+  it("swaps two players, locks both groups, and records one override per player", () => {
+    const { state, first, second } = drawn();
+    const a = first.playerIds[0];
+    const b = second.playerIds[0];
+    if (!a || !b) throw new Error("Expected a player in each group");
+
+    const next = run(state, { type: "swapPlayers", a, b, reason: "Organizer request" });
+    expect(groupOf(next, first.number).playerIds).toContain(b);
+    expect(groupOf(next, second.number).playerIds).toContain(a);
+    expect(groupOf(next, first.number).locked).toBe(true);
+    expect(groupOf(next, second.number).locked).toBe(true);
+
+    const board = next.boards[next.activeTournamentId ?? ""];
+    const rows = board?.overrides ?? [];
+    expect(rows.map((row) => row.playerId).sort()).toEqual([a, b].sort());
+    for (const row of rows) {
+      expect(row.kind).toBe("move");
+      expect(row.reason).toBe("Organizer request");
+    }
+    expect(rows.find((row) => row.playerId === a)).toMatchObject({
+      from: String(first.number),
+      to: String(second.number),
+    });
+    expect(rows.find((row) => row.playerId === b)).toMatchObject({
+      from: String(second.number),
+      to: String(first.number),
+    });
+  });
+
+  it("leaves the board alone when a swap cannot be made", () => {
+    const { state, first } = drawn();
+    const a = first.playerIds[0];
+    if (!a) throw new Error("Expected a player");
+    expect(run(state, { type: "swapPlayers", a, b: a, reason: "Organizer request" })).toBe(state);
+    expect(run(state, { type: "swapPlayers", a, b: "nobody", reason: "Organizer request" })).toBe(
+      state,
+    );
+  });
+
+  it("moves a set within the event's group size and refuses one over it", () => {
+    const { state, first, second } = drawn();
+    // A group with one open place is the honest case: one player fits, two do not.
+    const target = drawOf(state).find((g) => g.playerIds.length === 3);
+    if (!target) throw new Error("Expected a group with one open place");
+    const source = [first, second].find((g) => g.number !== target.number);
+    if (!source) throw new Error("Expected another group");
+    const [one, two] = source.playerIds;
+    if (!one || !two) throw new Error("Expected two players to move");
+
+    const single = run(state, {
+      type: "moveSet",
+      playerIds: [one],
+      toGroup: target.number,
+      reason: "Friends together",
+    });
+    expect(groupOf(single, target.number).playerIds).toContain(one);
+    expect(groupOf(single, target.number).playerIds).toHaveLength(4);
+    expect(groupOf(single, target.number).locked).toBe(true);
+
+    // The group is full now, so the same set cannot go in, and the board does not change.
+    expect(
+      run(single, {
+        type: "moveSet",
+        playerIds: [two],
+        toGroup: target.number,
+        reason: "Late change on the day",
+      }),
+    ).toBe(single);
+  });
+
+  it("swaps two equal sets and refuses unequal ones", () => {
+    const { state, first, second } = drawn();
+    const setA = first.playerIds.slice(0, 2);
+    const setB = second.playerIds.slice(0, 2);
+    const next = run(state, { type: "swapSets", setA, setB, reason: "Balance the group" });
+    for (const id of setA) expect(groupOf(next, second.number).playerIds).toContain(id);
+    for (const id of setB) expect(groupOf(next, first.number).playerIds).toContain(id);
+    expect(groupOf(next, first.number).playerIds).toHaveLength(first.playerIds.length);
+
+    expect(
+      run(state, {
+        type: "swapSets",
+        setA,
+        setB: setB.slice(0, 1),
+        reason: "Balance the group",
+      }),
+    ).toBe(state);
+  });
+});

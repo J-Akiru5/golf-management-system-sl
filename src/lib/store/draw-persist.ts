@@ -116,6 +116,9 @@ export function planDrawJobs(
     }
     case "replaceDraw":
     case "move":
+    case "swapPlayers":
+    case "moveSet":
+    case "swapSets":
     case "withdrawFromDraw":
     case "restoreToDraw":
     case "placeOnDraw":

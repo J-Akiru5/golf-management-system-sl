@@ -31,6 +31,7 @@ import {
   makeDemoTournaments,
 } from "@/lib/demo/data";
 import { moveGroupToHole, reorderHoleQueue, swapGroupSlots } from "@/lib/draw/group-slots";
+import { moveSet, swapPlayers, swapSets } from "@/lib/draw/player-moves";
 import { type DrawGroup, dropCheck, validateDraw } from "@/lib/draw/validate";
 import {
   type GroupPlacement,
@@ -192,6 +193,12 @@ export type Action =
    */
   | { type: "replaceDraw"; draw: DrawGroup[]; dayNumber?: number | null }
   | { type: "move"; playerId: string; toGroup: number; reason: string }
+  /** Swaps two players between their groups, even when both groups are full. */
+  | { type: "swapPlayers"; a: string; b: string; reason: string }
+  /** Moves several players into one group, within the event's group size. */
+  | { type: "moveSet"; playerIds: string[]; toGroup: number; reason: string }
+  /** Exchanges two sets of players, one for one, when both sets are the same size. */
+  | { type: "swapSets"; setA: string[]; setB: string[]; reason: string }
   /** Takes a withdrawn player off the day's board, leaving their group slot open. */
   | { type: "withdrawFromDraw"; playerId: string }
   /** Puts a withdrawn player back where they were, for the undo. */
@@ -678,6 +685,41 @@ const slotOverride = (
   at: new Date().toISOString(),
 });
 
+/**
+ * One manual override per player who ended up in another group, the same row a single move writes.
+ * A swap, a set move and a set swap can touch several players at once, so the list is built from the
+ * difference between the board before and after, never from the players the action was given.
+ */
+const moveOverrides = (
+  overrides: readonly ManualOverride[],
+  tournamentId: string,
+  before: readonly DrawGroup[],
+  after: readonly DrawGroup[],
+  reason: string,
+): ManualOverride[] => {
+  const was = new Map<string, number>();
+  for (const g of before) for (const id of g.playerIds) was.set(id, g.number);
+  const at = new Date().toISOString();
+  const rows: ManualOverride[] = [];
+  for (const g of after) {
+    for (const id of g.playerIds) {
+      const from = was.get(id);
+      if (from === undefined || from === g.number) continue;
+      rows.push({
+        id: nextOverrideId([...overrides, ...rows]),
+        tournamentId,
+        playerId: id,
+        kind: "move",
+        from: String(from),
+        to: String(g.number),
+        reason,
+        at,
+      });
+    }
+  }
+  return rows;
+};
+
 export function reducer(state: DeskState, a: Action): DeskState {
   switch (a.type) {
     // The Supabase adapter replaces the whole desk once it has read the club's data. Nothing is
@@ -1007,6 +1049,54 @@ export function reducer(state: DeskState, a: Action): DeskState {
         ...board,
         draw,
         overrides: [...board.overrides, override],
+      });
+    }
+
+    case "swapPlayers": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      const result = swapPlayers(board.draw, a.a, a.b);
+      if (!result.ok) return state;
+      return withBoard(state, t.id, {
+        ...board,
+        draw: result.draw,
+        overrides: [
+          ...board.overrides,
+          ...moveOverrides(board.overrides, t.id, board.draw, result.draw, a.reason),
+        ],
+      });
+    }
+
+    case "moveSet": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      const result = moveSet(board.draw, a.playerIds, a.toGroup, t.config.groupSize);
+      if (!result.ok) return state;
+      return withBoard(state, t.id, {
+        ...board,
+        draw: result.draw,
+        overrides: [
+          ...board.overrides,
+          ...moveOverrides(board.overrides, t.id, board.draw, result.draw, a.reason),
+        ],
+      });
+    }
+
+    case "swapSets": {
+      const t = activeTournament(state);
+      const board = boardOf(state);
+      if (!t || !board.draw) return state;
+      const result = swapSets(board.draw, a.setA, a.setB);
+      if (!result.ok) return state;
+      return withBoard(state, t.id, {
+        ...board,
+        draw: result.draw,
+        overrides: [
+          ...board.overrides,
+          ...moveOverrides(board.overrides, t.id, board.draw, result.draw, a.reason),
+        ],
       });
     }
 
