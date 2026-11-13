@@ -52,9 +52,10 @@ export interface PortalScorecard {
   publishedAt: string | null;
   playingHandicap: number | null;
   courseHandicap: number | null;
-  grossStrokes: number;
+  /** Null when the card has a pick-up or is incomplete: the holes are not a full gross total. */
+  grossStrokes: number | null;
   netStrokes: number | null;
-  grossPoints: number;
+  grossPoints: number | null;
   netPoints: number | null;
   holesCounted: number;
   holesTotal: number;
@@ -199,10 +200,23 @@ export function mapScorecard(value: unknown): PortalScorecard | null {
   const highestHole = holes[holes.length - 1]?.hole ?? 0;
   const holesTotal = Math.max(1, rawHolesTotal, highestHole);
 
-  const grossStrokes =
-    asWholeNumber(raw.grossStrokes) ?? holes.reduce((total, hole) => total + hole.grossStrokes, 0);
-  const grossPoints =
-    asWholeNumber(raw.grossPoints) ?? holes.reduce((total, hole) => total + hole.grossPoints, 0);
+  const complete = holes.length === holesTotal;
+
+  // A total is only derived from the holes when every hole is on the card: a partial card must not
+  // be published with a total it did not earn. A picked-up hole contributes nothing, which is what
+  // the scoring rule says, so the total of the played holes still stands.
+  const total = (field: string, sum: () => number): number | null => {
+    const stored = hasOwn(raw, field) ? asWholeNumber(raw[field]) : null;
+    if (stored !== null) return stored;
+    return complete ? sum() : null;
+  };
+
+  const grossStrokes = total("grossStrokes", () =>
+    holes.reduce((running, hole) => running + hole.grossStrokes, 0),
+  );
+  const grossPoints = total("grossPoints", () =>
+    holes.reduce((running, hole) => running + hole.grossPoints, 0),
+  );
   const netStrokes = hasOwn(raw, "netStrokes")
     ? asWholeNumber(raw.netStrokes)
     : sumIfComplete(holes.map((hole) => hole.netStrokes));

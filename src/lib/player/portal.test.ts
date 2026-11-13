@@ -183,7 +183,7 @@ describe("mapPortalState", () => {
     });
   });
 
-  it("keeps a pick-up hole as X and never invents a card stroke total", () => {
+  it("keeps a pick-up hole as X and totals only the holes that were played", () => {
     const state = mapPortalState({
       linked: true,
       player: { id: "p1", name: "Ana" },
@@ -246,13 +246,13 @@ describe("mapPortalState", () => {
       hole: 2,
       par: 3,
       strokeIndex: 2,
-      grossStrokes: null,
+      grossStrokes: 0,
       netStrokes: null,
       grossPoints: 0,
       netPoints: 0,
       pickedUp: true,
     });
-    expect(card?.grossStrokes).toBeNull();
+    expect(card?.grossStrokes).toBe(9);
     expect(card?.netStrokes).toBeNull();
     expect(card?.grossPoints).toBe(3);
     expect(card?.netPoints).toBe(5);
@@ -296,7 +296,7 @@ describe("mapPortalState", () => {
     expect(card).not.toBeNull();
     expect(card?.holes).toHaveLength(2);
     expect(card?.holes.every((hole) => hole.pickedUp)).toBe(true);
-    expect(card?.grossStrokes).toBeNull();
+    expect(card?.grossStrokes).toBe(0);
     expect(card?.grossPoints).toBe(0);
   });
 
