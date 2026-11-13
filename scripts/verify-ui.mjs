@@ -1425,6 +1425,23 @@ check(
   `(${pmRoles.length} rows)`,
 );
 await phonePage.locator('[data-testid="scores-day"]').selectOption("");
+await phonePage.waitForTimeout(200);
+const classSelect = phonePage.locator('[data-testid="scores-class"]');
+if ((await classSelect.count()) > 0) {
+  await classSelect.selectOption({ index: 1 });
+  const chosenClass = await classSelect.inputValue();
+  await phonePage.waitForTimeout(250);
+  const classMetas = await scoreRows
+    .locator(".lb-meta")
+    .evaluateAll((nodes) => nodes.map((node) => node.textContent ?? ""));
+  check(
+    "the class filter keeps only that class",
+    classMetas.length > 0 && classMetas.every((text) => text.includes(chosenClass)),
+    `(${chosenClass}, ${classMetas.length} rows)`,
+  );
+  await classSelect.selectOption("");
+  await phonePage.waitForTimeout(200);
+}
 await phonePage.locator('[data-testid="scores-search"]').fill("antonio");
 await phonePage.waitForTimeout(250);
 const foundRows = await scoreRows.count();
