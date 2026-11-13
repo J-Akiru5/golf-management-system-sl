@@ -418,6 +418,8 @@ export const hil: Dictionary = {
     scoresDay: "Adlaw {day}",
     scoresSessionLabel: "Oras",
     scoresAllSessions: "Tanan",
+    scoresClassLabel: "Klase",
+    scoresAllClasses: "Tanan nga klase",
     scoresMorning: "Aga",
     scoresAfternoon: "Hapon",
     scoresFind: "Pangitaa ang pangalan mo",
@@ -430,6 +432,8 @@ export const hil: Dictionary = {
     scoresEmptyTitle: "Wala pa sing ginpahayag nga iskor",
     scoresEmptyBody: "Nagapahayag ang organizer sang round pagkatapos ma-check ang mga iskor.",
     scoresNoMatch: "Wala sing manugkawat nga nagatupong sa pangalan",
+    scoresNoFilterMatch: "Wala sing manugkawat sa sini nga filter",
+    scoresNoFilterBody: "Try otro nga adlaw, klase ukon spelling.",
     scoresUnavailable:
       "Indi pa available ang tanan nga iskor tubtob ma-apply ang database update. Nagapadayon ang team leaderboard.",
     scoresSource:

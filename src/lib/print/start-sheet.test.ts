@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { groupStartGroups, type SortableStartGroup, sortStartGroups } from "./start-sheet";
+import {
+  groupSessions,
+  groupStartGroups,
+  type SortableStartGroup,
+  sortStartGroups,
+} from "./start-sheet";
 
 const groups: SortableStartGroup[] = [
   { number: 4, startHole: 1, time: "12:00" },
@@ -61,6 +66,70 @@ describe("start-sheet sorting", () => {
     const input = [...groups];
     sortStartGroups(input, "shotgun");
     expect(input).toEqual(groups);
+  });
+});
+
+describe("start-sheet sessions and flights", () => {
+  const day: SortableStartGroup[] = [
+    { number: 3, startHole: 4, time: "06:12" },
+    { number: 1, startHole: 9, time: "06:00" },
+    { number: 2, startHole: 1, time: "06:00" },
+    { number: 5, startHole: 2, time: "12:42" },
+    { number: 4, startHole: 3, time: "12:30" },
+    { number: 6, startHole: 1, time: "12:30" },
+  ];
+
+  it("puts the morning and the afternoon on separate sheets, morning first", () => {
+    const sessions = groupSessions(day, "shotgun");
+    expect(sessions.map((s) => s.label)).toEqual(["AM", "PM"]);
+    expect(sessions.map((s) => s.key)).toEqual(["am", "pm"]);
+  });
+
+  it("calls the first wave of a session Flight A and the next Flight B", () => {
+    const [am, pm] = groupSessions(day, "shotgun");
+    expect(am?.flights.map((f) => [f.name, f.time])).toEqual([
+      ["Flight A", "06:00"],
+      ["Flight B", "06:12"],
+    ]);
+    expect(pm?.flights.map((f) => [f.name, f.time])).toEqual([
+      ["Flight A", "12:30"],
+      ["Flight B", "12:42"],
+    ]);
+  });
+
+  it("lists each flight's groups in hole order", () => {
+    const [am, pm] = groupSessions(day, "shotgun");
+    expect(am?.flights[0]?.groups.map((g) => g.startHole)).toEqual([1, 9]);
+    expect(pm?.flights[0]?.groups.map((g) => g.startHole)).toEqual([1, 3]);
+  });
+
+  it("leaves out a session that has no groups", () => {
+    const morningOnly = groupSessions(
+      day.filter((g) => g.time < "12:00"),
+      "shotgun",
+    );
+    expect(morningOnly.map((s) => s.label)).toEqual(["AM"]);
+    expect(groupSessions([], "shotgun")).toEqual([]);
+  });
+
+  it("keeps a day with one wave per session as Flight A only", () => {
+    const sessions = groupSessions(
+      [
+        { number: 1, startHole: 1, time: "06:30" },
+        { number: 2, startHole: 1, time: "12:30" },
+      ],
+      "shotgun",
+    );
+    expect(sessions.map((s) => s.flights.map((f) => f.name))).toEqual([["Flight A"], ["Flight A"]]);
+  });
+
+  it("prints every group exactly once and does not mutate the input", () => {
+    const input = [...day];
+    const numbers = groupSessions(input, "shotgun").flatMap((s) =>
+      s.flights.flatMap((f) => f.groups.map((g) => g.number)),
+    );
+    expect(numbers.sort()).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(input).toEqual(day);
   });
 });
 

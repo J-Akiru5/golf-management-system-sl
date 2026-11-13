@@ -1,5 +1,5 @@
 import type { PublicTeamLeaderboardData } from "@/lib/data/public-team-leaderboard";
-import { matchesName } from "@/lib/name-match";
+import { matchesText } from "@/lib/names";
 
 /**
  * The public "All scores" board: one row per player per published round, then a player's own total.
@@ -243,12 +243,31 @@ export function buildPlayerScores(
   return { scores: rankPlayerScores(scores), withoutSession };
 }
 
-/** The name search. Words, not the whole line, so "chrysler anne" finds "PALIC, CHRYSLER ANNE". */
+/** The classes on the lines being shown, in order, for the class filter. */
+export function scoreClasses(scores: readonly PublicPlayerScore[]): string[] {
+  const classes = new Set<string>();
+  for (const score of scores) {
+    const name = score.flightName?.trim();
+    if (name) classes.add(name);
+  }
+  return [...classes].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * The search and the class filter.
+ *
+ * The name search is the shared one from `@/lib/names`, the same matcher the desk and the pairings
+ * page use: every word must appear somewhere in the name, in any order, ignoring capitals, accents
+ * and punctuation, so "chrysler anne" and "palic" both find "PALIC, CHRYSLER ANNE".
+ */
 export function filterPlayerScores(
   scores: readonly PublicPlayerScore[],
-  query: string,
+  options: { query?: string; flight?: string } = {},
 ): PublicPlayerScore[] {
-  const wanted = query.trim();
-  if (wanted === "") return [...scores];
-  return scores.filter((score) => matchesName(score.name, wanted));
+  const wanted = options.query?.trim() ?? "";
+  const flight = options.flight?.trim() ?? "";
+  return scores.filter((score) => {
+    if (flight && (score.flightName ?? "").trim() !== flight) return false;
+    return wanted === "" || matchesText(score.name, wanted);
+  });
 }

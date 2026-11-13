@@ -416,6 +416,8 @@ export const en = {
     scoresDay: "Day {day}",
     scoresSessionLabel: "Time of day",
     scoresAllSessions: "All",
+    scoresClassLabel: "Class",
+    scoresAllClasses: "All classes",
     scoresMorning: "Morning",
     scoresAfternoon: "Afternoon",
     scoresFind: "Find your name",
@@ -429,6 +431,8 @@ export const en = {
     scoresEmptyTitle: "No scores are published yet",
     scoresEmptyBody: "The organizer publishes a round after the scores have been checked.",
     scoresNoMatch: "No player matches that name",
+    scoresNoFilterMatch: "No players for this filter",
+    scoresNoFilterBody: "Try another day, class, or spelling.",
     scoresUnavailable:
       "All scores are not available until the database update is applied. The team leaderboard still works.",
     scoresSource:

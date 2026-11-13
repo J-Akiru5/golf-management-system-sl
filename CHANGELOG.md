@@ -9,6 +9,34 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-11-14
+
+### Added
+- **All scores can be narrowed by class.** A third dropdown beside Day and Time of day lists the
+  classes on the current list and keeps only the chosen one.
+
+### Changed
+- **The All scores name search is the shared one.** It now uses `@/lib/names`, the matcher the desk,
+  the pairings page and the programme already use, instead of a private copy, so a name typed
+  without its accent ("tanada") finds "TAÑADA" and the word order does not matter. The class filter
+  and the shared search come from the `/scores` entry issue (#259); its keyboard grid and card-state
+  filters are desk-only and stay there.
+- **The start sheet prints one page per session, with Flight A and Flight B.** Morning waves print
+  first and the afternoon on the next page; each start wave is a flight in tee-off order, groups run
+  in hole order, and each player shows tee, index and playing handicap (`NH` when there is none).
+  Photos no longer print on the start sheet. The morning and afternoon split is at 12:00. From PR
+  #233, by Karl.
+
+### Docs
+- **The complaint desk is in `docs/RUNBOOK.md`:** who files, the four forms and labels, the privacy
+  rule while the repository is public, the five states, the evidence that settles each type, and the
+  `needs-verification` rule (#263).
+- **A code check of index edits, board edits and their audit trail** is in
+  `docs/handoffs/2026-11-14-board-edit-check.md`, with 14 gaps and a manual test list for production
+  (#264). The gaps are filed as #268, #269, #270 and on #265.
+
+No migration.
+
 ## [0.47.0] - 2026-11-14
 
 ### Added

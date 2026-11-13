@@ -2163,6 +2163,12 @@
   .print-sheet-scope * {
     color: #000 !important;
   }
+  /* The start sheet's flight band is white text on the forest fill; the rule above would turn it
+     black. The attribute selector is the more specific one, so the band keeps its ink. */
+  .print-sheet-scope [data-print-band],
+  .print-sheet-scope [data-print-band] * {
+    color: #fff !important;
+  }
   .print-sheet-scope .table-wrap {
     overflow: visible !important;
     max-height: none !important;

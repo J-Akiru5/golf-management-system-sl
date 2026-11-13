@@ -12,6 +12,7 @@ import {
   hasSessions,
   type PublicPlayerScore,
   type ScoreSession,
+  scoreClasses,
   scoreDays,
 } from "@/lib/public/public-scores";
 
@@ -42,6 +43,7 @@ export function ScoresView({
   const { t } = useI18n();
   const [day, setDay] = useState<number | null>(null);
   const [session, setSession] = useState<ScoreSession | null>(null);
+  const [flight, setFlight] = useState("");
   const [query, setQuery] = useState("");
 
   const rows = useMemo(() => buildScoreRows(data, sessions), [data, sessions]);
@@ -51,12 +53,19 @@ export function ScoresView({
     () => buildPlayerScores(rows, { day, session }),
     [rows, day, session],
   );
-  const visible = useMemo(() => filterPlayerScores(scores, query), [scores, query]);
+  const classes = useMemo(() => scoreClasses(scores), [scores]);
+  const visible = useMemo(
+    () => filterPlayerScores(scores, { query, flight }),
+    [scores, query, flight],
+  );
+  const filtered = query.trim() !== "" || flight !== "";
 
   const chooseDay = (next: number | null) => {
     setDay(next);
-    // Morning and afternoon only mean something inside one day.
+    // Morning and afternoon only mean something inside one day, and a class can be missing from
+    // the day just chosen, which would leave an empty list with no obvious cause.
     if (next === null) setSession(null);
+    setFlight("");
   };
 
   return (
@@ -69,7 +78,7 @@ export function ScoresView({
         </Link>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-3">
         <label className="lb-filter">
           <span className="lb-filter-label">{t("programme.scoresDayLabel")}</span>
           <select
@@ -107,6 +116,25 @@ export function ScoresView({
               <option value="">{t("programme.scoresAllSessions")}</option>
               <option value="AM">{t("programme.scoresMorning")}</option>
               <option value="PM">{t("programme.scoresAfternoon")}</option>
+            </select>
+          </label>
+        ) : null}
+
+        {classes.length > 1 ? (
+          <label className="lb-filter">
+            <span className="lb-filter-label">{t("programme.scoresClassLabel")}</span>
+            <select
+              className="lb-select"
+              value={flight}
+              onChange={(event) => setFlight(event.target.value)}
+              data-testid="scores-class"
+            >
+              <option value="">{t("programme.scoresAllClasses")}</option>
+              {classes.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
             </select>
           </label>
         ) : null}
@@ -154,9 +182,17 @@ export function ScoresView({
       {visible.length === 0 ? (
         <section className="pairings-empty" role="status" data-testid="scores-empty">
           <h3>
-            {query.trim() === "" ? t("programme.scoresEmptyTitle") : t("programme.scoresNoMatch")}
+            {query.trim() !== ""
+              ? t("programme.scoresNoMatch")
+              : filtered || day !== null
+                ? t("programme.scoresNoFilterMatch")
+                : t("programme.scoresEmptyTitle")}
           </h3>
-          <p>{query.trim() === "" ? t("programme.scoresEmptyBody") : t("programme.scoresFind")}</p>
+          <p>
+            {query.trim() !== "" || filtered || day !== null
+              ? t("programme.scoresNoFilterBody")
+              : t("programme.scoresEmptyBody")}
+          </p>
         </section>
       ) : (
         <ol className="grid gap-3" data-testid="scores-list">
