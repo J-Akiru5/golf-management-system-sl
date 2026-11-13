@@ -309,3 +309,46 @@ does not know the round's players or groups; the Scores screen checks those when
 
 Do not mix the two. If a card is read by the photo reader, use the scan screen. If a card is read by a
 person from paper, use this file.
+
+## The scoring sheet export (`bamboo-scores-edit`)
+
+This is a third format, for the standalone sheet at `/scorecard/`. Its **Export JSON** button saves
+the whole working state, and **Scores, Review, Import the scoring sheet export** loads it. Use it
+to bring in cards that were typed on the sheet, so nobody runs a script.
+
+It only works on a round whose rules version is `bamboo-tee-2026`. Type that as the rules version
+when the round is opened, with one required card. The rules are:
+
+- One desk-checked card per player is enough.
+- The playing handicap is the HDCP box with the decimal dropped (16.7 plays off 16). A blank box
+  counts as 0. A plus handicap, text or a number above 54 blocks the card, because the rule does not
+  cover it.
+- Strokes are given by stroke index. Net points are par 2, birdie 3, bogey 1, worse 0.
+- An `X` is a pick-up: 0 points, no stroke count, a played hole. A card with an X is not compared
+  with its written total.
+- Markers are not published. The database needs one, so a stable stand-in player is stored and the
+  audit sentence says so.
+
+What the importer does with each card in the file:
+
+| Result | Meaning |
+| --- | --- |
+| **Save and approve** | The name matches one player in this day's round, all 18 holes are filled, and the sheet marks the card verified. |
+| **Save only** | Same, but the sheet has not verified it. It waits for approval on the Cards table. |
+| **Already in** | An identical card is already approved for this player. Nothing is written. |
+| **Unmatched** | No player, or more than one player, in this day's round has that name. Nothing is guessed. Fix the name on the sheet or enter the card by hand. |
+| **Blocked** | A blank hole, a score outside the round's range, a written total that does not add up (no X), a handicap the rule cannot read, a second card for the same player, or different scores from a card already in. The reason names the player. |
+
+A name matches when capitals, accents, punctuation and word order are ignored. `ADORIO, RONNEL` and
+`Ronnel Adorio` match; `ANN` and `ANNE` do not.
+
+A file whose `mode` is `whs` is refused whole: that setting converts the HDCP box as an index with
+the tee's slope, which is not this event's rule. Switch the sheet to the written setting and export
+again.
+
+Importing the same file twice is safe. Each card is keyed to its sheet card id and the round, and a
+card that is already in is left alone. A correction after import is made on the Cards table, not by
+importing again.
+
+Saving needs the migration `20261114000100_card_handicap_snapshot.sql`. Until the owner applies it
+the import and the entry form both stop with a plain message and write no card.

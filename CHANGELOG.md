@@ -9,6 +9,26 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **`/scores` can save a card under the 24th Bamboo Tee rules (#258).** When a round's rules version
+  is `bamboo-tee-2026`, the entry form asks for the HDCP written on the card instead of a marker,
+  and **Save and approve card** stores the handicap, the card and its approval in one step, each
+  with its own audit row. The playing handicap is the HDCP box with the decimal dropped (16.7 plays
+  off 16) and a blank box counts as 0. One desk-checked card is enough, so the round has to be
+  opened with one required card. An X is a pick-up: 0 points, no stroke count. The marker is not
+  asked for or shown: a stable stand-in player is stored because the database needs one, and the
+  approval's audit sentence says so. A round on any other rules version is unchanged.
+- **The scoring sheet export imports into `/scores`.** Scores, Review has a new panel for the JSON
+  the sheet at `/scorecard/` exports (`bamboo-scores-edit`). Every card is matched to a player by
+  exact name or listed as unmatched. A blank hole, an unreadable handicap, a written total that does
+  not add up, or a second card for the same player blocks that card by name. Cards the sheet marks
+  verified are saved and approved; the rest are saved for approval. Importing the same file again
+  changes nothing. A file set to the sheet's WHS setting is refused whole.
+- **Migration written, not applied:** `20261114000100_card_handicap_snapshot.sql` adds one function,
+  `save_card_handicap_snapshot`, which stores the card's handicap in the round's snapshot. It
+  changes no table, constraint, trigger or policy. Saving a card under the rules fails with a plain
+  message until it is applied.
+
 ### Changed
 - **The start sheet prints one page per session, with Flight A and Flight B.** Morning waves print
   first and the afternoon on the next page; each start wave is a flight in tee-off order, groups run
@@ -24,7 +44,7 @@ Supabase project, because the code and the database are released separately.
   `docs/handoffs/2026-11-14-board-edit-check.md`, with 14 gaps and a manual test list for production
   (#264). The gaps are filed as #268, #269, #270 and on #265.
 
-No migration.
+One migration is written and not applied: `20261114000100_card_handicap_snapshot.sql` (see Added).
 
 ## [0.47.0] - 2026-11-14
 

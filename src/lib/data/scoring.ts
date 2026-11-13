@@ -1,4 +1,9 @@
 import {
+  type SaveEventCardInput,
+  type SaveEventCardResult,
+  saveEventCardFlow,
+} from "@/lib/data/event-card";
+import {
   assessOpenRound,
   OPEN_ROUND_MESSAGES,
   type OpenRoundSettingsInput,
@@ -177,6 +182,16 @@ export interface ScoringRepository {
     input: SubmitCardInput,
     dayNumber?: number | null,
   ): Promise<ScoringRoundView>;
+  /**
+   * Saves a desk-checked card under the event's card rules in one step: the handicap written on
+   * the card, the card, and (when the desk has checked it) its approval, each with its audit row.
+   * Refuses with a plain sentence when the round is not on the event rules.
+   */
+  saveEventCard(
+    tournamentId: string,
+    input: SaveEventCardInput,
+    dayNumber?: number | null,
+  ): Promise<SaveEventCardResult>;
   approveCard(
     tournamentId: string,
     cardId: string,
@@ -243,6 +258,8 @@ export function createDemoScoringRepository(
   let tieBreak: TieBreakPolicy | null = seed.tieBreak ?? null;
   let rulesVersion: string | null = seed.rulesVersion ?? null;
   const captureKeys = new Map<string, string>();
+  /** Card handicap snapshots written under an event's card rules, by player. */
+  const cardHandicaps = new Map<string, HandicapSnapshot>();
 
   let lastTick = 0;
   const nextIso = () => {
@@ -254,6 +271,7 @@ export function createDemoScoringRepository(
     const policy: VerificationPolicy = { ...seed.policy, requiredCards };
     const players: ScoringPlayer[] = seed.players.map((player) => ({
       ...player,
+      handicap: cardHandicaps.get(player.playerId) ?? player.handicap,
       canonical: deriveCanonicalHoleScores({
         roundId: seed.roundId,
         playerId: player.playerId,
@@ -342,7 +360,7 @@ export function createDemoScoringRepository(
     };
   }
 
-  return {
+  const repository: Omit<ScoringRepository, "saveEventCard"> = {
     async loadRound(tournamentId, dayNumber) {
       if (tournamentId !== seed.tournamentId) return null;
       if (dayNumber !== undefined && dayNumber !== null && (seed.dayNumber ?? 1) !== dayNumber) {
@@ -580,6 +598,28 @@ export function createDemoScoringRepository(
       ];
       roundStatus = "final";
       return view();
+    },
+  };
+
+  return {
+    ...repository,
+    async saveEventCard(tournamentId, input, dayNumber) {
+      assertTournament(tournamentId);
+      if (dayNumber !== undefined && dayNumber !== null && (seed.dayNumber ?? 1) !== dayNumber) {
+        throw new Error("This scoring round is for another playing day.");
+      }
+      return saveEventCardFlow(
+        {
+          load: async () => view(),
+          writeSnapshot: async (plan) => {
+            cardHandicaps.set(input.playerId, plan.snapshot);
+          },
+          submit: (card) => repository.submitCard(tournamentId, card),
+          approve: (cardId, reason) => repository.approveCard(tournamentId, cardId, reason),
+          today: () => new Date(clock()).toISOString().slice(0, 10),
+        },
+        input,
+      );
     },
   };
 }

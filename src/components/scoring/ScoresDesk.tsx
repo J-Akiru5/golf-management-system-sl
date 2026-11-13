@@ -21,6 +21,7 @@ import { PlayerLink } from "@/components/scoring/PlayerLink";
 import { ScorecardImportPanel } from "@/components/scoring/ScorecardImportPanel";
 import { ScorecardWorkspace } from "@/components/scoring/ScorecardWorkspace";
 import { ScoresSubnav, type ScoresTab } from "@/components/scoring/ScoresSubnav";
+import { SheetImportPanel } from "@/components/scoring/SheetImportPanel";
 import { Button } from "@/components/ui/button";
 import type { ClubRole } from "@/lib/auth/member";
 import { type OpenRoundSnapshot, openRoundErrorMessage } from "@/lib/data/open-round";
@@ -38,6 +39,8 @@ import {
   validateScorecard,
 } from "@/lib/scoring";
 import { classLabel } from "@/lib/scoring/class-label";
+import { pickDeskMarker } from "@/lib/scoring/event-card";
+import { eventRulesFor } from "@/lib/scoring/event-rules";
 import { reviewScannedCard, type ScanReaderCell } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import {
@@ -84,6 +87,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const [strokes, setStrokes] = useState<Record<number, string>>({});
   /** The total written on the paper card, when the desk chooses to record it. */
   const [writtenOnCard, setWrittenOnCard] = useState("");
+  /** The HDCP box on the paper card, as typed. Only used when the round is on the event's card rules. */
+  const [cardHandicap, setCardHandicap] = useState("");
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
   const [resolutionDrafts, setResolutionDrafts] = useState<
     Record<string, { strokes: string; reason: string; pickedUp?: boolean }>
@@ -120,6 +125,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
 
   const players = view?.players ?? [];
   const holes = view?.course.holes ?? [];
+  /** The round's card rules, when its rules version names a set. Otherwise the ordinary path. */
+  const eventRules = view ? eventRulesFor(view.rulesVersion) : null;
   const canEdit =
     status === "demo" ||
     member?.role === "owner" ||
@@ -187,6 +194,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     if (!view) return;
     setStrokes(blankStrokes(view.course.holes));
     setWrittenOnCard("");
+    setCardHandicap("");
     setEditingCard(null);
     setCorrectionReason("");
     setEditCaptureKey("");
@@ -341,6 +349,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       ),
     );
     setWrittenOnCard(card.writtenTotal === null ? "" : String(card.writtenTotal));
+    // A card saved under the card rules already has its HDCP on file; show it for the correction.
+    const stored = players.find((player) => player.playerId === card.playerId)?.handicap;
+    setCardHandicap(stored?.rounding === "card" ? String(stored.index) : "");
     setScanImage(null);
     setScanExtraction(null);
     setScanCaptureKey("");
@@ -371,6 +382,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     if (!view) return;
     setStrokes(blankStrokes(view.course.holes));
     setWrittenOnCard("");
+    setCardHandicap("");
   }
 
   /**
@@ -423,7 +435,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     try {
       const targetPlayerId = editingCard?.playerId ?? playerId;
       const targetScorerId = editingCard?.scorerId ?? scorerId;
-      if (targetPlayerId === targetScorerId) {
+      if (!eventRules && targetPlayerId === targetScorerId) {
         setError("A player cannot mark their own card.");
         return;
       }
@@ -456,10 +468,17 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
 
       const playerName =
         players.find((player) => player.playerId === targetPlayerId)?.playerName ?? "";
+      // Under the card rules the marker is not asked for, so the duplicate check compares against
+      // the marker the repository will actually store.
+      const checkedScorerId = eventRules
+        ? (editingCard?.scorerId ??
+          pickDeskMarker(players, targetPlayerId, view?.cards ?? [])?.playerId ??
+          targetScorerId)
+        : targetScorerId;
       const verdict = checkCardSubmission({
         cards: view?.cards ?? [],
         playerId: targetPlayerId,
-        scorerId: targetScorerId,
+        scorerId: checkedScorerId,
         entries: cardValues.entries,
         playerName,
         imageSha256: scanImage?.sha256 ?? null,
@@ -490,36 +509,66 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         : scanCaptureKey || retryKey || globalThis.crypto.randomUUID();
       if (!editingCard) setPendingSubmit({ key: captureKey, signature });
       await run(async () => {
-        const next = await scoring.submitCard(
-          tournamentId,
-          {
-            playerId: targetPlayerId,
-            scorerId: targetScorerId,
-            source: scanImage ? "upload" : "manual",
-            entries,
-            writtenTotal: parsedWrittenOnCard ?? writtenTotal,
-            captureKey,
-            reason: editingCard ? correctionReason.trim() : undefined,
-            image: scanImage
-              ? {
-                  path: scanImage.path,
-                  sha256: scanImage.sha256,
-                  mime: scanImage.mime,
-                  bytes: scanImage.bytes,
-                }
-              : undefined,
-            extraction: scanExtraction ?? undefined,
-          },
-          day,
-        );
+        const image = scanImage
+          ? {
+              path: scanImage.path,
+              sha256: scanImage.sha256,
+              mime: scanImage.mime,
+              bytes: scanImage.bytes,
+            }
+          : undefined;
+        let next: ScoringRoundView;
+        let note: string;
+        if (eventRules) {
+          // The round plays under the event's card rules: the HDCP box, the card and its approval
+          // are saved together, each with its audit row. The marker is not asked for.
+          const saved = await scoring.saveEventCard(
+            tournamentId,
+            {
+              playerId: targetPlayerId,
+              scorerId: editingCard?.scorerId,
+              entries,
+              cardHandicap: cardHandicap.trim() === "" ? null : cardHandicap.trim(),
+              writtenTotal: parsedWrittenOnCard ?? writtenTotal,
+              captureKey,
+              approve: true,
+              reason: editingCard ? correctionReason.trim() : undefined,
+              source: scanImage ? "upload" : "manual",
+              image,
+              extraction: scanExtraction ?? undefined,
+            },
+            day,
+          );
+          next = saved.view;
+          note =
+            saved.outcome === "approved"
+              ? `Card saved and approved for ${playerName || "this player"}. It counts now.`
+              : `The card for ${playerName || "this player"} was already in.`;
+        } else {
+          next = await scoring.submitCard(
+            tournamentId,
+            {
+              playerId: targetPlayerId,
+              scorerId: targetScorerId,
+              source: scanImage ? "upload" : "manual",
+              entries,
+              writtenTotal: parsedWrittenOnCard ?? writtenTotal,
+              captureKey,
+              reason: editingCard ? correctionReason.trim() : undefined,
+              image,
+              extraction: scanExtraction ?? undefined,
+            },
+            day,
+          );
+          note = `Card saved for ${playerName || "this player"} and sent for approval. It does not count until it is approved.`;
+        }
         setEditingCard(null);
         setCorrectionReason("");
         setEditCaptureKey("");
         setWrittenOnCard("");
+        setCardHandicap("");
         setPendingSubmit(null);
-        setSavedNote(
-          `Card saved for ${playerName || "this player"} and sent for approval. It does not count until it is approved.`,
-        );
+        setSavedNote(note);
         return next;
       });
     } finally {
@@ -700,6 +749,38 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
             </details>
           )}
 
+          {tab === "review" && (
+            <details className="card group" id="sheet-import">
+              <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-2">
+                <FileJson className="size-4 text-fairway" aria-hidden="true" />
+                <span className="font-semibold">Import the scoring sheet export</span>
+                <span className="hint">
+                  Cards typed on the sheet. Matched by name, saved under the event's card rules.
+                </span>
+                <ChevronDown
+                  className="ml-auto size-4 transition-transform group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <div className="mt-3">
+                <RoleGate
+                  role={profileRole}
+                  allow={["owner", "organizer", "desk"]}
+                  mode="disable"
+                  disabledReason="Only club staff can import cards."
+                >
+                  <SheetImportPanel
+                    key={view.roundId}
+                    view={view}
+                    busy={busy}
+                    onImported={setView}
+                    onImportingChange={setImportBusy}
+                  />
+                </RoleGate>
+              </div>
+            </details>
+          )}
+
           {tab === "enter" && (
             <RoleGate
               role={profileRole}
@@ -755,6 +836,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   onSubmit={() => void submitCard()}
                   onStartAnother={startAnother}
                   onFillPar={() => setStrokes(strokesFor(holes))}
+                  eventRules={eventRules}
+                  cardHandicap={cardHandicap}
+                  onCardHandicapChange={setCardHandicap}
                 />
               </section>
             </RoleGate>

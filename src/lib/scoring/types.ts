@@ -38,6 +38,13 @@ export interface StrokeLimits {
 
 export type HandicapRounding = "whs" | "single";
 
+/**
+ * How a stored snapshot's playing handicap was reached. "card" is the event rule where the
+ * handicap written on the paper card is used with the decimal dropped. It is only ever stored by the
+ * card-handicap path, never calculated from a tee, so `calculateHandicap` does not accept it.
+ */
+export type SnapshotRounding = HandicapRounding | "card";
+
 export interface HandicapInput {
   index: number | null;
   /** Where the index came from, for example an NGAP export batch id. */
@@ -66,7 +73,7 @@ export interface HandicapSnapshot {
   slope: number;
   coursePar: number;
   allowance: number;
-  rounding: HandicapRounding;
+  rounding: SnapshotRounding;
   courseHandicap: number;
   playingHandicap: number;
   rulesVersion: string;
