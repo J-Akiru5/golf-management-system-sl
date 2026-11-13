@@ -160,7 +160,11 @@ function GroupCardImpl(p: GroupCardProps) {
         const partners = p.pairOf?.(id) ?? [];
         const isSwapFrom = p.swapFrom === id;
         // "Swap with CELINO" rather than the whole "CELINO, ALAN", so the row stays readable.
-        const swapWith = p.swapFromName ? p.swapFromName.split(",")[0] : "";
+        const swapWith = p.swapFromName
+          ? p.swapFromName.includes(",")
+            ? (p.swapFromName.split(",")[0] ?? "")
+            : (p.swapFromName.split(" ").at(-1) ?? "")
+          : "";
         return (
           <div
             key={id}
