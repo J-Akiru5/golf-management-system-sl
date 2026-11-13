@@ -9,6 +9,43 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.46.0] - 2026-11-14
+
+### Added
+- **The scorecard page scans a card or takes a photo of it.** **Scan card** takes one or more photos
+  and **Take photo** opens the camera. The card reader drafts the scores, then the desk chooses
+  **Review now**, **Review later in a batch** or **Discard**. Later scans in the same visit join one
+  waiting batch. Every cell the reader was unsure of is named on the card, an unreadable cell is left
+  blank, and nothing from a photo is marked checked. The photo is not stored. It needs
+  `SCAN_INFERENCE_URL` (and `SCAN_INFERENCE_TOKEN`); without it the page says the reader is not
+  connected.
+- **Tabulators sign in without typing a URL, and can sign out.** A tabulation account (the
+  `scorecard_role` app role or an email in `SCORECARD_TABULATION_EMAILS`) lands on the scorecard after
+  sign-in. The page shows the account, has **Sign out**, and gives club staff a link back to the desk
+  or the staff app. The desk menu links the staff app.
+- **The pairings board can swap and move players.** Swap two players (even between full groups), move
+  or swap a pair or a set together, and use a type-to-edit command box ("swap A with B", "move A to
+  hole 12"). A player's index can be edited from the board: the class updates, the player stays in
+  their group, and a note shows when the class no longer matches.
+- **Live mode on the board.** Board edits publish by themselves after about two seconds as one
+  version, and **Undo last change** steps back one edit. Publishing sends no notifications.
+
+### Fixed
+- **Importing a JSON file no longer fails to save.** The save refused the whole day if any one cell
+  was not 1 to 20 or X, and scan files write blanks as `0`, `null` or `-`, so every later save
+  failed. Blanks are accepted in every spelling and stored as empty text, a cell that cannot be read
+  is blanked and noted on the card, and a real out-of-range score is still refused with the card and
+  hole named. Save errors on the page now show the HTTP code.
+- **One dropped Supabase connection no longer stops saving until the server restarts.** The store
+  forgets a failed bucket check and tries again, and an upload that throws is reported as a store
+  error with a message.
+- **The scorecard buttons say what they do.** **Import JSON** adds cards and downloads nothing;
+  **Export JSON (download)** and **Save, then download a copy** are the two that download;
+  **Replace all from export…** is its own button.
+
+### Migrations
+None.
+
 ## [0.45.0] - 2026-11-13
 
 ### Changed
