@@ -6,6 +6,11 @@ export interface ScorecardAccessResult {
   ok: boolean;
   status: number;
   message: string;
+  /** Who got in: the tabulation team, or club staff using the editor. Absent when refused. */
+  role?: "tabulation" | "staff";
+  email?: string;
+  /** The club role of a staff account, so the page can offer the right way back to the desk. */
+  staffRole?: string;
 }
 
 /**
@@ -51,16 +56,18 @@ export async function requireScorecardAccess(): Promise<ScorecardAccessResult> {
         message: "Sign in with a tabulation account to use the scorecard editor.",
       };
     }
-    if (canUseScorecard({ email: data.user.email, appMetadata: data.user.app_metadata })) {
-      return { ok: true, status: 200, message: "" };
-    }
+    const email = data.user.email ?? undefined;
     const { data: membership } = await client
       .from("club_members")
       .select("role")
       .eq("user_id", data.user.id)
       .limit(1);
-    if (canAdministerScorecard(membership?.[0]?.role ?? "")) {
-      return { ok: true, status: 200, message: "" };
+    const clubRole = membership?.[0]?.role ?? "";
+    if (canAdministerScorecard(clubRole)) {
+      return { ok: true, status: 200, message: "", role: "staff", email, staffRole: clubRole };
+    }
+    if (canUseScorecard({ email: data.user.email, appMetadata: data.user.app_metadata })) {
+      return { ok: true, status: 200, message: "", role: "tabulation", email };
     }
     return {
       ok: false,
