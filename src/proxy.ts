@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { authCookieOptions, REMEMBER_COOKIE, rememberPreference } from "@/lib/auth/cookies";
 import { decide, type Identity } from "@/lib/auth/routes";
 import { currentPlayerId } from "@/lib/player/portal";
+import { canUseScorecard } from "@/lib/scorecards/access";
 import type { Database } from "@/lib/supabase/types";
 
 function carryCookies(source: NextResponse, destination: NextResponse): NextResponse {
@@ -70,6 +71,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       identity = "staff";
       // One membership row gives one role; with several the desk reports the problem itself.
       staffRole = membership?.length === 1 ? (membership[0]?.role ?? null) : null;
+    } else if (canUseScorecard({ email: user.email, appMetadata: user.app_metadata })) {
+      // A tabulation account is not staff and must not be added to club_members; that table's RLS
+      // would expose the desk's player and event data. The scorecard app role, or the explicit
+      // allowlist the scorecard API also honours, is the whole entitlement.
+      identity = "tabulation";
     } else {
       try {
         if (await currentPlayerId(client)) identity = "player";

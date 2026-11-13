@@ -3,10 +3,9 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Avatar } from "@/components/bits";
 import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBottomBar } from "@/components/MobileTabBar";
 import { HeldNotice } from "@/components/public/HeldNotice";
 import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
@@ -51,26 +50,25 @@ export function RosterPage({
     <main className="public public-pairings mobile-bar-space">
       <header className="public-head public-appbar !p-4 sm:!p-5">
         <PublicBackLink label={t("pairings.backHome")} />
-        <div className="public-appbar-row flex flex-wrap items-start justify-between gap-3">
+        <div className="public-appbar-controls flex items-center gap-2">
+          <ThemeToggle compact tone="nav" />
+          <LanguageSwitcher tone="on-forest" />
+          <HelpButton audience="player" screen="pairings" />
+        </div>
+        <div className="appbar-foot">
           <div className="public-appbar-brand flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={144} />
             <span className="leading-tight">
-              <b className="block font-display text-[13px] font-semibold">
-                {t("programme.playersTitle")}
-              </b>
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <div className="public-appbar-controls flex items-center gap-2">
-            <ThemeToggle compact tone="nav" />
-            <LanguageSwitcher tone="on-forest" />
-            <HelpButton audience="player" screen="pairings" />
+          <div className="appbar-title">
+            <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
+              {t("programme.playersTitle")}
+            </h1>
+            <p className="text-on-forest-muted">{t("programme.playersIntro")}</p>
           </div>
         </div>
-        <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
-          {t("programme.playersTitle")}
-        </h1>
-        <p className="text-on-forest-muted">{t("programme.playersIntro")}</p>
       </header>
 
       {advisory && <PublicAdvisoryBanner advisory={advisory} />}
@@ -109,20 +107,14 @@ export function RosterPage({
         <RosterDirectory players={players} />
       )}
 
-      <p className="hint no-print">
-        <Link href="/pairings" className="inline-flex min-h-11 items-center">
-          {t("programme.navPairings")}
-        </Link>{" "}
-        ·{" "}
-        <Link href="/rules" className="inline-flex min-h-11 items-center">
-          {t("programme.navFullRules")}
-        </Link>{" "}
-        ·{" "}
-        <Link href="/" className="inline-flex min-h-11 items-center">
-          {t("pairings.home")}
-        </Link>
-      </p>
-      <PlayerBottomBar />
+      <nav className="site-foot-nav no-print" aria-label="Footer">
+        <Link href="/pairings">{t("programme.navPairings")}</Link>
+        <span aria-hidden="true">·</span>
+        <Link href="/rules">{t("programme.navFullRules")}</Link>
+        <span aria-hidden="true">·</span>
+        <Link href="/">{t("pairings.home")}</Link>
+      </nav>
+      <PublicBottomBar />
     </main>
   );
 }
@@ -154,7 +146,7 @@ function RosterDirectory({ players }: { players: PublicRosterPlayer[] }) {
         <div className="grid gap-2">
           <input
             type="search"
-            className="no-print"
+            className="p-search no-print"
             placeholder={t("programme.findPlayer")}
             aria-label={t("programme.findPlayer")}
             value={query}
@@ -174,7 +166,7 @@ function RosterDirectory({ players }: { players: PublicRosterPlayer[] }) {
         <label className="grid gap-1 text-sm">
           <span className="hint">{t("pairings.filterFlight")}</span>
           <select
-            className="no-print"
+            className="lb-select no-print"
             value={flight}
             onChange={(event) => setFlight(event.target.value)}
             data-testid="roster-flight"
@@ -199,19 +191,18 @@ function RosterDirectory({ players }: { players: PublicRosterPlayer[] }) {
             const href = player.id ? publicTabHref("profile", { player: player.id }) : null;
             const content = (
               <>
-                <span className="who">
-                  <Avatar name={player.name} />
-                  <b className="min-w-0 break-words">{player.name}</b>
-                  {href && <ChevronRight className="ml-auto size-4 shrink-0" aria-hidden="true" />}
+                <span className="player-card-head">
+                  <b className="player-card-name">{player.name}</b>
+                  {href && <ChevronRight className="player-card-arrow" aria-hidden="true" />}
                 </span>
-                <span className="muted text-[13px]">
+                <span className="player-card-meta">
                   {[player.category, player.flight].filter(Boolean).join(" · ") ||
                     t("programme.unflighted")}
                 </span>
                 <dl className="player-facts">
                   <div>
                     <dt>{t("programme.index")}</dt>
-                    <dd>{fmtIndex(player.index)}</dd>
+                    <dd className="player-fact-index">{fmtIndex(player.index)}</dd>
                   </div>
                   {player.homeCourse && (
                     <div>
@@ -220,7 +211,22 @@ function RosterDirectory({ players }: { players: PublicRosterPlayer[] }) {
                     </div>
                   )}
                 </dl>
-                {href && <span className="player-card-cta">{t("programme.viewScores")}</span>}
+                {href && (
+                  <span className="player-card-cta">
+                    {t("programme.viewScores")}
+                    <ChevronRight aria-hidden="true" />
+                  </span>
+                )}
+                <svg
+                  className="player-card-flag"
+                  viewBox="0 0 48 48"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M9 44V4" />
+                  <path d="M9 6c9-4 9 4 18 0 6-2.6 7-3.2 12-4v14c-5 .8-6 1.4-12 4-9 4-9-4-18 0Z" />
+                  <circle cx="23" cy="38" r="1.6" />
+                </svg>
               </>
             );
             return (

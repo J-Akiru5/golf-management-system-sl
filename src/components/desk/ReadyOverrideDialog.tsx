@@ -57,13 +57,19 @@ export function ReadyOverrideDialog({
   newerIndexDate: string | null;
   onSave: (input: OverrideReadyInput) => void;
 }) {
+  // A ready entry is being corrected, so the dialog starts from the index the event uses now. An
+  // entry in review starts from the cut-off record, as before.
+  const editing = registration.status !== "needs_review";
   const [index, setIndex] = useState(
-    cutOffIndex !== null
-      ? String(cutOffIndex)
-      : registration.frozenIndex !== null
-        ? String(registration.frozenIndex)
-        : "",
+    editing && registration.frozenIndex !== null
+      ? String(registration.frozenIndex)
+      : cutOffIndex !== null
+        ? String(cutOffIndex)
+        : registration.frozenIndex !== null
+          ? String(registration.frozenIndex)
+          : "",
   );
+  const [flightTouched, setFlightTouched] = useState(false);
   const [birthdate, setBirthdate] = useState(player.birthdate ?? "");
   const [categoryId, setCategoryId] = useState(registration.categoryId ?? "");
   const [flightId, setFlightId] = useState(registration.flightId ?? "");
@@ -89,7 +95,8 @@ export function ReadyOverrideDialog({
   const adjustmentValid =
     Number.isInteger(adjustmentValue) && Math.abs(adjustmentValue) <= ADJUSTMENT_MAX;
   const adjusted = playing === null ? null : playing + adjustmentValue;
-  const flightOptions = tournament.flights.filter((item) => item.categoryId === categoryId);
+  // Classes are cut over the whole field; the category a flight row hangs off is storage only.
+  const flightOptions = tournament.flights;
   const matchingFlights = useMemo(() => {
     if (indexValue === null || !indexValid || !category || playing === null) return [];
     const value = tournament.config.flightBasis === "index" ? indexValue : playing;
@@ -102,7 +109,13 @@ export function ReadyOverrideDialog({
     tournament.config.flightBasis,
     tournament.flights,
   ]);
-  const flight = flightOptions.find((item) => item.id === flightId) ?? null;
+  // Until the desk picks a flight by hand, a new index moves the player into the one flight it
+  // falls in, so correcting the index also corrects the class.
+  const autoFlight =
+    !flightTouched && matchingFlights.length === 1
+      ? (flightOptions.find((item) => item.id === matchingFlights[0]?.id) ?? null)
+      : null;
+  const flight = autoFlight ?? flightOptions.find((item) => item.id === flightId) ?? null;
   const flaggedReasons =
     registration.reasons.length > 0 ? registration.reasons : (entry.reasons ?? []);
 
@@ -151,7 +164,7 @@ export function ReadyOverrideDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        title="Mark player ready"
+        title={editing ? "Edit index and class" : "Mark player ready"}
         description={`${player.name} · ${tournament.name}`}
         className="w-[min(520px,calc(100vw-24px))]"
       >
@@ -164,10 +177,20 @@ export function ReadyOverrideDialog({
         >
           <div className="notice warn" role="note">
             <p className="m-0 text-[13px]">
-              <b>Record what you know and mark the player ready.</b> A guest with no age, category
-              or flight still plays today: the entry goes into an <b>Unclassified</b> group, and
-              whatever is missing is listed on it so the desk can fill it in later. An NGAP index is
-              used when one is entered.
+              {editing ? (
+                <>
+                  <b>Correct the index this event uses.</b> The playing handicap is worked out again
+                  and the flight follows the new index unless you choose one. Redraw or move the
+                  player on the board if the group should change too.
+                </>
+              ) : (
+                <>
+                  <b>Record what you know and mark the player ready.</b> A guest with no age,
+                  category or flight still plays today: the entry goes into an <b>Unclassified</b>{" "}
+                  group, and whatever is missing is listed on it so the desk can fill it in later.
+                  An NGAP index is used when one is entered.
+                </>
+              )}
             </p>
           </div>
 
@@ -183,7 +206,7 @@ export function ReadyOverrideDialog({
           )}
 
           <label className="field">
-            <span>Handicap index at cut-off</span>
+            <span>{editing ? "Handicap index for this event" : "Handicap index at cut-off"}</span>
             <input
               type="number"
               step="0.1"
@@ -198,7 +221,9 @@ export function ReadyOverrideDialog({
                 ? cutOffDate
                   ? `No NGAP record on or before the cut-off (${cutOffDate}). Leave it blank when there is none yet: the player still plays today.`
                   : "Leave it blank when there is no NGAP record yet. The player still plays today."
-                : `The index the event accepts: the NGAP record dated ${cutOffIndexDate}, the last one on or before the cut-off${cutOffDate ? ` (${cutOffDate})` : ""}.`}
+                : editing
+                  ? `The event uses this index now. The NGAP record on or before the cut-off${cutOffDate ? ` (${cutOffDate})` : ""} says ${cutOffIndex}.`
+                  : `The index the event accepts: the NGAP record dated ${cutOffIndexDate}, the last one on or before the cut-off${cutOffDate ? ` (${cutOffDate})` : ""}.`}
               {newerIndexDate
                 ? ` A later record dated ${newerIndexDate} is not used for this event.`
                 : ""}
@@ -226,10 +251,7 @@ export function ReadyOverrideDialog({
             <span>Category and tee</span>
             <select
               value={categoryId}
-              onChange={(event) => {
-                setCategoryId(event.target.value);
-                setFlightId("");
-              }}
+              onChange={(event) => setCategoryId(event.target.value)}
               aria-label="Category"
             >
               <option value="">Not set yet (Unclassified)</option>
@@ -256,8 +278,11 @@ export function ReadyOverrideDialog({
           <label className="field">
             <span>Flight</span>
             <select
-              value={flightId}
-              onChange={(event) => setFlightId(event.target.value)}
+              value={flight?.id ?? flightId}
+              onChange={(event) => {
+                setFlightTouched(true);
+                setFlightId(event.target.value);
+              }}
               aria-label="Flight"
               disabled={!categoryId}
             >
@@ -330,7 +355,11 @@ export function ReadyOverrideDialog({
               type="text"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              placeholder="Why is this player being marked ready?"
+              placeholder={
+                editing
+                  ? "Why is the index being changed?"
+                  : "Why is this player being marked ready?"
+              }
               aria-label="Override reason"
               required
             />
@@ -346,7 +375,7 @@ export function ReadyOverrideDialog({
             </Button>
             <Button type="submit" variant="primary" disabled={!canSave}>
               <BadgeCheck aria-hidden="true" />
-              Mark ready
+              {editing ? "Save index" : "Mark ready"}
             </Button>
           </div>
         </form>

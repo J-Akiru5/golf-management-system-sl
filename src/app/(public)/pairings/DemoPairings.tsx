@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBottomBar } from "@/components/MobileTabBar";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
 import { HeldNotice } from "@/components/public/HeldNotice";
@@ -435,7 +435,6 @@ export function DemoPairings({
               id="pairings"
               style={{ scrollMarginTop: "calc(7rem + env(safe-area-inset-top, 0px))" }}
             >
-              <h2 className="text-[20px] leading-7">{t("programme.navPairings")}</h2>
               <PairingsView
                 pairings={pairings}
                 headingLevel="section"
@@ -454,25 +453,19 @@ export function DemoPairings({
         </>
       )}
 
-      <p className="hint no-print">
-        {t("pairings.demoFooter")}{" "}
-        <Link href="/" className="inline-flex min-h-11 items-center">
-          {t("pairings.home")}
-        </Link>{" "}
-        ·{" "}
-        <Link href="/roster" className="inline-flex min-h-11 items-center">
-          {t("programme.playersTitle")}
-        </Link>{" "}
-        ·{" "}
-        <Link href="/rules?from=pairings" className="inline-flex min-h-11 items-center">
-          {t("programme.navFullRules")}
-        </Link>{" "}
-        ·{" "}
-        <Link href="/leaderboard" className="inline-flex min-h-11 items-center">
-          {t("programme.navLeaderboard")}
-        </Link>
-      </p>
-      <PlayerBottomBar />
+      <div className="pairings-foot no-print">
+        <p className="pairings-foot-note">{t("pairings.demoFooter")}</p>
+        <nav className="pairings-foot-nav" aria-label={t("feedback.footerLabel")}>
+          <Link href="/">{t("pairings.home")}</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/roster">{t("programme.playersTitle")}</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/rules?from=pairings">{t("programme.navFullRules")}</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
+        </nav>
+      </div>
+      <PublicBottomBar />
     </main>
   );
 }

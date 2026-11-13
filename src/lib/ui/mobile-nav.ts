@@ -113,6 +113,8 @@ export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
     testId: "player-bar-pairings",
   },
   {
+    // The signed-in live board, with the player's own row marked. The public bar carries the
+    // published leaderboard for readers who are not signed in; this one is for a player.
     kind: "link",
     href: "/my/board",
     label: "Board",
@@ -127,6 +129,53 @@ export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
     labelKey: "player.tab.me",
     icon: "player",
     testId: "player-bar-profile",
+  },
+] as const;
+
+/**
+ * The bar on the public pages, for people who are not signed in. It is a different bar with a
+ * different promise: every destination is open, and the first tab is the way back to the club's
+ * front door. The signed-in bar's Home points at /my, which is a login wall for these readers;
+ * that is why this set exists instead of reusing the player one.
+ *
+ *   Club home  the landing page, always one tap away
+ *   Pairings    the published groups
+ *   Players     the published field
+ *   Board       the public leaderboard
+ */
+export const PUBLIC_MOBILE_ITEMS: readonly MobileNavItem[] = [
+  {
+    kind: "link",
+    href: "/",
+    label: "Club home",
+    labelKey: "auth.clubHome",
+    icon: "home",
+    testId: "public-bar-home",
+    exact: true,
+  },
+  {
+    kind: "link",
+    href: "/pairings",
+    label: "Pairings",
+    labelKey: "player.tab.pairings",
+    icon: "list",
+    testId: "public-bar-pairings",
+  },
+  {
+    kind: "link",
+    href: "/roster",
+    label: "Players",
+    labelKey: "programme.playersTitle",
+    icon: "users",
+    testId: "public-bar-players",
+  },
+  {
+    kind: "link",
+    href: "/leaderboard",
+    label: "Board",
+    labelKey: "player.tab.board",
+    icon: "trophy",
+    testId: "public-bar-board",
   },
 ] as const;
 

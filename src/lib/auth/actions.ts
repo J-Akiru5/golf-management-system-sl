@@ -6,6 +6,7 @@ import { REMEMBER_COOKIE, rememberCookieOptions } from "@/lib/auth/cookies";
 import { passwordProblem } from "@/lib/auth/password";
 import { landingFor } from "@/lib/auth/routes";
 import { signInErrorCode } from "@/lib/auth/sign-in-error";
+import { canUseScorecard } from "@/lib/scorecards/access";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDeskMember } from "./member";
@@ -25,23 +26,28 @@ async function siteBase(): Promise<string> {
 }
 
 /**
- * Where this account belongs: the desk for a club member, the player area for a linked player, and
- * the player area for a signed-in account that has not linked its record yet (that page explains
- * the claim step). The proxy makes the same call on every later request.
+ * Where this account belongs: the desk for a club member, the scorecard editor for the tabulation
+ * team, the player area for a linked player, and the player area for a signed-in account that has
+ * not linked its record yet (that page explains the claim step). The proxy makes the same call on
+ * every later request.
  */
 async function homeFor(
   client: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
   next: string,
+  who: { email?: string | null; appMetadata?: Record<string, unknown> | null } = {},
 ): Promise<string> {
+  const target = next === "/" ? null : next;
   try {
     const member = await getDeskMember(client, userId);
-    return landingFor({
-      next: next === "/" ? null : next,
-      identity: "staff",
-      staffRole: member.role,
-    });
+    return landingFor({ next: target, identity: "staff", staffRole: member.role });
   } catch {
+    // The tabulation team is not club staff, so its entitlement is the scorecard app role or the
+    // explicit allowlist. Checking both here keeps the landing page in step with the scorecard's
+    // own access check instead of asking the same account to find the URL itself.
+    if (canUseScorecard(who)) {
+      return landingFor({ next: target, identity: "tabulation" });
+    }
     let linked = false;
     try {
       const { data } = await client.rpc("current_player_id");
@@ -49,10 +55,7 @@ async function homeFor(
     } catch {
       // Before the player portal migration is applied this simply is not a player account.
     }
-    return landingFor({
-      next: next === "/" ? null : next,
-      identity: linked ? "player" : "unlinked",
-    });
+    return landingFor({ next: target, identity: linked ? "player" : "unlinked" });
   }
 }
 
@@ -84,7 +87,12 @@ export async function signInWithPassword(formData: FormData): Promise<void> {
     redirect("/login?error=sign_in_failed");
   }
 
-  redirect(await homeFor(client, data.user.id, safeRedirectPath(formData.get("next"))));
+  redirect(
+    await homeFor(client, data.user.id, safeRedirectPath(formData.get("next")), {
+      email: data.user.email,
+      appMetadata: data.user.app_metadata,
+    }),
+  );
 }
 
 /**

@@ -9,6 +9,77 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-11-13
+
+### Changed
+- **The public pages are redesigned for older, non-technical members.** Names are the largest thing
+  on the page and the avatar circles are gone: pairings are nameplate cards with a serif hole number,
+  a time pill and a small flag motif, and leaderboard rows carry a gold flag with a crown on first
+  place. The pairings masthead reads as one block, with the back control at the top left, the theme,
+  language and help controls at the top right, the brand at the bottom left and the event, shotgun
+  line and date at the bottom right. Tabs are a segmented control, the language picker is a labelled
+  menu instead of a native select, and the advisory keeps its own dismiss control for the rest of the
+  Manila day. Every public page now carries the public bottom bar (Club home, Pairings, Players,
+  Board), the result tags always show their count, and the footer strips are hairlines with 44 px
+  links. The sign-in page replaces the red "Sign in to continue" alert with a calm note and a way
+  back to the pairings. No migration.
+
+## [0.44.1] - 2026-11-13
+
+### Changed
+- **The desk can correct a ready player's index.** The registration desk shows **Edit index** on every
+  entry (**Mark ready** stays for entries in review), and the player page has the same button in the
+  Handicap card. The dialog starts from the index the event uses now, works out the playing handicap
+  again and moves the player to the flight the new index falls in unless the desk picks one. The
+  change is saved as an override with a required reason, so the old frozen record no longer locks the
+  index. The board is not redrawn on its own. No migration.
+
+## [0.44.0] - 2026-11-13
+
+### Added
+- **The scorecard system check includes the pair, group, tee time and playing day.** The field
+  lookup now selects the scorecard's competition day instead of mixing groups from every day;
+  group numbers restart per day. The check shows the system partner, pair number, group, start
+  hole and tee time, and flags AM cards whose system tee is in the PM shotgun. No migration.
+
+## [0.43.1] - 2026-11-13
+
+### Fixed
+- **The scorecard reads the Supabase service key under either Vercel variable name.**
+  `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_SECRET_ROLE_KEY` are both accepted, so the deployed
+  app no longer returns 503 when the dashboard uses the second name.
+- **Tabulator accounts land on `/scorecard/` after sign-in.** A tabulation-only account no longer
+  falls into the player portal's "link your club record" screen.
+- **The downloaded scorecard JSON can be imported by the page.** The export now includes the
+  `bamboo-scores-edit` wrapper instead of the raw payload.
+
+## [0.43.0] - 2026-11-13
+
+### Added
+- **The tabulation team can review Day 1 AM scorecards inside the existing app.** `/scorecard/` loads
+  the saved team copy from the private Supabase `scorecard-documents` bucket, keeps already reviewed
+  cards out of the next batch, and compares class, group, tee and HDCP against the live field. The
+  "Save and download JSON" button saves the team copy and downloads the exact file for the admin to
+  publish. Access is the `tabulation` app role, an optional email allowlist, and club
+  owner/organizer/desk staff. No migration.
+
+## [0.42.1] - 2026-11-13
+
+### Changed
+- **The public player card uses the same paper layout as the leaderboard card.** The table takes the paper palette (green header, light banded rows, hairline edges) instead of the page theme, so the profile card and the card opened from a leaderboard row read as one thing and the card stays legible in the dark theme. The rows, the totals and the pinned hole column are unchanged. No migration.
+
+
+## [0.42.0] - 2026-11-13
+
+### Changed
+- **A pairing card leads with the starting hole, not the tee time.** The hole is now the largest
+  text in the card header and the tee time follows as a smaller muted pill, in comfortable and
+  compact views and on the printed sheet. The hole filter, the session headings and the published
+  times are unchanged. No migration.
+
+
+## [0.41.0] - 2026-11-13
+
 ### Added
 - **The organizer can load their own pairing sheet on the Draw page.** An owner or organizer
   chooses an .xlsx workbook and the worksheet, reviews matched, fuzzy, ambiguous and not found
@@ -81,10 +152,6 @@ Supabase project, because the code and the database are released separately.
   now shows accumulated Gross Stableford points; the card keeps the hole and marks it X.
 
 ### Changed
-- **A pairing card leads with the starting hole, not the tee time.** The hole is now the largest
-  text in the card header and the tee time follows as a smaller muted pill, in comfortable and
-  compact views and on the printed sheet. The hole filter, the session headings and the published
-  times are unchanged. No migration.
 - **The scorecard prints as the paper card.** The desk shows two nine-hole tables with Hole, Par,
   Hcp row, Score and Net pts, OUT/IN totals, and the paper-card footer (Strokes, Holes with a score,
   Playing handicap, Net Stableford, Gross Stableford). The table scrolls inside the card on a phone.
@@ -117,6 +184,40 @@ Supabase project, because the code and the database are released separately.
   Day 1 AM registrations were set to the validated card handicap and class, with the override
   recorded. Migration `20261113000300_tee_holes.sql` adds the per-tee hole table for the next step;
   it is **not applied**.
+
+### Migrations shipping with this release
+
+- `20261111000100_public_photo_token.sql`: **written, not applied.** Run it on its own in the SQL editor.
+- `20261113000100_scorecard_scans.sql`: **written, not applied.** The scan inbox has no screen yet.
+- `20261113000300_tee_holes.sql`: **written, not applied.** The table is created; no code reads it yet.
+
+## [0.40.0] - 2026-11-13
+
+### Added
+- **Both partners' scorecards open from the team leaderboard row.** A Scorecards button shows each
+  partner's frozen card in the paper-card layout (a new reusable `PaperScorecard`). The row shows the
+  team's accumulated Gross Stableford points and each partner's own net and gross points. No
+  migration.
+- **The landing page shows the leaderboard.** After the "For players" section: as of Day N of the
+  event, in Philippine time, with a Provisional or Final badge, the top 5 teams and a link to the
+  full leaderboard. It appears only when the leaderboard is released. No migration.
+
+### Fixed
+- **A pickup no longer blanks a team's gross.** The team row showed `—` for gross, net and to par
+  whenever one partner picked up a hole, and the public card dropped the pickup hole. The team row
+  now shows accumulated Gross Stableford points; the card keeps the hole and marks it X.
+
+### Migrations shipping with this release
+None.
+
+## [0.39.1] - 2026-11-13
+
+### Fixed
+- **Player names read one way and search finds them.** Names are `SURNAME, GIVEN`. Search ignores
+  accents, capitals, punctuation and word order across the desk, registration, staff app and public
+  programme. The player edit form no longer reads `ADORIO, RONNEL` as first name `ADORIO,`. No
+  migration. The live directory was corrected with `scripts/fix-player-names.ts`; published
+  pairings were not touched.
 
 ## [0.39.0] - 2026-11-12
 
@@ -311,7 +412,6 @@ lets a scored round publish without a separate "start scoring" step. Not applied
 ### Removed
 - **"Time to be confirmed" and "Day start time not set" are gone from the public pages.** A time
   that does not exist is not shown, and no time is guessed. No migration.
-
 
 ### Changed
 - `pnpm check` runs typecheck, lint, tests and build in order, and `pnpm check:ui` starts a dev server, runs the browser checks and stops it. CI calls the same two commands, so a local pass and a CI pass mean the same thing.
@@ -903,7 +1003,6 @@ Player mobile/PWA pass, public programme, player scorecard and scorecard correct
   the screen shows its short note until the organizer publishes one; old publications also stay
   summary-only.
 
-
 - **Scorecard corrections (issue #113).** A submitted or approved card has an **Edit** action for
   an owner or organizer. Saving writes a new revision, keeps the old revision in the record, and
   puts the new revision back in the approval queue. The correction reason is required and is
@@ -963,7 +1062,6 @@ Player mobile/PWA pass, public programme, player scorecard and scorecard correct
   still controls whether a new account gets a session immediately. No migration.
 
 
-
 ## [0.26.0] - 2026-10-25
 
 Event branding, calendar and queued email, plus the optional scorecard reader service.
@@ -1016,7 +1114,6 @@ Event branding, calendar and queued email, plus the optional scorecard reader se
   and `stamp_updated_at` from earlier migrations.
 - No other migration ships with this work. The previous migration, `20261039000000`, is recorded as
   applied on 22 Oct 2026.
-
 
 ## [0.25.0] - 2026-10-24
 

@@ -68,6 +68,23 @@ version expects.
 Do not tag a commit that has not been through step 1. Do not move or delete a published tag; ship a
 new patch instead.
 
+### Standing owner authorization (13 Nov 2026)
+
+The owner delegated promotion and tagging to the orchestrating agent for this project. Do not ask
+again before moving `main` with a reviewed, green batch, and do not ask again before tagging it.
+
+The sequence is unchanged: both required checks pass on the release pull request, merge it, run
+`pnpm release:check --tag vX.Y.Z`, then tag the `main` merge commit and push the tag.
+
+```bash
+git fetch origin
+git tag -a vX.Y.Z -m "vX.Y.Z" <main-merge-commit>
+git push origin vX.Y.Z
+```
+
+Nothing else is delegated. Production database migrations still need their own decision. A tag is
+still never moved, deleted or reused, and a red commit is still never tagged.
+
 ## Tags for the versions already built
 
 The history below was reconstructed from the merge log on 18 Oct 2026. The tags are published; follow
