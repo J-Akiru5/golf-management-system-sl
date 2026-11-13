@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/desk";
+import { BoardCommandBar } from "@/components/draw/BoardCommandBar";
 import { DrawTable } from "@/components/draw/DrawTable";
 import { FlightQueuePanel } from "@/components/draw/FlightQueuePanel";
 import { GroupCard } from "@/components/draw/GroupCard";
@@ -62,6 +63,14 @@ export default function DrawPage() {
   const config = tournament?.config ?? null;
 
   const [active, setActive] = useState<{ id: string; via: "pick" | "drag" } | null>(null);
+  // Players ticked with the row checkboxes, in the order they were ticked.
+  const [checked, setChecked] = useState<string[]>([]);
+  // A set swap waiting for its second set: the first set is frozen while the desk ticks the other.
+  const [swapSel, setSwapSel] = useState<{ base: string[]; picks: string[] } | null>(null);
+  // The first player of a two-player swap, waiting for the second.
+  const [swapFirst, setSwapFirst] = useState<string | null>(null);
+  // The group a ticked set is being moved into.
+  const [moveTarget, setMoveTarget] = useState("");
   const [selection, setSelection] = useState<Selection>(null);
   const [tab, setTab] = useState<Tab>("pool");
   // The check list is long, so it lives on its own tab and the groups are visible on opening.
@@ -200,13 +209,26 @@ export default function DrawPage() {
   const blockingCount = issues.filter((i) => i.severity === "blocking").length;
   const warningCount = issues.filter((i) => i.severity === "warning").length;
 
-  // Escape drops whatever is picked up.
+  // Escape drops whatever is picked up, including a swap waiting for its second player.
   useEffect(() => {
-    if (!active) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setActive(null);
+    if (!active && !swapFirst && !swapSel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setActive(null);
+      setSwapFirst(null);
+      setSwapSel(null);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active]);
+  }, [active, swapFirst, swapSel]);
+
+  // Another playing day is another board, so a selection made on the last one cannot stay.
+  useEffect(() => {
+    setChecked([]);
+    setSwapSel(null);
+    setSwapFirst(null);
+    setMoveTarget("");
+  }, [day]);
 
   const revealPanel = () => {
     if (window.matchMedia("(max-width: 1099px)").matches) {
@@ -366,6 +388,115 @@ export default function DrawPage() {
     [active, dispatch, reason],
   );
 
+  // ---- Hand edits of who is in a group: swap two players, move a set, swap two sets ----
+  const nameOf = useCallback(
+    (id: string) => playerById.get(id)?.name ?? "Unknown player",
+    [playerById],
+  );
+  // A swap starts from the Move button's pick or from a row's Swap button, and the second row the
+  // desk presses completes it.
+  const swapFrom = swapFirst ?? (active?.via === "pick" ? active.id : null);
+  const swapFromName = swapFrom ? nameOf(swapFrom) : null;
+
+  const runSwap = useCallback(
+    (a: string, b: string) => {
+      dispatch({ type: "swapPlayers", a, b, reason });
+      setSwapFirst(null);
+      setActive(null);
+      setSelection({ kind: "player", id: b });
+    },
+    [dispatch, reason],
+  );
+
+  const onSwapWith = useCallback(
+    (id: string) => {
+      if (!swapFrom) {
+        setSwapFirst(id);
+        setActive(null);
+        return;
+      }
+      if (swapFrom === id) {
+        setSwapFirst(null);
+        setActive(null);
+        return;
+      }
+      runSwap(swapFrom, id);
+    },
+    [swapFrom, runSwap],
+  );
+
+  const toggleCheck = useCallback(
+    (id: string) => {
+      if (swapSel) {
+        // The first set is frozen; ticks now build the set it is swapped with.
+        setSwapSel((current) => {
+          if (!current || current.base.includes(id)) return current;
+          if (current.picks.includes(id)) {
+            return { ...current, picks: current.picks.filter((other) => other !== id) };
+          }
+          if (current.picks.length >= current.base.length) return current;
+          return { ...current, picks: [...current.picks, id] };
+        });
+        return;
+      }
+      setChecked((ids) => (ids.includes(id) ? ids.filter((other) => other !== id) : [...ids, id]));
+    },
+    [swapSel],
+  );
+
+  const selectSet = useCallback((ids: string[]) => {
+    setSwapSel(null);
+    setChecked((current) => {
+      const next = [...current];
+      for (const id of ids) if (!next.includes(id)) next.push(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setChecked([]);
+    setSwapSel(null);
+    setMoveTarget("");
+  }, []);
+
+  // The other players of a registered pair or team who are on the board. Derived from the entry,
+  // never stored here.
+  const pairPartners = useMemo(() => {
+    const byKey = new Map<string, string[]>();
+    for (const g of draw ?? []) {
+      for (const id of g.playerIds) {
+        const reg = regById.get(id);
+        const key = reg?.pairKey ?? reg?.teamKey;
+        if (!key) continue;
+        byKey.set(key, [...(byKey.get(key) ?? []), id]);
+      }
+    }
+    const map = new Map<string, string[]>();
+    for (const ids of byKey.values()) {
+      for (const id of ids)
+        map.set(
+          id,
+          ids.filter((other) => other !== id),
+        );
+    }
+    return map;
+  }, [draw, regById]);
+  const pairOf = useCallback((id: string) => pairPartners.get(id) ?? [], [pairPartners]);
+
+  const moveChecked = useCallback(
+    (toGroup: number) => {
+      dispatch({ type: "moveSet", playerIds: checked, toGroup, reason });
+      clearSelection();
+    },
+    [checked, dispatch, reason, clearSelection],
+  );
+
+  const swapChecked = useCallback(() => {
+    if (!swapSel) return;
+    dispatch({ type: "swapSets", setA: swapSel.base, setB: swapSel.picks, reason });
+    clearSelection();
+  }, [swapSel, dispatch, reason, clearSelection]);
+
   function makeDraw(preserveLocks: boolean) {
     adapters.router.propose(preserveLocks);
     setConfirm(null);
@@ -435,6 +566,28 @@ export default function DrawPage() {
   const lockedCount = visibleDraw?.filter((g) => g.locked).length ?? 0;
   const manualOverrideIds = new Set(
     overrides.filter((o) => o.kind === "move" && o.playerId).map((o) => o.playerId),
+  );
+  const checkedIds = useMemo(
+    () => new Set(swapSel ? [...swapSel.base, ...swapSel.picks] : checked),
+    [checked, swapSel],
+  );
+  // The command box and the set bars read the day's own board, not the class or session filter on
+  // screen, so a filtered view never hides a name from the desk.
+  const boardGroups = useMemo(() => visibleDraw ?? [], [visibleDraw]);
+  const commandPlayers = useMemo(
+    () =>
+      boardGroups.flatMap((g) =>
+        g.playerIds.map((id) => ({ id, name: playerById.get(id)?.name ?? "Unknown player" })),
+      ),
+    [boardGroups, playerById],
+  );
+  const commandGroups = useMemo(
+    () => boardGroups.map((g) => ({ number: g.number, startHole: g.startHole })),
+    [boardGroups],
+  );
+  const groupsByNumber = useMemo(
+    () => [...boardGroups].sort((a, b) => a.number - b.number),
+    [boardGroups],
   );
 
   if (!tournament || !config) return <NeedsTournament what="The draw" />;
@@ -908,6 +1061,85 @@ export default function DrawPage() {
         </div>
       )}
 
+      {draw && view === "board" && (
+        <>
+          <BoardCommandBar
+            players={commandPlayers}
+            groups={commandGroups}
+            onSwapPlayers={runSwap}
+            onSwapSets={(setA, setB) => dispatch({ type: "swapSets", setA, setB, reason })}
+            onMove={(playerIds, toGroup) =>
+              dispatch({ type: "moveSet", playerIds, toGroup, reason })
+            }
+          />
+
+          {checked.length > 0 && !swapSel && (
+            <div className="card flex flex-wrap items-center gap-x-4 gap-y-2 !py-3" role="status">
+              <span className="text-[13px]">
+                <b>
+                  {checked.length} player{checked.length === 1 ? "" : "s"} selected:
+                </b>{" "}
+                {checked.map((id) => nameOf(id)).join(", ")}
+              </span>
+              <label className="field !gap-1">
+                <span className="overline !text-[10px]">Move {checked.length} to group…</span>
+                <select
+                  value={moveTarget}
+                  onChange={(e) => setMoveTarget(e.target.value)}
+                  className="!w-auto max-w-full text-[16px] md:text-sm"
+                >
+                  <option value="">Choose a group</option>
+                  {groupsByNumber.map((g) => (
+                    <option key={g.number} value={g.number}>
+                      Group {g.number} · {g.playerIds.length} of {groupSize}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="btn"
+                disabled={moveTarget === ""}
+                onClick={() => moveChecked(Number(moveTarget))}
+              >
+                Move {checked.length} to group {moveTarget === "" ? "…" : moveTarget}
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => setSwapSel({ base: checked, picks: [] })}
+              >
+                Swap these {checked.length} with those {checked.length}
+              </button>
+              <button type="button" className="btn ghost" onClick={clearSelection}>
+                Clear
+              </button>
+            </div>
+          )}
+
+          {swapSel && (
+            <div className="card flex flex-wrap items-center gap-x-4 gap-y-2 !py-3" role="status">
+              <span className="text-[13px]">
+                <b>Swapping {swapSel.base.map((id) => nameOf(id)).join(", ")}</b> · tick{" "}
+                {swapSel.base.length} player{swapSel.base.length === 1 ? "" : "s"} to swap them with
+                ({swapSel.picks.length} of {swapSel.base.length} ticked)
+              </span>
+              <button
+                type="button"
+                className="btn"
+                disabled={swapSel.picks.length !== swapSel.base.length}
+                onClick={swapChecked}
+              >
+                Swap them
+              </button>
+              <button type="button" className="btn ghost" onClick={() => setSwapSel(null)}>
+                Cancel
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
       {draw && day !== null && (visibleDraw?.length ?? 0) === 0 && (
         <div className="notice" role="status">
           No group holds a player who chose {chosenDay?.label ?? "this day"} yet. Choose another
@@ -1004,6 +1236,13 @@ export default function DrawPage() {
                         onMoveHere={moveActiveTo}
                         allowDrop={allowDrop}
                         dropOn={dropOn}
+                        checkedIds={checkedIds}
+                        onToggleCheck={toggleCheck}
+                        swapFrom={swapFrom}
+                        swapFromName={swapFromName}
+                        onSwapWith={onSwapWith}
+                        pairOf={pairOf}
+                        onSelectPair={selectSet}
                       />
                     ))}
                   </div>

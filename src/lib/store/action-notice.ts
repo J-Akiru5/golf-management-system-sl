@@ -100,6 +100,39 @@ export function actionNotice(
       };
     }
 
+    case "swapPlayers":
+    case "swapSets": {
+      if (after === before) {
+        return {
+          tone: "bad",
+          title: "Swap refused",
+          detail: "Those players cannot swap groups.",
+        };
+      }
+      const moved = movedPlayers(was?.draw ?? [], board.draw ?? []);
+      return {
+        tone: "ok",
+        title: action.type === "swapSets" ? "Sets swapped" : "Players swapped",
+        detail: `${moved} player${moved === 1 ? "" : "s"} changed group · ${action.reason}`,
+      };
+    }
+
+    case "moveSet": {
+      if (after === before) {
+        return {
+          tone: "bad",
+          title: "Move refused",
+          detail: "That group cannot take these players.",
+        };
+      }
+      const moved = movedPlayers(was?.draw ?? [], board.draw ?? []);
+      return {
+        tone: "ok",
+        title: "Players moved",
+        detail: `${moved} player${moved === 1 ? "" : "s"} changed group · ${action.reason}`,
+      };
+    }
+
     case "setGroupLocked": {
       if (after === before) return null;
       const g = board.draw?.find((x) => x.number === action.group);
