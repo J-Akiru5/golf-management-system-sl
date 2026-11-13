@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.42.1] - 2026-11-13
+
+### Changed
+- **The public player card uses the same paper layout as the leaderboard card.** The table takes the paper palette (green header, light banded rows, hairline edges) instead of the page theme, so the profile card and the card opened from a leaderboard row read as one thing and the card stays legible in the dark theme. The rows, the totals and the pinned hole column are unchanged. No migration.
+
+
 ## [0.42.0] - 2026-11-13
 
 ### Changed
