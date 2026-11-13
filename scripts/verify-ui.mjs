@@ -1194,7 +1194,7 @@ await tapTargets(
   "the public footer links are 44px tap targets",
 );
 await tapTargets(
-  phonePage.locator("main p.hint.no-print a"),
+  phonePage.locator("main .pairings-foot-nav a:visible"),
   "the in-page footer links are 44px tap targets",
 );
 const tournamentTabs = phonePage.locator('nav[aria-label="On this page"]');
