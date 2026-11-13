@@ -81,6 +81,10 @@ Supabase project, because the code and the database are released separately.
   now shows accumulated Gross Stableford points; the card keeps the hole and marks it X.
 
 ### Changed
+- **A pairing card leads with the starting hole, not the tee time.** The hole is now the largest
+  text in the card header and the tee time follows as a smaller muted pill, in comfortable and
+  compact views and on the printed sheet. The hole filter, the session headings and the published
+  times are unchanged. No migration.
 - **The scorecard prints as the paper card.** The desk shows two nine-hole tables with Hole, Par,
   Hcp row, Score and Net pts, OUT/IN totals, and the paper-card footer (Strokes, Holes with a score,
   Playing handicap, Net Stableford, Gross Stableford). The table scrolls inside the card on a phone.
