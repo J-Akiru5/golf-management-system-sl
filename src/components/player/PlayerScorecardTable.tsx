@@ -56,19 +56,26 @@ function NineTable({
   const allPresent = rows.length > 0 && rows.every((hole) => hole !== null);
   const parTotal = allPresent ? rows.reduce((sum, hole) => sum + (hole?.par ?? 0), 0) : null;
 
-  const headCell =
-    "border-b border-line bg-primary px-0 py-2 text-center text-[11px] font-bold text-on-primary tnum sm:text-[12px]";
-  const corner =
-    "sticky left-0 z-20 w-[3.75rem] border-b border-r border-line bg-primary px-1.5 py-2 text-left text-[9px] font-semibold uppercase tracking-wide text-on-primary sm:text-[10px]";
-  const totalHead =
-    "border-b border-l border-line bg-primary px-1 py-2 text-center text-[9px] font-bold uppercase tracking-wide text-on-primary sm:text-[10px]";
+  // The paper card's own colours, the same ones the leaderboard card uses. The light band keeps
+  // dark text in both themes, and the green header keeps white text, so the card still reads when
+  // the page is dark.
+  const band = "bg-[#eef2ef]";
+  const plain = "bg-white";
+  const netBand = "bg-[#dcebe1]";
+  const muted = "text-[#4a5a52]";
+  const edge = "border border-[#b9c4bd]";
+
+  const paperHead = `${edge} bg-[#1f5a3c] font-semibold text-white`;
+  const headCell = `${paperHead} px-0 py-2 text-center text-[11px] tnum sm:text-[12px]`;
+  const corner = `${paperHead} sticky left-0 z-20 w-[3.75rem] px-1.5 py-2 text-left text-[9px] uppercase tracking-wide sm:text-[10px]`;
+  const totalHead = `${paperHead} px-1 py-2 text-center text-[9px] uppercase tracking-wide sm:text-[10px]`;
 
   const labelCell = (tint: string) =>
-    `sticky left-0 z-10 w-[3.75rem] whitespace-nowrap border-b border-r border-line px-1.5 py-1.5 text-left text-[9px] font-semibold uppercase tracking-wide text-ink-muted sm:text-[10px] ${tint}`;
+    `sticky left-0 z-10 w-[3.75rem] whitespace-nowrap ${edge} px-1.5 py-1.5 text-left text-[9px] font-semibold uppercase tracking-wide text-[#14201a] sm:text-[10px] ${tint}`;
   const cell = (tint: string) =>
-    `border-b border-line px-0 py-1.5 text-center text-[11px] tnum text-ink sm:text-[12px] ${tint}`;
+    `${edge} px-0 py-1.5 text-center text-[11px] tnum text-[#14201a] sm:text-[12px] ${tint}`;
   const totalCell = (tint: string) =>
-    `border-b border-l border-line px-1 py-1.5 text-center text-[11px] font-bold tnum text-ink sm:text-[12px] ${tint}`;
+    `${edge} px-1 py-1.5 text-center text-[11px] font-bold tnum text-[#14201a] sm:text-[12px] ${tint}`;
 
   return (
     <div
@@ -104,29 +111,29 @@ function NineTable({
         </thead>
         <tbody>
           <tr>
-            <th scope="row" className={labelCell("bg-surface-sunken")}>
+            <th scope="row" className={labelCell(band)}>
               {t("player.scorecard.par")}
             </th>
             {rows.map((hole, index) => (
-              <td key={from + index} className={cell("bg-surface-sunken font-semibold")}>
+              <td key={from + index} className={cell(`${band} font-semibold`)}>
                 {hole?.par ?? "-"}
               </td>
             ))}
-            <td className={totalCell("bg-surface-sunken")}>{textOrDash(parTotal)}</td>
+            <td className={totalCell(band)}>{textOrDash(parTotal)}</td>
           </tr>
           <tr>
-            <th scope="row" className={labelCell("bg-surface-raised")}>
+            <th scope="row" className={labelCell(plain)}>
               {t("player.scorecard.strokeIndex")}
             </th>
             {rows.map((hole, index) => (
-              <td key={from + index} className={cell("text-ink-muted")}>
+              <td key={from + index} className={cell(muted)}>
                 {hole?.strokeIndex ?? "-"}
               </td>
             ))}
-            <td className={totalCell("bg-surface-sunken")}>-</td>
+            <td className={totalCell(band)}>-</td>
           </tr>
           <tr>
-            <th scope="row" className={labelCell("bg-surface-sunken")}>
+            <th scope="row" className={labelCell(band)}>
               {t("player.scorecard.gross")}
             </th>
             {rows.map((hole, index) => (
@@ -135,24 +142,24 @@ function NineTable({
                 hole={hole}
                 value={hole?.grossStrokes ?? null}
                 t={t}
-                className={cell("bg-surface-sunken font-semibold")}
+                className={cell(`${band} font-semibold`)}
               />
             ))}
-            <td className={totalCell("bg-surface-sunken")}>{textOrDash(totals.grossStrokes)}</td>
+            <td className={totalCell(band)}>{textOrDash(totals.grossStrokes)}</td>
           </tr>
           <tr>
-            <th scope="row" className={labelCell("bg-surface-raised")}>
+            <th scope="row" className={labelCell(plain)}>
               {t("player.scorecard.hcp")}
             </th>
             {rows.map((hole, index) => (
-              <td key={from + index} className={cell("text-ink-muted")}>
+              <td key={from + index} className={cell(muted)}>
                 {hole ? handicapStrokeLabel(hole.handicapStrokes) : "-"}
               </td>
             ))}
-            <td className={totalCell("bg-surface-sunken")}>-</td>
+            <td className={totalCell(band)}>-</td>
           </tr>
           <tr>
-            <th scope="row" className={labelCell("bg-fairway-soft")}>
+            <th scope="row" className={labelCell(netBand)}>
               {t("player.scorecard.net")}
             </th>
             {rows.map((hole, index) => (
@@ -161,34 +168,34 @@ function NineTable({
                 hole={hole}
                 value={hole?.netStrokes ?? null}
                 t={t}
-                className={cell("bg-fairway-soft font-semibold")}
+                className={cell(`${netBand} font-semibold`)}
               />
             ))}
-            <td className={totalCell("bg-fairway-soft")}>{textOrDash(totals.netStrokes)}</td>
+            <td className={totalCell(netBand)}>{textOrDash(totals.netStrokes)}</td>
           </tr>
           <tr>
-            <th scope="row" className={labelCell("bg-surface-raised")}>
+            <th scope="row" className={labelCell(plain)}>
               {t("player.scorecard.grossPoints")}
             </th>
             {rows.map((hole, index) => (
-              <td key={from + index} className={cell("")}>
+              <td key={from + index} className={cell(plain)}>
                 {hole ? hole.grossPoints : "-"}
               </td>
             ))}
-            <td className={totalCell("bg-surface-sunken")}>
+            <td className={totalCell(band)}>
               {totals.holes === 0 ? "-" : textOrDash(totals.grossPoints)}
             </td>
           </tr>
           <tr>
-            <th scope="row" className={labelCell("bg-surface-raised")}>
+            <th scope="row" className={labelCell(plain)}>
               {t("player.scorecard.netPoints")}
             </th>
             {rows.map((hole, index) => (
-              <td key={from + index} className={cell("")}>
+              <td key={from + index} className={cell(plain)}>
                 {hole ? textOrDash(hole.netPoints) : "-"}
               </td>
             ))}
-            <td className={totalCell("bg-surface-sunken")}>{textOrDash(totals.netPoints)}</td>
+            <td className={totalCell(band)}>{textOrDash(totals.netPoints)}</td>
           </tr>
         </tbody>
       </table>
