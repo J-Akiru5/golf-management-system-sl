@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Loader2, Printer, ScanLine } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { CardContextLine } from "@/components/scoring/CardContextLine";
 import { HandicapSummary } from "@/components/scoring/HandicapSummary";
 import { PlayerLink } from "@/components/scoring/PlayerLink";
@@ -64,6 +64,9 @@ export interface ScorecardWorkspaceProps {
   scanConfirmed: boolean;
   onScanConfirmedChange: (value: boolean) => void;
   scanBlocked: boolean;
+  /** Ticked, the submit also approves the card the submit wrote. Always starts unticked. */
+  approveOnSubmit: boolean;
+  onApproveOnSubmitChange: (value: boolean) => void;
   submitNote: string;
   savedNote: string;
   onApplyScan: (apply: ScorecardScanApply) => void;
@@ -107,6 +110,8 @@ export function ScorecardWorkspace({
   scanConfirmed,
   onScanConfirmedChange,
   scanBlocked,
+  approveOnSubmit,
+  onApproveOnSubmitChange,
   submitNote,
   savedNote,
   onApplyScan,
@@ -141,6 +146,16 @@ export function ScorecardWorkspace({
     : players.length < 2
       ? "At least two players are needed"
       : readiness.label;
+
+  // A tick left over from the last card must never approve a different one. The desk drops it when
+  // the player or marker changes, and after every submit.
+  const submitLabel = editingCard
+    ? approveOnSubmit
+      ? "Submit correction and approve"
+      : "Submit correction"
+    : approveOnSubmit
+      ? "Submit and approve"
+      : "Submit card";
 
   const summary = summariseScorecard({
     course: view.course,
@@ -263,10 +278,8 @@ export function ScorecardWorkspace({
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Saving card…
                 </>
-              ) : editingCard ? (
-                "Submit correction"
               ) : (
-                "Submit card"
+                submitLabel
               )}
             </Button>
           </div>
@@ -285,8 +298,10 @@ export function ScorecardWorkspace({
               />
               .
             </b>{" "}
-            Saving writes a new revision; the old one stays in the audit and the new one needs
-            approval.
+            Saving writes a new revision; the old one stays in the audit.
+            {approveOnSubmit
+              ? " The tick above approves the new revision in the same step."
+              : " The new one needs approval."}
           </p>
           <label className="field">
             <span>Correction reason (required)</span>
@@ -377,6 +392,24 @@ export function ScorecardWorkspace({
             ) : (
               <span className="pill info">Entered by hand</span>
             )}
+            {/*
+              On a scanned card the box above already says the card was checked against the photo,
+              so this one only asks for the approval. On a hand-entered card the tick is the check.
+            */}
+            <label className="flex min-h-11 items-center gap-2 text-[12px] lg:min-h-9">
+              <input
+                id="score-approve-on-submit"
+                type="checkbox"
+                checked={approveOnSubmit}
+                onChange={(event) => onApproveOnSubmitChange(event.target.checked)}
+                disabled={busy || submitting}
+              />
+              <span>
+                {scanned
+                  ? "Approve on submit"
+                  : "Checked against the paper card, approve on submit"}
+              </span>
+            </label>
           </div>
         </div>
 

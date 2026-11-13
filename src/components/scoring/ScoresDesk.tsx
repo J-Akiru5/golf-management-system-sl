@@ -46,6 +46,7 @@ import {
   createSubmitGate,
   readCardValues,
 } from "@/lib/scoring/submission";
+import { findSubmittedCard } from "@/lib/scoring/submitted-card";
 import { useDesk } from "@/lib/store/desk-store";
 
 const DEMO_NOTICE =
@@ -106,6 +107,11 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const [savedNote, setSavedNote] = useState("");
   /** A scanned card needs a person to tick that every flag was compared with the photo. */
   const [scanConfirmed, setScanConfirmed] = useState(false);
+  /**
+   * The person has ticked that the card was checked against the paper card, so the submit is the
+   * approval. It never starts ticked and is dropped after every submit.
+   */
+  const [approveOnSubmit, setApproveOnSubmit] = useState(false);
   /**
    * The capture key of a submission that failed, with the card it was for. A retry of the same card
    * reuses it, so a request that reached the database but came back as an error is not written twice.
@@ -195,6 +201,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setScanExtraction(null);
     setScanCaptureKey("");
     setScanConfirmed(false);
+    setApproveOnSubmit(false);
     setSubmitNote("");
     setSavedNote("");
     const first = view.players[0]?.playerId ?? "";
@@ -320,6 +327,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setScanCaptureKey(apply.captureKey);
     setScanReader(reader);
     setScanConfirmed(false);
+    setApproveOnSubmit(false);
     setSubmitNote("");
     setSavedNote("");
     setError(null);
@@ -346,6 +354,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setScanCaptureKey("");
     setScanReader({});
     setScanConfirmed(false);
+    setApproveOnSubmit(false);
     setSubmitNote("");
     setSavedNote("");
     setError(null);
@@ -364,6 +373,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setScanCaptureKey("");
     setScanReader({});
     setScanConfirmed(false);
+    setApproveOnSubmit(false);
     setSubmitNote("");
     setSavedNote("");
     setPendingSubmit(null);
@@ -471,6 +481,11 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         return;
       }
 
+      // The ids on screen before the write are how the card the submit wrote is told apart from the
+      // older revisions the same response carries.
+      const knownIds = new Set((view?.cards ?? []).map((card) => card.id));
+      const approveRequested = approveOnSubmit;
+
       setSubmitting(true);
       const entries = cardValues.entries.map((entry) => ({
         hole: entry.hole,
@@ -517,10 +532,47 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         setEditCaptureKey("");
         setWrittenOnCard("");
         setPendingSubmit(null);
-        setSavedNote(
-          `Card saved for ${playerName || "this player"} and sent for approval. It does not count until it is approved.`,
-        );
-        return next;
+        setApproveOnSubmit(false);
+
+        if (!approveRequested) {
+          setSavedNote(
+            `Card saved for ${playerName || "this player"} and sent for approval. It does not count until it is approved.`,
+          );
+          return next;
+        }
+
+        const savedCard = findSubmittedCard(next.cards, {
+          playerId: targetPlayerId,
+          scorerId: targetScorerId,
+          knownIds,
+        });
+        if (!savedCard) {
+          setSavedNote(
+            "Saved, but not approved: the new card was not in the list. It is on the Review tab.",
+          );
+          return next;
+        }
+
+        try {
+          const approved = await scoring.approveCard(
+            tournamentId,
+            savedCard.id,
+            "Checked against the paper card",
+            day,
+          );
+          setSavedNote(
+            `Card saved and approved for ${playerName || "this player"}. It counts now.`,
+          );
+          return approved;
+        } catch (reason) {
+          // The card is saved. The approval is not rolled back: the card waits on the Review tab,
+          // where the desk can approve it once whatever refused the approval is settled.
+          const message = reason instanceof Error ? reason.message : String(reason);
+          setSavedNote(
+            `Saved, but not approved: ${message.replace(/\.$/, "")}. It is on the Review tab.`,
+          );
+          return next;
+        }
       });
     } finally {
       setSubmitting(false);
@@ -738,7 +790,11 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   correctionReason={correctionReason}
                   onCorrectionReasonChange={setCorrectionReason}
                   onPlayerChange={changePlayer}
-                  onScorerChange={setScorerId}
+                  onScorerChange={(next) => {
+                    setScorerId(next);
+                    // A new marker is a different card to approve, so the tick starts from scratch.
+                    setApproveOnSubmit(false);
+                  }}
                   onStrokeChange={(hole, value) =>
                     setStrokes((current) => ({ ...current, [hole]: value }))
                   }
@@ -749,6 +805,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   scanConfirmed={scanConfirmed}
                   onScanConfirmedChange={setScanConfirmed}
                   scanBlocked={scanBlocked}
+                  approveOnSubmit={approveOnSubmit}
+                  onApproveOnSubmitChange={setApproveOnSubmit}
                   submitNote={submitNote}
                   savedNote={savedNote}
                   onApplyScan={applyScan}
