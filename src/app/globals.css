@@ -8080,14 +8080,43 @@ html[data-textsize="large"] {
     line-height: 1.5;
   }
 
+  /* A real button, not an underlined sentence: a member who does not read small links still has to
+     see that the top ten teams are one tap away. */
   .public-pairings .scores-other {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     justify-self: start;
-    color: var(--gold-ink);
-    font-size: 13px;
+    gap: 8px;
+    min-height: 44px;
+    margin-top: 4px;
+    padding: 0 20px;
+    border: 1.5px solid light-dark(color-mix(in srgb, var(--forest) 26%, #ffffff), #3c5a4b);
+    border-radius: 999px;
+    background: light-dark(#ffffff, #1a231e);
+    color: light-dark(var(--forest), #dceade);
+    font-size: 15px;
     font-weight: 700;
-    text-decoration: underline;
-    text-decoration-thickness: 2px;
-    text-underline-offset: 4px;
+    text-decoration: none;
+    box-shadow: 0 8px 18px -16px rgba(6, 40, 28, 0.9);
+    transition:
+      background-color 140ms,
+      border-color 140ms;
+  }
+
+  .public-pairings .scores-other:hover {
+    border-color: light-dark(var(--forest), #7ea38f);
+    background: light-dark(#eef4ec, #22322a);
+  }
+
+  .public-pairings .scores-other:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .public-pairings .scores-other span {
+    font-size: 17px;
+    line-height: 1;
   }
 
   /* The search box borrows the dropdown's clothes, but not its arrow: nothing opens below it. */
