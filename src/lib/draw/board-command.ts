@@ -31,7 +31,13 @@ export type BoardCommandPlan =
 
 export type BoardCommandResult =
   | { ok: true; plan: BoardCommandPlan; summary: string }
-  | { ok: false; error: string; candidates: BoardPlayer[] };
+  | {
+      ok: false;
+      error: string;
+      candidates: BoardPlayer[];
+      /** The words that fitted more than one player, so a pick can be remembered for them. */
+      query?: string;
+    };
 
 const noCandidates = (error: string): BoardCommandResult => ({ ok: false, error, candidates: [] });
 const listOf = (items: readonly string[]): string =>
@@ -90,6 +96,7 @@ function find(query: string, players: readonly BoardPlayer[]): Found {
     ok: false,
     error: `“${query}” matches ${candidates.length} players. Pick the one you mean.`,
     candidates,
+    query,
   };
 }
 
