@@ -1,7 +1,6 @@
 "use client";
 
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
-import { Avatar } from "@/components/bits";
 import { datedHeading } from "@/lib/data/pairing-day";
 import { type SessionKey, sessionForTime } from "@/lib/data/sessions";
 import type {
@@ -12,7 +11,6 @@ import type {
 } from "@/lib/data/types";
 import { fmtTime, shortDate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
-import { publicPhotoUrl } from "@/lib/photo";
 import { manilaToday } from "@/lib/player/dashboard";
 import { openingPairingDay } from "@/lib/public/pairing-day";
 import { publicTeeTime } from "@/lib/public/public-tee-time";
@@ -58,6 +56,18 @@ function matchesName(name: string, tokens: string[]): boolean {
 
 function groupAnchor(day: number, number: number): string {
   return `pairing-group-${day}-${number}`;
+}
+
+/**
+ * The flight's colour, from its place in the draw. Four tones are enough for the club's flights and
+ * they repeat rather than inventing a fifth: a colour that is never reused would stop being a cue.
+ */
+function flightTone(flights: string[], flight: string): number {
+  // The list carries an empty entry for groups the desk left unflighted; it must not shift the
+  // colours of the flights that do have a name.
+  const named = flights.filter((name) => name !== "");
+  const index = named.indexOf(flight);
+  return index < 0 ? 0 : index % 4;
 }
 
 /** A time as "HH:MM" for ordering, with unconfirmed times last. */
@@ -384,6 +394,7 @@ export function PairingsView({
         id={groupAnchor(dayOf(group), group.number)}
         data-testid="pairing-group"
         data-own={own ? "true" : undefined}
+        data-tone={group.flight === "" ? undefined : flightTone(flights, group.flight)}
         className={`p-card${own ? " is-own" : ""}${own && highlighted ? " is-hit" : ""}`}
       >
         <div className="p-card-top">
@@ -396,19 +407,22 @@ export function PairingsView({
             ))}
           {group.flight !== "" && <span className="p-flight-top">{group.flight}</span>}
           {own && <span className="p-own-chip">{t("pairings.ownGroup")}</span>}
+          <svg className="p-golf-flag" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+            <path d="M9 44V4" />
+            <path d="M9 6c9-4 9 4 18 0 6-2.6 7-3.2 12-4v14c-5 .8-6 1.4-12 4-9 4-9-4-18 0Z" />
+            <circle cx="23" cy="38" r="1.6" />
+          </svg>
         </div>
         <ul className="p-players">
           {group.players.map((player) => {
             const hit = searching && matchesName(player.name, tokens);
             const mine = isYou(player);
-            const photo = publicPhotoUrl(player.photoPath);
             return (
               <li
                 key={`${dayOf(group)}-${group.number}-${player.id ?? player.name}`}
                 className={`p-row${hit ? " is-hit" : ""}`}
                 data-you={mine ? "true" : undefined}
               >
-                <Avatar name={player.name} photo={photo} />
                 <span className="p-row-name">
                   <span className={mine ? "is-you-name" : undefined}>{player.name}</span>
                   {mine && <span className="p-you">{t("pairings.you")}</span>}

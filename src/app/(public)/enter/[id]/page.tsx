@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBottomBar } from "@/components/MobileTabBar";
 import { RegistrationForm } from "@/components/public/RegistrationForm";
 import {
   loadRegistrationForm,
@@ -125,7 +125,7 @@ export default function EnterTournament() {
           }}
         />
       )}
-      <PlayerBottomBar />
+      <PublicBottomBar />
     </main>
   );
 }

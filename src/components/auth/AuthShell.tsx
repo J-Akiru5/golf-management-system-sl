@@ -95,7 +95,7 @@ export function AuthShell({
             </Link>
             <Link
               href="/"
-              className="inline-flex min-h-11 items-center px-1 text-[13px] font-semibold text-ink-muted hover:text-ink"
+              className="inline-flex min-h-11 items-center rounded-full border border-line-strong px-3.5 text-[13px] font-semibold text-ink"
               data-testid="club-home"
             >
               {clubHomeLabel}

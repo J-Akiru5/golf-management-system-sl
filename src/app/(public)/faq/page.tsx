@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBottomBar } from "@/components/MobileTabBar";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { NGAP_FAQ, NGAP_FAQ_CURRENT, NGAP_FAQ_SOURCE } from "@/lib/public/ngap-faq";
@@ -93,14 +93,14 @@ export default function NgapFaqPage() {
         ))}
       </ol>
 
-      <p className="hint no-print">
+      <nav className="site-foot-nav no-print" aria-label="Footer">
         <Link href="/">TEELINE GOLF HOME</Link>
-        {" · "}
+        <span aria-hidden="true">·</span>
         <Link href="/pairings">Player pairings</Link>
-        {" · "}
+        <span aria-hidden="true">·</span>
         <Link href="/rules">Tournament rules</Link>
-      </p>
-      <PlayerBottomBar />
+      </nav>
+      <PublicBottomBar />
     </main>
   );
 }

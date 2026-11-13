@@ -1,6 +1,4 @@
-import { Avatar } from "@/components/bits";
 import type { PublicResultRow } from "@/lib/data/public-results";
-import { publicPhotoUrl } from "@/lib/photo";
 
 /**
  * One published leaderboard. The table is for a wide screen; the card list is
@@ -24,7 +22,6 @@ export function ResultTable({ title, rows }: { title: string; rows: PublicResult
                   {index + 1}
                 </span>
                 <span className="flex min-w-0 flex-1 items-center gap-2">
-                  <Avatar name={row.playerName} photo={publicPhotoUrl(row.photoPath)} />
                   <span className="grid min-w-0">
                     <b className="truncate text-[14px]">{row.playerName}</b>
                     <span className="truncate text-[12px] text-[var(--ink-muted)]">
@@ -59,10 +56,7 @@ export function ResultTable({ title, rows }: { title: string; rows: PublicResult
                   <tr key={`${row.playerId ?? row.playerName}-${index}`}>
                     <td className="num">{index + 1}</td>
                     <td>
-                      <span className="who">
-                        <Avatar name={row.playerName} photo={publicPhotoUrl(row.photoPath)} />
-                        <span>{row.playerName}</span>
-                      </span>
+                      <span>{row.playerName}</span>
                     </td>
                     <td>{row.flightName ?? "—"}</td>
                     <td className="num">{row.points}</td>

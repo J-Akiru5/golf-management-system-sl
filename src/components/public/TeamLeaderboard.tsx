@@ -1,9 +1,9 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { Avatar } from "@/components/bits";
 import { PaperScorecard } from "@/components/public/PaperScorecard";
 import { publicTabHref } from "@/lib/data/public-tabs";
 import type { PublicTeamCards } from "@/lib/data/public-team-cards";
@@ -28,42 +28,6 @@ function rankLabel(team: PublicTeamStanding): string {
 
 function score(value: number | null): string {
   return value === null ? "—" : String(value);
-}
-
-/** One side of a pair card: the role label, the player and a link to their profile. */
-function PairPlayer({
-  label,
-  name,
-  href,
-  figures,
-  className = "",
-}: {
-  label: string;
-  name: string | null;
-  href: string | null;
-  /** The partner's own net and gross points, already formatted. */
-  figures: string;
-  className?: string;
-}) {
-  return (
-    <div className={`grid min-w-0 content-start gap-1.5 p-2 sm:p-3 ${className}`}>
-      <span className="small-h">{label}</span>
-      <span className="flex min-w-0 items-center gap-2">
-        {name ? <Avatar name={name} /> : null}
-        {href ? (
-          <Link
-            href={href}
-            className="min-w-0 break-words font-semibold text-ink no-underline hover:underline"
-          >
-            {name}
-          </Link>
-        ) : (
-          <b className="min-w-0 break-words">{name ?? "—"}</b>
-        )}
-      </span>
-      <span className="text-[12px] text-ink-muted tnum">{figures}</span>
-    </div>
-  );
 }
 
 /**
@@ -94,61 +58,77 @@ function TeamRow({ team, cards }: { team: PublicTeamStanding; cards: PublicTeamC
   ];
 
   return (
-    <li className="overflow-hidden rounded-[14px] border border-line bg-surface-raised">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-sunken px-3 py-2">
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-gold-soft text-[12px] font-bold text-gold-ink">
-          {rankLabel(team)}
+    <li
+      className="lb-team"
+      data-rank={team.rank}
+      data-leader={team.rank === 1 ? "true" : undefined}
+    >
+      <div className="lb-team-head">
+        <span className="lb-rank">{rankLabel(team)}</span>
+        <div className="lb-names">
+          {partners.map((partner) => (
+            <div key={partner.label} className="lb-player">
+              <span className="lb-role">{partner.label}</span>
+              {partner.id ? (
+                <Link href={publicTabHref("profile", { player: partner.id })} className="lb-name">
+                  {partner.name}
+                </Link>
+              ) : (
+                <span className="lb-name">{partner.name ?? "—"}</span>
+              )}
+              <span className="lb-figures tnum">{figures(partner.id)}</span>
+            </div>
+          ))}
+        </div>
+        <span className="lb-points">
+          <b className="tnum">{score(team.netPoints)}</b>
+          <span>{t("programme.leaderboardPts")}</span>
         </span>
-        <span className="pill gold">
+      </div>
+      <div className="lb-meta">
+        <span className="lb-meta-strong">
           {t("programme.leaderboardPair", { number: team.pairNumber ?? "—" })}
         </span>
-        <span className="pill">{team.flightName ?? "—"}</span>
-        {team.categories.length > 0 && <span className="pill">{team.categories.join(" · ")}</span>}
-        <span className="hint">{t("programme.leaderboardTogether")}</span>
-        <span className="ml-auto grid shrink-0 text-right">
-          <b className="text-[20px] leading-5 tnum">{score(team.netPoints)}</b>
-          <span className="text-[11px] text-ink-muted">{t("programme.leaderboardPts")}</span>
+        {team.flightName && <span>{team.flightName}</span>}
+        {team.categories.map((category) => (
+          <span key={category}>{category}</span>
+        ))}
+        <span>
+          {t("programme.leaderboardThru")}{" "}
+          <b className="tnum">
+            {team.holesCounted}/{team.holesTotal || "—"}
+          </b>
+        </span>
+        <span>
+          {t("programme.leaderboardGrossPts")} <b className="tnum">{score(team.grossPoints)}</b>
         </span>
       </div>
-      <div className="grid grid-cols-2">
-        <PairPlayer
-          label={t("programme.leaderboardMember")}
-          name={team.memberName}
-          href={memberId ? publicTabHref("profile", { player: memberId }) : null}
-          figures={figures(memberId)}
-          className="border-r border-line"
-        />
-        <PairPlayer
-          label={t("programme.leaderboardGuest")}
-          name={team.guestName}
-          href={guestId ? publicTabHref("profile", { player: guestId }) : null}
-          figures={figures(guestId)}
-        />
-      </div>
-      <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2">
-        <dl className="m-0 grid grid-cols-2 gap-4 text-[12px]">
-          <div>
-            <dt className="small-h">{t("programme.leaderboardThru")}</dt>
-            <dd className="m-0 font-semibold tnum">
-              {team.holesCounted}/{team.holesTotal || "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="small-h">{t("programme.leaderboardGrossPts")}</dt>
-            <dd className="m-0 font-semibold tnum">{score(team.grossPoints)}</dd>
-          </div>
-        </dl>
+      <div className="lb-team-foot">
         <button
           type="button"
-          className="ml-auto inline-flex min-h-11 items-center justify-center rounded-full border border-line px-4 text-[13px] font-semibold text-ink"
+          className="lb-toggle"
           aria-expanded={open}
           aria-controls={panelId}
           data-testid="team-scorecards-toggle"
           onClick={() => setOpen((current) => !current)}
         >
           {open ? t("programme.leaderboardHideScorecards") : t("programme.leaderboardScorecards")}
+          <ChevronDown aria-hidden="true" className={open ? "is-open" : undefined} />
         </button>
       </div>
+      {team.rank === 1 ? (
+        <svg className="lb-crown" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <path d="M8 34 5.5 15l11 9L24 12l7.5 12 11-9L40 34H8Z" />
+          <path d="M10 40h28" />
+          <circle cx="24" cy="8" r="1.8" />
+        </svg>
+      ) : (
+        <svg className="lb-flag" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <path d="M9 44V4" />
+          <path d="M9 6c9-4 9 4 18 0 6-2.6 7-3.2 12-4v14c-5 .8-6 1.4-12 4-9 4-9-4-18 0Z" />
+          <circle cx="23" cy="38" r="1.6" />
+        </svg>
+      )}
       <div id={panelId} hidden={!open} data-testid="team-scorecards">
         {open && (
           <div className="grid gap-4 border-t border-line px-3 py-3">
@@ -220,14 +200,13 @@ export function TeamLeaderboard({
 
   return (
     <section className="grid gap-3" aria-labelledby="leaderboard-heading">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <h2 id="leaderboard-heading" className="text-[20px] leading-7">
-            {t("programme.leaderboardTitle")}
-          </h2>
-          <p className="hint m-0">{t("programme.leaderboardIntro")}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="lb-head">
+        <p className="lb-event" data-testid="leaderboard-event">
+          {eventName ?? t("programme.leaderboardNoEvent")}
+        </p>
+        <h2 id="leaderboard-heading">{t("programme.leaderboardTitle")}</h2>
+        <p className="lb-intro">{t("programme.leaderboardIntro")}</p>
+        <div className="lb-status">
           {provisional && (
             <span className="pill info">{t("programme.leaderboardProvisional")}</span>
           )}
@@ -241,14 +220,11 @@ export function TeamLeaderboard({
         </div>
       </div>
 
-      <p className="hint m-0" data-testid="leaderboard-event">
-        {eventName ?? t("programme.leaderboardNoEvent")}
-      </p>
-
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="grid gap-1 text-sm">
-          <span className="hint">{t("programme.leaderboardCategory")}</span>
+        <label className="lb-filter">
+          <span className="lb-filter-label">{t("programme.leaderboardCategory")}</span>
           <select
+            className="lb-select"
             value={filters.category ?? ""}
             onChange={(event) => applyFilters({ ...filters, category: event.target.value })}
             data-testid="leaderboard-category"
@@ -261,9 +237,10 @@ export function TeamLeaderboard({
             ))}
           </select>
         </label>
-        <label className="grid gap-1 text-sm">
-          <span className="hint">{t("programme.leaderboardClass")}</span>
+        <label className="lb-filter">
+          <span className="lb-filter-label">{t("programme.leaderboardClass")}</span>
           <select
+            className="lb-select"
             value={filters.flight ?? ""}
             onChange={(event) => applyFilters({ ...filters, flight: event.target.value })}
             data-testid="leaderboard-flight"

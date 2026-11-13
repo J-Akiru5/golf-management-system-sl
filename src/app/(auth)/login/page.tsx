@@ -128,7 +128,14 @@ export default async function LoginPage({
           </div>
 
           <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-10 -mx-1 grid gap-2 rounded-xl bg-surface-raised/90 px-1 py-1.5 backdrop-blur-sm sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-            {error && (
+            {/* Asked to sign in is not an error: the guard sends readers here from behind a page
+                that needs an account, and they should read that as a calm note, not an alarm. */}
+            {error && params.error === "sign_in_required" && (
+              <p className="notice" role="status">
+                {error}
+              </p>
+            )}
+            {error && params.error !== "sign_in_required" && (
               <p className="notice bad" role="alert">
                 {error}
               </p>
@@ -177,6 +184,12 @@ export default async function LoginPage({
             {t("auth.createAccount")}
           </Link>
         </p>
+
+        {/* The way out, in a button: someone who landed here by accident should never have to
+            hunt for a small link to leave. */}
+        <Link href="/pairings" className="btn ghost w-full" style={{ minHeight: 48 }}>
+          {t("auth.openPairings")}
+        </Link>
       </div>
 
       {!configured && (
@@ -189,12 +202,15 @@ export default async function LoginPage({
         </p>
       )}
 
-      <p className="hint text-center">
-        By Syntaxure Labs.{" "}
-        <Link href="/" className="font-semibold underline underline-offset-2">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-line pt-5 text-center text-[14px] text-ink-muted">
+        <span>By Syntaxure Labs.</span>
+        <Link
+          href="/"
+          className="inline-flex min-h-11 items-center rounded-full border border-line-strong px-4 font-semibold text-forest no-underline hover:bg-surface-sunken"
+        >
           {t("auth.clubHome")}
         </Link>
-      </p>
+      </div>
     </AuthShell>
   );
 }
