@@ -267,6 +267,7 @@ lets a scored round publish without a separate "start scoring" step. Not applied
 - `pnpm check` runs typecheck, lint, tests and build in order, and `pnpm check:ui` starts a dev server, runs the browser checks and stops it. CI calls the same two commands, so a local pass and a CI pass mean the same thing.
 - `pnpm release:check` compares `package.json`, `VERSION`, `CHANGELOG.md` and the tag before a release is tagged.
 - `plan/policy.yaml` now records the deployment allowlist that `vercel.json` enforces: `main` and `staging`.
+- `20261108004000_public_leaderboard_sides.sql` is retired as a recorded no-op. The pair `side` field it added already ships in `20261110000100_public_release_enforcement.sql`, and keeping the old body at an earlier version would let a future `supabase db push` replace the guarded leaderboard with an ungated one. `supabase/checks/2026-11-11-applied-state.sql` is the read-only check for the live ledger and the two contested 8 November migrations.
 
 ## [0.33.0] - 2026-11-11
 
