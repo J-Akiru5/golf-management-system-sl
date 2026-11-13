@@ -33,13 +33,14 @@ describe("canUseScorecard", () => {
 });
 
 describe("canAdministerScorecard", () => {
-  it("lets the owner and organizer review the handoff", () => {
+  it("lets owners, organizers and desk staff use the scorecard", () => {
     expect(canAdministerScorecard("owner")).toBe(true);
     expect(canAdministerScorecard("organizer")).toBe(true);
+    expect(canAdministerScorecard("desk")).toBe(true);
   });
 
-  it("keeps desk volunteers out of the tabulation handoff", () => {
-    expect(canAdministerScorecard("desk")).toBe(false);
+  it("keeps player accounts out of the tabulation handoff", () => {
     expect(canAdministerScorecard("player")).toBe(false);
+    expect(canAdministerScorecard("")).toBe(false);
   });
 });
