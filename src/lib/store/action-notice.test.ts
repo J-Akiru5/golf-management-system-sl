@@ -96,6 +96,51 @@ describe("actionNotice", () => {
     expect(n?.title).toBe("Move refused");
   });
 
+  it("names a swap and a set move, and says when either is refused", () => {
+    const start = generated();
+    const draw = drawOf(start);
+    const first = draw[0];
+    const second = draw[1];
+    if (!first || !second) throw new Error("Expected two groups");
+    const a = first.playerIds[0];
+    const b = second.playerIds[0];
+    if (!a || !b) throw new Error("Expected a player in each group");
+
+    const swapped = notice(start, {
+      type: "swapPlayers",
+      a,
+      b,
+      reason: "Organizer request",
+    });
+    expect(swapped?.title).toBe("Players swapped");
+    expect(swapped?.detail).toContain("2 players changed group");
+
+    const setsSwapped = notice(start, {
+      type: "swapSets",
+      setA: first.playerIds.slice(0, 2),
+      setB: second.playerIds.slice(0, 2),
+      reason: "Organizer request",
+    });
+    expect(setsSwapped?.title).toBe("Sets swapped");
+
+    expect(
+      notice(start, {
+        type: "swapPlayers",
+        a,
+        b: "nobody",
+        reason: "Organizer request",
+      })?.title,
+    ).toBe("Swap refused");
+
+    const moved = notice(start, {
+      type: "moveSet",
+      playerIds: [a, b],
+      toGroup: 99,
+      reason: "Organizer request",
+    });
+    expect(moved?.title).toBe("Move refused");
+  });
+
   it("reports a lock and an unlock", () => {
     const start = generated();
     const group = drawOf(start)[0];
