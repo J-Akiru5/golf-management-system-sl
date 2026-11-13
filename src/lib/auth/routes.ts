@@ -127,7 +127,8 @@ export function landingFor(input: {
   const area = safe === "" ? "public" : areaOf(safe.split("?")[0] ?? safe);
 
   if (identity === "staff") {
-    if (safe !== "" && area === "staff") return safe;
+    const scorecard = safe === "/scorecard" || safe.startsWith("/scorecard/");
+    if (safe !== "" && (area === "staff" || scorecard)) return safe;
     // Owners and organizers run the event from the control room; a desk account is a volunteer
     // whose job is the staff app on a phone.
     return input.staffRole === "desk" ? "/staff" : "/admin";
