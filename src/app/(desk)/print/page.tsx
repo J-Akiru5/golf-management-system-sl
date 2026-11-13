@@ -791,6 +791,7 @@ export default function PrintCenter() {
                   <StartSheet
                     key={board.day}
                     title={`Start sheet · ${label}`}
+                    eventName={tournament.name}
                     subtitle={`${tournament.name} · ${label} · ${fmtDateLabel(tournament.dates)} · ${
                       shotgun ? "Shotgun start" : "Two-tee start"
                     } · ${board.groups.length} groups`}
@@ -804,6 +805,7 @@ export default function PrintCenter() {
           ) : (
             <StartSheet
               title="Start sheet"
+              eventName={tournament.name}
               subtitle={subtitle}
               groups={printGroups}
               startFormat={tournament.config.startFormat}

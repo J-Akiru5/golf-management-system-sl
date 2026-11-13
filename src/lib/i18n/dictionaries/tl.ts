@@ -402,6 +402,36 @@ export const tl: Dictionary = {
     leaderboardNotDeployed:
       "Hindi pa available ang cumulative team leaderboard hanggang maia-apply ang database update. Ipinapakita ang pinakahuling na-publish na round.",
     leaderboardFailed: "Hindi ma-load ang leaderboard. Subukan muli mamaya.",
+    leaderboardOnlyTop:
+      "Hanggang top 10 teams lang ang talahanayan sa itaas. Ang iskor ng bawat manlalaro, sa lahat ng araw, ay nasa Lahat ng iskor.",
+    navScores: "LAHAT NG ISKOR",
+    scoresTitle: "Lahat ng iskor",
+    scoresIntro:
+      "Bawat manlalaro na may nailathalang card. Pumili ng araw, umaga o hapon, o hanapin ang pangalan mo.",
+    scoresSeeAll: "Tingnan lahat ng iskor",
+    scoresSeeTeams: "Top 10 teams na lang",
+    scoresDayLabel: "Araw",
+    scoresAllDays: "Lahat ng araw",
+    scoresDay: "Araw {day}",
+    scoresSessionLabel: "Oras",
+    scoresAllSessions: "Lahat",
+    scoresMorning: "Umaga",
+    scoresAfternoon: "Hapon",
+    scoresFind: "Hanapin ang pangalan mo",
+    scoresShowing: "Ipinapakita ang {shown} sa {total} na manlalaro",
+    scoresRounds: "{count} rounds",
+    scoresMeta: "Gross {gross} · Net {net} · Thru {thru}",
+    scoresNoSession:
+      "Lalabas ang umaga at hapon kapag nailathala na ng mga organizer ang pairings.",
+    scoresWithoutSession:
+      "{count} manlalaro ang walang oras ng simula sa araw na ito, kaya wala sila sa listahang ito.",
+    scoresEmptyTitle: "Wala pang nailathalang iskor",
+    scoresEmptyBody: "Nagpapalathala ang organizer ng round pagkatapos ma-check ang mga iskor.",
+    scoresNoMatch: "Walang manlalaro na tumutugma sa pangalan",
+    scoresUnavailable:
+      "Hindi pa available ang lahat ng iskor hanggang ma-apply ang database update. Gumagana pa rin ang team leaderboard.",
+    scoresSource:
+      "Nailathalang iskor lang. Nagpapalathala ang mga organizer ng round pagkatapos ma-check ang mga card.",
     rulesTitle: "Mga patakaran sa laro",
     rulesIntro: "Mula sa mga organizer.",
     chooseDay: "Pumili ng araw",

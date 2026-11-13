@@ -1,0 +1,43 @@
+name: "Complaint: schedule"
+description: A player disputes a tee time, starting hole, group or playing day.
+title: "complaint(schedule): "
+labels: ["complaint", "complaint:schedule"]
+body:
+  - type: markdown
+    attributes:
+      value: "While this repository is public, write the pair number or player ID only. No names, no contact details."
+  - type: input
+    id: who
+    attributes:
+      label: Player or pair reference
+      description: Pair number or player ID.
+    validations:
+      required: true
+  - type: input
+    id: when
+    attributes:
+      label: Day and session
+      placeholder: "Day 3 PM"
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: What is claimed
+      description: Where the system puts them now, and where they say they should be (hole, time, group or day).
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: The tee-off sheet or the organizer's instruction. Say where it can be seen.
+  - type: dropdown
+    id: state
+    attributes:
+      label: Already changed in the system?
+      options:
+        - "No, waiting for a decision"
+        - "Yes, changed first and to be checked here"
+    validations:
+      required: true
