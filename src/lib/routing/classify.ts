@@ -60,6 +60,32 @@ export function applyTeamClasses(
   }
   for (const members of teams.values()) {
     if (members.length < 2) continue;
+    // A validated card class is the desk's decision. Do not re-cut the pair on the index average.
+    const stored = members.filter((member) => member.classSource === "stored");
+    if (stored.length > 0) {
+      const classes = [
+        ...new Set(
+          stored
+            .map((member) => member.flightId)
+            .filter((id): id is string => id !== null && id !== undefined),
+        ),
+      ];
+      if (classes.length === 1) {
+        for (const member of members) {
+          if (member.flightId !== classes[0]) {
+            member.flightId = classes[0] as string;
+            member.reasons.push("Class follows the pair's stored card class.");
+          }
+        }
+        continue;
+      }
+      if (classes.length > 1) {
+        for (const member of members) {
+          member.reasons.push("The pair's stored card classes differ; the desk must choose one.");
+        }
+        continue;
+      }
+    }
     // An index above the event maximum counts as the maximum, the same cap the single-player draw uses.
     const value = averageIndex(
       members.map((member) =>

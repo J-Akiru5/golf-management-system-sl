@@ -17,6 +17,7 @@ import type {
   TournamentRegistration,
 } from "@/lib/data/types";
 import { displayName } from "@/lib/format";
+import { formatName, parseName } from "@/lib/names";
 import type { CategoryRule, FlightRule, TournamentConfig } from "@/lib/routing";
 import type {
   CaddieRow,
@@ -30,15 +31,19 @@ import type {
   TournamentRow,
 } from "@/lib/supabase/types";
 
-/** "Maria Clara Santos" -> first "Maria Clara", last "Santos". */
+/**
+ * "ADORIO, RONNEL" -> first "RONNEL", last "ADORIO". A name without a comma is read the old way,
+ * last word as the surname: "Maria Clara Santos" -> first "Maria Clara", last "Santos".
+ */
 export function splitName(fullName: string): { firstName: string; lastName: string } {
-  const parts = fullName.trim().split(/\s+/);
-  if (parts.length < 2) return { firstName: parts[0] ?? "", lastName: "" };
-  return { firstName: parts.slice(0, -1).join(" "), lastName: parts.at(-1) ?? "" };
+  const parsed = parseName(fullName);
+  if (!parsed.certain && parsed.given === "") return { firstName: parsed.surname, lastName: "" };
+  return { firstName: parsed.given, lastName: parsed.surname };
 }
 
+/** The stored form, "SURNAME, GIVEN". */
 export function joinName(firstName: string, lastName: string): string {
-  return `${firstName.trim()} ${lastName.trim()}`.trim();
+  return formatName(firstName, lastName);
 }
 
 // Row -> domain ---------------------------------------------------------------------------------

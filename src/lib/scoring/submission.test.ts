@@ -51,6 +51,16 @@ describe("cardSignature", () => {
       cardSignature([{ hole: 1, strokes: 4 }]),
     );
   });
+
+  it("tells a pick-up from a blank cell and from any number", () => {
+    const pickup = cardSignature([{ hole: 1, strokes: null, pickedUp: true }]);
+
+    expect(pickup).not.toBe(cardSignature([{ hole: 1, strokes: null }]));
+    expect(pickup).not.toBe(cardSignature([{ hole: 1, strokes: 0 }]));
+    expect(pickup).not.toBe(cardSignature([{ hole: 1, strokes: 4 }]));
+    // A number beside a pick-up flag is still a pick-up.
+    expect(cardSignature([{ hole: 1, strokes: 4, pickedUp: true }])).toBe(pickup);
+  });
 });
 
 describe("checkCardSubmission", () => {
@@ -137,6 +147,27 @@ describe("checkCardSubmission", () => {
 
     expect(verdict.kind).toBe("new");
   });
+
+  it("treats a card that differs only by a pick-up as a correction", () => {
+    const withPickup = [{ hole: 1, strokes: null, pickedUp: true }, ...entries().slice(1)];
+    const verdict = checkCardSubmission({ cards: [card()], ...base, entries: withPickup });
+
+    expect(verdict.kind).toBe("needs_correction");
+  });
+
+  it("recognises the same pick-up card already in from the same marker", () => {
+    const withPickup = [{ hole: 1, strokes: null, pickedUp: true }, ...entries().slice(1)];
+    const stored = card({
+      entries: withPickup.map((entry) => ({
+        ...entry,
+        confidence: null,
+        manuallyConfirmed: true,
+      })),
+    });
+
+    const verdict = checkCardSubmission({ cards: [stored], ...base, entries: withPickup });
+    expect(verdict.kind).toBe("repeat");
+  });
 });
 
 describe("createSubmitGate", () => {
@@ -177,5 +208,23 @@ describe("readCardValues", () => {
 
   it("reports nothing for a complete card", () => {
     expect(readCardValues(holes, { 1: "4", 2: "5", 3: "3" }).problems).toEqual([]);
+  });
+
+  it("reads X, x and a padded X as a pick-up with no problem", () => {
+    const { entries, problems } = readCardValues(holes, { 1: "X", 2: "x", 3: " X " });
+
+    expect(problems).toEqual([]);
+    expect(entries).toEqual([
+      { hole: 1, strokes: null, pickedUp: true },
+      { hole: 2, strokes: null, pickedUp: true },
+      { hole: 3, strokes: null, pickedUp: true },
+    ]);
+  });
+
+  it("still refuses other text, zero and a dash", () => {
+    const { entries, problems } = readCardValues(holes, { 1: "XX", 2: "0", 3: "-" });
+
+    expect(problems).toHaveLength(3);
+    expect(entries.every((entry) => entry.pickedUp !== true)).toBe(true);
   });
 });

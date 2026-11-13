@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n/t";
-import { mapPortalState, paymentLabel, startLabel, statusLabel } from "./portal";
+import { mapPortalState, mapScorecard, paymentLabel, startLabel, statusLabel } from "./portal";
 
 /** The jsonb the database function returns for a linked player with one entry. */
 const raw = {
@@ -183,6 +183,163 @@ describe("mapPortalState", () => {
     });
   });
 
+  it("keeps a pick-up hole as X and totals only the holes that were played", () => {
+    const state = mapPortalState({
+      linked: true,
+      player: { id: "p1", name: "Ana" },
+      entries: [
+        {
+          tournamentId: "t1",
+          scorecards: [
+            {
+              playerId: "p1",
+              roundId: "r1",
+              holesTotal: 3,
+              holesCounted: 3,
+              grossStrokes: null,
+              netStrokes: null,
+              grossPoints: 3,
+              netPoints: 5,
+              holes: [
+                {
+                  hole: 1,
+                  par: 4,
+                  strokeIndex: 1,
+                  grossStrokes: 5,
+                  handicapStrokes: 1,
+                  netStrokes: 4,
+                  grossPoints: 1,
+                  netPoints: 2,
+                },
+                {
+                  hole: 2,
+                  par: 3,
+                  strokeIndex: 2,
+                  grossStrokes: null,
+                  handicapStrokes: 1,
+                  netStrokes: null,
+                  grossPoints: 0,
+                  netPoints: 0,
+                  pickedUp: true,
+                },
+                {
+                  hole: 3,
+                  par: 4,
+                  strokeIndex: 3,
+                  grossStrokes: 4,
+                  handicapStrokes: 1,
+                  netStrokes: 3,
+                  grossPoints: 2,
+                  netPoints: 3,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const card = state.entries[0]?.scorecards[0];
+    expect(card).not.toBeNull();
+    expect(card?.holes.map((hole) => hole.hole)).toEqual([1, 2, 3]);
+    expect(card?.holes[1]).toMatchObject({
+      hole: 2,
+      par: 3,
+      strokeIndex: 2,
+      grossStrokes: 0,
+      netStrokes: null,
+      grossPoints: 0,
+      netPoints: 0,
+      pickedUp: true,
+    });
+    expect(card?.grossStrokes).toBe(9);
+    expect(card?.netStrokes).toBeNull();
+    expect(card?.grossPoints).toBe(3);
+    expect(card?.netPoints).toBe(5);
+    expect(card?.holesCounted).toBe(3);
+  });
+
+  it("keeps an all-pick-up card instead of dropping it", () => {
+    const state = mapPortalState({
+      linked: true,
+      player: { id: "p1", name: "Ana" },
+      entries: [
+        {
+          tournamentId: "t1",
+          scorecards: [
+            {
+              roundId: "r2",
+              holesTotal: 2,
+              holesCounted: 2,
+              grossStrokes: null,
+              netStrokes: null,
+              grossPoints: 0,
+              netPoints: 0,
+              holes: [1, 2].map((hole) => ({
+                hole,
+                par: 4,
+                strokeIndex: hole,
+                grossStrokes: null,
+                handicapStrokes: 0,
+                netStrokes: null,
+                grossPoints: 0,
+                netPoints: 0,
+                pickedUp: true,
+              })),
+            },
+          ],
+        },
+      ],
+    });
+
+    const card = state.entries[0]?.scorecards[0];
+    expect(card).not.toBeNull();
+    expect(card?.holes).toHaveLength(2);
+    expect(card?.holes.every((hole) => hole.pickedUp)).toBe(true);
+    expect(card?.grossStrokes).toBe(0);
+    expect(card?.grossPoints).toBe(0);
+  });
+
+  it("does not invent a partial card total when the snapshot has none", () => {
+    const state = mapPortalState({
+      linked: true,
+      player: { id: "p1", name: "Ana" },
+      entries: [
+        {
+          tournamentId: "t1",
+          scorecards: [
+            {
+              roundId: "r3",
+              holesTotal: 18,
+              holesCounted: 2,
+              grossStrokes: null,
+              netStrokes: null,
+              grossPoints: null,
+              netPoints: null,
+              holes: [1, 2].map((hole) => ({
+                hole,
+                par: 4,
+                strokeIndex: hole,
+                grossStrokes: 4,
+                handicapStrokes: 0,
+                netStrokes: 4,
+                grossPoints: 2,
+                netPoints: 2,
+              })),
+            },
+          ],
+        },
+      ],
+    });
+
+    const card = state.entries[0]?.scorecards[0];
+    expect(card).not.toBeNull();
+    expect(card?.holes).toHaveLength(2);
+    expect(card?.grossStrokes).toBeNull();
+    expect(card?.grossPoints).toBeNull();
+    expect(card?.netPoints).toBeNull();
+  });
+
   it("drops a malformed card and keeps the rest of the entry", () => {
     const state = mapPortalState({
       linked: true,
@@ -237,5 +394,60 @@ describe("portal wording", () => {
       start: { dayNumber: 1, hole: 1, wave: null, time: "12:00" },
     };
     expect(startLabel(twoTee, t, (time) => time)).toBe("Tee 1 · 12:00");
+  });
+});
+
+describe("mapScorecard pickups", () => {
+  const hole = (n: number, over: Record<string, unknown> = {}) => ({
+    hole: n,
+    par: 4,
+    strokeIndex: n,
+    grossStrokes: 5,
+    handicapStrokes: 1,
+    netStrokes: 4,
+    grossPoints: 1,
+    netPoints: 2,
+    ...over,
+  });
+
+  it("keeps a hole the player picked up on, marked, with no stroke count", () => {
+    const card = mapScorecard({
+      roundId: "r1",
+      holesTotal: 3,
+      holesCounted: 3,
+      grossStrokes: null,
+      netStrokes: null,
+      grossPoints: 2,
+      netPoints: 4,
+      holes: [
+        hole(1),
+        hole(2, {
+          pickedUp: true,
+          grossStrokes: null,
+          netStrokes: null,
+          grossPoints: 0,
+          netPoints: 0,
+        }),
+        hole(3),
+      ],
+    });
+    expect(card?.holes).toHaveLength(3);
+    expect(card?.holes[1]).toMatchObject({
+      hole: 2,
+      pickedUp: true,
+      grossStrokes: 0,
+      netPoints: 0,
+    });
+    expect(card?.pickups).toBe(1);
+    expect(card?.grossStrokes).toBe(10);
+  });
+
+  it("still drops a hole with no strokes that was not a pickup", () => {
+    const card = mapScorecard({
+      roundId: "r1",
+      holes: [hole(1), hole(2, { grossStrokes: null })],
+    });
+    expect(card?.holes).toHaveLength(1);
+    expect(card?.pickups).toBeUndefined();
   });
 });

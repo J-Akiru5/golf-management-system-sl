@@ -194,6 +194,94 @@ describe("net Stableford", () => {
   });
 });
 
+describe("pick-ups", () => {
+  function withPickups(...holes: number[]) {
+    return parScores().map((score) =>
+      holes.includes(score.hole) ? { ...score, grossStrokes: 0, pickedUp: true } : score,
+    );
+  }
+
+  it("scores 0 points on a pick-up and counts it as a completed hole", () => {
+    const result = scoreRound({
+      course: FLAT_COURSE,
+      scores: withPickups(5, 12),
+      handicap: null,
+    });
+
+    if (!result.ok) throw new Error("Expected the round to score.");
+    expect(result.result.holesCompleted).toBe(18);
+    expect(result.result.pickups).toBe(2);
+    expect(result.result.grossPoints).toBe(32);
+    // Holes 5 (par 4) and 12 (par 3) add no strokes.
+    expect(result.result.grossStrokes).toBe(65);
+    expect(result.result.netStatus).toBe("unavailable");
+    expect(result.result.netPoints).toBeNull();
+
+    const pickup = result.result.holes.find((hole) => hole.hole === 5);
+    expect(pickup).toMatchObject({
+      pickedUp: true,
+      grossStrokes: 0,
+      netStrokes: null,
+      grossPoints: 0,
+      netPoints: null,
+    });
+  });
+
+  it("gives a pick-up 0 net points when a handicap snapshot exists", () => {
+    const result = scoreRound({
+      course: FLAT_COURSE,
+      scores: withPickups(5, 12),
+      handicap: snapshotFor(18),
+    });
+
+    if (!result.ok) throw new Error("Expected the round to score.");
+    expect(result.result.netStatus).toBe("calculated");
+    expect(result.result.pickups).toBe(2);
+    expect(result.result.grossPoints).toBe(32);
+    expect(result.result.grossStrokes).toBe(65);
+    // 18 handicap: 3 points on each of the other 16 holes, plus 0 on each pick-up.
+    expect(result.result.netPoints).toBe(48);
+    // Those 16 holes received one stroke each; the pick-up adds no strokes.
+    expect(result.result.netStrokes).toBe(49);
+
+    const pickup = result.result.holes.find((hole) => hole.hole === 5);
+    expect(pickup).toMatchObject({
+      pickedUp: true,
+      grossStrokes: 0,
+      netStrokes: null,
+      grossPoints: 0,
+      netPoints: 0,
+    });
+  });
+
+  it("gives exactly the old result when no hole is a pick-up", () => {
+    const plain = scoreRound({ course: FLAT_COURSE, scores: parScores(), handicap: null });
+    const marked = scoreRound({
+      course: FLAT_COURSE,
+      scores: parScores().map((score) => ({ ...score, pickedUp: false })),
+      handicap: null,
+    });
+
+    if (!plain.ok || !marked.ok) throw new Error("Expected both rounds to score.");
+    expect(marked.result).toEqual(plain.result);
+    expect(plain.result.pickups).toBe(0);
+    expect(plain.result.grossStrokes).toBe(72);
+    expect(plain.result.grossPoints).toBe(36);
+  });
+
+  it("does not run the stroke limits on a pick-up", () => {
+    const result = scoreRound({
+      course: FLAT_COURSE,
+      scores: parScores().map((score) =>
+        score.hole === 1 ? { ...score, grossStrokes: 0, pickedUp: true } : score,
+      ),
+      handicap: null,
+    });
+
+    expect(result.ok).toBe(true);
+  });
+});
+
 describe("score validation", () => {
   it("rejects impossible or duplicate hole scores", () => {
     const cases = [

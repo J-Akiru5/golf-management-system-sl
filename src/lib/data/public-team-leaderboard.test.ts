@@ -2,8 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import type { Database } from "@/lib/supabase/types";
 import {
+  applyLiveClasses,
   buildTeamLeaderboard,
   filterTeams,
+  liveClassesFromProgramme,
   loadPublicTeamLeaderboard,
   type PublicTeamLeaderboardData,
   type PublicTeamPlayerRow,
@@ -121,6 +123,63 @@ describe("loadPublicTeamLeaderboard", () => {
   });
 });
 
+describe("live classes", () => {
+  it("replaces the frozen class with the live registration class", () => {
+    const source = data([
+      row({ playerId: "a", playerName: "Ana", pairKey: "pair:1", flightName: "Class A" }),
+      row({ playerId: "b", playerName: "Bea", pairKey: "pair:1", flightName: "Class A" }),
+    ]);
+    const applied = applyLiveClasses(source, new Map([["a", "Class C"]]));
+
+    expect(applied.rows[0]?.flightName).toBe("Class C");
+    expect(applied.rows[1]?.flightName).toBe("Class A");
+    expect(source.rows[0]?.flightName).toBe("Class A");
+  });
+
+  it("leaves the published class when the programme has no class for the player", () => {
+    const source = data([row({ playerId: "a", playerName: "Ana", pairKey: "pair:1" })]);
+    expect(applyLiveClasses(source, new Map())).toBe(source);
+    expect(applyLiveClasses(source, new Map([["b", "Class D"]])).rows[0]?.flightName).toBe(
+      "Class A",
+    );
+  });
+
+  it("builds the live class map from the public programme", () => {
+    const classes = liveClassesFromProgramme({
+      players: [
+        {
+          id: "a",
+          name: "Ana",
+          homeCourse: null,
+          index: 0,
+          category: "Regular",
+          flight: "Class C",
+        },
+        {
+          id: null,
+          name: "Old snapshot",
+          homeCourse: null,
+          index: 0,
+          category: "Regular",
+          flight: "Class A",
+        },
+        {
+          id: "b",
+          name: "No class",
+          homeCourse: null,
+          index: 0,
+          category: "Regular",
+          flight: null,
+        },
+      ],
+    });
+
+    expect(classes.get("a")).toBe("Class C");
+    expect(classes.has("b")).toBe(false);
+    expect(classes.size).toBe(1);
+  });
+});
+
 describe("buildTeamLeaderboard", () => {
   it("adds both partners across every published round", () => {
     const rows = [
@@ -159,6 +218,56 @@ describe("buildTeamLeaderboard", () => {
     expect(team?.memberName).toBe("Ana");
     expect(team?.guestName).toBe("Ben");
     expect(team?.playerNames).toEqual(["Ana", "Ben"]);
+  });
+
+  it("keeps each partner's own points and still totals the team when a partner picked up", () => {
+    const rows = [
+      row({
+        playerId: "a",
+        playerName: "Ana",
+        pairKey: "pair:1",
+        side: "member",
+        grossStrokes: null,
+        netStrokes: null,
+        grossPoints: 20,
+        netPoints: 31,
+      }),
+      row({
+        ...roundTwo,
+        playerId: "a",
+        playerName: "Ana",
+        pairKey: "pair:1",
+        side: "member",
+        grossPoints: 22,
+        netPoints: 30,
+      }),
+      row({
+        playerId: "b",
+        playerName: "Ben",
+        pairKey: "pair:1",
+        side: "guest",
+        grossPoints: 11,
+        netPoints: 33,
+      }),
+      row({
+        ...roundTwo,
+        playerId: "b",
+        playerName: "Ben",
+        pairKey: "pair:1",
+        side: "guest",
+        grossPoints: 9,
+        netPoints: 29,
+      }),
+    ];
+    const team = buildTeamLeaderboard(data(rows)).teams[0];
+
+    expect(team?.members).toEqual([
+      { playerId: "a", name: "Ana", side: "member", grossPoints: 42, netPoints: 61 },
+      { playerId: "b", name: "Ben", side: "guest", grossPoints: 20, netPoints: 62 },
+    ]);
+    expect(team?.grossPoints).toBe(62);
+    expect(team?.netPoints).toBe(123);
+    expect(team?.grossStrokes).toBeNull();
   });
 
   it("counts a player without a complete pair and does not rank them", () => {
@@ -201,6 +310,7 @@ describe("ranking and filters", () => {
       playerIds: [over.key],
       memberName: over.name,
       guestName: null,
+      members: [],
       flightName: "Class A",
       categories: ["Regular"],
       holesCounted: 18,

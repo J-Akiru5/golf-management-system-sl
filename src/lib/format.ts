@@ -1,9 +1,11 @@
+import { tidyName } from "@/lib/names";
+
 /**
  * A player name as the desk and the printed sheets show it: in capitals, like the name written
  * on a scorecard. The stored name keeps its original casing; this only changes the display value.
  */
 export function displayName(name: string): string {
-  return name.trim().toUpperCase();
+  return tidyName(name);
 }
 
 /** "07:00" -> "7:00 AM". Clock times in the UI use 12-hour format. */

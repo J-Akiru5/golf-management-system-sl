@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { displayName } from "@/lib/format";
 import { formatToPar } from "@/lib/player/scorecard";
 import type { Database } from "@/lib/supabase/types";
+import type { PublicProgramme } from "./types";
 
 /**
  * The public cumulative team leaderboard.
@@ -60,6 +61,15 @@ export interface PublicTeamLeaderboardData {
   rows: PublicTeamPlayerRow[];
 }
 
+/** One partner's published points, added over every counted round. Null when no round has a value. */
+export interface PublicTeamMember {
+  playerId: string;
+  name: string;
+  side: "member" | "guest" | null;
+  grossPoints: number | null;
+  netPoints: number | null;
+}
+
 export interface PublicTeamStanding {
   key: string;
   pairNumber: number | null;
@@ -69,6 +79,8 @@ export interface PublicTeamStanding {
   /** The member and guest names, member first. Null when that side is not on file. */
   memberName: string | null;
   guestName: string | null;
+  /** Each partner with their own accumulated points, member first. */
+  members: PublicTeamMember[];
   flightName: string | null;
   categories: string[];
   holesCounted: number;
@@ -252,6 +264,12 @@ function sumNullable(values: Array<number | null>): number | null {
   return values.reduce<number>((total, value) => total + (value ?? 0), 0);
 }
 
+/** A player's total over their rows. Null only when every row is null. */
+function sumKnown(values: Array<number | null>): number | null {
+  const known = values.filter((value): value is number => value !== null);
+  return known.length === 0 ? null : known.reduce((total, value) => total + value, 0);
+}
+
 function sameRank(a: PublicTeamStanding, b: PublicTeamStanding): boolean {
   return a.netPoints === b.netPoints && a.grossPoints === b.grossPoints;
 }
@@ -260,6 +278,40 @@ function sameRank(a: PublicTeamStanding, b: PublicTeamStanding): boolean {
  * Adds the two partners together. A pair that does not have both partners in the published rows is
  * counted as unpaired and is not ranked: the event is a two-man aggregate Stableford.
  */
+/**
+ * A player's live class, keyed by the stable player id, from the public programme. The programme
+ * already publishes the confirmed roster, so this adds no new read and no private field.
+ */
+export function liveClassesFromProgramme(
+  programme: Pick<PublicProgramme, "players"> | null,
+): Map<string, string> {
+  const classes = new Map<string, string>();
+  for (const player of programme?.players ?? []) {
+    if (player.id && player.flight) classes.set(player.id, player.flight);
+  }
+  return classes;
+}
+
+/**
+ * Replaces the published card's class with the live registration class. The snapshot freezes the
+ * class at publication time; a validated desk correction must show without rebuilding the card
+ * snapshot, which still cannot emit a pick-up. Scores stay frozen; only the class label changes.
+ */
+export function applyLiveClasses(
+  data: PublicTeamLeaderboardData,
+  classesByPlayerId: ReadonlyMap<string, string>,
+): PublicTeamLeaderboardData {
+  if (classesByPlayerId.size === 0) return data;
+  let changed = false;
+  const rows = data.rows.map((row) => {
+    const live = classesByPlayerId.get(row.playerId);
+    if (!live || live === row.flightName) return row;
+    changed = true;
+    return { ...row, flightName: live };
+  });
+  return changed ? { ...data, rows } : data;
+}
+
 export function buildTeamLeaderboard(data: PublicTeamLeaderboardData): PublicTeamLeaderboard {
   const groups = new Map<string, PublicTeamPlayerRow[]>();
   for (const row of data.rows) {
@@ -338,6 +390,16 @@ export function buildTeamLeaderboard(data: PublicTeamLeaderboardData): PublicTea
       playerIds,
       memberName: ordered[0]?.playerName ?? null,
       guestName: ordered[1]?.playerName ?? null,
+      members: ordered.map((row) => {
+        const own = rows.filter((candidate) => candidate.playerId === row.playerId);
+        return {
+          playerId: row.playerId,
+          name: row.playerName,
+          side: row.side,
+          grossPoints: sumKnown(own.map((candidate) => candidate.grossPoints)),
+          netPoints: sumKnown(own.map((candidate) => candidate.netPoints)),
+        };
+      }),
       flightName: flights.length > 0 ? flights.join(" / ") : null,
       categories,
       holesCounted,

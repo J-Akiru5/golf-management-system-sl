@@ -109,10 +109,10 @@ export async function unpublishPairings(
 }
 
 /**
- * Tells the public page to refresh now instead of waiting for its cache to expire. Best effort:
- * the page still refreshes by itself within its revalidate window if this fails.
+ * Tells the public pages to drop what they cached, so the next visitor reads what was just saved.
+ * Best effort: if this fails the 30-second window still expires on its own.
  */
-export async function refreshPublicPage(client: SupabaseClient<Database>): Promise<void> {
+async function requestPublicRefresh(client: SupabaseClient<Database>): Promise<void> {
   try {
     const { data } = await client.auth.getSession();
     const token = data.session?.access_token;
@@ -124,4 +124,33 @@ export async function refreshPublicPage(client: SupabaseClient<Database>): Promi
   } catch {
     // The cache expires on its own.
   }
+}
+
+/**
+ * One clear per burst.
+ *
+ * Every desk write can change something a public page shows, so every write asks for a clear. An
+ * import finishes hundreds of queued writes in a row, and the hundredth request to drop a cache
+ * that is already gone adds nothing. A request already in flight absorbs the rest; the callers are
+ * not made to wait for it, because a save must not slow down over a cache.
+ */
+let clearInFlight: Promise<void> | null = null;
+let clearAgain = false;
+
+export function refreshPublicPage(client: SupabaseClient<Database>): Promise<void> {
+  if (clearInFlight) {
+    clearAgain = true;
+    return clearInFlight;
+  }
+  clearInFlight = (async () => {
+    try {
+      do {
+        clearAgain = false;
+        await requestPublicRefresh(client);
+      } while (clearAgain);
+    } finally {
+      clearInFlight = null;
+    }
+  })();
+  return clearInFlight;
 }

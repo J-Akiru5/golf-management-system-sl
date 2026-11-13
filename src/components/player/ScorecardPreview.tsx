@@ -88,8 +88,14 @@ export function ScorecardPreview({
                   inputMode="numeric"
                   min={1}
                   max={99}
-                  value={drafts[number] ?? (hole ? String(hole.grossStrokes) : "")}
-                  disabled={!hole}
+                  value={
+                    drafts[number] ??
+                    (hole && !hole.pickedUp && hole.grossStrokes !== null
+                      ? String(hole.grossStrokes)
+                      : "")
+                  }
+                  disabled={!hole || hole.pickedUp}
+                  title={hole?.pickedUp ? t("player.scorecard.pickedUp") : undefined}
                   onChange={(event) => {
                     const value = event.target.value;
                     setDrafts((current) => ({ ...current, [number]: value }));

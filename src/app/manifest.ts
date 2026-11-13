@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 /**
  * The installable app. `display: standalone` gives the desk and player bars the full screen on a
- * phone. The launcher icon is the club crest, generated into /public/icons by
- * scripts/make-pwa-icons.ps1 and committed, so no request leaves the club's own server.
+ * phone. The launcher icons are the TeeLine app icon, rendered into /public/icons by
+ * scripts/make-pwa-icons.mjs and committed, so no request leaves the club's own server.
  *
  * A manifest has one theme colour. The app follows the device's light or dark theme, so the two
  * `theme-color` values a browser actually honours are declared in the root layout's `viewport`

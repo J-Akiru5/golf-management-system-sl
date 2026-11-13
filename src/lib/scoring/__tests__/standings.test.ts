@@ -296,6 +296,73 @@ describe("separate daily rounds", () => {
   });
 });
 
+describe("pick-ups in the standings", () => {
+  function canonicalWithPickup(playerId: string, pickedUpHoles: number[]): CanonicalRound {
+    const cards = ["a", "b"].map((suffix) =>
+      makeCard({
+        id: `${playerId}-${suffix}`,
+        playerId,
+        scorerId: `${playerId}-marker-${suffix}`,
+        entries: TEST_HOLES.map((hole) =>
+          pickedUpHoles.includes(hole.number)
+            ? {
+                hole: hole.number,
+                strokes: null,
+                pickedUp: true,
+                confidence: null,
+                manuallyConfirmed: true,
+              }
+            : {
+                hole: hole.number,
+                strokes: hole.par,
+                confidence: null,
+                manuallyConfirmed: true,
+              },
+        ),
+        writtenTotal: null,
+      }),
+    );
+    return deriveCanonicalHoleScores({
+      roundId: "round-1",
+      playerId,
+      course: COURSE,
+      cards,
+      policy: TEST_POLICY,
+    });
+  }
+
+  it("keeps a player with a pick-up on the board with the right points and holes", () => {
+    const canonical = canonicalWithPickup("p1", [5]);
+    expect(canonical.complete).toBe(true);
+
+    const result = buildStandings(standingsInput([player("p1", "Alpha", 18, canonical)]));
+    const row = result.gross.rows[0];
+    if (!row) throw new Error("Expected a row.");
+
+    expect(row.playerId).toBe("p1");
+    expect(row.holesCounted).toBe(18);
+    expect(row.complete).toBe(true);
+    // Par everywhere gives 36 gross points; hole 5's 2 points are gone, so 34.
+    expect(row.grossPoints).toBe(34);
+    // Hole 5 par 4 adds no strokes, so the card holds 68.
+    expect(row.grossStrokes).toBe(68);
+    // 18 handicap: 3 points on each of the other 17 holes, plus 0 for the pick-up.
+    expect(row.netPoints).toBe(51);
+    expect(row.netStrokes).toBe(51);
+    expect(result.excluded).toEqual([]);
+  });
+
+  it("keeps a pick-up player on the gross board without a handicap", () => {
+    const canonical = canonicalWithPickup("p1", [5]);
+    const result = buildStandings(standingsInput([player("p1", "Alpha", null, canonical)]));
+
+    const row = result.gross.rows[0];
+    expect(row?.grossPoints).toBe(34);
+    expect(row?.holesCounted).toBe(18);
+    expect(result.net.rows).toEqual([]);
+  });
+});
+
 describe("finalization gate", () => {
   const readyPlayers = () => [
     player("p1", "Alpha", 0, canonicalFor("p1")),

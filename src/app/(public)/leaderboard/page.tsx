@@ -11,15 +11,21 @@ import {
   type PublicResultRow,
 } from "@/lib/data/public-results";
 import {
+  applyLiveClasses,
   buildTeamLeaderboard,
   filterTeams,
-  loadPublicTeamLeaderboard,
+  liveClassesFromProgramme,
   rankTeams,
   teamOptions,
   topTeams,
 } from "@/lib/data/public-team-leaderboard";
-import { loadPublicAdvisory } from "@/lib/data/supabase/public-advisory";
-import { loadPublicProgramme, loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
+import {
+  readPublicAdvisory,
+  readPublicProgramme,
+  readPublicReleaseState,
+  readPublicTeamCards,
+  readPublicTeamLeaderboard,
+} from "@/lib/data/supabase/public-cache";
 import { getI18n } from "@/lib/i18n/server";
 import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -55,15 +61,14 @@ export default async function LeaderboardPage({
     return <DemoLeaderboard filters={filters} />;
   }
 
-  const client = createSupabasePublicClient();
   // Independent reads start together. Waiting for the leaderboard before asking for the release
   // state and the programme made the page pay the sum of both waits instead of the slower one.
   const [leaderboardResult, releaseResult, programmeResult, advisoryResult] =
     await Promise.allSettled([
-      loadPublicTeamLeaderboard(client),
-      loadPublicReleaseState(client),
-      loadPublicProgramme(client),
-      loadPublicAdvisory(client),
+      readPublicTeamLeaderboard(),
+      readPublicReleaseState(),
+      readPublicProgramme(),
+      readPublicAdvisory(),
     ]);
   const data = leaderboardResult.status === "fulfilled" ? leaderboardResult.value : null;
   const failure =
@@ -124,8 +129,15 @@ export default async function LeaderboardPage({
     );
   }
 
-  const { teams, unpaired } = buildTeamLeaderboard(data);
+  const { teams, unpaired } = buildTeamLeaderboard(
+    applyLiveClasses(data, liveClassesFromProgramme(programme)),
+  );
   const shown = topTeams(rankTeams(filterTeams(teams, filters)), 10);
+  // Both partners' frozen cards for the teams on screen, so a row can open them without a trip back.
+  const cards = await readPublicTeamCards(
+    shown.flatMap((team) => team.playerIds),
+    data.tournamentId,
+  );
 
   return (
     <LeaderboardShell
@@ -135,6 +147,7 @@ export default async function LeaderboardPage({
     >
       <TeamLeaderboard
         teams={shown}
+        cards={cards}
         options={teamOptions(data)}
         filters={filters}
         rounds={data.rounds}

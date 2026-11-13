@@ -41,7 +41,10 @@ export interface ScorecardSummaryInput {
 
 export interface ScorecardSummaryHole {
   hole: number;
+  /** 0 on a pick-up: there is no stroke count to show. */
   grossStrokes: number;
+  /** True when the player picked up on the hole, so the card prints an X. */
+  pickedUp?: boolean;
   grossPoints: number;
   netStrokes: number | null;
   netPoints: number | null;
@@ -49,12 +52,16 @@ export interface ScorecardSummaryHole {
 }
 
 export interface ScorecardSummary {
+  /** Strokes taken. Pick-ups add nothing because they have no stroke count. */
   gross: number;
-  /** Holes 1 to 9, from the scores that are filled and valid. */
+  /** Holes 1 to 9, from the scores that are filled and valid. Pick-ups add nothing. */
   out: number;
-  /** Holes 10 to 18, from the scores that are filled and valid. */
+  /** Holes 10 to 18, from the scores that are filled and valid. Pick-ups add nothing. */
   in: number;
+  /** Holes with a score or a pick-up. */
   holesEntered: number;
+  /** Holes the player picked up on. 0 when none. */
+  pickups: number;
   grossPoints: number;
   netPoints: number | null;
   netStatus: "calculated" | "unavailable";
@@ -75,12 +82,16 @@ const MIN_CORRECTION_REASON_LENGTH = 3;
 
 type HoleReading =
   | { readonly kind: "blank" }
+  | { readonly kind: "pickup" }
   | { readonly kind: "invalid" }
   | { readonly kind: "valid"; readonly strokes: number };
 
 function readHole(hole: number, strokes: Readonly<Record<number, string>>): HoleReading {
   const raw = (strokes[hole] ?? "").trim();
   if (raw === "") return { kind: "blank" };
+
+  // A written X is a pick-up: a filled hole with no stroke count.
+  if (raw.toUpperCase() === "X") return { kind: "pickup" };
 
   const value = Number(raw);
   if (!isValidStrokes(value, DEFAULT_STROKE_LIMITS)) return { kind: "invalid" };
@@ -128,7 +139,7 @@ export function scorecardReadiness(input: ScorecardReadinessInput): ScorecardRea
   let missingHoles = 0;
   for (const hole of input.holes) {
     const reading = readHole(hole.number, input.strokes);
-    if (reading.kind === "valid") continue;
+    if (reading.kind === "valid" || reading.kind === "pickup") continue;
 
     missingHoles += 1;
     blockers.push(
@@ -210,6 +221,10 @@ export function summariseScorecard(input: ScorecardSummaryInput): ScorecardSumma
       problems.push(invalidHoleMessage(hole.number));
       continue;
     }
+    if (reading.kind === "pickup") {
+      scores.push({ hole: hole.number, grossStrokes: 0, pickedUp: true });
+      continue;
+    }
 
     scores.push({ hole: hole.number, grossStrokes: reading.strokes });
   }
@@ -229,6 +244,7 @@ export function summariseScorecard(input: ScorecardSummaryInput): ScorecardSumma
       out: 0,
       in: 0,
       holesEntered: 0,
+      pickups: 0,
       grossPoints: 0,
       netPoints: null,
       netStatus: "unavailable",
@@ -246,6 +262,8 @@ export function summariseScorecard(input: ScorecardSummaryInput): ScorecardSumma
   let out = 0;
   let back = 0;
   for (const hole of result.holes) {
+    // A pick-up has no stroke count, so it adds nothing to OUT or IN.
+    if (hole.pickedUp === true) continue;
     if (hole.hole <= 9) out += hole.grossStrokes;
     else back += hole.grossStrokes;
   }
@@ -254,6 +272,7 @@ export function summariseScorecard(input: ScorecardSummaryInput): ScorecardSumma
   const holes: ScorecardSummaryHole[] = result.holes.map((hole) => ({
     hole: hole.hole,
     grossStrokes: hole.grossStrokes,
+    ...(hole.pickedUp === true ? { pickedUp: true } : {}),
     grossPoints: hole.grossPoints,
     netStrokes: hole.netStrokes,
     netPoints: hole.netPoints,
@@ -269,14 +288,18 @@ export function summariseScorecard(input: ScorecardSummaryInput): ScorecardSumma
     .reduce((sum, hole) => sum + pointsFor(hole), 0);
 
   const complete = result.totalHoles > 0 && result.holesCompleted === result.totalHoles;
+  // A pick-up has no stroke count, so the cells cannot add up to a written total on that card.
   const writtenMatches =
-    writtenTotal !== null && complete ? writtenTotal === result.grossStrokes : null;
+    writtenTotal !== null && complete && result.pickups === 0
+      ? writtenTotal === result.grossStrokes
+      : null;
 
   return {
     gross: result.grossStrokes,
     out,
     in: back,
     holesEntered: result.holesCompleted,
+    pickups: result.pickups,
     grossPoints: result.grossPoints,
     netPoints: result.netPoints,
     netStatus: result.netStatus,

@@ -1,3 +1,4 @@
+import { parseName } from "@/lib/names";
 import { type DateFormat, parseDateValue, parseDaySelection } from "./dates";
 import { matchPlayer, nameKey } from "./match";
 import type {
@@ -30,6 +31,10 @@ export function splitPersonName(full: string): {
   firstName: string | null;
   lastName: string | null;
 } {
+  const parsed = parseName(clean(full));
+  if (parsed.certain) {
+    return { firstName: parsed.given || null, lastName: parsed.surname || null };
+  }
   const parts = clean(full).split(" ").filter(Boolean);
   if (parts.length === 0) return { firstName: null, lastName: null };
   if (parts.length === 1) return { firstName: null, lastName: parts[0] ?? null };

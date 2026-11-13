@@ -1,12 +1,10 @@
+import { PlayerScorecardTable } from "@/components/player/PlayerScorecardTable";
 import { fmtHcp } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
-import type { PortalScorecard, PortalScorecardHole } from "@/lib/player/portal";
+import type { PortalScorecard } from "@/lib/player/portal";
 import {
   formatToPar,
-  handicapStrokeLabel,
   relationToPar,
-  type ScorecardTotals,
-  scorecardRows,
   teamHolesForFormat,
   teamViewFor,
   totalsFor,
@@ -39,53 +37,6 @@ const publishedText = (date: string): string => {
         timeZone: "Asia/Manila",
       });
 };
-
-function ScoreRow({ number, hole }: { number: number; hole: PortalScorecardHole | null }) {
-  return (
-    <tr>
-      {/* The hole number is pinned left, so swiping the columns never takes away the row label. */}
-      <td className="num sticky left-0 z-10 border-r border-line bg-surface-raised px-3 font-semibold">
-        {number}
-      </td>
-      <td className="num">{hole ? hole.par : "-"}</td>
-      <td className="num">{hole ? hole.strokeIndex : "-"}</td>
-      <td className="num bg-surface-sunken font-semibold">{hole ? hole.grossStrokes : "-"}</td>
-      <td className="num">{hole ? handicapStrokeLabel(hole.handicapStrokes) : "-"}</td>
-      <td className="num border-l border-line bg-fairway-soft font-semibold">
-        {hole ? numberText(hole.netStrokes) : "-"}
-      </td>
-      <td className="num">{hole ? hole.grossPoints : "-"}</td>
-      <td className="num">{hole ? numberText(hole.netPoints) : "-"}</td>
-    </tr>
-  );
-}
-
-function TotalRow({
-  label,
-  totals,
-  toPar,
-}: {
-  label: string;
-  totals: ScorecardTotals;
-  toPar: number | null;
-}) {
-  return (
-    <tr className="font-semibold">
-      {/* Same pinned column as the hole rows, so Out, In and Total stay readable while scrolling. */}
-      <td className="sticky left-0 z-10 border-r border-line bg-surface-raised px-3 text-left">
-        {label}
-        <span className="ml-2 text-[11px] text-ink-muted">{formatToPar(toPar)}</span>
-      </td>
-      <td className="num" />
-      <td className="num" />
-      <td className="num bg-surface-sunken">{totals.holes === 0 ? "-" : totals.grossStrokes}</td>
-      <td className="num">-</td>
-      <td className="num border-l border-line bg-fairway-soft">{numberText(totals.netStrokes)}</td>
-      <td className="num">{totals.holes === 0 ? "-" : totals.grossPoints}</td>
-      <td className="num">{numberText(totals.netPoints)}</td>
-    </tr>
-  );
-}
 
 interface LineTotals {
   strokes: number | null;
@@ -340,12 +291,6 @@ export function ScorecardBreakdown({
   partnerName = null,
   preview = false,
 }: ScorecardBreakdownProps) {
-  const rows = scorecardRows(card);
-  const front = rows.slice(0, Math.min(9, rows.length));
-  const back = rows.length > 9 ? rows.slice(9) : [];
-  const total = totalsFor(card);
-  const out = totalsFor(card, 1, 9);
-  const backTotal = totalsFor(card, 10, card.holesTotal);
   const stateLabel = preview
     ? t("player.scorecard.previewBadge")
     : card.state === "final"
@@ -377,13 +322,13 @@ export function ScorecardBreakdown({
           </p>
         </div>
 
-        <dl className="m-0 grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:w-auto sm:gap-x-5 sm:text-right">
+        <dl className="m-0 grid w-full grid-cols-3 gap-x-3 gap-y-2 sm:w-auto sm:grid-cols-5 sm:gap-x-5 sm:text-right">
           {[
-            { label: t("player.scorecard.gross"), value: total.grossStrokes },
-            { label: t("player.scorecard.net"), value: total.netStrokes },
+            { label: t("player.scorecard.gross"), value: card.grossStrokes },
+            { label: t("player.scorecard.net"), value: card.netStrokes },
             { label: t("player.scorecard.toPar"), value: formatToPar(relationToPar(card)) },
-            { label: t("player.scorecard.grossPoints"), value: total.grossPoints },
-            { label: t("player.scorecard.netPoints"), value: total.netPoints },
+            { label: t("player.scorecard.grossPoints"), value: card.grossPoints },
+            { label: t("player.scorecard.netPoints"), value: card.netPoints },
           ].map((fact) => (
             <div key={fact.label} className="grid min-w-0 gap-0.5">
               <dt className="small-h">{fact.label}</dt>
@@ -393,55 +338,7 @@ export function ScorecardBreakdown({
         </dl>
       </header>
 
-      <div className="table-wrap">
-        {/* Separate borders: Safari keeps a sticky cell in place with border-collapse: separate. */}
-        <table className="border-separate border-spacing-0">
-          <caption className="sr-only">{t("player.scorecard.heading")}</caption>
-          <thead>
-            <tr>
-              <th className="num sticky left-0 z-20 border-r border-line bg-surface-sunken px-3">
-                {t("player.scorecard.hole")}
-              </th>
-              <th className="num">{t("player.scorecard.par")}</th>
-              <th className="num">{t("player.scorecard.strokeIndex")}</th>
-              <th className="num bg-surface-sunken">{t("player.scorecard.gross")}</th>
-              <th className="num">{t("player.scorecard.hcp")}</th>
-              <th className="num border-l border-line bg-fairway-soft">
-                {t("player.scorecard.net")}
-              </th>
-              <th className="num">{t("player.scorecard.grossPoints")}</th>
-              <th className="num">{t("player.scorecard.netPoints")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {front.map((hole, index) => (
-              <ScoreRow key={index + 1} number={index + 1} hole={hole} />
-            ))}
-            {back.length > 0 && (
-              <TotalRow
-                label={t("player.scorecard.out")}
-                totals={out}
-                toPar={relationToPar(card, 1, 9)}
-              />
-            )}
-            {back.map((hole, index) => (
-              <ScoreRow key={index + 10} number={index + 10} hole={hole} />
-            ))}
-            {back.length > 0 && (
-              <TotalRow
-                label={t("player.scorecard.in")}
-                totals={backTotal}
-                toPar={relationToPar(card, 10, card.holesTotal)}
-              />
-            )}
-            <TotalRow
-              label={t("player.scorecard.total")}
-              totals={total}
-              toPar={relationToPar(card)}
-            />
-          </tbody>
-        </table>
-      </div>
+      <PlayerScorecardTable card={card} t={t} />
 
       {card.holesCounted < card.holesTotal && (
         <p className="hint">
@@ -451,7 +348,9 @@ export function ScorecardBreakdown({
           })}
         </p>
       )}
-      {total.netPoints === null && <p className="hint">{t("player.scorecard.noHandicap")}</p>}
+      {card.holes.length > 0 && card.holes.every((hole) => hole.handicapStrokes === null) && (
+        <p className="hint">{t("player.scorecard.noHandicap")}</p>
+      )}
 
       {combinedFormat !== null && teamView.showTeam && (
         <TeamBreakdown

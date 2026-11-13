@@ -10,6 +10,7 @@ import {
   type PublicReleaseState,
   type PublicReleaseSurface,
 } from "@/lib/data/public";
+import { refreshPublicPage } from "@/lib/data/supabase/draw-sync";
 import { loadPublicReleaseState, setPublicRelease } from "@/lib/data/supabase/public-programme";
 import { setDemoRelease, useDemoReleaseState } from "@/lib/demo/public-release";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -155,6 +156,10 @@ export function PublicReleaseCard({
       const client = createSupabaseBrowserClient();
       const next = await setPublicRelease(client, tournamentId, surface, released);
       if (next) setConnected(next);
+      // The public pages share their published reads through a short cache, so a hold or a release
+      // is the moment that cache is wrong. Clearing it here is what makes the toggle take effect
+      // at once instead of within the window.
+      await refreshPublicPage(client);
       setLastChange({ at: new Date().toISOString(), by: "You" });
       router.refresh();
     } catch (writeError) {

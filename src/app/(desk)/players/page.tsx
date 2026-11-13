@@ -30,6 +30,7 @@ import {
 } from "@/lib/data/pairing-status";
 import { isPlayerRemoved, playerStateLabel } from "@/lib/data/player-state";
 import { fmtHcp, fmtIndex, photoOf } from "@/lib/format";
+import { matchesText } from "@/lib/names";
 import { shrinkPhoto } from "@/lib/photo";
 import { useDesk } from "@/lib/store/desk-store";
 import { cn } from "@/lib/ui/cn";
@@ -87,6 +88,7 @@ function Players() {
     adapters,
     pendingRefreeze,
     member,
+    status: deskStatus,
   } = useDesk();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -164,12 +166,7 @@ function Players() {
       if (home !== "all" && p.homeCourse !== home) return false;
       if (category !== "all" && reg?.categoryId !== category) return false;
       if (!text) return true;
-      return (
-        p.name.toLowerCase().includes(text) ||
-        (p.nickname ?? "").toLowerCase().includes(text) ||
-        (p.ngapId ?? "").toLowerCase().includes(text) ||
-        (p.homeCourse ?? "").toLowerCase().includes(text)
-      );
+      return matchesText([p.name, p.nickname, p.ngapId, p.homeCourse], text);
     });
   }, [players, regById, entryByPlayer, filter, query, gender, home, category]);
 
@@ -273,6 +270,13 @@ function Players() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!canSave || saving) return;
+    // While the desk is loading or has failed, the provider hands out the session adapters, which
+    // would keep the new player in this browser only. Refuse rather than claim a save that cannot
+    // reach the club database.
+    if (deskStatus !== "demo" && deskStatus !== "ready") {
+      setSaveError("The desk has not finished loading. Wait for it, then add the player again.");
+      return;
+    }
     setSaving(true);
     setSaveError("");
     try {

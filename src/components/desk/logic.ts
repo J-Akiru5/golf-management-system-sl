@@ -6,6 +6,7 @@
 
 import { PAYMENT_LABEL } from "@/lib/data/types";
 import { fmtIndex } from "@/lib/format";
+import { matchesText } from "@/lib/names";
 import type { DeskRole, EligibilityView, PlayerPickItem, RegistrationField } from "./types";
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -67,6 +68,8 @@ export function matchRank(item: PlayerPickItem, query: string): MatchRank | null
   }
   if (ngapId !== "" && ngapId.includes(q)) return MATCH_WEIGHT.ngapIdContains;
   if (name.includes(q)) return MATCH_WEIGHT.nameContains;
+  // "ronnel adorio" for "ADORIO, RONNEL": every word is there, in another order.
+  if (matchesText(item.player.name, query)) return MATCH_WEIGHT.nameContains;
   return null;
 }
 

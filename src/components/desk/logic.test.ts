@@ -51,6 +51,17 @@ describe("search ranking", () => {
     expect(matchRank(pick("p3"), "MARIA")).toBe(MATCH_WEIGHT.nameStart);
   });
 
+  it("finds a SURNAME, GIVEN name typed in either order, with or without the accent", () => {
+    const stored: PlayerPickItem = {
+      ...pick("p1"),
+      player: { ...pick("p1").player, name: "TAÑADA, JOSE LEONARDO", ngapId: null, nickname: null },
+    };
+    expect(matchRank(stored, "tanada")).toBe(MATCH_WEIGHT.nameStart);
+    expect(matchRank(stored, "jose tanada")).not.toBeNull();
+    expect(matchRank(stored, "leonardo tañada")).not.toBeNull();
+    expect(matchRank(stored, "tanada maria")).toBeNull();
+  });
+
   it("matches a nickname when the real name does not match", () => {
     expect(matchRank(pick("p6"), "boy")).toBe(MATCH_WEIGHT.nicknameStart);
     expect(rankPlayerMatches(FAKE_PICKS, "boy")[0]?.player.name).toBe("Juan Dela Cruz");
