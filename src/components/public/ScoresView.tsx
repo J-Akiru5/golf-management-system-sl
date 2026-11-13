@@ -12,6 +12,7 @@ import {
   hasSessions,
   type PublicPlayerScore,
   type ScoreSession,
+  scoreClasses,
   scoreDays,
 } from "@/lib/public/public-scores";
 
@@ -42,7 +43,9 @@ export function ScoresView({
   const { t } = useI18n();
   const [day, setDay] = useState<number | null>(null);
   const [session, setSession] = useState<ScoreSession | null>(null);
+  const [flight, setFlight] = useState("");
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<"cards" | "list">("cards");
 
   const rows = useMemo(() => buildScoreRows(data, sessions), [data, sessions]);
   const days = useMemo(() => scoreDays(data), [data]);
@@ -51,12 +54,40 @@ export function ScoresView({
     () => buildPlayerScores(rows, { day, session }),
     [rows, day, session],
   );
-  const visible = useMemo(() => filterPlayerScores(scores, query), [scores, query]);
+  const classes = useMemo(() => scoreClasses(scores), [scores]);
+  const visible = useMemo(
+    () => filterPlayerScores(scores, { query, flight }),
+    [scores, query, flight],
+  );
+  const filtered = query.trim() !== "" || flight !== "";
+
+  const sessionLabel = (value: ScoreSession | null) =>
+    value === "AM"
+      ? t("programme.scoresMorning")
+      : value === "PM"
+        ? t("programme.scoresAfternoon")
+        : null;
+  // The table has no room for the card's round list, so it keeps the day and session in one line.
+  const roundSummary = (score: PublicPlayerScore, onDay: boolean) => {
+    if (onDay) {
+      return [t("programme.scoresDay", { day: score.dayNumber ?? 1 }), sessionLabel(score.session)]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    return score.roundScores
+      .map((round) =>
+        [t("programme.scoresDay", { day: round.dayNumber }), sessionLabel(round.session)]
+          .filter(Boolean)
+          .join(" · "),
+      )
+      .join(" · ");
+  };
 
   const chooseDay = (next: number | null) => {
     setDay(next);
-    // Morning and afternoon only mean something inside one day.
-    if (next === null) setSession(null);
+    // A class can be missing from the day just chosen, which would leave an empty list with no
+    // obvious cause.
+    setFlight("");
   };
 
   return (
@@ -69,7 +100,33 @@ export function ScoresView({
         </Link>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="scores-view no-print" role="group" aria-labelledby="scores-view-label">
+        <span className="scores-view-label" id="scores-view-label">
+          {t("programme.scoresViewLabel")}
+        </span>
+        <div className="scores-view-options">
+          <button
+            type="button"
+            className="scores-view-button"
+            aria-pressed={view === "cards"}
+            onClick={() => setView("cards")}
+            data-testid="scores-view-cards"
+          >
+            {t("programme.scoresViewCards")}
+          </button>
+          <button
+            type="button"
+            className="scores-view-button"
+            aria-pressed={view === "list"}
+            onClick={() => setView("list")}
+            data-testid="scores-view-list"
+          >
+            {t("programme.scoresViewList")}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
         <label className="lb-filter">
           <span className="lb-filter-label">{t("programme.scoresDayLabel")}</span>
           <select
@@ -93,7 +150,7 @@ export function ScoresView({
           </select>
         </label>
 
-        {day !== null && offersSessions ? (
+        {offersSessions ? (
           <label className="lb-filter">
             <span className="lb-filter-label">{t("programme.scoresSessionLabel")}</span>
             <select
@@ -107,6 +164,25 @@ export function ScoresView({
               <option value="">{t("programme.scoresAllSessions")}</option>
               <option value="AM">{t("programme.scoresMorning")}</option>
               <option value="PM">{t("programme.scoresAfternoon")}</option>
+            </select>
+          </label>
+        ) : null}
+
+        {classes.length > 1 ? (
+          <label className="lb-filter">
+            <span className="lb-filter-label">{t("programme.scoresClassLabel")}</span>
+            <select
+              className="lb-select"
+              value={flight}
+              onChange={(event) => setFlight(event.target.value)}
+              data-testid="scores-class"
+            >
+              <option value="">{t("programme.scoresAllClasses")}</option>
+              {classes.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
             </select>
           </label>
         ) : null}
@@ -154,10 +230,55 @@ export function ScoresView({
       {visible.length === 0 ? (
         <section className="pairings-empty" role="status" data-testid="scores-empty">
           <h3>
-            {query.trim() === "" ? t("programme.scoresEmptyTitle") : t("programme.scoresNoMatch")}
+            {query.trim() !== ""
+              ? t("programme.scoresNoMatch")
+              : filtered || day !== null
+                ? t("programme.scoresNoFilterMatch")
+                : t("programme.scoresEmptyTitle")}
           </h3>
-          <p>{query.trim() === "" ? t("programme.scoresEmptyBody") : t("programme.scoresFind")}</p>
+          <p>
+            {query.trim() !== "" || filtered || day !== null
+              ? t("programme.scoresNoFilterBody")
+              : t("programme.scoresEmptyBody")}
+          </p>
         </section>
+      ) : view === "list" ? (
+        <div className="scores-table-wrap">
+          <table className="scores-table" data-testid="scores-table">
+            <thead>
+              <tr>
+                <th scope="col">{t("programme.scoresTableName")}</th>
+                <th scope="col" className="scores-table-class">
+                  {t("programme.scoresTableClass")}
+                </th>
+                <th scope="col" className="num">
+                  {t("programme.scoresTableNet")}
+                </th>
+                <th scope="col" className="num">
+                  {t("programme.scoresTableGross")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((score) => (
+                <tr key={score.playerId} data-testid="scores-row">
+                  <td className="scores-table-player">
+                    <Link
+                      href={publicTabHref("profile", { player: score.playerId })}
+                      className="scores-table-name"
+                    >
+                      {score.name}
+                    </Link>
+                    <span className="scores-table-sub">{roundSummary(score, day !== null)}</span>
+                  </td>
+                  <td className="scores-table-class">{score.flightName ?? "—"}</td>
+                  <td className="num tnum">{score.netPoints ?? "—"}</td>
+                  <td className="num tnum">{score.grossPoints ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <ol className="grid gap-3" data-testid="scores-list">
           {visible.map((score) => (
