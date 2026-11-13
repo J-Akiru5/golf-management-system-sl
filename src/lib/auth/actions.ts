@@ -33,7 +33,11 @@ async function homeFor(
   client: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
   next: string,
+  appMetadata?: Record<string, unknown> | null,
 ): Promise<string> {
+  if (appMetadata?.scorecard_role === "tabulation") {
+    return landingFor({ next: next === "/" ? null : next, identity: "tabulation" });
+  }
   try {
     const member = await getDeskMember(client, userId);
     return landingFor({
@@ -84,7 +88,14 @@ export async function signInWithPassword(formData: FormData): Promise<void> {
     redirect("/login?error=sign_in_failed");
   }
 
-  redirect(await homeFor(client, data.user.id, safeRedirectPath(formData.get("next"))));
+  redirect(
+    await homeFor(
+      client,
+      data.user.id,
+      safeRedirectPath(formData.get("next")),
+      data.user.app_metadata,
+    ),
+  );
 }
 
 /**

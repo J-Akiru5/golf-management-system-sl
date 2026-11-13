@@ -83,10 +83,11 @@ export function teeCode(value: unknown): string {
  */
 export async function loadField(eventName: string): Promise<FieldLookup | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_SECRET_ROLE_KEY?.trim();
   if (!url || !key) {
     throw new SupabaseFieldUnavailable(
-      "Supabase is not configured on this machine. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local.",
+      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_ROLE_KEY).",
     );
   }
   const supabase = createClient(url, key, {

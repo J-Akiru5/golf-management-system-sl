@@ -29,10 +29,13 @@ export function createSupabaseScorecardStore(
   bucketName = process.env.SCORECARD_BUCKET?.trim() || "scorecard-documents",
 ): ScorecardStore {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  // Vercel projects in this account use the name SUPABASE_SECRET_ROLE_KEY; accept both names so
+  // the deployment does not depend on which one the dashboard operator picked.
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_SECRET_ROLE_KEY?.trim();
   if (!url || !key) {
     throw new ScorecardStoreUnavailable(
-      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_ROLE_KEY).",
     );
   }
   const supabase = createClient(url, key, {

@@ -9,6 +9,17 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.43.1] - 2026-11-13
+
+### Fixed
+- **The scorecard reads the Supabase service key under either Vercel variable name.**
+  `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_SECRET_ROLE_KEY` are both accepted, so the deployed
+  app no longer returns 503 when the dashboard uses the second name.
+- **Tabulator accounts land on `/scorecard/` after sign-in.** A tabulation-only account no longer
+  falls into the player portal's "link your club record" screen.
+- **The downloaded scorecard JSON can be imported by the page.** The export now includes the
+  `bamboo-scores-edit` wrapper instead of the raw payload.
+
 ## [0.43.0] - 2026-11-13
 
 ### Added

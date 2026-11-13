@@ -29,10 +29,23 @@ export async function GET(
         { status: 404 },
       );
     }
-    return new Response(JSON.stringify(document.payload, null, 2), {
+    const payload = document.payload;
+    const exported = {
+      format: "bamboo-scores-edit",
+      version: 1,
+      slug,
+      label: document.label,
+      exportedAt: new Date().toISOString(),
+      mode: typeof payload.mode === "string" ? payload.mode : "written",
+      reviewBatches: Array.isArray(payload.reviewBatches) ? payload.reviewBatches : [],
+      activeReviewBatchId:
+        typeof payload.activeReviewBatchId === "string" ? payload.activeReviewBatchId : "all",
+      cards: Array.isArray(payload.cards) ? payload.cards : [],
+    };
+    return new Response(JSON.stringify(exported, null, 2), {
       headers: {
         "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="${slug}.json"`,
+        "Content-Disposition": `attachment; filename="${slug}-scores.json"`,
         "Cache-Control": "no-store",
       },
     });
