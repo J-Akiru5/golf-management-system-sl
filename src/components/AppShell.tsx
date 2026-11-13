@@ -170,6 +170,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       count: feedbackNew,
       group: "more",
     },
+    { href: "/staff", label: "Staff app", icon: Smartphone, group: "more" },
     { href: "/pairings", label: "Player view", icon: Smartphone, group: "more" },
   ];
 

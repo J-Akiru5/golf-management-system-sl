@@ -110,11 +110,15 @@
     <button id="add">Add card</button>
     <button id="print" class="primary">Print this view</button>
     <button id="pdf">Save as PDF</button>
-    <button id="exp">Export JSON</button>
-    <button id="imp">Import JSON</button>
+    <button id="exp" title="Downloads this day's cards to this device as a JSON file">Export JSON (download)</button>
+    <button id="imp" class="primary" title="Add the cards in a JSON file (an export from this page or a scorecard scan). Nothing is downloaded and no card is replaced.">Import JSON</button>
+    <button id="restore" class="danger" title="Replaces every card on this page with the cards in an exported file">Replace all from export…</button>
     <button id="reset" class="danger">Reset to first reading</button>
     <span id="saved" role="status" aria-live="polite">Nothing saved yet</span>
     <span id="stat" style="margin-left:auto;color:#4d5c54"></span>
+    <span id="who" style="color:#4d5c54"></span>
+    <a id="deskLink" href="/admin" hidden style="font:inherit;padding:5px 10px;border:1px solid #b9c4bd;border-radius:6px;color:inherit;text-decoration:none">Back to the desk</a>
+    <form method="post" action="/api/auth/signout" style="margin:0"><button type="submit" class="danger" title="Sign out of this account">Sign out</button></form>
   </div>
   <div id="msg" role="status" aria-live="polite"></div>
 </header>
@@ -134,6 +138,112 @@ const $ = id => document.getElementById(id);
 const LOGO = SRC.logo ? '<img class="logo" alt="TeeLine Golf" src="' + SRC.logo + '">' : "";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
 const sum = a => a.reduce((x, y) => x + y, 0);
+// A file can come from this page (cards with name and holes), from the scorecard scan (scorecards
+// with player and scores) or from the ONNX reader (players with holes 1 to 18). All three are
+// converted here, so nobody has to convert a file with a separate script before adding it.
+const scanSlug = v => String(v ?? "scan").replace(/\.pdf$/i, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "scan";
+// One hole cell as the page stores it. A blank is a blank however a file spells it (nothing, null, 0,
+// a dash, or the { v } cell of the first reading). A score is 1 to 20 and X is a pick-up. Anything
+// else is left blank and named in `problems`, so one odd cell can never stop the whole day saving
+// and no score is ever guessed.
+const holeText = (v, problems, hole) => {
+  if (v && typeof v === "object") v = v.v;
+  if (v === null || v === undefined) return "";
+  const text = String(v).trim();
+  if (text === "" || /^0+$/.test(text) || /^[-–—]+$/.test(text)) return "";
+  if (text.toUpperCase() === "X") return "X";
+  if (/^\d{1,2}$/.test(text) && +text >= 1 && +text <= 20) return String(+text);
+  if (problems) problems.push(`hole ${hole} read "${text.slice(0, 12)}"`);
+  return "";
+};
+const problemNote = problems => problems.length ? `Left blank, check the paper card: ${problems.join(", ")}.` : "";
+/** Returns the cards in a JSON file, or null when the file holds no cards at all. */
+function importCardsFrom(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const reader = !Array.isArray(value.cards) && !Array.isArray(value.scorecards) && Array.isArray(value.players) ? value.players : null;
+  const list = Array.isArray(value.cards) ? value.cards
+    : Array.isArray(value.scorecards) ? value.scorecards : reader;
+  if (!list) return null;
+  const used = new Set(), cards = [];
+  const uniqueId = raw => {
+    let id = raw, suffix = 2;
+    while (used.has(id)) id = `${raw}-${suffix++}`;
+    used.add(id);
+    return id;
+  };
+  list.forEach((entry, index) => {
+    if (!entry || typeof entry !== "object") return;
+    if (reader) {
+      // The ONNX reader names a hole on every reading, so the scores are placed by hole number
+      // rather than by their position in the list.
+      const holes = Array.isArray(entry.holes) ? entry.holes : null;
+      if (!holes) return;
+      const byHole = {}, weak = [];
+      for (const cell of holes) {
+        const number = Number(cell && cell.hole);
+        if (Number.isInteger(number) && number >= 1 && number <= 18) {
+          byHole[number] = cell.strokes;
+          // The reader says how sure it is of each cell; the unsure ones are named on the card.
+          if (typeof cell.confidence === "number" && cell.confidence < 0.7) weak.push(number);
+        }
+      }
+      weak.sort((a, b) => a - b);
+      const raw = value.raw && typeof value.raw === "object" ? value.raw : {};
+      const source = String(raw.sourceFile || raw.file || raw.fileName || value.engine || "onnx-scan");
+      const row = Number.isInteger(entry.rowIndex) ? entry.rowIndex + 1 : index + 1;
+      const problems = [];
+      const cells = Array.from({ length: 18 }, (_, hole) => holeText(byHole[hole + 1], problems, hole + 1));
+      cards.push({
+        id: uniqueId(`scan-${scanSlug(source)}-row${row}`),
+        name: String(entry.name ?? "").trim() || "UNKNOWN PLAYER",
+        group: "",
+        tee: "",
+        hdcp: "",
+        written: entry.writtenTotal == null ? "" : String(entry.writtenTotal),
+        verified: false,
+        cls: "",
+        note: [`Read by ${value.engine ?? "the scan"} ${value.engineVersion ?? ""}. Verify against the paper card.`.replace(/\s+/g, " ").trim(), weak.length ? `Reader unsure of hole${weak.length > 1 ? "s" : ""} ${weak.join(", ")}.` : "", problemNote(problems)].filter(Boolean).join(" "),
+        source: `Source: ${source}.`,
+        holes: cells,
+      });
+      return;
+    }
+    const scanned = !Array.isArray(entry.holes) && Array.isArray(entry.scores);
+    const holes = Array.isArray(entry.holes) ? entry.holes : scanned ? entry.scores : null;
+    if (!holes) return;
+    let id = typeof entry.id === "string" && entry.id.trim() ? entry.id.trim()
+      : `scan-${scanSlug(entry.source_file)}-p${entry.page ?? index + 1}`;
+    id = uniqueId(id);
+    const problems = [];
+    const cells = Array.from({ length: 18 }, (_, hole) => holeText(holes[hole], problems, hole + 1));
+    // The scan notes what the reader had to adjust, so the desk knows what to check on paper.
+    const noteParts = scanned
+      ? [
+          `Scanned ${entry.session ?? "AM"} ${entry.date ?? ""}; starts hole ${entry.starting_hole ?? "?"}.`,
+          holes.length < 18 ? `${18 - holes.length} hole(s) blank.` : "",
+          holes.length > 18 ? `${holes.length - 18} extra score(s) ignored.` : "",
+          "Verify against the paper card.",
+        ].filter(Boolean)
+      : [];
+    const note = [entry.note, ...noteParts, problemNote(problems)].filter(Boolean).join(" ");
+    cards.push({
+      id,
+      name: String(entry.name ?? entry.player ?? "").trim() || "UNKNOWN PLAYER",
+      group: String(entry.group ?? ""),
+      tee: String(entry.tee ?? ""),
+      hdcp: String(entry.hdcp ?? entry.handicap ?? ""),
+      written: String(entry.written ?? ""),
+      verified: scanned ? false : !!entry.verified,
+      // A card added by hand keeps its Remove button when it goes through an export and back.
+      manual: entry.manual === true,
+      cls: entry.cls || "",
+      note,
+      source: entry.source || (scanned && entry.source_file ? `Source: ${entry.source_file} p${entry.page ?? "?"}.` : ""),
+      holes: cells,
+    });
+  });
+  return { cards, scanned: !Array.isArray(value.cards) };
+}
 
 function fromSrc(c) {
   return { id: c.id, name: c.name, group: String(c.group ?? ""), tee: c.tee, hdcp: String(c.hdcp ?? ""), written: String(c.written ?? ""),
@@ -398,14 +508,22 @@ $("exp").onclick = () => {
   a.download = SRC.slug + "-scores-edited.json"; a.click(); URL.revokeObjectURL(a.href);
   say(`Exported ${state.cards.length} cards to your Downloads folder at ${clock(new Date().toISOString())}.`);
 };
-$("imp").onclick = () => $("file").click();
+// Import JSON adds cards through the same reader as "Add cards from JSON" in the review panel, so
+// a scan file or an export from this page is accepted and no existing card is replaced.
+$("imp").onclick = () => {
+  const adder = document.getElementById("batch-add-file");
+  if (adder) adder.click(); else $("file").click();
+};
+$("restore").onclick = () => $("file").click();
 $("file").onchange = e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   f.text().then(t => {
     const j = JSON.parse(t);
-    if (!j || j.format !== "bamboo-scores-edit" || !Array.isArray(j.cards)) throw new Error("this is not an export from this page");
-    if (j.slug !== SRC.slug) throw new Error(`that file is for ${j.label}, this page is ${SRC.label}`);
-    const ok = j.cards.filter(c => c && c.id && Array.isArray(c.holes) && c.holes.length === 18);
+    const imported = importCardsFrom(j);
+    if (!imported) throw new Error("that file has no cards. Use a JSON file saved by Export JSON or by the scorecard scan.");
+    if (imported.scanned) throw new Error("that is a scorecard scan file. Use Add cards from JSON, which keeps the cards already checked on this page.");
+    if (j.slug && j.slug !== SRC.slug) throw new Error(`that file is for ${j.label || "another page"}, this page is ${SRC.label}`);
+    const ok = imported.cards;
     if (!confirm(`Replace the scores on this page with the ${ok.length} cards in that file?`)) return;
     state = { cards: ok, mode: j.mode || state.mode, reviewBatches: Array.isArray(j.reviewBatches) ? j.reviewBatches : [], activeReviewBatchId: typeof j.activeReviewBatchId === "string" ? j.activeReviewBatchId : "all" }; save(); $("mode").value = state.mode === "whs" ? "whs" : "written"; renderCards(); stats(); if (view === "sheet") renderSheet();
     say(`Loaded ${ok.length} cards from the file.`);
@@ -549,6 +667,7 @@ window.__scorecard = {
   const db = window.__scorecard;
   if (!db || !db.getState) return;
   const slug = db.slug;
+  const loginUrl = `/login?next=${encodeURIComponent("/scorecard/")}&error=sign_in_required`;
   const cardsRoot = document.getElementById("cards");
   const main = document.querySelector("main");
   if (!cardsRoot || !main) return;
@@ -589,14 +708,18 @@ window.__scorecard = {
       <button type="button" id="batch-day">Day/tee differs</button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+      <button type="button" id="scan-pick" class="primary" title="Choose one or more photos of scorecards, or use the camera on a phone">Scan card</button>
+      <button type="button" id="scan-camera-open" title="Open the camera and photograph a card">Take photo</button>
+      <button type="button" id="batch-add" title="Add cards from a JSON file. Nothing is downloaded.">Import JSON (add cards)</button>
       <button type="button" id="batch-start">Start new review batch</button>
-      <button type="button" id="batch-add">Add cards from JSON</button>
       <button type="button" id="batch-save">Save to database</button>
-      <button type="button" id="batch-save-download">Save and download JSON</button>
+      <button type="button" id="batch-save-download" title="Saves to the database, then downloads a copy of the day to this device">Save, then download a copy</button>
       <input id="batch-add-file" type="file" accept=".json,application/json" hidden>
+      <input id="scan-file" type="file" accept="image/jpeg,image/png,image/webp,image/*" multiple hidden>
+      <input id="scan-camera" type="file" accept="image/*" capture="environment" hidden>
     </div>
     <div id="batch-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
-    <p class="legend" id="handoff" style="margin:8px 0 0">Saving keeps the team copy in the private Supabase bucket. Use <b>Save and download JSON</b> and send that file to the admin for publication.</p>
+    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Scan card</b> or <b>Take photo</b> reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. Saving keeps the team copy in the private Supabase bucket; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication.</p>
     <p class="legend" id="field-status" style="margin:8px 0 0">Supabase field: not checked yet.</p>
     <details id="check-details" open style="margin-top:8px">
       <summary id="check-summary" style="cursor:pointer;font-weight:600">System check: waiting for the field list.</summary>
@@ -879,32 +1002,26 @@ window.__scorecard = {
     if (!file) return;
     try {
       const parsed = JSON.parse(await file.text());
-      const incoming = Array.isArray(parsed.cards) ? parsed.cards : [];
-      const existing = new Set(current().cards.map((card) => card.id));
-      const valid = incoming
-        .filter(
-          (card) =>
-            card &&
-            typeof card.id === "string" &&
-            typeof card.name === "string" &&
-            Array.isArray(card.holes) &&
-            card.holes.length === 18 &&
-            !existing.has(card.id),
-        )
-        .map((card) => ({
-          ...card,
-          group: card.group ?? "",
-          tee: card.tee ?? "",
-          hdcp: card.hdcp ?? "",
-          written: card.written ?? "",
-          verified: false,
-          cls: card.cls ?? "",
-          note: card.note ?? "",
-          source: card.source ?? "",
-          holes: card.holes.map((hole) => (hole === "" || hole == null ? "" : String(hole))),
-        }));
+      const imported = importCardsFrom(parsed);
+      if (!imported) {
+        throw new Error(
+          "that file has no cards. Use a JSON file saved by Export JSON or by the scorecard scan.",
+        );
+      }
+      // Adding never replaces a card the desk already has, even when two scans share an id.
+      const seen = new Set(current().cards.map((card) => card.id));
+      const valid = imported.cards
+        .filter((card) => {
+          if (seen.has(card.id)) return false;
+          seen.add(card.id);
+          return true;
+        })
+        .map((card) => ({ ...card, verified: false }));
       if (valid.length === 0) {
-        summary.textContent = "No new cards in that file. Existing ids are skipped.";
+        summary.textContent =
+          imported.cards.length === 0
+            ? "No cards in that file. Nothing was added."
+            : "No new cards in that file. Every card in it is already on this page.";
         return;
       }
       const state = current();
@@ -919,7 +1036,10 @@ window.__scorecard = {
       state.activeReviewBatchId = batch.id;
       db.setState(state);
       apply();
-      summary.textContent = `Added ${valid.length} card(s) as ${batch.name}.`;
+      const flagged = valid.filter((card) => /Left blank, check the paper card/.test(card.note || "")).length;
+      summary.textContent = `Added ${valid.length} card(s) as ${batch.name}.${flagged ? ` ${flagged} had a cell that could not be read; it is blank and noted on the card.` : ""}`;
+      // Save now instead of waiting for the next timer tick, so a failure shows up beside the import.
+      void persist(true);
     } catch (error) {
       summary.textContent =
         error instanceof SyntaxError
@@ -927,6 +1047,195 @@ window.__scorecard = {
           : `Could not add cards: ${error instanceof Error ? error.message : String(error)}`;
     }
   }
+
+  // ---- Scan a card, or take a photo of it ----
+  // The photo is shrunk here (a request body is capped near 4 MB), read by the card reader on the
+  // server, and turned into draft cards. The desk then chooses: review them now, or leave them in
+  // a batch to review later. Nothing from a photo is marked checked.
+  const scanPick = panel.querySelector("#scan-pick");
+  const scanCameraOpen = panel.querySelector("#scan-camera-open");
+  const scanFile = panel.querySelector("#scan-file");
+  const scanCamera = panel.querySelector("#scan-camera");
+  let scanBusy = false;
+  let pendingScanBatchId = "";
+
+  async function shrinkPhoto(file) {
+    const limit = 3.6 * 1024 * 1024;
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch {
+      throw new Error("This photo could not be opened. Use a JPEG or PNG photo.");
+    }
+    try {
+      let edge = Math.min(2400, Math.max(bitmap.width, bitmap.height));
+      let quality = 0.88;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const scale = edge / Math.max(bitmap.width, bitmap.height);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+        if (blob && blob.size <= limit) return blob;
+        quality = Math.max(0.6, quality - 0.1);
+        edge = Math.round(edge * 0.85);
+      }
+    } finally {
+      if (bitmap.close) bitmap.close();
+    }
+    throw new Error("This photo is too large to send. Take it again from a little further away.");
+  }
+
+  async function readPhoto(file) {
+    const body = new FormData();
+    body.append("image", await shrinkPhoto(file), "scorecard.jpg");
+    let response;
+    try {
+      response = await fetch("/api/scorecards/scan", { method: "POST", body });
+    } catch {
+      throw new Error("The server could not be reached. Your photo was not read; try again.");
+    }
+    const answer = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      window.setTimeout(() => window.location.assign(loginUrl), 1500);
+      throw new Error("Your session ended. Opening the sign-in page…");
+    }
+    if (!response.ok || !answer.ok) {
+      throw new Error(answer.message || `The photo could not be read (HTTP ${response.status}).`);
+    }
+    return answer;
+  }
+
+  function scanDialog(content) {
+    const overlay = document.createElement("div");
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Scanned cards");
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(7,61,46,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50";
+    const box = document.createElement("div");
+    box.style.cssText = "background:#fff;border-radius:10px;max-width:460px;width:100%;max-height:90vh;overflow:auto;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)";
+    box.innerHTML = content;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    return { overlay, box, close: () => overlay.remove() };
+  }
+
+  function chooseWhatNext(cards, notes) {
+    return new Promise((resolve) => {
+      const weak = cards.filter((card) => /Reader unsure|Left blank/.test(card.note || "")).length;
+      const names = cards.slice(0, 12).map((card) => `<li>${escapeHtml(card.name)}${/Reader unsure|Left blank/.test(card.note || "") ? ' <span style="color:#b42318">· check some holes</span>' : ""}</li>`).join("");
+      const more = cards.length > 12 ? `<li>…and ${cards.length - 12} more</li>` : "";
+      const dialog = scanDialog(`
+        <h2 style="margin:0 0 6px;font-size:18px">${cards.length} card${cards.length === 1 ? "" : "s"} read</h2>
+        <p style="margin:0 0 8px;color:#4d5c54">These are drafts. Nothing is marked checked until you tick it.${weak ? ` ${weak} ha${weak === 1 ? "s" : "ve"} cells the reader was unsure of.` : ""}</p>
+        <ul style="margin:0 0 10px;padding-left:18px;max-height:180px;overflow:auto">${names}${more}</ul>
+        ${notes.length ? `<p style="margin:0 0 10px;color:#b42318">${notes.map(escapeHtml).join("<br>")}</p>` : ""}
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button type="button" data-choice="now" class="primary">Review now</button>
+          <button type="button" data-choice="later">Review later in a batch</button>
+          <button type="button" data-choice="discard" class="danger">Discard these cards</button>
+        </div>`);
+      dialog.box.addEventListener("click", (event) => {
+        const choice = event.target && event.target.dataset ? event.target.dataset.choice : "";
+        if (!choice) return;
+        dialog.close();
+        resolve(choice);
+      });
+      const first = dialog.box.querySelector("button");
+      if (first) first.focus();
+    });
+  }
+
+  function addScannedCards(cards, when) {
+    const state = current();
+    const have = new Set(state.cards.map((card) => card.id));
+    const fresh = cards.filter((card) => !have.has(card.id)).map((card) => ({ ...card, verified: false }));
+    if (fresh.length === 0) return;
+    state.cards = [...state.cards, ...fresh];
+    let batch = when === "later" ? batches().find((entry) => entry.id === pendingScanBatchId) : null;
+    if (batch) {
+      batch.cardIds = [...batch.cardIds, ...fresh.map((card) => card.id)];
+    } else {
+      batch = {
+        id: `batch-${Date.now().toString(36)}`,
+        name: `Scan ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        createdAt: new Date().toISOString(),
+        cardIds: fresh.map((card) => card.id),
+      };
+      state.reviewBatches = [...batches(), batch];
+    }
+    if (when === "later") {
+      // Later scans in this visit join the same waiting batch instead of making a new one each time.
+      pendingScanBatchId = batch.id;
+    } else {
+      pendingScanBatchId = "";
+      state.activeReviewBatchId = batch.id;
+    }
+    db.setState(state);
+    apply();
+    void persist(true);
+    if (when === "now") gotoCard(fresh[0].id);
+    summary.textContent = when === "now"
+      ? `Reviewing ${fresh.length} scanned card${fresh.length === 1 ? "" : "s"} (${batch.name}).`
+      : `${fresh.length} scanned card${fresh.length === 1 ? "" : "s"} added to ${batch.name}. Open that batch below when you are ready to review.`;
+  }
+
+  async function scanPhotos(fileList) {
+    const files = Array.from(fileList || []).filter((file) => file && file.size > 0);
+    if (!files.length || scanBusy) return;
+    scanBusy = true;
+    scanPick.disabled = scanCameraOpen.disabled = true;
+    const cards = [], notes = [];
+    try {
+      for (const [index, file] of files.entries()) {
+        status(`Reading photo ${index + 1} of ${files.length}…`);
+        try {
+          const answer = await readPhoto(file);
+          if (!answer.available) {
+            notes.push(answer.message);
+            break;
+          }
+          const stamp = `${Date.now().toString(36)}${index}`;
+          const read = importCardsFrom({
+            players: answer.players,
+            engine: answer.engine,
+            engineVersion: answer.engineVersion,
+            raw: { sourceFile: `${(file.name || "photo").replace(/\.[a-z0-9]+$/i, "")}-${stamp}` },
+          });
+          if (read) cards.push(...read.cards);
+        } catch (error) {
+          notes.push(`${file.name || `Photo ${index + 1}`}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    } finally {
+      scanBusy = false;
+      scanPick.disabled = scanCameraOpen.disabled = false;
+    }
+    if (!cards.length) {
+      status(notes[0] || "No cards could be read from that photo.", true);
+      summary.textContent = notes.length ? notes.join(" ") : "No cards could be read from that photo.";
+      return;
+    }
+    status(`Read ${cards.length} card${cards.length === 1 ? "" : "s"}.`);
+    const choice = await chooseWhatNext(cards, notes);
+    if (choice === "discard") {
+      summary.textContent = "Scanned cards discarded. Nothing was added.";
+      return;
+    }
+    addScannedCards(cards, choice);
+  }
+
+  scanPick.addEventListener("click", () => scanFile.click());
+  scanCameraOpen.addEventListener("click", () => scanCamera.click());
+  for (const input of [scanFile, scanCamera]) {
+    input.addEventListener("change", () => {
+      const picked = Array.from(input.files || []);
+      input.value = "";
+      void scanPhotos(picked);
+    });
+  }
+  window.__scorecardScan = { scanPhotos, addScannedCards };
 
   allButton.addEventListener("click", () => setActive("all"));
   needsButton.addEventListener("click", () => setActive("needs"));
@@ -985,11 +1294,26 @@ window.__scorecard = {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        status(body.message ?? "The database save failed.", true);
+        if (response.status === 401) {
+          status("Your session ended, so nothing more can be saved. Opening the sign-in page…", true);
+          window.setTimeout(() => window.location.assign(loginUrl), 1500);
+        } else if (response.status === 403) {
+          status("This account is not on the tabulation team, so it cannot save.", true);
+        } else if (response.status === 413) {
+          status("The day is too large to save in one go. Export JSON and tell the admin.", true);
+        } else {
+          status(
+            `${body.message ?? "The database save failed"} (HTTP ${response.status}). Your edits are still in this browser; it will try again.`,
+            true,
+          );
+        }
         return false;
       }
       last = text;
-      status(`Saved to the database at ${new Date().toLocaleTimeString()}.`);
+      // A routine save note must not replace an error the desk still needs to read.
+      if (!document.getElementById("msg")?.classList.contains("err")) {
+        status(`Saved to the database at ${new Date().toLocaleTimeString()}.`);
+      }
       return true;
     } catch {
       status("The database is not reachable. Your edits are still in this browser.", true);
@@ -1042,9 +1366,7 @@ window.__scorecard = {
         }
       } else if (response.status === 401) {
         status("Sign in with a tabulation account. Opening the sign-in page…", true);
-        window.location.assign(
-          `/login?next=${encodeURIComponent("/scorecard/index.html")}&error=sign_in_required`,
-        );
+        window.location.assign(loginUrl);
         return;
       } else if (response.status === 403) {
         status("This account is not on the tabulation team.", true);
@@ -1098,11 +1420,34 @@ window.__scorecard = {
     }
   }
 
+  // Shows who is signed in, and gives club staff the way back to the desk. A tabulation account
+  // has no desk, so it only gets Sign out.
+  async function loadSession() {
+    try {
+      const response = await fetch("/api/scorecards/session", { cache: "no-store" });
+      if (!response.ok) return;
+      const body = await response.json();
+      const who = document.getElementById("who");
+      if (who && body.email) {
+        who.textContent = `${body.role === "staff" ? "Staff" : "Tabulator"}: ${body.email}`;
+      }
+      const link = document.getElementById("deskLink");
+      if (link && typeof body.desk === "string" && body.desk.startsWith("/")) {
+        link.href = body.desk;
+        link.textContent = body.desk === "/staff" ? "Back to the staff app" : "Back to the desk";
+        link.hidden = false;
+      }
+    } catch {
+      // The page works without the account label.
+    }
+  }
+
   window.setInterval(() => {
     if (ready) void persist();
   }, 2000);
 
   apply();
+  void loadSession();
   void loadDocument();
   void loadField();
 })();

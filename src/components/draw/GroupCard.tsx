@@ -14,6 +14,17 @@ export interface GroupCardProps {
   flightName: string;
   /** The class name for any flight id, so a player in another class can say which one. */
   flightNameOf?: (id: string | null) => string;
+  /**
+   * Why this player's own class no longer matches the group's class, for example "Class B, group is
+   * Class A". Null when they agree, and for a player with no class at all.
+   */
+  classMismatchOf?: (id: string) => string | null;
+  /** How many players in this group are now classed elsewhere. Shown as a count on the header. */
+  classMismatchCount?: number;
+  /** True for the owner or an organizer, the same gate the register list uses. */
+  canEditIndex?: boolean;
+  /** Opens the index edit for one player. The buttons are left out when this is not passed. */
+  onEditIndex?: (id: string) => void;
   players: Map<string, PlayerRecord>;
   regs: Map<string, DeskRegistration>;
   /** Players the organizer moved by hand; shown with a Manual pill. */
@@ -39,6 +50,20 @@ export interface GroupCardProps {
   /** Drag-and-drop asks the page directly, so it never depends on a re-render having happened. */
   allowDrop: (n: number) => boolean;
   dropOn: (n: number) => void;
+  /** Players ticked for a set move or a set swap, in the order they were ticked. */
+  checkedIds?: ReadonlySet<string>;
+  /** Ticks or unticks one player for a set move or a set swap. */
+  onToggleCheck?: (id: string) => void;
+  /** The first player of a swap, waiting for the second. */
+  swapFrom?: string | null;
+  /** The name of that player, shortened for the "Swap with" button. */
+  swapFromName?: string | null;
+  /** Picks this player as the swap partner: the first when none is waiting, the second after. */
+  onSwapWith?: (id: string) => void;
+  /** The other players in this player's registered pair who are on the board. */
+  pairOf?: (id: string) => string[];
+  /** Ticks every player of a pair at once. */
+  onSelectPair?: (ids: string[]) => void;
 }
 
 function GroupCardImpl(p: GroupCardProps) {
@@ -119,10 +144,13 @@ function GroupCardImpl(p: GroupCardProps) {
         </span>
       </div>
 
-      {(blocking || warning || g.locked || n >= p.groupSize) && (
+      {(blocking || warning || (p.classMismatchCount ?? 0) > 0 || g.locked || n >= p.groupSize) && (
         <div className="flags">
           {blocking && <span className="pill bad">Must fix</span>}
           {warning && !blocking && <span className="pill warn">Check</span>}
+          {(p.classMismatchCount ?? 0) > 0 && (
+            <span className="pill warn">{p.classMismatchCount} in another class</span>
+          )}
           {g.locked && <span className="pill gold">Locked</span>}
           {n >= p.groupSize && <span className="pill ok">Full</span>}
         </div>
@@ -142,11 +170,41 @@ function GroupCardImpl(p: GroupCardProps) {
         const r = p.regs.get(id);
         if (!pl || !r) return null;
         const picked = active?.id === id;
+        const checked = p.checkedIds?.has(id) ?? false;
+        const partners = p.pairOf?.(id) ?? [];
+        const isSwapFrom = p.swapFrom === id;
+        // "Swap with CELINO" rather than the whole "CELINO, ALAN", so the row stays readable.
+        const swapWith = p.swapFromName
+          ? p.swapFromName.includes(",")
+            ? (p.swapFromName.split(",")[0] ?? "")
+            : (p.swapFromName.split(" ").at(-1) ?? "")
+          : "";
+        // The player's own class against the class this group was drawn in. The page supplies the
+        // wording; the short fallback keeps a caller that passes no helper from losing the pill.
+        const mismatch =
+          p.classMismatchOf?.(id) ??
+          (r.flightId && r.flightId !== g.flightId
+            ? p.flightNameOf
+              ? `Is ${p.flightNameOf(r.flightId)}`
+              : "Other flight"
+            : null);
         return (
           <div
             key={id}
-            className={`slot${picked ? " picked" : ""}${p.selectedPlayer === id ? " selected" : ""}`}
+            className={`slot${picked ? " picked" : ""}${p.selectedPlayer === id ? " selected" : ""}${checked ? " selected" : ""}`}
           >
+            <label
+              className="inline-flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center lg:min-h-8 lg:min-w-8"
+              title={`Select ${pl.name} for a set move or a set swap`}
+            >
+              <input
+                type="checkbox"
+                className="size-4 cursor-pointer"
+                checked={checked}
+                aria-label={`Select ${pl.name}`}
+                onChange={() => p.onToggleCheck?.(id)}
+              />
+            </label>
             {!g.locked && (
               <span
                 className="grip"
@@ -171,11 +229,7 @@ function GroupCardImpl(p: GroupCardProps) {
                 {pl.name}
                 {p.manualOverrideIds.has(id) && <span className="pill gold">Manual</span>}
                 {r.provisional && <span className="pill warn">Provisional</span>}
-                {r.flightId && r.flightId !== g.flightId && (
-                  <span className="pill warn">
-                    {p.flightNameOf ? `Is ${p.flightNameOf(r.flightId)}` : "Other flight"}
-                  </span>
-                )}
+                {mismatch && <span className="pill warn">{mismatch}</span>}
                 {r.provisional && r.missing.length > 0 && (
                   <span className="hint">no {r.missing.join(", no ")}</span>
                 )}
@@ -198,12 +252,56 @@ function GroupCardImpl(p: GroupCardProps) {
                     ? fmtIndex(r.frozenIndex)
                     : "—"}
               </span>
+              {partners.length > 0 && p.onSelectPair && (
+                <button
+                  type="button"
+                  className="btn small ghost min-h-11 lg:min-h-8"
+                  onClick={() => p.onSelectPair?.([id, ...partners])}
+                  title={`Select ${pl.name} and their registered partner`}
+                >
+                  Select pair
+                </button>
+              )}
+              {p.onSwapWith && (
+                <button
+                  type="button"
+                  className={`btn small min-h-11 lg:min-h-8${isSwapFrom ? " gold" : " ghost"}`}
+                  aria-pressed={isSwapFrom}
+                  aria-label={
+                    isSwapFrom
+                      ? `Cancel the swap with ${pl.name}`
+                      : p.swapFrom
+                        ? `Swap ${pl.name} with ${swapWith}`
+                        : `Start a swap with ${pl.name}`
+                  }
+                  onClick={() => p.onSwapWith?.(id)}
+                  title={
+                    isSwapFrom
+                      ? "Cancel this swap"
+                      : p.swapFrom
+                        ? `Swap ${pl.name} with ${swapWith}`
+                        : "Swap with another player, even in a full group"
+                  }
+                >
+                  {isSwapFrom ? "Swap with…" : p.swapFrom ? `Swap with ${swapWith}` : "Swap"}
+                </button>
+              )}
+              {p.canEditIndex && p.onEditIndex && (
+                <button
+                  type="button"
+                  className="btn small ghost"
+                  aria-label={`Edit index for ${pl.name}`}
+                  onClick={() => p.onEditIndex?.(id)}
+                >
+                  Edit index
+                </button>
+              )}
               {g.locked ? (
                 <span className="hint">Locked</span>
               ) : (
                 <button
                   type="button"
-                  className="btn small ghost"
+                  className="btn small ghost min-h-11 lg:min-h-8"
                   aria-pressed={active?.via === "pick" && picked}
                   aria-label={`Move ${pl.name}`}
                   onClick={() => p.onPick(picked ? null : id)}
@@ -237,6 +335,7 @@ function GroupCardImpl(p: GroupCardProps) {
           ) : (
             <span>
               <b>Can’t move here.</b> {drop.reason}
+              {n >= p.groupSize && " Swap a player instead."}
             </span>
           )
         ) : (
