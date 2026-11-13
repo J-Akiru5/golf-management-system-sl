@@ -9,6 +9,16 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.43.0] - 2026-11-13
+
+### Added
+- **The tabulation team can review Day 1 AM scorecards inside the existing app.** `/scorecard/` loads
+  the saved team copy from the private Supabase `scorecard-documents` bucket, keeps already reviewed
+  cards out of the next batch, and compares class, group, tee and HDCP against the live field. The
+  "Save and download JSON" button saves the team copy and downloads the exact file for the admin to
+  publish. Access is the `tabulation` app role, an optional email allowlist, and club
+  owner/organizer/desk staff. No migration.
+
 ## [0.42.1] - 2026-11-13
 
 ### Changed
