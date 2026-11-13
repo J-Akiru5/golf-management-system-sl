@@ -7,6 +7,7 @@ import { DrawTable } from "@/components/draw/DrawTable";
 import { FlightQueuePanel } from "@/components/draw/FlightQueuePanel";
 import { GroupCard } from "@/components/draw/GroupCard";
 import { IssuesPanel } from "@/components/draw/IssuesPanel";
+import { LiveModeBar } from "@/components/draw/LiveModeBar";
 import { PairingSheetImport } from "@/components/draw/PairingSheetImport";
 import { PublishDialog } from "@/components/draw/PublishDialog";
 
@@ -547,6 +548,9 @@ export default function DrawPage() {
           )}
         </div>
       </header>
+
+      {/* Live mode and undo for the last board change: the live event's own controls. */}
+      <LiveModeBar />
 
       {draw && (
         <div className="card flex flex-wrap items-center gap-x-4 gap-y-2 !py-3">
