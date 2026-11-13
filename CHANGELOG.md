@@ -69,6 +69,16 @@ Supabase project, because the code and the database are released separately.
   gross/net Stableford, OUT/IN, holes-entered and written-total summary. Cards, approvals, conflicts,
   bulk import and round setup are on `/scores/review`; standings, publication and finalization are
   on `/scores/results`. A correction saves a new revision and keeps the old one. No migration.
+- **The tabulation team gets an editable scorecard page.** `/scorecard` serves a local-first table
+  for one event and day: every hole can be typed over, `X` is a red X, totals and net Stableford
+  update as you type, and the working state saves in the browser and, for a signed-in tabulation
+  account, to a private Supabase Storage bucket. The page prints, saves a PDF, imports and exports
+  JSON, compares each card with the live field, and groups cards into review batches. The tabulation
+  team is the `scorecard_role` app-metadata role or an email allowlist, not a `club_members` row;
+  club staff can also use the page through their existing membership. New environment:
+  `SUPABASE_SERVICE_ROLE_KEY`, `SCORECARD_BUCKET`, `SCORECARD_TABULATION_EMAILS`.
+  `pnpm scorecard:role -- person@example.com` grants the role. The bucket is created on first use.
+  No SQL migration.
 
 ### Fixed
 - **The scorecard bar is readable on a phone and sits under the app header.** The sticky bar with the
