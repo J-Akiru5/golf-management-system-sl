@@ -115,7 +115,11 @@ export function planDrawJobs(
       return jobs;
     }
     case "replaceDraw":
+    case "undoBoard":
     case "move":
+    case "swapPlayers":
+    case "moveSet":
+    case "swapSets":
     case "withdrawFromDraw":
     case "restoreToDraw":
     case "placeOnDraw":
