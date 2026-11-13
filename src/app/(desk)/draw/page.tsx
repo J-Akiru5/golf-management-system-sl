@@ -500,7 +500,8 @@ export default function DrawPage() {
                 role={member?.role}
                 allow={["owner", "organizer"]}
                 mode="disable"
-                disabledReason="Only the owner or an organizer can publish pairings."
+                disabledReason="Only the owner or an organizer can publish, unpublish or start the draw over."
+                className="flex flex-wrap items-center gap-2"
               >
                 <button
                   type="button"
@@ -514,18 +515,22 @@ export default function DrawPage() {
                       : "View published list"
                     : "Review and publish"}
                 </button>
+                <button type="button" className="btn ghost" onClick={() => setConfirm("startOver")}>
+                  Start over
+                </button>
+                {isPublished && (
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => setConfirm("unpublish")}
+                  >
+                    Unpublish
+                  </button>
+                )}
               </RoleGate>
-              <button type="button" className="btn ghost" onClick={() => setConfirm("startOver")}>
-                Start over
-              </button>
               <Link className="btn ghost" href="/print">
                 Print center
               </Link>
-              {isPublished && (
-                <button type="button" className="btn ghost" onClick={() => setConfirm("unpublish")}>
-                  Unpublish
-                </button>
-              )}
             </>
           )}
         </div>

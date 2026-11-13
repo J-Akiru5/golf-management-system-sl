@@ -7,6 +7,7 @@ import {
   NO_SNAPSHOT_NOTICE,
   OFFLINE_MAX_AGE_MS,
   OFFLINE_SCHEMA_VERSION,
+  OFFLINE_WRITE_BLOCKED,
   OFFLINE_WRITE_NOTICE,
   offlineNotice,
   readEnvelope,
@@ -185,5 +186,12 @@ describe("the words on a saved screen", () => {
     expect(NO_SNAPSHOT_NOTICE).toContain("nothing to show offline");
     expect(OFFLINE_WRITE_NOTICE).toContain("was not saved");
     expect(OFFLINE_WRITE_NOTICE).toContain("Nothing is queued");
+  });
+
+  it("warns before the tap that an offline write will be refused, and promises no queue", () => {
+    expect(OFFLINE_WRITE_BLOCKED).toContain("cannot be saved");
+    expect(OFFLINE_WRITE_BLOCKED).toContain("Nothing is queued");
+    // It must not read as "saved for later" in any wording.
+    expect(OFFLINE_WRITE_BLOCKED).not.toMatch(/saved later|queued for later|will be saved/i);
   });
 });
