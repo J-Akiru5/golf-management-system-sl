@@ -1,8 +1,8 @@
-import { ArrowDown, ArrowRight, CalendarDays, Layers3, UsersRound } from "lucide-react";
+import { ArrowRight, CalendarDays, Layers3, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBottomBar } from "@/components/MobileTabBar";
 import { LeaderboardTeaser } from "@/components/public/LeaderboardTeaser";
 import { MotionLayer } from "@/components/public/MotionLayer";
 import { TournamentCarousel } from "@/components/public/TournamentCarousel";
@@ -201,7 +201,7 @@ export default async function HomePage() {
     : null;
 
   return (
-    <main className="teeline-site mobile-bar-space">
+    <main className="teeline-site">
       <JsonLd data={softwareApplicationSchema()} />
       <MotionLayer />
       <section
@@ -309,9 +309,9 @@ export default async function HomePage() {
             <Link className="button-light" href="/pairings">
               View published pairings <ArrowRight aria-hidden="true" />
             </Link>
-            <a className="button-quiet" href="#experience">
-              Discover TeeLine <ArrowDown aria-hidden="true" />
-            </a>
+            <Link className="button-quiet" href="/leaderboard">
+              View the leaderboard <ArrowRight aria-hidden="true" />
+            </Link>
           </div>
         </div>
 
@@ -498,13 +498,7 @@ export default async function HomePage() {
         </p>
       </footer>
 
-      <aside className="preview-note" role="note">
-        <span>Product preview</span>
-        {isSupabaseConfigured()
-          ? "The desk and the player area are behind sign-in. Pairings stay public."
-          : "This build runs on demo data with no accounts. Changes reset when the page is refreshed."}
-      </aside>
-      <PlayerBottomBar />
+      <PublicBottomBar />
     </main>
   );
 }

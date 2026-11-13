@@ -761,7 +761,7 @@ export const tl: Dictionary = {
       signInDisabled: "Hindi available ang sign-in para sa account na ito. Tanungin ang club.",
       emailRequired: "Ilagay ang email na nasa account.",
       linkInvalid: "Hindi wasto o lipas na ang link. Humingi ng bago.",
-      signInRequired: "Mag-sign in para magpatuloy.",
+      signInRequired: "Mangyaring mag-sign in para makita ang inyong kaugalingon nga start. Bukas ang pairings ug board para sa tanan.",
       signUpRequired: "Ilagay ang email at password para gumawa ng account.",
       passwordShort: "Gumamit ng hindi bababa sa 8 character para sa password.",
       signUpFailed: "Hindi nagawa ang account. Kung mayroon ka na, mag-sign in na lang.",

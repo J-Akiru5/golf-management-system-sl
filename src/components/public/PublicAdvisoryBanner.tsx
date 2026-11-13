@@ -1,27 +1,59 @@
 "use client";
 
-import { ChevronDown, X } from "lucide-react";
-import { useState } from "react";
+import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/context";
+import { manilaToday } from "@/lib/player/dashboard";
 import type { PublicAdvisory } from "@/lib/public/advisory";
 
 /**
  * The organizer's advisory, shown above the page content.
  *
  * It is an inline panel, not a dialog or an overlay, so it can never cover the pairings or trap a
- * tap. Dismissing hides it for this visit only: the state is React's, nothing is written to
- * localStorage or a cookie, and reloading the page brings the advisory back while it is current.
- * The organizer's text is already English (and already expired-checked on the server), so the only
- * localised control here is the close label.
- *
- * On a phone it starts as one tappable row with the title and the first line, so it tells the
- * player there is news without pushing the pairings off the first screen. Tapping the row opens the
- * full text. On a wider screen the stylesheet always shows the full text and hides the chevron.
+ * tap. The text is always open, on a phone as well as a desktop: most of the club's players are
+ * older and a notice that has to be tapped open is one they never read. Tapping the cross hides it
+ * for the rest of that calendar day in the club's time zone; tomorrow it shows again, unless the
+ * organizer's text has changed, in which case it shows straight away. The dismissal lives in
+ * localStorage only, so nothing reaches the organizer's records.
  */
+const DISMISS_KEY = "teeline:advisory-dismissed";
+
+function advisoryId(advisory: PublicAdvisory): string {
+  return `${advisory.title}|${advisory.until}`;
+}
+
+/** Read after mount, so the server render and the first client paint agree. */
+function dismissedForToday(advisory: PublicAdvisory): boolean {
+  try {
+    const raw = window.localStorage.getItem(DISMISS_KEY);
+    if (!raw) return false;
+    const record = JSON.parse(raw) as { day?: unknown; id?: unknown };
+    return record.day === manilaToday() && record.id === advisoryId(advisory);
+  } catch {
+    return false;
+  }
+}
+
 export function PublicAdvisoryBanner({ advisory }: { advisory: PublicAdvisory }) {
   const { t } = useI18n();
   const [dismissed, setDismissed] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (dismissedForToday(advisory)) setDismissed(true);
+  }, [advisory]);
+
+  const dismiss = () => {
+    try {
+      window.localStorage.setItem(
+        DISMISS_KEY,
+        JSON.stringify({ day: manilaToday(), id: advisoryId(advisory) }),
+      );
+    } catch {
+      // Storage unavailable: the banner simply returns on the next visit.
+    }
+    setDismissed(true);
+  };
+
   if (dismissed) return null;
 
   return (
@@ -29,24 +61,14 @@ export function PublicAdvisoryBanner({ advisory }: { advisory: PublicAdvisory })
       className="public-advisory no-print"
       aria-labelledby="public-advisory-title"
       data-testid="public-advisory"
-      data-expanded={expanded ? "true" : "false"}
     >
       <div className="public-advisory-head">
-        <button
-          type="button"
-          className="public-advisory-toggle"
-          aria-expanded={expanded}
-          aria-controls="public-advisory-body"
-          onClick={() => setExpanded((value) => !value)}
-        >
-          <h2 id="public-advisory-title">{advisory.title}</h2>
-          <ChevronDown aria-hidden="true" className="public-advisory-chevron" />
-        </button>
+        <h2 id="public-advisory-title">{advisory.title}</h2>
         <button
           type="button"
           className="public-advisory-dismiss"
           aria-label={t("common.close")}
-          onClick={() => setDismissed(true)}
+          onClick={dismiss}
         >
           <X aria-hidden="true" />
         </button>

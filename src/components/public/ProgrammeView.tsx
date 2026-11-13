@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Avatar } from "@/components/bits";
 import type { PublicProgramme } from "@/lib/data/types";
 import { fmtIndex } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
@@ -56,9 +55,8 @@ export function PlayerDirectory({ programme }: { programme: PublicProgramme }) {
         <ul className="plain player-cards">
           {matches.map((player, index) => (
             <li key={`${player.name}-${index}`} className="player-card">
-              <span className="who">
-                <Avatar name={player.name} />
-                <b className="min-w-0 break-words">{player.name}</b>
+              <span className="player-card-head">
+                <b className="player-card-name">{player.name}</b>
               </span>
               <span className="muted text-[13px]">
                 {[player.category, player.flight].filter(Boolean).join(" · ") ||

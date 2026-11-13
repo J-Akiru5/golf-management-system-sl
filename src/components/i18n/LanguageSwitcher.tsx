@@ -1,7 +1,8 @@
 "use client";
 
-import { Languages } from "lucide-react";
+import { Check, ChevronDown, Languages } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { DropdownMenu } from "radix-ui";
 import { useI18n } from "@/lib/i18n/context";
 import { isLocale, LOCALE_COOKIE, LOCALE_LABEL, LOCALES } from "@/lib/i18n/locales";
 import { cn } from "@/lib/ui/cn";
@@ -69,28 +70,66 @@ export function LanguageSwitcher({
     );
   }
 
+  /* The menu is drawn by the page instead of the browser, so it can carry the masthead's own
+     colours rather than the system listbox, and it renders through a portal because the dark band
+     clips anything positioned inside it. */
+  const dark = tone === "on-forest";
   return (
-    <label className={cn("inline-flex min-h-11 items-center gap-2", className)}>
-      <Languages
-        className={cn(
-          "size-4 shrink-0",
-          tone === "on-forest" ? "text-on-forest-muted" : "text-ink-muted",
-        )}
-        aria-hidden="true"
-      />
-      <span className="sr">{t("common.language")}</span>
-      <select
-        value={locale}
-        onChange={(event) => choose(event.target.value)}
-        aria-label={t("common.language")}
-        className={cn("font-medium", tone === "on-forest" && "lang-select")}
-      >
-        {LOCALES.map((code) => (
-          <option key={code} value={code}>
-            {LOCALE_LABEL[code]}
-          </option>
-        ))}
-      </select>
-    </label>
+    <DropdownMenu.Root modal={false}>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          aria-label={t("common.language")}
+          className={cn(
+            "lang-menu-btn inline-flex h-11 items-center gap-2 rounded-full px-3.5 text-sm font-semibold",
+            dark
+              ? "border border-[rgba(247,245,238,0.38)] bg-[rgba(247,245,238,0.07)] text-[#f7f5ee] hover:bg-[rgba(247,245,238,0.14)]"
+              : "border border-line bg-surface-raised text-ink hover:bg-surface-sunken",
+            className,
+          )}
+        >
+          <Languages className="size-[18px] shrink-0" aria-hidden="true" />
+          <span>{LOCALE_LABEL[locale]}</span>
+          <ChevronDown className="size-4 shrink-0 opacity-80" aria-hidden="true" />
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          side="bottom"
+          align="end"
+          sideOffset={8}
+          collisionPadding={12}
+          className={cn(
+            "z-50 min-w-[13rem] rounded-2xl border p-1.5 shadow-2xl outline-none",
+            dark
+              ? "border-[rgba(247,245,238,0.18)] bg-[#07352a] text-[#f7f5ee]"
+              : "border-line bg-surface text-ink",
+          )}
+        >
+          <DropdownMenu.RadioGroup value={locale} onValueChange={(value) => choose(value)}>
+            {LOCALES.map((code) => (
+              <DropdownMenu.RadioItem
+                key={code}
+                value={code}
+                className={cn(
+                  "flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm outline-none",
+                  dark
+                    ? "data-[highlighted]:bg-[rgba(247,245,238,0.1)]"
+                    : "data-[highlighted]:bg-surface-sunken",
+                )}
+              >
+                <span className="flex-1">{LOCALE_LABEL[code]}</span>
+                <DropdownMenu.ItemIndicator>
+                  <Check
+                    className={cn("size-4", dark ? "text-[var(--gold-on-forest)]" : "text-gold")}
+                    aria-hidden="true"
+                  />
+                </DropdownMenu.ItemIndicator>
+              </DropdownMenu.RadioItem>
+            ))}
+          </DropdownMenu.RadioGroup>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }

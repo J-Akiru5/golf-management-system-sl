@@ -766,7 +766,7 @@ export const hil: Dictionary = {
       signInDisabled: "Indi available ang sign-in para sa sini nga account. Pamangkuta ang club.",
       emailRequired: "Ibutang ang email nga yara sa account.",
       linkInvalid: "Indi husto ukon lipas na ang link. Pangayo sang bag-o.",
-      signInRequired: "Mag-sign in agod makapadayon.",
+      signInRequired: "Palihog mag-sign in agod makita ang inyo kaugalingon nga start. Bukas ang pairings kag board sa tanan.",
       signUpRequired: "Ibutang ang email kag password agod makahimo sang account.",
       passwordShort: "Gamita ang indi kubos sa 8 ka character para sa password.",
       signUpFailed: "Indi mahimo ang account. Kon may ara ka na, mag-sign in na lang.",

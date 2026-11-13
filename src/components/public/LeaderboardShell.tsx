@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { HelpButton } from "@/components/help";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBottomBar } from "@/components/MobileTabBar";
 import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
@@ -28,30 +28,31 @@ export function LeaderboardShell({
     <main className="public public-pairings mobile-bar-space">
       <header className="public-head public-appbar !p-4 sm:!p-5">
         <PublicBackLink label={t("pairings.backHome")} />
-        <div className="public-appbar-row flex items-start justify-between gap-3">
+        <div className="public-appbar-controls flex items-center gap-2">
+          <ThemeToggle compact tone="nav" />
+          <HelpButton audience="player" screen="pairings" />
+        </div>
+        <div className="appbar-foot">
           <div className="public-appbar-brand flex flex-wrap items-center gap-3">
             <TeeLineLogo variant="reverse" width={172} />
             <span className="leading-tight">
-              <b className="block font-display text-[13px] font-semibold">Leaderboard</b>
               <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
             </span>
           </div>
-          <div className="public-appbar-controls flex items-center gap-2">
-            <ThemeToggle compact tone="nav" />
-            <HelpButton audience="player" screen="pairings" />
+          <div className="appbar-title">
+            <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
+              {eventName ?? "Leaderboard"}
+            </h1>
+            {dateText && <p className="text-on-forest-muted">{dateText}</p>}
           </div>
         </div>
-        <h1 className="mt-3 font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-          {eventName ?? "Leaderboard"}
-        </h1>
-        {dateText && <p className="text-on-forest-muted">{dateText}</p>}
       </header>
 
       {advisory && <PublicAdvisoryBanner advisory={advisory} />}
 
       <PublicTournamentNav active="leaderboard" />
       {children}
-      <PlayerBottomBar />
+      <PublicBottomBar />
     </main>
   );
 }
