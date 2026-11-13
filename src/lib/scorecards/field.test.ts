@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classFromAverage, normalizeClass, teeCode } from "./field";
+import { classFromAverage, normalizeClass, sessionFromTeeTime, teeCode } from "./field";
 
 describe("classFromAverage", () => {
   it("uses the system bands", () => {
@@ -35,6 +35,19 @@ describe("teeCode", () => {
   it("keeps an unknown tee blank instead of guessing", () => {
     expect(teeCode("")).toBe("");
     expect(teeCode("Championship")).toBe("");
+  });
+});
+
+describe("sessionFromTeeTime", () => {
+  it("splits the day at the event's afternoon start", () => {
+    expect(sessionFromTeeTime("06:30:00", "12:30:00")).toBe("AM");
+    expect(sessionFromTeeTime("11:59", "12:30")).toBe("AM");
+    expect(sessionFromTeeTime("12:30:00", "12:30:00")).toBe("PM");
+    expect(sessionFromTeeTime("14:00", "12:30")).toBe("PM");
+  });
+
+  it("stays blank when the group has no tee time", () => {
+    expect(sessionFromTeeTime("", "12:30")).toBe("");
   });
 });
 
