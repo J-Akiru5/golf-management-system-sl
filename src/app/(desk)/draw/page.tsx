@@ -7,6 +7,7 @@ import { DrawTable } from "@/components/draw/DrawTable";
 import { FlightQueuePanel } from "@/components/draw/FlightQueuePanel";
 import { GroupCard } from "@/components/draw/GroupCard";
 import { IssuesPanel } from "@/components/draw/IssuesPanel";
+import { PairingSheetImport } from "@/components/draw/PairingSheetImport";
 import { PublishDialog } from "@/components/draw/PublishDialog";
 
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
@@ -22,6 +23,7 @@ import {
 import { buildDrawTable } from "@/lib/draw/table-model";
 import { type DrawGroup, dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
+import type { PairingCandidate } from "@/lib/import/pairing-sheet";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
 import { useDesk } from "@/lib/store/desk-store";
 import { isUnclassifiedGroup } from "@/lib/store/state";
@@ -133,6 +135,16 @@ export default function DrawPage() {
     day === null
       ? ready
       : registrations.filter((r) => r.status === "ok" && onDay(r.playerId)).length;
+  // Everyone entered for the day, offered to the pairing sheet match by name. An entry still waiting
+  // for review counts: the organizer put that player on the sheet, and the desk can finish the
+  // entry afterwards. An ineligible entry does not.
+  const pairingCandidates = useMemo<PairingCandidate[]>(
+    () =>
+      registrations
+        .filter((r) => r.status !== "ineligible" && onDay(r.playerId))
+        .map((r) => ({ registrationId: r.playerId, fullName: r.playerName })),
+    [registrations, onDay],
+  );
   const provisional = registrations.filter((r) => r.provisional);
   const provisionalCount = provisional.length;
   const onBoard = new Set(draw?.flatMap((g) => g.playerIds) ?? []);
@@ -566,6 +578,23 @@ export default function DrawPage() {
                 ))}
               </select>
             </label>
+          )}
+          {day !== null && (
+            <RoleGate role={member?.role} allow={["owner", "organizer"]} mode="hide">
+              <PairingSheetImport
+                dayName={
+                  chosenDay ? `${chosenDay.label} · ${fmtIso(chosenDay.playDate)}` : `Day ${day}`
+                }
+                candidates={pairingCandidates}
+                currentGroups={draw ?? []}
+                flightOf={(id) => regById.get(id)?.flightId ?? null}
+                fallbackFlightId={tournament?.flights?.[0]?.id ?? null}
+                maxGroupSize={config.groupSize}
+                onApply={(groups) =>
+                  dispatch({ type: "replaceDraw", draw: groups, dayNumber: day })
+                }
+              />
+            </RoleGate>
           )}
           <button
             type="button"

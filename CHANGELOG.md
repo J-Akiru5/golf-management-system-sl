@@ -10,6 +10,12 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **The organizer can load their own pairing sheet on the Draw page.** An owner or organizer
+  chooses an .xlsx workbook and the worksheet, reviews matched, fuzzy, ambiguous and not found
+  names, ticks any fuzzy suggestion they accept, and replaces only the playing day on screen. The
+  workbook is read in the browser and nothing is uploaded. Names that are not found or are
+  ambiguous are listed with their hole and session so they can be fixed on the registration desk.
+  No migration.
 - **A pick-up (an X on the card) scores 0 and counts as a played hole.** The scoring engine now holds
   a hole with no stroke count: it scores 0 gross and 0 net points, counts toward holes played, stays
   out of the stroke totals, and a card with an X skips the written-total comparison because the

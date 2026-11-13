@@ -186,6 +186,11 @@ export type Action =
   | { type: "generateAllDays"; showDay: number | null }
   /** Demo only: shows another playing day's board, keeping the edits made to the one left. */
   | { type: "showDay"; from: number | null; to: number }
+  /**
+   * Replaces the groups on the playing day on screen with groups read from the organizer's pairing
+   * sheet. The published copy and every other day stay as they are.
+   */
+  | { type: "replaceDraw"; draw: DrawGroup[]; dayNumber?: number | null }
   | { type: "move"; playerId: string; toGroup: number; reason: string }
   /** Takes a withdrawn player off the day's board, leaving their group slot open. */
   | { type: "withdrawFromDraw"; playerId: string }
@@ -1077,6 +1082,24 @@ export function reducer(state: DeskState, a: Action): DeskState {
         dayBoards,
         draw: target.draw,
         warnings: target.warnings,
+      });
+    }
+
+    case "replaceDraw": {
+      const t = activeTournament(state);
+      if (!t) return state;
+      const board = boardOf(state);
+      const dayNumber = a.dayNumber ?? null;
+      const warnings: string[] = [];
+      return withBoard(state, t.id, {
+        ...board,
+        draw: a.draw,
+        warnings,
+        // The published list is not touched: the organizer reviews the new board and publishes it.
+        dayBoards:
+          board.dayBoards && dayNumber !== null
+            ? { ...board.dayBoards, [dayNumber]: { draw: a.draw, warnings } }
+            : board.dayBoards,
       });
     }
 
