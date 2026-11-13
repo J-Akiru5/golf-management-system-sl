@@ -2024,6 +2024,132 @@ export type Database = {
           },
         ];
       };
+      scorecard_scans: {
+        Row: {
+          byte_size: number;
+          candidates: Json;
+          club_id: string;
+          confirmed_at: string | null;
+          confirmed_by: string | null;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          marker_id: string | null;
+          mime_type: string;
+          player_id: string | null;
+          read_at: string | null;
+          reader_engine: string | null;
+          reader_engine_version: string | null;
+          reader_holes: Json | null;
+          reader_name: string | null;
+          reader_raw: Json | null;
+          reader_written_total: number | null;
+          round_id: string;
+          scorecard_id: string | null;
+          set_aside_at: string | null;
+          set_aside_by: string | null;
+          set_aside_reason: string | null;
+          sha256: string;
+          state: string;
+          storage_path: string;
+          updated_at: string;
+        };
+        Insert: {
+          byte_size: number;
+          candidates?: Json;
+          club_id: string;
+          confirmed_at?: string | null;
+          confirmed_by?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          marker_id?: string | null;
+          mime_type: string;
+          player_id?: string | null;
+          read_at?: string | null;
+          reader_engine?: string | null;
+          reader_engine_version?: string | null;
+          reader_holes?: Json | null;
+          reader_name?: string | null;
+          reader_raw?: Json | null;
+          reader_written_total?: number | null;
+          round_id: string;
+          scorecard_id?: string | null;
+          set_aside_at?: string | null;
+          set_aside_by?: string | null;
+          set_aside_reason?: string | null;
+          sha256: string;
+          state?: string;
+          storage_path: string;
+          updated_at?: string;
+        };
+        Update: {
+          byte_size?: number;
+          candidates?: Json;
+          club_id?: string;
+          confirmed_at?: string | null;
+          confirmed_by?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          marker_id?: string | null;
+          mime_type?: string;
+          player_id?: string | null;
+          read_at?: string | null;
+          reader_engine?: string | null;
+          reader_engine_version?: string | null;
+          reader_holes?: Json | null;
+          reader_name?: string | null;
+          reader_raw?: Json | null;
+          reader_written_total?: number | null;
+          round_id?: string;
+          scorecard_id?: string | null;
+          set_aside_at?: string | null;
+          set_aside_by?: string | null;
+          set_aside_reason?: string | null;
+          sha256?: string;
+          state?: string;
+          storage_path?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "scorecard_scans_club_id_fkey";
+            columns: ["club_id"];
+            isOneToOne: false;
+            referencedRelation: "clubs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scorecard_scans_marker_id_club_id_fkey";
+            columns: ["marker_id", "club_id"];
+            isOneToOne: false;
+            referencedRelation: "players";
+            referencedColumns: ["id", "club_id"];
+          },
+          {
+            foreignKeyName: "scorecard_scans_player_id_club_id_fkey";
+            columns: ["player_id", "club_id"];
+            isOneToOne: false;
+            referencedRelation: "players";
+            referencedColumns: ["id", "club_id"];
+          },
+          {
+            foreignKeyName: "scorecard_scans_round_id_club_id_fkey";
+            columns: ["round_id", "club_id"];
+            isOneToOne: false;
+            referencedRelation: "competition_rounds";
+            referencedColumns: ["id", "club_id"];
+          },
+          {
+            foreignKeyName: "scorecard_scans_scorecard_id_club_id_fkey";
+            columns: ["scorecard_id", "club_id"];
+            isOneToOne: false;
+            referencedRelation: "scorecards";
+            referencedColumns: ["id", "club_id"];
+          },
+        ];
+      };
       scorecards: {
         Row: {
           approved_at: string | null;
@@ -2529,6 +2655,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      attach_scan_card: {
+        Args: { p_card: string; p_scan: string };
+        Returns: undefined;
+      };
       build_round_snapshot: {
         Args: { p_round: string; p_state: string; p_version: number };
         Returns: Json;
@@ -2564,8 +2694,22 @@ export type Database = {
         };
         Returns: Json;
       };
+      confirm_scorecard_scan: {
+        Args: { p_marker: string; p_scan: string };
+        Returns: undefined;
+      };
       create_course_map: {
         Args: { p_course: string; p_note?: string };
+        Returns: string;
+      };
+      create_scorecard_scan: {
+        Args: {
+          p_bytes: number;
+          p_mime: string;
+          p_round: string;
+          p_sha256: string;
+          p_storage_path: string;
+        };
         Returns: string;
       };
       current_player_id: { Args: never; Returns: string };
@@ -2604,6 +2748,10 @@ export type Database = {
       mark_notifications_read: {
         Args: { p_tournament: string };
         Returns: number;
+      };
+      match_scorecard_scan: {
+        Args: { p_player: string; p_scan: string };
+        Returns: undefined;
       };
       open_round: {
         Args: {
@@ -2683,6 +2831,19 @@ export type Database = {
         };
         Returns: string;
       };
+      record_scan_reading: {
+        Args: {
+          p_candidates: Json;
+          p_engine: string;
+          p_engine_version: string;
+          p_holes: Json;
+          p_name: string;
+          p_raw: Json;
+          p_scan: string;
+          p_written_total: number;
+        };
+        Returns: undefined;
+      };
       record_scorecard_correction: {
         Args: { p_card: string; p_reason: string };
         Returns: undefined;
@@ -2705,6 +2866,10 @@ export type Database = {
           p_strokes: number;
         };
         Returns: string;
+      };
+      restore_scorecard_scan: {
+        Args: { p_scan: string };
+        Returns: undefined;
       };
       save_course_map_holes: {
         Args: { p_holes: Json; p_map: string };
@@ -2750,6 +2915,10 @@ export type Database = {
           p_rules_version?: string;
         };
         Returns: string;
+      };
+      set_aside_scorecard_scan: {
+        Args: { p_reason: string; p_scan: string };
+        Returns: undefined;
       };
       set_registration_days: {
         Args: { p_days: number[]; p_registration: string; p_sessions?: Json };

@@ -20,6 +20,7 @@ import { DeskAccessError, getDeskMember } from "@/lib/auth/member";
 import { type Adapters, createMockAdapters } from "@/lib/data/adapters";
 import { daysOfTournament, selectedDaysOf } from "@/lib/data/dates";
 import { registrationFor } from "@/lib/data/registrations";
+import { createDemoScanInboxRepository, type ScanInboxRepository } from "@/lib/data/scan-inbox";
 import { createDemoScoringRepository, type ScoringRepository } from "@/lib/data/scoring";
 import {
   createQueue,
@@ -34,6 +35,7 @@ import {
   unpublishPairings,
 } from "@/lib/data/supabase/draw-sync";
 import { loadDeskState } from "@/lib/data/supabase/load-desk-state";
+import { createSupabaseScanInboxRepository } from "@/lib/data/supabase/scan-inbox";
 import { createSupabaseScoringRepository } from "@/lib/data/supabase/scoring";
 import type {
   Caddie,
@@ -129,6 +131,8 @@ interface Desk {
   adapters: Adapters;
   /** Scorecard workflow. Connected when Supabase is configured, in-memory in the demo. */
   scoring: ScoringRepository;
+  /** Photo scan inbox. Same demo/connected split, and no screen is wired to it yet. */
+  scanInbox: ScanInboxRepository;
   dispatch: Dispatch<Action>;
   /** Preview used by the add-player form: where a draft player would land. */
   classifyDraft: (draft: DraftPlayer) => DeskRegistration | null;
@@ -831,6 +835,13 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     return createSupabaseScoringRepository({ client });
   }, [connected, client]);
 
+  // The scan inbox reads the round's players from the scoring repository, so the demo and the
+  // connected desk use the same view without a second player query.
+  const scanInbox = useMemo<ScanInboxRepository>(() => {
+    if (!connected || !client) return createDemoScanInboxRepository({ scoring });
+    return createSupabaseScanInboxRepository({ client, scoring });
+  }, [connected, client, scoring]);
+
   // The demo keeps every playing day's board in memory (a fresh draw makes them all at once), so
   // choosing a day shows that day's own AM and PM board. A connected desk loads the saved round.
   const shownDayRef = useRef<number | null | undefined>(undefined);
@@ -960,6 +971,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       publishError,
       member: connected ? member : undefined,
       scoring,
+      scanInbox,
       lastSavedAt,
       offline: connected && (!networkOnline || cachedAt !== null),
       cachedAt,
@@ -971,6 +983,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     state,
     adapters,
     scoring,
+    scanInbox,
     dispatch,
     status,
     error,
