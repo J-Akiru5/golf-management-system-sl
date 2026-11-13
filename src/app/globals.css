@@ -7057,8 +7057,7 @@ html[data-textsize="large"] {
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .public-tabs .public-tab,
-    .public-advisory-chevron {
+    .public-tabs .public-tab {
       transition: none;
     }
     .public-tabs .public-tab:active {
