@@ -75,6 +75,9 @@ deployments for every other branch, `develop` included; do not re-enable them wi
 Coding agents other than the orchestrator never push, never merge to `develop` or `staging`, and
 never deploy.
 
+The orchestrator promotes a reviewed, green release to `main` and tags it without asking again: the
+owner delegated both on 13 Nov 2026. See `docs/VERSIONING.md`, "Standing owner authorization".
+
 ## Writing style
 
 Plain language. No em-dash pile-ups, no marketing words. Do not call the owner an "engineer" in documents.
