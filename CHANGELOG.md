@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-11-14
+
 ### Added
 - **The tabulation page works by playing day and session.** Every card carries the day and the AM or
   PM shotgun it was played in, defaulting to the day and session the page is named for. The system's
