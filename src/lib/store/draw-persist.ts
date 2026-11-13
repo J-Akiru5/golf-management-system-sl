@@ -115,6 +115,7 @@ export function planDrawJobs(
       return jobs;
     }
     case "replaceDraw":
+    case "undoBoard":
     case "move":
     case "withdrawFromDraw":
     case "restoreToDraw":

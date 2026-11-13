@@ -206,6 +206,17 @@ export type Action =
   /** Reorders the groups waiting on one hole, earliest start first. */
   | { type: "reorderHoleQueue"; hole: number; order: number[]; reason: string }
   /**
+   * Puts a board back exactly as it was before an edit, as a new board edit. The store keeps the
+   * snapshot and carries it here, so the restore is saved and published like any other change.
+   */
+  | {
+      type: "undoBoard";
+      tournamentId: string;
+      dayNumber: number | null;
+      draw: DrawGroup[];
+      overrides: ManualOverride[];
+    }
+  /**
    * Publishes one playing day and keeps the days already published. The store fills the day
    * fields from the day on screen, so a screen only asks to publish.
    */
@@ -213,6 +224,56 @@ export type Action =
   | { type: "unpublish" }
   /** The database confirmed a publish and assigned its version number and time. */
   | { type: "publishAck"; tournamentId: string; version: number; at: string };
+
+/**
+ * Where this browser remembers that Live mode was left on. Live mode publishes board edits by
+ * itself, so the choice is remembered per browser and never assumed.
+ */
+export const LIVE_MODE_STORAGE_KEY = "teeline.draw.liveMode";
+
+/**
+ * How long Live mode waits after the last board edit before it publishes. A burst of moves becomes
+ * one published version instead of one per move.
+ */
+export const LIVE_PUBLISH_DELAY_MS = 2000;
+
+/** Whether this browser left Live mode on. A server render, a refusal, or nothing stored reads off. */
+export function readLiveMode(storage: Pick<Storage, "getItem"> | null): boolean {
+  if (!storage) return false;
+  try {
+    return storage.getItem(LIVE_MODE_STORAGE_KEY) === "on";
+  } catch {
+    // Storage switched off: the desk starts with Live mode off, which is the safe default.
+    return false;
+  }
+}
+
+/** Remembers the choice. A browser that refuses storage keeps the choice for this visit only. */
+export function writeLiveMode(storage: Pick<Storage, "setItem"> | null, on: boolean): void {
+  if (!storage) return;
+  try {
+    storage.setItem(LIVE_MODE_STORAGE_KEY, on ? "on" : "off");
+  } catch {
+    // Nothing else changes: the toggle still works until the page reloads.
+  }
+}
+
+/**
+ * Every board edit: each one can be taken back, and each one is what Live mode publishes by itself.
+ *
+ * One list on purpose, so the two never drift apart. The swap actions another builder is adding
+ * (`swapPlayers`, `moveSet`, `swapSets`) each need one line here once their action exists.
+ */
+export const BOARD_EDIT_ACTIONS: ReadonlySet<Action["type"]> = new Set<Action["type"]>([
+  "move",
+  "swapGroupSlots",
+  "moveGroupToHole",
+  "reorderHoleQueue",
+  "setGroupLocked",
+  "withdrawFromDraw",
+  "restoreToDraw",
+  "placeOnDraw",
+]);
 
 /**
  * Nothing at all: the state a connected desk starts from, so a screen never shows invented players
@@ -511,6 +572,37 @@ export function publishedSignatureForDay(
   );
 }
 
+/**
+ * Whose group starts where, as players see it. The publication signature only names the players, so
+ * it misses a group that moved to another hole or time; comparing the start as well is what stops
+ * Live mode from skipping a change players would notice.
+ */
+const publishedGroupKey = (group: {
+  number: number;
+  startHole: number;
+  time: string;
+  playerIds?: string[];
+}): string =>
+  `${group.number}|${group.startHole}|${group.time}|${(group.playerIds ?? []).join(",")}`;
+
+/**
+ * Whether the board on screen holds anything players would see differently from the frozen copy.
+ * True when nothing has been published at all, because then everything is news.
+ */
+export function unpublishedChange(board: BoardState, dayNumber: number | null): boolean {
+  if (!board.published) return true;
+  const published = new Map(
+    publishedGroupsForDay(board.published, dayNumber).map((group) => [
+      group.number,
+      publishedGroupKey(group),
+    ]),
+  );
+  // A group with nobody in it is not published, so it is not a difference either.
+  const groups = (board.draw ?? []).filter((group) => group.playerIds.length > 0);
+  if (groups.length !== published.size) return true;
+  return groups.some((group) => published.get(group.number) !== publishedGroupKey(group));
+}
+
 /** The player ids of the confirmed provisional entries in a set of desk registrations. */
 export const provisionalIdsOf = (regs: DeskRegistration[]): Set<string> =>
   new Set(regs.filter((r) => r.provisional).map((r) => r.playerId));
@@ -677,6 +769,116 @@ const slotOverride = (
   reason,
   at: new Date().toISOString(),
 });
+
+/**
+ * Everything the publish path needs to judge the board on screen: the event, the board, the
+ * registrations the checks read from, and the problems found. Null when there is nothing to publish.
+ */
+function publishCheck(s: DeskState, dayNumber: number | null) {
+  const t = activeTournament(s);
+  const board = boardOf(s);
+  if (!t || !board.draw) return null;
+  const regs = buildRegistrations(s);
+  const dayList = playingDaysOfEvent(s.days[t.id] ?? daysOfTournament(t));
+  const dayMembers =
+    dayNumber === null
+      ? undefined
+      : new Set(
+          entriesFor(s, t.id)
+            .filter((entry) => {
+              const chosen = selectedDaysOf(entry, dayList);
+              return chosen.length === 0 || chosen.includes(dayNumber);
+            })
+            .map((entry) => entry.playerId),
+        );
+  const issues = validateDraw({
+    draw: board.draw,
+    registrations: regs,
+    config: t.config,
+    engineWarnings: board.warnings,
+    flags: flagsOf(regs),
+    names: {
+      flight: (id) => t.flights.find((f) => f.id === id)?.name ?? "—",
+      category: (id) => t.categories.find((c) => c.id === id)?.name ?? "—",
+    },
+    dayNumber,
+    dayMembers,
+  });
+  return { tournament: t, board, regs, dayMembers, issues };
+}
+
+/**
+ * Why publishing is refused, in plain words. Empty when the board can be published.
+ *
+ * The publish action and Live mode both read this, so they cannot disagree about what stops a
+ * publish. Only blocking problems refuse; warnings are acknowledged by hand in the review dialog and
+ * Live mode does not tick that box for the organizer.
+ */
+export function publishProblems(s: DeskState, dayNumber: number | null): string[] {
+  const check = publishCheck(s, dayNumber);
+  if (!check) return ["There is no draw to publish."];
+  return check.issues
+    .filter((issue) => issue.severity === "blocking")
+    .map((issue) => issue.message);
+}
+
+/** What Live mode should do after a board edit, in plain values, so the store and its tests agree. */
+export type LivePublishDecision =
+  | { kind: "publish" }
+  | { kind: "skip"; reason: "no-board" | "unchanged" }
+  | { kind: "refuse"; reason: string };
+
+export interface LivePublishInput {
+  /** The signed-in role. Undefined in demo mode, where there is nobody to gate. */
+  role?: "owner" | "organizer" | "desk" | null;
+  /** The last draw save failed, so the board on screen is not what the database holds. */
+  saveFailed?: boolean;
+}
+
+/**
+ * Whether Live mode may publish the board on screen, and why not when it may not.
+ *
+ * It uses the same refusals as the publish button: the problems list, the role, and a board the
+ * database never stored. The draw revision is checked by the database on the write; a refusal there
+ * comes back as an error and the store turns Live mode off.
+ */
+export function livePublishPlan(
+  s: DeskState,
+  dayNumber: number | null,
+  { role, saveFailed }: LivePublishInput = {},
+): LivePublishDecision {
+  const t = activeTournament(s);
+  const board = boardOf(s);
+  if (!t || !board.draw) return { kind: "skip", reason: "no-board" };
+  if (role === "desk") {
+    return {
+      kind: "refuse",
+      reason: "Only the owner or an organizer can publish this event.",
+    };
+  }
+  if (role === null) {
+    return {
+      kind: "refuse",
+      reason: "This account has no desk role, so it cannot publish.",
+    };
+  }
+  if (saveFailed) {
+    return {
+      kind: "refuse",
+      reason: "The last change was not saved, so there is nothing safe to publish yet.",
+    };
+  }
+  const problems = publishProblems(s, dayNumber);
+  if (problems.length > 0) {
+    return { kind: "refuse", reason: problems.join(" ") };
+  }
+  // Nothing players would see has changed, for example only a group lock moved. Publishing would add
+  // an identical version to the public history and notify nobody, so it is skipped.
+  if (!unpublishedChange(board, dayNumber)) {
+    return { kind: "skip", reason: "unchanged" };
+  }
+  return { kind: "publish" };
+}
 
 export function reducer(state: DeskState, a: Action): DeskState {
   switch (a.type) {
@@ -1174,39 +1376,30 @@ export function reducer(state: DeskState, a: Action): DeskState {
       });
     }
 
-    case "publish": {
-      const t = activeTournament(state);
-      const board = boardOf(state);
-      if (!t || !board.draw) return state;
-      const regs = buildRegistrations(state);
-      const publishDay = a.dayNumber ?? null;
-      const dayList = playingDaysOfEvent(state.days[t.id] ?? daysOfTournament(t));
-      const dayMembers =
-        publishDay === null
-          ? undefined
-          : new Set(
-              entriesFor(state, t.id)
-                .filter((entry) => {
-                  const chosen = selectedDaysOf(entry, dayList);
-                  return chosen.length === 0 || chosen.includes(publishDay);
-                })
-                .map((entry) => entry.playerId),
-            );
-      // The page disables the button too; this is the backstop.
-      const issues = validateDraw({
-        draw: board.draw,
-        registrations: regs,
-        config: t.config,
-        engineWarnings: board.warnings,
-        flags: flagsOf(regs),
-        names: {
-          flight: (id) => t.flights.find((f) => f.id === id)?.name ?? "—",
-          category: (id) => t.categories.find((c) => c.id === id)?.name ?? "—",
-        },
-        dayNumber: publishDay,
-        dayMembers,
+    case "undoBoard": {
+      const board = state.boards[a.tournamentId];
+      if (!board) return state;
+      const dayNumber = a.dayNumber ?? null;
+      return withBoard(state, a.tournamentId, {
+        ...board,
+        draw: a.draw,
+        overrides: a.overrides,
+        // The demo keeps a copy of each day's board. The restore is that day's board now, so a day
+        // switch away and back does not bring the undone edit back.
+        dayBoards:
+          board.dayBoards && dayNumber !== null
+            ? { ...board.dayBoards, [dayNumber]: { draw: a.draw, warnings: board.warnings } }
+            : board.dayBoards,
       });
-      if (issues.some((i) => i.severity === "blocking")) return state;
+    }
+
+    case "publish": {
+      const publishDay = a.dayNumber ?? null;
+      const check = publishCheck(state, publishDay);
+      if (!check) return state;
+      const { tournament: t, board, regs } = check;
+      // The page disables the button too; this is the backstop, and the same rules Live mode reads.
+      if (check.issues.some((i) => i.severity === "blocking")) return state;
       const day =
         a.dayNumber === undefined || a.dayNumber === null
           ? null
@@ -1218,7 +1411,7 @@ export function reducer(state: DeskState, a: Action): DeskState {
       return withBoard(state, t.id, {
         ...board,
         published: buildPublished(
-          board.draw,
+          board.draw ?? [],
           state.players,
           t,
           new Date().toISOString(),

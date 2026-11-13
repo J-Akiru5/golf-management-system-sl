@@ -2,12 +2,18 @@ import { describe, expect, it } from "vitest";
 import { planDrawJobs } from "./draw-persist";
 import {
   type Action,
+  BOARD_EDIT_ACTIONS,
   type DeskState,
   drawSignatureForDay,
   initialState,
+  LIVE_PUBLISH_DELAY_MS,
+  livePublishPlan,
   publishedSignatureForDay,
+  publishProblems,
+  readLiveMode,
   reducer,
   routingInputFor,
+  writeLiveMode,
 } from "./state";
 
 const run = (state: DeskState, action: Action) => reducer(state, action);
@@ -285,5 +291,261 @@ describe("the afternoon start of a playing day", () => {
       if (day.dayNumber === 2) continue;
       expect(day).toEqual(before.find((old) => old.dayNumber === day.dayNumber));
     }
+  });
+});
+
+/** A day-1 board, drawn, with a snapshot of it taken before any edit. */
+function drawnDayOne() {
+  const state = run(splitDays(), { type: "generate", preserveLocks: false, dayNumber: 1 });
+  const drawn = board(state)?.draw ?? [];
+  const snapshot = {
+    tournamentId: BAMBOO,
+    dayNumber: 1,
+    draw: drawn,
+    overrides: [],
+  };
+  const playerId = drawn[0]?.playerIds[0] ?? "";
+  return { state, drawn, snapshot, playerId };
+}
+
+describe("undoing the last board change", () => {
+  it("puts the board back exactly as it was before the edit", () => {
+    const { state, drawn, snapshot, playerId } = drawnDayOne();
+    expect(playerId).not.toBe("");
+    // A withdrawal leaves the player's slot open and records no override; locking records one.
+    const edited = run(state, { type: "withdrawFromDraw", playerId });
+    const locked = run(edited, {
+      type: "setGroupLocked",
+      group: drawn[0]?.number ?? 1,
+      locked: true,
+      reason: "Organizer request",
+    });
+    expect(board(locked)?.overrides).toHaveLength(1);
+    expect(board(locked)?.draw).not.toEqual(drawn);
+
+    const undone = run(locked, { type: "undoBoard", ...snapshot });
+    expect(board(undone)?.draw).toEqual(drawn);
+    // The overrides the edit added go back too, so the undo is a real restore.
+    expect(board(undone)?.overrides).toEqual([]);
+    // The published copy is not touched: undo is a new board edit, not a takedown.
+    expect(board(undone)?.published).toBe(board(locked)?.published);
+  });
+
+  it("is saved like any other board edit", () => {
+    const { state, snapshot } = drawnDayOne();
+    const edited = run(state, { type: "setGroupLocked", group: 1, locked: true, reason: "x" });
+    const action = { type: "undoBoard" as const, ...snapshot };
+    const undone = run(edited, action);
+    const jobs = planDrawJobs(action, edited, undone);
+    expect(jobs.map((job) => job.kind)).toEqual(["save"]);
+    const [job] = jobs;
+    if (!job || job.kind !== "save") return;
+    expect(job.draw).toEqual(snapshot.draw);
+    expect(job.overrides).toEqual([]);
+  });
+});
+
+describe("what blocks a publish", () => {
+  it("says nothing when the drawn board is clean", () => {
+    const { state } = drawnDayOne();
+    expect(publishProblems(state, 1)).toEqual([]);
+  });
+
+  it("names the problem that stops it", () => {
+    const { state, drawn } = drawnDayOne();
+    const first = drawn[0];
+    const second = drawn[1];
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    if (!first || !second) return;
+    // The same player in two groups is a duplicate, which blocking.
+    const duplicated = {
+      ...state,
+      boards: {
+        ...state.boards,
+        [BAMBOO]: {
+          ...(board(state) ?? { draw: [], warnings: [], published: null, overrides: [] }),
+          draw: drawn.map((group) =>
+            group.number === second.number
+              ? { ...group, playerIds: [...group.playerIds, first.playerIds[0] ?? ""] }
+              : group,
+          ),
+        },
+      },
+    };
+    const problems = publishProblems(duplicated, 1);
+    expect(problems.length).toBeGreaterThan(0);
+    expect(problems.join(" ")).toContain("more than one group");
+  });
+
+  it("has nothing to publish without a board", () => {
+    expect(publishProblems(initialState(), 1)).toEqual(["There is no draw to publish."]);
+  });
+});
+
+describe("what Live mode does after an edit", () => {
+  const publish = (state: DeskState, dayNumber: number) =>
+    run(state, {
+      type: "publish",
+      dayNumber,
+      dayLabel: `Day ${dayNumber}`,
+      playDate: "2026-11-12",
+    });
+
+  it("publishes a board that has never been published", () => {
+    const { state } = drawnDayOne();
+    expect(livePublishPlan(state, 1, { role: "owner" })).toEqual({ kind: "publish" });
+  });
+
+  it("skips a board players already see", () => {
+    const { state } = drawnDayOne();
+    const published = publish(state, 1);
+    expect(livePublishPlan(published, 1, { role: "organizer" })).toEqual({
+      kind: "skip",
+      reason: "unchanged",
+    });
+  });
+
+  it("publishes again after a change to the board", () => {
+    const { state, drawn } = drawnDayOne();
+    const first = drawn[0];
+    const second = drawn[1];
+    if (!first || !second) return;
+    // Swapping two groups' start slots is a real change players see, even though the rosters match.
+    const changed = run(publish(state, 1), {
+      type: "swapGroupSlots",
+      a: first.number,
+      b: second.number,
+      reason: "Late change on the day",
+    });
+    expect(livePublishPlan(changed, 1, { role: "owner" })).toEqual({ kind: "publish" });
+  });
+
+  it("skips a change players cannot see, such as locking a group", () => {
+    const { state, drawn } = drawnDayOne();
+    const first = drawn[0];
+    if (!first) return;
+    const locked = run(publish(state, 1), {
+      type: "setGroupLocked",
+      group: first.number,
+      locked: true,
+      reason: "Organizer request",
+    });
+    expect(livePublishPlan(locked, 1, { role: "owner" })).toEqual({
+      kind: "skip",
+      reason: "unchanged",
+    });
+  });
+
+  it("has nothing to do without a board", () => {
+    expect(livePublishPlan(initialState(), 1)).toEqual({ kind: "skip", reason: "no-board" });
+  });
+
+  it("refuses for a desk account, and for an account with no role", () => {
+    const { state } = drawnDayOne();
+    const desk = livePublishPlan(state, 1, { role: "desk" });
+    expect(desk.kind).toBe("refuse");
+    if (desk.kind === "refuse") expect(desk.reason).toMatch(/owner or an organizer/);
+    expect(livePublishPlan(state, 1, { role: null }).kind).toBe("refuse");
+    // Demo mode has no role at all, so there is nobody to gate.
+    expect(livePublishPlan(state, 1).kind).toBe("publish");
+  });
+
+  it("refuses when the last save failed", () => {
+    const { state } = drawnDayOne();
+    const plan = livePublishPlan(state, 1, { role: "owner", saveFailed: true });
+    expect(plan.kind).toBe("refuse");
+    if (plan.kind === "refuse") expect(plan.reason).toMatch(/was not saved/);
+  });
+
+  it("refuses for the same blocking problems the publish button refuses", () => {
+    const { state, drawn } = drawnDayOne();
+    const first = drawn[0];
+    const second = drawn[1];
+    if (!first || !second) return;
+    const duplicated: DeskState = {
+      ...state,
+      boards: {
+        ...state.boards,
+        [BAMBOO]: {
+          ...(board(state) ?? { draw: [], warnings: [], published: null, overrides: [] }),
+          draw: drawn.map((group) =>
+            group.number === second.number
+              ? { ...group, playerIds: [...group.playerIds, first.playerIds[0] ?? ""] }
+              : group,
+          ),
+        },
+      },
+    };
+    const plan = livePublishPlan(duplicated, 1, { role: "owner" });
+    expect(plan.kind).toBe("refuse");
+    if (plan.kind === "refuse") expect(plan.reason).toContain("more than one group");
+  });
+});
+
+describe("the board edits Live mode listens to", () => {
+  it("covers every edit the brief names", () => {
+    for (const type of [
+      "move",
+      "swapGroupSlots",
+      "moveGroupToHole",
+      "reorderHoleQueue",
+      "setGroupLocked",
+      "withdrawFromDraw",
+      "restoreToDraw",
+      "placeOnDraw",
+    ] as const) {
+      expect(BOARD_EDIT_ACTIONS.has(type)).toBe(true);
+    }
+    // A publish is not an edit, so it must not set off another publish.
+    expect(BOARD_EDIT_ACTIONS.has("publish")).toBe(false);
+    expect(BOARD_EDIT_ACTIONS.has("undoBoard")).toBe(false);
+  });
+
+  it("waits about two seconds before publishing a burst as one version", () => {
+    expect(LIVE_PUBLISH_DELAY_MS).toBe(2000);
+  });
+});
+
+describe("Live mode remembered per browser", () => {
+  function fakeStorage(initial: string | null = null) {
+    let value = initial;
+    return {
+      getItem: () => value,
+      setItem: (_key: string, next: string) => {
+        value = next;
+      },
+      read: () => value,
+    };
+  }
+
+  it("is off when nothing was stored", () => {
+    expect(readLiveMode(fakeStorage())).toBe(false);
+    expect(readLiveMode(fakeStorage("off"))).toBe(false);
+  });
+
+  it("reads back what it wrote", () => {
+    const storage = fakeStorage();
+    writeLiveMode(storage, true);
+    expect(storage.read()).toBe("on");
+    expect(readLiveMode(storage)).toBe(true);
+    writeLiveMode(storage, false);
+    expect(readLiveMode(storage)).toBe(false);
+  });
+
+  it("stays off when the browser refuses storage", () => {
+    const broken = {
+      getItem: () => {
+        throw new Error("denied");
+      },
+      setItem: () => {
+        throw new Error("denied");
+      },
+    };
+    expect(readLiveMode(broken)).toBe(false);
+    expect(() => writeLiveMode(broken, true)).not.toThrow();
+    // A server render has no storage at all.
+    expect(readLiveMode(null)).toBe(false);
+    expect(() => writeLiveMode(null, true)).not.toThrow();
   });
 });

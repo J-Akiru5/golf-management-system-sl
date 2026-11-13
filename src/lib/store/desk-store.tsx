@@ -48,6 +48,13 @@ import type {
   TournamentDay,
 } from "@/lib/data/types";
 import { buildDemoScoringSeed } from "@/lib/demo/scoring";
+import {
+  type BoardHistory,
+  type BoardSnapshot,
+  pushSnapshot,
+  takeSnapshot,
+  undoAvailable,
+} from "@/lib/draw/board-history";
 import type { DrawGroup } from "@/lib/draw/validate";
 import { displayName } from "@/lib/format";
 import { NO_DESK_SNAPSHOT_NOTICE, OFFLINE_WRITE_NOTICE, toDeskSnapshot } from "@/lib/offline/cache";
@@ -55,14 +62,19 @@ import { lastDeskUserId, loadDeskSnapshot, saveDeskSnapshot } from "@/lib/offlin
 import type { Tee } from "@/lib/routing";
 import {
   type Action,
+  BOARD_EDIT_ACTIONS,
   type BoardState,
   buildRegistrations,
   type DeskState,
   drawSignatureForDay,
   flagsOf,
+  LIVE_PUBLISH_DELAY_MS,
+  livePublishPlan,
   type Published,
   playingDaysOfEvent,
   publishedSignatureForDay,
+  readLiveMode,
+  writeLiveMode,
 } from "@/lib/store/state";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -172,6 +184,17 @@ interface Desk {
   drawDay: number | null;
   /** Shows another playing day's board, loaded and saved in place of this one. */
   setDrawDay: (day: number | null) => void;
+  /**
+   * Live mode publishes each board edit by itself, about two seconds after the last one, so a burst
+   * of changes is one published version. Remembered per browser; off by default.
+   */
+  liveMode: boolean;
+  /** Turns Live mode on or off, and remembers the choice in this browser. */
+  setLiveMode: (on: boolean) => void;
+  /** True when the board on screen has a change "Undo last change" can take back. */
+  canUndo: boolean;
+  /** Puts the board back as it was before the last edit, as a new board edit. */
+  undoLastChange: () => void;
 }
 
 const Ctx = createContext<Desk | null>(null);
@@ -180,6 +203,7 @@ const Ctx = createContext<Desk | null>(null);
 const DRAW_ACTIONS: ReadonlySet<Action["type"]> = new Set([
   "generate",
   "replaceDraw",
+  "undoBoard",
   "move",
   "withdrawFromDraw",
   "restoreToDraw",
@@ -290,6 +314,48 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   // not on a saved copy.
   const canWriteRef = useRef(!connected);
   canWriteRef.current = !connected || (status === "ready" && networkOnline && cachedAt === null);
+
+  // Live mode, undo, and the values the publish timer reads when it fires. Refs, because the timer
+  // outlives the render that started it and must see the newest board and role.
+  const [liveMode, setLiveModeState] = useState(false);
+  const liveModeRef = useRef(false);
+  const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True from the moment Live mode asks for a publish until the store answers, so a refusal that
+  // came from a hand-pressed publish is not blamed on Live mode.
+  const livePublishInFlight = useRef(false);
+  const runLivePublishRef = useRef<() => void>(() => {});
+  // Publishes a pending Live mode change immediately, for when the board on screen is about to change
+  // under it. Reads the refs at call time, so it is the same function for the life of the provider.
+  const flushLivePublishRef = useRef(() => {
+    if (!liveTimer.current) return;
+    clearTimeout(liveTimer.current);
+    liveTimer.current = null;
+    runLivePublishRef.current();
+  });
+  const saveFailedRef = useRef(false);
+  saveFailedRef.current = saveFailed;
+  const memberRef = useRef<Desk["member"]>(member);
+  memberRef.current = member;
+  // The undo stack belongs to this tab: it is memory only, so a reload starts clean.
+  const undoStack = useRef<BoardHistory>([]);
+  const [canUndo, setCanUndo] = useState(false);
+
+  const clearLiveTimer = useCallback(() => {
+    if (liveTimer.current) {
+      clearTimeout(liveTimer.current);
+      liveTimer.current = null;
+    }
+  }, []);
+
+  // The remembered choice is read once, after mounting: a server render cannot see it, and Live mode
+  // is never assumed.
+  useEffect(() => {
+    const remembered = readLiveMode(dayStorage());
+    liveModeRef.current = remembered;
+    setLiveModeState(remembered);
+  }, []);
+
+  useEffect(() => clearLiveTimer, [clearLiveTimer]);
 
   useEffect(() => {
     const sync = () => setNetworkOnline(navigator.onLine);
@@ -469,6 +535,9 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
   const setDrawDay = useCallback(
     (day: number | null) => {
+      // A Live mode publish that is still waiting belongs to the day being left, so it goes out
+      // before the board on screen changes to another day.
+      flushLivePublishRef.current();
       drawDayRef.current = day;
       setDrawDayState(day);
       // Remembered against the event it was chosen on, so switching events can tell whether the day
@@ -483,6 +552,53 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     keepSelected.current = id;
     setReloadToken((n) => n + 1);
   }, []);
+
+  /** Turns Live mode on or off. The choice is remembered in this browser; the toggle never lies. */
+  const setLiveMode = useCallback(
+    (on: boolean) => {
+      liveModeRef.current = on;
+      setLiveModeState(on);
+      writeLiveMode(dayStorage(), on);
+      if (!on) {
+        clearLiveTimer();
+        return;
+      }
+      // A refusal from an earlier attempt is not this switch's business; it starts clean.
+      setPublishState((current) => (current === "failed" ? "idle" : current));
+    },
+    [clearLiveTimer],
+  );
+
+  /**
+   * Turns Live mode off and says why, through the existing "Not published" notice. A refused publish
+   * must never be silent, and Live mode must not keep trying behind the desk's back.
+   */
+  const stopLive = useCallback(
+    (reason: string) => {
+      clearLiveTimer();
+      liveModeRef.current = false;
+      setLiveModeState(false);
+      writeLiveMode(dayStorage(), false);
+      setPublishState("failed");
+      setPublishError(reason);
+      toast.push({ tone: "bad", title: "Not published", detail: `${reason} Live mode is off.` });
+    },
+    [clearLiveTimer, toast],
+  );
+
+  /**
+   * Queues one publish for the burst of edits being made. Every edit restarts the wait, so a run of
+   * moves is one published version, one public-page clear and one notification check instead of one
+   * per move.
+   */
+  const scheduleLivePublish = useCallback(() => {
+    if (!liveModeRef.current) return;
+    clearLiveTimer();
+    liveTimer.current = setTimeout(() => {
+      liveTimer.current = null;
+      runLivePublishRef.current();
+    }, LIVE_PUBLISH_DELAY_MS);
+  }, [clearLiveTimer]);
 
   // One queue for every draw write, so saves and publishes reach the database in the order the
   // organizer made them.
@@ -588,6 +704,24 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     return { tournamentId, tournament, day, excluded };
   }, []);
 
+  /**
+   * Keeps the board as it was before an edit, so it can be put back. The groups and the overrides are
+   * copied: a later edit builds new arrays, and undo must not follow it.
+   */
+  const rememberBoard = useCallback((from: DeskState) => {
+    const tournamentId = from.activeTournamentId;
+    const board = tournamentId ? from.boards[tournamentId] : undefined;
+    if (!tournamentId || !board?.draw) return;
+    const owner = { tournamentId, dayNumber: drawDayRef.current };
+    const snapshot: BoardSnapshot = {
+      ...owner,
+      draw: board.draw.map((group) => ({ ...group, playerIds: [...group.playerIds] })),
+      overrides: board.overrides.map((override) => ({ ...override })),
+    };
+    undoStack.current = pushSnapshot(undoStack.current, snapshot);
+    setCanUndo(undoAvailable(undoStack.current, owner));
+  }, []);
+
   // Every screen dispatches through this. In demo mode it is the plain reducer; with Supabase the
   // draw actions are also queued for the database.
   const dispatch = useCallback<Dispatch<Action>>(
@@ -596,6 +730,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       // lands on the same round rather than the first one. The choice is remembered against the new
       // event first, and the reload token below is what reads that event's board for that day.
       if (rawAction.type === "selectTournament") {
+        // A Live mode publish still waiting belongs to the event being left.
+        flushLivePublishRef.current();
         const eventDays = rawAction.id ? (latest.current.days[rawAction.id] ?? []) : [];
         const nextDay = dayOnEventSwitch(drawDayRef.current, playingDaysOfEvent(eventDays));
         drawDayRef.current = nextDay;
@@ -630,6 +766,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
                 }
               : rawAction;
       const isPublish = action.type === "publish" || action.type === "unpublish";
+      // A board edit is remembered before it is applied, so "Undo last change" can put the board back.
+      // Undo changes the board too (it is saved and published like an edit) but is never put on the
+      // stack itself, so each press takes back one more change.
+      const isBoardEdit = BOARD_EDIT_ACTIONS.has(action.type);
+      const changesBoard = isBoardEdit || action.type === "undoBoard";
       // A save that failed leaves the screen on the last saved board. Publishing then would need a
       // board the database never stored, so it waits for a successful save.
       if (action.type === "publish" && saveFailed) {
@@ -667,6 +808,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         rawDispatch(action);
         const notice = actionNotice(action, before, after);
         if (notice) toast.push(notice);
+        if (isBoardEdit && after !== before) rememberBoard(before);
+        if (changesBoard) scheduleLivePublish();
         return;
       }
       const before = latest.current;
@@ -695,6 +838,14 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         for (const job of jobs) {
           drawQueue.current?.(async () => {
             try {
+              // A Live mode publish that waited behind a save which then failed must not go out with
+              // a board the database never stored. The review dialog refuses this too; the timer
+              // cannot see it in time.
+              if (livePublishInFlight.current && saveFailedRef.current) {
+                throw new Error(
+                  "The last change was not saved, so the pairings were not published.",
+                );
+              }
               const result = await runDrawJob(job, client);
               if (job.kind === "publish") {
                 // The snapshot the database accepted, not a fresh one built from the screen.
@@ -784,6 +935,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
 
       const notice = actionNotice(action, before, after);
       if (notice) toast.push(notice);
+      if (isBoardEdit && after !== before) rememberBoard(before);
+      if (changesBoard) scheduleLivePublish();
       for (const job of jobs) {
         drawQueue.current?.(async () => {
           try {
@@ -804,8 +957,114 @@ export function DeskProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [apply, applyBoard, applyPublished, client, connected, rememberDay, runDrawJob, saveFailed],
+    [
+      apply,
+      applyBoard,
+      applyPublished,
+      client,
+      connected,
+      rememberBoard,
+      rememberDay,
+      runDrawJob,
+      saveFailed,
+      scheduleLivePublish,
+    ],
   );
+
+  /**
+   * Publishes the board through the ordinary publish path, once the burst of edits has stopped.
+   *
+   * It reads the board that is on screen now, not the one that was there when the edit was made, and
+   * it refuses for exactly the reasons the publish button refuses. A refusal turns Live mode off with
+   * the reason, so nothing is lost silently.
+   */
+  const runLivePublish = useCallback(() => {
+    if (!liveModeRef.current) return;
+    const role = memberRef.current === undefined ? undefined : (memberRef.current?.role ?? null);
+    const plan = livePublishPlan(latest.current, drawDayRef.current, {
+      role,
+      saveFailed: saveFailedRef.current,
+    });
+    if (plan.kind === "skip") return;
+    if (plan.kind === "refuse") {
+      stopLive(plan.reason);
+      return;
+    }
+    // A written publish can be refused by the database and needs watching; the demo publish is the
+    // local reducer and cannot fail.
+    livePublishInFlight.current = client !== null;
+    dispatch({ type: "publish" });
+  }, [client, dispatch, stopLive]);
+
+  runLivePublishRef.current = runLivePublish;
+
+  // A publish that Live mode asked for and the database refused: the draw moved on elsewhere, the
+  // role is not allowed, or a save failed. Live mode stops rather than retrying behind the desk.
+  useEffect(() => {
+    if (publishState === "idle") {
+      livePublishInFlight.current = false;
+      return;
+    }
+    if (publishState !== "failed" || !livePublishInFlight.current) return;
+    livePublishInFlight.current = false;
+    clearLiveTimer();
+    liveModeRef.current = false;
+    setLiveModeState(false);
+    writeLiveMode(dayStorage(), false);
+    toast.push({
+      tone: "bad",
+      title: "Live mode is off",
+      detail: publishError ?? "The pairings were not published.",
+    });
+  }, [publishState, publishError, clearLiveTimer, toast]);
+
+  /** Takes back the last edit to the board on screen, as a new board edit. */
+  const undoLastChange = useCallback(() => {
+    const current = latest.current;
+    const tournamentId = current.activeTournamentId;
+    if (!tournamentId || !current.boards[tournamentId]?.draw) return;
+    // Offline is not a queue, and taking the snapshot would lose the undo for a write that never
+    // happened. The dispatch below refuses it too; this keeps the change available.
+    if (connected && !canWriteRef.current) {
+      setError(OFFLINE_WRITE_NOTICE);
+      toast.push({ tone: "bad", title: "Not saved", detail: OFFLINE_WRITE_NOTICE });
+      return;
+    }
+    const owner = { tournamentId, dayNumber: drawDayRef.current };
+    const taken = takeSnapshot(undoStack.current, owner);
+    undoStack.current = taken.history;
+    setCanUndo(undoAvailable(taken.history, owner));
+    if (!taken.snapshot) {
+      toast.push({
+        tone: "info",
+        title: "Nothing to undo",
+        detail: "This board has no change to take back yet.",
+      });
+      return;
+    }
+    dispatch({
+      type: "undoBoard",
+      tournamentId,
+      dayNumber: owner.dayNumber,
+      draw: taken.snapshot.draw,
+      overrides: taken.snapshot.overrides,
+    });
+    toast.push({
+      tone: "ok",
+      title: "Last change undone",
+      detail: liveModeRef.current
+        ? "The board is back as it was. It publishes by itself in a moment."
+        : "The board is back as it was. Players still see the last published list until you publish.",
+    });
+  }, [connected, dispatch, toast]);
+
+  // The undo stack covers the board on screen, so switching day or event changes what can be undone.
+  useEffect(() => {
+    const tournamentId = state.activeTournamentId;
+    setCanUndo(
+      tournamentId ? undoAvailable(undoStack.current, { tournamentId, dayNumber: drawDay }) : false,
+    );
+  }, [state.activeTournamentId, drawDay]);
 
   const adapters = useMemo<Adapters>(() => {
     if (!connected || !client) return createMockAdapters(state, dispatch);
@@ -967,6 +1226,10 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       reload,
       drawDay,
       setDrawDay,
+      liveMode,
+      setLiveMode,
+      canUndo,
+      undoLastChange,
     };
   }, [
     state,
@@ -988,6 +1251,10 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     reload,
     drawDay,
     setDrawDay,
+    liveMode,
+    setLiveMode,
+    canUndo,
+    undoLastChange,
   ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
