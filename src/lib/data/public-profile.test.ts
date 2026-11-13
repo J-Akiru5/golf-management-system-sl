@@ -95,6 +95,24 @@ describe("parsePublicPlayerProfile", () => {
     expect(parsed?.cards).toEqual([]);
     expect(parsed?.partner).toBeNull();
   });
+
+  it("drops a card that names another player", () => {
+    const parsed = parsePublicPlayerProfile({
+      player: { id: "p1", name: "Ana Reyes" },
+      cards: [card, { ...card, roundId: "r2", playerId: "p2" }],
+    });
+
+    expect(parsed?.cards.map((entry) => entry.roundId)).toEqual(["r1"]);
+  });
+
+  it("keeps a card with no player id, for older snapshots", () => {
+    const parsed = parsePublicPlayerProfile({
+      player: { id: "p1", name: "Ana Reyes" },
+      cards: [{ ...card, playerId: undefined }],
+    });
+
+    expect(parsed?.cards.map((entry) => entry.roundId)).toEqual(["r1"]);
+  });
 });
 
 describe("loadPublicPlayerProfile", () => {
@@ -166,6 +184,33 @@ describe("profileTeeTimes", () => {
     ]);
     expect(profileTeeTimes({ days: [] }, "Ulysses Ordoñez")).toEqual([]);
     expect(profileTeeTimes(programme, "Someone Else")).toEqual([]);
+  });
+
+  it("does not hand a junior's start to the player with the same first words", () => {
+    const withJunior: Pick<PublicProgramme, "days"> = {
+      days: [
+        {
+          dayNumber: 1,
+          label: "Day 1",
+          playDate: "2026-11-12",
+          startTime: "06:30",
+          players: [
+            { name: "ORDOÑEZ, ULYSSES JR", teeTime: "07:10", startHole: 3, confirmed: true },
+            { name: "ORDOÑEZ, ULYSSES", teeTime: "06:40", startHole: 10, confirmed: true },
+          ],
+        },
+      ],
+    };
+
+    expect(profileTeeTimes(withJunior, "Ulysses Ordoñez")).toEqual([
+      {
+        dayNumber: 1,
+        dayLabel: "Day 1",
+        playDate: "2026-11-12",
+        teeTime: "06:40",
+        startHole: 10,
+      },
+    ]);
   });
 });
 

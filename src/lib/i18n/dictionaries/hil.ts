@@ -79,7 +79,10 @@ export const hil: Dictionary = {
         "Wala sang handicap nga nakarekord para sa sini nga round, gani wala ginapakita ang net points.",
       help: "Ang Hcp amo ang stroke nga nabaton sa hole. Ang Net amo ang score nga ginbuhin sang Hcp. Points: 2 para sa net par, 3 para sa net birdie, 1 para sa net bogey.",
       swipe:
-        "I-swipe pahiga ang card agod makita ang tanan nga column. Nagapabilin ang hole number.",
+        "I-swipe pahiga ang card agod makita ang tanan nga hole. Nagapabilin ang mga label sang row.",
+      pickedUp: "Pick-up",
+      pickupHelp:
+        "Ang X amo ang pick-up: ginabilang ang hole, wala sang puntos kag wala sang stroke total.",
       empty:
         "Makita diri ang hole-by-hole scorecard mo pagkatapos ipahayag sang organizer ang resulta sang adlaw.",
       toPar: "Kumpara sa par",
@@ -350,6 +353,7 @@ export const hil: Dictionary = {
       "Pangitaa ang nakumpirma nga manug hampang agod makita ang na-publish nga scorecard.",
     profileSearchPrompt: "Mag-type sang ngalan agod makakita sang manug hampang.",
     profileIndex: "Index",
+    profilePlayingHandicap: "Playing handicap",
     profileClass: "Klase",
     profileCategory: "Kategorya",
     profilePartner: "Kapares",

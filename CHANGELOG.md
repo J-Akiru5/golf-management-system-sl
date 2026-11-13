@@ -73,6 +73,34 @@ Supabase project, because the code and the database are released separately.
   Hcp row, Score and Net pts, OUT/IN totals, and the paper-card footer (Strokes, Holes with a score,
   Playing handicap, Net Stableford, Gross Stableford). The table scrolls inside the card on a phone.
   No migration.
+- **The public player profile prints the paper card too.** The frozen card now renders as two
+  nine-hole tables with Hole, Par, SI, Gross, Hcp, Net, Gross pts and Net pts, OUT/IN totals, and
+  the same pinned row labels and contained sideways scroll on a phone. The card sits directly under
+  the player's identity, before the pair score. No migration.
+
+### Fixed
+- **A public card never invents a score for a pick-up or a partial round.** A hole flagged
+  `pickedUp` in the published snapshot stays an X with its par and stroke index: it counts as a
+  hole, scores 0 points and has no stroke total. A card with a pick-up shows `-` for its published
+  gross and net, while its points still sum. A partial card no longer prints a partial sum as its
+  card total, the hole count is clamped, and a card naming another player is dropped. The profile
+  summary reads the published card totals instead of a hole sum. A profile tee time now requires the
+  same full name, so a junior or a namesake cannot receive another player's start. **Known limit:**
+  the checked-in `build_round_scorecards` writes integer strokes only, so a republish through the
+  current builder would replace X with a proxy stroke. Keep the external v5 snapshot until the
+  writer carries the flag.
+- **A public class follows the validated desk sheet.** The profile shows the card playing handicap
+  instead of the frozen index, and the profile and leaderboard class use the live registration
+  class. The leaderboard overlays the class on the frozen snapshot rows, so a validated correction
+  appears without republishing the cards; scores stay frozen. The Day 1 AM registrations and round
+  results were corrected to the validated JSON class for the paired players. The nine solo players
+  stay `needs_review` until their pairs are supplied. No migration.
+- **The draw uses the validated card class and card handicap.** A registration with the desk
+  override now carries its stored class and card handicap into the draw; the frozen index is only
+  the fallback. A pair keeps the stored class instead of being re-cut on the index average. The
+  Day 1 AM registrations were set to the validated card handicap and class, with the override
+  recorded. Migration `20261113000300_tee_holes.sql` adds the per-tee hole table for the next step;
+  it is **not applied**.
 
 ## [0.39.0] - 2026-11-12
 

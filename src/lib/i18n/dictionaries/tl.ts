@@ -78,7 +78,10 @@ export const tl: Dictionary = {
       noHandicap:
         "Walang nakatalang handicap para sa round na ito, kaya hindi ipinapakita ang net points.",
       help: "Ang Hcp ay ang stroke na natanggap sa hole. Ang Net ay score na binawasan ng Hcp. Points: 2 para sa net par, 3 para sa net birdie, 1 para sa net bogey.",
-      swipe: "I-swipe pahiga ang card para makita ang lahat ng column. Nananatili ang hole number.",
+      swipe:
+        "I-swipe pahiga ang card para makita ang lahat ng hole. Nananatili ang mga label ng row.",
+      pickedUp: "Pick-up",
+      pickupHelp: "Ang X ay pick-up: binibilang ang hole, walang puntos at walang stroke total.",
       empty:
         "Lalabas dito ang hole-by-hole scorecard mo pagkatapos ilathala ng organizer ang resulta ng araw.",
       toPar: "Kumpara sa par",
@@ -348,6 +351,7 @@ export const tl: Dictionary = {
     profileIntro: "Hanapin ang kumpirmadong manlalaro para makita ang na-publish na scorecard.",
     profileSearchPrompt: "Mag-type ng pangalan para makahanap ng manlalaro.",
     profileIndex: "Index",
+    profilePlayingHandicap: "Playing handicap",
     profileClass: "Klase",
     profileCategory: "Kategorya",
     profilePartner: "Kapares",

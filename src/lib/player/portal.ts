@@ -42,6 +42,8 @@ export interface PortalScorecardHole {
 
 /** A daily round's frozen card, as stored in the publication snapshot. */
 export interface PortalScorecard {
+  /** The player the published card belongs to, when the snapshot names one. */
+  playerId?: string | null;
   roundId: string;
   dayNumber: number;
   playDate: string | null;
@@ -209,6 +211,7 @@ export function mapScorecard(value: unknown): PortalScorecard | null {
     : sumIfComplete(holes.map((hole) => hole.netPoints));
 
   return {
+    playerId: asString(raw.playerId),
     roundId,
     dayNumber: asWholeNumber(raw.dayNumber) ?? 1,
     playDate: asString(raw.playDate),

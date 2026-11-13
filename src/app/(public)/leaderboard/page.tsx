@@ -11,8 +11,10 @@ import {
   type PublicResultRow,
 } from "@/lib/data/public-results";
 import {
+  applyLiveClasses,
   buildTeamLeaderboard,
   filterTeams,
+  liveClassesFromProgramme,
   rankTeams,
   teamOptions,
   topTeams,
@@ -127,7 +129,9 @@ export default async function LeaderboardPage({
     );
   }
 
-  const { teams, unpaired } = buildTeamLeaderboard(data);
+  const { teams, unpaired } = buildTeamLeaderboard(
+    applyLiveClasses(data, liveClassesFromProgramme(programme)),
+  );
   const shown = topTeams(rankTeams(filterTeams(teams, filters)), 10);
   // Both partners' frozen cards for the teams on screen, so a row can open them without a trip back.
   const cards = await readPublicTeamCards(
