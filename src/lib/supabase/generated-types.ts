@@ -45,6 +45,7 @@ export type Database = {
           created_at: string;
           hole_number: number;
           id: string;
+          picked_up: boolean;
           player_id: string;
           provenance: string;
           resolution_id: string | null;
@@ -61,6 +62,7 @@ export type Database = {
           created_at?: string;
           hole_number: number;
           id?: string;
+          picked_up?: boolean;
           player_id: string;
           provenance: string;
           resolution_id?: string | null;
@@ -77,6 +79,7 @@ export type Database = {
           created_at?: string;
           hole_number?: number;
           id?: string;
+          picked_up?: boolean;
           player_id?: string;
           provenance?: string;
           resolution_id?: string | null;
@@ -964,6 +967,7 @@ export type Database = {
           evidence_card_ids: string[];
           hole_number: number;
           id: string;
+          picked_up: boolean;
           player_id: string;
           previous_strokes: number | null;
           reason: string;
@@ -979,6 +983,7 @@ export type Database = {
           evidence_card_ids?: string[];
           hole_number: number;
           id?: string;
+          picked_up?: boolean;
           player_id: string;
           previous_strokes?: number | null;
           reason: string;
@@ -994,6 +999,7 @@ export type Database = {
           evidence_card_ids?: string[];
           hole_number?: number;
           id?: string;
+          picked_up?: boolean;
           player_id?: string;
           previous_strokes?: number | null;
           reason?: string;
@@ -1872,6 +1878,7 @@ export type Database = {
           hole_number: number;
           id: string;
           manually_confirmed: boolean;
+          picked_up: boolean;
           scorecard_id: string;
           source_extraction_id: string | null;
           strokes: number | null;
@@ -1884,6 +1891,7 @@ export type Database = {
           hole_number: number;
           id?: string;
           manually_confirmed?: boolean;
+          picked_up?: boolean;
           scorecard_id: string;
           source_extraction_id?: string | null;
           strokes?: number | null;
@@ -1896,6 +1904,7 @@ export type Database = {
           hole_number?: number;
           id?: string;
           manually_confirmed?: boolean;
+          picked_up?: boolean;
           scorecard_id?: string;
           source_extraction_id?: string | null;
           strokes?: number | null;

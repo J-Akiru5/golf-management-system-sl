@@ -25,6 +25,8 @@
   --forest: #073d2e;
   --on-forest: #f7f5ee;
   --on-forest-muted: #cad7cf;
+  /* The brand board's muted green (the lower ribbon), for the quietest line on the auth panel. */
+  --on-forest-quiet: #8db39b;
   --fairway: #285d47;
   --fairway-soft: #e3ebe3;
   --gold: #b89550;
@@ -94,6 +96,8 @@
     --forest: #0b2b23;
     --on-forest: #f7f5ee;
     --on-forest-muted: #c5d3ca;
+    /* The auth panel is always forest, so this quiet green does not change with the theme. */
+    --on-forest-quiet: #8db39b;
     --fairway: #82c69b;
     --fairway-soft: #1d3428;
     --gold: #d7b568;
@@ -136,6 +140,8 @@
   --forest: #0b2b23;
   --on-forest: #f7f5ee;
   --on-forest-muted: #c5d3ca;
+  /* The auth panel is always forest, so this quiet green does not change with the theme. */
+  --on-forest-quiet: #8db39b;
   --fairway: #82c69b;
   --fairway-soft: #1d3428;
   --gold: #d7b568;
@@ -179,6 +185,8 @@
   --forest: #0b2b23;
   --on-forest: #f7f5ee;
   --on-forest-muted: #c5d3ca;
+  /* The auth panel is always forest, so this quiet green does not change with the theme. */
+  --on-forest-quiet: #8db39b;
   --fairway: #82c69b;
   --fairway-soft: #1d3428;
   --gold: #d7b568;
@@ -221,6 +229,7 @@
   --color-forest: var(--forest);
   --color-on-forest: var(--on-forest);
   --color-on-forest-muted: var(--on-forest-muted);
+  --color-on-forest-quiet: var(--on-forest-quiet);
   --color-fairway: var(--fairway);
   --color-fairway-soft: var(--fairway-soft);
   --color-gold: var(--gold);
@@ -2172,6 +2181,115 @@
   .print-sheet-scope tr {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  /* ---------- One scorecard taken off the desk ----------
+     Every rule here is gated on body:has([data-print="scorecard"]), so it only applies to a page
+     that renders the desk card. The print center, the pairings sheet and every other printed page
+     never contain that section and keep the rules above unchanged. */
+  body:has([data-print="scorecard"])
+  :not(:has([data-print="scorecard"])):not([data-print="scorecard"]):not(
+    [data-print="scorecard"] *
+  ) {
+    display: none !important;
+  }
+
+  /* The wrappers that hold the card stay in the flow but drop the screen layout, so the printed
+     page is exactly the card and no invisible page boxes are left behind. */
+  body:has([data-print="scorecard"])
+  :has([data-print="scorecard"]):not([data-print="scorecard"]):not([data-print="scorecard"] *) {
+    display: block !important;
+    position: static !important;
+    float: none !important;
+    overflow: visible !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body:has([data-print="scorecard"]) [data-print="scorecard"] {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    color-scheme: light;
+  }
+
+  body:has([data-print="scorecard"]) [data-print="scorecard"] .border-line,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] th,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] td {
+    border-color: #000 !important;
+  }
+
+  /* In the dark theme the card keeps dark surfaces on the par row, the row-label column and the
+     OUT/IN total cells. On paper every row and cell is white with black ink, whatever the screen
+     theme is doing, so the par digits and the totals stay readable. */
+  body:has([data-print="scorecard"]) [data-print="scorecard"] tr,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] th,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] td,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] tbody th {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* The hole-number header row prints as dark text on a light band, whatever the dark theme does.
+     Declared after the white rule so it wins. */
+  body:has([data-print="scorecard"]) [data-print="scorecard"] thead th {
+    background: #dfe7e2 !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body:has([data-print="scorecard"]) [data-print="scorecard"] th,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] td {
+    border: 1px solid #000 !important;
+  }
+
+  body:has([data-print="scorecard"]) [data-print="scorecard"] [role="region"] {
+    overflow: visible !important;
+    border-radius: 0 !important;
+  }
+
+  body:has([data-print="scorecard"]) [data-print="scorecard"] table {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Scan tints stay on screen; the printed card is black ink on white. */
+  body:has([data-print="scorecard"]) [data-print="scorecard"] tbody td > div {
+    background: transparent !important;
+  }
+
+  /* A printed input shows its value as plain centred type, with no box or spinner. */
+  body:has([data-print="scorecard"]) [data-print="scorecard"] input {
+    width: 100%;
+    height: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #000 !important;
+    font-size: 11pt;
+    font-weight: 700;
+    text-align: center;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  body:has([data-print="scorecard"]) [data-print="scorecard"] input::-webkit-inner-spin-button,
+  body:has([data-print="scorecard"]) [data-print="scorecard"] input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 }
 

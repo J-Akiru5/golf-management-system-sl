@@ -146,6 +146,20 @@ describe("classification", () => {
     expect(r.reasons.join(" ")).toContain("0 is used");
   });
 
+  it("uses the stored card class and card handicap instead of the frozen index", () => {
+    const r = classifyPlayer(player({ index: 0, classId: "c", cardHandicap: 18 }), input([]));
+    expect(r.status).toBe("ok");
+    expect(r.flightId).toBe("c");
+    expect(r.playingHandicap).toBe(18);
+    expect(r.classSource).toBe("stored");
+    expect(r.reasons.join(" ")).not.toContain("0 is used");
+  });
+
+  it("drops the decimal from the card handicap without converting it", () => {
+    const r = classifyPlayer(player({ index: 0, classId: "c", cardHandicap: 20.1 }), input([]));
+    expect(r.playingHandicap).toBe(20);
+  });
+
   it("sends an unmatched player to review instead of guessing", () => {
     const woman = classifyPlayer(player({ gender: "F", index: 5 }), input([]));
     expect(woman.categoryId).toBe("ladies");
@@ -299,6 +313,17 @@ describe("route", () => {
     const grouped = out.groups.flatMap((g) => g.playerIds);
     expect(grouped).toHaveLength(3);
     expect(out.registrations.find((r) => r.index === 31)?.status).toBe("ok");
+  });
+
+  it("keeps a stored card class for a pair even when the index average falls elsewhere", () => {
+    const out = route(
+      input([
+        player({ index: 0, classId: "c", cardHandicap: 18, teamKey: "pair-card" }),
+        player({ index: 0, classId: "c", cardHandicap: 20, teamKey: "pair-card" }),
+      ]),
+    );
+
+    expect(out.registrations.every((entry) => entry.flightId === "c")).toBe(true);
   });
 
   it("flags groups smaller than the minimum", () => {

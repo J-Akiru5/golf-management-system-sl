@@ -1,8 +1,9 @@
 "use client";
 
-import { CheckCircle2, Loader2, ScanLine } from "lucide-react";
+import { CheckCircle2, Loader2, Printer, ScanLine } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { CardContextLine } from "@/components/scoring/CardContextLine";
 import { HandicapSummary } from "@/components/scoring/HandicapSummary";
 import { PlayerLink } from "@/components/scoring/PlayerLink";
 import { ScorecardHoleGrid } from "@/components/scoring/ScorecardHoleGrid";
@@ -13,6 +14,7 @@ import type { ClubRole } from "@/lib/auth/member";
 import { playerProfileHref } from "@/lib/data/player-profile";
 import type { ScoringPlayer, ScoringRoundView } from "@/lib/data/scoring";
 import type { HoleDefinition, Scorecard } from "@/lib/scoring";
+import { buildCardContext } from "@/lib/scoring/card-context";
 import type { ScanCardReview } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import {
@@ -20,6 +22,15 @@ import {
   scorecardReadiness,
   summariseScorecard,
 } from "@/lib/scoring/workspace";
+
+export interface ScorecardContext {
+  className?: string | null;
+  partnerName?: string | null;
+  teamHandicap?: number | null;
+  teeName?: string | null;
+  groupLabel?: string | null;
+  cardHandicap?: number | null;
+}
 
 export interface ScorecardWorkspaceProps {
   tournamentId: string;
@@ -32,6 +43,8 @@ export interface ScorecardWorkspaceProps {
   selectedScorer: ScoringPlayer | null;
   editingCard: Scorecard | null;
   editingPlayerName: string;
+  /** Class, partner, team handicap, tee, group and the card's HDCP box, when the caller has them. */
+  context?: ScorecardContext;
   profileRole?: ClubRole | null;
   canOpenProfile: boolean;
   busy: boolean;
@@ -74,6 +87,7 @@ export function ScorecardWorkspace({
   selectedScorer,
   editingCard,
   editingPlayerName,
+  context,
   profileRole,
   canOpenProfile,
   busy,
@@ -146,29 +160,94 @@ export function ScorecardWorkspace({
     pointsByHole[hole.hole] =
       summary.pointsKind === "net" ? (hole.netPoints ?? 0) : hole.grossPoints;
   }
+  // Same wording as the public paper card: strokes first, then the pick-up count in brackets.
+  const pickupSuffix =
+    summary.pickups > 0
+      ? ` (+${summary.pickups} ${summary.pickups === 1 ? "pickup" : "pickups"})`
+      : "";
+  const strokesText =
+    filled === 18
+      ? `${gross}${pickupSuffix}`
+      : filled === 0
+        ? "—"
+        : `${gross} over ${filled} holes${pickupSuffix}`;
+
+  const contextParts = buildCardContext({
+    dayNumber: view.dayNumber,
+    markerName: selectedScorer?.playerName ?? null,
+    playingHandicap: selectedPlayer?.handicap?.playingHandicap ?? null,
+    cardHandicap: context?.cardHandicap,
+    className: context?.className,
+    partnerName: context?.partnerName,
+    teamHandicap: context?.teamHandicap,
+    teeName: context?.teeName,
+    groupLabel: context?.groupLabel,
+  });
 
   return (
-    <div className="grid gap-4">
-      <div className="sticky top-0 z-20 grid gap-2 rounded-lg border border-line bg-surface-raised p-3 shadow-sm">
-        <div className="grid gap-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_auto] lg:items-end">
-          <Combobox
-            label="Player"
-            value={playerId}
-            options={players.map((player) => ({ id: player.playerId, label: player.playerName }))}
-            onChange={onPlayerChange}
-            placeholder="Type a player's name"
-            disabled={busy || players.length < 2 || Boolean(editingCard)}
-          />
-          <Combobox
-            label="Marked by"
-            value={scorerId}
-            options={players
-              .filter((player) => player.playerId !== playerId)
-              .map((player) => ({ id: player.playerId, label: player.playerName }))}
-            onChange={onScorerChange}
-            placeholder="Type the marker's name"
-            disabled={busy || players.length < 2 || Boolean(editingCard)}
-          />
+    <div className="flex flex-col gap-4">
+      {/*
+        Below `lg` this whole block dissolves (`contents`): the comboboxes and profile line scroll
+        with the page inside their own card, and only the slim bar below stays stuck at the top.
+        From `lg` up it is the one sticky card it always was, with Player and Marked by on the
+        first row and the pill and Submit on the right.
+      */}
+      <div className="contents lg:sticky lg:top-[var(--shell-header)] lg:z-20 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_auto] lg:items-end lg:gap-2 lg:rounded-lg lg:border lg:border-line lg:bg-surface-raised lg:p-3 lg:shadow-sm">
+        <div className="grid gap-2 rounded-lg border border-line bg-surface-raised p-3 shadow-sm lg:contents">
+          <div className="grid gap-2 lg:contents">
+            <Combobox
+              label="Player"
+              value={playerId}
+              options={players.map((player) => ({ id: player.playerId, label: player.playerName }))}
+              onChange={onPlayerChange}
+              placeholder="Type a player's name"
+              disabled={busy || players.length < 2 || Boolean(editingCard)}
+            />
+            <Combobox
+              label="Marked by"
+              value={scorerId}
+              options={players
+                .filter((player) => player.playerId !== playerId)
+                .map((player) => ({ id: player.playerId, label: player.playerName }))}
+              onChange={onScorerChange}
+              placeholder="Type the marker's name"
+              disabled={busy || players.length < 2 || Boolean(editingCard)}
+            />
+          </div>
+          {!ready && blockers.length > 1 && (
+            <p className="hint m-0 lg:col-span-3" role="status">
+              {blockers.slice(1, 4).join(" · ")}
+              {blockers.length > 4 ? " …" : ""}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-3 text-[12px] text-ink-muted lg:col-span-3">
+            {selectedPlayer && (
+              <span>
+                {selectedPlayer.playerName} · index {selectedPlayer.handicap?.index ?? "—"} · PH{" "}
+                {selectedPlayer.handicap?.playingHandicap ?? "—"}
+              </span>
+            )}
+            {selectedPlayer && canOpenProfile && (
+              <Link
+                href={playerProfileHref(selectedPlayer.playerId)}
+                className="underline underline-offset-2"
+              >
+                Open profile
+              </Link>
+            )}
+            {selectedScorer && <span>Marker: {selectedScorer.playerName}</span>}
+          </div>
+        </div>
+        {/*
+          The phone's stuck bar. It comes after the comboboxes in the DOM so Tab still goes
+          Player, Marker, Submit; `order-first` puts it at the top of the page below `lg`, and from
+          `lg` up it is the third column of the sticky card. `bg-surface-raised` is solid so the
+          card scrolling underneath never shows through.
+        */}
+        <div className="order-first sticky top-[var(--shell-header)] z-20 flex flex-col gap-1 rounded-lg border border-line bg-surface-raised p-2 shadow-sm lg:static lg:z-auto lg:col-start-3 lg:row-start-1 lg:order-none lg:flex-row lg:items-center lg:justify-end lg:gap-2 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
+          <span className="truncate text-[13px] font-semibold text-ink lg:hidden">
+            {selectedPlayer?.playerName ?? "No player selected"}
+          </span>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <Pill tone={ready ? "ok" : "warn"}>{statusLabel}</Pill>
             <Button
@@ -191,29 +270,6 @@ export function ScorecardWorkspace({
               )}
             </Button>
           </div>
-        </div>
-        {!ready && blockers.length > 1 && (
-          <p className="hint m-0" role="status">
-            {blockers.slice(1, 4).join(" · ")}
-            {blockers.length > 4 ? " …" : ""}
-          </p>
-        )}
-        <div className="flex flex-wrap items-center gap-3 text-[12px] text-ink-muted">
-          {selectedPlayer && (
-            <span>
-              {selectedPlayer.playerName} · index {selectedPlayer.handicap?.index ?? "—"} · PH{" "}
-              {selectedPlayer.handicap?.playingHandicap ?? "—"}
-            </span>
-          )}
-          {selectedPlayer && canOpenProfile && (
-            <Link
-              href={playerProfileHref(selectedPlayer.playerId)}
-              className="underline underline-offset-2"
-            >
-              Open profile
-            </Link>
-          )}
-          {selectedScorer && <span>Marker: {selectedScorer.playerName}</span>}
         </div>
       </div>
 
@@ -274,20 +330,23 @@ export function ScorecardWorkspace({
 
       <section
         id="scorecard-sheet"
+        data-print="scorecard"
         aria-label="Scorecard"
-        className="rounded-lg border border-line bg-surface-raised p-3 sm:p-5"
+        className="print-sheet-scope relative rounded-lg border border-line bg-surface-raised p-3 sm:p-5"
       >
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
+        <img
+          src="/brand/teeline-horizontal-primary.svg"
+          alt="TeeLine Golf"
+          className="hidden print:absolute print:top-0 print:right-0 print:block print:w-[25mm]"
+        />
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3 print:items-start print:pr-[30mm] print:pb-2">
           <div className="grid gap-0.5">
             <h2 className="text-[18px] font-bold leading-tight text-ink">
               {selectedPlayer?.playerName ?? "Select a player"}
             </h2>
-            <p className="hint m-0">
-              Day {view.dayNumber} · Marker {selectedScorer?.playerName ?? "—"} · Playing handicap{" "}
-              {selectedPlayer?.handicap?.playingHandicap ?? "—"}
-            </p>
+            <CardContextLine parts={contextParts} />
           </div>
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-end gap-3 print:hidden">
             <label className="field w-36">
               <span>Total on card</span>
               <input
@@ -301,6 +360,10 @@ export function ScorecardWorkspace({
                 disabled={busy}
               />
             </label>
+            <Button variant="ghost" size="sm" className="min-h-11" onClick={() => window.print()}>
+              <Printer className="size-4" aria-hidden="true" />
+              Print this card
+            </Button>
             {scanned ? (
               <label className="flex min-h-11 items-center gap-2 text-[12px]">
                 <input
@@ -336,7 +399,7 @@ export function ScorecardWorkspace({
         </div>
 
         {scanned && (scan.check > 0 || scan.blank > 0) && (
-          <p id="scan-check-hint" className="hint m-0 mt-2">
+          <p id="scan-check-hint" className="hint m-0 mt-2 print:hidden">
             Amber cells were read with low confidence, and red cells were blank on the photo.
             Compare each one with the paper card. Correcting a cell marks it as changed; leaving a
             weak read as it is sends it to review unconfirmed.
@@ -345,10 +408,7 @@ export function ScorecardWorkspace({
 
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-ink-muted">
           <span>
-            Strokes{" "}
-            <b className="mono text-ink">
-              {filled === 18 ? gross : filled === 0 ? "—" : `${gross} over ${filled} holes`}
-            </b>
+            Strokes <b className="mono text-ink">{strokesText}</b>
           </span>
           <span>
             Holes with a score <b className="mono text-ink">{filled}/18</b>
@@ -377,7 +437,7 @@ export function ScorecardWorkspace({
           </span>
         </div>
 
-        <p className="hint m-0 mt-1">
+        <p className="hint m-0 mt-1 print:hidden">
           {writtenMatches === null
             ? "Total on card is optional. Enter the total written on the paper card to compare it with the numbers above."
             : writtenMatches
@@ -385,8 +445,8 @@ export function ScorecardWorkspace({
               : `The card says ${written}, but the numbers add to ${gross}. Check the cells.`}
         </p>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
-          <div className="flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 print:hidden">
+          <div className="flex flex-wrap gap-2 print:hidden">
             {(editingCard || scanned) && (
               <Button variant="ghost" size="sm" onClick={onStartAnother} disabled={busy}>
                 {editingCard ? "Cancel correction" : "Start another card"}

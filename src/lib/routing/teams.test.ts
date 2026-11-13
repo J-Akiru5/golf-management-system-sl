@@ -71,4 +71,33 @@ describe("applyTeamClasses", () => {
 
     expect(registrations.map((r) => r.flightId)).toEqual(["a", "a"]);
   });
+
+  it("keeps a stored card class instead of re-cutting the pair average", () => {
+    const member = reg("member", 0, "team-card");
+    member.classSource = "stored";
+    member.flightId = "c";
+    const guest = reg("guest", 0, "team-card");
+    guest.classSource = "stored";
+    guest.flightId = "c";
+
+    applyTeamClasses([member, guest], flights);
+
+    expect([member.flightId, guest.flightId]).toEqual(["c", "c"]);
+    expect([member.reasons, guest.reasons].flat().join(" ")).not.toContain("average index");
+  });
+
+  it("names a conflicting stored pair class instead of silently overwriting it", () => {
+    const member = reg("member", 0, "team-card");
+    member.classSource = "stored";
+    member.flightId = "c";
+    const guest = reg("guest", 0, "team-card");
+    guest.classSource = "stored";
+    guest.flightId = "a";
+
+    applyTeamClasses([member, guest], flights);
+
+    expect([member.flightId, guest.flightId]).toEqual(["c", "a"]);
+    expect(member.reasons.join(" ")).toContain("differ");
+    expect(guest.reasons.join(" ")).toContain("differ");
+  });
 });

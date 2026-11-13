@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesName } from "./name-match";
+import { matchesName, sameName } from "./name-match";
 
 /**
  * Stored names are written as the card writes them: family name first, capitals, a comma between
@@ -58,5 +58,20 @@ describe("matchesName", () => {
 
   it("never matches a name against a real query when the name is empty", () => {
     expect(matchesName("", "charles")).toBe(false);
+  });
+});
+
+describe("sameName", () => {
+  it("accepts the same words in any order, case and accents", () => {
+    expect(sameName("MATILING, CHARLES", "Charles Matiling")).toBe(true);
+    expect(sameName("PEÑA, JOSÉ", "jose pena")).toBe(true);
+    expect(sameName("DELA CRUZ, JUAN P.", "juan p dela cruz")).toBe(true);
+  });
+
+  it("refuses a name with an extra or missing word", () => {
+    expect(sameName("MATILING, CHARLES", "Charles Matiling Jr")).toBe(false);
+    expect(sameName("ORDOÑEZ, ULYSSES JR", "Ulysses Ordoñez")).toBe(false);
+    expect(sameName("MATILING, CHARLES", "Charles")).toBe(false);
+    expect(sameName("", "")).toBe(false);
   });
 });

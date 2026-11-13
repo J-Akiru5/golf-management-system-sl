@@ -159,3 +159,58 @@ describe("scorecard validation", () => {
     expect(validation.issues.some((issue) => issue.code === "invalid_revision")).toBe(true);
   });
 });
+
+describe("scorecard validation of pick-ups", () => {
+  it("treats an X entry as filled, not missing", () => {
+    const card = withEntry(makeCard(), 4, { strokes: null, pickedUp: true });
+    const validation = validateScorecard(card, input);
+
+    expect(validation.approvable).toBe(true);
+    expect(validation.issues).toEqual([]);
+  });
+
+  it("rejects a pick-up that also carries a number", () => {
+    const validation = validateScorecard(
+      withEntry(makeCard(), 4, { strokes: 6, pickedUp: true }),
+      input,
+    );
+
+    expect(validation.approvable).toBe(false);
+    expect(validation.issues).toEqual([
+      expect.objectContaining({ code: "invalid_strokes", hole: 4, severity: "blocking" }),
+    ]);
+  });
+
+  it("skips the written-total comparison when the card has a pick-up", () => {
+    const withoutPickup = validateScorecard(makeCard({ writtenTotal: 71 }), input);
+    expect(withoutPickup.issues).toEqual([
+      expect.objectContaining({ code: "written_total_mismatch", severity: "blocking" }),
+    ]);
+
+    const withPickup = validateScorecard(
+      withEntry(makeCard({ writtenTotal: 71 }), 4, { strokes: null, pickedUp: true }),
+      input,
+    );
+    expect(withPickup.approvable).toBe(true);
+    expect(withPickup.issues).toEqual([]);
+  });
+
+  it("still warns when a pick-up card has no written total", () => {
+    const validation = validateScorecard(
+      withEntry(makeCard({ writtenTotal: null }), 4, { strokes: null, pickedUp: true }),
+      input,
+    );
+
+    expect(validation.issues).toEqual([
+      expect.objectContaining({ code: "written_total_missing", severity: "warning" }),
+    ]);
+  });
+
+  it("still reports a blank hole that is not a pick-up", () => {
+    const validation = validateScorecard(withEntry(makeCard(), 4, { strokes: null }), input);
+
+    expect(validation.issues).toEqual([
+      expect.objectContaining({ code: "missing_hole", hole: 4, severity: "review" }),
+    ]);
+  });
+});

@@ -179,6 +179,7 @@ const Ctx = createContext<Desk | null>(null);
 /** Actions that change the draw or what is published; with Supabase these are written to it. */
 const DRAW_ACTIONS: ReadonlySet<Action["type"]> = new Set([
   "generate",
+  "replaceDraw",
   "move",
   "withdrawFromDraw",
   "restoreToDraw",

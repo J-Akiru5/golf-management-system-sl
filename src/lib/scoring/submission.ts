@@ -22,13 +22,18 @@ const ACTIVE_STATUSES: ReadonlySet<Scorecard["status"]> = new Set([
 export interface CardValue {
   hole: number;
   strokes: number | null;
+  /** True when the cell reads as an X: a pick-up, which has no stroke count. */
+  pickedUp?: boolean;
 }
 
-/** A stable fingerprint of the 18 cells, independent of the order the entries arrived in. */
+/**
+ * A stable fingerprint of the 18 cells, independent of the order the entries arrived in.
+ * A pick-up is written as X so it stays distinct from a blank cell and from every score.
+ */
 export function cardSignature(entries: readonly CardValue[]): string {
   return [...entries]
     .sort((left, right) => left.hole - right.hole)
-    .map((entry) => `${entry.hole}:${entry.strokes ?? ""}`)
+    .map((entry) => `${entry.hole}:${entry.pickedUp === true ? "X" : (entry.strokes ?? "")}`)
     .join("|");
 }
 
@@ -160,6 +165,11 @@ export function readCardValues(
     if (raw === "") {
       problems.push(`Hole ${hole.number} is empty. Type the score from the card.`);
       entries.push({ hole: hole.number, strokes: null });
+      continue;
+    }
+    // A written X is a pick-up: a filled hole with no stroke count.
+    if (raw.toUpperCase() === "X") {
+      entries.push({ hole: hole.number, strokes: null, pickedUp: true });
       continue;
     }
     const strokes = Number(raw);

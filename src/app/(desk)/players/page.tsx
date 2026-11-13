@@ -88,6 +88,7 @@ function Players() {
     adapters,
     pendingRefreeze,
     member,
+    status: deskStatus,
   } = useDesk();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -269,6 +270,13 @@ function Players() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!canSave || saving) return;
+    // While the desk is loading or has failed, the provider hands out the session adapters, which
+    // would keep the new player in this browser only. Refuse rather than claim a save that cannot
+    // reach the club database.
+    if (deskStatus !== "demo" && deskStatus !== "ready") {
+      setSaveError("The desk has not finished loading. Wait for it, then add the player again.");
+      return;
+    }
     setSaving(true);
     setSaveError("");
     try {
