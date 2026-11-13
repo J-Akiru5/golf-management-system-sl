@@ -1,6 +1,6 @@
 {
   "name": "golf-management-system-sl",
-  "version": "0.42.1",
+  "version": "0.44.1",
   "private": true,
   "description": "TeeLine Golf tournament management by Syntaxure Labs.",
   "scripts": {
@@ -14,7 +14,9 @@
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
     "verify:ui": "node scripts/verify-ui.mjs",
     "check:ui": "node scripts/check-ui.mjs",
+    "api:check": "node scripts/check-api.mjs",
     "release:check": "node scripts/release-check.mjs",
+    "scorecard:role": "node --env-file=.env.local scripts/scorecard-role.mjs",
     "avp:audio": "C:/Users/Lenovo/.avp/venv/Scripts/python.exe demo-video/audio/generate.py",
     "avp:capture": "node demo-video/capture/record.mjs",
     "avp:build": "node demo-video/build/assemble.mjs"

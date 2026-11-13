@@ -9,6 +9,45 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.44.1] - 2026-11-13
+
+### Changed
+- **The desk can correct a ready player's index.** The registration desk shows **Edit index** on every
+  entry (**Mark ready** stays for entries in review), and the player page has the same button in the
+  Handicap card. The dialog starts from the index the event uses now, works out the playing handicap
+  again and moves the player to the flight the new index falls in unless the desk picks one. The
+  change is saved as an override with a required reason, so the old frozen record no longer locks the
+  index. The board is not redrawn on its own. No migration.
+
+## [0.44.0] - 2026-11-13
+
+### Added
+- **The scorecard system check includes the pair, group, tee time and playing day.** The field
+  lookup now selects the scorecard's competition day instead of mixing groups from every day;
+  group numbers restart per day. The check shows the system partner, pair number, group, start
+  hole and tee time, and flags AM cards whose system tee is in the PM shotgun. No migration.
+
+## [0.43.1] - 2026-11-13
+
+### Fixed
+- **The scorecard reads the Supabase service key under either Vercel variable name.**
+  `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_SECRET_ROLE_KEY` are both accepted, so the deployed
+  app no longer returns 503 when the dashboard uses the second name.
+- **Tabulator accounts land on `/scorecard/` after sign-in.** A tabulation-only account no longer
+  falls into the player portal's "link your club record" screen.
+- **The downloaded scorecard JSON can be imported by the page.** The export now includes the
+  `bamboo-scores-edit` wrapper instead of the raw payload.
+
+## [0.43.0] - 2026-11-13
+
+### Added
+- **The tabulation team can review Day 1 AM scorecards inside the existing app.** `/scorecard/` loads
+  the saved team copy from the private Supabase `scorecard-documents` bucket, keeps already reviewed
+  cards out of the next batch, and compares class, group, tee and HDCP against the live field. The
+  "Save and download JSON" button saves the team copy and downloads the exact file for the admin to
+  publish. Access is the `tabulation` app role, an optional email allowlist, and club
+  owner/organizer/desk staff. No migration.
+
 ## [0.42.1] - 2026-11-13
 
 ### Changed

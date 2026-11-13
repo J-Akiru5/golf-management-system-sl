@@ -70,6 +70,10 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       identity = "staff";
       // One membership row gives one role; with several the desk reports the problem itself.
       staffRole = membership?.length === 1 ? (membership[0]?.role ?? null) : null;
+    } else if (user.app_metadata?.scorecard_role === "tabulation") {
+      // A tabulation account is not staff and must not be added to club_members; that table's RLS
+      // would expose the desk's player and event data. The app role is the whole entitlement.
+      identity = "tabulation";
     } else {
       try {
         if (await currentPlayerId(client)) identity = "player";
