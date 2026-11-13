@@ -415,6 +415,8 @@ export const tl: Dictionary = {
     scoresDay: "Araw {day}",
     scoresSessionLabel: "Oras",
     scoresAllSessions: "Lahat",
+    scoresClassLabel: "Klase",
+    scoresAllClasses: "Lahat ng klase",
     scoresMorning: "Umaga",
     scoresAfternoon: "Hapon",
     scoresFind: "Hanapin ang pangalan mo",
@@ -428,6 +430,8 @@ export const tl: Dictionary = {
     scoresEmptyTitle: "Wala pang nailathalang iskor",
     scoresEmptyBody: "Nagpapalathala ang organizer ng round pagkatapos ma-check ang mga iskor.",
     scoresNoMatch: "Walang manlalaro na tumutugma sa pangalan",
+    scoresNoFilterMatch: "Walang manlalaro sa filter na ito",
+    scoresNoFilterBody: "Subukan ang ibang araw, klase o spelling.",
     scoresUnavailable:
       "Hindi pa available ang lahat ng iskor hanggang ma-apply ang database update. Gumagana pa rin ang team leaderboard.",
     scoresSource:

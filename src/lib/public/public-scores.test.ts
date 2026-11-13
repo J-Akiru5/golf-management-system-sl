@@ -11,6 +11,7 @@ import {
   hasSessions,
   type PublicPlayerScore,
   rankPlayerScores,
+  scoreClasses,
   scoreDays,
 } from "./public-scores";
 
@@ -241,9 +242,46 @@ describe("the board", () => {
 describe("the name search", () => {
   it("finds a name by any of its words, ignoring order and capitals", () => {
     const { scores } = buildPlayerScores(sample());
-    expect(filterPlayerScores(scores, "chrysler").map((score) => score.playerId)).toEqual(["p1"]);
-    expect(filterPlayerScores(scores, "anne palic").map((score) => score.playerId)).toEqual(["p1"]);
-    expect(filterPlayerScores(scores, "  ")).toHaveLength(3);
-    expect(filterPlayerScores(scores, "nobody")).toHaveLength(0);
+    expect(
+      filterPlayerScores(scores, { query: "chrysler" }).map((score) => score.playerId),
+    ).toEqual(["p1"]);
+    expect(
+      filterPlayerScores(scores, { query: "anne palic" }).map((score) => score.playerId),
+    ).toEqual(["p1"]);
+    expect(filterPlayerScores(scores, { query: "  " })).toHaveLength(3);
+    expect(filterPlayerScores(scores, { query: "nobody" })).toHaveLength(0);
+  });
+
+  it("finds a name typed without its accent", () => {
+    const rows = buildScoreRows(
+      data(row("p7", "TAÑADA, JOSE LEONARDO", [rounds[0]!], { gross: 20, net: 22 })),
+      sessions,
+    );
+    const { scores } = buildPlayerScores(rows);
+    expect(filterPlayerScores(scores, { query: "tanada leonardo" }).map((s) => s.playerId)).toEqual(
+      ["p7"],
+    );
+  });
+
+  it("filters by class", () => {
+    const rows = buildScoreRows(
+      data([
+        ...row("p1", "PALIC, CHRYSLER ANNE", [rounds[0]!], { gross: 30, net: 36 }),
+        ...row(
+          "p2",
+          "DELA CRUZ, JUAN",
+          [rounds[0]!],
+          { gross: 34, net: 33 },
+          { flightName: "Class B" },
+        ),
+      ]),
+      sessions,
+    );
+    const { scores } = buildPlayerScores(rows, { day: 1 });
+    expect(scoreClasses(scores)).toEqual(["Class A", "Class B"]);
+    expect(
+      filterPlayerScores(scores, { flight: "Class B" }).map((score) => score.playerId),
+    ).toEqual(["p2"]);
+    expect(filterPlayerScores(scores, { flight: "Class B", query: "palic" })).toHaveLength(0);
   });
 });
