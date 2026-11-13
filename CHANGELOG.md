@@ -13,11 +13,16 @@ Supabase project, because the code and the database are released separately.
 - **A pick-up (an X on the card) scores 0 and counts as a played hole.** The scoring engine now holds
   a hole with no stroke count: it scores 0 gross and 0 net points, counts toward holes played, stays
   out of the stroke totals, and a card with an X skips the written-total comparison because the
-  numbers cannot add up to it. A typed `X` is read as a pick-up by the entry code. Nothing on the desk
-  lets a person type an X yet, and the data layer does not save one yet. **Migration written, not
-  applied:** `20261113000200_pickup_scores.sql` adds `picked_up` to three scoring tables and replaces
-  seven scoring functions so approval, canonical scores, results and the published card carry the
-  flag. It changes existing tables and functions, so it waits for the owner's approval by name.
+  numbers cannot add up to it. On the desk a person types `X` in a hole, or taps the X button under it,
+  and the card shows `64 (+2 pickups)` in the same words as the public card. A conflict between a
+  number and an X can be settled as a pick-up. The data layer sends `picked_up` only when it is true,
+  so a card with no pick-up sends exactly what it sent before. **Migration written, not applied:**
+  `20261113000200_pickup_scores.sql` adds `picked_up` to three scoring tables and replaces seven
+  scoring functions so approval, canonical scores, results and the published card carry the flag. It
+  changes existing tables and functions, so it waits for the owner's approval by name. **Until it is
+  applied, an X works in the demo only.** On the live database a card with an X is saved with that hole
+  blank and approval refuses it ("The card still has a blank or illegible hole"), so apply the migration
+  before this build is promoted to `staging` or `main`.
 - **The scan inbox has its database and its rules, but no screen yet.** The inbox holds photographed
   cards that are not scorecards yet and moves each one through uploaded, read, matched, confirmed and
   card created (or set aside). The app assigns the marker from the other team in the group and the desk
@@ -58,6 +63,13 @@ Supabase project, because the code and the database are released separately.
   on `/scores/results`. A correction saves a new revision and keeps the old one. No migration.
 
 ### Fixed
+- **The scorecard bar is readable on a phone and sits under the app header.** The sticky bar with the
+  player, the status and Submit was hidden behind the 84px header (the old single card had the same
+  flaw). Below the large breakpoint it is now a slim bar offset by `--shell-header` that keeps the
+  Submit button in reach, and the pickers scroll in their own card. Score cells are 44px high on a
+  phone, the stroke-index row is labelled `SI` with the full words for a screen reader, and the label
+  column stays put while the nine holes scroll sideways. The 640px table width and "Fill with par" are
+  unchanged and still open for the owner.
 - **A pickup no longer blanks a team's gross.** The team row showed `—` for gross, net and to par
   whenever one partner picked up a hole, and the public card dropped the pickup hole. The team row
   now shows accumulated Gross Stableford points; the card keeps the hole and marks it X.
