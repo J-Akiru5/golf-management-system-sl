@@ -494,6 +494,9 @@ describe("the board edits Live mode listens to", () => {
       "withdrawFromDraw",
       "restoreToDraw",
       "placeOnDraw",
+      "swapPlayers",
+      "moveSet",
+      "swapSets",
     ] as const) {
       expect(BOARD_EDIT_ACTIONS.has(type)).toBe(true);
     }

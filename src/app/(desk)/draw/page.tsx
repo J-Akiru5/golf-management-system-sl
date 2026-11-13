@@ -10,11 +10,13 @@ import { GroupCard } from "@/components/draw/GroupCard";
 import { IssuesPanel } from "@/components/draw/IssuesPanel";
 import { LiveModeBar } from "@/components/draw/LiveModeBar";
 import { PairingSheetImport } from "@/components/draw/PairingSheetImport";
+import { PlayerIndexDialog } from "@/components/draw/PlayerIndexDialog";
 import { PublishDialog } from "@/components/draw/PublishDialog";
 
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { fmtIso } from "@/lib/data/labels";
+import { classMismatches, classMismatchIssues } from "@/lib/draw/class-mismatch";
 import { sessionFinderFor } from "@/lib/draw/day-sessions";
 import { buildFlightQueue } from "@/lib/draw/flight-queue";
 import {
@@ -44,6 +46,7 @@ export default function DrawPage() {
     tournament,
     registrations,
     regById,
+    entryByPlayer,
     unplaced,
     playerById,
     names,
@@ -54,7 +57,9 @@ export default function DrawPage() {
     overrides,
     adapters,
     member,
+    status,
     entries,
+    tees,
     days,
     drawDay,
     setDrawDay,
@@ -86,6 +91,8 @@ export default function DrawPage() {
   const [pubOpen, setPubOpen] = useState(false);
   const [confirm, setConfirm] = useState<"startOver" | "unpublish" | null>(null);
   const [reason, setReason] = useState(REASONS[0] as string);
+  // The player whose index is being corrected from this board, by player id.
+  const [indexPlayer, setIndexPlayer] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -208,6 +215,38 @@ export default function DrawPage() {
   const none: Issue[] = useMemo(() => [], []);
   const blockingCount = issues.filter((i) => i.severity === "blocking").length;
   const warningCount = issues.filter((i) => i.severity === "warning").length;
+
+  // A player whose index was corrected straight from the board stays in the group they were drawn
+  // in, so the entry's class can stop matching the group's class. Reported on the card and in the
+  // checks list as a note. It never blocks a publish and nothing is re-routed.
+  const classGroups = useMemo(
+    () =>
+      classMismatches({
+        draw: draw ?? [],
+        registrations,
+        flights: tournament?.flights ?? [],
+      }),
+    [draw, registrations, tournament?.flights],
+  );
+  const classNoteOf = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const group of classGroups) {
+      for (const player of group.players) map.set(player.playerId, player.note);
+    }
+    return map;
+  }, [classGroups]);
+  const classCountByGroup = useMemo(
+    () => new Map(classGroups.map((group) => [group.group, group.players.length])),
+    [classGroups],
+  );
+  const classNoteIssues = useMemo(() => classMismatchIssues(classGroups), [classGroups]);
+  // The checks list shows the ordinary issues and these notes. The tiles and the publish dialog keep
+  // reading `issues`, because a class note is not a fault in the draw.
+  const panelIssues = useMemo(() => [...issues, ...classNoteIssues], [issues, classNoteIssues]);
+  const classMismatchOf = useCallback((id: string) => classNoteOf.get(id) ?? null, [classNoteOf]);
+  // The same gate the register list uses for its index edit.
+  const canEditIndex =
+    status === "demo" || member?.role === "owner" || member?.role === "organizer";
 
   // Escape drops whatever is picked up, including a swap waiting for its second player.
   useEffect(() => {
@@ -561,6 +600,12 @@ export default function DrawPage() {
 
   const activeName = active ? playerById.get(active.id)?.name : null;
   const groupSize = config?.groupSize ?? 4;
+  // The index edit is opened from a player row, so it reads that player's cut-off records only while
+  // it is open.
+  const indexPlayerRecord = indexPlayer ? (playerById.get(indexPlayer) ?? null) : null;
+  const indexRegistration = indexPlayer ? (regById.get(indexPlayer) ?? null) : null;
+  const indexEntry = indexPlayer ? (entryByPlayer.get(indexPlayer) ?? null) : null;
+  const indexRecords = indexPlayer ? adapters.players.recordsFor(indexPlayer) : [];
   const openSpots =
     visibleDraw?.reduce((n, g) => n + Math.max(groupSize - g.playerIds.length, 0), 0) ?? 0;
   const lockedCount = visibleDraw?.filter((g) => g.locked).length ?? 0;
@@ -1036,7 +1081,7 @@ export default function DrawPage() {
                 </p>
               )}
               <IssuesPanel
-                issues={issues}
+                issues={panelIssues}
                 busy={fixing}
                 onFix={(action) => void fixCause(action)}
                 onShow={(issue) => {
@@ -1201,6 +1246,10 @@ export default function DrawPage() {
                             : names.flight(g.flightId)
                         }
                         flightNameOf={names.flight}
+                        classMismatchOf={classMismatchOf}
+                        classMismatchCount={classCountByGroup.get(g.number) ?? 0}
+                        canEditIndex={canEditIndex}
+                        onEditIndex={setIndexPlayer}
                         players={playerById}
                         regs={regById}
                         manualOverrideIds={manualOverrideIds}
@@ -1341,6 +1390,28 @@ export default function DrawPage() {
           </RoleGate>
         )}
       </div>
+
+      {indexPlayer && indexPlayerRecord && indexRegistration && indexEntry && (
+        <PlayerIndexDialog
+          key={indexPlayer}
+          open
+          onOpenChange={(open) => {
+            if (!open) setIndexPlayer(null);
+          }}
+          player={indexPlayerRecord}
+          entry={indexEntry}
+          registration={indexRegistration}
+          tournament={tournament}
+          tees={tees}
+          records={indexRecords}
+          onSave={(input) => {
+            // The adapter writes the entry, and the board reads the registrations again, so the row
+            // and its class badge follow. The draw is not touched: the player stays in this group.
+            void adapters.registrations.overrideReady(indexEntry.id, input);
+            setIndexPlayer(null);
+          }}
+        />
+      )}
 
       <PublishDialog open={pubOpen} issues={issues} onClose={() => setPubOpen(false)} />
     </div>

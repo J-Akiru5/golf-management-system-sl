@@ -280,6 +280,9 @@ export const BOARD_EDIT_ACTIONS: ReadonlySet<Action["type"]> = new Set<Action["t
   "withdrawFromDraw",
   "restoreToDraw",
   "placeOnDraw",
+  "swapPlayers",
+  "moveSet",
+  "swapSets",
 ]);
 
 /**
