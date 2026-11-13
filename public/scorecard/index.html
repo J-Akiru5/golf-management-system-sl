@@ -12,6 +12,9 @@
   h1 { font-size: 17px; margin: 0 0 2px; }
   .sub { color: #4d5c54; margin: 0 0 8px; }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  /* The toolbar wraps to several rows on a phone or a short window. Pinned, it would cover the
+     batch tools and the cards, so on those screens it scrolls away like any other block. */
+  @media (max-width: 900px), (max-height: 900px) { header { position: static; } }
   button { font: inherit; padding: 6px 12px; border: 1px solid #b9c4bd; background: #fff; color: #14201a; border-radius: 6px; cursor: pointer; }
   button.on, button.primary { background: #1f5a3c; border-color: #1f5a3c; color: #fff; }
   button.danger { color: #b42318; }
@@ -695,6 +698,12 @@ window.__scorecard = {
   panel.innerHTML = `
     <h2 style="margin:0 0 2px;font-size:15px">Review batches and system check</h2>
     <p class="legend" id="batch-summary" style="margin:0 0 8px"></p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 8px">
+      <input id="panel-q" type="search" placeholder="Filter by player name" aria-label="Filter cards by player name" style="font:inherit;padding:6px 8px;border:1px solid #b9c4bd;border-radius:6px;min-width:220px">
+      <label style="display:inline-flex;gap:5px;align-items:center">Batch
+        <select id="batch-select" aria-label="Show one review batch" style="font:inherit;padding:6px 8px;border:1px solid #b9c4bd;border-radius:6px;max-width:260px"></select></label>
+      <button type="button" id="panel-add" class="primary" title="Add a blank card and type the name and 18 scores in from the paper card">Add card by hand</button>
+    </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">
       <button type="button" id="batch-all">All cards</button>
       <button type="button" id="batch-needs">Needs review</button>
@@ -708,8 +717,8 @@ window.__scorecard = {
       <button type="button" id="batch-day">Day/tee differs</button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-      <button type="button" id="scan-pick" class="primary" title="Choose one or more photos of scorecards, or use the camera on a phone">Scan card</button>
-      <button type="button" id="scan-camera-open" title="Open the camera and photograph a card">Take photo</button>
+      <button type="button" id="scan-pick" title="Choose one or more photos of scorecards that are already saved on this device">Scan card (from photos)</button>
+      <button type="button" id="scan-camera-open" class="primary" title="Open the camera and photograph a card">Take photo</button>
       <button type="button" id="batch-add" title="Add cards from a JSON file. Nothing is downloaded.">Import JSON (add cards)</button>
       <button type="button" id="batch-start">Start new review batch</button>
       <button type="button" id="batch-save">Save to database</button>
@@ -718,8 +727,11 @@ window.__scorecard = {
       <input id="scan-file" type="file" accept="image/jpeg,image/png,image/webp,image/*" multiple hidden>
       <input id="scan-camera" type="file" accept="image/*" capture="environment" hidden>
     </div>
-    <div id="batch-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
-    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Scan card</b> or <b>Take photo</b> reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. Saving keeps the team copy in the private Supabase bucket; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px">
+      <div id="batch-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      <button type="button" id="batch-clear" class="danger" title="Remove the batch labels where every card is already checked. The cards stay on the page." hidden>Remove reviewed batches</button>
+    </div>
+    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add card by hand</b> adds a blank card to type in. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. Saving keeps the team copy in the private Supabase bucket; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication.</p>
     <p class="legend" id="field-status" style="margin:8px 0 0">Supabase field: not checked yet.</p>
     <details id="check-details" open style="margin-top:8px">
       <summary id="check-summary" style="cursor:pointer;font-weight:600">System check: waiting for the field list.</summary>
@@ -746,6 +758,10 @@ window.__scorecard = {
   const saveDownloadButton = panel.querySelector("#batch-save-download");
   const addInput = panel.querySelector("#batch-add-file");
   const batchList = panel.querySelector("#batch-list");
+  const batchSelect = panel.querySelector("#batch-select");
+  const clearButton = panel.querySelector("#batch-clear");
+  const panelSearch = panel.querySelector("#panel-q");
+  const panelAdd = panel.querySelector("#panel-add");
   const checkSummary = panel.querySelector("#check-summary");
   const checkTable = panel.querySelector("#check-table");
 
@@ -968,13 +984,58 @@ window.__scorecard = {
       .map((batch) => {
         const count = batchCount(batch);
         const selected = active === batch.id;
-        return `<button type="button" data-batch="${escapeHtml(batch.id)}" class="${selected ? "on" : ""}" aria-pressed="${selected ? "true" : "false"}">${escapeHtml(batch.name)} (${count.done}/${count.total})</button>`;
+        const name = escapeHtml(batch.name);
+        return `<span style="display:inline-flex;gap:2px"><button type="button" data-batch="${escapeHtml(batch.id)}" class="${selected ? "on" : ""}" aria-pressed="${selected ? "true" : "false"}">${name} (${count.done}/${count.total})</button><button type="button" data-batch-del="${escapeHtml(batch.id)}" title="Remove this batch. Its cards stay on the page." aria-label="Remove batch ${name}">×</button></span>`;
       })
       .join("");
     for (const button of batchList.querySelectorAll("button[data-batch]")) {
       button.addEventListener("click", () => setActive(button.dataset.batch));
     }
+    for (const button of batchList.querySelectorAll("button[data-batch-del]")) {
+      button.addEventListener("click", () => removeBatches([button.dataset.batchDel]));
+    }
+    // The batch picker lists the same batches, so a long list never has to be scrolled through.
+    const choices = [
+      ["all", "All cards"],
+      ["needs", "Needs review"],
+      ["done", "Reviewed"],
+      ...list.map((batch) => [batch.id, `${batch.name} (${batchCount(batch).done}/${batchCount(batch).total})`]),
+    ];
+    batchSelect.innerHTML = choices
+      .map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`)
+      .join("");
+    batchSelect.value = choices.some(([value]) => value === active) ? active : "all";
+    const reviewed = list.filter(isReviewed);
+    clearButton.hidden = reviewed.length === 0;
+    clearButton.textContent = `Remove reviewed batches (${reviewed.length})`;
     renderCheckTable();
+  }
+
+  // A batch is reviewed when it has cards and every one of them is checked against the paper.
+  function isReviewed(batch) {
+    const count = batchCount(batch);
+    return count.total > 0 && count.done === count.total;
+  }
+
+  /**
+   * Removing a batch removes the label only. Cards are scores someone typed or scanned, so they are
+   * never deleted here; they stay under All cards, and a manual card keeps its own Remove button.
+   */
+  function removeBatches(ids) {
+    const state = current();
+    const doomed = batches().filter((batch) => ids.includes(batch.id));
+    if (doomed.length === 0) return;
+    const waiting = doomed.reduce((total, batch) => total + (batchCount(batch).total - batchCount(batch).done), 0);
+    const what = doomed.length === 1 ? `the batch "${doomed[0].name}"` : `${doomed.length} reviewed batches`;
+    const message = `Remove ${what}? Its cards stay on the page under All cards.${waiting ? ` ${waiting} card${waiting === 1 ? " is" : "s are"} not checked yet.` : ""}`;
+    if (!window.confirm(message)) return;
+    state.reviewBatches = batches().filter((batch) => !ids.includes(batch.id));
+    if (ids.includes(state.activeReviewBatchId)) state.activeReviewBatchId = "all";
+    if (ids.includes(pendingScanBatchId)) pendingScanBatchId = "";
+    db.save();
+    apply();
+    void persist(true);
+    summary.textContent = `Removed ${what}. No card was deleted.`;
   }
 
   function startBatch() {
@@ -1121,47 +1182,169 @@ window.__scorecard = {
     return { overlay, box, close: () => overlay.remove() };
   }
 
-  function chooseWhatNext(cards, notes) {
+  // ---- Where a scanned card goes: a batch the desk names, and what to do when the player is already there ----
+  // A card scanned again (a second pass, or the holes that were missing the first time) must not
+  // become a duplicate. The desk names the batch the card belongs to; a card for the same player in
+  // that batch is updated instead: blank holes get the new scores, scores already on the card are
+  // kept, and a score that disagrees is left alone and written in the card's note.
+
+  /** Matches each scanned card to at most one card in the chosen scope. */
+  function planScan(cards, target) {
+    const state = current();
+    let pool = [];
+    if (target === "all") pool = state.cards;
+    else if (target !== "new") {
+      const chosen = batches().find((entry) => entry.id === target);
+      pool = chosen ? chosen.cardIds.map(findCard).filter(Boolean) : [];
+    }
+    const claimed = new Set();
+    const merges = [], fresh = [];
+    for (const incoming of cards) {
+      const named = incoming.name && !/^UNKNOWN PLAYER$/i.test(incoming.name);
+      const key = named ? nameKey(incoming.name) : "";
+      const hits = key ? pool.filter((card) => !claimed.has(card.id) && nameKey(card.name) === key) : [];
+      if (hits.length === 1) {
+        claimed.add(hits[0].id);
+        merges.push({ incoming, existing: hits[0], ...mergePreview(hits[0], incoming) });
+      } else if (hits.length > 1) {
+        // Two cards share the name, so there is no safe card to update. Keep it new and say why.
+        fresh.push({ ...incoming, note: [incoming.note, "More than one card on this page has this name, so it was added as a new card."].filter(Boolean).join(" ") });
+      } else {
+        fresh.push(incoming);
+      }
+    }
+    return { merges, fresh };
+  }
+
+  function mergePreview(existing, incoming) {
+    const add = [], differs = [];
+    incoming.holes.forEach((value, index) => {
+      if (value === "") return;
+      const kept = existing.holes[index];
+      if (kept === "" || kept === undefined) add.push(index + 1);
+      else if (kept !== value) differs.push(`hole ${index + 1} (card ${kept}, scan ${value})`);
+    });
+    return { add, differs };
+  }
+
+  function mergeInto(existing, incoming) {
+    const { add, differs } = mergePreview(existing, incoming);
+    add.forEach((hole) => { existing.holes[hole - 1] = incoming.holes[hole - 1]; });
+    if (!existing.name && incoming.name) existing.name = incoming.name;
+    if (!existing.written && incoming.written) existing.written = incoming.written;
+    const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const parts = [];
+    if (add.length) parts.push(`added hole${add.length === 1 ? "" : "s"} ${add.join(", ")}; check against the paper card`);
+    if (differs.length) parts.push(`the scan reads ${differs.join(", ")} differently; the card was kept`);
+    if (!parts.length) parts.push("nothing new on this scan");
+    const sentences = parts.map((part) => part.charAt(0).toUpperCase() + part.slice(1));
+    existing.note = [existing.note, `Rescan ${stamp}: ${sentences.join(". ")}.`].filter(Boolean).join(" ");
+    // New scores on a card that was already checked have not been checked, so it needs a second look.
+    if (add.length) existing.verified = false;
+    return { add, differs };
+  }
+
+  /** The batch most likely meant: the one that already holds the most of these players. */
+  function likelyBatch(cards) {
+    let best = "new", most = 0;
+    for (const entry of batches()) {
+      const found = planScan(cards, entry.id).merges.length;
+      if (found > most) { best = entry.id; most = found; }
+    }
+    return best;
+  }
+
+  // `blank` is the fallback when the reader gave nothing for a photo: the desk can still add an empty
+  // card per photo and type the scores in from the paper card, instead of starting over by hand.
+  // Resolves { choice, target }: choice is now, later or discard; target is new, all or a batch id.
+  function chooseWhatNext(cards, notes, blank) {
     return new Promise((resolve) => {
-      const weak = cards.filter((card) => /Reader unsure|Left blank/.test(card.note || "")).length;
-      const names = cards.slice(0, 12).map((card) => `<li>${escapeHtml(card.name)}${/Reader unsure|Left blank/.test(card.note || "") ? ' <span style="color:#b42318">· check some holes</span>' : ""}</li>`).join("");
-      const more = cards.length > 12 ? `<li>…and ${cards.length - 12} more</li>` : "";
+      const title = blank
+        ? `${cards.length} photo${cards.length === 1 ? "" : "s"} could not be read`
+        : `${cards.length} card${cards.length === 1 ? "" : "s"} read`;
+      const lead = blank
+        ? "No scores were drafted. Add a blank card for each photo and type the name and scores in from the paper card."
+        : "These are drafts. Nothing is marked checked until you tick it. Choose the batch these cards belong to: a player already in that batch is updated instead of added twice.";
+      const labels = blank
+        ? ["Add blank cards and review now", "Add blank cards to a batch for later", "Not now"]
+        : ["Review now", "Review later in a batch", "Discard these cards"];
+      const options = [
+        ["new", "A new batch"],
+        ...batches().map((entry) => [entry.id, `${entry.name} (${batchCount(entry).done}/${batchCount(entry).total})`]),
+        ["all", "Search every card on this page"],
+      ];
       const dialog = scanDialog(`
-        <h2 style="margin:0 0 6px;font-size:18px">${cards.length} card${cards.length === 1 ? "" : "s"} read</h2>
-        <p style="margin:0 0 8px;color:#4d5c54">These are drafts. Nothing is marked checked until you tick it.${weak ? ` ${weak} ha${weak === 1 ? "s" : "ve"} cells the reader was unsure of.` : ""}</p>
-        <ul style="margin:0 0 10px;padding-left:18px;max-height:180px;overflow:auto">${names}${more}</ul>
+        <h2 style="margin:0 0 6px;font-size:18px">${title}</h2>
+        <p style="margin:0 0 8px;color:#4d5c54">${lead}</p>
+        ${blank ? "" : `<label style="display:flex;flex-direction:column;gap:4px;margin:0 0 8px">Which batch?
+          <select id="scan-target" style="font:inherit;padding:7px 8px;border:1px solid #b9c4bd;border-radius:6px">${options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}</select></label>
+        <p id="scan-plan" role="status" style="margin:0 0 6px;font-weight:600"></p>`}
+        <ul id="scan-list" style="margin:0 0 10px;padding-left:18px;max-height:200px;overflow:auto"></ul>
         ${notes.length ? `<p style="margin:0 0 10px;color:#b42318">${notes.map(escapeHtml).join("<br>")}</p>` : ""}
         <div style="display:flex;flex-direction:column;gap:8px">
-          <button type="button" data-choice="now" class="primary">Review now</button>
-          <button type="button" data-choice="later">Review later in a batch</button>
-          <button type="button" data-choice="discard" class="danger">Discard these cards</button>
+          <button type="button" data-choice="now" class="primary">${labels[0]}</button>
+          <button type="button" data-choice="later">${labels[1]}</button>
+          <button type="button" data-choice="discard" class="danger">${labels[2]}</button>
         </div>`);
+      const select = dialog.box.querySelector("#scan-target");
+      const planLine = dialog.box.querySelector("#scan-plan");
+      const list = dialog.box.querySelector("#scan-list");
+      const targetNow = () => (select ? select.value : "new");
+      function render() {
+        const { merges, fresh } = blank ? { merges: [], fresh: cards } : planScan(cards, targetNow());
+        const rows = [
+          ...merges.map((merge) => `<li>${escapeHtml(merge.existing.name)} <span style="color:#073d2e">· already there: ${merge.add.length ? `adds ${merge.add.length} score${merge.add.length === 1 ? "" : "s"}` : "no new scores"}</span>${merge.differs.length ? ` <span style="color:#b42318">· ${merge.differs.length} differ${merge.differs.length === 1 ? "s" : ""}, card kept</span>` : ""}</li>`),
+          ...fresh.map((card) => `<li>${escapeHtml(card.name || "Blank card to type in")} <span style="color:#4d5c54">· new</span>${/Reader unsure|Left blank/.test(card.note || "") ? ' <span style="color:#b42318">· check some holes</span>' : ""}</li>`),
+        ];
+        list.innerHTML = rows.slice(0, 14).join("") + (rows.length > 14 ? `<li>…and ${rows.length - 14} more</li>` : "");
+        if (planLine) {
+          const added = merges.reduce((total, merge) => total + merge.add.length, 0);
+          planLine.textContent = `${fresh.length} new card${fresh.length === 1 ? "" : "s"} · ${merges.length} already on the page${merges.length ? ` (${added} new score${added === 1 ? "" : "s"} to add; scores already on a card are kept)` : ""}`;
+        }
+      }
+      if (select) {
+        const preset = likelyBatch(cards);
+        select.value = options.some(([value]) => value === preset) ? preset : "new";
+        select.addEventListener("change", render);
+      }
+      render();
       dialog.box.addEventListener("click", (event) => {
         const choice = event.target && event.target.dataset ? event.target.dataset.choice : "";
         if (!choice) return;
+        const target = targetNow();
         dialog.close();
-        resolve(choice);
+        resolve({ choice, target });
       });
-      const first = dialog.box.querySelector("button");
+      const first = dialog.box.querySelector("button[data-choice]");
       if (first) first.focus();
     });
   }
 
-  function addScannedCards(cards, when) {
+  function addScannedCards(cards, when, target) {
     const state = current();
+    const { merges, fresh } = planScan(cards, target || "new");
     const have = new Set(state.cards.map((card) => card.id));
-    const fresh = cards.filter((card) => !have.has(card.id)).map((card) => ({ ...card, verified: false }));
-    if (fresh.length === 0) return;
-    state.cards = [...state.cards, ...fresh];
-    let batch = when === "later" ? batches().find((entry) => entry.id === pendingScanBatchId) : null;
+    const added = fresh.filter((card) => !have.has(card.id)).map((card) => ({ ...card, verified: false }));
+    const touched = merges.map((merge) => merge.existing);
+    let scoresAdded = 0, differing = 0;
+    for (const merge of merges) {
+      const result = mergeInto(merge.existing, merge.incoming);
+      scoresAdded += result.add.length;
+      differing += result.differs.length;
+    }
+    if (added.length === 0 && touched.length === 0) return;
+    state.cards = [...state.cards, ...added];
+    let batch = target && target !== "new" && target !== "all" ? batches().find((entry) => entry.id === target) : null;
+    if (!batch && when === "later") batch = batches().find((entry) => entry.id === pendingScanBatchId) || null;
+    const ids = [...added.map((card) => card.id), ...touched.map((card) => card.id)];
     if (batch) {
-      batch.cardIds = [...batch.cardIds, ...fresh.map((card) => card.id)];
+      batch.cardIds = [...new Set([...batch.cardIds, ...ids])];
     } else {
       batch = {
         id: `batch-${Date.now().toString(36)}`,
         name: `Scan ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
         createdAt: new Date().toISOString(),
-        cardIds: fresh.map((card) => card.id),
+        cardIds: [...new Set(ids)],
       };
       state.reviewBatches = [...batches(), batch];
     }
@@ -1175,10 +1358,11 @@ window.__scorecard = {
     db.setState(state);
     apply();
     void persist(true);
-    if (when === "now") gotoCard(fresh[0].id);
-    summary.textContent = when === "now"
-      ? `Reviewing ${fresh.length} scanned card${fresh.length === 1 ? "" : "s"} (${batch.name}).`
-      : `${fresh.length} scanned card${fresh.length === 1 ? "" : "s"} added to ${batch.name}. Open that batch below when you are ready to review.`;
+    if (when === "now") gotoCard(ids[0]);
+    const bits = [];
+    if (added.length) bits.push(`${added.length} new card${added.length === 1 ? "" : "s"}`);
+    if (touched.length) bits.push(`${touched.length} existing card${touched.length === 1 ? "" : "s"} updated with ${scoresAdded} new score${scoresAdded === 1 ? "" : "s"}`);
+    summary.textContent = `${bits.join(" and ")} in ${batch.name}.${differing ? ` ${differing} score${differing === 1 ? " differs" : "s differ"} from the scan; the existing score was kept and the card note says which.` : ""}${when === "later" ? " Open that batch below when you are ready to review." : ""}`;
   }
 
   async function scanPhotos(fileList) {
@@ -1186,15 +1370,24 @@ window.__scorecard = {
     if (!files.length || scanBusy) return;
     scanBusy = true;
     scanPick.disabled = scanCameraOpen.disabled = true;
-    const cards = [], notes = [];
+    const cards = [], notes = [], unread = [];
+    let readerOff = false;
     try {
       for (const [index, file] of files.entries()) {
         status(`Reading photo ${index + 1} of ${files.length}…`);
+        const label = file.name || `Photo ${index + 1}`;
+        if (readerOff) {
+          unread.push({ label, why: "the card reader is not connected" });
+          continue;
+        }
         try {
           const answer = await readPhoto(file);
           if (!answer.available) {
+            // One note is enough: the reader is off for every photo in this batch.
+            readerOff = true;
             notes.push(answer.message);
-            break;
+            unread.push({ label, why: "the card reader is not connected" });
+            continue;
           }
           const stamp = `${Date.now().toString(36)}${index}`;
           const read = importCardsFrom({
@@ -1203,9 +1396,12 @@ window.__scorecard = {
             engineVersion: answer.engineVersion,
             raw: { sourceFile: `${(file.name || "photo").replace(/\.[a-z0-9]+$/i, "")}-${stamp}` },
           });
-          if (read) cards.push(...read.cards);
+          if (read && read.cards.length) cards.push(...read.cards);
+          else unread.push({ label, why: "no card was found in it" });
         } catch (error) {
-          notes.push(`${file.name || `Photo ${index + 1}`}: ${error instanceof Error ? error.message : String(error)}`);
+          const why = error instanceof Error ? error.message : String(error);
+          notes.push(`${label}: ${why}`);
+          unread.push({ label, why });
         }
       }
     } finally {
@@ -1213,21 +1409,168 @@ window.__scorecard = {
       scanPick.disabled = scanCameraOpen.disabled = false;
     }
     if (!cards.length) {
+      // Nothing was drafted. Keep the photo useful: offer a blank card per photo to type in by hand.
       status(notes[0] || "No cards could be read from that photo.", true);
-      summary.textContent = notes.length ? notes.join(" ") : "No cards could be read from that photo.";
+      const stamp = Date.now().toString(36);
+      const blanks = unread.map((entry, index) => ({
+        id: `manual-photo-${stamp}${index}`,
+        manual: true,
+        name: "",
+        group: "",
+        tee: "",
+        hdcp: "",
+        written: "",
+        cls: "",
+        verified: false,
+        note: `Photo ${entry.label} could not be read (${entry.why}). Type the scores from the paper card.`,
+        source: "",
+        holes: Array(18).fill(""),
+      }));
+      if (!blanks.length) return;
+      const blankPick = await chooseWhatNext(blanks, notes, true);
+      if (blankPick.choice === "discard") {
+        summary.textContent = "No card was added.";
+        return;
+      }
+      addScannedCards(blanks, blankPick.choice, "new");
       return;
     }
     status(`Read ${cards.length} card${cards.length === 1 ? "" : "s"}.`);
-    const choice = await chooseWhatNext(cards, notes);
-    if (choice === "discard") {
+    const pick = await chooseWhatNext(cards, unread.length ? [...notes, `${unread.length} photo${unread.length === 1 ? " was" : "s were"} not read: ${unread.map((entry) => entry.label).join(", ")}.`] : notes);
+    if (pick.choice === "discard") {
       summary.textContent = "Scanned cards discarded. Nothing was added.";
       return;
     }
-    addScannedCards(cards, choice);
+    addScannedCards(cards, pick.choice, pick.target);
+  }
+
+  // ---- Camera: a live view in the page, so Take photo works on a laptop and a phone alike ----
+  // The file input with `capture` only opens the camera on a phone; on a laptop it opens the file
+  // picker, which is what "Take photo" used to do. This keeps the camera open so several cards can be
+  // photographed in a row, then reads them together.
+  // When the live camera cannot open (blocked, none, or an old browser), the other way in is one
+  // click away: the device's own camera app on a phone, or the photo picker on a laptop.
+  function cameraFallback(message) {
+    status(message, true);
+    const dialog = scanDialog(`
+      <h2 style="margin:0 0 6px;font-size:18px">The camera did not open</h2>
+      <p style="margin:0 0 10px;color:#4d5c54">${escapeHtml(message)}</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button type="button" data-act="pick" class="primary">Use the camera app or choose a photo</button>
+        <button type="button" data-act="close">Close</button>
+      </div>`);
+    dialog.box.addEventListener("click", (event) => {
+      const act = event.target && event.target.dataset ? event.target.dataset.act : "";
+      if (!act) return;
+      dialog.close();
+      if (act === "pick") scanCamera.click();
+    });
+    const first = dialog.box.querySelector("button");
+    if (first) first.focus();
+  }
+
+  async function openCamera() {
+    if (scanBusy) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      cameraFallback("This browser cannot open the camera from this page.");
+      return;
+    }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1920 } },
+        audio: false,
+      });
+    } catch (error) {
+      const denied = error && (error.name === "NotAllowedError" || error.name === "SecurityError");
+      const none = error && (error.name === "NotFoundError" || error.name === "OverconstrainedError");
+      cameraFallback(
+        denied
+          ? "The camera is blocked for this site. Allow it from the camera icon in the browser's address bar and press Take photo again, or use the other way below."
+          : none
+            ? "No camera was found on this device."
+            : `The camera could not be opened (${(error && error.message) || "unknown error"}).`,
+      );
+      return;
+    }
+    const shots = [];
+    const dialog = scanDialog(`
+      <h2 style="margin:0 0 6px;font-size:18px">Take photo</h2>
+      <p style="margin:0 0 8px;color:#4d5c54">Fill the frame with one scorecard, then press Capture. Take as many cards as you like, then press Read.</p>
+      <video id="cam-video" playsinline muted autoplay style="width:100%;max-height:60vh;background:#000;border-radius:8px"></video>
+      <p id="cam-count" role="status" style="margin:8px 0;color:#4d5c54">No photo taken yet.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button type="button" id="cam-shot" class="primary">Capture</button>
+        <button type="button" id="cam-done" disabled>Read the photos</button>
+        <button type="button" id="cam-cancel" class="danger">Cancel</button>
+      </div>`);
+    const video = dialog.box.querySelector("#cam-video");
+    const count = dialog.box.querySelector("#cam-count");
+    const doneButton = dialog.box.querySelector("#cam-done");
+    video.srcObject = stream;
+    video.play().catch(() => {});
+    const stop = () => {
+      for (const track of stream.getTracks()) track.stop();
+      video.srcObject = null;
+      dialog.close();
+      document.removeEventListener("keydown", onKey);
+    };
+    const onKey = (event) => { if (event.key === "Escape") stop(); };
+    document.addEventListener("keydown", onKey);
+    dialog.box.querySelector("#cam-cancel").addEventListener("click", stop);
+    dialog.box.querySelector("#cam-shot").addEventListener("click", () => {
+      if (!video.videoWidth) {
+        count.textContent = "The camera is still starting. Try again in a second.";
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          count.textContent = "That photo could not be taken. Try again.";
+          return;
+        }
+        shots.push(new File([blob], `camera-${shots.length + 1}.jpg`, { type: "image/jpeg" }));
+        count.textContent = `${shots.length} photo${shots.length === 1 ? "" : "s"} taken. Capture another card, or read them now.`;
+        doneButton.disabled = false;
+        doneButton.textContent = `Read ${shots.length} photo${shots.length === 1 ? "" : "s"}`;
+      }, "image/jpeg", 0.92);
+    });
+    doneButton.addEventListener("click", () => {
+      const taken = shots.slice();
+      stop();
+      void scanPhotos(taken);
+    });
   }
 
   scanPick.addEventListener("click", () => scanFile.click());
-  scanCameraOpen.addEventListener("click", () => scanCamera.click());
+  scanCameraOpen.addEventListener("click", () => { void openCamera(); });
+
+  // ---- Filter by name and batch, add a card by hand, remove batches ----
+  const searchBox = document.getElementById("q");
+  panelSearch.addEventListener("input", () => {
+    searchBox.value = panelSearch.value;
+    searchBox.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  // The toolbar's own search ignored the batch filter and un-hid cards outside it; keep both in step.
+  searchBox.addEventListener("input", () => {
+    panelSearch.value = searchBox.value;
+    apply();
+  });
+  batchSelect.addEventListener("change", () => setActive(batchSelect.value));
+  clearButton.addEventListener("click", () => removeBatches(batches().filter(isReviewed).map((batch) => batch.id)));
+  // A new blank card must be visible: with a batch or filter active it would be hidden at once.
+  const addButtonToolbar = document.getElementById("add");
+  addButtonToolbar.addEventListener("click", () => {
+    const state = current();
+    if (activeId() !== "all") state.activeReviewBatchId = "all";
+  }, true);
+  panelAdd.addEventListener("click", () => {
+    panelSearch.value = "";
+    addButtonToolbar.click();
+  });
   for (const input of [scanFile, scanCamera]) {
     input.addEventListener("change", () => {
       const picked = Array.from(input.files || []);
@@ -1279,8 +1622,13 @@ window.__scorecard = {
 
   async function persist(force = false) {
     if (saving) {
-      if (force) status("A save is already running. Try again in a second.", true);
-      return false;
+      if (!force) return false;
+      // A save is in flight. A forced one waits its turn and runs right after, so a click or an
+      // import never ends in an error just because the timer was saving at the same moment.
+      for (let waited = 0; saving && waited < 100; waited += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+      }
+      if (saving) return false;
     }
     const state = current();
     const text = JSON.stringify(state);

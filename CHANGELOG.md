@@ -9,6 +9,43 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.49.0] - 2026-11-14
+
+### Added
+- **All scores can be read as a table or as a list of cards.** A **Show as** control above the
+  filters switches between the nameplate cards and a ruled table with Player, Class, Net and Gross
+  columns in the scorecard's table style. Each table row keeps its days and sessions under the name,
+  and the class column steps aside on a phone. Cards stay the default.
+- **The morning and afternoon filter is always available.** It no longer waits for a day to be
+  chosen: picking Morning shows the morning rounds across every day and each row says which days
+  counted.
+- **Scanning a card asks which batch it belongs to, and a rescan updates the card instead of
+  adding a second one.** After the reader returns, the dialog offers a batch picker (a new batch, an
+  existing batch, or every card on the page) and preselects the batch that already holds the most of
+  these players. A player already in the chosen batch is matched by name, in any word order and
+  ignoring accents and capitals. Blank holes on that card get the new scores; scores already on the
+  card are kept; a score that disagrees is left alone and written in the card's note; and a card
+  that gained scores is unchecked so it is looked at again. A name that matches more than one card is
+  added as a new card with a note, never merged. The list in the dialog shows which cards are new and
+  how many scores each existing card would gain before anything changes.
+- **Take photo opens a live camera view in the page.** Several cards can be photographed in a row
+  and read together. It works on a laptop webcam as well as a phone; the old file input with
+  `capture` only opened the file picker on a laptop. When the camera is blocked, missing or
+  unsupported, the page says why and offers one click to the device's camera app or photo picker.
+- **When the reader returns nothing for a photo, the desk can still add a blank card for it** and
+  type the scores in from the paper card, in a batch of its own.
+- **The review panel has a name filter, a batch picker and Add card by hand.** Add card by hand no
+  longer hides the new card behind an active batch filter. Every batch has a **×** to remove it, and
+  **Remove reviewed batches** clears the ones where every card is checked. Removing a batch removes
+  the label only; no card is deleted.
+
+### Fixed
+- **The scorecard toolbar no longer covers the batch tools on a phone or a short window.** It scrolls
+  away like any other block on those screens, and a save that overlaps the timer's save waits for it
+  instead of showing an error.
+
+No migration.
+
 ## [0.48.0] - 2026-11-14
 
 ### Added
