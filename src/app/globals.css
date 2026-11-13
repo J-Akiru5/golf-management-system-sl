@@ -8110,6 +8110,133 @@ html[data-textsize="large"] {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
+  /* Cards or a plain table: the same rows, read two ways. The table is the scorecard's own language,
+     a ruled grid with tabular figures, for a member who would rather scan a list than a stack. */
+  .public-pairings .scores-view {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+
+  .public-pairings .scores-view-label {
+    color: var(--ink-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .public-pairings .scores-view-options {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid light-dark(#dfe6dd, #2b3a32);
+    border-radius: 999px;
+    background: light-dark(#ffffff, #1a231e);
+  }
+
+  .public-pairings .scores-view-button {
+    min-height: 44px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: light-dark(#5d6d63, #a9bcb2);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .public-pairings .scores-view-button[aria-pressed="true"] {
+    background: var(--forest);
+    color: var(--on-forest, #f4f1e6);
+  }
+
+  .public-pairings .scores-view-button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .public-pairings .scores-table-wrap {
+    overflow-x: auto;
+    border: 1px solid light-dark(color-mix(in srgb, var(--forest) 11%, #e6ece4), #27362e);
+    border-radius: 18px;
+    background: var(--surface-raised);
+    box-shadow:
+      0 1px 1px rgba(6, 40, 28, 0.04),
+      0 18px 36px -30px rgba(6, 40, 28, 0.65);
+  }
+
+  .public-pairings .scores-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+
+  .public-pairings .scores-table th {
+    padding: 12px 14px;
+    border-bottom: 1px solid light-dark(#dfe6dd, #2b3a32);
+    color: light-dark(#5d6d63, #a9bcb2);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .public-pairings .scores-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid light-dark(#e9eee6, #223029);
+    vertical-align: middle;
+  }
+
+  .public-pairings .scores-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .public-pairings .scores-table tbody tr:nth-child(even) {
+    background: light-dark(#f7faf4, #1c2620);
+  }
+
+  .public-pairings .scores-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .public-pairings .scores-table-name {
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .public-pairings .scores-table-name:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .public-pairings .scores-table-sub {
+    display: block;
+    margin-top: 2px;
+    color: light-dark(#5d6d63, #a9bcb2);
+    font-size: 12px;
+  }
+
+  @media (max-width: 560px) {
+    .public-pairings .scores-table .scores-table-class {
+      display: none;
+    }
+
+    .public-pairings .scores-table th,
+    .public-pairings .scores-table td {
+      padding: 11px 12px;
+    }
+  }
+
   /* Each round a player has, with the session it was played in and that round's own score. This is
      the AM/PM breakdown the totals above would otherwise hide. */
   .public-pairings .scores-rounds {

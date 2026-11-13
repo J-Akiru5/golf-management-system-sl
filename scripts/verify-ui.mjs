@@ -1426,6 +1426,9 @@ check(
 );
 await phonePage.locator('[data-testid="scores-day"]').selectOption("");
 await phonePage.waitForTimeout(200);
+// The time of day survives a day change, so it has to be cleared before counting the whole field.
+await phonePage.locator('[data-testid="scores-session"]').selectOption("");
+await phonePage.waitForTimeout(200);
 const classSelect = phonePage.locator('[data-testid="scores-class"]');
 if ((await classSelect.count()) > 0) {
   await classSelect.selectOption({ index: 1 });
@@ -1442,6 +1445,28 @@ if ((await classSelect.count()) > 0) {
   await classSelect.selectOption("");
   await phonePage.waitForTimeout(200);
 }
+// The same rows as a plain table, for a member who would rather scan a list.
+await phonePage.locator('[data-testid="scores-view-list"]').click();
+await phonePage.waitForTimeout(250);
+const tableRows = await phonePage.locator('[data-testid="scores-row"]').count();
+check("the list view shows every player", tableRows === fieldSize, `(${tableRows} of ${fieldSize})`);
+const tableSubs = await phonePage.locator(".scores-table-sub").allTextContents();
+check(
+  "every list row carries its day and session",
+  tableSubs.length > 0 && tableSubs.every((text) => /Day \d/.test(text) && /(Morning|Afternoon)/.test(text)),
+  `(${tableSubs[0] ?? "none"})`,
+);
+await phonePage.locator('[data-testid="scores-session"]').selectOption("AM");
+await phonePage.waitForTimeout(250);
+const amSubs = await phonePage.locator(".scores-table-sub").allTextContents();
+check(
+  "the morning filter works without choosing a day",
+  amSubs.length > 0 && amSubs.every((text) => /Morning/.test(text)),
+  `(${amSubs.length} rows)`,
+);
+await phonePage.locator('[data-testid="scores-session"]').selectOption("");
+await phonePage.locator('[data-testid="scores-view-cards"]').click();
+await phonePage.waitForTimeout(250);
 await phonePage.locator('[data-testid="scores-search"]').fill("antonio");
 await phonePage.waitForTimeout(250);
 const foundRows = await scoreRows.count();

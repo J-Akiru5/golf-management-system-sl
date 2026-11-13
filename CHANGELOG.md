@@ -17,7 +17,16 @@ Supabase project, because the code and the database are released separately.
   withdrawn or the player is retired. The app already removes the files through the Storage API.
   Not yet applied.
 
+## [0.49.0] - 2026-11-14
+
 ### Added
+- **All scores can be read as a table or as a list of cards.** A **Show as** control above the
+  filters switches between the nameplate cards and a ruled table with Player, Class, Net and Gross
+  columns in the scorecard's table style. Each table row keeps its days and sessions under the name,
+  and the class column steps aside on a phone. Cards stay the default.
+- **The morning and afternoon filter is always available.** It no longer waits for a day to be
+  chosen: picking Morning shows the morning rounds across every day and each row says which days
+  counted.
 - **Scanning a card asks which batch it belongs to, and a rescan updates the card instead of
   adding a second one.** After the reader returns, the dialog offers a batch picker (a new batch, an
   existing batch, or every card on the page) and preselects the batch that already holds the most of
@@ -42,6 +51,8 @@ Supabase project, because the code and the database are released separately.
 - **The scorecard toolbar no longer covers the batch tools on a phone or a short window.** It scrolls
   away like any other block on those screens, and a save that overlaps the timer's save waits for it
   instead of showing an error.
+
+No migration.
 
 ## [0.48.0] - 2026-11-14
 
