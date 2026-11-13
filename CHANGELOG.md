@@ -10,6 +10,45 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **The organizer can load their own pairing sheet on the Draw page.** An owner or organizer
+  chooses an .xlsx workbook and the worksheet, reviews matched, fuzzy, ambiguous and not found
+  names, ticks any fuzzy suggestion they accept, and replaces only the playing day on screen. The
+  workbook is read in the browser and nothing is uploaded. Names that are not found or are
+  ambiguous are listed with their hole and session so they can be fixed on the registration desk.
+  No migration.
+- **A pick-up (an X on the card) scores 0 and counts as a played hole.** The scoring engine now holds
+  a hole with no stroke count: it scores 0 gross and 0 net points, counts toward holes played, stays
+  out of the stroke totals, and a card with an X skips the written-total comparison because the
+  numbers cannot add up to it. On the desk a person types `X` in a hole, or taps the X button under it,
+  and the card shows `64 (+2 pickups)` in the same words as the public card. A conflict between a
+  number and an X can be settled as a pick-up. The data layer sends `picked_up` only when it is true,
+  so a card with no pick-up sends exactly what it sent before. **Migration written, not applied:**
+  `20261113000200_pickup_scores.sql` adds `picked_up` to three scoring tables and replaces seven
+  scoring functions so approval, canonical scores, results and the published card carry the flag. It
+  changes existing tables and functions, so it waits for the owner's approval by name. **Until it is
+  applied, an X works in the demo only.** On the live database a card with an X is saved with that hole
+  blank and approval refuses it ("The card still has a blank or illegible hole"), so apply the migration
+  before this build is promoted to `staging` or `main`.
+- **The scan inbox has its database and its rules, but no screen yet.** The inbox holds photographed
+  cards that are not scorecards yet and moves each one through uploaded, read, matched, confirmed and
+  card created (or set aside). The app assigns the marker from the other team in the group and the desk
+  can change it; the desk confirms the player. The rules are pure functions in
+  `src/lib/scoring/inbox` (state changes, what blocks a confirm, marker assignment, duplicate photos in
+  a batch). **Migration written, not applied:** `20261113000100_scorecard_scans.sql` adds one new table
+  with member-read security and seven functions limited to the owner, organizers and the desk. It is
+  additive and waits for the owner's approval by name.
+- **The desk shows each player's class name.** The scorecard line reads `Class A` for the player on
+  screen, and the standings table prints the class name under each player instead of the stored
+  flight id. A player with no class reads `Class Not set` on the card and `No class` in the table.
+  It reads the existing `flights` table. No migration.
+- **A name read off a scorecard can be matched to registered players.** `matchPlayers` in
+  `src/lib/scoring/match` returns up to four candidates, best first, each with the reasons in plain
+  words (surname one letter off, given name matches, same group). It never picks one: the desk
+  confirms. Not on any screen yet; the scan inbox will use it. No migration.
+- **The desk scorecard shows a context line and prints on its own.** A "Print this card" button
+  prints one card on white with the TeeLine mark, in the dark theme too. The line shows day, marker
+  and playing handicap, and will show class, partner, team handicap, tee and group once the desk
+  loads them; it leaves out a value it was not given instead of saying "Not set". No migration.
 - **Both partners' scorecards open from the team leaderboard row.** A Scorecards button shows each
   partner's frozen card in the paper-card layout (a new reusable `PaperScorecard`). The row shows the
   team's accumulated Gross Stableford points and each partner's own net and gross points. No
@@ -30,15 +69,54 @@ Supabase project, because the code and the database are released separately.
   on `/scores/results`. A correction saves a new revision and keeps the old one. No migration.
 
 ### Fixed
+- **The scorecard bar is readable on a phone and sits under the app header.** The sticky bar with the
+  player, the status and Submit was hidden behind the 84px header (the old single card had the same
+  flaw). Below the large breakpoint it is now a slim bar offset by `--shell-header` that keeps the
+  Submit button in reach, and the pickers scroll in their own card. Score cells are 44px high on a
+  phone, the stroke-index row is labelled `SI` with the full words for a screen reader, and the label
+  column stays put while the nine holes scroll sideways. The 640px table width and "Fill with par" are
+  unchanged and still open for the owner.
 - **A pickup no longer blanks a team's gross.** The team row showed `—` for gross, net and to par
   whenever one partner picked up a hole, and the public card dropped the pickup hole. The team row
   now shows accumulated Gross Stableford points; the card keeps the hole and marks it X.
 
 ### Changed
+- **A pairing card leads with the starting hole, not the tee time.** The hole is now the largest
+  text in the card header and the tee time follows as a smaller muted pill, in comfortable and
+  compact views and on the printed sheet. The hole filter, the session headings and the published
+  times are unchanged. No migration.
 - **The scorecard prints as the paper card.** The desk shows two nine-hole tables with Hole, Par,
   Hcp row, Score and Net pts, OUT/IN totals, and the paper-card footer (Strokes, Holes with a score,
   Playing handicap, Net Stableford, Gross Stableford). The table scrolls inside the card on a phone.
   No migration.
+- **The public player profile prints the paper card too.** The frozen card now renders as two
+  nine-hole tables with Hole, Par, SI, Gross, Hcp, Net, Gross pts and Net pts, OUT/IN totals, and
+  the same pinned row labels and contained sideways scroll on a phone. The card sits directly under
+  the player's identity, before the pair score. No migration.
+
+### Fixed
+- **A public card never invents a score for a pick-up or a partial round.** A hole flagged
+  `pickedUp` in the published snapshot stays an X with its par and stroke index: it counts as a
+  hole, scores 0 points and has no stroke total. A card with a pick-up shows `-` for its published
+  gross and net, while its points still sum. A partial card no longer prints a partial sum as its
+  card total, the hole count is clamped, and a card naming another player is dropped. The profile
+  summary reads the published card totals instead of a hole sum. A profile tee time now requires the
+  same full name, so a junior or a namesake cannot receive another player's start. **Known limit:**
+  the checked-in `build_round_scorecards` writes integer strokes only, so a republish through the
+  current builder would replace X with a proxy stroke. Keep the external v5 snapshot until the
+  writer carries the flag.
+- **A public class follows the validated desk sheet.** The profile shows the card playing handicap
+  instead of the frozen index, and the profile and leaderboard class use the live registration
+  class. The leaderboard overlays the class on the frozen snapshot rows, so a validated correction
+  appears without republishing the cards; scores stay frozen. The Day 1 AM registrations and round
+  results were corrected to the validated JSON class for the paired players. The nine solo players
+  stay `needs_review` until their pairs are supplied. No migration.
+- **The draw uses the validated card class and card handicap.** A registration with the desk
+  override now carries its stored class and card handicap into the draw; the frozen index is only
+  the fallback. A pair keeps the stored class instead of being re-cut on the index average. The
+  Day 1 AM registrations were set to the validated card handicap and class, with the override
+  recorded. Migration `20261113000300_tee_holes.sql` adds the per-tee hole table for the next step;
+  it is **not applied**.
 
 ## [0.39.0] - 2026-11-12
 
@@ -239,6 +317,16 @@ lets a scored round publish without a separate "start scoring" step. Not applied
 - `pnpm check` runs typecheck, lint, tests and build in order, and `pnpm check:ui` starts a dev server, runs the browser checks and stops it. CI calls the same two commands, so a local pass and a CI pass mean the same thing.
 - `pnpm release:check` compares `package.json`, `VERSION`, `CHANGELOG.md` and the tag before a release is tagged.
 - `plan/policy.yaml` now records the deployment allowlist that `vercel.json` enforces: `main` and `staging`.
+- `20261108004000_public_leaderboard_sides.sql` is retired as a recorded no-op. The pair `side` field it added already ships in `20261110000100_public_release_enforcement.sql`, and keeping the old body at an earlier version would let a future `supabase db push` replace the guarded leaderboard with an ungated one. `supabase/checks/2026-11-11-applied-state.sql` is the read-only check for the live ledger and the two contested 8 November migrations.
+
+### Security
+- **Public player photos are named after a random token, not the player id.** The public roster
+  publishes player ids, so the old `{club_id}/{player_id}.jpg` object could be fetched from the public
+  bucket without `photo_public_consent_at`. `20261111000100_public_photo_token.sql` adds
+  `players.photo_public_token`, requires the public path to be `{club_id}/{token}.jpg`, drops the
+  object when consent is withdrawn, replaced, retired or deleted, and removes the old guessable
+  objects. **Not applied to the live project.** Existing consented public photos must be re-published
+  from the desk (toggle public display off and on); the private originals are untouched.
 
 ## [0.33.0] - 2026-11-11
 

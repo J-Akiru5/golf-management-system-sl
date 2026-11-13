@@ -116,8 +116,12 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
   // the real number is not lost and the desk can see why the cap was applied.
   const onFile = player.index ?? 0;
   const index = Math.min(onFile, config.maxIndex);
-  if (player.index === null) reg.reasons.push("No handicap index on file; 0 is used.");
-  if (onFile > config.maxIndex) {
+  const usesIndexForClass = !player.classId;
+  const usesIndexForHandicap = player.cardHandicap == null;
+  if ((usesIndexForClass || usesIndexForHandicap) && player.index === null) {
+    reg.reasons.push("No handicap index on file; 0 is used.");
+  }
+  if ((usesIndexForClass || usesIndexForHandicap) && onFile > config.maxIndex) {
     reg.reasons.push(
       `Index ${onFile} is above the maximum of ${config.maxIndex}; ${index} is used.`,
     );
@@ -149,7 +153,20 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
   const tee = tees.find((t) => t.id === category.teeId);
   if (!tee) return review(`Tee ${category.teeId} for ${category.name} is not set up.`);
   reg.teeId = tee.id;
-  reg.playingHandicap = playingHandicap(index, tee, config.allowance);
+  if (player.cardHandicap != null) {
+    // The card HDCP is already the playing handicap. Never convert it through the WHS formula.
+    reg.playingHandicap = Math.trunc(player.cardHandicap);
+  } else {
+    reg.playingHandicap = playingHandicap(index, tee, config.allowance);
+  }
+
+  // The desk's stored card class is the authority. The index cut is only the fallback when no
+  // validated class has been recorded.
+  if (player.classId) {
+    reg.flightId = player.classId;
+    reg.classSource = "stored";
+    return reg;
+  }
 
   // The club classes the field on the handicap index: a player's own index, and for a member-guest
   // pair the average of the two. The course handicap converter still sets the playing handicap.
@@ -165,6 +182,7 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
     );
   }
   reg.flightId = (flightMatches[0] as FlightRule).id;
+  reg.classSource = "index";
   return reg;
 }
 

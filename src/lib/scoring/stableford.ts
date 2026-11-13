@@ -55,7 +55,7 @@ export function scoreRound(input: ScoreRoundInput): RoundScoringResult {
   for (const hole of input.course.holes) byHole.set(hole.number, hole);
 
   const seen = new Set<number>();
-  const ordered: Array<{ hole: HoleDefinition; gross: number }> = [];
+  const ordered: Array<{ hole: HoleDefinition; gross: number; pickedUp: boolean }> = [];
 
   for (const score of input.scores) {
     const hole = byHole.get(score.hole);
@@ -77,7 +77,9 @@ export function scoreRound(input: ScoreRoundInput): RoundScoringResult {
     }
     seen.add(score.hole);
 
-    if (!isValidStrokes(score.grossStrokes, limits)) {
+    // A pick-up has no stroke count, so it is valid without one and the limits do not apply.
+    const pickedUp = score.pickedUp === true;
+    if (!pickedUp && !isValidStrokes(score.grossStrokes, limits)) {
       problems.push({
         code: "invalid_strokes",
         hole: score.hole,
@@ -85,7 +87,7 @@ export function scoreRound(input: ScoreRoundInput): RoundScoringResult {
       });
       continue;
     }
-    ordered.push({ hole, gross: score.grossStrokes });
+    ordered.push({ hole, gross: pickedUp ? 0 : score.grossStrokes, pickedUp });
   }
 
   if (input.requireComplete ?? true) {
@@ -123,8 +125,21 @@ export function scoreRound(input: ScoreRoundInput): RoundScoringResult {
 
   ordered.sort((a, b) => a.hole.number - b.hole.number);
 
-  const holes: ScoredHole[] = ordered.map(({ hole, gross }) => {
+  const holes: ScoredHole[] = ordered.map(({ hole, gross, pickedUp }) => {
     const handicapStrokes = allocation?.get(hole.number) ?? null;
+    if (pickedUp) {
+      return {
+        hole: hole.number,
+        par: hole.par,
+        strokeIndex: hole.strokeIndex,
+        grossStrokes: 0,
+        pickedUp: true,
+        handicapStrokes,
+        netStrokes: null,
+        grossPoints: 0,
+        netPoints: handicapStrokes === null ? null : 0,
+      };
+    }
     const netStrokes = handicapStrokes === null ? null : gross - handicapStrokes;
     return {
       hole: hole.number,
@@ -138,10 +153,12 @@ export function scoreRound(input: ScoreRoundInput): RoundScoringResult {
     };
   });
 
-  const grossStrokes = holes.reduce((total, hole) => total + hole.grossStrokes, 0);
+  // Pick-ups carry no stroke count, so they add nothing to the stroke totals. Their points are 0.
+  const scored = holes.filter((hole) => hole.pickedUp !== true);
+  const grossStrokes = scored.reduce((total, hole) => total + hole.grossStrokes, 0);
   const grossPoints = holes.reduce((total, hole) => total + hole.grossPoints, 0);
   const netStrokes =
-    allocation === null ? null : holes.reduce((total, hole) => total + (hole.netStrokes ?? 0), 0);
+    allocation === null ? null : scored.reduce((total, hole) => total + (hole.netStrokes ?? 0), 0);
   const netPoints =
     allocation === null ? null : holes.reduce((total, hole) => total + (hole.netPoints ?? 0), 0);
 
@@ -154,6 +171,7 @@ export function scoreRound(input: ScoreRoundInput): RoundScoringResult {
     netStrokes,
     netPoints,
     netStatus: allocation === null ? "unavailable" : "calculated",
+    pickups: holes.filter((hole) => hole.pickedUp === true).length,
   };
 
   return { ok: true, result, warnings };

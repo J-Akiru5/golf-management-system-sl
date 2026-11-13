@@ -37,6 +37,7 @@ import {
   type StandingsRow,
   validateScorecard,
 } from "@/lib/scoring";
+import { classLabel } from "@/lib/scoring/class-label";
 import { reviewScannedCard, type ScanReaderCell } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import {
@@ -85,7 +86,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const [writtenOnCard, setWrittenOnCard] = useState("");
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
   const [resolutionDrafts, setResolutionDrafts] = useState<
-    Record<string, { strokes: string; reason: string }>
+    Record<string, { strokes: string; reason: string; pickedUp?: boolean }>
   >({});
   const [scanImage, setScanImage] = useState<ScorecardScanImage | null>(null);
   const [scanExtraction, setScanExtraction] = useState<ScorecardScanApply["extraction"]>(null);
@@ -335,7 +336,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       Object.fromEntries(
         card.entries.map((entry) => [
           entry.hole,
-          entry.strokes === null ? "" : String(entry.strokes),
+          entry.pickedUp === true ? "X" : entry.strokes === null ? "" : String(entry.strokes),
         ]),
       ),
     );
@@ -471,12 +472,13 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       }
 
       setSubmitting(true);
-      const entries = holes.map((hole) => ({
-        hole: hole.number,
-        strokes: Number(strokes[hole.number]),
-        confidence: scanReader[hole.number]?.confidence ?? null,
+      const entries = cardValues.entries.map((entry) => ({
+        hole: entry.hole,
+        strokes: entry.strokes,
+        ...(entry.pickedUp === true ? { pickedUp: true } : {}),
+        confidence: scanReader[entry.hole]?.confidence ?? null,
         // A cell the person left as a weak read goes to the desk still unconfirmed.
-        manuallyConfirmed: scanned ? scan.cells[hole.number]?.state !== "check" : true,
+        manuallyConfirmed: scanned ? scan.cells[entry.hole]?.state !== "check" : true,
       }));
       // A correction is a new card revision, so it gets its own capture key. Keeping that key across
       // retries makes the database treat a repeated request as the same revision, not a new one.
@@ -529,13 +531,14 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   function resolve(playerIdToResolve: string, hole: number) {
     const key = `${playerIdToResolve}:${hole}`;
     const draft = resolutionDrafts[key];
+    const pickedUp = draft?.pickedUp === true;
     const value = Number(draft?.strokes);
     if (!draft || !draft.reason.trim()) {
-      setError("A resolution needs a score and a reason.");
+      setError("A resolution needs a score or a pick-up, and a reason.");
       return;
     }
-    if (!Number.isInteger(value) || value < 1) {
-      setError("The resolved score must be a whole number above zero.");
+    if (!pickedUp && (!Number.isInteger(value) || value < 1)) {
+      setError("The resolved score must be a whole number above zero, or choose pick-up.");
       return;
     }
     void run(() =>
@@ -544,7 +547,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         {
           playerId: playerIdToResolve,
           hole,
-          strokes: value,
+          strokes: pickedUp ? 0 : value,
+          ...(pickedUp ? { pickedUp: true } : {}),
           reason: draft.reason,
         },
         day,
@@ -721,6 +725,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   scorerId={scorerId}
                   selectedPlayer={selectedPlayer}
                   selectedScorer={selectedScorer}
+                  context={{ className: selectedPlayer?.flightName }}
                   editingCard={editingCard}
                   editingPlayerName={editingPlayerName}
                   profileRole={profileRole}
@@ -876,8 +881,26 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                                   };
                                 });
                               }}
+                              disabled={busy || draft.pickedUp === true}
+                            />
+                          </label>
+                          <label className="flex min-h-11 items-center gap-2 text-[12px] lg:min-h-9">
+                            <input
+                              type="checkbox"
+                              checked={draft.pickedUp === true}
+                              onChange={(event) => {
+                                const pickedUp = event.target.checked;
+                                setResolutionDrafts((current) => {
+                                  const existing = current[key] ?? { strokes: "", reason: "" };
+                                  return {
+                                    ...current,
+                                    [key]: { ...existing, pickedUp },
+                                  };
+                                });
+                              }}
                               disabled={busy}
                             />
+                            <span>Pick-up (X), 0 points</span>
                           </label>
                           <label className="field min-w-[16rem] flex-1">
                             <span>Reason</span>
@@ -923,7 +946,11 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                 subtitle="Highest points first. Holes counted are shown because the round may still be incomplete."
                 dataHelp="scores-gross"
               >
-                <StandingsTable board={view.standings.gross} role={profileRole} />
+                <StandingsTable
+                  board={view.standings.gross}
+                  players={view.players}
+                  role={profileRole}
+                />
               </SectionCard>
               <SectionCard
                 id="score-net"
@@ -1242,6 +1269,9 @@ function StandingsTable({
   const handicapByPlayer = new Map(
     players.map((player) => [player.playerId, player.handicap?.playingHandicap ?? null]),
   );
+  const classNameByPlayer = new Map(
+    players.map((player) => [player.playerId, player.flightName ?? null]),
+  );
   return (
     <div className="table-wrap">
       <table>
@@ -1269,7 +1299,9 @@ function StandingsTable({
               </td>
               <td>
                 <PlayerLink playerId={row.playerId} name={row.playerName} role={role} />
-                <span className="hint block">{row.flightId ?? "No flight"}</span>
+                <span className="hint block">
+                  {classLabel(classNameByPlayer.get(row.playerId))}
+                </span>
               </td>
               {showHandicap && (
                 <td className="num mono">{fmtHcp(handicapByPlayer.get(row.playerId) ?? null)}</td>

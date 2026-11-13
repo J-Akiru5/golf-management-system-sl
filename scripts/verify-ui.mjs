@@ -789,6 +789,54 @@ await holeSelect.selectOption("");
 await expect(pairingCards.first()).toBeVisible({ timeout: 15000 });
 check("all holes restores the full day", (await pairingCards.count()) >= holeBadges.length);
 
+// Issue #244: the starting hole leads the card and owns the display type; the tee time is a
+// secondary pill. Compact and print must keep the same hierarchy.
+section("pairing card hierarchy: the starting hole leads");
+const cardHeader = langPage
+  .locator('[data-testid="pairing-group"] .p-card-top')
+  .filter({ has: langPage.locator(".p-hole") })
+  .first();
+const cardSizes = async () =>
+  cardHeader.evaluate((row) => {
+    const hole = row.querySelector(".p-hole");
+    const time = row.querySelector(".p-time");
+    const size = (element) =>
+      element ? Number.parseFloat(getComputedStyle(element).fontSize) : 0;
+    return {
+      holeFirst: row.firstElementChild === hole,
+      holeSize: size(hole),
+      timeSize: size(time),
+    };
+  });
+const comfortableCard = await cardSizes();
+check(
+  "the starting hole is the card's first, largest element",
+  comfortableCard.holeFirst && comfortableCard.holeSize > comfortableCard.timeSize,
+  `(hole ${comfortableCard.holeSize}px, time ${comfortableCard.timeSize}px)`,
+);
+await langPage.locator(".p-density-btn").nth(1).click();
+await expect(langPage.locator('[data-testid="pairings-view"]')).toHaveClass(/is-compact/, {
+  timeout: 5000,
+});
+const compactCard = await cardSizes();
+check(
+  "compact mode keeps the hole ahead of the time",
+  compactCard.holeFirst && compactCard.holeSize > compactCard.timeSize,
+  `(hole ${compactCard.holeSize}px, time ${compactCard.timeSize}px)`,
+);
+await langPage.locator(".p-density-btn").nth(0).click();
+await expect(langPage.locator('[data-testid="pairings-view"]')).not.toHaveClass(/is-compact/, {
+  timeout: 5000,
+});
+await langPage.emulateMedia({ media: "print" });
+const printedCard = await cardSizes();
+check(
+  "print keeps the hole as the larger element",
+  printedCard.holeFirst && printedCard.holeSize > printedCard.timeSize,
+  `(hole ${printedCard.holeSize}px, time ${printedCard.timeSize}px)`,
+);
+await langPage.emulateMedia({ media: "screen" });
+
 await setLang("hil");
 check(
   "Hiligaynon is served from the dictionary",
@@ -1263,6 +1311,50 @@ await profileLink.first().click();
 await expect(phonePage).toHaveURL(/tab=profile/, { timeout: 15000 });
 await expect(phonePage.getByTestId("player-profile")).toBeVisible({ timeout: 15000 });
 await noSideways("the player profile");
+
+const cardRegions = phonePage.locator('[data-testid^="player-scorecard-"]');
+const cardRegionCount = await cardRegions.count();
+check(
+  "the player profile shows the paper card",
+  cardRegionCount >= 2,
+  `(${cardRegionCount} nine-hole tables)`,
+);
+const cardLabels = await cardRegions
+  .first()
+  .locator('tbody th[scope="row"]')
+  .allTextContents();
+check(
+  "the paper card prints the seven rows",
+  cardLabels.map((label) => label.trim()).join("|") ===
+    "Par|SI|Gross|Hcp|Net|Gross pts|Net pts",
+  `(${cardLabels.map((label) => label.trim()).join("|")})`,
+);
+const pinned = await phonePage.evaluate(() => {
+  const label = document.querySelector(
+    '[data-testid^="player-scorecard-"] tbody th[scope="row"]',
+  );
+  if (!label) return null;
+  const style = getComputedStyle(label);
+  return { position: style.position, left: style.left };
+});
+check(
+  "the paper card pins its row labels",
+  pinned?.position === "sticky" && pinned.left === "0px",
+  `(${JSON.stringify(pinned)})`,
+);
+const contained = await phonePage.evaluate(() => {
+  const region = document.querySelector('[data-testid^="player-scorecard-"]');
+  return region ? { scroll: region.scrollWidth, client: region.clientWidth } : null;
+});
+check(
+  "the paper card scrolls inside its own box",
+  contained !== null && contained.scroll > contained.client,
+  `(${JSON.stringify(contained)})`,
+);
+check(
+  "the sample card never invents a pick-up",
+  (await cardRegions.locator("td", { hasText: /^X$/ }).count()) === 0,
+);
 const profileTimes = phonePage.getByTestId("profile-tee-times");
 await expect(profileTimes).toBeVisible({ timeout: 15000 });
 const profileTimeText = ((await profileTimes.textContent()) ?? "").replace(/\s+/g, " ").trim();

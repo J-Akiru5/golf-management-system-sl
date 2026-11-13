@@ -34,7 +34,18 @@ export interface CanonicalInput {
 interface Evidence {
   cardId: string;
   scorerId: string;
+  /** 0 for a pick-up, which has no stroke count. */
   strokes: number;
+  pickedUp: boolean;
+}
+
+/** The value a card reports for a hole: a number, or a pick-up. */
+function evidenceKey(item: Evidence): string {
+  return item.pickedUp ? "X" : String(item.strokes);
+}
+
+function evidenceLabel(item: Evidence): string {
+  return item.pickedUp ? "a pick-up" : String(item.strokes);
 }
 
 /**
@@ -95,10 +106,12 @@ export function deriveCanonicalHoleScores(input: CanonicalInput): CanonicalRound
     .map((hole) => {
       const resolution = resolutions.get(hole.number);
       if (resolution) {
+        const resolvedPickup = resolution.pickedUp === true;
         return {
           hole: hole.number,
           status: "verified",
-          strokes: resolution.strokes,
+          strokes: resolvedPickup ? null : resolution.strokes,
+          ...(resolvedPickup ? { pickedUp: true } : {}),
           provenance: "desk_resolution",
           evidenceCardIds: [...resolution.evidenceCardIds],
           note: `Resolved by ${resolution.resolvedBy}: ${resolution.reason}`,
@@ -108,9 +121,22 @@ export function deriveCanonicalHoleScores(input: CanonicalInput): CanonicalRound
       const evidence: Evidence[] = [];
       for (const card of currentCards) {
         const entry = card.entries.find((candidate) => candidate.hole === hole.number);
-        if (!entry || entry.strokes === null) continue;
+        if (!entry) continue;
 
-        if (!isValidStrokes(entry.strokes, limits)) {
+        const entryPickup = entry.pickedUp === true;
+        if (entryPickup && entry.strokes !== null) {
+          problems.push({
+            code: "invalid_card_entry",
+            hole: hole.number,
+            message: `Card ${card.id} marks hole ${hole.number} as a pick-up but also carries a score, so it was not used as evidence.`,
+          });
+          continue;
+        }
+        // A pick-up stands in for the missing stroke count.
+        const entryStrokes = entryPickup ? 0 : entry.strokes;
+        if (entryStrokes === null) continue;
+
+        if (!entryPickup && !isValidStrokes(entryStrokes, limits)) {
           problems.push({
             code: "invalid_card_entry",
             hole: hole.number,
@@ -126,7 +152,12 @@ export function deriveCanonicalHoleScores(input: CanonicalInput): CanonicalRound
           });
           continue;
         }
-        evidence.push({ cardId: card.id, scorerId: card.scorerId, strokes: entry.strokes });
+        evidence.push({
+          cardId: card.id,
+          scorerId: card.scorerId,
+          strokes: entryStrokes,
+          pickedUp: entryPickup,
+        });
       }
 
       if (evidence.length === 0) {
@@ -140,7 +171,8 @@ export function deriveCanonicalHoleScores(input: CanonicalInput): CanonicalRound
         };
       }
 
-      const distinctValues = new Set(evidence.map((item) => item.strokes));
+      // A number against a pick-up is a conflict, exactly like two different numbers.
+      const distinctValues = new Set(evidence.map(evidenceKey));
       if (distinctValues.size > 1) {
         return {
           hole: hole.number,
@@ -149,13 +181,13 @@ export function deriveCanonicalHoleScores(input: CanonicalInput): CanonicalRound
           provenance: null,
           evidenceCardIds: evidence.map((item) => item.cardId),
           note: `Cards disagree: ${evidence
-            .map((item) => `${item.strokes} on ${item.cardId}`)
+            .map((item) => `${evidenceLabel(item)} on ${item.cardId}`)
             .join(", ")}.`,
         };
       }
 
-      const strokes = evidence[0]?.strokes;
-      if (strokes === undefined) {
+      const first = evidence[0];
+      if (first === undefined) {
         return {
           hole: hole.number,
           status: "pending",
@@ -165,6 +197,8 @@ export function deriveCanonicalHoleScores(input: CanonicalInput): CanonicalRound
           note: "No usable evidence for this hole.",
         };
       }
+      const pickedUp = first.pickedUp;
+      const strokes = pickedUp ? null : first.strokes;
       const independentCards = new Set(evidence.map((item) => item.scorerId)).size;
       const required = input.policy.requiredCards;
       const provenance = independentCards === 1 ? "single_card" : "agreement";
@@ -174,6 +208,7 @@ export function deriveCanonicalHoleScores(input: CanonicalInput): CanonicalRound
           hole: hole.number,
           status: "verified",
           strokes,
+          ...(pickedUp ? { pickedUp: true } : {}),
           provenance,
           evidenceCardIds: evidence.map((item) => item.cardId),
           note: null,
@@ -185,6 +220,7 @@ export function deriveCanonicalHoleScores(input: CanonicalInput): CanonicalRound
           hole: hole.number,
           status: "provisional",
           strokes,
+          ...(pickedUp ? { pickedUp: true } : {}),
           provenance,
           evidenceCardIds: evidence.map((item) => item.cardId),
           note:
@@ -303,9 +339,14 @@ function latestResolutions(
     if (resolution.roundId !== input.roundId || resolution.playerId !== input.playerId) continue;
 
     const knownHole = input.course.holes.some((hole) => hole.number === resolution.hole);
+    // A pick-up resolution carries 0 strokes by shape; the score range does not apply to it.
+    const strokesOkay =
+      resolution.pickedUp === true
+        ? resolution.strokes === 0
+        : isValidStrokes(resolution.strokes, limits);
     const invalid =
       !knownHole ||
-      !isValidStrokes(resolution.strokes, limits) ||
+      !strokesOkay ||
       !isNonEmptyString(resolution.reason) ||
       !isNonEmptyString(resolution.resolvedBy) ||
       !isIsoDate(resolution.resolvedAt.slice(0, 10));

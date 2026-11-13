@@ -77,13 +77,15 @@ change, not a tidy-up.
 ## Installability
 
 - `src/app/manifest.ts` serves `/manifest.webmanifest` with `display: standalone`, scope `/`,
-  forest theme colour, ivory background, and the club crest as 192 px, 512 px and maskable 512 px
-  icons. Shortcuts point at Draw, Register and My golf.
-- The icons live in `public/icons/` and are committed. `scripts/make-pwa-icons.ps1` regenerates
-  them from `public/brand/igcc-crest.png` with Windows `System.Drawing`. No build step fetches an
-  icon from a CDN, which keeps the repo's "assets are bundled" rule.
-- The crest is a 320 px PNG, so the 512 px icon is an upscale. Replace it when the club supplies
-  a vector crest (PLAN.md, decision 11).
+  forest theme colour, ivory background, and the TeeLine app icon as 192 px, 512 px and maskable
+  512 px launcher icons. Shortcuts point at Draw, Register and My golf.
+- The icons live in `public/icons/` and are committed. `scripts/make-pwa-icons.mjs` re-renders
+  them from `public/brand/teeline-app-icon-forest.svg` through the Playwright Chromium that the
+  repo already installs for its browser checks. No build step fetches an icon from a CDN, which
+  keeps the repo's "assets are bundled" rule.
+- The SVG is the vector source, so the 512 px icon is not an upscale. The maskable and iOS icons
+  are drawn full-bleed on forest with the mark inside the 80% safe zone, because Android crops to
+  its own shape and iOS paints transparency black.
 - The root layout keeps the light and dark `theme-color` values in its `viewport` export. A
   manifest has one `theme_color`; the two-tag viewport is what a browser actually honours by
   scheme.

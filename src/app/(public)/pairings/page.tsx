@@ -22,13 +22,18 @@ import { type PublicReleaseState, toPublicPairings } from "@/lib/data/public";
 import { loadPublicPlayerProfile, type PublicPlayerProfileData } from "@/lib/data/public-profile";
 import { parsePublicTab } from "@/lib/data/public-tabs";
 import {
+  applyLiveClasses,
   buildTeamLeaderboard,
-  loadPublicTeamLeaderboard,
+  liveClassesFromProgramme,
   type PublicTeamStanding,
 } from "@/lib/data/public-team-leaderboard";
-import { loadPublicAdvisory } from "@/lib/data/supabase/public-advisory";
-import { loadPublicPairings } from "@/lib/data/supabase/public-pairings";
-import { loadPublicProgramme, loadPublicReleaseState } from "@/lib/data/supabase/public-programme";
+import {
+  readPublicAdvisory,
+  readPublicPairings,
+  readPublicProgramme,
+  readPublicReleaseState,
+  readPublicTeamLeaderboard,
+} from "@/lib/data/supabase/public-cache";
 import { fmtTime } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { loadPortal } from "@/lib/player/portal";
@@ -66,8 +71,9 @@ export const metadata: Metadata = {
  *
  * It reads the saved language from a cookie, so it renders per request instead of being cached for
  * a minute. That is deliberate: showing a Hiligaynon reader an English page (or the other way
- * round) is worse than a database round trip at this club's size. The organizer's publish action
- * still refreshes whatever is cached around the pairings.
+ * round) is worse than a database round trip at this club's size. What is shared between requests
+ * is the data, not the page: the anonymous reads go through `public-cache`, which the desk clears
+ * on a publish or a release toggle.
  *
  * The pairings come from the frozen published snapshot. The day schedule, the player cards and the
  * rules are reference data read through `public_programme()`, which only answers while the event is
@@ -123,20 +129,15 @@ export default async function PublicPairingsPage({
   const client = createSupabasePublicClient();
   // The signed-in lookup runs alongside the public reads: it never delays the pairings.
   const signedIn = loadSignedInPlayer();
-  let data: Awaited<ReturnType<typeof loadPublicPairings>> = null;
-  let programme: Awaited<ReturnType<typeof loadPublicProgramme>> = null;
+  let data: Awaited<ReturnType<typeof readPublicPairings>> = null;
+  let programme: Awaited<ReturnType<typeof readPublicProgramme>> = null;
   let release: PublicReleaseState | null = null;
   let advisoryValue: PublicAdvisory | null = null;
   let failed = false;
   // The programme, release and advisory reads are additive: a database that has not applied their
   // migrations still serves the pairings, because the failed read only costs the extra sections.
   const [pairingsResult, programmeResult, releaseResult, advisoryResult] = await Promise.allSettled(
-    [
-      loadPublicPairings(client),
-      loadPublicProgramme(client),
-      loadPublicReleaseState(client),
-      loadPublicAdvisory(client),
-    ],
+    [readPublicPairings(), readPublicProgramme(), readPublicReleaseState(), readPublicAdvisory()],
   );
   if (pairingsResult.status === "fulfilled") data = pairingsResult.value;
   else failed = true;
@@ -156,12 +157,12 @@ export default async function PublicPairingsPage({
     if (profile) {
       const profilePlayerId = profile.player.id;
       try {
-        const leaderboard = await loadPublicTeamLeaderboard(client);
+        const leaderboard = await readPublicTeamLeaderboard();
         if (leaderboard) {
           team =
-            buildTeamLeaderboard(leaderboard).teams.find((entry) =>
-              entry.playerIds.includes(profilePlayerId),
-            ) ?? null;
+            buildTeamLeaderboard(
+              applyLiveClasses(leaderboard, liveClassesFromProgramme(programme)),
+            ).teams.find((entry) => entry.playerIds.includes(profilePlayerId)) ?? null;
         }
       } catch {
         // The pair total is additive. A database without the leaderboard still shows the profile.

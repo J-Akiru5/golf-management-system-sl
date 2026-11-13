@@ -80,6 +80,15 @@ async function submitAndApprove(
   return repo.approveCard("tournament-1", card.id);
 }
 
+/** The par card with one hole written as an X instead of a score. */
+function pickupEntries(hole: number) {
+  return parEntries().map((entry) =>
+    entry.hole === hole
+      ? { hole, strokes: null, pickedUp: true as const, confidence: null, manuallyConfirmed: true }
+      : entry,
+  );
+}
+
 describe("demo scoring repository", () => {
   it("carries the registration freeze beside the snapshot for the desk to compare", async () => {
     const first = seed().players[0];
@@ -359,6 +368,77 @@ describe("demo scoring repository", () => {
       /final/i,
     );
   });
+
+  it("submits and approves a pick-up, counts the hole and gives it 0 points", async () => {
+    const repo = repository();
+    const submitted = await repo.submitCard("tournament-1", {
+      playerId: "p1",
+      scorerId: "s2",
+      source: "manual",
+      entries: pickupEntries(5),
+      writtenTotal: 72,
+      captureKey: "pickup-card",
+    });
+    const card = submitted.cards[0];
+    if (!card) throw new Error("Card not found.");
+
+    const approved = await repo.approveCard("tournament-1", card.id);
+
+    expect(approved.players[0]?.canonical.holes.find((hole) => hole.hole === 5)).toMatchObject({
+      status: "provisional",
+      strokes: null,
+      pickedUp: true,
+    });
+    const row = approved.standings.gross.rows.find((candidate) => candidate.playerId === "p1");
+    // 17 holes at par score 2 points each; the pick-up counts as played and scores 0.
+    expect(row?.holesCounted).toBe(18);
+    expect(row?.grossPoints).toBe(34);
+  });
+
+  it("resolves a number-against-X conflict as a pick-up", async () => {
+    const repo = repository();
+    await submitAndApprove(repo, "p1", "s2", "capture-1");
+
+    const submitted = await repo.submitCard("tournament-1", {
+      playerId: "p1",
+      scorerId: "s3",
+      source: "manual",
+      entries: pickupEntries(5),
+      writtenTotal: 72,
+      captureKey: "capture-2",
+    });
+    const card = submitted.cards.find(
+      (candidate) => candidate.playerId === "p1" && candidate.scorerId === "s3",
+    );
+    if (!card) throw new Error("Card not found.");
+    const conflicted = await repo.approveCard("tournament-1", card.id);
+
+    expect(conflicted.players[0]?.canonical.holes.find((hole) => hole.hole === 5)).toMatchObject({
+      status: "conflict",
+      strokes: null,
+    });
+
+    const resolved = await repo.resolveHole("tournament-1", {
+      playerId: "p1",
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      reason: "The card shows an X on hole 5.",
+    });
+
+    expect(resolved.players[0]?.canonical.holes.find((hole) => hole.hole === 5)).toMatchObject({
+      status: "verified",
+      strokes: null,
+      pickedUp: true,
+      provenance: "desk_resolution",
+    });
+    expect(resolved.resolutions.at(-1)).toMatchObject({
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      previousStrokes: null,
+    });
+  });
 });
 
 const SEEDED_GROUP = [{ number: 1, playerIds: ["p1", "p2"] }];
@@ -578,9 +658,14 @@ const WIRE_PLAYER_ID = "p1";
  * It stores the row `submit_scorecard` would insert only so the repository's refresh can return it;
  * the revision number and its idempotency are the SQL function's contract, not this fake's.
  */
-function fakeScoringClient(seedCards: Row[] = [], seedEntries: Row[] = []) {
+function fakeScoringClient(
+  seedCards: Row[] = [],
+  seedEntries: Row[] = [],
+  seedResolutions: Row[] = [],
+) {
   const cards = seedCards.map((card) => ({ ...card }));
   const entries = seedEntries.map((entry) => ({ ...entry }));
+  const resolutions = seedResolutions.map((resolution) => ({ ...resolution }));
   const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
 
   function rowsFor(table: string): Row[] {
@@ -609,6 +694,8 @@ function fakeScoringClient(seedCards: Row[] = [], seedEntries: Row[] = []) {
         return cards;
       case "scorecard_entries":
         return entries;
+      case "hole_resolutions":
+        return resolutions;
       default:
         // Handicap snapshots, card images, resolutions and publications are empty for this fixture.
         return [];
@@ -754,6 +841,68 @@ describe("connected scoring repository writing a card", () => {
       expect.objectContaining({ id: "card-2", revision: 2, status: "submitted" }),
     ]);
   });
+
+  it("sends a pick-up entry with null strokes and picked_up true", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.submitCard("t1", {
+      playerId: WIRE_PLAYER_ID,
+      scorerId: "p2",
+      source: "manual",
+      entries: parEntries().map((entry) =>
+        entry.hole === 5
+          ? {
+              hole: 5,
+              strokes: null,
+              pickedUp: true as const,
+              confidence: null,
+              manuallyConfirmed: true,
+            }
+          : entry,
+      ),
+      writtenTotal: 72,
+      captureKey: "capture-pickup",
+    });
+
+    const sent = fake.rpcCalls[0]?.args.p_entries as Row[];
+    expect(sent.find((entry) => entry.hole === 5)).toEqual({
+      hole: 5,
+      strokes: null,
+      confidence: null,
+      manually_confirmed: true,
+      picked_up: true,
+    });
+    expect(sent.find((entry) => entry.hole === 1)).toEqual({
+      hole: 1,
+      strokes: 4,
+      confidence: null,
+      manually_confirmed: true,
+    });
+  });
+
+  it("sends a card with no pick-up exactly as it did before", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.submitCard("t1", {
+      playerId: WIRE_PLAYER_ID,
+      scorerId: "p2",
+      source: "manual",
+      entries: parEntries(),
+      writtenTotal: 72,
+      captureKey: "capture-plain",
+    });
+
+    expect(fake.rpcCalls[0]?.args.p_entries).toEqual(
+      parEntries().map((entry) => ({
+        hole: entry.hole,
+        strokes: entry.strokes,
+        confidence: entry.confidence,
+        manually_confirmed: entry.manuallyConfirmed,
+      })),
+    );
+  });
 });
 
 describe("demo scoring repository by day", () => {
@@ -763,5 +912,181 @@ describe("demo scoring repository by day", () => {
     expect((await repo.loadRound("tournament-1", 2))?.dayNumber).toBe(2);
     expect(await repo.loadRound("tournament-1", 1)).toBeNull();
     expect((await repo.loadRound("tournament-1"))?.dayNumber).toBe(2);
+  });
+});
+
+const READ_CARD_ID = "card-read";
+
+function wireCard(id: string, scorerId: string, status: string): Row {
+  return {
+    id,
+    round_id: TEST_COURSE.roundId,
+    player_id: WIRE_PLAYER_ID,
+    scorer_id: scorerId,
+    source: "manual",
+    revision: 1,
+    status,
+    written_total: 72,
+    submitted_at: "2026-11-12T00:00:00.000Z",
+  };
+}
+
+/** The 18 entry rows for a card, with one hole written as a pick-up when asked. */
+function wireCardEntries(cardId: string, pickupHole?: number): Row[] {
+  return parEntries().map((entry) => ({
+    scorecard_id: cardId,
+    hole_number: entry.hole,
+    strokes: entry.hole === pickupHole ? null : entry.strokes,
+    ...(entry.hole === pickupHole ? { picked_up: true } : {}),
+    confidence: entry.confidence,
+    manually_confirmed: entry.manuallyConfirmed,
+  }));
+}
+
+describe("connected scoring repository reading pick-ups", () => {
+  it("reads a pick-up entry as pickedUp and leaves an ordinary entry unchanged", async () => {
+    const fake = fakeScoringClient(
+      [wireCard(READ_CARD_ID, "p2", "approved")],
+      wireCardEntries(READ_CARD_ID, 5),
+    );
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    const view = await repo.loadRound("t1");
+    const entries = view?.cards[0]?.entries ?? [];
+
+    expect(entries.find((entry) => entry.hole === 5)).toEqual({
+      hole: 5,
+      strokes: null,
+      pickedUp: true,
+      confidence: null,
+      manuallyConfirmed: true,
+    });
+    expect(entries.find((entry) => entry.hole === 1)).toEqual({
+      hole: 1,
+      strokes: 4,
+      confidence: null,
+      manuallyConfirmed: true,
+    });
+  });
+
+  it("reads a pick-up resolution as pickedUp and an ordinary one as before", async () => {
+    const resolutions: Row[] = [
+      {
+        id: "res-1",
+        round_id: TEST_COURSE.roundId,
+        player_id: WIRE_PLAYER_ID,
+        hole_number: 5,
+        strokes: 0,
+        picked_up: true,
+        resolved_by: "desk",
+        resolved_at: "2026-11-12T00:00:00.000Z",
+        reason: "The card shows an X.",
+        evidence_card_ids: [],
+        previous_strokes: null,
+      },
+      {
+        id: "res-2",
+        round_id: TEST_COURSE.roundId,
+        player_id: WIRE_PLAYER_ID,
+        hole_number: 6,
+        strokes: 4,
+        resolved_by: "desk",
+        resolved_at: "2026-11-12T00:01:00.000Z",
+        reason: "Both markers agreed.",
+        evidence_card_ids: [],
+        previous_strokes: null,
+      },
+    ];
+    const fake = fakeScoringClient([], [], resolutions);
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    const view = await repo.loadRound("t1");
+
+    expect(view?.resolutions.find((resolution) => resolution.hole === 5)).toEqual({
+      id: "res-1",
+      roundId: TEST_COURSE.roundId,
+      playerId: WIRE_PLAYER_ID,
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      resolvedBy: "desk",
+      resolvedAt: "2026-11-12T00:00:00.000Z",
+      reason: "The card shows an X.",
+      evidenceCardIds: [],
+      previousStrokes: null,
+    });
+    expect(view?.resolutions.find((resolution) => resolution.hole === 6)).toEqual({
+      id: "res-2",
+      roundId: TEST_COURSE.roundId,
+      playerId: WIRE_PLAYER_ID,
+      hole: 6,
+      strokes: 4,
+      resolvedBy: "desk",
+      resolvedAt: "2026-11-12T00:01:00.000Z",
+      reason: "Both markers agreed.",
+      evidenceCardIds: [],
+      previousStrokes: null,
+    });
+  });
+});
+
+describe("connected scoring repository proposing canonical pick-ups", () => {
+  it("sends a verified pick-up as 0 strokes with pickedUp and leaves a number unchanged", async () => {
+    const fake = fakeScoringClient(
+      [wireCard("card-1", "p2", "approved"), wireCard("card-2", "p3", "submitted")],
+      [...wireCardEntries("card-1", 5), ...wireCardEntries("card-2", 5)],
+    );
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.approveCard("t1", "card-2");
+
+    const approved = fake.rpcCalls.find((call) => call.name === "approve_scorecard");
+    const canonical = approved?.args.p_canonical as Row[];
+    expect(canonical.find((row) => row.hole === 5)).toEqual({
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      verification: "verified",
+      provenance: "agreement",
+    });
+    expect(canonical.find((row) => row.hole === 1)).toEqual({
+      hole: 1,
+      strokes: 4,
+      verification: "verified",
+      provenance: "agreement",
+    });
+  });
+});
+
+describe("connected scoring repository resolving a hole", () => {
+  it("sends 0 strokes when the hole is settled as a pick-up", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.resolveHole("t1", {
+      playerId: WIRE_PLAYER_ID,
+      hole: 5,
+      strokes: 0,
+      pickedUp: true,
+      reason: "The card shows an X.",
+    });
+
+    const resolved = fake.rpcCalls.find((call) => call.name === "resolve_hole");
+    expect(resolved?.args.p_strokes).toBe(0);
+  });
+
+  it("sends the number when the hole is settled with a score", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.resolveHole("t1", {
+      playerId: WIRE_PLAYER_ID,
+      hole: 5,
+      strokes: 4,
+      reason: "Both markers agreed.",
+    });
+
+    const resolved = fake.rpcCalls.find((call) => call.name === "resolve_hole");
+    expect(resolved?.args.p_strokes).toBe(4);
   });
 });

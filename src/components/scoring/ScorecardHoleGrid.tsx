@@ -1,6 +1,7 @@
 "use client";
 
 import type { HoleDefinition } from "@/lib/scoring";
+import { normalizeCellInput } from "@/lib/scoring/cell-input";
 import type { ScanCardReview } from "@/lib/scoring/scan/review";
 
 interface ScorecardHoleGridProps {
@@ -57,15 +58,13 @@ function ScoreCell({
     <div className={`grid gap-0.5 px-0.5 py-0.5 ${stateClasses(state)}`}>
       <input
         id={`hole-${hole.number}`}
-        type="number"
+        type="text"
         inputMode="numeric"
-        min={1}
-        max={20}
         value={strokes[hole.number] ?? ""}
         aria-invalid={flagged ? true : undefined}
         aria-describedby={flagged ? "scan-check-hint" : undefined}
-        className="h-8 w-full border-0 bg-transparent px-0 text-center font-mono text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-primary"
-        onChange={(event) => onChange(hole.number, event.target.value)}
+        className="h-11 w-full border-0 bg-transparent px-0 text-center font-mono text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-primary lg:h-9"
+        onChange={(event) => onChange(hole.number, normalizeCellInput(event.target.value))}
         onKeyDown={(event) => {
           if (event.key !== "Enter") return;
           event.preventDefault();
@@ -110,7 +109,10 @@ function NineTable({
 }) {
   const par = rows.reduce((sum, hole) => sum + hole.par, 0);
   const cell = "border border-line px-1 py-1 text-center align-middle";
-  const labelCell = `${cell} text-left text-[11px] font-semibold normal-case text-ink-muted`;
+  // The label column stays put while the nine holes scroll sideways. A solid background keeps the
+  // moving cells from showing through, and the same sunken tone works in light and dark mode.
+  const labelCell = `${cell} sticky left-0 z-10 bg-surface-sunken text-left text-[11px] font-semibold normal-case text-ink-muted`;
+  const isPickup = (hole: number) => (strokes[hole] ?? "").trim().toUpperCase() === "X";
   return (
     <div
       className="overflow-x-auto rounded-md border border-line"
@@ -124,7 +126,7 @@ function NineTable({
           <tr>
             <th
               scope="col"
-              className="w-16 border border-line bg-primary px-1 py-1.5 text-left text-[11px] font-semibold normal-case tracking-wide text-on-primary"
+              className="sticky left-0 z-10 w-16 border border-line bg-primary px-1 py-1.5 text-left text-[11px] font-semibold normal-case tracking-wide text-on-primary"
             >
               Hole
             </th>
@@ -159,7 +161,8 @@ function NineTable({
           </tr>
           <tr>
             <th scope="row" className={labelCell}>
-              Hcp row
+              <abbr title="Stroke index">SI</abbr>
+              <span className="sr-only"> (stroke index)</span>
             </th>
             {rows.map((hole) => (
               <td key={hole.number} className={`${cell} text-ink-muted`}>
@@ -188,6 +191,33 @@ function NineTable({
             <td className={`${cell} bg-surface-sunken font-mono text-[14px] font-bold text-ink`}>
               {total || "–"}
             </td>
+          </tr>
+          <tr>
+            <th scope="row" className={labelCell}>
+              X<span className="sr-only"> (pick-up)</span>
+            </th>
+            {rows.map((hole) => {
+              const picked = isPickup(hole.number);
+              return (
+                <td key={hole.number} className="border border-line p-0.5 text-center align-middle">
+                  <button
+                    type="button"
+                    aria-pressed={picked}
+                    aria-label={`Hole ${hole.number} pick-up`}
+                    onClick={() => onChange(hole.number, picked ? "" : "X")}
+                    disabled={disabled}
+                    className={`h-11 w-full rounded border text-[13px] font-bold lg:h-9 ${
+                      picked
+                        ? "border-primary bg-primary text-on-primary"
+                        : "border-line bg-surface-sunken text-ink"
+                    }`}
+                  >
+                    X
+                  </button>
+                </td>
+              );
+            })}
+            <td className={`${cell} bg-surface-sunken`} />
           </tr>
           <tr>
             <th scope="row" className={labelCell}>
@@ -228,7 +258,9 @@ export function ScorecardHoleGrid({
   const back = holes.filter((hole) => hole.number >= 10);
   return (
     <div className="grid gap-2">
-      <p className="hint m-0 sm:hidden">Swipe the card sideways to reach every hole.</p>
+      <p className="hint m-0 sm:hidden print:hidden">
+        Swipe the card sideways to reach every hole.
+      </p>
       <NineTable
         label="OUT"
         rows={front}
