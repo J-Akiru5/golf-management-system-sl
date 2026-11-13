@@ -1448,11 +1448,31 @@ window.__scorecard = {
   // The file input with `capture` only opens the camera on a phone; on a laptop it opens the file
   // picker, which is what "Take photo" used to do. This keeps the camera open so several cards can be
   // photographed in a row, then reads them together.
+  // When the live camera cannot open (blocked, none, or an old browser), the other way in is one
+  // click away: the device's own camera app on a phone, or the photo picker on a laptop.
+  function cameraFallback(message) {
+    status(message, true);
+    const dialog = scanDialog(`
+      <h2 style="margin:0 0 6px;font-size:18px">The camera did not open</h2>
+      <p style="margin:0 0 10px;color:#4d5c54">${escapeHtml(message)}</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button type="button" data-act="pick" class="primary">Use the camera app or choose a photo</button>
+        <button type="button" data-act="close">Close</button>
+      </div>`);
+    dialog.box.addEventListener("click", (event) => {
+      const act = event.target && event.target.dataset ? event.target.dataset.act : "";
+      if (!act) return;
+      dialog.close();
+      if (act === "pick") scanCamera.click();
+    });
+    const first = dialog.box.querySelector("button");
+    if (first) first.focus();
+  }
+
   async function openCamera() {
     if (scanBusy) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      status("This browser cannot open the camera from the page. Choose a photo instead (Scan card).", true);
-      scanCamera.click();
+      cameraFallback("This browser cannot open the camera from this page.");
       return;
     }
     let stream;
@@ -1464,13 +1484,12 @@ window.__scorecard = {
     } catch (error) {
       const denied = error && (error.name === "NotAllowedError" || error.name === "SecurityError");
       const none = error && (error.name === "NotFoundError" || error.name === "OverconstrainedError");
-      status(
+      cameraFallback(
         denied
-          ? "The camera is blocked. Allow the camera for this site in the browser's address bar, then press Take photo again."
+          ? "The camera is blocked for this site. Allow it from the camera icon in the browser's address bar and press Take photo again, or use the other way below."
           : none
-            ? "No camera was found on this device. Use Scan card (from photos) instead."
+            ? "No camera was found on this device."
             : `The camera could not be opened (${(error && error.message) || "unknown error"}).`,
-        true,
       );
       return;
     }
