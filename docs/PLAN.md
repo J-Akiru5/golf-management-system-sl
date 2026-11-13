@@ -60,10 +60,10 @@ system by itself.
 
 | # | Feedback | State on 14 Nov | Issue | Owner |
 | --- | --- | --- | --- | --- |
-| 1 | Complaints about index changes, schedule and names need one place. Use GitHub issues, not a new screen | Labels created. Forms, board and runbook to do. **The repository is public; the owner will make it private.** Until then a complaint uses the pair number or player ID only | [#263](https://github.com/J-Akiru5/golf-management-system-sl/issues/263) | Jeff |
-| 2 | The board could move players but not swap them | **Released in v0.46.0** (swap, set move and swap, typed commands). Not yet tried by the team on the live event | [#264](https://github.com/J-Akiru5/golf-management-system-sl/issues/264) | Jeff |
-| 3 | Public scores as a table: name, index, gross and net, with search and filter | Not built. The public leaderboard is the cumulative team board | [#261](https://github.com/J-Akiru5/golf-management-system-sl/issues/261) (read), [#262](https://github.com/J-Akiru5/golf-management-system-sl/issues/262) (table) | Jeff, Lou |
-| 4 | The index could not be edited | **Released**: registration desk and player page in v0.44.1, the board in v0.46.0. Who may edit and the audit row are to be confirmed | [#264](https://github.com/J-Akiru5/golf-management-system-sl/issues/264) | Jeff |
+| 1 | Complaints about index changes, schedule and names need one place. Use GitHub issues, not a new screen | Labels and the four issue forms are live; the runbook section is written. **The repository is public; the owner will make it private.** Until then a complaint uses the pair number or player ID only. Board still to set up | [#263](https://github.com/J-Akiru5/golf-management-system-sl/issues/263) | Jeff |
+| 2 | The board could move players but not swap them | **Released in v0.46.0** (swap, set move and swap, typed commands). Code check done (`docs/handoffs/2026-11-14-board-edit-check.md`): board edits leave no audit row, and Undo erases the record. Manual test on production still to do | [#264](https://github.com/J-Akiru5/golf-management-system-sl/issues/264) | Jeff |
+| 3 | Public scores as a table: name, index, gross and net, with search and filter | **Released in v0.47.0** by Lou: `/results`, every player with a published card, day and AM/PM filters, name search, each round's points. AM/PM comes from the published tee time | #261, #262 (closed) | Lou |
+| 4 | The index could not be edited | **Released**: registration desk and player page in v0.44.1, the board in v0.46.0. The code check found that an edit reclasses one player, not the pair average (#268, P0), that any club member can change an index through the API (#269), and that the audit row has no old or new value (#265) | [#264](https://github.com/J-Akiru5/golf-management-system-sl/issues/264) | Jeff |
 | 5 | Scoring lags at verification; manual entry must be complete and fast | `/scores` cannot save a card under this event's rules, so scripts were used. Entry has no player search or filters | [#258](https://github.com/J-Akiru5/golf-management-system-sl/issues/258) (save and import), [#259](https://github.com/J-Akiru5/golf-management-system-sl/issues/259) (entry screen) | Karl, Lou |
 | 6 | A saved edit does not reach the public page | Board edits do in Live mode (v0.46.0). Scores still need a manual publish | [#260](https://github.com/J-Akiru5/golf-management-system-sl/issues/260) | Karl |
 | 7 | A proper audit log behind every fast change | Audit tables and `/audit` exist; coverage of every public-facing write is not confirmed | [#265](https://github.com/J-Akiru5/golf-management-system-sl/issues/265) | Karl |
@@ -86,22 +86,22 @@ system by itself.
 ### Order of work
 
 1. **P0, during the event:** #258 save and import on `/scores`, #259 entry screen, #260 publish on
-   verify, #263 complaint desk, #264 confirm swap and index edit on the live event.
-2. **P1, as soon as P0 allows:** #261 and #262 public scores table, #265 audit coverage, #266 branch
-   and PR triage.
+   verify, #263 complaint desk, #264 manual test on production, #268 pair-average class on an index edit.
+2. **P1, as soon as P0 allows:** #265 audit coverage, #266 branch and PR triage, #269 index edit
+   rights in the database (RLS: the owner decides). P2: #270.
 3. **Until #258 and #260 are released**, each session is scored the way Days 1 and 2 were: the sheet,
    the export, and the orchestrator's upload. That path is known to work.
 
-#259 depends on #258. #262 depends on #261. #260 builds on the save path from #258. The rest are
+#259 depends on #258. #260 builds on the save path from #258. The rest are
 independent and can run in parallel.
 
 ### Workload
 
 | Person | Role | Issues | Load |
 | --- | --- | --- | --- |
-| Jeff | Lead, CI/CD and releases, orchestrator | #261, #263, #264, #266, plus review, merge and release of everything | 4 issues and the gate |
-| Karl (`Karlcalimotan`) | Backend | #258, #260, #265 | 3 issues; #258 is the largest piece of the plan |
-| Lou (`dev-lou`) | Frontend | #259, #262 | 2 issues; both wait on a backend read or save path |
+| Jeff | Lead, CI/CD and releases, orchestrator | #263, #264, #266, plus review, merge and release of everything | 3 issues and the gate |
+| Karl (`Karlcalimotan`) | Backend | #258, #260, #265, #268, #269, #270 | 6 issues, the heaviest load; #258 and #268 are P0. #268 can move to the orchestrator's builders if Karl is on #258 |
+| Lou (`dev-lou`) | Frontend | #259 (#262 done in v0.47.0) | 1 open issue; waits on #258's save path |
 
 Jeff's issues are built by the orchestrator's builders (section 12). Karl's and Lou's are theirs,
 through a pull request to `develop`.
