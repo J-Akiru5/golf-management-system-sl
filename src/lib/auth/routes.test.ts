@@ -114,6 +114,15 @@ describe("decide", () => {
       to: "/my",
     });
   });
+
+  it("lets a sign-in link return a staff account to the tabulation page", () => {
+    expect(landingFor({ next: "/scorecard/index.html", identity: "staff" })).toBe(
+      "/scorecard/index.html",
+    );
+    expect(landingFor({ next: "/scorecard/index.html", identity: "unlinked" })).toBe(
+      "/scorecard/index.html",
+    );
+  });
 });
 
 describe("landingFor", () => {
