@@ -9,6 +9,43 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-11-14
+
+### Added
+- **The tabulation page works by playing day and session.** Every card carries the day and the AM or
+  PM shotgun it was played in, defaulting to the day and session the page is named for. The system's
+  field list is read one day at a time, so a Day 2 card is checked against Day 2's groups and not
+  Day 1's. The page lists the event's own playing days instead of assuming four, and a new card gets
+  its day and session while it is scanned.
+- **Players come into the tabulation page from the system, so no JSON file is needed.** **Add players
+  from the system** picks a day, session and optionally a group; each player arrives as a blank card
+  with name, group, tee and class filled in, and a player already on the page for that day and
+  session is not added twice.
+- **A review batch can be started by hand.** **Start a review batch** offers an empty batch, the
+  cards shown, the cards in no batch yet, one day and session, or cards picked by name. A batch only
+  groups cards; it changes no score.
+- **The tabulation page follows the event's handicap rules.** The HDCP written on the card is the
+  playing handicap with the decimal dropped, and a plus handicap gives strokes back on the easiest
+  holes. A card with no HDCP uses the system's playing handicap for that player: the frozen index,
+  capped at the event's maximum index, on the player's tee. The maximum index and allowance are read
+  from the event instead of being fixed at 30 and 100%. `src/lib/scorecards/page-handicap.test.ts`
+  holds the page's copy of the rules equal to the engine.
+
+### Changed
+- **The scan dialog asks which day and session the new cards belong to**, and remembers the last
+  choice so a run of photos does not ask again for every card.
+
+### Fixed
+- **Migration `20261111000100_public_photo_token.sql` runs on the live project.** The first version
+  deleted rows from `storage.objects` in SQL, which Supabase now refuses ("Direct deletion from
+  storage tables is not allowed"), so the run failed and rolled back. The revised file never touches
+  `storage.objects`: it clears old public paths, and its trigger only clears the path when consent is
+  withdrawn or the player is retired. The app already removes the files through the Storage API.
+  Not yet applied.
+
+One migration ships with this release: `20261111000100_public_photo_token.sql`, **not yet applied**
+to the live project. The tabulation changes add no migration.
+
 ## [0.49.0] - 2026-11-14
 
 ### Added

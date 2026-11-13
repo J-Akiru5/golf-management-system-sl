@@ -239,6 +239,9 @@ function importCardsFrom(value) {
       verified: scanned ? false : !!entry.verified,
       // A card added by hand keeps its Remove button when it goes through an export and back.
       manual: entry.manual === true,
+      // The playing day and AM or PM shotgun, when the file says. Blank means this page's own.
+      day: /^[1-9][0-9]?$/.test(String(entry.day ?? "").trim()) ? String(entry.day).trim() : "",
+      session: entry.session === "PM" ? "PM" : entry.session === "AM" ? "AM" : "",
       cls: entry.cls || "",
       note,
       source: entry.source || (scanned && entry.source_file ? `Source: ${entry.source_file} p${entry.page ?? "?"}.` : ""),
@@ -305,9 +308,27 @@ function say(t, err) { $("msg").textContent = t; $("msg").className = err ? "err
 // Class is a team fact: both partners take the class of the pair's average index. It is read from
 // the field list by name; the desk can set it on the card when the name is not on the list.
 const nameKey = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 ,]/g, "").split(/[ ,]+/).filter(Boolean).sort().join(" ");
-const FIELD = {};
-(SRC.field || []).forEach(p => { FIELD[nameKey(p.name)] = p; });
-const fieldFor = c => FIELD[nameKey(c.name)] || null;
+// The playing day and session of a card. Each card says which day and which shotgun (AM or PM) it was
+// played in; a card with none uses the day and session this page is named for ("Day 1 AM"). The
+// system's field list is read per day, because a group number, tee time and session only mean
+// something inside one day.
+const DOC_DAY = (String(SRC.label).match(/day\s*([1-9][0-9]*)/i) || [])[1] || "1";
+const DOC_SESSION = /\bpm\b/i.test(SRC.label) ? "PM" : /\bam\b/i.test(SRC.label) ? "AM" : "AM";
+const dayOf = c => String((c && c.day) || DOC_DAY);
+const sessionOf = c => (c && c.session === "PM") ? "PM" : (c && c.session === "AM") ? "AM" : DOC_SESSION;
+const FIELDS = {};
+FIELDS[DOC_DAY] = {};
+(SRC.field || []).forEach(p => { FIELDS[DOC_DAY][nameKey(p.name)] = p; });
+const fieldFor = c => (FIELDS[dayOf(c)] || {})[nameKey(c.name)] || null;
+let PLAY_DAYS = [1, 2, 3, 4];
+const dayOptions = (selected) => {
+  const days = PLAY_DAYS.map(String);
+  const chosen = String(selected ?? "");
+  // A card may name a day the event list does not have yet (an old export, or a day added later).
+  // Keep that day in the dropdown instead of silently showing no day at all.
+  if (chosen && !days.includes(chosen)) days.push(chosen);
+  return days.sort((a, b) => Number(a) - Number(b)).map(d => `<option value="${d}"${d === chosen ? " selected" : ""}>Day ${d}</option>`).join("");
+};
 const classOf = c => c.cls || (fieldFor(c) ? fieldFor(c).cls : "");
 function classNote(c) {
   const f = fieldFor(c);
@@ -318,25 +339,65 @@ function classNote(c) {
 }
 const isNum = v => /^[0-9]{1,2}$/.test(v) && +v > 0;
 const valid = v => v === "" || v === "X" || isNum(v);
-// Playing handicap. "written": the number in the card's HDCP box with the decimal dropped. "whs": that number
-// treated as a Handicap Index and converted with the tee's rating and slope (100% allowance).
-function playingHcp(c) {
-  const raw = String(c.hdcp).trim();
-  if (raw === "" || !/^[0-9]+(.[0-9]+)?$/.test(raw)) return null;
-  if (state.mode !== "whs") return Math.floor(+raw); // the desk drops the decimal: 16.7 plays off 16
-  const tee = TEES[c.tee]; if (!tee) return null;
-  return Math.round(+raw * tee.slope / 113 + (tee.rating - sum(PAR)));
+// <handicap-rules>
+// The playing handicap follows the system's own rules (src/lib/routing/handicap.ts, the draw in
+// src/lib/routing/index.ts and src/lib/scoring/handicap.ts). A test keeps this block equal to them.
+//   1. The HDCP written on the card IS the playing handicap, decimal dropped (16.7 plays off 16).
+//      It is never converted again. A plus handicap ("+2") is a negative handicap: strokes go back.
+//   2. With no HDCP on the card, the system's own playing handicap is used: the player's frozen
+//      index, capped at the event's maximum index, converted on the player's tee.
+//   3. The "converted by tee rating and slope" mode treats the card's number as an index instead:
+//      the index is capped at the maximum, then Index x Slope / 113 + (Rating - Par), times the
+//      allowance, rounded once at the end.
+// The maximum index and the allowance are event settings; 30 and 100% apply until the field list says
+// otherwise.
+let MAX_INDEX = 30, ALLOWANCE = 1;
+function setHandicapLimits(maxIndex, allowance) {
+  if (Number.isFinite(maxIndex) && maxIndex > 0) MAX_INDEX = maxIndex;
+  if (Number.isFinite(allowance) && allowance > 0 && allowance <= 1) ALLOWANCE = allowance;
 }
-// Strokes received on a hole: one per hole for every full 18, then one more on the hardest holes.
+const wholeStrokes = n => { const r = Math.round(n); return r === 0 ? 0 : r; };
+// What the card's own HDCP box gives, or null when it is empty or not a number.
+function cardHcp(c) {
+  const raw = String(c.hdcp ?? "").trim().replace(/\s+/g, "");
+  const m = /^([+-]?)([0-9]+(?:\.[0-9]+)?)$/.exec(raw);
+  if (!m) return null;
+  const value = m[1] ? -Number(m[2]) : Number(m[2]); // "+2" is a plus handicap, stored negative
+  if (state.mode !== "whs") { const t = Math.trunc(value); return t === 0 ? 0 : t; }
+  const tee = TEES[c.tee]; if (!tee) return null;
+  const index = Math.min(value, MAX_INDEX);
+  return wholeStrokes((index * tee.slope / 113 + (tee.rating - sum(PAR))) * ALLOWANCE);
+}
+// The system's playing handicap for this player from the field list, or null. A zero next to an index
+// of 1 or more means the system had no usable tee, so it is not trusted.
+function systemHcp(c) {
+  const f = fieldFor(c);
+  if (!f || f.playingHandicap == null || !Number.isFinite(Number(f.playingHandicap))) return null;
+  const ph = Number(f.playingHandicap);
+  if (ph === 0 && f.frozenIndex != null && f.frozenIndex >= 1) return null;
+  return ph;
+}
+function playingHcp(c) {
+  const own = cardHcp(c);
+  return own !== null ? own : systemHcp(c);
+}
+// Strokes received on a hole: one per hole for every full 18, then one more on the hardest holes. A
+// plus handicap gives strokes back on the easiest holes (the highest stroke indexes).
 function strokesOn(ph, i) {
   const base = Math.trunc(ph / 18), rem = ph - base * 18;
-  return base + (rem > 0 && SI[i] <= rem ? 1 : 0);
+  let strokes = base;
+  if (rem > 0 && SI[i] <= rem) strokes += 1;
+  if (rem < 0 && SI[i] > 18 + rem) strokes -= 1;
+  return strokes === 0 ? 0 : strokes;
 }
+const fmtPh = ph => ph < 0 ? "+" + (-ph) : String(ph);
+// </handicap-rules>
 function calc(c) {
   const ph = playingHcp(c);
+  const phFrom = cardHcp(c) !== null ? "card" : ph !== null ? "system" : "";
   const net = ph === null ? null : c.holes.map((v, i) => isNum(v) ? Math.max(0, 2 + PAR[i] - (+v - strokesOn(ph, i))) : 0);
   const r = calcGross(c);
-  return { ...r, ph, net, netOut: net && sum(net.slice(0, 9)), netIn: net && sum(net.slice(9)), netPoints: net && sum(net) };
+  return { ...r, ph, phFrom, net, netOut: net && sum(net.slice(0, 9)), netIn: net && sum(net.slice(9)), netPoints: net && sum(net) };
 }
 function calcGross(c) {
   const pts = c.holes.map((v, i) => isNum(v) ? Math.max(0, 2 + PAR[i] - +v) : 0);
@@ -368,7 +429,9 @@ function renderCards() {
   $("cards").innerHTML = sorted.map(c => `
 <section class="card${c.verified ? " done" : ""}" data-id="${esc(c.id)}">${LOGO}
   <input class="name" data-f="name" value="${esc(c.name)}" aria-label="Player name" placeholder="Player name (LAST, FIRST)">
-  <div class="meta"><span>${esc(SRC.label)}</span>
+  <div class="meta">
+    <label>Day <select data-f="day" aria-label="Playing day">${dayOptions(dayOf(c))}</select></label>
+    <label>Session <select data-f="session" aria-label="AM or PM shotgun">${["AM", "PM"].map(s => `<option value="${s}"${sessionOf(c) === s ? " selected" : ""}>${s}</option>`).join("")}</select></label>
     <label class="chk">Class <select data-f="cls">${["", "A", "B", "C", "D"].map(k => `<option value="${k}"${classOf(c) === k ? " selected" : ""}>${k || "–"}</option>`).join("")}</select></label>
     <span data-k="clsnote" style="font-size:11px"></span>
     <label>Group <input type="text" data-f="group" value="${esc(c.group)}"></label>
@@ -400,7 +463,7 @@ function paint(el, c) {
   el.querySelector('[data-k="tot"]').innerHTML =
     `<span>Strokes <b>${r.played === 18 ? r.total : r.total + " over " + r.played + " holes"}</b></span>` +
     `<span>Holes with a score <b>${r.played}/18</b></span>` +
-    (r.net ? `<span>Playing handicap <b>${r.ph}</b></span><span>Net Stableford <b style="font-size:15px">${r.netPoints}</b></span>` : `<span class="no">No handicap${state.mode === "whs" && String(c.hdcp).trim() ? " or tee" : ""}: net not calculated</span>`) +
+    (r.net ? `<span>Playing handicap <b>${fmtPh(r.ph)}</b>${r.phFrom === "system" ? ` <small title="The card has no HDCP, so the system's playing handicap for this player is used (frozen index, capped at the event maximum, on the player's tee)">from the system</small>` : ""}</span><span>Net Stableford <b style="font-size:15px">${r.netPoints}</b></span>` : `<span class="no">No handicap${state.mode === "whs" && String(c.hdcp).trim() ? " or tee" : ""}: net not calculated</span>`) +
     `<span>Gross Stableford <b>${r.points}</b></span>` +
     (r.bad ? `<span class="no">${r.bad} cell(s) are not a number or X</span>` : "") + cmp;
 }
@@ -423,7 +486,7 @@ function renderSheet() {
     const idx = from => Array.from({ length: 9 }, (_, i) => from + i);
     return `<tr><td>${r.net ? n + 1 : "–"}</td><td class="l">${esc(c.name) || "(no name)"}</td><td>${classOf(c) || "–"}</td><td>${esc(c.group)}</td><td>${c.tee || "–"}</td><td>${esc(c.hdcp) || "–"}</td>` +
       idx(0).map(cell).join("") + `<td class="s">${r.out || "–"}</td>` + idx(9).map(cell).join("") + `<td class="s">${r.inn || "–"}</td>` +
-      `<td class="s">${r.played === 18 ? r.total : `<span class="inc">${r.total}*</span>`}</td><td>${r.played}/18</td><td>${r.net ? r.ph : "–"}</td><td>${r.points}</td><td class="s">${r.net ? r.netPoints : "–"}</td>` +
+      `<td class="s">${r.played === 18 ? r.total : `<span class="inc">${r.total}*</span>`}</td><td>${r.played}/18</td><td>${r.net ? fmtPh(r.ph) + (r.phFrom === "system" ? "*" : "") : "–"}</td><td>${r.points}</td><td class="s">${r.net ? r.netPoints : "–"}</td>` +
       `<td class="${c.verified ? "ok" : "no"}">${c.verified ? "yes" : "no"}</td></tr>`;
   }).join("");
   const skipped = (SRC.skipped || []).map(s => `<li><b>${esc(s.playerName || "No name")}</b>${s.groupNumber ? ` (group ${s.groupNumber})` : ""}: ${esc(s.reason)}</li>`).join("");
@@ -431,7 +494,7 @@ function renderSheet() {
 <div class="warn"><b>Draft. Not an official result.</b><ul>
 <li>${checked} of ${rows.length} cards are ticked as checked against the paper. Shaded cells are doubtful first readings that were not changed.</li>
 <li><b>X</b> is a red X on the card (no number). It is counted as 0 points. That meaning is not confirmed by the organizer.</li>
-<li><b>Net</b> is net Stableford: ${state.mode === "whs" ? "the HDCP on the card is treated as an index and converted with the tee rating and slope" : "the HDCP written on the card is used as the playing handicap (the decimal is dropped, so 16.7 plays off 16)"}, with strokes given in the order of the card's HANDICAP row. <b>PH</b> is the playing handicap used. A card with no handicap is listed last and not ranked.</li>
+<li><b>Net</b> is net Stableford: ${state.mode === "whs" ? "the HDCP on the card is treated as an index and converted with the tee rating and slope" : "the HDCP written on the card is used as the playing handicap (the decimal is dropped, so 16.7 plays off 16)"}, with strokes given in the order of the card's HANDICAP row. <b>PH</b> is the playing handicap used; a plus handicap shows as +n and gives strokes back. A card with no HDCP uses the system's playing handicap for that player (frozen index, capped at the event maximum, on the player's tee), marked <b>*</b>. A card with no HDCP and no system handicap is listed last and not ranked.</li>
 <li><b>Class</b> is the team's class from the field list: both partners' indexes, each capped at 30, averaged and rounded (A 0 to 12, B 13 to 18, C 19 to 23, D 24 and above). It does not change any score.</li>
 <li>Strokes marked * add only the holes that have a number, so they are not a gross total. Mulligan and Joker stamps are not applied.</li>
 </ul></div>
@@ -566,7 +629,8 @@ function __scorecardCheck(id) {
   const cardGroup = String(card.group ?? "").trim();
   const cardTee = String(card.tee ?? "").trim();
   const cardHdcp = String(card.hdcp ?? "").trim();
-  const cardPh = playingHcp(card);
+  // The system comparison is against what the card itself says, not the system's own fallback.
+  const cardPh = cardHcp(card);
   const systemClass = field ? field.cls || "" : "";
   const systemGroup = field && field.group != null ? String(field.group) : "";
   const systemTee = field ? field.teeCode || "" : "";
@@ -582,7 +646,9 @@ function __scorecardCheck(id) {
   const systemPartner = field ? field.partner || "" : "";
   const systemPair = field && field.team != null ? field.team : null;
   const systemFlight = field ? field.flight || "" : "";
-  const documentSession = /am\b/i.test(SRC.label) ? "AM" : /pm\b/i.test(SRC.label) ? "PM" : "";
+  // The card's own day and session; the system field list for that day is what it is checked against.
+  const documentSession = sessionOf(card);
+  const cardDay = dayOf(card);
   // A playing handicap of 0 beside a real index is an unset system value, not a scratch player.
   // The difference is still shown, but "Use system" must not copy the 0 onto the card.
   const hdcpUsable = systemHdcp !== "" && !(Number(systemHdcp) === 0 && systemIndex != null && systemIndex >= 1);
@@ -618,6 +684,7 @@ function __scorecardCheck(id) {
     systemPair,
     systemFlight,
     documentSession,
+    cardDay,
     classDiff,
     groupDiff,
     teeDiff,
@@ -638,9 +705,10 @@ window.__scorecard = {
     renderCards();
     stats();
   },
-  setField: (entries) => {
-    for (const key of Object.keys(FIELD)) delete FIELD[key];
-    for (const entry of entries) FIELD[nameKey(entry.name)] = entry;
+  setField: (entries, day) => {
+    const key = String(day || DOC_DAY);
+    FIELDS[key] = {};
+    for (const entry of entries) FIELDS[key][nameKey(entry.name)] = entry;
     renderCards();
     stats();
   },
@@ -702,7 +770,8 @@ window.__scorecard = {
       <input id="panel-q" type="search" placeholder="Filter by player name" aria-label="Filter cards by player name" style="font:inherit;padding:6px 8px;border:1px solid #b9c4bd;border-radius:6px;min-width:220px">
       <label style="display:inline-flex;gap:5px;align-items:center">Batch
         <select id="batch-select" aria-label="Show one review batch" style="font:inherit;padding:6px 8px;border:1px solid #b9c4bd;border-radius:6px;max-width:260px"></select></label>
-      <button type="button" id="panel-add" class="primary" title="Add a blank card and type the name and 18 scores in from the paper card">Add card by hand</button>
+      <button type="button" id="panel-field" class="primary" title="Pick a day, session and group and the players arrive as blank cards with group, tee and class filled in. No JSON file needed.">Add players from the system</button>
+      <button type="button" id="panel-add" title="Add one blank card and type the name and 18 scores in from the paper card">Add card by hand</button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">
       <button type="button" id="batch-all">All cards</button>
@@ -731,7 +800,7 @@ window.__scorecard = {
       <div id="batch-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       <button type="button" id="batch-clear" class="danger" title="Remove the batch labels where every card is already checked. The cards stay on the page." hidden>Remove reviewed batches</button>
     </div>
-    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add card by hand</b> adds a blank card to type in. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. Saving keeps the team copy in the private Supabase bucket; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication.</p>
+    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add players from the system</b> brings a day's and session's players in as blank cards with their group, tee and class filled in, so no JSON file is needed. <b>Add card by hand</b> adds one blank card. <b>Start new review batch</b> makes a batch by hand: empty, from the cards shown, from one day and session, or from cards you pick. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. Saving keeps the team copy in the private Supabase bucket; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication.</p>
     <p class="legend" id="field-status" style="margin:8px 0 0">Supabase field: not checked yet.</p>
     <details id="check-details" open style="margin-top:8px">
       <summary id="check-summary" style="cursor:pointer;font-weight:600">System check: waiting for the field list.</summary>
@@ -762,6 +831,7 @@ window.__scorecard = {
   const clearButton = panel.querySelector("#batch-clear");
   const panelSearch = panel.querySelector("#panel-q");
   const panelAdd = panel.querySelector("#panel-add");
+  const panelField = panel.querySelector("#panel-field");
   const checkSummary = panel.querySelector("#check-summary");
   const checkTable = panel.querySelector("#check-table");
 
@@ -1038,25 +1108,239 @@ window.__scorecard = {
     summary.textContent = `Removed ${what}. No card was deleted.`;
   }
 
+  // ---- Start a batch by hand ----
+  // A batch is a named set of cards to review together. It can start empty (to scan or import into),
+  // from the cards on screen, from the cards no batch holds yet, from one day and session, or from
+  // cards picked by name. Nothing about the cards changes; a batch only groups them.
   function startBatch() {
-    const state = current();
-    const batched = new Set(batches().flatMap((batch) => batch.cardIds));
-    const fresh = state.cards.filter((card) => !card.verified && !batched.has(card.id));
-    if (fresh.length === 0) {
-      summary.textContent =
-        "No new unbatched cards. Review an existing batch, or add cards from JSON.";
-      return;
+    const everyCard = () => current().cards;
+    const batched = () => new Set(batches().flatMap((batch) => batch.cardIds));
+    const shownIds = () => [...cardsRoot.querySelectorAll(".card")].filter((element) => !element.hidden).map((element) => element.dataset.id);
+    const dialog = scanDialog(`
+      <h2 style="margin:0 0 6px;font-size:18px">Start a review batch</h2>
+      <label style="display:flex;flex-direction:column;gap:4px;margin:0 0 10px">Batch name
+        <input id="nb-name" value="${escapeHtml(`Batch ${batches().length + 1}`)}" style="font:inherit;padding:7px 8px;border:1px solid #b9c4bd;border-radius:6px"></label>
+      <fieldset style="border:1px solid #d5ddd8;border-radius:8px;padding:8px 10px;margin:0 0 10px">
+        <legend style="padding:0 4px">Which cards go in it?</legend>
+        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="empty" checked> An empty batch, to scan, import or add players into later</label>
+        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="shown"> The cards shown now <span id="nb-n-shown" style="color:#4d5c54"></span></label>
+        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="unbatched"> Cards in no batch yet that are not checked <span id="nb-n-unbatched" style="color:#4d5c54"></span></label>
+        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="daysession"> All the cards for one day and session <span id="nb-n-daysession" style="color:#4d5c54"></span></label>
+        <div id="nb-ds" hidden style="margin:2px 0 6px 22px;display:none;gap:8px">
+          <select id="nb-day" aria-label="Day" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px">${dayOptions(DOC_DAY)}</select>
+          <select id="nb-session" aria-label="Session" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px"><option>AM</option><option>PM</option></select></div>
+        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="pick"> Cards I pick by name</label>
+        <div id="nb-pick" hidden style="display:none;margin:2px 0 4px 22px">
+          <input id="nb-q" type="search" placeholder="Find a player" aria-label="Find a player" style="font:inherit;padding:5px 7px;border:1px solid #b9c4bd;border-radius:6px;width:100%;box-sizing:border-box;margin-bottom:4px">
+          <div id="nb-list" style="max-height:200px;overflow:auto;border:1px solid #d5ddd8;border-radius:6px;padding:4px 8px"></div></div>
+      </fieldset>
+      <p id="nb-count" role="status" style="margin:0 0 10px;font-weight:600"></p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button type="button" id="nb-create" class="primary">Create batch</button>
+        <button type="button" id="nb-cancel">Cancel</button>
+      </div>`);
+    const box = dialog.box;
+    const q = (selector) => box.querySelector(selector);
+    const source = () => (box.querySelector('input[name="nb-src"]:checked') || {}).value || "empty";
+    const picked = new Set();
+    function idsForSource() {
+      const kind = source();
+      if (kind === "shown") return shownIds();
+      if (kind === "unbatched") { const taken = batched(); return everyCard().filter((card) => !card.verified && !taken.has(card.id)).map((card) => card.id); }
+      if (kind === "daysession") return everyCard().filter((card) => dayOf(card) === q("#nb-day").value && sessionOf(card) === q("#nb-session").value).map((card) => card.id);
+      if (kind === "pick") return [...picked];
+      return [];
     }
-    const batch = {
-      id: `batch-${Date.now().toString(36)}`,
-      name: `Batch ${batches().length + 1}`,
-      createdAt: new Date().toISOString(),
-      cardIds: fresh.map((card) => card.id),
-    };
-    state.reviewBatches = [...batches(), batch];
-    state.activeReviewBatchId = batch.id;
-    db.setState(state);
-    apply();
+    function renderPick() {
+      const needle = q("#nb-q").value.trim().toLowerCase();
+      const rows = everyCard().filter((card) => !needle || card.name.toLowerCase().includes(needle)).sort((a, b) => a.name.localeCompare(b.name));
+      q("#nb-list").innerHTML = rows.slice(0, 300).map((card) => `<label style="display:block;margin:2px 0"><input type="checkbox" data-pick="${escapeHtml(card.id)}"${picked.has(card.id) ? " checked" : ""}> ${escapeHtml(card.name || "(no name)")} <span style="color:#4d5c54">· Day ${escapeHtml(dayOf(card))} ${escapeHtml(sessionOf(card))}</span></label>`).join("") || '<span style="color:#4d5c54">No card matches.</span>';
+    }
+    function refresh() {
+      const kind = source();
+      q("#nb-ds").style.display = kind === "daysession" ? "flex" : "none";
+      q("#nb-pick").style.display = kind === "pick" ? "block" : "none";
+      q("#nb-n-shown").textContent = `(${shownIds().length})`;
+      const taken = batched();
+      q("#nb-n-unbatched").textContent = `(${everyCard().filter((card) => !card.verified && !taken.has(card.id)).length})`;
+      q("#nb-n-daysession").textContent = `(${everyCard().filter((card) => dayOf(card) === q("#nb-day").value && sessionOf(card) === q("#nb-session").value).length})`;
+      if (kind === "pick") renderPick();
+      const count = idsForSource().length;
+      q("#nb-count").textContent = kind === "empty" ? "The batch starts empty." : `${count} card${count === 1 ? "" : "s"} will go in this batch.`;
+    }
+    box.addEventListener("change", (event) => {
+      const id = event.target && event.target.dataset ? event.target.dataset.pick : "";
+      if (id) {
+        // A tick must not redraw the list, or a long list jumps back to the top.
+        if (event.target.checked) picked.add(id); else picked.delete(id);
+        q("#nb-count").textContent = `${picked.size} card${picked.size === 1 ? "" : "s"} will go in this batch.`;
+        return;
+      }
+      refresh();
+    });
+    q("#nb-q").addEventListener("input", renderPick);
+    q("#nb-cancel").addEventListener("click", () => dialog.close());
+    q("#nb-create").addEventListener("click", () => {
+      const ids = idsForSource();
+      const state = current();
+      const batch = {
+        id: `batch-${Date.now().toString(36)}`,
+        name: q("#nb-name").value.trim() || `Batch ${batches().length + 1}`,
+        createdAt: new Date().toISOString(),
+        cardIds: ids,
+      };
+      state.reviewBatches = [...batches(), batch];
+      state.activeReviewBatchId = batch.id;
+      dialog.close();
+      db.setState(state);
+      apply();
+      void persist(true);
+      summary.textContent = ids.length
+        ? `Started ${batch.name} with ${ids.length} card${ids.length === 1 ? "" : "s"}.`
+        : `Started ${batch.name}, empty. Scan, import or add players into it.`;
+    });
+    refresh();
+    q("#nb-name").focus();
+    q("#nb-name").select();
+  }
+
+  // ---- Add players from the system's field list ----
+  // The system already knows who plays when. Choose a day and session (and a group) and the players
+  // arrive as blank cards with their name, group, tee and class filled in, so only the scores are
+  // typed. Nobody has to prepare a JSON file first.
+  async function openFieldPicker() {
+    const dialog = scanDialog(`
+      <h2 style="margin:0 0 6px;font-size:18px">Add players from the system</h2>
+      <p style="margin:0 0 8px;color:#4d5c54">Pick the day and session. Each player comes in as a blank card with the group, tee and class from the system. A player already on the page for that day and session is not added twice.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px">
+        <label>Day <select id="fp-day" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px">${dayOptions(DOC_DAY)}</select></label>
+        <label>Session <select id="fp-session" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px"><option${DOC_SESSION === "AM" ? " selected" : ""}>AM</option><option${DOC_SESSION === "PM" ? " selected" : ""}>PM</option></select></label>
+        <label>Group <select id="fp-group" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px"><option value="">All groups</option></select></label>
+        <input id="fp-q" type="search" placeholder="Find a player" aria-label="Find a player" style="font:inherit;padding:5px 7px;border:1px solid #b9c4bd;border-radius:6px;flex:1;min-width:140px">
+      </div>
+      <div id="fp-list" style="max-height:260px;overflow:auto;border:1px solid #d5ddd8;border-radius:6px;padding:4px 8px;margin:0 0 8px"></div>
+      <p id="fp-count" role="status" style="margin:0 0 8px;font-weight:600"></p>
+      <label style="display:flex;flex-direction:column;gap:4px;margin:0 0 10px">Put them in
+        <select id="fp-batch" style="font:inherit;padding:6px 8px;border:1px solid #b9c4bd;border-radius:6px"></select></label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button type="button" id="fp-add" class="primary">Add the selected players</button>
+        <button type="button" id="fp-all">Select all shown</button>
+        <button type="button" id="fp-none">Clear</button>
+        <button type="button" id="fp-cancel">Cancel</button>
+      </div>`);
+    const box = dialog.box;
+    const q = (selector) => box.querySelector(selector);
+    const chosen = new Set();
+    let rows = [];
+    q("#fp-batch").innerHTML = [
+      ["new", "A new batch for this day, session and group"],
+      ...batches().map((entry) => [entry.id, entry.name]),
+      ["none", "No batch"],
+    ].map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("");
+
+    const onPage = (entry) => current().cards.some((card) => nameKey(card.name) === nameKey(entry.name) && dayOf(card) === q("#fp-day").value && sessionOf(card) === q("#fp-session").value);
+
+    async function load() {
+      q("#fp-count").textContent = "Loading the field list…";
+      q("#fp-list").innerHTML = "";
+      const ok = await loadFieldDay(q("#fp-day").value);
+      const entries = Object.values(FIELDS[q("#fp-day").value] || {});
+      if (!ok || entries.length === 0) {
+        rows = [];
+        q("#fp-count").textContent = ok ? "The system has no players for that day." : "The field list for that day could not be read.";
+        return;
+      }
+      const session = q("#fp-session").value;
+      rows = entries.filter((entry) => entry.session === session).sort((a, b) => (a.group ?? 9999) - (b.group ?? 9999) || a.name.localeCompare(b.name));
+      const groups = [...new Set(rows.map((entry) => entry.group).filter((group) => group != null))];
+      const keep = q("#fp-group").value;
+      q("#fp-group").innerHTML = '<option value="">All groups</option>' + groups.map((group) => `<option value="${group}">Group ${group}</option>`).join("");
+      q("#fp-group").value = groups.map(String).includes(keep) ? keep : "";
+      chosen.clear();
+      for (const entry of rows) if (!onPage(entry)) chosen.add(nameKey(entry.name));
+      draw();
+    }
+
+    function visible() {
+      const group = q("#fp-group").value;
+      const needle = q("#fp-q").value.trim().toLowerCase();
+      return rows.filter((entry) => (!group || String(entry.group) === group) && (!needle || entry.name.toLowerCase().includes(needle)));
+    }
+
+    function draw() {
+      const list = visible();
+      q("#fp-list").innerHTML = list.slice(0, 400).map((entry) => {
+        const already = onPage(entry);
+        const key = nameKey(entry.name);
+        const where = [entry.group != null ? `Group ${entry.group}` : "", entry.teeTime || "", entry.startHole != null ? `hole ${entry.startHole}` : ""].filter(Boolean).join(" · ");
+        return `<label style="display:block;margin:2px 0${already ? ";color:#4d5c54" : ""}"><input type="checkbox" data-fp="${escapeHtml(key)}"${already ? " disabled" : chosen.has(key) ? " checked" : ""}> ${escapeHtml(entry.name)} <span style="color:#4d5c54">· ${escapeHtml(where || "no group yet")}${entry.cls ? ` · class ${escapeHtml(entry.cls)}` : ""}${already ? " · already on the page" : ""}</span></label>`;
+      }).join("") || '<span style="color:#4d5c54">No player matches.</span>';
+      const picked = rows.filter((entry) => chosen.has(nameKey(entry.name)) && !onPage(entry)).length;
+      q("#fp-count").textContent = `${list.length} player${list.length === 1 ? "" : "s"} shown · ${picked} selected to add`;
+    }
+
+    box.addEventListener("change", (event) => {
+      const target = event.target;
+      if (target && target.dataset && target.dataset.fp) {
+        if (target.checked) chosen.add(target.dataset.fp); else chosen.delete(target.dataset.fp);
+        const shown = visible();
+        const toAdd = rows.filter((entry) => chosen.has(nameKey(entry.name)) && !onPage(entry)).length;
+        q("#fp-count").textContent = `${shown.length} player${shown.length === 1 ? "" : "s"} shown · ${toAdd} selected to add`;
+      } else if (target && (target.id === "fp-day" || target.id === "fp-session")) {
+        void load();
+      } else if (target && target.id === "fp-group") {
+        // Choosing a group means "these players": the selection becomes the group's players who are
+        // not on the page yet, so players hidden by the group filter are never added by accident.
+        chosen.clear();
+        for (const entry of visible()) if (!onPage(entry)) chosen.add(nameKey(entry.name));
+        draw();
+      }
+    });
+    q("#fp-q").addEventListener("input", draw);
+    q("#fp-all").addEventListener("click", () => { for (const entry of visible()) if (!onPage(entry)) chosen.add(nameKey(entry.name)); draw(); });
+    q("#fp-none").addEventListener("click", () => { chosen.clear(); draw(); });
+    q("#fp-cancel").addEventListener("click", () => dialog.close());
+    q("#fp-add").addEventListener("click", () => {
+      const day = q("#fp-day").value, session = q("#fp-session").value, group = q("#fp-group").value;
+      const picked = rows.filter((entry) => chosen.has(nameKey(entry.name)) && !onPage(entry));
+      if (picked.length === 0) { q("#fp-count").textContent = "Select at least one player who is not on the page yet."; return; }
+      const stamp = Date.now().toString(36);
+      const fresh = picked.map((entry, index) => ({
+        id: `fld-${stamp}-${index}`,
+        manual: true,
+        name: entry.name,
+        group: entry.group != null ? String(entry.group) : "",
+        tee: entry.teeCode || "",
+        hdcp: "",
+        written: "",
+        cls: "",
+        verified: false,
+        day,
+        session,
+        note: "Added from the system field list. Type the scores from the paper card.",
+        source: "",
+        holes: Array(18).fill(""),
+      }));
+      const state = current();
+      state.cards = [...state.cards, ...fresh];
+      const target = q("#fp-batch").value;
+      let batch = null;
+      if (target === "new") {
+        batch = { id: `batch-${stamp}`, name: `Day ${day} ${session}${group ? ` · Group ${group}` : ""}`, createdAt: new Date().toISOString(), cardIds: fresh.map((card) => card.id) };
+        state.reviewBatches = [...batches(), batch];
+      } else if (target !== "none") {
+        batch = batches().find((entry) => entry.id === target) || null;
+        if (batch) batch.cardIds = [...new Set([...batch.cardIds, ...fresh.map((card) => card.id)])];
+      }
+      state.activeReviewBatchId = batch ? batch.id : "all";
+      dialog.close();
+      db.setState(state);
+      apply();
+      void persist(true);
+      gotoCard(fresh[0].id);
+      summary.textContent = `Added ${fresh.length} player${fresh.length === 1 ? "" : "s"} from the system${batch ? ` to ${batch.name}` : ""}. Type the scores from the paper cards.`;
+    });
+    await load();
   }
 
   async function addCards(file) {
@@ -1276,6 +1560,11 @@ window.__scorecard = {
       const dialog = scanDialog(`
         <h2 style="margin:0 0 6px;font-size:18px">${title}</h2>
         <p style="margin:0 0 8px;color:#4d5c54">${lead}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px">
+          <label>Day <select id="scan-day" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px">${dayOptions(lastScanDay)}</select></label>
+          <label>Session <select id="scan-session" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px"><option${lastScanSession === "AM" ? " selected" : ""}>AM</option><option${lastScanSession === "PM" ? " selected" : ""}>PM</option></select></label>
+          <span style="color:#4d5c54;align-self:center">for the new cards</span>
+        </div>
         ${blank ? "" : `<label style="display:flex;flex-direction:column;gap:4px;margin:0 0 8px">Which batch?
           <select id="scan-target" style="font:inherit;padding:7px 8px;border:1px solid #b9c4bd;border-radius:6px">${options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}</select></label>
         <p id="scan-plan" role="status" style="margin:0 0 6px;font-weight:600"></p>`}
@@ -1312,19 +1601,27 @@ window.__scorecard = {
         const choice = event.target && event.target.dataset ? event.target.dataset.choice : "";
         if (!choice) return;
         const target = targetNow();
+        const day = dialog.box.querySelector("#scan-day").value;
+        const session = dialog.box.querySelector("#scan-session").value;
         dialog.close();
-        resolve({ choice, target });
+        if (choice !== "discard") { lastScanDay = day; lastScanSession = session; }
+        resolve({ choice, target, day, session });
       });
       const first = dialog.box.querySelector("button[data-choice]");
       if (first) first.focus();
     });
   }
 
-  function addScannedCards(cards, when, target) {
+  // The day and session last chosen for scanned cards, so a run of photos does not ask again each time.
+  let lastScanDay = DOC_DAY, lastScanSession = DOC_SESSION;
+
+  function addScannedCards(cards, when, target, day, session) {
     const state = current();
     const { merges, fresh } = planScan(cards, target || "new");
     const have = new Set(state.cards.map((card) => card.id));
-    const added = fresh.filter((card) => !have.has(card.id)).map((card) => ({ ...card, verified: false }));
+    const added = fresh
+      .filter((card) => !have.has(card.id))
+      .map((card) => ({ ...card, verified: false, day: day || card.day || "", session: session || card.session || "" }));
     const touched = merges.map((merge) => merge.existing);
     let scoresAdded = 0, differing = 0;
     for (const merge of merges) {
@@ -1432,7 +1729,7 @@ window.__scorecard = {
         summary.textContent = "No card was added.";
         return;
       }
-      addScannedCards(blanks, blankPick.choice, "new");
+      addScannedCards(blanks, blankPick.choice, "new", blankPick.day, blankPick.session);
       return;
     }
     status(`Read ${cards.length} card${cards.length === 1 ? "" : "s"}.`);
@@ -1441,7 +1738,7 @@ window.__scorecard = {
       summary.textContent = "Scanned cards discarded. Nothing was added.";
       return;
     }
-    addScannedCards(cards, pick.choice, pick.target);
+    addScannedCards(cards, pick.choice, pick.target, pick.day, pick.session);
   }
 
   // ---- Camera: a live view in the page, so Take photo works on a laptop and a phone alike ----
@@ -1571,6 +1868,7 @@ window.__scorecard = {
     panelSearch.value = "";
     addButtonToolbar.click();
   });
+  panelField.addEventListener("click", () => { void openFieldPicker(); });
   for (const input of [scanFile, scanCamera]) {
     input.addEventListener("change", () => {
       const picked = Array.from(input.files || []);
@@ -1731,42 +2029,89 @@ window.__scorecard = {
     }
   }
 
-  async function loadField() {
+  // The system's field list is read one playing day at a time: a card is checked against the list for
+  // the day it says it was played, so a Day 2 card is not compared with Day 1 groups.
+  const fieldDays = new Map();
+  function dayOptionsRefresh() {
+    for (const select of document.querySelectorAll('#cards select[data-f="day"]')) {
+      const chosen = select.value;
+      select.innerHTML = dayOptions(chosen);
+      select.value = chosen;
+    }
+  }
+
+  function describeField() {
+    const check = db.checkField();
+    const loaded = [...fieldDays.entries()]
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([day, info]) => `Day ${day}${info.date ? ` (${info.date})` : ""} ${info.players} players`)
+      .join(" · ");
+    fieldStatus.textContent = `Supabase field: ${loaded || "nothing loaded"} · ${check.missing} name(s) not found · ${check.noClass} no class · ${check.classDiff} class differs · ${check.groupDiff} group differs · ${check.teeDiff} tee differs · ${check.hdcpDiff} HDCP differs · ${check.dayDiff} AM/PM differs.`;
+  }
+
+  async function loadFieldDay(dayValue) {
+    const day = String(dayValue || DOC_DAY);
+    if (fieldDays.has(day)) return true;
     try {
-      const dayMatch = String(db.label || db.slug || "").match(/day\s*([1-9][0-9]*)/i);
-      const day = dayMatch ? dayMatch[1] : "";
       const response = await fetch(
-        `/api/scorecards/field?event=${encodeURIComponent(db.event)}${day ? `&day=${day}` : ""}`,
+        `/api/scorecards/field?event=${encodeURIComponent(db.event)}&day=${encodeURIComponent(day)}`,
         { cache: "no-store" },
       );
       if (!response.ok) {
-        fieldReady = false;
+        fieldReady = fieldDays.size > 0;
         fieldStatus.textContent =
           response.status === 503
             ? "Supabase field: not configured in this deployment."
-            : "Supabase field: not available.";
+            : `Supabase field: Day ${day} is not available.`;
         apply();
-        return;
+        return false;
       }
       const body = await response.json();
       if (!body.ok || !Array.isArray(body.players)) {
-        fieldReady = false;
+        fieldReady = fieldDays.size > 0;
         fieldStatus.textContent = "Supabase field: no player list returned.";
         apply();
-        return;
+        return false;
       }
-      db.setField(body.players);
+      // The event's own maximum index and allowance, so the page converts an index the way the draw does.
+      if (typeof setHandicapLimits === "function") setHandicapLimits(Number(body.maxIndex), Number(body.allowance));
+      if (Array.isArray(body.days) && body.days.length) {
+        PLAY_DAYS = body.days.map((entry) => entry.day);
+        dayOptionsRefresh();
+      }
+      if (String(body.dayNumber) !== day) {
+        // The server fell back to another day because this one does not exist; keep it empty.
+        fieldStatus.textContent = `Supabase field: the event has no Day ${day}.`;
+        apply();
+        return false;
+      }
+      db.setField(body.players, day);
+      fieldDays.set(day, { players: body.players.length, date: body.playDate || "" });
       fieldReady = true;
       checkCache = null;
-      const check = db.checkField();
-      fieldStatus.textContent = `Supabase field: ${body.players.length} players · Day ${body.dayNumber ?? "?"}${body.playDate ? ` (${body.playDate})` : ""} · ${check.missing} name(s) not found · ${check.noClass} no class · ${check.classDiff} class differs · ${check.groupDiff} group differs · ${check.teeDiff} tee differs · ${check.hdcpDiff} HDCP differs · ${check.dayDiff} day/tee differs.`;
+      describeField();
       apply();
+      return true;
     } catch {
-      fieldReady = false;
+      fieldReady = fieldDays.size > 0;
       fieldStatus.textContent = "Supabase field: not reachable.";
       apply();
+      return false;
     }
   }
+
+  // Loads the page's own day first, then every other day a card has been given.
+  async function loadField() {
+    await loadFieldDay(DOC_DAY);
+    const others = new Set(current().cards.map((card) => dayOf(card)));
+    for (const day of others) await loadFieldDay(day);
+  }
+
+  cardsRoot.addEventListener("change", (event) => {
+    const field = event.target && event.target.dataset ? event.target.dataset.f : "";
+    if (field === "day") void loadFieldDay(event.target.value).then(() => apply());
+    else if (field === "session") apply();
+  });
 
   // Shows who is signed in, and gives club staff the way back to the desk. A tabulation account
   // has no desk, so it only gets Sign out.
@@ -1796,8 +2141,9 @@ window.__scorecard = {
 
   apply();
   void loadSession();
-  void loadDocument();
-  void loadField();
+  // The saved document decides which playing days are on the page, so the field list is read after
+  // it has loaded; otherwise a Day 2 card in a saved document would be checked against no list.
+  void loadDocument().then(() => loadField());
 })();
 </script>
 
