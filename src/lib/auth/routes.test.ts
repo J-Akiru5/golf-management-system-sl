@@ -114,6 +114,31 @@ describe("decide", () => {
       to: "/my",
     });
   });
+
+  it("lets a sign-in link return a staff account to the tabulation page", () => {
+    expect(landingFor({ next: "/scorecard/index.html", identity: "staff" })).toBe(
+      "/scorecard/index.html",
+    );
+    expect(landingFor({ next: "/scorecard/index.html", identity: "unlinked" })).toBe(
+      "/scorecard/index.html",
+    );
+  });
+
+  it("sends a tabulation-only account to the scorecard desk, not the player portal", () => {
+    expect(landingFor({ identity: "tabulation" })).toBe("/scorecard/");
+    expect(decide({ pathname: "/my", identity: "tabulation" })).toEqual({
+      type: "redirect",
+      to: "/scorecard/",
+    });
+    expect(decide({ pathname: "/admin", identity: "tabulation" })).toEqual({
+      type: "redirect",
+      to: "/scorecard/",
+    });
+    expect(decide({ pathname: "/scorecard/index.html", identity: "tabulation" })).toEqual({
+      type: "allow",
+    });
+    expect(decide({ pathname: "/pairings", identity: "tabulation" })).toEqual({ type: "allow" });
+  });
 });
 
 describe("landingFor", () => {

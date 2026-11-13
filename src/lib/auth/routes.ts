@@ -62,7 +62,7 @@ export function areaOf(pathname: string): Area {
  *   player      a linked players row, no club membership
  *   unlinked    signed in, but neither of the above
  */
-export type Identity = "signed-out" | "staff" | "player" | "unlinked";
+export type Identity = "signed-out" | "tabulation" | "staff" | "player" | "unlinked";
 
 export type Decision = { type: "allow" } | { type: "redirect"; to: string; error?: string };
 
@@ -100,6 +100,10 @@ export function decide(input: {
 
   if (area === "public") return { type: "allow" };
 
+  // A tabulation account has no club membership and no player record. Its home is the scorecard
+  // desk; every other guarded area would only show an empty player portal or a permission error.
+  if (identity === "tabulation") return { type: "redirect", to: "/scorecard/" };
+
   if (identity === "signed-out") return loginFor(pathname, search);
 
   if (area === "staff" && identity !== "staff") {
@@ -125,8 +129,14 @@ export function landingFor(input: {
   const safe = next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "";
   const area = safe === "" ? "public" : areaOf(safe.split("?")[0] ?? safe);
 
+  if (identity === "tabulation") {
+    const scorecard = safe === "/scorecard" || safe.startsWith("/scorecard/");
+    return scorecard ? safe : "/scorecard/";
+  }
+
   if (identity === "staff") {
-    if (safe !== "" && area === "staff") return safe;
+    const scorecard = safe === "/scorecard" || safe.startsWith("/scorecard/");
+    if (safe !== "" && (area === "staff" || scorecard)) return safe;
     // Owners and organizers run the event from the control room; a desk account is a volunteer
     // whose job is the staff app on a phone.
     return input.staffRole === "desk" ? "/staff" : "/admin";

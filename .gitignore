@@ -25,3 +25,4 @@ demo-video/out/
 
 # Local backups before a wipe
 backups/
+data/

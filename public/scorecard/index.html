@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scores (editable draft)</title>
+<style id="pg">@page { size: portrait; margin: 8mm; }</style>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 12px/1.35 system-ui, "Segoe UI", sans-serif; color: #14201a; background: #f4f6f4; }
+  header { position: sticky; top: 0; z-index: 5; background: #fff; border-bottom: 1px solid #b9c4bd; padding: 10px 16px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .sub { color: #4d5c54; margin: 0 0 8px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button { font: inherit; padding: 6px 12px; border: 1px solid #b9c4bd; background: #fff; color: #14201a; border-radius: 6px; cursor: pointer; }
+  button.on, button.primary { background: #1f5a3c; border-color: #1f5a3c; color: #fff; }
+  button.danger { color: #b42318; }
+  #q { font: inherit; padding: 6px 8px; width: 200px; border: 1px solid #b9c4bd; border-radius: 6px; }
+  #msg { min-height: 1.2em; color: #1f6b45; margin-top: 4px; }
+  #saved { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-weight: 600; border: 1px solid #b9c4bd; color: #4d5c54; background: #fff; }
+  #saved::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #9aa7a0; }
+  #saved.ok { color: #1f6b45; border-color: #1f6b45; background: #eaf6ef; }
+  #saved.ok::before { background: #1f6b45; }
+  #saved.bad { color: #fff; border-color: #b42318; background: #b42318; }
+  #saved.bad::before { background: #fff; }
+  #msg.err { color: #b42318; }
+  main { padding: 14px 16px; max-width: 1280px; margin: 0 auto; }
+  .legend { color: #4d5c54; margin: 0 0 10px; }
+  .chip { display: inline-block; width: 12px; height: 12px; border: 1px solid #b7791f; background: #ffe9a8; vertical-align: -2px; }
+  .chip.e { background: #d7e8ff; border-color: #1d5fbf; }
+  .warn { border: 1px solid #b7791f; background: #fff6dc; padding: 6px 10px; border-radius: 6px; margin: 0 0 10px; }
+  .warn ul { margin: 4px 0 0; padding-left: 18px; }
+  .wrap { overflow-x: auto; background: #fff; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; background: #fff; }
+  th, td { border: 1px solid #b9c4bd; padding: 3px 4px; text-align: center; white-space: nowrap; }
+  th { background: #1f5a3c; color: #fff; font-weight: 600; }
+  .l { text-align: left; }
+  .par td { background: #eef2ef; font-weight: 600; }
+  td.s, th.s { font-weight: 700; } td.s { background: #f3f6f4; }
+  td.x { color: #b42318; font-weight: 700; }
+  td.d { background: #ffe9a8; } td.e { background: #d7e8ff; }
+  td.bad { outline: 2px solid #b42318; outline-offset: -2px; }
+  .inc { color: #7a5a12; } .ok { color: #1f6b45; font-weight: 700; } .no { color: #b7791f; font-weight: 700; }
+  .card { background: #fff; border: 1px solid #b9c4bd; border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; break-inside: avoid; }
+  .card.done { border-color: #1f6b45; border-width: 2px; }
+  .card { position: relative; }
+  .logo { display: block; width: 96px; height: auto; }
+  .card .logo { position: absolute; top: 10px; right: 12px; }
+  header .logo { width: 110px; margin-bottom: 6px; }
+  #sheet .logo { width: 110px; margin-bottom: 6px; }
+  .card .name { font: 700 16px system-ui, "Segoe UI", sans-serif; width: min(100%, 420px); border: 1px solid transparent; border-radius: 4px; padding: 2px 4px; margin-left: -4px; color: #14201a; background: transparent; }
+  .card .name:hover, .card .name:focus { border-color: #b9c4bd; background: #fff; }
+  .card .note { color: #7a5a12; font-size: 11px; margin: 4px 0 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; color: #4d5c54; margin: 2px 0 6px; }
+  .meta input[type=text], .meta select { font: inherit; padding: 2px 4px; border: 1px solid #b9c4bd; border-radius: 4px; width: 56px; background: #fff; color: #14201a; }
+  .meta label { display: inline-flex; gap: 5px; align-items: center; }
+  .meta .chk { color: #14201a; font-weight: 600; }
+  .card th.l, .card td.l { width: 64px; }
+  td.in { padding: 0; }
+  td.in input { width: 100%; min-width: 30px; border: 0; background: transparent; text-align: center; font: 600 14px system-ui, "Segoe UI", sans-serif; padding: 5px 0; color: inherit; }
+  td.in input:focus { outline: 2px solid #1f5a3c; outline-offset: -2px; background: #fff; }
+  .tot { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 6px; font-size: 13px; }
+  .gap { height: 6px; }
+  h2 { font-size: 14px; margin: 16px 0 4px; }
+  ul { margin: 0; padding-left: 20px; }
+  [hidden] { display: none !important; }
+  @media print {
+    /* Three cards to a page. Each card is a fixed 85mm so three fit on A4, Letter and long paper. */
+    body { background: #fff; font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    header, .noprint { display: none !important; }
+    main { padding: 0; max-width: none; }
+    .wrap { overflow: visible; }
+    tr { break-inside: avoid; }
+    /* Dark text on a light band: the hole numbers stay readable even when the printer drops backgrounds. */
+    th { background: #dfe7e2 !important; color: #000 !important; font-weight: 800; border-color: #000; }
+    #sheet th, #sheet td { padding: 2px 2px; }
+    .card { height: 85mm; margin: 0 0 2mm; padding: 2.5mm 4mm; border: 1px solid #000; border-radius: 0; overflow: hidden; break-inside: avoid; font-size: 10px; }
+    .card.done { border-width: 1px; border-color: #000; }
+    .card.brk { break-after: page; }
+    .card .logo { top: 2.5mm; right: 4mm; width: 25mm; }
+    #sheet .logo { width: 30mm; }
+    .card .name { font-size: 14px; padding: 0; margin: 0; width: 100%; }
+    .meta { gap: 1px 10px; margin: 0 0 3px; font-size: 10px; }
+    .meta input[type=text], .meta select { border: 0; padding: 0; width: auto; max-width: 6em; field-sizing: content; appearance: none; font-weight: 700; color: #000; }
+    .card th, .card td { padding: 1px 2px; font-size: 12px; border-color: #555; }
+    .card th { font-size: 14px; }
+    .card table { line-height: 1.15; }
+    .tot, .meta { line-height: 1.2; }
+    td.in input { font-size: 14px; padding: 1px 0; }
+    .card .gap { height: 3px; }
+    .tot { margin-top: 3px; font-size: 11px; gap: 2px 14px; }
+    td.e { background: transparent; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <img class="logo" id="logo" alt="TeeLine Golf" hidden>
+  <h1 id="title"></h1>
+  <p class="sub">Type over any score. Totals and points update as you type and save in this browser. Use <b>X</b> for a red X, leave a cell empty when nothing was written.</p>
+  <div class="bar">
+    <button id="tabCards" class="on">Player cards</button>
+    <button id="tabSheet">Scoresheet</button>
+    <input id="q" placeholder="Find a player">
+    <label style="display:inline-flex;gap:5px;align-items:center">Handicap used
+      <select id="mode" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px">
+        <option value="written">As written on the card</option>
+        <option value="whs">Converted by tee rating and slope</option>
+      </select></label>
+    <button id="add">Add card</button>
+    <button id="print" class="primary">Print this view</button>
+    <button id="pdf">Save as PDF</button>
+    <button id="exp">Export JSON</button>
+    <button id="imp">Import JSON</button>
+    <button id="reset" class="danger">Reset to first reading</button>
+    <span id="saved" role="status" aria-live="polite">Nothing saved yet</span>
+    <span id="stat" style="margin-left:auto;color:#4d5c54"></span>
+  </div>
+  <div id="msg" role="status" aria-live="polite"></div>
+</header>
+<main>
+  <p class="legend noprint"><b>Draft, not an official result.</b> <b style="color:#b42318">X</b> = red X on the card, counted as 0 points. <i class="chip"></i> doubtful first reading · <i class="chip e"></i> changed from the first reading. Points are net Stableford: the handicap gives strokes on the holes in the card's HANDICAP row order. A card with no handicap shows gross points and is not ranked.</p>
+  <div id="cards"></div>
+  <div id="sheet" hidden></div>
+</main>
+<input type="file" id="file" accept="application/json" hidden>
+<script>
+const SRC = {"event":"24th Bamboo Tee","label":"Day 1 AM","slug":"day1am-r5","par":[4,4,4,5,3,4,4,4,4,3,4,4,3,5,4,3,4,4],"si":[5,3,7,9,17,15,11,1,13,14,6,12,16,2,4,18,8,10],"tees":{"B":{"rating":69.6,"slope":130},"W":{"rating":67.9,"slope":127},"L":{"rating":72.1,"slope":126}},"cards":[],"skipped":[],"edits":{},"mode":"written","field":[],"logo":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAuMCAwLjAgNjYyLjkgMTc3LjgiIHJvbGU9ImltZyIgYXJpYS1sYWJlbGxlZGJ5PSJ0aXRsZSI+DQogIDx0aXRsZSBpZD0idGl0bGUiPlRlZUxpbmUgR29sZjwvdGl0bGU+DQogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xOC4wOCAtMjM3LjA1KSI+DQogICAgPHBhdGggZmlsbD0iIzA3M0QyRSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNzguMDAgMzAwLjAwTDc4LjAwIDI1MS4wMEw0OC42MCAyNTEuMDBMMTkuMjAgMjUxLjAwTDE4LjQ5IDI0NC45MUMxOC4wOCAyNDEuNDAgMTguMTggMjM4LjQyIDE4LjcyIDIzNy44OEMxOS4zMCAyMzcuMzAgNDUuMzEgMjM3LjA1IDg1LjU4IDIzNy4yMkwxNTEuNTAgMjM3LjUwTDE1MS44MCAyNDQuMjRMMTUyLjA5IDI1MC45N0wxMjIuMzAgMjUxLjI0TDkyLjUwIDI1MS41MEw5Mi4yNCAzMDAuMjVMOTEuOTggMzQ5LjAwTDg0Ljk5IDM0OS4wMEw3OC4wMCAzNDkuMDBMNzguMDAgMzAwLjAwWk0xNjAuNjQgMzQ3LjQwQzE1My43OSAzNDUuMjUgMTQ2LjY1IDMzNy45NCAxNDQuNTggMzMwLjk0QzE0Mi4yOCAzMjMuMjIgMTQyLjM0IDI5My4yOCAxNDQuNjcgMjg2LjQ2QzE0Ny4wMiAyNzkuNTYgMTU0LjE4IDI3Mi42MiAxNjEuMDYgMjcwLjU4QzE2OC40OCAyNjguMzcgMjExLjI3IDI2OC4yOSAyMTguNTcgMjcwLjQ3QzIyNS4yNSAyNzIuNDcgMjMwLjMyIDI3Ni45MiAyMzMuNjUgMjgzLjcxQzIzNi4xMSAyODguNzUgMjM2LjQ3IDI5MC43NSAyMzYuODMgMzAxLjUzTDIzNy4yMyAzMTMuNjdMMjEyLjM3IDMxNC4zM0MxOTguNjkgMzE0LjcwIDE4MC42NCAzMTUuMDAgMTcyLjI1IDMxNS4wMEwxNTcuMDAgMzE1LjAwTDE1Ny4wMiAzMTkuMjVDMTU3LjA1IDMyNS4yNSAxNjAuMTQgMzMxLjQ5IDE2NC4xNyAzMzMuNjhDMTY3LjExIDMzNS4yOSAxNzAuMTYgMzM1LjUwIDE5MC41MCAzMzUuNTBDMjEyLjYxIDMzNS41MCAyMTMuNjQgMzM1LjQxIDIxNy4xMiAzMzMuMjVDMjE5Ljk5IDMzMS40NyAyMjIuMjEgMzMxLjAwIDIyNy44NyAzMzEuMDBDMjM2LjI2IDMzMS4wMCAyMzYuNTIgMzMxLjUyIDIzMS43NSAzMzguNjBDMjI5LjU3IDM0MS44MyAyMjYuODcgMzQ0LjI1IDIyMy41MyAzNDUuOTZDMjE4LjYxIDM0OC40NyAyMTguMjggMzQ4LjUwIDE5Mi4wMyAzNDguNzFDMTcwLjYyIDM0OC44OCAxNjQuNTYgMzQ4LjYzIDE2MC42NCAzNDcuNDBaTTI3Mi44OCAzNDcuNjJDMjU3Ljk2IDM0Mi4yOSAyNTMuMTkgMzMxLjA4IDI1NC4yNyAzMDMuODdDMjU0Ljg4IDI4OC4zMyAyNTYuNDkgMjgzLjE4IDI2Mi43NiAyNzYuNzRDMjY5LjUwIDI2OS44MiAyNzMuNjEgMjY5LjAwIDMwMS41MCAyNjkuMDBDMzMwLjEwIDI2OS4wMCAzMzMuNzkgMjY5Ljc5IDM0MC44NCAyNzcuNDRDMzQ2LjI4IDI4My4zNCAzNDguMDAgMjg5LjU0IDM0OC4wMCAzMDMuMThMMzQ4LjAwIDMxNC4wMEwzMzMuMjUgMzE0LjE0QzMyNS4xNCAzMTQuMjIgMzA3LjI1IDMxNC41NSAyOTMuNTAgMzE0Ljg5TDI2OC41MCAzMTUuNTBMMjY4Ljc2IDMyMC40MkMyNjkuMDggMzI2LjQ4IDI3MS40OCAzMzAuNzkgMjc2LjA0IDMzMy40NkMyNzkuMjQgMzM1LjM1IDI4MS4xNyAzMzUuNTAgMzAyLjAwIDMzNS41MEMzMjMuNTQgMzM1LjUwIDMyNC42NiAzMzUuNDAgMzI4LjMxIDMzMy4yNUMzMzMuMzUgMzMwLjI3IDM0Ni4wMCAzMjkuOTEgMzQ2LjAwIDMzMi43NUMzNDUuOTkgMzM3LjYwIDMzOC43MCAzNDQuNzggMzMxLjA2IDM0Ny40OEMzMjUuMzAgMzQ5LjUxIDI3OC40OSAzNDkuNjIgMjcyLjg4IDM0Ny42MlpNMzgzLjUwIDM0Ny4xMUMzNzguOTIgMzQ1LjAwIDM3NS41OSAzNDEuNjkgMzc0LjEyIDMzNy44M0MzNzMuNTMgMzM2LjI2IDM3Mi44MyAzMTUuMzQgMzcyLjQ0IDI4Ny4wOEwzNzEuNzYgMjM5LjAwTDM3OC44OCAyMzkuMDBMMzg2LjAwIDIzOS4wMEwzODYuMDAgMjg0LjU4TDM4Ni4wMCAzMzAuMTVMMzg4LjkyIDMzMy4wOEwzOTEuODUgMzM2LjAwTDQyMC45MiAzMzYuMDBMNDUwLjAwIDMzNi4wMEw0NTAuMDAgMzQyLjUwTDQ1MC4wMCAzNDkuMDBMNDE4Ljc1IDM0OC45OEMzOTAuNTEgMzQ4Ljk2IDM4Ny4xMiAzNDguNzggMzgzLjUwIDM0Ny4xMVpNNDY3LjAwIDMwOS41MEw0NjcuMDAgMjcwLjAwTDQ3My4wMCAyNzAuMDBMNDc5LjAwIDI3MC4wMEw0NzkuMDAgMzA5LjUwTDQ3OS4wMCAzNDkuMDBMNDczLjAwIDM0OS4wMEw0NjcuMDAgMzQ5LjAwTDQ2Ny4wMCAzMDkuNTBaTTQ5OC4wMCAzMjEuMTRDNDk4LjAwIDMwNS44MSA0OTguNDYgMjkwLjg1IDQ5OS4wMiAyODcuOTBDNTAwLjMwIDI4MS4xNSA1MDQuMDcgMjc2LjI3IDUxMC41NSAyNzMuMDBDNTE1LjIyIDI3MC42NCA1MTYuNTcgMjcwLjQ4IDUzNC4zMSAyNzAuMTdDNTUwLjk3IDI2OS44OCA1NTMuODkgMjcwLjA4IDU1OS44MyAyNzEuODhDNTY4LjI3IDI3NC40NCA1NzMuOTIgMjc5LjE0IDU3Ny4wOCAyODYuMjFDNTc5LjM2IDI5MS4zMCA1NzkuNDYgMjkyLjU5IDU3OS44MiAzMjAuMjVMNTgwLjE4IDM0OS4wMEw1NzQuMjIgMzQ5LjAwTDU2OC4yNSAzNDkuMDBMNTY3LjgxIDMyMi4yNUM1NjcuMzMgMjkzLjU0IDU2Ny4xMSAyOTIuMjIgNTYxLjc2IDI4Ny4yM0M1NTcuOTkgMjgzLjcxIDU1My43OCAyODMuMDAgNTM2LjcyIDI4My4wMEM1MTguMjUgMjgzLjAwIDUxNC43NyAyODMuOTIgNTEyLjQ2IDI4OS40M0M1MTEuMzAgMjkyLjIzIDUxMS4wMCAyOTguNjIgNTExLjAwIDMyMC45N0w1MTEuMDAgMzQ5LjAwTDUwNC41MCAzNDkuMDBMNDk4LjAwIDM0OS4wMEw0OTguMDAgMzIxLjE0Wk02MTMuMzkgMzQ3LjQyQzYwNy4zNiAzNDUuMjMgNjAxLjYyIDMzOS44NCA1OTguODkgMzMzLjc5QzU5Ni42NCAzMjguODEgNTk2LjUwIDMyNy40MCA1OTYuNTAgMzA5LjUwQzU5Ni41MCAyOTAuNjIgNTk2LjUyIDI5MC40NiA1OTkuMzYgMjg0LjY4QzYwMi43MiAyNzcuODQgNjA3Ljg0IDI3My42OCA2MTUuNzUgMjcxLjM5QzYyMC4wMyAyNzAuMTQgNjI1LjIwIDI2OS44OSA2NDEuMzEgMjcwLjE2TDY2MS41MCAyNzAuNTBMNjY3LjAwIDI3My42MEM2NzYuOTUgMjc5LjIyIDY4MC45NyAyODguMTIgNjgwLjk5IDMwNC42MEw2ODEuMDAgMzEzLjY5TDY2OC44NCAzMTQuMzVDNjYyLjE2IDMxNC43MSA2NDguOTkgMzE1LjAwIDYzOS41OSAzMTUuMDFDNjMwLjE5IDMxNS4wMSA2MTkuNDYgMzE1LjMwIDYxNS43NSAzMTUuNjVMNjA5LjAwIDMxNi4yOUw2MDkuMDAgMzIwLjM5QzYwOS4wMCAzMjUuNzkgNjExLjY3IDMzMC45MSA2MTUuOTggMzMzLjc4QzYxOS4zOCAzMzYuMDYgNjE5LjkxIDMzNi4xMCA2NDAuMTUgMzM1LjgwQzY2MC4wMiAzMzUuNTEgNjYwLjk0IDMzNS40MSA2NjMuMjQgMzMzLjI1QzY2NS4yMyAzMzEuMzggNjY2Ljc2IDMzMS4wMCA2NzIuMzEgMzMxLjAwQzY3Ny42OSAzMzEuMDAgNjc5LjAwIDMzMS4zMCA2NzkuMDAgMzMyLjU1QzY3OS4wMCAzMzYuNjkgNjczLjQ1IDM0My4yMCA2NjcuMDAgMzQ2LjY0QzY2My45MSAzNDguMjggNjYwLjc4IDM0OC41MiA2NDAuNTAgMzQ4LjcwQzYyMi4yMSAzNDguODcgNjE2LjY2IDM0OC42MCA2MTMuMzkgMzQ3LjQyWk02NjguMDAgMjk3Ljc1QzY2Ny45OSAyOTIuODUgNjY1LjM3IDI4Ny45NCA2NjEuMzQgMjg1LjMwQzY1OC45MiAyODMuNzIgNjU2LjE3IDI4My41MCA2MzguMzcgMjgzLjUwQzYxOS40OSAyODMuNTAgNjE3Ljk2IDI4My42NCA2MTUuMzIgMjg1LjU3QzYxMS42NCAyODguMjcgNjA5LjAwIDI5My41NiA2MDkuMDAgMjk4LjI1TDYwOS4wMCAzMDIuMDBMNjM4LjUwIDMwMi4wMEw2NjguMDAgMzAyLjAwTDY2OC4wMCAyOTcuNzVaTTIyMi45OCAyOTcuNzVDMjIyLjk0IDI5Mi42NiAyMTkuNjAgMjg2LjM3IDIxNS44MyAyODQuMzJDMjEyLjk3IDI4Mi43NiAyMDkuNTAgMjgyLjQ1IDE5MS4zMCAyODIuMThDMTcxLjk1IDI4MS44OSAxNjkuNzIgMjgyLjAzIDE2NS42NCAyODMuODRDMTYwLjE0IDI4Ni4yNyAxNTcuODQgMjg5LjYxIDE1Ny4yMiAyOTYuMDZMMTU2Ljc1IDMwMS4wMEwxODkuODcgMzAxLjAwTDIyMy4wMCAzMDEuMDBMMjIyLjk4IDI5Ny43NVpNMzM0LjAwIDI5Ny4yNUMzMzQuMDAgMjkyLjU2IDMzMS4zNiAyODcuMjggMzI3LjY4IDI4NC41N0MzMjUuMDggMjgyLjY2IDMyMy4yMyAyODIuNDcgMzA0LjI0IDI4Mi4xN0MyODEuNTQgMjgxLjgyIDI3Ni43NiAyODIuNTIgMjcyLjY4IDI4Ni44NkMyNzAuMzEgMjg5LjM3IDI2OC4wMiAyOTUuNDUgMjY4LjAxIDI5OS4yNUMyNjguMDAgMzAwLjg4IDI3MC4yNCAzMDEuMDAgMzAxLjAwIDMwMS4wMEwzMzQuMDAgMzAxLjAwTDMzNC4wMCAyOTcuMjVaTTQ2Ny42NSAyNTYuMTdDNDY1LjUyIDI1My44MSA0NjUuNDcgMjQ2LjY3IDQ2Ny41NyAyNDQuNTdDNDY5LjgxIDI0Mi4zNCA0NzUuNTcgMjQyLjU3IDQ3OC4wMCAyNDUuMDBDNDgwLjQxIDI0Ny40MSA0ODAuNjMgMjUyLjY2IDQ3OC40NCAyNTUuNzhDNDc2LjQ0IDI1OC42NCA0NzAuMTAgMjU4Ljg3IDQ2Ny42NSAyNTYuMTdaIi8+DQoNCiAgICA8cGF0aCBmaWxsPSIjQjg5NTUwIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zMjguNDcgNDE0LjQxQzMyNy45NCA0MTQuMjcgMzI1LjgzIDQxMy44OCAzMjMuNzggNDEzLjU0QzMxNy4wNiA0MTIuNDIgMzEwLjA3IDQwNC4wMSAzMTAuMDMgMzk3LjAwQzMwOS45MyAzODEuNTEgMzI2LjM4IDM3Mi42MiAzNDAuMjEgMzgwLjY5QzM1MS42MyAzODcuMzYgMzUxLjMxIDQwNS42MiAzMzkuNjYgNDExLjY5QzMzNi40NyA0MTMuMzUgMzMwLjI4IDQxNC44NiAzMjguNDcgNDE0LjQxWk0yNTAuNTAgNDEyLjU4QzI0Ni43NyA0MTAuOTIgMjQyLjQ3IDQwNi40MCAyNDEuMDYgNDAyLjY4QzIzOC4wNiAzOTQuNzMgMjQxLjU3IDM4NC4yNSAyNDguNTggMzgwLjI3QzI1My45MCAzNzcuMjMgMjY0Ljk5IDM3Ny4wOSAyNjkuNzUgMzc5Ljk5QzI3My4zNCAzODIuMTggMjczLjcwIDM4My4xNyAyNzEuNTcgMzg0Ljk0QzI3MC40NiAzODUuODYgMjY5LjQ4IDM4NS43OCAyNjcuMTIgMzg0LjU2QzI2NS40NiAzODMuNzAgMjYxLjgyIDM4My4wMCAyNTkuMDMgMzgzLjAwQzI1NC43MCAzODMuMDAgMjUzLjQ1IDM4My40OCAyNTAuMzkgMzg2LjI4QzI0MS40MCAzOTQuNTIgMjQ3LjAyIDQwOS4wMCAyNTkuMjAgNDA5LjAwQzI2Ni43NiA0MDkuMDAgMjY4LjAwIDQwNy45NCAyNjguMDAgNDAxLjQ2QzI2OC4wMCAzOTYuMDYgMjY4LjAzIDM5Ni4wMCAyNzEuMDAgMzk2LjAwTDI3NC4wMCAzOTYuMDBMMjc0LjAwIDQwMy4wNUwyNzQuMDAgNDEwLjEwTDI2OS43NSA0MTIuMDNDMjY0Ljc0IDQxNC4zMCAyNTQuOTggNDE0LjU4IDI1MC41MCA0MTIuNThaTTM4NS4wMCAzOTYuMDNMMzg1LjAwIDM3OC4wMEwzODguMDAgMzc4LjAwTDM5MS4wMCAzNzguMDBMMzkxLjAwIDM5My41MEwzOTEuMDAgNDA5LjAwTDQwMS4wNyA0MDkuMDBDNDEwLjk0IDQwOS4wMCA0MTEuMTMgNDA5LjA0IDQxMC44MiA0MTEuMjVDNDEwLjUxIDQxMy40MyA0MTAuMTEgNDEzLjUxIDM5Ny43NSA0MTMuNzhMMzg1LjAwIDQxNC4wNkwzODUuMDAgMzk2LjAzWk00NDUuNDQgNDEyLjcxQzQ0NS4xNyA0MTIuMDAgNDQ1LjA3IDQwNC4wMiA0NDUuMjIgMzk0Ljk2TDQ0NS41MCAzNzguNTBMNDU4LjI1IDM3OC4yMkw0NzEuMDAgMzc3Ljk0TDQ3MS4wMCAzODAuNDdMNDcxLjAwIDM4My4wMEw0NjAuOTUgMzgzLjAwTDQ1MC45MCAzODMuMDBMNDUxLjIwIDM4OC43NUw0NTEuNTAgMzk0LjUwTDQ2MC4yNSAzOTQuNzlDNDY4LjgwIDM5NS4wNyA0NjkuMDAgMzk1LjEzIDQ2OS4wMCAzOTcuNTRDNDY5LjAwIDM5OS45NyA0NjguOTAgNDAwLjAwIDQ2MC4wMCA0MDAuMDBMNDUxLjAwIDQwMC4wMEw0NTEuMDAgNDA3LjAwQzQ1MS4wMCA0MTMuODIgNDUwLjk0IDQxNC4wMCA0NDguNDcgNDE0LjAwQzQ0Ny4wOCA0MTQuMDAgNDQ1LjcxIDQxMy40MiA0NDUuNDQgNDEyLjcxWk0zMzYuNzMgNDA3LjM5QzM0MS44OCA0MDQuMTMgMzQzLjc3IDM5NS4zMiAzNDAuNjIgMzg5LjIzQzMzOC41MSAzODUuMTYgMzM0LjMzIDM4My4wMCAzMjguNTMgMzgzLjAwQzMyNC43MyAzODMuMDAgMzIzLjM1IDM4My41NyAzMjAuMjQgMzg2LjQyQzMxNi43MiAzODkuNjUgMzE2LjUwIDM5MC4xOSAzMTYuNTAgMzk1Ljg2QzMxNi41MCA0MDEuMTYgMzE2Ljg1IDQwMi4yMyAzMTkuNDYgNDA0Ljk2QzMyNC4yMyA0MDkuOTQgMzMxLjE3IDQxMC45MSAzMzYuNzMgNDA3LjM5Wk01MDQuMDAgMzk2LjE5QzUwNC4wMCAzOTUuMTIgNTE0LjUyIDM5NC45MSA1NjEuMDAgMzk1LjA4QzU5Mi4zNSAzOTUuMTkgNjE4LjAwIDM5NS42NiA2MTguMDAgMzk2LjEyQzYxOC4wMCAzOTYuNTkgNTkyLjM1IDM5Ny4wOSA1NjEuMDAgMzk3LjIzQzUxNC40OSAzOTcuNDUgNTA0LjAwIDM5Ny4yNiA1MDQuMDAgMzk2LjE5Wk05NC4wMCAzOTYuMDBDOTQuMDAgMzk1LjM1IDExMy41MCAzOTUuMDAgMTUwLjUwIDM5NS4wMEMxODcuNTAgMzk1LjAwIDIwNy4wMCAzOTUuMzUgMjA3LjAwIDM5Ni4wMEMyMDcuMDAgMzk2LjY1IDE4Ny41MCAzOTcuMDAgMTUwLjUwIDM5Ny4wMEMxMTMuNTAgMzk3LjAwIDk0LjAwIDM5Ni42NSA5NC4wMCAzOTYuMDBaIi8+DQogIDwvZz4NCjwvc3ZnPg0K"};
+const PAR = SRC.par, SI = SRC.si, TEES = SRC.tees;
+const KEY = "bamboo-scores-" + SRC.slug + "-v1";
+const ORIG = {};
+SRC.cards.forEach(c => { ORIG[c.id] = c; });
+const $ = id => document.getElementById(id);
+const LOGO = SRC.logo ? '<img class="logo" alt="TeeLine Golf" src="' + SRC.logo + '">' : "";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+const sum = a => a.reduce((x, y) => x + y, 0);
+
+function fromSrc(c) {
+  return { id: c.id, name: c.name, group: String(c.group ?? ""), tee: c.tee, hdcp: String(c.hdcp ?? ""), written: String(c.written ?? ""),
+    verified: !!c.verified, cls: c.cls || "", note: c.note || "", source: c.source || "", holes: c.holes.map(h => h.v === "" ? "" : String(h.v)) };
+}
+function fresh() { return { cards: SRC.cards.map(fromSrc) }; }
+// Corrections that were already typed in before this file was rebuilt. They are the starting point
+// when this browser has nothing saved; "Reset to first reading" still goes back to the transcription.
+function seeded() {
+  const s = fresh(), e = SRC.edits || {};
+  if (SRC.mode) s.mode = SRC.mode;
+  Object.keys(e).forEach(id => {
+    const c = s.cards.find(x => x.id === id), d = e[id];
+    if (!c) { if (d && Array.isArray(d.holes)) s.cards.push(d); return; }
+    ["name", "group", "tee", "hdcp", "written", "verified", "cls"].forEach(f => { if (f in d) c[f] = d[f]; });
+    Object.keys(d.holes || {}).forEach(n => { c.holes[+n - 1] = d.holes[n]; });
+  });
+  return s;
+}
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+  if (!s || !Array.isArray(s.cards)) return seeded();
+  loadedFromBrowser = true;
+  const have = new Set(s.cards.map(c => c.id));
+  SRC.cards.forEach(c => { if (!have.has(c.id)) s.cards.push(fromSrc(c)); });
+  return s;
+}
+let loadedFromBrowser = false, saveFailed = false;
+let state = load();
+let view = "cards";
+const clock = iso => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+function showSaved(ok, text) {
+  const el = $("saved"); if (!el) return;
+  el.className = ok === null ? "" : ok ? "ok" : "bad"; el.textContent = text;
+}
+// Every change is written to this browser and read back, so "Saved" means it is really there.
+function save() {
+  state.savedAt = new Date().toISOString();
+  try {
+    const text = JSON.stringify(state);
+    localStorage.setItem(KEY, text);
+    if (localStorage.getItem(KEY) !== text) throw new Error("read back differs");
+    saveFailed = false;
+    showSaved(true, "Saved in this browser at " + clock(state.savedAt));
+  } catch (e) {
+    saveFailed = true;
+    showSaved(false, "NOT SAVED. Press Export JSON now");
+    say("Could not save in this browser. Press Export JSON now to keep your edits.", true);
+  }
+}
+// Closing or reloading the page while it cannot save would lose the work, so ask first.
+window.addEventListener("beforeunload", e => { if (saveFailed) { e.preventDefault(); e.returnValue = ""; } });
+function say(t, err) { $("msg").textContent = t; $("msg").className = err ? "err" : ""; }
+
+// Class is a team fact: both partners take the class of the pair's average index. It is read from
+// the field list by name; the desk can set it on the card when the name is not on the list.
+const nameKey = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 ,]/g, "").split(/[ ,]+/).filter(Boolean).sort().join(" ");
+const FIELD = {};
+(SRC.field || []).forEach(p => { FIELD[nameKey(p.name)] = p; });
+const fieldFor = c => FIELD[nameKey(c.name)] || null;
+const classOf = c => c.cls || (fieldFor(c) ? fieldFor(c).cls : "");
+function classNote(c) {
+  const f = fieldFor(c);
+  if (!f) return c.cls ? "set by the desk, name not on the field list" : "name not on the field list";
+  if (!f.cls) return (c.cls ? "set by the desk; " : "") + `partner ${f.partner}, an index is missing on the field list`;
+  const base = `team hcp ${f.team} with ${f.partner}`;
+  return c.cls && c.cls !== f.cls ? `set by the desk; field list says ${f.cls} (${base})` : base;
+}
+const isNum = v => /^[0-9]{1,2}$/.test(v) && +v > 0;
+const valid = v => v === "" || v === "X" || isNum(v);
+// Playing handicap. "written": the number in the card's HDCP box with the decimal dropped. "whs": that number
+// treated as a Handicap Index and converted with the tee's rating and slope (100% allowance).
+function playingHcp(c) {
+  const raw = String(c.hdcp).trim();
+  if (raw === "" || !/^[0-9]+(.[0-9]+)?$/.test(raw)) return null;
+  if (state.mode !== "whs") return Math.floor(+raw); // the desk drops the decimal: 16.7 plays off 16
+  const tee = TEES[c.tee]; if (!tee) return null;
+  return Math.round(+raw * tee.slope / 113 + (tee.rating - sum(PAR)));
+}
+// Strokes received on a hole: one per hole for every full 18, then one more on the hardest holes.
+function strokesOn(ph, i) {
+  const base = Math.trunc(ph / 18), rem = ph - base * 18;
+  return base + (rem > 0 && SI[i] <= rem ? 1 : 0);
+}
+function calc(c) {
+  const ph = playingHcp(c);
+  const net = ph === null ? null : c.holes.map((v, i) => isNum(v) ? Math.max(0, 2 + PAR[i] - (+v - strokesOn(ph, i))) : 0);
+  const r = calcGross(c);
+  return { ...r, ph, net, netOut: net && sum(net.slice(0, 9)), netIn: net && sum(net.slice(9)), netPoints: net && sum(net) };
+}
+function calcGross(c) {
+  const pts = c.holes.map((v, i) => isNum(v) ? Math.max(0, 2 + PAR[i] - +v) : 0);
+  const str = c.holes.map(v => isNum(v) ? +v : 0);
+  return { pts, out: sum(str.slice(0, 9)), inn: sum(str.slice(9)), total: sum(str),
+    outPts: sum(pts.slice(0, 9)), inPts: sum(pts.slice(9)), points: sum(pts),
+    played: c.holes.filter(isNum).length, bad: c.holes.filter(v => !valid(v)).length };
+}
+function cellClass(c, i) {
+  const o = ORIG[c.id], v = c.holes[i];
+  const first = o ? (o.holes[i].v === "" ? "" : String(o.holes[i].v)) : v;
+  const cls = ["in"];
+  if (v === "X") cls.push("x");
+  if (!valid(v)) cls.push("bad");
+  if (v !== first) cls.push("e"); else if (o && o.holes[i].doubt) cls.push("d");
+  return cls.join(" ");
+}
+
+function half(c, from, tag) {
+  const idx = Array.from({ length: 9 }, (_, i) => from + i);
+  return `<table><tr><th class="l">Hole</th>${idx.map(i => `<th>${i + 1}</th>`).join("")}<th class="s">${tag}</th></tr>
+<tr class="par"><td class="l">Par</td>${idx.map(i => `<td>${PAR[i]}</td>`).join("")}<td class="s">${sum(idx.map(i => PAR[i]))}</td></tr>
+<tr><td class="l">Hcp row</td>${idx.map(i => `<td>${SI[i]}</td>`).join("")}<td class="s"></td></tr>
+<tr><td class="l">Score</td>${idx.map(i => `<td class="${cellClass(c, i)}"><input data-h="${i}" inputmode="numeric" maxlength="2" value="${esc(c.holes[i])}" aria-label="Hole ${i + 1} score"></td>`).join("")}<td class="s" data-k="${tag}"></td></tr>
+<tr><td class="l plabel">Points</td>${idx.map(i => `<td data-p="${i}"></td>`).join("")}<td class="s" data-k="${tag}p"></td></tr></table>`;
+}
+function renderCards() {
+  const sorted = [...state.cards].sort((a, b) => a.name.localeCompare(b.name));
+  $("cards").innerHTML = sorted.map(c => `
+<section class="card${c.verified ? " done" : ""}" data-id="${esc(c.id)}">${LOGO}
+  <input class="name" data-f="name" value="${esc(c.name)}" aria-label="Player name" placeholder="Player name (LAST, FIRST)">
+  <div class="meta"><span>${esc(SRC.label)}</span>
+    <label class="chk">Class <select data-f="cls">${["", "A", "B", "C", "D"].map(k => `<option value="${k}"${classOf(c) === k ? " selected" : ""}>${k || "–"}</option>`).join("")}</select></label>
+    <span data-k="clsnote" style="font-size:11px"></span>
+    <label>Group <input type="text" data-f="group" value="${esc(c.group)}"></label>
+    <label>Tee <select data-f="tee">${["", "B", "W", "L"].map(t => `<option value="${t}"${c.tee === t ? " selected" : ""}>${t || "–"}</option>`).join("")}</select></label>
+    <label>HDCP on card <input type="text" data-f="hdcp" value="${esc(c.hdcp)}"></label>
+    <label>Total on card <input type="text" data-f="written" value="${esc(c.written)}"></label>
+    <label class="chk"><input type="checkbox" data-f="verified"${c.verified ? " checked" : ""}> Checked against the paper card</label>${c.manual ? `<span class="no">Added by hand</span><button type="button" class="danger noprint" data-del style="padding:2px 8px">Remove card</button>` : ""}</div>
+  ${c.note ? `<div class="note">Note: ${esc(c.note)}</div>` : ""}
+  ${half(c, 0, "OUT")}<div class="gap"></div>${half(c, 9, "IN")}
+  <div class="tot" data-k="tot"></div>
+</section>`).join("");
+  document.querySelectorAll("#cards .card").forEach(el => paint(el, byId(el.dataset.id)));
+  filter();
+}
+const byId = id => state.cards.find(c => c.id === id);
+function paint(el, c) {
+  const r = calc(c);
+  el.querySelector('[data-k="clsnote"]').textContent = classNote(c);
+  const sel = el.querySelector('[data-f="cls"]'); if (document.activeElement !== sel) sel.value = classOf(c);
+  const shown = r.net || r.pts;
+  shown.forEach((p, i) => { el.querySelector(`[data-p="${i}"]`).textContent = isNum(c.holes[i]) || c.holes[i] === "X" ? p : ""; });
+  el.querySelectorAll(".plabel").forEach(td => { td.textContent = r.net ? "Net pts" : "Gross pts"; });
+  el.querySelector('[data-k="OUT"]').textContent = r.out || "–";
+  el.querySelector('[data-k="IN"]').textContent = r.inn || "–";
+  el.querySelector('[data-k="OUTp"]').textContent = r.net ? r.netOut : r.outPts;
+  el.querySelector('[data-k="INp"]').textContent = r.net ? r.netIn : r.inPts;
+  const w = c.written.trim();
+  const cmp = w === "" ? "" : (+w === r.total ? `<span class="ok">matches the total on the card</span>` : `<span class="no">card says ${esc(w)}, the numbers add to ${r.total}</span>`);
+  el.querySelector('[data-k="tot"]').innerHTML =
+    `<span>Strokes <b>${r.played === 18 ? r.total : r.total + " over " + r.played + " holes"}</b></span>` +
+    `<span>Holes with a score <b>${r.played}/18</b></span>` +
+    (r.net ? `<span>Playing handicap <b>${r.ph}</b></span><span>Net Stableford <b style="font-size:15px">${r.netPoints}</b></span>` : `<span class="no">No handicap${state.mode === "whs" && String(c.hdcp).trim() ? " or tee" : ""}: net not calculated</span>`) +
+    `<span>Gross Stableford <b>${r.points}</b></span>` +
+    (r.bad ? `<span class="no">${r.bad} cell(s) are not a number or X</span>` : "") + cmp;
+}
+
+function renderSheet() {
+  const rows = state.cards.map(c => ({ c, r: calc(c) }))
+    .sort((a, b) => (b.r.net ? 1 : 0) - (a.r.net ? 1 : 0) || (b.r.netPoints ?? 0) - (a.r.netPoints ?? 0) || b.r.points - a.r.points || b.r.played - a.r.played || a.c.name.localeCompare(b.c.name));
+  const checked = rows.filter(x => x.c.verified).length;
+  const nine = from => PAR.slice(from, from + 9);
+  const head = `<tr><th>#</th><th class="l">Player</th><th>Class</th><th>Grp</th><th>Tee</th><th>HDCP</th>` +
+    nine(0).map((_, i) => `<th>${i + 1}</th>`).join("") + `<th class="s">OUT</th>` +
+    nine(9).map((_, i) => `<th>${i + 10}</th>`).join("") + `<th class="s">IN</th>` +
+    `<th class="s">Strokes</th><th>Holes</th><th>PH</th><th>Gross</th><th class="s">Net</th><th>Checked</th></tr>` +
+    `<tr class="par"><td></td><td class="l">Par</td><td></td><td></td><td></td><td></td>` +
+    nine(0).map(p => `<td>${p}</td>`).join("") + `<td class="s">${sum(nine(0))}</td>` +
+    nine(9).map(p => `<td>${p}</td>`).join("") + `<td class="s">${sum(nine(9))}</td>` +
+    `<td class="s">${sum(PAR)}</td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  const body = rows.map(({ c, r }, n) => {
+    const cell = i => `<td class="${cellClass(c, i).replace("in", "").replace(" e", "").trim()}">${esc(c.holes[i])}</td>`;
+    const idx = from => Array.from({ length: 9 }, (_, i) => from + i);
+    return `<tr><td>${r.net ? n + 1 : "–"}</td><td class="l">${esc(c.name) || "(no name)"}</td><td>${classOf(c) || "–"}</td><td>${esc(c.group)}</td><td>${c.tee || "–"}</td><td>${esc(c.hdcp) || "–"}</td>` +
+      idx(0).map(cell).join("") + `<td class="s">${r.out || "–"}</td>` + idx(9).map(cell).join("") + `<td class="s">${r.inn || "–"}</td>` +
+      `<td class="s">${r.played === 18 ? r.total : `<span class="inc">${r.total}*</span>`}</td><td>${r.played}/18</td><td>${r.net ? r.ph : "–"}</td><td>${r.points}</td><td class="s">${r.net ? r.netPoints : "–"}</td>` +
+      `<td class="${c.verified ? "ok" : "no"}">${c.verified ? "yes" : "no"}</td></tr>`;
+  }).join("");
+  const skipped = (SRC.skipped || []).map(s => `<li><b>${esc(s.playerName || "No name")}</b>${s.groupNumber ? ` (group ${s.groupNumber})` : ""}: ${esc(s.reason)}</li>`).join("");
+  $("sheet").innerHTML = `${LOGO}<h2 style="margin-top:0;font-size:16px">${esc(SRC.event)} · ${esc(SRC.label)} · scoresheet (draft)</h2>
+<div class="warn"><b>Draft. Not an official result.</b><ul>
+<li>${checked} of ${rows.length} cards are ticked as checked against the paper. Shaded cells are doubtful first readings that were not changed.</li>
+<li><b>X</b> is a red X on the card (no number). It is counted as 0 points. That meaning is not confirmed by the organizer.</li>
+<li><b>Net</b> is net Stableford: ${state.mode === "whs" ? "the HDCP on the card is treated as an index and converted with the tee rating and slope" : "the HDCP written on the card is used as the playing handicap (the decimal is dropped, so 16.7 plays off 16)"}, with strokes given in the order of the card's HANDICAP row. <b>PH</b> is the playing handicap used. A card with no handicap is listed last and not ranked.</li>
+<li><b>Class</b> is the team's class from the field list: both partners' indexes, each capped at 30, averaged and rounded (A 0 to 12, B 13 to 18, C 19 to 23, D 24 and above). It does not change any score.</li>
+<li>Strokes marked * add only the holes that have a number, so they are not a gross total. Mulligan and Joker stamps are not applied.</li>
+</ul></div>
+<p class="sub">Ordered by net Stableford points · printed ${esc(new Date().toLocaleString())}</p>
+<div class="wrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>
+${skipped ? `<h2>Cards that could not be read (${SRC.skipped.length})</h2><ul>${skipped}</ul>` : ""}`;
+}
+
+function stats() {
+  let edited = 0;
+  state.cards.forEach(c => { const o = ORIG[c.id]; if (o) c.holes.forEach((v, i) => { if (v !== (o.holes[i].v === "" ? "" : String(o.holes[i].v))) edited++; }); });
+  $("stat").textContent = `${state.cards.length} cards · ${state.cards.filter(c => c.manual).length} added by hand · ${state.cards.filter(c => c.verified).length} checked · ${edited} scores changed`;
+}
+function filter() {
+  const q = $("q").value.trim().toLowerCase();
+  let n = 0;
+  document.querySelectorAll("#cards .card").forEach(el => {
+    const show = el.querySelector(".name").value.toLowerCase().includes(q);
+    el.hidden = !show; el.classList.remove("brk");
+    if (show && ++n % 3 === 0) el.classList.add("brk");
+  });
+}
+function show(v) {
+  view = v;
+  $("cards").hidden = v !== "cards"; $("sheet").hidden = v !== "sheet"; $("q").hidden = v !== "cards";
+  $("tabCards").classList.toggle("on", v === "cards"); $("tabSheet").classList.toggle("on", v === "sheet");
+  $("pg").textContent = `@page { size: ${v === "sheet" ? "landscape" : "portrait"}; margin: 8mm; }`;
+  if (v === "sheet") renderSheet();
+}
+
+$("cards").addEventListener("input", e => {
+  const el = e.target.closest(".card"); if (!el) return;
+  const c = byId(el.dataset.id), t = e.target;
+  if (t.dataset.h !== undefined) {
+    t.value = t.value.toUpperCase().replace(/[^0-9X]/g, "");
+    const i = +t.dataset.h; c.holes[i] = t.value;
+    t.parentElement.className = cellClass(c, i);
+  } else if (t.dataset.f) {
+    c[t.dataset.f] = t.type === "checkbox" ? t.checked : t.value;
+    if (t.dataset.f === "cls") { const f = fieldFor(c); if (f && f.cls === c.cls) c.cls = ""; }
+    if (t.dataset.f === "verified") el.classList.toggle("done", c.verified);
+  }
+  paint(el, c); save(); stats();
+});
+$("cards").addEventListener("change", e => { if (e.target.dataset.f === "name") filter(); });
+// Enter moves to the next hole, like Tab.
+$("cards").addEventListener("keydown", e => {
+  if (e.key !== "Enter" || e.target.dataset.h === undefined) return;
+  const all = [...e.target.closest(".card").querySelectorAll("input[data-h]")];
+  const next = all[all.indexOf(e.target) + 1]; if (next) { next.focus(); next.select(); }
+});
+$("cards").addEventListener("focusin", e => { if (e.target.dataset.h !== undefined) e.target.select(); });
+$("q").addEventListener("input", filter);
+// A card that was never scanned: add a blank one and type it in from the paper.
+$("add").onclick = () => {
+  const c = { id: "manual-" + Date.now().toString(36), manual: true, name: "", group: "", tee: "", hdcp: "", written: "", cls: "", verified: false, holes: Array(18).fill("") };
+  state.cards.push(c); save(); $("q").value = ""; show("cards"); renderCards(); stats();
+  const el = [...document.querySelectorAll("#cards .card")].find(x => x.dataset.id === c.id);
+  el.scrollIntoView({ block: "center" }); el.querySelector(".name").focus();
+  say("Blank card added. Type the name, tee, HDCP and the 18 scores from the paper card.");
+};
+$("cards").addEventListener("click", e => {
+  if (!e.target.matches("[data-del]")) return;
+  const el = e.target.closest(".card"), c = byId(el.dataset.id);
+  if (!c || !c.manual) return;
+  if (!confirm(`Remove the card you added${c.name ? " for " + c.name : ""}? Its scores are deleted.`)) return;
+  state.cards.splice(state.cards.indexOf(c), 1); save(); renderCards(); stats(); say("Card removed.");
+});
+$("mode").value = state.mode === "whs" ? "whs" : "written";
+$("mode").onchange = e => { state.mode = e.target.value; save(); document.querySelectorAll("#cards .card").forEach(el => paint(el, byId(el.dataset.id))); if (view === "sheet") renderSheet(); };
+$("tabCards").onclick = () => show("cards");
+$("tabSheet").onclick = () => show("sheet");
+$("print").onclick = () => { if (view === "sheet") renderSheet(); window.print(); };
+$("exp").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ format: "bamboo-scores-edit", version: 1, slug: SRC.slug, label: SRC.label, exportedAt: new Date().toISOString(), mode: state.mode || "written", reviewBatches: state.reviewBatches || [], activeReviewBatchId: state.activeReviewBatchId || "all", cards: state.cards }, null, 2)], { type: "application/json" }));
+  a.download = SRC.slug + "-scores-edited.json"; a.click(); URL.revokeObjectURL(a.href);
+  say(`Exported ${state.cards.length} cards to your Downloads folder at ${clock(new Date().toISOString())}.`);
+};
+$("imp").onclick = () => $("file").click();
+$("file").onchange = e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  f.text().then(t => {
+    const j = JSON.parse(t);
+    if (!j || j.format !== "bamboo-scores-edit" || !Array.isArray(j.cards)) throw new Error("this is not an export from this page");
+    if (j.slug !== SRC.slug) throw new Error(`that file is for ${j.label}, this page is ${SRC.label}`);
+    const ok = j.cards.filter(c => c && c.id && Array.isArray(c.holes) && c.holes.length === 18);
+    if (!confirm(`Replace the scores on this page with the ${ok.length} cards in that file?`)) return;
+    state = { cards: ok, mode: j.mode || state.mode, reviewBatches: Array.isArray(j.reviewBatches) ? j.reviewBatches : [], activeReviewBatchId: typeof j.activeReviewBatchId === "string" ? j.activeReviewBatchId : "all" }; save(); $("mode").value = state.mode === "whs" ? "whs" : "written"; renderCards(); stats(); if (view === "sheet") renderSheet();
+    say(`Loaded ${ok.length} cards from the file.`);
+  }).catch(err => say("Could not import: " + err.message, true));
+};
+$("reset").onclick = () => {
+  if (!SRC.cards.length) { say("The first reading is not bundled in this copy. Import the JSON file to restore it.", true); return; }
+  if (!confirm("Discard every edit and tick on this page and go back to the first reading? Cards you added by hand are removed too. Export JSON first if you want a copy.")) return;
+  state = { ...fresh(), mode: state.mode }; save(); renderCards(); stats(); if (view === "sheet") renderSheet(); say("Back to the first reading.");
+};
+
+if (SRC.logo) { $("logo").src = SRC.logo; $("logo").hidden = false; }
+$("title").textContent = `${SRC.event} · ${SRC.label} · scores (editable draft)`;
+document.title = `${SRC.label} scores (editable draft)`;
+renderCards(); stats();
+if (loadedFromBrowser) showSaved(true, state.savedAt ? "Saved work loaded, last saved " + new Date(state.savedAt).toLocaleString() : "Saved work loaded from this browser");
+else showSaved(null, "Nothing saved yet. It saves when you change something");
+
+// The browser makes the PDF: the print window opens with a file name ready, and the desk picks
+// "Save as PDF" as the printer. Nothing is sent anywhere.
+$("pdf").onclick = () => {
+  if (view === "sheet") renderSheet();
+  const old = document.title, d = new Date();
+  const day = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  document.title = `${SRC.event} ${SRC.label} ${view === "sheet" ? "scoresheet" : "player cards"} ${day}`;
+  say('In the print window, set Destination (the printer) to "Save as PDF", then press Save.');
+  const back = () => { document.title = old; window.removeEventListener("afterprint", back); };
+  window.addEventListener("afterprint", back);
+  window.print();
+};
+
+function __scorecardCheck(id) {
+  const card = state.cards.find((entry) => entry.id === id);
+  if (!card) return null;
+  const field = fieldFor(card);
+  const cardClass = classOf(card) || "";
+  const cardGroup = String(card.group ?? "").trim();
+  const cardTee = String(card.tee ?? "").trim();
+  const cardHdcp = String(card.hdcp ?? "").trim();
+  const cardPh = playingHcp(card);
+  const systemClass = field ? field.cls || "" : "";
+  const systemGroup = field && field.group != null ? String(field.group) : "";
+  const systemTee = field ? field.teeCode || "" : "";
+  const systemTeeName = field ? field.tee || "" : "";
+  const systemHdcp = field && field.playingHandicap != null ? String(field.playingHandicap) : "";
+  const systemIndex = field && field.frozenIndex != null ? field.frozenIndex : null;
+  const systemDay = field && field.dayNumber != null ? field.dayNumber : null;
+  const systemPlayDate = field ? field.playDate || "" : "";
+  const systemTeeTime = field ? field.teeTime || "" : "";
+  const systemSession = field ? field.session || "" : "";
+  const systemStartHole = field && field.startHole != null ? field.startHole : null;
+  const systemWave = field ? field.wave || "" : "";
+  const systemPartner = field ? field.partner || "" : "";
+  const systemPair = field && field.team != null ? field.team : null;
+  const systemFlight = field ? field.flight || "" : "";
+  const documentSession = /am\b/i.test(SRC.label) ? "AM" : /pm\b/i.test(SRC.label) ? "PM" : "";
+  // A playing handicap of 0 beside a real index is an unset system value, not a scratch player.
+  // The difference is still shown, but "Use system" must not copy the 0 onto the card.
+  const hdcpUsable = systemHdcp !== "" && !(Number(systemHdcp) === 0 && systemIndex != null && systemIndex >= 1);
+  const classDiff = Boolean(systemClass && cardClass && systemClass !== cardClass);
+  const groupDiff = Boolean((cardGroup || systemGroup) && cardGroup !== systemGroup);
+  const teeDiff = Boolean(systemTee && cardTee !== systemTee);
+  const hdcpDiff = systemHdcp !== "" && (cardPh == null || cardPh !== Number(systemHdcp));
+  const dayDiff = Boolean(systemSession && documentSession && systemSession !== documentSession);
+  return {
+    id: card.id,
+    name: card.name,
+    matched: Boolean(field),
+    systemName: field ? field.name : "",
+    cardClass,
+    systemClass,
+    cardGroup,
+    systemGroup,
+    cardTee,
+    systemTee,
+    systemTeeName,
+    cardHdcp,
+    cardPh,
+    systemHdcp,
+    systemIndex,
+    hdcpUsable,
+    systemDay,
+    systemPlayDate,
+    systemTeeTime,
+    systemSession,
+    systemStartHole,
+    systemWave,
+    systemPartner,
+    systemPair,
+    systemFlight,
+    documentSession,
+    classDiff,
+    groupDiff,
+    teeDiff,
+    hdcpDiff,
+    dayDiff,
+    noClass: !cardClass,
+    issue: !field || !cardClass || classDiff || groupDiff || teeDiff || hdcpDiff || dayDiff,
+  };
+}
+window.__scorecard = {
+  slug: SRC.slug,
+  event: SRC.event,
+  label: SRC.label,
+  getState: () => state,
+  setState: (next) => {
+    state = next;
+    save();
+    renderCards();
+    stats();
+  },
+  setField: (entries) => {
+    for (const key of Object.keys(FIELD)) delete FIELD[key];
+    for (const entry of entries) FIELD[nameKey(entry.name)] = entry;
+    renderCards();
+    stats();
+  },
+  cardCheck: __scorecardCheck,
+  checkField: () => {
+    const checks = state.cards.map((card) => __scorecardCheck(card.id)).filter(Boolean);
+    return {
+      total: checks.length,
+      matched: checks.filter((check) => check.matched).length,
+      missing: checks.filter((check) => !check.matched).length,
+      noClass: checks.filter((check) => check.noClass).length,
+      classDiff: checks.filter((check) => check.classDiff).length,
+      groupDiff: checks.filter((check) => check.groupDiff).length,
+      teeDiff: checks.filter((check) => check.teeDiff).length,
+      hdcpDiff: checks.filter((check) => check.hdcpDiff).length,
+      dayDiff: checks.filter((check) => check.dayDiff).length,
+      issues: checks.filter((check) => check.issue),
+      checks,
+    };
+  },
+  save,
+  say,
+};
+</script>
+<script>
+(() => {
+  const db = window.__scorecard;
+  if (!db || !db.getState) return;
+  const slug = db.slug;
+  const cardsRoot = document.getElementById("cards");
+  const main = document.querySelector("main");
+  if (!cardsRoot || !main) return;
+
+  let ready = false;
+  let last = "";
+  let saving = false;
+  let fieldReady = false;
+  let checkCache = null;
+  const searchFilter = window.filter;
+  const simpleFilters = ["all", "needs", "done", "issues", "noclass", "unmatched", "groupdiff", "teediff", "hdcpdiff", "daydiff"];
+
+  const escapeHtml = (value) =>
+    String(value ?? "").replace(/[&<>"]/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+    })[character]);
+
+  const panel = document.createElement("section");
+  panel.className = "card";
+  panel.id = "review-batches";
+  panel.style.marginBottom = "12px";
+  panel.innerHTML = `
+    <h2 style="margin:0 0 2px;font-size:15px">Review batches and system check</h2>
+    <p class="legend" id="batch-summary" style="margin:0 0 8px"></p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <button type="button" id="batch-all">All cards</button>
+      <button type="button" id="batch-needs">Needs review</button>
+      <button type="button" id="batch-done">Reviewed</button>
+      <button type="button" id="batch-issues">Differences</button>
+      <button type="button" id="batch-noclass">No class</button>
+      <button type="button" id="batch-unmatched">Name not found</button>
+      <button type="button" id="batch-group">Group differs</button>
+      <button type="button" id="batch-tee">Tee differs</button>
+      <button type="button" id="batch-hdcp">HDCP differs</button>
+      <button type="button" id="batch-day">Day/tee differs</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+      <button type="button" id="batch-start">Start new review batch</button>
+      <button type="button" id="batch-add">Add cards from JSON</button>
+      <button type="button" id="batch-save">Save to database</button>
+      <button type="button" id="batch-save-download">Save and download JSON</button>
+      <input id="batch-add-file" type="file" accept=".json,application/json" hidden>
+    </div>
+    <div id="batch-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+    <p class="legend" id="handoff" style="margin:8px 0 0">Saving keeps the team copy in the private Supabase bucket. Use <b>Save and download JSON</b> and send that file to the admin for publication.</p>
+    <p class="legend" id="field-status" style="margin:8px 0 0">Supabase field: not checked yet.</p>
+    <details id="check-details" open style="margin-top:8px">
+      <summary id="check-summary" style="cursor:pointer;font-weight:600">System check: waiting for the field list.</summary>
+      <div id="check-table" style="max-height:300px;overflow:auto;margin-top:6px"></div>
+    </details>
+  `;
+  main.insertBefore(panel, cardsRoot);
+
+  const summary = panel.querySelector("#batch-summary");
+  const fieldStatus = panel.querySelector("#field-status");
+  const allButton = panel.querySelector("#batch-all");
+  const needsButton = panel.querySelector("#batch-needs");
+  const doneButton = panel.querySelector("#batch-done");
+  const issuesButton = panel.querySelector("#batch-issues");
+  const noclassButton = panel.querySelector("#batch-noclass");
+  const unmatchedButton = panel.querySelector("#batch-unmatched");
+  const groupButton = panel.querySelector("#batch-group");
+  const teeButton = panel.querySelector("#batch-tee");
+  const hdcpButton = panel.querySelector("#batch-hdcp");
+  const dayButton = panel.querySelector("#batch-day");
+  const startButton = panel.querySelector("#batch-start");
+  const addButton = panel.querySelector("#batch-add");
+  const saveButton = panel.querySelector("#batch-save");
+  const saveDownloadButton = panel.querySelector("#batch-save-download");
+  const addInput = panel.querySelector("#batch-add-file");
+  const batchList = panel.querySelector("#batch-list");
+  const checkSummary = panel.querySelector("#check-summary");
+  const checkTable = panel.querySelector("#check-table");
+
+  const current = () => db.getState();
+  const batches = () => {
+    const value = current().reviewBatches;
+    return Array.isArray(value) ? value : [];
+  };
+  const findCard = (id) => current().cards.find((card) => card.id === id);
+
+  /**
+   * The saved state is the only source of truth for the visible filter. A batch can be removed
+   * while a page is open, so an id that no longer exists falls back to "all" instead of hiding
+   * every card.
+   */
+  function activeId() {
+    const value = current().activeReviewBatchId;
+    if (simpleFilters.includes(value)) return value;
+    if (batches().some((batch) => batch.id === value)) return value;
+    return "all";
+  }
+
+  function checkData() {
+    if (!fieldReady) return null;
+    if (!checkCache) checkCache = db.checkField();
+    return checkCache;
+  }
+
+  function checkFor(card) {
+    const data = checkData();
+    return data ? data.checks.find((entry) => entry.id === card.id) || null : null;
+  }
+
+  function batchCount(batch) {
+    const cards = batch.cardIds.map(findCard).filter(Boolean);
+    return {
+      total: cards.length,
+      done: cards.filter((card) => card.verified).length,
+    };
+  }
+
+  function matches(card) {
+    const active = activeId();
+    if (active === "needs") return !card.verified;
+    if (active === "done") return !!card.verified;
+    if (active === "all") return true;
+    if (active === "issues") return Boolean(checkFor(card)?.issue);
+    if (active === "noclass") return Boolean(checkFor(card)?.noClass);
+    if (active === "unmatched") return checkFor(card) ? !checkFor(card).matched : false;
+    if (active === "groupdiff") return Boolean(checkFor(card)?.groupDiff);
+    if (active === "teediff") return Boolean(checkFor(card)?.teeDiff);
+    if (active === "hdcpdiff") return Boolean(checkFor(card)?.hdcpDiff);
+    if (active === "daydiff") return Boolean(checkFor(card)?.dayDiff);
+    const batch = batches().find((entry) => entry.id === active);
+    return Boolean(batch && batch.cardIds.includes(card.id));
+  }
+
+  function apply() {
+    checkCache = null;
+    if (typeof searchFilter === "function") searchFilter();
+    for (const element of cardsRoot.querySelectorAll(".card")) {
+      const card = current().cards.find((entry) => entry.id === element.dataset.id);
+      if (card && !matches(card)) element.hidden = true;
+    }
+    updatePanel();
+  }
+
+  function setActive(next) {
+    const state = current();
+    state.activeReviewBatchId = next;
+    db.save();
+    apply();
+  }
+
+  function cell(cardValue, systemValue, diff) {
+    const style = diff ? "color:#b42318;font-weight:600" : "";
+    return `<td style="padding:4px;vertical-align:top;${style}">${escapeHtml(cardValue || "—")} <span style="color:#667085;font-weight:400">/ ${escapeHtml(systemValue || "—")}</span></td>`;
+  }
+
+  function renderCheckTable() {
+    const data = checkData();
+    if (!data) {
+      checkSummary.textContent = "System check: waiting for the field list.";
+      checkTable.innerHTML = `<p class="legend" style="margin:0">The cards can still be reviewed while the field list loads.</p>`;
+      return;
+    }
+    const issues = data.issues;
+    if (issues.length === 0) {
+      checkSummary.textContent = "System check: every card matches the system on name, class, group, tee, HDCP and day/tee off.";
+      checkTable.innerHTML = "";
+      return;
+    }
+    checkSummary.textContent = `System check: ${data.missing} name(s) not found · ${data.noClass} no class · ${data.classDiff} class differs · ${data.groupDiff} group differs · ${data.teeDiff} tee differs · ${data.hdcpDiff} HDCP differs · ${data.dayDiff} day/tee differs. Card value / system value.`;
+    const rows = issues
+      .map((check) => {
+        const name = check.matched
+          ? `<button type="button" data-goto="${escapeHtml(check.id)}" style="border:0;background:none;padding:0;font:inherit;color:#073c4e;cursor:pointer;text-align:left;text-decoration:underline">${escapeHtml(check.name)}</button>${check.systemName && check.systemName !== check.name ? `<div class="legend">system: ${escapeHtml(check.systemName)}</div>` : ""}`
+          : `<button type="button" data-goto="${escapeHtml(check.id)}" style="border:0;background:none;padding:0;font:inherit;color:#073c4e;cursor:pointer;text-align:left;text-decoration:underline">${escapeHtml(check.name)}</button><div class="legend">not on the field list</div>`;
+        const systemTee = check.systemTeeName
+          ? `${check.systemTeeName}${check.systemTee ? ` (${check.systemTee})` : ""}`
+          : check.systemTee;
+        const cardHdcp = check.cardPh != null ? String(check.cardPh) : check.cardHdcp;
+        const systemHdcp = check.systemHdcp && !check.hdcpUsable ? `${check.systemHdcp}?` : check.systemHdcp;
+        const partner = check.systemPartner || "no partner";
+        const pair = check.systemPair != null ? `pair ${check.systemPair}` : "no pair";
+        const group = check.systemGroup || "no group";
+        const day = check.systemDay != null ? `Day ${check.systemDay}` : "Day ?";
+        const session = check.systemSession ? `${check.systemSession} ` : "";
+        const time = check.systemTeeTime || "time ?";
+        const hole = check.systemStartHole != null ? `hole ${check.systemStartHole}` : "hole ?";
+        const pairingDiff = check.dayDiff || check.groupDiff || !check.matched;
+        const pairing = check.matched
+          ? `<div>${escapeHtml(partner)}</div><div class="legend">${escapeHtml(pair)} · ${escapeHtml(group)} · ${escapeHtml(day)} ${escapeHtml(session + time)} · ${escapeHtml(hole)}</div>`
+          : `<div class="legend">not on the field list</div>`;
+        const canApply =
+          check.matched &&
+          Boolean(check.systemClass || check.systemGroup || check.systemTee || check.hdcpUsable);
+        return `<tr>
+          <td style="padding:4px;vertical-align:top">${name}</td>
+          ${cell(check.cardClass, check.systemClass, check.classDiff || check.noClass)}
+          ${cell(check.cardGroup, check.systemGroup, check.groupDiff)}
+          ${cell(check.cardTee, systemTee, check.teeDiff)}
+          ${cell(cardHdcp, systemHdcp, check.hdcpDiff)}
+          <td style="padding:4px;vertical-align:top;${pairingDiff ? "color:#b42318;font-weight:600" : ""}">${pairing}</td>
+          <td style="padding:4px">${canApply ? `<button type="button" data-apply="${escapeHtml(check.id)}" title="Copy the system class, group, tee and HDCP onto this card">Use system</button>` : ""}</td>
+        </tr>`;
+      })
+      .join("");
+    checkTable.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:4px">Card / system name</th>
+          <th style="padding:4px">Class<br><span style="font-weight:400">card / system</span></th>
+          <th style="padding:4px">Group<br><span style="font-weight:400">card / system</span></th>
+          <th style="padding:4px">Tee<br><span style="font-weight:400">card / system</span></th>
+          <th style="padding:4px">HDCP<br><span style="font-weight:400">card / system</span></th>
+          <th style="padding:4px">Pairing / tee off<br><span style="font-weight:400">system</span></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+    for (const button of checkTable.querySelectorAll("button[data-apply]")) {
+      button.addEventListener("click", () => applySystem(button.dataset.apply));
+    }
+    for (const button of checkTable.querySelectorAll("button[data-goto]")) {
+      button.addEventListener("click", () => gotoCard(button.dataset.goto));
+    }
+  }
+
+  function gotoCard(id) {
+    const card = current().cards.find((entry) => entry.id === id);
+    if (!card) return;
+    if (!matches(card)) setActive("all");
+    const element = [...cardsRoot.querySelectorAll(".card")].find(
+      (candidate) => candidate.dataset.id === id,
+    );
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    element.style.outline = "3px solid #b42318";
+    window.setTimeout(() => {
+      element.style.outline = "";
+    }, 2000);
+  }
+
+  function applySystem(id) {
+    const check = db.cardCheck(id);
+    if (!check || !check.matched) return;
+    const state = current();
+    const card = state.cards.find((entry) => entry.id === id);
+    if (!card) return;
+    if (check.systemClass) card.cls = check.systemClass;
+    if (check.systemGroup) card.group = check.systemGroup;
+    if (check.systemTee) card.tee = check.systemTee;
+    if (check.hdcpUsable) card.hdcp = check.systemHdcp;
+    db.setState(state);
+    apply();
+  }
+
+  function updatePanel() {
+    const cards = current().cards;
+    const active = activeId();
+    const done = cards.filter((card) => card.verified).length;
+    const needs = cards.length - done;
+    const visible = cards.filter(matches).length;
+    summary.textContent = `${visible} of ${cards.length} cards shown · ${done} checked · ${needs} waiting`;
+    allButton.textContent = `All cards (${cards.length})`;
+    needsButton.textContent = `Needs review (${needs})`;
+    doneButton.textContent = `Reviewed (${done})`;
+    const data = checkData();
+    const counts = data || { issues: [], noClass: 0, missing: 0, groupDiff: 0, teeDiff: 0, hdcpDiff: 0, dayDiff: 0 };
+    issuesButton.textContent = `Differences (${counts.issues.length})`;
+    noclassButton.textContent = `No class (${counts.noClass})`;
+    unmatchedButton.textContent = `Name not found (${counts.missing})`;
+    groupButton.textContent = `Group differs (${counts.groupDiff})`;
+    teeButton.textContent = `Tee differs (${counts.teeDiff})`;
+    hdcpButton.textContent = `HDCP differs (${counts.hdcpDiff})`;
+    dayButton.textContent = `Day/tee differs (${counts.dayDiff})`;
+    for (const [key, button] of [
+      ["all", allButton],
+      ["needs", needsButton],
+      ["done", doneButton],
+      ["issues", issuesButton],
+      ["noclass", noclassButton],
+      ["unmatched", unmatchedButton],
+      ["groupdiff", groupButton],
+      ["teediff", teeButton],
+      ["hdcpdiff", hdcpButton],
+      ["daydiff", dayButton],
+    ]) {
+      const on = active === key;
+      button.classList.toggle("on", on);
+      button.setAttribute("aria-pressed", on ? "true" : "false");
+      if (["issues", "noclass", "unmatched", "groupdiff", "teediff", "hdcpdiff", "daydiff"].includes(key)) {
+        button.disabled = !fieldReady;
+      }
+    }
+    const list = batches();
+    batchList.innerHTML = list
+      .map((batch) => {
+        const count = batchCount(batch);
+        const selected = active === batch.id;
+        return `<button type="button" data-batch="${escapeHtml(batch.id)}" class="${selected ? "on" : ""}" aria-pressed="${selected ? "true" : "false"}">${escapeHtml(batch.name)} (${count.done}/${count.total})</button>`;
+      })
+      .join("");
+    for (const button of batchList.querySelectorAll("button[data-batch]")) {
+      button.addEventListener("click", () => setActive(button.dataset.batch));
+    }
+    renderCheckTable();
+  }
+
+  function startBatch() {
+    const state = current();
+    const batched = new Set(batches().flatMap((batch) => batch.cardIds));
+    const fresh = state.cards.filter((card) => !card.verified && !batched.has(card.id));
+    if (fresh.length === 0) {
+      summary.textContent =
+        "No new unbatched cards. Review an existing batch, or add cards from JSON.";
+      return;
+    }
+    const batch = {
+      id: `batch-${Date.now().toString(36)}`,
+      name: `Batch ${batches().length + 1}`,
+      createdAt: new Date().toISOString(),
+      cardIds: fresh.map((card) => card.id),
+    };
+    state.reviewBatches = [...batches(), batch];
+    state.activeReviewBatchId = batch.id;
+    db.setState(state);
+    apply();
+  }
+
+  async function addCards(file) {
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const incoming = Array.isArray(parsed.cards) ? parsed.cards : [];
+      const existing = new Set(current().cards.map((card) => card.id));
+      const valid = incoming
+        .filter(
+          (card) =>
+            card &&
+            typeof card.id === "string" &&
+            typeof card.name === "string" &&
+            Array.isArray(card.holes) &&
+            card.holes.length === 18 &&
+            !existing.has(card.id),
+        )
+        .map((card) => ({
+          ...card,
+          group: card.group ?? "",
+          tee: card.tee ?? "",
+          hdcp: card.hdcp ?? "",
+          written: card.written ?? "",
+          verified: false,
+          cls: card.cls ?? "",
+          note: card.note ?? "",
+          source: card.source ?? "",
+          holes: card.holes.map((hole) => (hole === "" || hole == null ? "" : String(hole))),
+        }));
+      if (valid.length === 0) {
+        summary.textContent = "No new cards in that file. Existing ids are skipped.";
+        return;
+      }
+      const state = current();
+      const batch = {
+        id: `batch-${Date.now().toString(36)}`,
+        name: `Batch ${batches().length + 1}`,
+        createdAt: new Date().toISOString(),
+        cardIds: valid.map((card) => card.id),
+      };
+      state.cards = [...state.cards, ...valid];
+      state.reviewBatches = [...batches(), batch];
+      state.activeReviewBatchId = batch.id;
+      db.setState(state);
+      apply();
+      summary.textContent = `Added ${valid.length} card(s) as ${batch.name}.`;
+    } catch (error) {
+      summary.textContent =
+        error instanceof SyntaxError
+          ? "That file is not valid JSON."
+          : `Could not add cards: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  allButton.addEventListener("click", () => setActive("all"));
+  needsButton.addEventListener("click", () => setActive("needs"));
+  doneButton.addEventListener("click", () => setActive("done"));
+  issuesButton.addEventListener("click", () => setActive("issues"));
+  noclassButton.addEventListener("click", () => setActive("noclass"));
+  unmatchedButton.addEventListener("click", () => setActive("unmatched"));
+  groupButton.addEventListener("click", () => setActive("groupdiff"));
+  teeButton.addEventListener("click", () => setActive("teediff"));
+  hdcpButton.addEventListener("click", () => setActive("hdcpdiff"));
+  dayButton.addEventListener("click", () => setActive("daydiff"));
+  startButton.addEventListener("click", startBatch);
+  addButton.addEventListener("click", () => addInput.click());
+  saveButton.addEventListener("click", () => {
+    void persist(true);
+  });
+  saveDownloadButton.addEventListener("click", () => {
+    void saveAndDownload();
+  });
+  addInput.addEventListener("change", (event) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    void addCards(file);
+  });
+  document.getElementById("q")?.addEventListener("input", apply);
+  cardsRoot.addEventListener("change", (event) => {
+    if (event.target && event.target.matches && event.target.matches('[data-f="verified"]')) {
+      apply();
+    }
+  });
+  const observer = new MutationObserver(() => apply());
+  observer.observe(cardsRoot, { childList: true });
+
+  function status(text, error) {
+    try {
+      db.say(text, error);
+    } catch {
+      // The page is still editable when the status line cannot be updated.
+    }
+  }
+
+  async function persist(force = false) {
+    if (saving) {
+      if (force) status("A save is already running. Try again in a second.", true);
+      return false;
+    }
+    const state = current();
+    const text = JSON.stringify(state);
+    if (!force && text === last) return true;
+    saving = true;
+    try {
+      const response = await fetch(`/api/scorecards/${encodeURIComponent(slug)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event: db.event, label: db.label, payload: state }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        status(body.message ?? "The database save failed.", true);
+        return false;
+      }
+      last = text;
+      status(`Saved to the database at ${new Date().toLocaleTimeString()}.`);
+      return true;
+    } catch {
+      status("The database is not reachable. Your edits are still in this browser.", true);
+      return false;
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function saveAndDownload() {
+    const saved = await persist(true);
+    if (!saved) return;
+    try {
+      const response = await fetch(`/api/scorecards/${encodeURIComponent(slug)}/export`, {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        status(body.message ?? "The saved JSON could not be downloaded.", true);
+        return;
+      }
+      const blob = await response.blob();
+      const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 13);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${slug}-scores-${stamp}.json`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      status(
+        `Saved and downloaded ${link.download}. Send this file to the admin for publication.`,
+      );
+    } catch {
+      status("The saved JSON could not be downloaded.", true);
+    }
+  }
+
+  async function loadDocument() {
+    try {
+      const response = await fetch(`/api/scorecards/${encodeURIComponent(slug)}`, {
+        cache: "no-store",
+      });
+      if (response.ok) {
+        const document = await response.json();
+        if (document && document.payload && Array.isArray(document.payload.cards)) {
+          db.setState(document.payload);
+          last = JSON.stringify(db.getState());
+          status(
+            `Loaded the database copy saved ${new Date(document.updatedAt).toLocaleString()}.`,
+          );
+        }
+      } else if (response.status === 401) {
+        status("Sign in with a tabulation account. Opening the sign-in page…", true);
+        window.location.assign(
+          `/login?next=${encodeURIComponent("/scorecard/index.html")}&error=sign_in_required`,
+        );
+        return;
+      } else if (response.status === 403) {
+        status("This account is not on the tabulation team.", true);
+        return;
+      } else if (response.status === 404) {
+        await persist();
+      }
+    } catch {
+      status("The database is not reachable. The embedded scorecard is still editable.", true);
+    } finally {
+      ready = true;
+      last = JSON.stringify(db.getState());
+      apply();
+    }
+  }
+
+  async function loadField() {
+    try {
+      const dayMatch = String(db.label || db.slug || "").match(/day\s*([1-9][0-9]*)/i);
+      const day = dayMatch ? dayMatch[1] : "";
+      const response = await fetch(
+        `/api/scorecards/field?event=${encodeURIComponent(db.event)}${day ? `&day=${day}` : ""}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) {
+        fieldReady = false;
+        fieldStatus.textContent =
+          response.status === 503
+            ? "Supabase field: not configured in this deployment."
+            : "Supabase field: not available.";
+        apply();
+        return;
+      }
+      const body = await response.json();
+      if (!body.ok || !Array.isArray(body.players)) {
+        fieldReady = false;
+        fieldStatus.textContent = "Supabase field: no player list returned.";
+        apply();
+        return;
+      }
+      db.setField(body.players);
+      fieldReady = true;
+      checkCache = null;
+      const check = db.checkField();
+      fieldStatus.textContent = `Supabase field: ${body.players.length} players · Day ${body.dayNumber ?? "?"}${body.playDate ? ` (${body.playDate})` : ""} · ${check.missing} name(s) not found · ${check.noClass} no class · ${check.classDiff} class differs · ${check.groupDiff} group differs · ${check.teeDiff} tee differs · ${check.hdcpDiff} HDCP differs · ${check.dayDiff} day/tee differs.`;
+      apply();
+    } catch {
+      fieldReady = false;
+      fieldStatus.textContent = "Supabase field: not reachable.";
+      apply();
+    }
+  }
+
+  window.setInterval(() => {
+    if (ready) void persist();
+  }, 2000);
+
+  apply();
+  void loadDocument();
+  void loadField();
+})();
+</script>
+
+</body>
+</html>
