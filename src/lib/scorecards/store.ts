@@ -53,15 +53,38 @@ export function createSupabaseScorecardStore(
             `Could not create the scorecard bucket: ${error.message}`,
           );
         }
-      })();
+      })().catch((error: unknown) => {
+        // A network blip must not poison every later save until the server restarts: forget the
+        // failed attempt so the next request tries again.
+        ready = null;
+        throw error instanceof ScorecardStoreUnavailable
+          ? error
+          : new ScorecardStoreUnavailable(
+              `Could not reach Supabase Storage: ${error instanceof Error ? error.message : String(error)}`,
+            );
+      });
     }
     return ready;
+  }
+
+  /** supabase-js returns most failures, but a dropped connection can still throw. */
+  async function guarded<T>(label: string, run: () => Promise<T>): Promise<T> {
+    try {
+      return await run();
+    } catch (error) {
+      if (error instanceof ScorecardStoreUnavailable) throw error;
+      throw new ScorecardStoreUnavailable(
+        `${label}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   return {
     async get(slug) {
       await ensureBucket();
-      const { data, error } = await bucket.download(`${slug}.json`);
+      const { data, error } = await guarded("Could not read the scorecard document", () =>
+        bucket.download(`${slug}.json`),
+      );
       if (error) {
         if (Number(error.statusCode) === 404 || /not found/i.test(error.message)) return null;
         throw new ScorecardStoreUnavailable(
@@ -91,10 +114,12 @@ export function createSupabaseScorecardStore(
       const updatedAt = new Date().toISOString();
       const document: StoredScorecardDocument = { ...input, updatedAt };
       const body = new Blob([JSON.stringify(document)], { type: "application/json" });
-      const { error } = await bucket.upload(`${input.slug}.json`, body, {
-        contentType: "application/json",
-        upsert: true,
-      });
+      const { error } = await guarded("Could not save the scorecard document", () =>
+        bucket.upload(`${input.slug}.json`, body, {
+          contentType: "application/json",
+          upsert: true,
+        }),
+      );
       if (error) {
         throw new ScorecardStoreUnavailable(
           `Could not save the scorecard document: ${error.message}`,
