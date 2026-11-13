@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Avatar } from "@/components/bits";
 import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
 import type { PublicPlayerProfileData, PublicProfileTeeTime } from "@/lib/data/public-profile";
 import type { PublicTeamStanding } from "@/lib/data/public-team-leaderboard";
@@ -31,7 +30,6 @@ export function PlayerProfileView({
       <section className="card grid gap-3" aria-labelledby="profile-name">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Avatar name={player.name} />
             <div className="min-w-0">
               <h2 id="profile-name" className="m-0 break-words text-[22px] leading-7">
                 {player.name}

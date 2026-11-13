@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PlayerBottomBar } from "@/components/MobileTabBar";
+import { PublicBottomBar } from "@/components/MobileTabBar";
 import { FeedbackForm } from "@/components/public/FeedbackForm";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
@@ -65,12 +65,12 @@ export default async function FeedbackPage({
 
       <FeedbackForm sourcePath={sourcePath} tournamentId={tournamentId} />
 
-      <p className="hint no-print">
+      <nav className="site-foot-nav no-print" aria-label="Footer">
         <Link href="/">{t("pairings.home")}</Link>
-        {" · "}
+        <span aria-hidden="true">·</span>
         <Link href="/privacy">Privacy policy</Link>
-      </p>
-      <PlayerBottomBar />
+      </nav>
+      <PublicBottomBar />
     </main>
   );
 }

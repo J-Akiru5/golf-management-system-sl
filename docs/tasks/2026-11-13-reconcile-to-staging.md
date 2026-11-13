@@ -1,7 +1,7 @@
 # Reconcile the finished worktrees to staging (13 Nov 2026)
 
-**Status:** merged into `develop` and pushed; promotion to `staging` waits on CI. One migration is
-merged but not applied.
+**Status:** merged into `develop`, promoted to `staging` through PR #243, and verified by CI. One
+migration is merged but not applied.
 
 ## Objective
 
@@ -40,18 +40,20 @@ Integration branch `integrate/reconcile-2026-11-13`, based on `44106f2`, merged 
 - `pnpm test`: 2378 of 2378 pass across 222 files.
 - `pnpm lint` clean.
 - `pnpm build` was not run locally: the worktree shares `node_modules` through a junction, and
-  Turbopack refuses paths outside the worktree root. CI runs the real build and the browser checks,
-  which are the required checks on the pull request.
+  Turbopack refuses paths outside the worktree root. CI runs the real build and the browser checks.
+- **CI on the promoted tree:** the `typecheck, lint, test, build` check and the `browser checks` check
+  both passed on `1e40a57`, which contains every merge above. PR #243 then merged as `05b0536`.
 
 ## Open
 
-1. **Promotion.** `develop` is at `91642d7` (plus this note). PR #243 `develop → staging` is open and
-   moves with every push. Merge it once both required checks pass.
+1. **Promotion done.** `staging` is at `05b0536`, the merge of PR #243. `main` is untouched at
+   `4006b5d`; promoting to production is a separate tagged release.
 2. **Migration not applied.** `supabase/migrations/20261111000100_public_photo_token.sql` is merged but
    not applied. It adds `players.photo_public_token`, ties the public path to it, adds the withdraw
    triggers, and deletes the old guessable public objects. Today there are zero public photo paths and
    one orphaned object (`6b92ac17-ee58-403b-a5d1-88faa7f4e8ce.jpg`). Run the file on its own in the SQL
-   editor; `supabase db push` would also apply unrelated pending migrations.
+   editor; `supabase db push` would also apply unrelated pending migrations. Until it runs, saving a
+   public photo from the preview fails with a clear message. Nothing else is affected.
 3. **`agentctl` is stale.** The installed CLI rejects `plan/policy.yaml`, whose `allowed_branches` are
    `main` and `staging` with `develop` excluded, matching `vercel.json`. The policy note says 1.7.0
    reads the allowlist from the file; the installed build predates that, so `agentctl db` refuses to
@@ -61,8 +63,11 @@ Integration branch `integrate/reconcile-2026-11-13`, based on `44106f2`, merged 
 
 ## Resume
 
+The reconciliation is finished. Nothing here is waiting on an agent.
+
 ```
-git checkout develop && git pull            # the main checkout is behind
-gh pr checks 243                            # both required checks
-gh pr merge 243 --merge                     # once green
+git checkout develop && git pull            # bring the main checkout up to date
 ```
+
+To apply the photo migration, run `supabase/migrations/20261111000100_public_photo_token.sql` alone in
+the SQL editor. To promote to production, cut a tagged release from `develop` as usual.

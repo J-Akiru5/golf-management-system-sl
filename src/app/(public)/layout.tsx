@@ -24,18 +24,19 @@ export default async function PublicLayout({ children }: { children: ReactNode }
     <div lang={locale}>
       <I18nProvider locale={locale}>
         {children}
-        <footer className="no-print mobile-bar-space bg-forest px-4 pt-4 text-on-forest lg:pb-6">
+        <footer className="public-footbar no-print mobile-bar-space bg-forest px-4 pt-5 text-on-forest lg:pb-6">
           <nav
             aria-label={t("feedback.footerLabel")}
-            className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px]"
+            className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[14px] font-semibold tracking-[0.12em]"
           >
             <Link
               href="/"
-              className="inline-flex min-h-11 items-center text-on-forest-muted no-underline hover:text-on-forest"
+              className="inline-flex min-h-11 items-center text-on-forest underline-offset-4 no-underline hover:text-gold-on-forest hover:underline"
             >
               {t("pairings.home")}
             </Link>
-            <FeedbackLink className="inline-flex min-h-11 items-center" />
+            <span aria-hidden="true" className="size-1 rounded-full bg-gold-on-forest/60" />
+            <FeedbackLink className="inline-flex min-h-11 items-center text-gold-on-forest no-underline underline-offset-4 hover:text-on-forest hover:underline" />
           </nav>
         </footer>
         <InstallPrompt />

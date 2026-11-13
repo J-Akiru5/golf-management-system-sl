@@ -24,6 +24,7 @@ import {
   type MobileIcon,
   type MobileNavItem,
   PLAYER_MOBILE_ITEMS,
+  PUBLIC_MOBILE_ITEMS,
 } from "@/lib/ui/mobile-nav";
 
 const ICONS: Record<MobileIcon, typeof Flag> = {
@@ -128,6 +129,11 @@ export function DeskBottomBar({ onMore }: { onMore: () => void }) {
 
 export function PlayerBottomBar() {
   return <TabBar items={PLAYER_MOBILE_ITEMS} label="Player" testId="player-bottom-bar" />;
+}
+
+/** The same bar for readers who are not signed in: four open destinations, club home first. */
+export function PublicBottomBar() {
+  return <TabBar items={PUBLIC_MOBILE_ITEMS} label="Club pages" testId="public-bottom-bar" />;
 }
 
 export interface PlayerNavLabels {
