@@ -49,6 +49,65 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 
 ---
 
+## Second half of the 24th Bamboo Tee (plan of 14 Nov 2026)
+
+The first half (Day 1 and Day 2, 12 and 13 Nov) was scored outside the system: standalone HTML sheets
+in `docs/scoresheets`, a JSON export, and one-off upload scripts run by the orchestrator. It worked,
+and it is not how the event should run. The goal for Days 3 and 4 and after is that the team uses the
+system by itself.
+
+### What the owner reported, and where each item stands
+
+| # | Feedback | State on 14 Nov | Issue | Owner |
+| --- | --- | --- | --- | --- |
+| 1 | Complaints about index changes, schedule and names need one place. Use GitHub issues, not a new screen | Labels created. Forms, board and runbook to do. **The repository is public; the owner will make it private.** Until then a complaint uses the pair number or player ID only | [#263](https://github.com/J-Akiru5/golf-management-system-sl/issues/263) | Jeff |
+| 2 | The board could move players but not swap them | **Released in v0.46.0** (swap, set move and swap, typed commands). Not yet tried by the team on the live event | [#264](https://github.com/J-Akiru5/golf-management-system-sl/issues/264) | Jeff |
+| 3 | Public scores as a table: name, index, gross and net, with search and filter | Not built. The public leaderboard is the cumulative team board | [#261](https://github.com/J-Akiru5/golf-management-system-sl/issues/261) (read), [#262](https://github.com/J-Akiru5/golf-management-system-sl/issues/262) (table) | Jeff, Lou |
+| 4 | The index could not be edited | **Released**: registration desk and player page in v0.44.1, the board in v0.46.0. Who may edit and the audit row are to be confirmed | [#264](https://github.com/J-Akiru5/golf-management-system-sl/issues/264) | Jeff |
+| 5 | Scoring lags at verification; manual entry must be complete and fast | `/scores` cannot save a card under this event's rules, so scripts were used. Entry has no player search or filters | [#258](https://github.com/J-Akiru5/golf-management-system-sl/issues/258) (save and import), [#259](https://github.com/J-Akiru5/golf-management-system-sl/issues/259) (entry screen) | Karl, Lou |
+| 6 | A saved edit does not reach the public page | Board edits do in Live mode (v0.46.0). Scores still need a manual publish | [#260](https://github.com/J-Akiru5/golf-management-system-sl/issues/260) | Karl |
+| 7 | A proper audit log behind every fast change | Audit tables and `/audit` exist; coverage of every public-facing write is not confirmed | [#265](https://github.com/J-Akiru5/golf-management-system-sl/issues/265) | Karl |
+| 8 | Bring useful work from other branches to `main`; keep versions and this plan in step | `main`, `develop` and `staging` carry the same code at v0.46.0. Four open PRs to decide | [#266](https://github.com/J-Akiru5/golf-management-system-sl/issues/266) | Jeff |
+
+### Decisions the owner made on 14 Nov 2026
+
+- **Complaints** are GitHub issues in this repository, which the owner makes private.
+- **Scores go public once verified.** Ticking a card verified publishes the next version without a
+  Publish click. An unverified card stays on the desk. The frozen snapshot stays; this changes when
+  it is taken. It replaces the rule "a score is public only after a manual publish" for this event,
+  and the spec is updated when [#260](https://github.com/J-Akiru5/golf-management-system-sl/issues/260) lands.
+- **`/scores` is the one place** the team enters and publishes scores. The `/scorecard` grid and the
+  HTML sheets remain as a bridge until [#258](https://github.com/J-Akiru5/golf-management-system-sl/issues/258) lands.
+- **The public scores table shows Stableford points**: name, index, gross points, net points, by day
+  and session.
+- **Fast control, checked afterwards.** Changes are made first; anything published without a check
+  gets a `needs-verification` issue on the complaint desk.
+
+### Order of work
+
+1. **P0, during the event:** #258 save and import on `/scores`, #259 entry screen, #260 publish on
+   verify, #263 complaint desk, #264 confirm swap and index edit on the live event.
+2. **P1, as soon as P0 allows:** #261 and #262 public scores table, #265 audit coverage, #266 branch
+   and PR triage.
+3. **Until #258 and #260 are released**, each session is scored the way Days 1 and 2 were: the sheet,
+   the export, and the orchestrator's upload. That path is known to work.
+
+#259 depends on #258. #262 depends on #261. #260 builds on the save path from #258. The rest are
+independent and can run in parallel.
+
+### Workload
+
+| Person | Role | Issues | Load |
+| --- | --- | --- | --- |
+| Jeff | Lead, CI/CD and releases, orchestrator | #261, #263, #264, #266, plus review, merge and release of everything | 4 issues and the gate |
+| Karl (`Karlcalimotan`) | Backend | #258, #260, #265 | 3 issues; #258 is the largest piece of the plan |
+| Lou (`dev-lou`) | Frontend | #259, #262 | 2 issues; both wait on a backend read or save path |
+
+Jeff's issues are built by the orchestrator's builders (section 12). Karl's and Lou's are theirs,
+through a pull request to `develop`.
+
+---
+
 ## 1. Where we are, in short
 
 | Area | State | Evidence |
@@ -1005,19 +1064,19 @@ Decisions that belong to the people named, not to an agent.
 
 Agents should read, in order: `AGENTS.md` → this plan → the spec → the code they are about to change.
 
-Default model routing for the OpenCode Go setup (Jeff's preference):
+**The local protocol (owner, 14 Nov 2026).** One orchestrator and many builders:
 
-| Task | Model |
-| --- | --- |
-| Scaffolding | DeepSeek V4 Pro |
-| Complex tasks | Kimi 3 |
-| Design | Claude Sonnet |
-| Reasoning | GLM 2.5 |
-| All-around, quick edits | MiMo v2.5 Pro |
-| Frontend UI, minimal tasks | Flash 3.6 (Antigravity) |
-
-Caveat: the cost sheet found that **Claude models are not included in OpenCode Go**, so the "Claude Sonnet — design"
-row needs a separate Claude subscription or API access, or Claude Design for the final visuals.
+- **The orchestrator is Claude.** It reads the issue, writes the brief, starts the builders, reviews
+  every diff, runs `pnpm check` (and `pnpm check:ui` for anything a user can see), merges to
+  `develop`, promotes to `staging`, and releases. It is the only agent that pushes, merges or deploys.
+- **Builders are OpenCode CLI runs on one model only:**
+  `opencode run --model opencode-go/deepseek-v4.1-flash`. No other model is used for builders. The
+  older per-task routing table (DeepSeek V4 Pro, Kimi, GLM, MiMo, Flash) is retired.
+- **One issue, one branch, one worktree, one builder.** Builders that touch the same files run one
+  after another, never at once. A builder commits on its own branch and stops; it never pushes.
+- **Every merge updates the record in the same change:** a line under `[Unreleased]` in
+  `CHANGELOG.md`, the state of the issue in this plan, and the version files at release
+  (`pnpm release:check`).
 
 Agent ground rules:
 
@@ -1158,6 +1217,7 @@ Agent ground rules:
 | 13 Nov 2026 | **Owner's answers on the scoring cards plan.** Migrations for pick-up and the scan inbox are written on branches and not applied until the owner approves each file by name. The marker on a scanned card is a player from the other team in the group, assigned by the app (the desk can change it). Ticking "checked against the paper card" is the approval (one step, which changes the second-person rule; the migration or auth change, if any, waits for the owner's approval by name). Day 1 AM is released again on the app conversion; it is not done and needs the owner's go after a before-and-after check. The card reader runs in production and reads, but its control per hole is weak, so the verify screen works hole by hole. No two-point pick-up penalty is recorded in the app: a pick-up just equals 0. See [`docs/tasks/2026-11-13-batch-scan-verify.md`](tasks/2026-11-13-batch-scan-verify.md). |
 | 13 Nov 2026 | **Pick-up entry and the card layout are on `develop`; the pick-up migration is the gate.** The desk takes an `X` typed in a hole or tapped on the new X row, shows `64 (+2 pickups)` like the public card, and can settle a number-versus-X conflict as a pick-up. A card with no pick-up sends the same data as before. Checked in demo mode (submit, approve, 0 points on the hole, 18 of 18 holes counted), with `pnpm check` (2333 tests) and `pnpm check:ui` (192 checks). **`20261113000200_pickup_scores.sql` is applied to the live project** (the `picked_up` columns exist on `scorecard_entries`, `hole_resolutions` and `approved_hole_scores`), so an X card saves and approves. The sticky card bar, 44px score cells and the `SI` label are fixed; the 640px nine-hole table and "Fill with par" are still open for the owner. Still to build: "checked is the approval", the scan inbox screens and the assigned marker. |
 | 14 Nov 2026 | **Release 0.46.0 promoted to `main`.** Scope: the tabulation scorecard fixes (JSON import, scan and photo, tabulator sign-in and sign-out) and the pairings board edit batch (swap, index edit, live publish with undo). `develop` and `staging` were identical and green before the release; there is no migration. The scorecard work reached `staging` as PR #255 and the board batch as PR #256; `staging` rejects a direct push, so each promotion is a pull request. The release branch bumps `package.json`, `VERSION` and `CHANGELOG.md` and is merged into `main` by pull request, then the merge commit is tagged `v0.46.0` under the standing authorization of 13 Nov 2026. Two things the release did not prove: the card reader on a real photo, and a real tabulator account signing in on the deployed site. `SCAN_INFERENCE_URL` is set on Vercel; `SCORECARD_TABULATION_EMAILS` is not, so a tabulator needs the `scorecard_role` app role. |
+| 14 Nov 2026 | **Owner feedback after the first half, and the plan for the second.** Complaints are GitHub issues in this repository, which the owner makes private. A score goes public by itself once its card is ticked verified; an unverified card stays on the desk. `/scores` is the one place scores are entered and published. The public scores table shows Stableford points by day and session. Builders are OpenCode runs on DeepSeek v4.1 Flash only, under one Claude orchestrator. Filed as issues #258 to #266; see "Second half of the 24th Bamboo Tee". |
 
 ---
 

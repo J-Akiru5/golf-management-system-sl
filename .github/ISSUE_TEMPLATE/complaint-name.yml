@@ -1,0 +1,35 @@
+name: "Complaint: name"
+description: A name is misspelled, duplicated or attached to the wrong player.
+title: "complaint(name): "
+labels: ["complaint", "complaint:name"]
+body:
+  - type: markdown
+    attributes:
+      value: "While this repository is public, write the pair number or player ID only, and describe the correction without the full name (for example: second letter of the surname). No contact details."
+  - type: input
+    id: who
+    attributes:
+      label: Player or pair reference
+      description: Pair number or player ID.
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: What is wrong and what it should be
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: The club sheet, an ID or the player's own word. Say where it can be seen.
+  - type: dropdown
+    id: state
+    attributes:
+      label: Already changed in the system?
+      options:
+        - "No, waiting for a decision"
+        - "Yes, changed first and to be checked here"
+    validations:
+      required: true

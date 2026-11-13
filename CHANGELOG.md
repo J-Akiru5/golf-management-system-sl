@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Docs
+- **The plan for the second half of the 24th Bamboo Tee is in `docs/PLAN.md`**, with the owner's
+  feedback of 14 Nov 2026 filed as issues #258 to #266 and assigned. The agent section now records
+  the one-orchestrator, DeepSeek v4.1 Flash builder protocol. GitHub issue forms for the complaint
+  desk (index, schedule, name, score) are added. No code change, no migration.
+
 ## [0.46.0] - 2026-11-14
 
 ### Added
