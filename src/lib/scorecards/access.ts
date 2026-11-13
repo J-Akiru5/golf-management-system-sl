@@ -29,9 +29,9 @@ export function canUseScorecard(input: {
   return allowlist.includes(email);
 }
 
-/** The club owner and organizer can review or publish a tabulation handoff. Desk staff cannot. */
+/** Club staff may use the scorecard alongside the tabulation team. */
 export function canAdministerScorecard(clubRole: string): boolean {
-  return clubRole === "owner" || clubRole === "organizer";
+  return clubRole === "owner" || clubRole === "organizer" || clubRole === "desk";
 }
 
 /** Local development can opt out of the tabulation session; production builds never can. */
