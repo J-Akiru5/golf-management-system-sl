@@ -9,6 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Fixed
+- **Migration `20261111000100_public_photo_token.sql` runs on the live project.** The first version
+  deleted rows from `storage.objects` in SQL, which Supabase now refuses ("Direct deletion from
+  storage tables is not allowed"), so the run failed and rolled back. The revised file never touches
+  `storage.objects`: it clears old public paths, and its trigger only clears the path when consent is
+  withdrawn or the player is retired. The app already removes the files through the Storage API.
+  Not yet applied.
+
 ### Added
 - **Scanning a card asks which batch it belongs to, and a rescan updates the card instead of
   adding a second one.** After the reader returns, the dialog offers a batch picker (a new batch, an

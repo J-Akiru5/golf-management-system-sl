@@ -1,6 +1,13 @@
 -- Public player photos: an unguessable per-player object name instead of the player id.
 --
--- STATUS: not applied. The orchestrator applies this after review.
+-- STATUS: not applied. The owner runs it in the SQL editor.
+--
+-- REVISED 14 Nov 2026: the first version deleted rows from storage.objects in SQL. Supabase now
+-- refuses that ("Direct deletion from storage tables is not allowed", storage.protect_delete), so
+-- the run failed and rolled back. This version never touches storage.objects. Files are removed
+-- through the Storage API only: the app already does that on every withdrawal and replacement
+-- (src/lib/data/supabase/adapters.ts), and an old file left behind is unreachable once its path is
+-- cleared, because the public pages only build URLs from the stored path.
 --
 -- THE BYPASS
 -- 20261039000000 made `player-photos-public` a public bucket and named the object
@@ -19,14 +26,16 @@
 -- from public data. The bucket stays public so the public pages keep their plain URLs; the private
 -- original and its path are untouched.
 --
--- A trigger drops the public object whenever public consent is withdrawn, the path is replaced,
--- the player is retired, or the row is deleted. That makes the database enforce the rule even when
--- the caller forgets to remove the file.
+-- A trigger clears the stored public path whenever public consent is withdrawn or the player is
+-- retired, so no public page can point at the file even when the caller forgets to clear it. The
+-- file itself is removed by the app through the Storage API.
 --
 -- EXISTING OBJECTS
--- The migration cannot copy bytes: the storage API, not SQL, owns the file. Existing public objects
--- are the old, guessable `{club_id}/{player_id}.jpg` files, so their rows are deleted here and the
--- stored paths are cleared. The private originals stay in `player-photos`. Staff must re-publish
+-- The migration cannot copy or delete bytes: the storage API, not SQL, owns the file. Existing
+-- public objects are the old, guessable `{club_id}/{player_id}.jpg` files, so their stored paths
+-- are cleared here. Remove the old files in the Storage screen (bucket `player-photos-public`)
+-- or with the Storage API; on 14 Nov 2026 there was one, and no player pointed at it. The private
+-- originals stay in `player-photos`. Staff must re-publish
 -- each consented public photo from the player page (toggle public display off and on, or save the
 -- photo again); the new object is written under the new token. Until then the public page simply
 -- shows the initials fallback, which is the same behaviour as a player with no public photo.
@@ -48,19 +57,9 @@ create unique index if not exists players_public_photo_token
 
 drop policy if exists player_photos_public_read on storage.objects;
 
--- 3. Remove the old guessable objects and paths ---------------------------------------------------
--- Every existing public object follows the old `{club_id}/{player_id}.jpg` shape. Delete those
--- metadata rows (the storage API refuses to serve an object with no row). A path that already
--- matches the token shape is kept, so a re-run is safe.
-
-delete from storage.objects o
- where o.bucket_id = 'player-photos-public'
-   and o.name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\.jpg$'
-   and not exists (
-     select 1
-       from public.players p
-      where o.name = p.club_id::text || '/' || p.photo_public_token::text || '.jpg'
-   );
+-- 3. Clear the old guessable paths -----------------------------------------------------------------
+-- A path that already matches the token shape is kept, so a re-run is safe. The old files are not
+-- deleted here (see EXISTING OBJECTS above).
 
 update public.players
    set photo_public_path = null
@@ -85,57 +84,30 @@ alter table public.players
     )
   );
 
--- 5. Withdrawal, replacement and retirement drop the public object --------------------------------
+-- 5. Withdrawal and retirement clear the public path ----------------------------------------------
+-- Anything that ends public display clears the path, even when the caller only cleared the consent
+-- timestamp and left the path behind. The app removes the file through the Storage API.
 
-create or replace function public.drop_public_photo_object()
+create or replace function public.clear_public_photo_path()
 returns trigger
 language plpgsql
-security definer
 set search_path = ''
 as $$
 begin
-  if tg_op = 'DELETE' then
-    if old.photo_public_path is not null then
-      delete from storage.objects
-       where bucket_id = 'player-photos-public'
-         and name = old.photo_public_path;
-    end if;
-    return old;
-  end if;
-
-  -- Anything that ends public display removes the copy, even when the caller only cleared the
-  -- consent timestamp and left the path behind.
-  if old.photo_public_path is not null
-     and (
-       new.photo_public_path is distinct from old.photo_public_path
-       or new.photo_public_consent_at is null
-       or new.deleted_at is not null
-     ) then
-    delete from storage.objects
-     where bucket_id = 'player-photos-public'
-       and name = old.photo_public_path;
-  end if;
-
   if new.deleted_at is not null or new.photo_public_consent_at is null then
     new.photo_public_path := null;
   end if;
-
   return new;
 end;
 $$;
 
-revoke all on function public.drop_public_photo_object() from public;
+revoke all on function public.clear_public_photo_path() from public;
 
-drop trigger if exists players_public_photo_object on public.players;
-create trigger players_public_photo_object
+drop trigger if exists players_public_photo_path on public.players;
+create trigger players_public_photo_path
   before update of photo_public_path, photo_public_consent_at, deleted_at
   on public.players
-  for each row execute function public.drop_public_photo_object();
-
-drop trigger if exists players_public_photo_object_delete on public.players;
-create trigger players_public_photo_object_delete
-  before delete on public.players
-  for each row execute function public.drop_public_photo_object();
+  for each row execute function public.clear_public_photo_path();
 
 -- 6. Self-check -----------------------------------------------------------------------------------
 
@@ -164,13 +136,12 @@ begin
     raise exception 'the blanket anon read policy on player-photos-public still exists';
   end if;
 
-  if to_regprocedure('public.drop_public_photo_object()') is null then
-    raise exception 'drop_public_photo_object was not created';
+  if to_regprocedure('public.clear_public_photo_path()') is null then
+    raise exception 'clear_public_photo_path was not created';
   end if;
 
-  if not exists (select 1 from pg_trigger where tgname = 'players_public_photo_object')
-     or not exists (select 1 from pg_trigger where tgname = 'players_public_photo_object_delete') then
-    raise exception 'the public photo triggers were not created';
+  if not exists (select 1 from pg_trigger where tgname = 'players_public_photo_path') then
+    raise exception 'the public photo trigger was not created';
   end if;
 
   -- No stored public path may still be derived from a player id.
