@@ -136,6 +136,84 @@ Run the check by hand with `node scripts/health-check.mjs`; `--json` prints the 
 script. The GitHub workflow reads `HEALTH_SUPABASE_URL` and `HEALTH_SUPABASE_ANON_KEY` from
 repository secrets. With neither set it still checks the site and skips the database line.
 
+## Complaint desk
+
+A player says something is wrong. The desk team files it as one GitHub issue in this repository, and
+the issue is the record until it is closed. There is no separate complaint screen.
+
+### Filing
+
+Anyone on the desk team files a complaint, from a phone if that is where the player is standing. Go
+to **Issues** → **New issue** and pick the form that matches. The form sets the title and the labels.
+
+| The player says | Form | Labels |
+| --- | --- | --- |
+| Their index, playing handicap or class is wrong | Complaint: handicap index | `complaint`, `complaint:index` |
+| Their tee time, hole, group or playing day is wrong | Complaint: schedule | `complaint`, `complaint:schedule` |
+| A posted score is wrong, or a card went public unchecked | Complaint: score | `complaint`, `complaint:score` |
+| A name is misspelled or on the wrong player | Complaint: name | `complaint`, `complaint:name` |
+
+Add `P0` when the player cannot play until it is settled, `P1` when it affects the current day's
+result, and `P2` for anything that can wait for the next event.
+
+**While the repository is public**, the issue uses the pair number or the player ID only. No names,
+no contact details, and no index written next to a name. The name form asks for a description of the
+correction, not the full name. This rule drops when the owner makes the repository private.
+
+### The states
+
+An issue is in one of five states. Move it by writing one line in the issue saying where it stands.
+
+1. **New.** The form was sent and nobody has looked at the claim yet.
+2. **Checking.** Someone is comparing the claim against the evidence. Say who, and what they are
+   checking.
+3. **Fixed in the system.** The change is saved in the app. Write what changed, where, and the time.
+   It goes back to **Checking** if the fix turns out to be wrong.
+4. **Told the player.** The person who made the change told the player the result.
+5. **Rejected.** The claim was checked and the system was right. Write which evidence settled it.
+
+What settles each type:
+
+| Type | Evidence that decides it |
+| --- | --- |
+| Index | The club's member-guest sheet, or the NGAP record. The sheet wins over a setting |
+| Schedule | The tee-off sheet, or the organizer's instruction for that day |
+| Score | The paper card for that round, hole by hole |
+| Name | The club sheet, an ID shown at the desk, or the player's own word if the sheet is silent |
+
+### Where to look before deciding
+
+- `/audit`: who changed what, and when. Each row says `ok`, `refused` or `failed`, and scoring
+  activity is in the same list. Only an owner or organizer account gets rows back, so a desk account
+  asks Jeff or the organizer to read it.
+- `/register`, on the entry, and `/draw` on the player row: **Edit index**. An index fix changes the
+  entry's index, playing handicap and class. It does not move the player, so check the group again
+  afterwards.
+- `/scores`: the card for the day and session. Check the hole, the total, and how many holes are
+  verified. Publishing is still a manual click, so an unverified card can go out; that is what the
+  `needs-verification` issue below is for.
+
+The time of the change is part of the answer. A change made before the report and a change made after
+it are different answers, and `/audit` is what tells them apart.
+
+### Who decides and who closes
+
+**Jeff decides.** He reads the claim, the evidence and the audit row, then moves the issue to **Fixed
+in the system** or **Rejected**. The person who made the change closes the issue, and only after the
+player has been told. If the player is at the desk, tell them then; the issue still waits for that
+sentence to be written.
+
+One complaint, one issue. If two players raise the same problem, add them to the same issue rather
+than filing a second one.
+
+### Published before it was checked
+
+A change may be made first and checked afterwards. That is allowed. Anything published without the
+check gets its own issue labelled `needs-verification`, naming what went out, the version, and what
+has not been checked yet. File it even when nobody complained: the point is to write down what is
+still unconfirmed. It closes when someone has checked it against the evidence above, and the closing
+line says what they checked.
+
 ## Who to call
 
 In this order. Stop at the first person who answers.

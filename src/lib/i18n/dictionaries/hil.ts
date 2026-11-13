@@ -405,6 +405,35 @@ export const hil: Dictionary = {
     leaderboardNotDeployed:
       "Indi pa available ang cumulative team leaderboard hasta ma-apply ang database update. Ginapakita ang pinakabag-o nga na-publish nga round.",
     leaderboardFailed: "Indi ma-load ang leaderboard. Tilawi liwat later.",
+    leaderboardOnlyTop:
+      "Ang listahan sa babaw kutob lang sa top 10 teams. Ang iskor sang tagsa ka manugkawat, sa tanan nga adlaw, yara sa Tanan nga iskor.",
+    navScores: "TANAN NGA ISKOR",
+    scoresTitle: "Tanan nga iskor",
+    scoresIntro:
+      "Tanan nga manugkawat nga may ginpahayag nga card. Pilia ang adlaw, aga ukon hapon, ukon pangitaa ang pangalan mo.",
+    scoresSeeAll: "Tan-awa tanan nga iskor",
+    scoresSeeTeams: "Top 10 teams lang",
+    scoresDayLabel: "Adlaw",
+    scoresAllDays: "Tanan nga adlaw",
+    scoresDay: "Adlaw {day}",
+    scoresSessionLabel: "Oras",
+    scoresAllSessions: "Tanan",
+    scoresMorning: "Aga",
+    scoresAfternoon: "Hapon",
+    scoresFind: "Pangitaa ang pangalan mo",
+    scoresShowing: "Ginapakita ang {shown} sa {total} ka manugkawat",
+    scoresRounds: "{count} rounds",
+    scoresMeta: "Gross {gross} · Net {net} · Thru {thru}",
+    scoresNoSession: "Makita ang aga kag hapon kon ginpahayag na sang mga organizer ang pairings.",
+    scoresWithoutSession:
+      "{count} ka manugkawat ang wala sing oras sang pagsugod sa sini nga adlaw, gani wala sila sa sini nga listahan.",
+    scoresEmptyTitle: "Wala pa sing ginpahayag nga iskor",
+    scoresEmptyBody: "Nagapahayag ang organizer sang round pagkatapos ma-check ang mga iskor.",
+    scoresNoMatch: "Wala sing manugkawat nga nagatupong sa pangalan",
+    scoresUnavailable:
+      "Indi pa available ang tanan nga iskor tubtob ma-apply ang database update. Nagapadayon ang team leaderboard.",
+    scoresSource:
+      "Ginpahayag nga iskor lang. Nagapahayag ang mga organizer sang round pagkatapos ma-check ang mga card.",
     rulesTitle: "Mga pagsulundan sa hampang",
     rulesIntro: "Ginhatag sang mga organizer.",
     chooseDay: "Pilii ang adlaw",

@@ -403,6 +403,36 @@ export const en = {
     leaderboardNotDeployed:
       "The cumulative team leaderboard is not available until the database update is applied. Showing the latest published round instead.",
     leaderboardFailed: "The leaderboard could not be loaded. Try again in a few minutes.",
+    leaderboardOnlyTop:
+      "The table above stops at the top 10 teams. Every player's own score, on every day, is on All scores.",
+    navScores: "ALL SCORES",
+    scoresTitle: "All scores",
+    scoresIntro:
+      "Every player who has a published card. Pick a day, narrow it to the morning or the afternoon, or search your name.",
+    scoresSeeAll: "See every score",
+    scoresSeeTeams: "Top 10 teams instead",
+    scoresDayLabel: "Day",
+    scoresAllDays: "All days",
+    scoresDay: "Day {day}",
+    scoresSessionLabel: "Time of day",
+    scoresAllSessions: "All",
+    scoresMorning: "Morning",
+    scoresAfternoon: "Afternoon",
+    scoresFind: "Find your name",
+    scoresShowing: "Showing {shown} of {total} players",
+    scoresRounds: "{count} rounds",
+    scoresMeta: "Gross {gross} · Net {net} · Thru {thru}",
+    scoresNoSession:
+      "The morning and afternoon split appears when the organizers release the pairings.",
+    scoresWithoutSession:
+      "{count} players have no start time on this day, so they are not in this list.",
+    scoresEmptyTitle: "No scores are published yet",
+    scoresEmptyBody: "The organizer publishes a round after the scores have been checked.",
+    scoresNoMatch: "No player matches that name",
+    scoresUnavailable:
+      "All scores are not available until the database update is applied. The team leaderboard still works.",
+    scoresSource:
+      "Published scores only. The organizers publish a round after the cards have been checked.",
     rulesTitle: "Rules of play",
     rulesIntro: "Provided by the organizers.",
     chooseDay: "Choose a day",

@@ -2163,6 +2163,12 @@
   .print-sheet-scope * {
     color: #000 !important;
   }
+  /* The start sheet's flight band is white text on the forest fill; the rule above would turn it
+     black. The attribute selector is the more specific one, so the band keeps its ink. */
+  .print-sheet-scope [data-print-band],
+  .print-sheet-scope [data-print-band] * {
+    color: #fff !important;
+  }
   .print-sheet-scope .table-wrap {
     overflow: visible !important;
     max-height: none !important;
@@ -7025,9 +7031,11 @@ html[data-textsize="large"] {
   }
 
   /* The three views as a segmented control: equal segments, one filled. */
+  /* Four destinations now (All scores joined the row). Two tidy rows on a phone beat three tabs and
+     one orphan underneath, and four across once there is room. */
   .public-tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
     padding: 4px;
     border: 1px solid var(--line);
@@ -7054,6 +7062,12 @@ html[data-textsize="large"] {
   }
   .public-tabs .public-tab:active {
     transform: scale(0.97);
+  }
+
+  @media (min-width: 640px) {
+    .public-tabs {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -8035,6 +8049,114 @@ html[data-textsize="large"] {
     }
   }
 
+  /* ---- All scores: the board's own clothes, so both pages are learned once --------------------
+     The row itself is the board's row, including the crown on first place, and the filters are the
+     board's dropdowns. Only the heading, the count and the link back are new. */
+  .public-pairings .scores {
+    display: grid;
+    gap: 14px;
+    padding-top: 4px;
+  }
+
+  .public-pairings .scores-head {
+    display: grid;
+    gap: 6px;
+  }
+
+  .public-pairings .scores-head h2 {
+    margin: 0;
+    font-family: var(--f-display);
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .public-pairings .scores-head p {
+    max-width: 62ch;
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .public-pairings .scores-other {
+    justify-self: start;
+    color: var(--gold-ink);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+
+  /* The search box borrows the dropdown's clothes, but not its arrow: nothing opens below it. */
+  .public-pairings .scores-search-input {
+    width: 100%;
+    padding-right: 16px;
+    background-image: none;
+  }
+
+  .public-pairings .scores-count {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* No rank numeral here: this is the whole field, not a ranking, so the head starts at the name
+     and no row can read as "first place". */
+  .public-pairings .scores .lb-team-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  /* Each round a player has, with the session it was played in and that round's own score. This is
+     the AM/PM breakdown the totals above would otherwise hide. */
+  .public-pairings .scores-rounds {
+    display: grid;
+    gap: 4px;
+    margin: 8px 18px 16px;
+    padding: 8px 30px 0 0;
+    border-top: 1px dashed light-dark(#dfe6dd, #2b3a32);
+    list-style: none;
+  }
+
+  .public-pairings .scores-round-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 2px 12px;
+    color: light-dark(#5d6d63, #a9bcb2);
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .public-pairings .scores-round-label {
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .public-pairings .scores-round-figures {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .public-pairings .lb-more {
+    display: grid;
+    gap: 10px;
+    justify-items: start;
+    padding-top: 4px;
+  }
+
+  @media (min-width: 640px) {
+    .public-pairings .lb-more {
+      grid-auto-flow: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+
   /* A wide screen reads the two partners side by side without squeezing either name. */
   @media (min-width: 900px) {
     .public-pairings .lb-team-head {
@@ -8719,11 +8841,12 @@ html[data-textsize="large"] {
     }
   }
 
-  /* The three views as one segmented control: a single bordered bar, three even segments, the
-     current view filled solid so anyone can see what is selected and that the rest are tappable. */
+  /* The four views as one segmented control: a single bordered bar, even segments, the current view
+     filled solid so anyone can see what is selected and that the rest are tappable. On a phone the
+     four labels do not fit on one line without shrinking to unreadable, so they sit in two rows. */
   .public-pairings .public-tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
     padding: 0;
     overflow: hidden;
@@ -8750,6 +8873,20 @@ html[data-textsize="large"] {
 
   .public-pairings .public-tab:last-child {
     border-right: 0;
+  }
+
+  @media (max-width: 639px) {
+    .public-pairings .public-tabs {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .public-pairings .public-tab:nth-child(2n) {
+      border-right: 0;
+    }
+
+    .public-pairings .public-tab:nth-child(-n + 2) {
+      border-bottom: 1px solid light-dark(#e4e9e1, #26332b);
+    }
   }
 
   .public-pairings .public-tab:not([aria-current="page"]) {

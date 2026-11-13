@@ -141,7 +141,7 @@ export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
  *   Club home  the landing page, always one tap away
  *   Pairings    the published groups
  *   Players     the published field
- *   Board       the public leaderboard
+ *   Board       All scores: every player's own figures, which is what most members open it for
  */
 export const PUBLIC_MOBILE_ITEMS: readonly MobileNavItem[] = [
   {
@@ -171,7 +171,7 @@ export const PUBLIC_MOBILE_ITEMS: readonly MobileNavItem[] = [
   },
   {
     kind: "link",
-    href: "/leaderboard",
+    href: "/results",
     label: "Board",
     labelKey: "player.tab.board",
     icon: "trophy",

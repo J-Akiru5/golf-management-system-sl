@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { parsePublicTab, publicTabHref } from "./public-tabs";
 
 describe("public tabs", () => {
-  it("accepts the four tabs and falls back to pairings", () => {
+  it("accepts the tabs and falls back to pairings", () => {
     expect(parsePublicTab("pairings")).toBe("pairings");
     expect(parsePublicTab("players")).toBe("players");
     expect(parsePublicTab("profile")).toBe("profile");
     expect(parsePublicTab("leaderboard")).toBe("leaderboard");
+    expect(parsePublicTab("scores")).toBe("scores");
     expect(parsePublicTab(undefined)).toBe("pairings");
     expect(parsePublicTab("nonsense")).toBe("pairings");
     expect(parsePublicTab(["profile", "leaderboard"])).toBe("profile");
@@ -27,5 +28,9 @@ describe("public tabs", () => {
 
   it("keeps Pairings on the clean path when no filter is present", () => {
     expect(publicTabHref("pairings")).toBe("/pairings");
+  });
+
+  it("sends the all-scores tab to its own page", () => {
+    expect(publicTabHref("scores")).toBe("/results");
   });
 });
