@@ -179,6 +179,30 @@ export async function saveConsentedPhoto(
   publicConsentAt: string | null;
 }> {
   const { blob, extension, contentType } = parsePhotoDataUrl(photoDataUrl);
+
+  // Resolve the public object name before the private upload, so a database without the token
+  // migration fails before any file is written. The name is the player's random token, never the
+  // player id: ids are printed on the public roster, so a path built from one would let anyone
+  // fetch an unconsented photo.
+  let publicPath: string | null = null;
+  let publicConsentAt: string | null = null;
+  if (publicConsent) {
+    const { data: owner, error: ownerError } = await client
+      .from("players")
+      .select("photo_public_token")
+      .eq("club_id", clubId)
+      .eq("id", playerId)
+      .maybeSingle();
+    if (ownerError) throw new Error(`Could not read the public photo token: ${ownerError.message}`);
+    const token = owner?.photo_public_token;
+    if (!token) {
+      throw new Error(
+        "This player has no public photo token. Apply migration 20261111000100 and reload the player.",
+      );
+    }
+    publicPath = `${clubId}/${token}.jpg`;
+  }
+
   const path = `${clubId}/${playerId}/${crypto.randomUUID()}.${extension}`;
   const { error: uploadError } = await client.storage.from("player-photos").upload(path, blob, {
     contentType,
@@ -195,12 +219,7 @@ export async function saveConsentedPhoto(
     throw new Error(`Could not create a private photo URL: ${signError.message}`);
   }
 
-  let publicPath: string | null = null;
-  let publicConsentAt: string | null = null;
-  if (publicConsent) {
-    // Stable path: the public URL does not change when the player replaces the photo. The object
-    // is still only written when the separate public consent is on.
-    publicPath = `${clubId}/${playerId}.jpg`;
+  if (publicPath) {
     const { error: publicError } = await client.storage
       .from("player-photos-public")
       .upload(publicPath, blob, { contentType, upsert: true });

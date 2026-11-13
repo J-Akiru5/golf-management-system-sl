@@ -269,6 +269,15 @@ lets a scored round publish without a separate "start scoring" step. Not applied
 - `plan/policy.yaml` now records the deployment allowlist that `vercel.json` enforces: `main` and `staging`.
 - `20261108004000_public_leaderboard_sides.sql` is retired as a recorded no-op. The pair `side` field it added already ships in `20261110000100_public_release_enforcement.sql`, and keeping the old body at an earlier version would let a future `supabase db push` replace the guarded leaderboard with an ungated one. `supabase/checks/2026-11-11-applied-state.sql` is the read-only check for the live ledger and the two contested 8 November migrations.
 
+### Security
+- **Public player photos are named after a random token, not the player id.** The public roster
+  publishes player ids, so the old `{club_id}/{player_id}.jpg` object could be fetched from the public
+  bucket without `photo_public_consent_at`. `20261111000100_public_photo_token.sql` adds
+  `players.photo_public_token`, requires the public path to be `{club_id}/{token}.jpg`, drops the
+  object when consent is withdrawn, replaced, retired or deleted, and removes the old guessable
+  objects. **Not applied to the live project.** Existing consented public photos must be re-published
+  from the desk (toggle public display off and on); the private originals are untouched.
+
 ## [0.33.0] - 2026-11-11
 
 ### Migrations shipping with this release
