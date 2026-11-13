@@ -9,6 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-11-13
+
+### Added
+- **The scorecard system check includes the pair, group, tee time and playing day.** The field
+  lookup now selects the scorecard's competition day instead of mixing groups from every day;
+  group numbers restart per day. The check shows the system partner, pair number, group, start
+  hole and tee time, and flags AM cards whose system tee is in the PM shotgun. No migration.
+
 ## [0.43.1] - 2026-11-13
 
 ### Fixed

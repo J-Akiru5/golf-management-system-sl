@@ -4,8 +4,17 @@ export interface FieldPlayer {
   name: string;
   partner: string;
   team: number | null;
-  /** The group number from the system draw. */
+  /** The group number from the selected day's draw. */
   group: number | null;
+  dayNumber: number | null;
+  playDate: string;
+  /** HH:MM from the group's tee time. */
+  teeTime: string;
+  session: "AM" | "PM" | "";
+  startHole: number | null;
+  wave: string;
+  /** The flight name on the group row. */
+  flight: string;
   cls: string;
   formulaClass: string;
   frozenIndex: number | null;
@@ -19,7 +28,14 @@ export interface FieldPlayer {
 export interface FieldLookup {
   event: string;
   tournamentId: string;
+  dayNumber: number | null;
+  playDate: string;
   players: FieldPlayer[];
+}
+
+export interface FieldOptions {
+  /** The scorecard's playing day. Defaults to the earliest round. */
+  day?: number;
 }
 
 export class SupabaseFieldUnavailable extends Error {}
@@ -76,12 +92,23 @@ export function teeCode(value: unknown): string {
   return "";
 }
 
+/** A day's draw runs a morning and an afternoon shotgun; the event stores the afternoon start. */
+export function sessionFromTeeTime(teeTime: unknown, pmFirst = "12:30"): "AM" | "PM" | "" {
+  const time = text(teeTime).slice(0, 5);
+  if (!time) return "";
+  const afternoon = text(pmFirst).slice(0, 5) || "12:30";
+  return time < afternoon ? "AM" : "PM";
+}
+
 /**
  * Reads the live field list from Supabase. The class is the system's stored class (the flight
  * name assigned by the desk), with the formula as a fallback when a flight row is missing.
  * The service role is used because this local app has no staff session.
  */
-export async function loadField(eventName: string): Promise<FieldLookup | null> {
+export async function loadField(
+  eventName: string,
+  options: FieldOptions = {},
+): Promise<FieldLookup | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_SECRET_ROLE_KEY?.trim();
@@ -96,7 +123,7 @@ export async function loadField(eventName: string): Promise<FieldLookup | null> 
 
   let tournamentQuery = supabase
     .from("tournaments")
-    .select("id,club_id,name,play_date")
+    .select("id,club_id,name,play_date,first_tee_time,pm_first_tee_time")
     .order("play_date", { ascending: false })
     .limit(8);
   if (eventName.trim()) {
@@ -157,21 +184,60 @@ export async function loadField(eventName: string): Promise<FieldLookup | null> 
     }
   }
 
-  // Group numbers are stored on `groups`, and `group_members` maps each registration to one.
-  const groupNumberById = new Map<string, number>();
-  const groupByRegistration = new Map<string, number>();
-  const { data: groupRows, error: groupError } = await supabase
+  // A group number is only unique inside one playing day, so pick the scorecard's day first.
+  const pmFirst = text(tournament.pm_first_tee_time) || "12:30";
+  const { data: roundRows } = await supabase
+    .from("competition_rounds")
+    .select("id,day_number,play_date,status")
+    .eq("tournament_id", tournamentId)
+    .eq("club_id", clubId)
+    .order("day_number");
+  const rounds = (roundRows ?? []) as Row[];
+  const requestedDay = options.day && Number.isFinite(options.day) ? options.day : null;
+  const round =
+    (requestedDay !== null
+      ? rounds.find((row) => numberOrNull(row.day_number) === requestedDay)
+      : undefined) ??
+    rounds.find((row) => text(row.status) === "provisional" || text(row.status) === "scoring") ??
+    rounds[0] ??
+    null;
+  const dayNumber = numberOrNull(round?.day_number);
+  const playDate = text(round?.play_date);
+  const roundId = text(round?.id);
+
+  type GroupInfo = {
+    number: number;
+    teeTime: string;
+    session: "AM" | "PM" | "";
+    startHole: number | null;
+    wave: string;
+    flight: string;
+  };
+  const groupById = new Map<string, GroupInfo>();
+  const groupByRegistration = new Map<string, GroupInfo>();
+  let groupQuery = supabase
     .from("groups")
-    .select("id,number")
+    .select("id,number,tee_time,wave,start_hole,flights(name)")
     .eq("tournament_id", tournamentId)
     .eq("club_id", clubId);
+  if (roundId) groupQuery = groupQuery.eq("round_id", roundId);
+  const { data: groupRows, error: groupError } = await groupQuery;
   if (!groupError) {
     for (const row of (groupRows ?? []) as Row[]) {
       const id = text(row.id);
       const number = numberOrNull(row.number);
-      if (id && number !== null) groupNumberById.set(id, number);
+      const teeTime = text(row.tee_time).slice(0, 5);
+      if (!id || number === null) continue;
+      groupById.set(id, {
+        number,
+        teeTime,
+        session: sessionFromTeeTime(teeTime, pmFirst),
+        startHole: numberOrNull(row.start_hole),
+        wave: text(row.wave),
+        flight: text(record(row.flights)?.name),
+      });
     }
-    const groupIds = [...groupNumberById.keys()];
+    const groupIds = [...groupById.keys()];
     if (groupIds.length > 0) {
       const { data: memberRows } = await supabase
         .from("group_members")
@@ -179,11 +245,9 @@ export async function loadField(eventName: string): Promise<FieldLookup | null> 
         .eq("club_id", clubId)
         .in("group_id", groupIds);
       for (const row of (memberRows ?? []) as Row[]) {
-        const groupNumber = groupNumberById.get(text(row.group_id));
+        const group = groupById.get(text(row.group_id));
         const registrationId = text(row.registration_id);
-        if (groupNumber !== undefined && registrationId) {
-          groupByRegistration.set(registrationId, groupNumber);
-        }
+        if (group && registrationId) groupByRegistration.set(registrationId, group);
       }
     }
   }
@@ -227,11 +291,19 @@ export async function loadField(eventName: string): Promise<FieldLookup | null> 
       entry.index !== null && partnerIndex !== null
         ? classFromAverage(entry.index, partnerIndex)
         : "";
+    const group = groupByRegistration.get(id) ?? null;
     players.push({
       name: entry.name,
       partner,
       team: pair ? pair.number : null,
-      group: groupByRegistration.get(id) ?? null,
+      group: group?.number ?? null,
+      dayNumber,
+      playDate,
+      teeTime: group?.teeTime ?? "",
+      session: group?.session ?? "",
+      startHole: group?.startHole ?? null,
+      wave: group?.wave ?? "",
+      flight: group?.flight ?? "",
       cls: entry.flightClass || formulaClass,
       formulaClass,
       frozenIndex: entry.index,
@@ -241,5 +313,5 @@ export async function loadField(eventName: string): Promise<FieldLookup | null> 
     });
   }
   players.sort((left, right) => left.name.localeCompare(right.name));
-  return { event, tournamentId, players };
+  return { event, tournamentId, dayNumber, playDate, players };
 }

@@ -452,13 +452,24 @@ function __scorecardCheck(id) {
   const systemTeeName = field ? field.tee || "" : "";
   const systemHdcp = field && field.playingHandicap != null ? String(field.playingHandicap) : "";
   const systemIndex = field && field.frozenIndex != null ? field.frozenIndex : null;
+  const systemDay = field && field.dayNumber != null ? field.dayNumber : null;
+  const systemPlayDate = field ? field.playDate || "" : "";
+  const systemTeeTime = field ? field.teeTime || "" : "";
+  const systemSession = field ? field.session || "" : "";
+  const systemStartHole = field && field.startHole != null ? field.startHole : null;
+  const systemWave = field ? field.wave || "" : "";
+  const systemPartner = field ? field.partner || "" : "";
+  const systemPair = field && field.team != null ? field.team : null;
+  const systemFlight = field ? field.flight || "" : "";
+  const documentSession = /am\b/i.test(SRC.label) ? "AM" : /pm\b/i.test(SRC.label) ? "PM" : "";
   // A playing handicap of 0 beside a real index is an unset system value, not a scratch player.
   // The difference is still shown, but "Use system" must not copy the 0 onto the card.
   const hdcpUsable = systemHdcp !== "" && !(Number(systemHdcp) === 0 && systemIndex != null && systemIndex >= 1);
   const classDiff = Boolean(systemClass && cardClass && systemClass !== cardClass);
-  const groupDiff = Boolean(systemGroup && cardGroup !== systemGroup);
+  const groupDiff = Boolean((cardGroup || systemGroup) && cardGroup !== systemGroup);
   const teeDiff = Boolean(systemTee && cardTee !== systemTee);
   const hdcpDiff = systemHdcp !== "" && (cardPh == null || cardPh !== Number(systemHdcp));
+  const dayDiff = Boolean(systemSession && documentSession && systemSession !== documentSession);
   return {
     id: card.id,
     name: card.name,
@@ -476,12 +487,23 @@ function __scorecardCheck(id) {
     systemHdcp,
     systemIndex,
     hdcpUsable,
+    systemDay,
+    systemPlayDate,
+    systemTeeTime,
+    systemSession,
+    systemStartHole,
+    systemWave,
+    systemPartner,
+    systemPair,
+    systemFlight,
+    documentSession,
     classDiff,
     groupDiff,
     teeDiff,
     hdcpDiff,
+    dayDiff,
     noClass: !cardClass,
-    issue: !field || !cardClass || classDiff || groupDiff || teeDiff || hdcpDiff,
+    issue: !field || !cardClass || classDiff || groupDiff || teeDiff || hdcpDiff || dayDiff,
   };
 }
 window.__scorecard = {
@@ -513,6 +535,7 @@ window.__scorecard = {
       groupDiff: checks.filter((check) => check.groupDiff).length,
       teeDiff: checks.filter((check) => check.teeDiff).length,
       hdcpDiff: checks.filter((check) => check.hdcpDiff).length,
+      dayDiff: checks.filter((check) => check.dayDiff).length,
       issues: checks.filter((check) => check.issue),
       checks,
     };
@@ -536,7 +559,7 @@ window.__scorecard = {
   let fieldReady = false;
   let checkCache = null;
   const searchFilter = window.filter;
-  const simpleFilters = ["all", "needs", "done", "issues", "noclass", "unmatched", "groupdiff", "teediff", "hdcpdiff"];
+  const simpleFilters = ["all", "needs", "done", "issues", "noclass", "unmatched", "groupdiff", "teediff", "hdcpdiff", "daydiff"];
 
   const escapeHtml = (value) =>
     String(value ?? "").replace(/[&<>"]/g, (character) => ({
@@ -563,6 +586,7 @@ window.__scorecard = {
       <button type="button" id="batch-group">Group differs</button>
       <button type="button" id="batch-tee">Tee differs</button>
       <button type="button" id="batch-hdcp">HDCP differs</button>
+      <button type="button" id="batch-day">Day/tee differs</button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
       <button type="button" id="batch-start">Start new review batch</button>
@@ -592,6 +616,7 @@ window.__scorecard = {
   const groupButton = panel.querySelector("#batch-group");
   const teeButton = panel.querySelector("#batch-tee");
   const hdcpButton = panel.querySelector("#batch-hdcp");
+  const dayButton = panel.querySelector("#batch-day");
   const startButton = panel.querySelector("#batch-start");
   const addButton = panel.querySelector("#batch-add");
   const saveButton = panel.querySelector("#batch-save");
@@ -650,6 +675,7 @@ window.__scorecard = {
     if (active === "groupdiff") return Boolean(checkFor(card)?.groupDiff);
     if (active === "teediff") return Boolean(checkFor(card)?.teeDiff);
     if (active === "hdcpdiff") return Boolean(checkFor(card)?.hdcpDiff);
+    if (active === "daydiff") return Boolean(checkFor(card)?.dayDiff);
     const batch = batches().find((entry) => entry.id === active);
     return Boolean(batch && batch.cardIds.includes(card.id));
   }
@@ -685,11 +711,11 @@ window.__scorecard = {
     }
     const issues = data.issues;
     if (issues.length === 0) {
-      checkSummary.textContent = "System check: every card matches the system on name, class, group, tee and HDCP.";
+      checkSummary.textContent = "System check: every card matches the system on name, class, group, tee, HDCP and day/tee off.";
       checkTable.innerHTML = "";
       return;
     }
-    checkSummary.textContent = `System check: ${data.missing} name(s) not found · ${data.noClass} no class · ${data.classDiff} class differs · ${data.groupDiff} group differs · ${data.teeDiff} tee differs · ${data.hdcpDiff} HDCP differs. Card value / system value.`;
+    checkSummary.textContent = `System check: ${data.missing} name(s) not found · ${data.noClass} no class · ${data.classDiff} class differs · ${data.groupDiff} group differs · ${data.teeDiff} tee differs · ${data.hdcpDiff} HDCP differs · ${data.dayDiff} day/tee differs. Card value / system value.`;
     const rows = issues
       .map((check) => {
         const name = check.matched
@@ -700,6 +726,17 @@ window.__scorecard = {
           : check.systemTee;
         const cardHdcp = check.cardPh != null ? String(check.cardPh) : check.cardHdcp;
         const systemHdcp = check.systemHdcp && !check.hdcpUsable ? `${check.systemHdcp}?` : check.systemHdcp;
+        const partner = check.systemPartner || "no partner";
+        const pair = check.systemPair != null ? `pair ${check.systemPair}` : "no pair";
+        const group = check.systemGroup || "no group";
+        const day = check.systemDay != null ? `Day ${check.systemDay}` : "Day ?";
+        const session = check.systemSession ? `${check.systemSession} ` : "";
+        const time = check.systemTeeTime || "time ?";
+        const hole = check.systemStartHole != null ? `hole ${check.systemStartHole}` : "hole ?";
+        const pairingDiff = check.dayDiff || check.groupDiff || !check.matched;
+        const pairing = check.matched
+          ? `<div>${escapeHtml(partner)}</div><div class="legend">${escapeHtml(pair)} · ${escapeHtml(group)} · ${escapeHtml(day)} ${escapeHtml(session + time)} · ${escapeHtml(hole)}</div>`
+          : `<div class="legend">not on the field list</div>`;
         const canApply =
           check.matched &&
           Boolean(check.systemClass || check.systemGroup || check.systemTee || check.hdcpUsable);
@@ -709,6 +746,7 @@ window.__scorecard = {
           ${cell(check.cardGroup, check.systemGroup, check.groupDiff)}
           ${cell(check.cardTee, systemTee, check.teeDiff)}
           ${cell(cardHdcp, systemHdcp, check.hdcpDiff)}
+          <td style="padding:4px;vertical-align:top;${pairingDiff ? "color:#b42318;font-weight:600" : ""}">${pairing}</td>
           <td style="padding:4px">${canApply ? `<button type="button" data-apply="${escapeHtml(check.id)}" title="Copy the system class, group, tee and HDCP onto this card">Use system</button>` : ""}</td>
         </tr>`;
       })
@@ -721,6 +759,7 @@ window.__scorecard = {
           <th style="padding:4px">Group<br><span style="font-weight:400">card / system</span></th>
           <th style="padding:4px">Tee<br><span style="font-weight:400">card / system</span></th>
           <th style="padding:4px">HDCP<br><span style="font-weight:400">card / system</span></th>
+          <th style="padding:4px">Pairing / tee off<br><span style="font-weight:400">system</span></th>
           <th></th>
         </tr>
       </thead>
@@ -774,13 +813,14 @@ window.__scorecard = {
     needsButton.textContent = `Needs review (${needs})`;
     doneButton.textContent = `Reviewed (${done})`;
     const data = checkData();
-    const counts = data || { issues: [], noClass: 0, missing: 0, groupDiff: 0, teeDiff: 0, hdcpDiff: 0 };
+    const counts = data || { issues: [], noClass: 0, missing: 0, groupDiff: 0, teeDiff: 0, hdcpDiff: 0, dayDiff: 0 };
     issuesButton.textContent = `Differences (${counts.issues.length})`;
     noclassButton.textContent = `No class (${counts.noClass})`;
     unmatchedButton.textContent = `Name not found (${counts.missing})`;
     groupButton.textContent = `Group differs (${counts.groupDiff})`;
     teeButton.textContent = `Tee differs (${counts.teeDiff})`;
     hdcpButton.textContent = `HDCP differs (${counts.hdcpDiff})`;
+    dayButton.textContent = `Day/tee differs (${counts.dayDiff})`;
     for (const [key, button] of [
       ["all", allButton],
       ["needs", needsButton],
@@ -791,11 +831,12 @@ window.__scorecard = {
       ["groupdiff", groupButton],
       ["teediff", teeButton],
       ["hdcpdiff", hdcpButton],
+      ["daydiff", dayButton],
     ]) {
       const on = active === key;
       button.classList.toggle("on", on);
       button.setAttribute("aria-pressed", on ? "true" : "false");
-      if (["issues", "noclass", "unmatched", "groupdiff", "teediff", "hdcpdiff"].includes(key)) {
+      if (["issues", "noclass", "unmatched", "groupdiff", "teediff", "hdcpdiff", "daydiff"].includes(key)) {
         button.disabled = !fieldReady;
       }
     }
@@ -896,6 +937,7 @@ window.__scorecard = {
   groupButton.addEventListener("click", () => setActive("groupdiff"));
   teeButton.addEventListener("click", () => setActive("teediff"));
   hdcpButton.addEventListener("click", () => setActive("hdcpdiff"));
+  dayButton.addEventListener("click", () => setActive("daydiff"));
   startButton.addEventListener("click", startBatch);
   addButton.addEventListener("click", () => addInput.click());
   saveButton.addEventListener("click", () => {
@@ -1021,15 +1063,17 @@ window.__scorecard = {
 
   async function loadField() {
     try {
+      const dayMatch = String(db.label || db.slug || "").match(/day\s*([1-9][0-9]*)/i);
+      const day = dayMatch ? dayMatch[1] : "";
       const response = await fetch(
-        `/api/scorecards/field?event=${encodeURIComponent(db.event)}`,
+        `/api/scorecards/field?event=${encodeURIComponent(db.event)}${day ? `&day=${day}` : ""}`,
         { cache: "no-store" },
       );
       if (!response.ok) {
         fieldReady = false;
         fieldStatus.textContent =
           response.status === 503
-            ? "Supabase field: not configured on this machine."
+            ? "Supabase field: not configured in this deployment."
             : "Supabase field: not available.";
         apply();
         return;
@@ -1045,7 +1089,7 @@ window.__scorecard = {
       fieldReady = true;
       checkCache = null;
       const check = db.checkField();
-      fieldStatus.textContent = `Supabase field: ${body.players.length} players · ${check.missing} name(s) not found · ${check.noClass} no class · ${check.classDiff} class differs · ${check.groupDiff} group differs · ${check.teeDiff} tee differs · ${check.hdcpDiff} HDCP differs.`;
+      fieldStatus.textContent = `Supabase field: ${body.players.length} players · Day ${body.dayNumber ?? "?"}${body.playDate ? ` (${body.playDate})` : ""} · ${check.missing} name(s) not found · ${check.noClass} no class · ${check.classDiff} class differs · ${check.groupDiff} group differs · ${check.teeDiff} tee differs · ${check.hdcpDiff} HDCP differs · ${check.dayDiff} day/tee differs.`;
       apply();
     } catch {
       fieldReady = false;
