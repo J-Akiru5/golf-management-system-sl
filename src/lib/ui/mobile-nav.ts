@@ -113,10 +113,10 @@ export const PLAYER_MOBILE_ITEMS: readonly MobileNavItem[] = [
     testId: "player-bar-pairings",
   },
   {
-    // The public leaderboard, not the signed-in live board: the published snapshot is what the
-    // tab promises, and nobody standing on the course should have to log in to read it.
+    // The signed-in live board, with the player's own row marked. The public bar carries the
+    // published leaderboard for readers who are not signed in; this one is for a player.
     kind: "link",
-    href: "/leaderboard",
+    href: "/my/board",
     label: "Board",
     labelKey: "player.tab.board",
     icon: "trophy",

@@ -756,7 +756,8 @@ export const en = {
       signInDisabled: "Sign-in is not available for this account. Ask the club.",
       emailRequired: "Enter the email address on the account.",
       linkInvalid: "That link is invalid or has expired. Request a new one.",
-      signInRequired: "Please sign in to see your own start. The pairings and board stay open to everyone.",
+      signInRequired:
+        "Please sign in to see your own start. The pairings and board stay open to everyone.",
       signUpRequired: "Enter an email address and a password to create an account.",
       passwordShort: "Use at least 8 characters for your password.",
       signUpFailed: "That account could not be created. If you already have one, sign in instead.",

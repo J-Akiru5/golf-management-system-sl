@@ -217,7 +217,12 @@ function RosterDirectory({ players }: { players: PublicRosterPlayer[] }) {
                     <ChevronRight aria-hidden="true" />
                   </span>
                 )}
-                <svg className="player-card-flag" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                <svg
+                  className="player-card-flag"
+                  viewBox="0 0 48 48"
+                  aria-hidden="true"
+                  focusable="false"
+                >
                   <path d="M9 44V4" />
                   <path d="M9 6c9-4 9 4 18 0 6-2.6 7-3.2 12-4v14c-5 .8-6 1.4-12 4-9 4-9-4-18 0Z" />
                   <circle cx="23" cy="38" r="1.6" />
