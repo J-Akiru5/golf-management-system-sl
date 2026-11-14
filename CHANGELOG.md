@@ -9,6 +9,26 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.52.3] - 2026-11-14
+
+### Fixed
+- **Import JSON no longer gives a player a second card.** It used to skip only a card with the same id,
+  so a file whose cards had other ids (a scan file, or cards made before the assigned list) added a
+  duplicate for every player already on the page, and the scores in the file for a card already there
+  were ignored. Import JSON now goes through the same review as a photo scan: you pick the day, the
+  session and the batch, and the dialog starts on **Search every card on this page**. Each card in the
+  file is matched to a card on the page by player name, in any word order and ignoring accents and
+  capitals. A player who already has a card is updated: blank holes take the file's scores, scores
+  already on the card are kept, a score that disagrees stays and is written in the card's note, and
+  the card is unchecked if it gained scores. A player with no card gets one. The dialog lists who is
+  new and who is already there, and how many scores each existing card would gain, before anything
+  changes.
+- **Imported and scanned cards are linked to the system's player.** A new card, and an existing card that
+  had no link, now carries the player and registration ids from the system's field list for its day, and
+  takes the group and tee when it had none, so **Send checked cards to admin** knows who it is. A name
+  that is not on the system's list for that day is added anyway, with a note that the admin has to
+  match it. A card's own day and session, when the file has them, win over the dialog's.
+
 ## [0.52.2] - 2026-11-14
 
 ### Fixed
