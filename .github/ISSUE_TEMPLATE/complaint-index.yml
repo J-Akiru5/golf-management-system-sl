@@ -5,12 +5,12 @@ labels: ["complaint", "complaint:index"]
 body:
   - type: markdown
     attributes:
-      value: "While this repository is public, write the pair number or player ID only. No names, no contact details."
+      value: "While this repository is public, write the pair number only. No names, no player IDs, no contact details."
   - type: input
     id: who
     attributes:
-      label: Player or pair reference
-      description: Pair number or player ID.
+      label: Pair reference
+      description: The pair number from the draw. Add the group and hole when the number is not unique.
     validations:
       required: true
   - type: input
