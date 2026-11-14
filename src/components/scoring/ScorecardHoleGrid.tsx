@@ -35,6 +35,23 @@ function stateLabel(state: string | undefined): string {
   return "";
 }
 
+/**
+ * Moves the desk to the previous or next score cell, in hole order, without leaving the grid.
+ * False when there is no cell that way, so the caller can let the browser's own Tab take over.
+ */
+function moveScoreCell(from: number, offset: number): boolean {
+  const grid = document.getElementById("score-hole-grid");
+  const cells = Array.from(
+    grid?.querySelectorAll<HTMLInputElement>("input[data-score-hole]") ?? [],
+  );
+  const index = cells.findIndex((cell) => Number(cell.dataset.scoreHole) === from);
+  const target = index < 0 ? undefined : cells[index + offset];
+  if (!target) return false;
+  target.focus();
+  target.select();
+  return true;
+}
+
 function ScoreCell({
   hole,
   strokes,
@@ -58,15 +75,28 @@ function ScoreCell({
     <div className={`grid gap-0.5 px-0.5 py-0.5 ${stateClasses(state)}`}>
       <input
         id={`hole-${hole.number}`}
+        data-score-hole={hole.number}
         type="text"
         inputMode="numeric"
         value={strokes[hole.number] ?? ""}
         aria-invalid={flagged ? true : undefined}
         aria-describedby={flagged ? "scan-check-hint" : undefined}
-        className="h-11 w-full border-0 bg-transparent px-0 text-center font-mono text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-primary lg:h-9"
+        className="h-11 w-full border-0 bg-transparent px-0 text-center font-mono text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-primary"
         onChange={(event) => onChange(hole.number, normalizeCellInput(event.target.value))}
+        onFocus={(event) => event.currentTarget.select()}
         onKeyDown={(event) => {
-          if (event.key !== "Enter") return;
+          if (event.key === "Enter") {
+            event.preventDefault();
+            onEnter(hole.number);
+            return;
+          }
+          if (event.key !== "Tab") return;
+          if (moveScoreCell(hole.number, event.shiftKey ? -1 : 1)) {
+            event.preventDefault();
+            return;
+          }
+          // The last hole hands the desk to Save; the first one lets Shift+Tab leave the grid.
+          if (event.shiftKey) return;
           event.preventDefault();
           onEnter(hole.number);
         }}
@@ -206,7 +236,7 @@ function NineTable({
                     aria-label={`Hole ${hole.number} pick-up`}
                     onClick={() => onChange(hole.number, picked ? "" : "X")}
                     disabled={disabled}
-                    className={`h-11 w-full rounded border text-[13px] font-bold lg:h-9 ${
+                    className={`h-11 w-full rounded border text-[13px] font-bold ${
                       picked
                         ? "border-primary bg-primary text-on-primary"
                         : "border-line bg-surface-sunken text-ink"
@@ -257,7 +287,7 @@ export function ScorecardHoleGrid({
   const front = holes.filter((hole) => hole.number <= 9);
   const back = holes.filter((hole) => hole.number >= 10);
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-2" id="score-hole-grid">
       <p className="hint m-0 sm:hidden print:hidden">
         Swipe the card sideways to reach every hole.
       </p>
