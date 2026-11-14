@@ -2195,11 +2195,22 @@ check(
   listedNames.join(" / "),
 );
 check(
-  "the system playing handicap is shown",
+  "the playing handicap is the system's index on the tee on the card",
   (await tabulatorPage.locator('#cards .card [data-k="syshcp"]').first().textContent())?.includes(
-    "System PH 12",
+    "Plays off 11 (index 10.2, Blue)",
   ) === true,
 );
+const toolbarSticky = await tabulatorPage.evaluate(
+  () => getComputedStyle(document.getElementById("toolbar")).position,
+);
+check("the find and filter bar is pinned", toolbarSticky === "sticky", toolbarSticky);
+const barHoldsTools = await tabulatorPage.evaluate(() => {
+  const bar = document.getElementById("toolbar");
+  return ["q", "dayFilter", "sessionFilter", "batch-select", "add-player", "saved", "stat"].every(
+    (id) => bar.contains(document.getElementById(id)),
+  );
+});
+check("search, day, session, batch, save state and counts are in the pinned bar", barHoldsTools);
 const firstNameEditable = await tabulatorPage
   .locator("#cards .card input.name")
   .first()
@@ -2220,6 +2231,72 @@ check(
 await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 checked card", {
   timeout: 10000,
 });
+
+// The bar stays on screen while the cards scroll, so the search is always one keystroke away.
+await tabulatorPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+const searchPos = await tabulatorPage.locator("#q").boundingBox();
+check(
+  "the search box is still on screen after scrolling to the last card",
+  Boolean(searchPos && searchPos.y >= 0 && searchPos.y < 240),
+  searchPos ? `y ${Math.round(searchPos.y)}` : "missing",
+);
+await tabulatorPage.evaluate(() => window.scrollTo(0, 0));
+
+// A card for a player who is on the event's list but not in this day's draw.
+await tabulatorPage.click("#add-player");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]').first()).toBeVisible({
+  timeout: 10000,
+});
+await tabulatorPage.locator("#pp-q").fill("FIVE");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]')).toHaveCount(1, {
+  timeout: 10000,
+});
+const drawerNote = await tabulatorPage.locator("#pp-list").textContent();
+check(
+  "a player outside the day's draw is found and named as such",
+  drawerNote?.includes("UNASSIGNED, FIVE") === true && drawerNote?.includes("not drawn for Day 1") === true,
+  drawerNote ?? "",
+);
+await tabulatorPage.locator('#pp-list input[name="pp-pick"]').first().check();
+await tabulatorPage.click("#pp-add");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(4, { timeout: 10000 });
+check("a card is added for the player outside the draw", true);
+// The same player again must not become a second card; the existing card is opened instead.
+await tabulatorPage.click("#add-player");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]').first()).toBeVisible({
+  timeout: 10000,
+});
+await tabulatorPage.locator("#pp-q").fill("FIVE");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]')).toHaveCount(1, {
+  timeout: 10000,
+});
+const alreadyNote = await tabulatorPage.locator("#pp-list").textContent();
+check(
+  "a player who already has a card for that day and session is flagged",
+  alreadyNote?.includes("already has a card for Day 1 AM") === true,
+  alreadyNote ?? "",
+);
+await tabulatorPage.locator('#pp-list input[name="pp-pick"]').first().check();
+await tabulatorPage.click("#pp-add");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(4, { timeout: 10000 });
+check("adding the same player again does not create a second card", true);
+
+// The second way in: a name that is not in the system at all.
+await tabulatorPage.click("#add-player");
+await expect(tabulatorPage.locator("#pp-other summary")).toBeVisible({ timeout: 10000 });
+await tabulatorPage.click("#pp-other summary");
+await tabulatorPage.locator("#pp-name").fill("STRANGER, SAM");
+await tabulatorPage.click("#pp-addname");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(5, { timeout: 10000 });
+const strangerCard = tabulatorPage
+  .locator("#cards .card")
+  .filter({ has: tabulatorPage.locator('input.name[value="STRANGER, SAM"]') });
+check(
+  "a player not in the system is marked so on the card",
+  (await strangerCard.locator(".no").first().textContent())?.includes(
+    "Not in the system: tell the admin",
+  ) === true,
+);
 
 // Phase 2: a card that is only in this browser must survive a reload and go out with the merge.
 const localCard = {
