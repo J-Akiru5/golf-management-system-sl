@@ -9,6 +9,24 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.57.0] - 2026-11-15
+
+### Added
+- **The draw board can be rearranged by dragging.** Drag a player onto another player to swap the
+  two, in the card view and the table view, or onto a group with room to move them there. A drop is
+  decided by `src/lib/draw/drop-intent.ts`, which asks the same `swapPlayers`, `moveSet` and
+  `dropCheck` the buttons already run, so locks, checks, manual overrides, undo and Live mode behave
+  the same. A full group offers a swap that is finished on a row, and a drop the rules forbid is
+  refused with the action's own reason in a red line instead of being dropped silently. The line
+  after a drop offers the existing one-step Undo. A finger drags from the same handle as a mouse; the
+  Swap and Move buttons, the checkboxes and the command box are unchanged. No migration.
+
+### Migrations shipping with this release
+
+- `20261115000300_correct_handicap_no_rules_version.sql`: **written, not applied.** Apply it after
+  `20261114000300_correct_handicap_snapshot.sql`. It lets a played round's handicap be corrected when
+  the round has no rules version stored, which is true of Day 2 and Day 3.
+
 ## [0.56.0] - 2026-11-15
 
 ### Added
