@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ImportRecord } from "@/lib/ngap";
-import { effectiveIndexesFromImport } from "./handicap-records";
+import { effectiveIndexesFromImport, handicapRecordSaveError } from "./handicap-records";
 
 const record = (index: number | null, effectiveDate: string): ImportRecord => ({
   row: 1,
@@ -47,5 +47,30 @@ describe("effectiveIndexesFromImport", () => {
       "2026-10-15",
     );
     expect(selected.size).toBe(0);
+  });
+});
+
+describe("handicapRecordSaveError", () => {
+  it("names the migration when the function is not there yet", () => {
+    const error = handicapRecordSaveError({
+      code: "PGRST202",
+      message: "Could not find the function public.save_handicap_record",
+    });
+    expect(error.message).toContain("20261114000200");
+    expect(error.message).toContain("Nothing was changed");
+  });
+
+  it("keeps the database's role refusal plain", () => {
+    const error = handicapRecordSaveError({
+      code: "42501",
+      message: "Only an owner or organizer can change a player's handicap record.",
+    });
+    expect(error.message).toBe("Only an owner or organizer can change a player's handicap record.");
+  });
+
+  it("wraps any other refusal in a plain sentence", () => {
+    const error = handicapRecordSaveError({ message: "connection reset" });
+    expect(error.message).toBe("Could not save the handicap record: connection reset");
+    expect(error.message).not.toContain("stack");
   });
 });

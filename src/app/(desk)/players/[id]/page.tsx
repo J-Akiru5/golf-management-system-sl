@@ -10,6 +10,7 @@ import {
   Link2,
   Lock,
   Pencil,
+  Plus,
   ScrollText,
   Trophy,
   Users,
@@ -25,6 +26,7 @@ import {
   RegistrationDaysEditor,
   RoleGate,
 } from "@/components/desk";
+import { HandicapRecordDialog } from "@/components/desk/HandicapRecordDialog";
 import { ReadyOverrideDialog } from "@/components/desk/ReadyOverrideDialog";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { SectionCard } from "@/components/PageHeader";
@@ -35,7 +37,7 @@ import { Button } from "@/components/ui/button";
 import { selectIndexForCutOff } from "@/lib/data/frozen";
 import { fmtIso } from "@/lib/data/labels";
 import { registeredDayBadges } from "@/lib/data/sessions";
-import { PAYMENT_LABEL } from "@/lib/data/types";
+import { PAYMENT_LABEL, type HandicapRecord } from "@/lib/data/types";
 import { displayName, fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
 import { formatName } from "@/lib/names";
 import { nextPairNumber } from "@/lib/pairs/pairs";
@@ -90,6 +92,8 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
   const [linkMessage, setLinkMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [pairTarget, setPairTarget] = useState<PairDialogTarget | null>(null);
   const [editingIndex, setEditingIndex] = useState(false);
+  // Null closes the sheet. A null record inside it means a new date is being added.
+  const [recordEdit, setRecordEdit] = useState<{ record: HandicapRecord | null } | null>(null);
   const canEditIndex =
     status === "demo" || member?.role === "owner" || member?.role === "organizer";
   const canPair =
@@ -329,12 +333,24 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
             id="history-h"
             icon={<History />}
             title="Handicap history"
-            subtitle={`Imported records for this player. The event freezes the latest one on or before ${tournament.cutOffDate}.`}
+            subtitle={`Imported and corrected records for this player. The event freezes the latest one on or before ${tournament.cutOffDate}.`}
+            action={
+              canEditIndex ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setRecordEdit({ record: null })}
+                >
+                  <Plus aria-hidden="true" />
+                  Add index
+                </Button>
+              ) : undefined
+            }
           >
             {records.length === 0 ? (
               <p className="muted text-[14px]">
-                No handicap record on file. Nothing is estimated; the next NGAP import can supply
-                one.
+                No handicap record on file. Nothing is estimated; use Add index or the next NGAP
+                import.
               </p>
             ) : (
               <ol className="plain grid gap-2">
@@ -352,6 +368,16 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
                       <span className="hint flex-1">{SOURCE_LABEL[r.source]}</span>
                       {frozenHere && <span className="pill gold">Frozen for this event</span>}
                       {r.id === latest?.id && !frozenHere && <span className="pill">Latest</span>}
+                      {canEditIndex && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setRecordEdit({ record: r })}
+                        >
+                          <Pencil aria-hidden="true" />
+                          Edit
+                        </Button>
+                      )}
                     </li>
                   );
                 })}
@@ -766,6 +792,19 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
           options={options}
         />
       </section>
+
+      {recordEdit && (
+        <HandicapRecordDialog
+          key={recordEdit.record?.id ?? "new"}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRecordEdit(null);
+          }}
+          playerName={player.name}
+          record={recordEdit.record}
+          onSave={(input) => adapters.players.saveHandicapRecord(player.id, input)}
+        />
+      )}
 
       {editingIndex && reg && entry && (
         <ReadyOverrideDialog

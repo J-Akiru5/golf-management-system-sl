@@ -29,6 +29,7 @@ import {
   parseCsv,
   suggestMapping,
 } from "@/lib/ngap";
+import { type HandicapRecordInput, readHandicapRecordForm } from "@/lib/player/handicap-record";
 import { rawCourseHandicap, type Tee } from "@/lib/routing";
 import {
   type Action,
@@ -89,6 +90,13 @@ export interface PlayerRepository {
   recordsFor(playerId: string): HandicapRecord[];
   /** Latest record on file, whatever its date. Display only; the event uses the frozen index. */
   latestRecord(playerId: string): HandicapRecord | null;
+  /**
+   * Adds a handicap index for one date, or corrects the record already on that date. The date is
+   * the key: an existing date is updated, a new date is inserted. Owner and organizer only; the
+   * connected database enforces that. Resolves once the row is written, so a sheet can show a
+   * refusal instead of closing over it.
+   */
+  saveHandicapRecord(playerId: string, input: HandicapRecordInput): Promise<void>;
   /**
    * Adds a directory record. The connected adapter also attaches the database write as `saved`, so
    * a screen can wait for the row before it says the player was added. Demo has nothing to wait for.
@@ -347,6 +355,30 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
         b.effectiveDate.localeCompare(a.effectiveDate),
       );
       return list[0] ?? null;
+    },
+    saveHandicapRecord: async (playerId, input) => {
+      const player = state.players.find((item) => item.id === playerId);
+      if (!player) throw new Error("That player is not in the club directory.");
+      // Demo has no database to refuse a bad value, so it reads the same rule the sheet reads.
+      const read = readHandicapRecordForm({
+        index: String(input.index),
+        effectiveDate: input.effectiveDate,
+        reason: input.reason,
+      });
+      if (!read.ok) throw new Error(read.message);
+      dispatch({
+        type: "upsertRecord",
+        record: {
+          id: `rec-manual-${playerId}-${read.value.effectiveDate}`,
+          clubId: state.clubId,
+          playerId,
+          index: read.value.index,
+          effectiveDate: read.value.effectiveDate,
+          source: "manual_fix",
+          uploadRef: null,
+          recordedAt: new Date().toISOString(),
+        },
+      });
     },
     add: (input) => {
       if (input.photo && !input.photoConsent) {
