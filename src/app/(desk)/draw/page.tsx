@@ -360,8 +360,11 @@ export default function DrawPage() {
     dragId.current = id;
     setPairAsk(null);
     setDropNote(null);
-    // Changing the page inside dragstart can cancel the drag in Chrome, so wait a tick.
-    setTimeout(() => setActive({ id, via: "drag" }), 0);
+    // Changing the page inside dragstart can cancel the drag in Chrome, so wait a tick. The drag
+    // may be over by the time the tick lands, so the pick is only shown while it is still in hand.
+    setTimeout(() => {
+      if (dragId.current === id) setActive({ id, via: "drag" });
+    }, 0);
   }, []);
   const onDragEnd = useCallback(() => {
     dragId.current = null;
@@ -552,6 +555,8 @@ export default function DrawPage() {
     clearTimeout(noteTimer.current);
     noteTimer.current = setTimeout(() => setDropNote(null), 12000);
   }, []);
+  // The line goes with the page: a timer left behind would set state on a board that is gone.
+  useEffect(() => () => clearTimeout(noteTimer.current), []);
 
   /**
    * What releasing the player in hand over one place would do. Cards and the table both ask this.
@@ -1452,9 +1457,9 @@ export default function DrawPage() {
       {draw && view === "board" && (
         <p className="hint" data-help="draw-drag">
           Drag a player onto another player to swap them, even between two full groups, or onto a
-          group with room to move them there. Dropping on a full group offers a swap; a locked group
-          says why it cannot take one. On a phone, drag from the ⋮⋮ handle. The Swap and Move
-          buttons and the command box do the same things.
+          group with room to move them there. Dropping on a full group offers a swap you finish on a
+          row. A locked group explains why it cannot take a move. On a phone, drag from the ⋮⋮
+          handle. The Swap and Move buttons and the command box do the same things.
         </p>
       )}
 
@@ -1486,6 +1491,9 @@ export default function DrawPage() {
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 onPointerDragStart={onPointerDragStart}
+                swapFrom={swapFrom}
+                swapFromName={swapFromName}
+                onSwapWith={onSwapWith}
               />
             ) : (
               sections.map(({ key, heading, groups }) => (

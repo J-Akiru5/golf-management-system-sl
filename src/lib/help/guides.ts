@@ -208,7 +208,7 @@ export const DESK_GUIDES: HelpGuide[] = [
       },
       {
         text: literal(
-          "Drag a player onto another player to swap the two, or onto a group with room to move them there. A full group offers a swap; a locked group says why it cannot take one. The Swap and Move buttons do the same things without a mouse.",
+          "Drag a player onto another player to swap the two, or onto a group with room to move them there. A full group offers a swap you finish on a row; a locked group explains why it cannot take a move. The Swap and Move buttons do the same things without a mouse.",
         ),
         anchor: "draw-drag",
       },

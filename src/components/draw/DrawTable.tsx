@@ -25,6 +25,13 @@ export interface DrawTableProps {
   onDragStart?: (id: string) => void;
   onDragEnd?: () => void;
   onPointerDragStart?: (id: string, event: ReactPointerEvent<HTMLElement>) => void;
+  /**
+   * A swap waiting for its second player. The cards complete it on a row's Swap button; the table
+   * offers the same button so a drop on a full group can be finished here too.
+   */
+  swapFrom?: string | null;
+  swapFromName?: string | null;
+  onSwapWith?: (id: string) => void;
 }
 
 function issueMarker(issues: Issue[] | undefined): { text: string; cls: string } | null {
@@ -64,6 +71,9 @@ export function DrawTable({
   onDragStart,
   onDragEnd,
   onPointerDragStart,
+  swapFrom = null,
+  swapFromName = null,
+  onSwapWith,
 }: DrawTableProps) {
   if (sections.length === 0) {
     return <p className="hint">No groups to show.</p>;
@@ -73,6 +83,15 @@ export function DrawTable({
     intentFor ? intentFor({ kind: "group", group }) : null;
   const playerIntentOf = (playerId: string): DropIntent | null =>
     intentFor ? intentFor({ kind: "player", playerId }) : null;
+  /**
+   * Where a release on one player's cell lands. A cell that cannot swap still lets the player join
+   * that row's group when the group has room.
+   */
+  const targetForCell = (group: number, playerId: string): DropTarget => {
+    if (acceptsDrop(playerIntentOf(playerId))) return { kind: "player", playerId };
+    if (acceptsDrop(groupIntentOf(group))) return { kind: "group", group };
+    return { kind: "player", playerId };
+  };
 
   return (
     <div className="stack">
@@ -123,10 +142,11 @@ export function DrawTable({
                       } ${overRow && acceptsDrop(groupIntent) ? "bg-fairway-soft" : ""}`}
                       onDragOver={(e) => {
                         // A player cell inside this row has already answered for itself.
-                        if (acceptsDrop(groupIntentOf(group.number))) {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                        }
+                        if (!intentFor?.({ kind: "group", group: group.number })) return;
+                        // A refused place still takes the release, so the answer can be said out
+                        // loud; nothing is written when it is refused.
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
                       }}
                       onDragEnter={() => onHoverTarget?.({ kind: "group", group: group.number })}
                       onDragLeave={(e) => {
@@ -192,9 +212,18 @@ export function DrawTable({
                         }
                         const isSelected = selectedPlayer === cell.playerId;
                         const manual = manualOverrideIds.has(cell.playerId);
-                        const cellIntent = playerIntentOf(cell.playerId);
                         const overCell =
                           hover?.kind === "player" && hover.playerId === cell.playerId;
+                        // The decision for the place the release will land, after the fallback from a
+                        // swap that cannot happen to a move into this row's group.
+                        const cellTarget = overCell
+                          ? targetForCell(group.number, cell.playerId)
+                          : null;
+                        const cellIntent = cellTarget
+                          ? cellTarget.kind === "player"
+                            ? playerIntentOf(cellTarget.playerId)
+                            : groupIntentOf(cellTarget.group)
+                          : null;
                         return (
                           <td
                             key={cell.playerId}
@@ -204,29 +233,37 @@ export function DrawTable({
                             } ${active?.id === cell.playerId ? "bg-gold-soft/45 ring-2 ring-gold ring-inset" : ""} ${overCell && acceptsDrop(cellIntent) ? "bg-fairway-soft" : ""}`}
                             onDragOver={(e) => {
                               e.stopPropagation();
-                              if (acceptsDrop(playerIntentOf(cell.playerId))) {
-                                e.preventDefault();
-                                e.dataTransfer.dropEffect = "move";
-                              }
+                              if (!intentFor?.({ kind: "player", playerId: cell.playerId })) return;
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = "move";
                             }}
                             onDragEnter={(e) => {
                               e.stopPropagation();
-                              onHoverTarget?.({ kind: "player", playerId: cell.playerId });
+                              onHoverTarget?.(targetForCell(group.number, cell.playerId));
                             }}
                             onDrop={(e) => {
                               e.stopPropagation();
                               e.preventDefault();
                               onHoverTarget?.(null);
-                              onDropTarget?.({ kind: "player", playerId: cell.playerId });
+                              onDropTarget?.(targetForCell(group.number, cell.playerId));
                             }}
                           >
                             <span className="flex w-full items-start gap-1">
-                              {!group.locked && onPointerDragStart && (
+                              {!group.locked && onDragStart && (
                                 <span
                                   className="grip"
                                   aria-hidden="true"
+                                  draggable
                                   title={`Drag ${cell.name} onto another player to swap, or onto a group to move`}
-                                  onPointerDown={(e) => onPointerDragStart(cell.playerId, e)}
+                                  onDragStart={(e) => {
+                                    const row = e.currentTarget.closest("tr");
+                                    if (row) e.dataTransfer.setDragImage(row, 16, 16);
+                                    e.dataTransfer.setData("text/plain", cell.playerId);
+                                    e.dataTransfer.effectAllowed = "move";
+                                    onDragStart?.(cell.playerId);
+                                  }}
+                                  onDragEnd={onDragEnd}
+                                  onPointerDown={(e) => onPointerDragStart?.(cell.playerId, e)}
                                 >
                                   ⋮⋮
                                 </span>
@@ -259,6 +296,16 @@ export function DrawTable({
                                 {manual && <span className="pill gold">Manual</span>}
                               </button>
                             </span>
+                            {onSwapWith && swapFrom && swapFrom !== cell.playerId && (
+                              <button
+                                type="button"
+                                className="btn small ghost mt-1 min-h-[44px] md:min-h-0"
+                                aria-label={`Swap ${cell.name} with ${swapFromName ?? "the player in hand"}`}
+                                onClick={() => onSwapWith(cell.playerId)}
+                              >
+                                Swap
+                              </button>
+                            )}
                             {overCell && dropLine(cellIntent) && (
                               <p className="hint m-0">{dropLine(cellIntent)}</p>
                             )}

@@ -2078,8 +2078,14 @@
   }
 }
 @media (pointer: coarse) {
+  /* The handle stays on a phone: a finger drag starts here, and the Move and Swap buttons stay too. */
   .grip {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 6px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

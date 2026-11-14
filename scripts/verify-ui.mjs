@@ -2203,6 +2203,125 @@ await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 chec
 });
 await tabulatorContext.close();
 
+section("draw board: swapping two players by drag");
+await go("/draw");
+const makeDrawForDrag = page.getByRole("button", { name: "Make the draw" });
+if (await makeDrawForDrag.count()) await makeDrawForDrag.first().click();
+await page.waitForTimeout(2500);
+// The cards are the default layout, and each row's Move button carries the player's name.
+const dragGroups = page.locator(".group");
+const confirmNote = page.locator('[data-testid="drop-confirm"]');
+const rowOf = (group, i) => group.locator(".slot[data-drop-player]").nth(i);
+const nameOfRow = async (row) => {
+  // A real button carries "Move <name>"; the grip's label also starts with "Move", so this
+  // selector stays on the button.
+  const label = await row
+    .locator('button[aria-label^="Move "]')
+    .first()
+    .getAttribute("aria-label");
+  return (label ?? "").replace(/^Move /, "");
+};
+check("the demo board has two groups to drag between", (await dragGroups.count()) >= 2);
+const firstGroup = dragGroups.nth(0);
+const secondGroup = dragGroups.nth(1);
+const sourceRow = rowOf(firstGroup, 0);
+const targetRow = rowOf(secondGroup, 0);
+const sourceName = await nameOfRow(sourceRow);
+const targetName = await nameOfRow(targetRow);
+check(
+  "the two rows hold different players",
+  sourceName.length > 0 && targetName.length > 0 && sourceName !== targetName,
+  `(${sourceName} / ${targetName})`,
+);
+// One drag: the first player of one full group onto the first player of another full group.
+await sourceRow.locator(".grip").dragTo(targetRow);
+await expect(confirmNote).toBeVisible({ timeout: 15000 });
+const dropWords = (await confirmNote.innerText()).replace(/\s+/g, " ").trim();
+check(
+  "a drag between two full groups swaps the two players and says so",
+  dropWords.startsWith("Swapped ") &&
+    dropWords.includes(sourceName) &&
+    dropWords.includes(targetName),
+  `(${dropWords})`,
+);
+check(
+  "the confirmation line offers Undo",
+  (await confirmNote.getByRole("button", { name: "Undo" }).count()) === 1,
+);
+const firstAfter = await firstGroup.innerText();
+const secondAfter = await secondGroup.innerText();
+check(
+  "the two players really changed groups",
+  firstAfter.includes(targetName) && secondAfter.includes(sourceName),
+);
+await confirmNote.getByRole("button", { name: "Undo" }).click();
+await page.waitForTimeout(1000);
+const firstUndone = await firstGroup.innerText();
+const secondUndone = await secondGroup.innerText();
+check(
+  "Undo puts both players back where they were",
+  firstUndone.includes(sourceName) && secondUndone.includes(targetName),
+);
+await page.screenshot({ path: `${SHOTS}/draw-drag-swap.png` });
+
+section("draw table view: swapping two players by drag");
+await page.getByRole("button", { name: "Table", exact: true }).click();
+await page.waitForTimeout(600);
+const dragTableRows = page.locator("tr[data-drop-group]");
+check("the table view lists the groups", (await dragTableRows.count()) >= 4);
+const cellName = async (cell) =>
+  (await cell.innerText()).replace(/^⋮⋮\s*/, "").split("\n")[0].trim();
+if ((await dragTableRows.count()) >= 4) {
+  const cellA = dragTableRows.nth(2).locator("td[data-drop-player]").first();
+  const cellB = dragTableRows.nth(3).locator("td[data-drop-player]").first();
+  const nameInA = await cellName(cellA);
+  const nameInB = await cellName(cellB);
+  await cellA.locator("button").dragTo(cellB);
+  await expect(confirmNote).toBeVisible({ timeout: 15000 });
+  const tableWords = (await confirmNote.innerText()).replace(/\s+/g, " ").trim();
+  check(
+    "a drag in the table swaps the two players and says so",
+    tableWords.startsWith("Swapped ") &&
+      tableWords.includes(nameInA) &&
+      tableWords.includes(nameInB),
+    `(${tableWords})`,
+  );
+  check(
+    "the table shows the swapped name in its new row",
+    (await cellName(cellB)) === nameInA,
+    `(${await cellName(cellB)} / ${nameInA})`,
+  );
+}
+await page.getByRole("button", { name: "Cards", exact: true }).click();
+await page.waitForTimeout(400);
+
+section("draw board: a drop the rules forbid says why");
+// Nothing is set up: a player dropped back on their own group cannot be moved there, so the board
+// has to say why and leave the group alone. The card view is the layout again by now.
+if (await confirmNote.count()) await confirmNote.getByRole("button", { name: "Dismiss" }).click();
+await expect(confirmNote).toHaveCount(0, { timeout: 5000 });
+const refuseGroup = page.locator(".group").nth(0);
+const refuseRow = refuseGroup.locator(".slot[data-drop-player]").nth(0);
+const rowsBefore = await refuseGroup.locator(".slot[data-drop-player]").count();
+await refuseRow.locator(".grip").dragTo(refuseGroup.locator(".group-head").first());
+await expect(confirmNote).toBeVisible({ timeout: 15000 });
+const refuseWords = (await confirmNote.innerText()).replace(/\s+/g, " ").trim();
+check(
+  "dropping a player back on their own group is refused with a reason",
+  /in group \d+/i.test(refuseWords),
+  `(${refuseWords})`,
+);
+check(
+  "the refusal is drawn as a refusal, so it cannot be read as a change",
+  ((await confirmNote.getAttribute("class")) ?? "").includes("bad"),
+);
+check(
+  "a refused drop offers no Undo and leaves the group as it was",
+  (await confirmNote.getByRole("button", { name: "Undo" }).count()) === 0 &&
+    (await refuseGroup.locator(".slot[data-drop-player]").count()) === rowsBefore,
+);
+await page.screenshot({ path: `${SHOTS}/draw-drag-refused.png` });
+
 console.log(`\nconsole errors: ${errors.length}`);
 for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 1200));
 console.log(`screenshots in ${SHOTS}`);

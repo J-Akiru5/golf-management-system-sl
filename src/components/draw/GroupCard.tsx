@@ -92,7 +92,24 @@ function GroupCardImpl(p: GroupCardProps) {
   const groupIntent = active && !own ? p.intentFor({ kind: "group", group: g.number }) : null;
   const hoverPlayer =
     hover?.kind === "player" && g.playerIds.includes(hover.playerId) ? hover.playerId : null;
-  const rowIntent = hoverPlayer ? p.intentFor({ kind: "player", playerId: hoverPlayer }) : null;
+  /**
+   * Where a release on one row lands. A swap needs both players on the board. A row that cannot
+   * swap still lets the player join this group when the group has room, which is what a drop on the
+   * card did before rows were drop targets, so pointing at a person is never worse than the card.
+   */
+  const targetForRow = (id: string): DropTarget => {
+    if (acceptsDrop(p.intentFor({ kind: "player", playerId: id }))) {
+      return { kind: "player", playerId: id };
+    }
+    if (acceptsDrop(p.intentFor({ kind: "group", group: g.number }))) {
+      return { kind: "group", group: g.number };
+    }
+    return { kind: "player", playerId: id };
+  };
+  // The decision for the place the drop will really land, after that fallback, so the line never
+  // says "can't drop here" for a release that moves the player.
+  const rowTarget = hoverPlayer ? targetForRow(hoverPlayer) : null;
+  const rowIntent = rowTarget ? p.intentFor(rowTarget) : null;
   const hoveringGroup = hover?.kind === "group" && hover.group === g.number;
   const hoveringHere = hoveringGroup || hoverPlayer !== null;
   // The line under the rows says what will happen if the organizer lets go: hovering one row wins,
@@ -123,10 +140,11 @@ function GroupCardImpl(p: GroupCardProps) {
       onDragOver={(e) => {
         // A row inside this group has already answered for itself. The intent is read from the
         // page's drag ref, so the first dragover of a drag already knows the answer.
-        if (acceptsDrop(p.intentFor({ kind: "group", group: g.number }))) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-        }
+        if (!p.intentFor({ kind: "group", group: g.number })) return;
+        // A refused place still accepts the release, so the answer can be said out loud instead of
+        // the drop being silently swallowed. Nothing is written when it is refused.
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
       }}
       onDragEnter={() => p.onHoverTarget({ kind: "group", group: g.number })}
       onDragLeave={(e) => {
@@ -225,20 +243,19 @@ function GroupCardImpl(p: GroupCardProps) {
               // The row answers for itself, so the group behind it never accepts a move instead of
               // the swap the organizer is pointing at.
               e.stopPropagation();
-              if (acceptsDrop(p.intentFor({ kind: "player", playerId: id }))) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-              }
+              if (!p.intentFor({ kind: "player", playerId: id })) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
             }}
             onDragEnter={(e) => {
               e.stopPropagation();
-              p.onHoverTarget({ kind: "player", playerId: id });
+              p.onHoverTarget(targetForRow(id));
             }}
             onDrop={(e) => {
               e.stopPropagation();
               e.preventDefault();
               p.onHoverTarget(null);
-              p.onDropTarget({ kind: "player", playerId: id });
+              p.onDropTarget(targetForRow(id));
             }}
           >
             <label

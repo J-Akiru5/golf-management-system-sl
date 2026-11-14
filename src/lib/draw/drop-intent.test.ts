@@ -203,3 +203,45 @@ describe("dropIntent: the registered pair", () => {
     expect(result.kind).toBe("move");
   });
 });
+
+describe("dropIntent: only a drop that changes the board is accepted", () => {
+  it("accepts the four intents that write something", () => {
+    expect(acceptsDrop({ kind: "swap", a: "p1", b: "p5", label: "x" })).toBe(true);
+    expect(acceptsDrop({ kind: "move", playerId: "p1", toGroup: 3, label: "x", note: null })).toBe(
+      true,
+    );
+    expect(
+      acceptsDrop({ kind: "moveOrPair", playerId: "p1", partnerId: "p2", toGroup: 3, label: "x" }),
+    ).toBe(true);
+    expect(acceptsDrop({ kind: "pickSwap", playerId: "p1", group: 2, label: "x" })).toBe(true);
+  });
+
+  it("refuses to take the release for a refusal or for empty hands", () => {
+    expect(acceptsDrop({ kind: "refused", reason: "no" })).toBe(false);
+    expect(acceptsDrop({ kind: "none" })).toBe(false);
+    expect(acceptsDrop(null)).toBe(false);
+  });
+});
+
+describe("dropIntent: the decision is a reading, never a write", () => {
+  it("leaves the draw exactly as it was, however the drop is refused", () => {
+    const before = JSON.stringify(board);
+    for (const target of [
+      { kind: "group", group: 1 },
+      { kind: "group", group: 3 },
+      { kind: "group", group: 99 },
+      { kind: "player", playerId: "p1" },
+      { kind: "player", playerId: "p5" },
+    ] as const) {
+      intent("p1", target, { pairOf: () => ["p2"] });
+    }
+    expect(JSON.stringify(board)).toBe(before);
+  });
+
+  it("matches the Swap button: a swap into a group that is otherwise locked is still offered", () => {
+    // `swapPlayers` never refuses a lock, because a lock protects the board against a re-run of the
+    // draw, not against the desk. A drag must not be stricter than the Swap button beside it.
+    const locked = board.map((g) => (g.number === 2 ? { ...g, locked: true } : g));
+    expect(intent("p1", { kind: "player", playerId: "p5" }, { draw: locked }).kind).toBe("swap");
+  });
+});
