@@ -549,9 +549,10 @@ check(
 await page.setViewportSize({ width: 1440, height: 950 });
 
 section("/scores handicap correction");
-await queueSearch.fill("sample player a");
-await expect(queueRows).toHaveCount(1, { timeout: 15000 });
-await queueSearch.press("Enter");
+await queuePanel.getByRole("button", { name: /SAMPLE PLAYER A/ }).first().click();
+await expect(dupEntry.getByRole("combobox").first()).toHaveValue("SAMPLE PLAYER A", {
+  timeout: 15000,
+});
 const correctHandicapButton = page.getByRole("button", { name: "Correct handicap" }).first();
 await expect(correctHandicapButton).toBeVisible({ timeout: 15000 });
 await correctHandicapButton.click();
