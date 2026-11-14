@@ -28,6 +28,24 @@ Supabase project, because the code and the database are released separately.
   `save_card_handicap_snapshot`, which stores the card's handicap in the round's snapshot. It
   changes no table, constraint, trigger or policy. Saving a card under the rules fails with a plain
   message until it is applied.
+- **The tabulation page starts from the players the desk assigned, not a blank page.** On a fresh day
+  and session page (Day 3 AM, Day 3 PM and so on), the page lists every player with a group and tee
+  time for that session, in start order, with their group, tee and system playing handicap. Only the
+  18 hole scores and the card's HDCP box are typed; the name, class and system handicap are read-only.
+  A day, session, group or tee the tabulator corrects is kept and labelled for the admin. An existing
+  day with cards is never changed on load; **Refresh list from system** is the explicit way to add a
+  missing player.
+- **Checked cards go to the admin's scoring queue.** **Send checked cards to admin** freezes only the
+  cards ticked against the paper, resolves a blank HDCP box to the system playing handicap, keeps the
+  partner as marker, and leaves name-only cards for the admin to match. `/scores/review` lists the
+  submissions; the admin reviews one, imports and approves it with their own staff session, and
+  publishes. The tabulator cannot approve or publish. The live day documents are read as they are and
+  never reset by the deploy.
+
+### Fixed
+- **The tabulator stops its save timer when the session ends, and the sign-in page shows the form
+  instead of bouncing a stale session between `/login` and `/scorecard/`.** A stale tabulation
+  session previously produced a refresh loop every couple of seconds.
 
 ## [0.50.1] - 2026-11-14
 

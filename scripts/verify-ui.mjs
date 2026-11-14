@@ -1865,6 +1865,214 @@ await setCalendarTheme("light");
 
 await calendarContext.close();
 
+// ---------------------------------------------------------------- tabulator assigned list
+section("tabulator assigned list and send");
+const tabulatorContext = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+const tabulatorPage = await tabulatorContext.newPage();
+const tabulatorField = {
+  ok: true,
+  event: "24th Bamboo Tee",
+  tournamentId: "tournament-test",
+  dayNumber: 1,
+  playDate: "2026-11-12",
+  maxIndex: 30,
+  allowance: 1,
+  days: [{ day: 1, date: "2026-11-12" }],
+  players: [
+    {
+      playerId: "player-1",
+      registrationId: "registration-1",
+      partnerPlayerId: "player-2",
+      partnerRegistrationId: "registration-2",
+      name: "ALPHA, ONE",
+      partner: "BETA, TWO",
+      team: 1,
+      group: 2,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "06:30",
+      session: "AM",
+      startHole: 1,
+      wave: "A",
+      flight: "A",
+      cls: "A",
+      formulaClass: "A",
+      frozenIndex: 10.2,
+      playingHandicap: 12,
+      tee: "Blue",
+      teeCode: "B",
+    },
+    {
+      playerId: "player-2",
+      registrationId: "registration-2",
+      partnerPlayerId: "player-1",
+      partnerRegistrationId: "registration-1",
+      name: "BETA, TWO",
+      partner: "ALPHA, ONE",
+      team: 1,
+      group: 2,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "06:30",
+      session: "AM",
+      startHole: 1,
+      wave: "A",
+      flight: "A",
+      cls: "A",
+      formulaClass: "A",
+      frozenIndex: 14.1,
+      playingHandicap: 16,
+      tee: "Blue",
+      teeCode: "B",
+    },
+    {
+      playerId: "player-3",
+      registrationId: "registration-3",
+      partnerPlayerId: "player-4",
+      partnerRegistrationId: "registration-4",
+      name: "GAMMA, THREE",
+      partner: "DELTA, FOUR",
+      team: 2,
+      group: 5,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "06:40",
+      session: "AM",
+      startHole: 2,
+      wave: "A",
+      flight: "A",
+      cls: "B",
+      formulaClass: "B",
+      frozenIndex: 18.4,
+      playingHandicap: 20,
+      tee: "White",
+      teeCode: "W",
+    },
+    {
+      playerId: "player-4",
+      registrationId: "registration-4",
+      partnerPlayerId: "player-3",
+      partnerRegistrationId: "registration-3",
+      name: "DELTA, FOUR",
+      partner: "GAMMA, THREE",
+      team: 2,
+      group: 9,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "12:30",
+      session: "PM",
+      startHole: 1,
+      wave: "P",
+      flight: "A",
+      cls: "B",
+      formulaClass: "B",
+      frozenIndex: 20.1,
+      playingHandicap: 22,
+      tee: "Blue",
+      teeCode: "B",
+    },
+    {
+      playerId: "player-5",
+      registrationId: "registration-5",
+      partnerPlayerId: "",
+      partnerRegistrationId: "",
+      name: "UNASSIGNED, FIVE",
+      partner: "",
+      team: null,
+      group: null,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "",
+      session: "",
+      startHole: null,
+      wave: "",
+      flight: "",
+      cls: "C",
+      formulaClass: "C",
+      frozenIndex: 24.1,
+      playingHandicap: 26,
+      tee: "Blue",
+      teeCode: "B",
+    },
+  ],
+};
+await tabulatorPage.route("**/api/scorecards/field**", (route) =>
+  route.fulfill({ json: tabulatorField }),
+);
+await tabulatorPage.route("**/api/scorecards/session", (route) =>
+  route.fulfill({ json: { email: "tabulator@example.com", role: "tabulation" } }),
+);
+await tabulatorPage.route("**/api/scorecards/day1am-r5", (route) => {
+  if (route.request().method() === "PUT") {
+    return route.fulfill({ json: { ok: true } });
+  }
+  return route.fulfill({
+    json: {
+      payload: { cards: [], reviewBatches: [], activeReviewBatchId: "all" },
+      updatedAt: "2026-11-14T00:00:00.000Z",
+    },
+  });
+});
+let submitBody = null;
+await tabulatorPage.route("**/api/scorecards/submit", (route) => {
+  submitBody = route.request().postDataJSON();
+  return route.fulfill({
+    json: {
+      ok: true,
+      submission: {
+        at: new Date().toISOString(),
+        by: "tabulator@example.com",
+        label: "Day 1 AM",
+        slug: "day1am-r5",
+        cards: (submitBody?.cards ?? []).map((card) => ({ ...card, hdcp: card.hdcp || "12" })),
+        nameOnly: submitBody?.nameOnly ?? [],
+        unmatched: [],
+      },
+    },
+  });
+});
+await tabulatorPage.goto(`${BASE}/scorecard/index.html`, {
+  waitUntil: "networkidle",
+  timeout: 120000,
+});
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(3, { timeout: 15000 });
+check("the assigned AM players are listed on their own", true);
+const listedNames = await tabulatorPage
+  .locator("#cards .card input.name")
+  .evaluateAll((inputs) => inputs.map((input) => input.value));
+check(
+  "the list is in group and start order",
+  listedNames.join(",") === "ALPHA, ONE,BETA, TWO,GAMMA, THREE",
+  listedNames.join(" / "),
+);
+check(
+  "the system playing handicap is shown",
+  (await tabulatorPage.locator('#cards .card [data-k="syshcp"]').first().textContent())?.includes(
+    "System PH 12",
+  ) === true,
+);
+const firstNameEditable = await tabulatorPage
+  .locator("#cards .card input.name")
+  .first()
+  .isEditable();
+check("a listed player's name is read-only", !firstNameEditable);
+await tabulatorPage.locator("#cards .card").first().locator('input[data-h="0"]').fill("4");
+await tabulatorPage.locator("#cards .card").first().locator('input[data-f="verified"]').check();
+tabulatorPage.once("dialog", (dialog) => dialog.accept());
+await tabulatorPage.click("#batch-send");
+await expect
+  .poll(() => submitBody, { timeout: 10000 })
+  .not.toBeNull();
+check("the send names the system player", submitBody?.cards?.[0]?.playerId === "player-1");
+check(
+  "the send leaves a blank card HDCP for the API to resolve",
+  submitBody?.cards?.[0]?.hdcp === "",
+);
+await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 checked card", {
+  timeout: 10000,
+});
+await tabulatorContext.close();
+
 console.log(`\nconsole errors: ${errors.length}`);
 for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 1200));
 console.log(`screenshots in ${SHOTS}`);

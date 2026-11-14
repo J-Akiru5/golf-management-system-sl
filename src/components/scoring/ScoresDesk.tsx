@@ -22,6 +22,7 @@ import { ScorecardImportPanel } from "@/components/scoring/ScorecardImportPanel"
 import { ScorecardWorkspace } from "@/components/scoring/ScorecardWorkspace";
 import { ScoresSubnav, type ScoresTab } from "@/components/scoring/ScoresSubnav";
 import { SheetImportPanel } from "@/components/scoring/SheetImportPanel";
+import { TabulatorSubmissionsPanel } from "@/components/scoring/TabulatorSubmissionsPanel";
 import { Button } from "@/components/ui/button";
 import type { ClubRole } from "@/lib/auth/member";
 import { type OpenRoundSnapshot, openRoundErrorMessage } from "@/lib/data/open-round";
@@ -76,6 +77,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   /** Every read and write names the playing day, so day 3 is never day 1. */
   const day = drawDay;
   const [view, setView] = useState<ScoringRoundView | null>(null);
+  const [submissionFile, setSubmissionFile] = useState<{ name: string; text: string } | null>(null);
   const [roundState, setRoundState] = useState<OpenRoundSnapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,6 +156,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setError(null);
     // The old day's round, cards and import preview must not stay on screen.
     setView(null);
+    setSubmissionFile(null);
     scoring
       .loadRound(tournamentId, day)
       .then((next) => {
@@ -750,35 +753,50 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
           )}
 
           {tab === "review" && (
-            <details className="card group" id="sheet-import">
-              <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-2">
-                <FileJson className="size-4 text-fairway" aria-hidden="true" />
-                <span className="font-semibold">Import the scoring sheet export</span>
-                <span className="hint">
-                  Cards typed on the sheet. Matched by name, saved under the event's card rules.
-                </span>
-                <ChevronDown
-                  className="ml-auto size-4 transition-transform group-open:rotate-180"
-                  aria-hidden="true"
+            <>
+              <RoleGate
+                role={profileRole}
+                allow={["owner", "organizer", "desk"]}
+                mode="disable"
+                disabledReason="Only club staff can open the tabulator submission queue."
+              >
+                <TabulatorSubmissionsPanel
+                  busy={busy}
+                  onReview={setSubmissionFile}
+                  enabled={status !== "demo"}
                 />
-              </summary>
-              <div className="mt-3">
-                <RoleGate
-                  role={profileRole}
-                  allow={["owner", "organizer", "desk"]}
-                  mode="disable"
-                  disabledReason="Only club staff can import cards."
-                >
-                  <SheetImportPanel
-                    key={view.roundId}
-                    view={view}
-                    busy={busy}
-                    onImported={setView}
-                    onImportingChange={setImportBusy}
+              </RoleGate>
+              <details className="card group" id="sheet-import">
+                <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-2">
+                  <FileJson className="size-4 text-fairway" aria-hidden="true" />
+                  <span className="font-semibold">Import the scoring sheet export</span>
+                  <span className="hint">
+                    Cards typed on the sheet. Matched by name, saved under the event's card rules.
+                  </span>
+                  <ChevronDown
+                    className="ml-auto size-4 transition-transform group-open:rotate-180"
+                    aria-hidden="true"
                   />
-                </RoleGate>
-              </div>
-            </details>
+                </summary>
+                <div className="mt-3">
+                  <RoleGate
+                    role={profileRole}
+                    allow={["owner", "organizer", "desk"]}
+                    mode="disable"
+                    disabledReason="Only club staff can import cards."
+                  >
+                    <SheetImportPanel
+                      key={view.roundId}
+                      view={view}
+                      busy={busy}
+                      onImported={setView}
+                      onImportingChange={setImportBusy}
+                      initialFile={submissionFile}
+                    />
+                  </RoleGate>
+                </div>
+              </details>
+            </>
           )}
 
           {tab === "enter" && (
