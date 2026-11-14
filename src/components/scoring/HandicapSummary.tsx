@@ -78,11 +78,18 @@ export function HandicapSummary({
             </div>
           </div>
 
-          <p className="hint mono">
-            {fmtIndex(handicap.index)} × ({handicap.slope} ÷ 113) + ({handicap.courseRating} −{" "}
-            {handicap.coursePar}) = {fmtHcp(handicap.courseHandicap)} · {allowancePercent}% ={" "}
-            {fmtHcp(handicap.playingHandicap)}
-          </p>
+          {handicap.rounding === "card" ? (
+            <p className="hint mono">
+              HDCP on the card {fmtIndex(handicap.index)}, decimal dropped ={" "}
+              {fmtHcp(handicap.playingHandicap)}
+            </p>
+          ) : (
+            <p className="hint mono">
+              {fmtIndex(handicap.index)} × ({handicap.slope} ÷ 113) + ({handicap.courseRating} −{" "}
+              {handicap.coursePar}) = {fmtHcp(handicap.courseHandicap)} · {allowancePercent}% ={" "}
+              {fmtHcp(handicap.playingHandicap)}
+            </p>
+          )}
 
           <dl className="handicap-facts">
             <div>
@@ -112,7 +119,12 @@ export function HandicapSummary({
             <div>
               <dt>Allowance / rounding</dt>
               <dd>
-                {allowancePercent}% · {handicap.rounding === "whs" ? "WHS two-step" : "single step"}
+                {allowancePercent}% ·{" "}
+                {handicap.rounding === "whs"
+                  ? "WHS two-step"
+                  : handicap.rounding === "card"
+                    ? "card handicap"
+                    : "single step"}
               </dd>
             </div>
           </dl>

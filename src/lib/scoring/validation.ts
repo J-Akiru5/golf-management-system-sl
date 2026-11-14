@@ -271,7 +271,11 @@ export function handicapSnapshotProblems(snapshot: HandicapSnapshot): string[] {
   if (!Number.isFinite(snapshot.allowance) || snapshot.allowance <= 0 || snapshot.allowance > 1) {
     problems.push("The snapshot allowance is not a fraction above 0 and at most 1.");
   }
-  if (snapshot.rounding !== "whs" && snapshot.rounding !== "single") {
+  if (
+    snapshot.rounding !== "whs" &&
+    snapshot.rounding !== "single" &&
+    snapshot.rounding !== "card"
+  ) {
     problems.push("The snapshot does not name a known rounding mode.");
   }
   if (!Number.isInteger(snapshot.courseHandicap)) {
@@ -285,6 +289,23 @@ export function handicapSnapshotProblems(snapshot: HandicapSnapshot): string[] {
   }
 
   if (problems.length > 0) return problems;
+
+  if (snapshot.rounding === "card") {
+    // The event rule: the handicap on the card with the decimal dropped is the playing handicap.
+    // Nothing is worked out from the tee, so there is no slope or rating to compare against.
+    if (snapshot.playingHandicap !== Math.floor(snapshot.index)) {
+      problems.push(
+        "The snapshot Playing Handicap is not the card handicap with the decimal dropped.",
+      );
+    }
+    if (snapshot.courseHandicap !== snapshot.playingHandicap) {
+      problems.push("A card handicap snapshot must carry the same Course and Playing Handicap.");
+    }
+    if (snapshot.allowance !== 1) {
+      problems.push("A card handicap snapshot is played at a full allowance.");
+    }
+    return problems;
+  }
 
   const raw =
     snapshot.index * (snapshot.slope / 113) + (snapshot.courseRating - snapshot.coursePar);
