@@ -29,6 +29,10 @@ const player = {
   formulaClass: "A",
   frozenIndex: 13.6,
   playingHandicap: 15,
+  courseHandicap: 17,
+  teeRating: 69.6,
+  teeSlope: 130,
+  teePar: 70,
   tee: "Blue",
   teeCode: "B",
 };
@@ -100,7 +104,7 @@ describe("tabulator submission route", () => {
     expect(body.submission.cards[0].corrections).toEqual({});
   });
 
-  it("keeps the written card handicap and the card as the source", async () => {
+  it("keeps the written card handicap only as the comparison and uses the system value", async () => {
     const response = await POST(
       request({
         event: "24th Bamboo Tee",
@@ -112,8 +116,9 @@ describe("tabulator submission route", () => {
     const body = await response.json();
 
     expect(body.submission.cards[0]).toMatchObject({
-      hdcp: "16.7",
-      handicapSource: "card",
+      hdcp: "15",
+      cardHdcp: "16.7",
+      handicapSource: "system",
       systemHcp: 15,
     });
   });

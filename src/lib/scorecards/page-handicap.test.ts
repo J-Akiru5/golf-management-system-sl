@@ -90,7 +90,7 @@ describe("tabulation page handicap rules", () => {
         for (let tenths = -50; tenths <= 600; tenths += 1) {
           const index = tenths / 10;
           const hdcp = index < 0 ? `+${(-index).toFixed(1)}` : index.toFixed(1);
-          const expected = playingHandicap(Math.min(index, 30), engineTee, allowance);
+          const expected = Math.min(playingHandicap(Math.min(index, 30), engineTee, allowance), 30);
           expect(page.cardHcp({ hdcp, tee: code }), `${code} index ${index} at ${allowance}`).toBe(
             expected,
           );
@@ -110,10 +110,10 @@ describe("tabulation page handicap rules", () => {
     }
   });
 
-  it("falls back to the system's playing handicap only when the card has no HDCP", () => {
+  it("uses the system's playing handicap even when the card has an HDCP", () => {
     const withSystem = load("written", { playingHandicap: 14, frozenIndex: 12.4 });
     expect(withSystem.playingHcp({ hdcp: "", tee: "B", name: "A" })).toBe(14);
-    expect(withSystem.playingHcp({ hdcp: "9.8", tee: "B", name: "A" })).toBe(9);
+    expect(withSystem.playingHcp({ hdcp: "9.8", tee: "B", name: "A" })).toBe(14);
   });
 
   it("does not trust a system handicap of 0 beside an index of 1 or more", () => {
@@ -134,6 +134,6 @@ describe("tabulation page handicap rules", () => {
       slope: 130,
       par: PAR_TOTAL,
     } as Tee;
-    expect(page.cardHcp({ hdcp: "45", tee: "B" })).toBe(playingHandicap(30, tee, 1));
+    expect(page.cardHcp({ hdcp: "45", tee: "B" })).toBe(Math.min(playingHandicap(30, tee, 1), 30));
   });
 });

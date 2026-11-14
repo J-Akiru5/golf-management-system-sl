@@ -375,10 +375,10 @@ function cardHcp(c) {
   const m = /^([+-]?)([0-9]+(?:\.[0-9]+)?)$/.exec(raw);
   if (!m) return null;
   const value = m[1] ? -Number(m[2]) : Number(m[2]); // "+2" is a plus handicap, stored negative
-  if (state.mode !== "whs") { const t = Math.trunc(value); return t === 0 ? 0 : t; }
+  if (state.mode !== "whs") { const t = Math.trunc(value); return Math.min(t, MAX_INDEX); }
   const tee = TEES[c.tee]; if (!tee) return null;
   const index = Math.min(value, MAX_INDEX);
-  return wholeStrokes((index * tee.slope / 113 + (tee.rating - sum(PAR))) * ALLOWANCE);
+  return Math.min(wholeStrokes((index * tee.slope / 113 + (tee.rating - sum(PAR))) * ALLOWANCE), MAX_INDEX);
 }
 // The system's playing handicap for this player from the field list, or null. A zero next to an index
 // of 1 or more means the system had no usable tee, so it is not trusted.
@@ -390,8 +390,9 @@ function systemHcp(c) {
   return ph;
 }
 function playingHcp(c) {
-  const own = cardHcp(c);
-  return own !== null ? own : systemHcp(c);
+  // The system's tee formula is the playing handicap. The card's HDCP box is a comparison only.
+  const system = systemHcp(c);
+  return system !== null ? system : cardHcp(c);
 }
 // Strokes received on a hole: one per hole for every full 18, then one more on the hardest holes. A
 // plus handicap gives strokes back on the easiest holes (the highest stroke indexes).
@@ -406,7 +407,7 @@ const fmtPh = ph => ph < 0 ? "+" + (-ph) : String(ph);
 // </handicap-rules>
 function calc(c) {
   const ph = playingHcp(c);
-  const phFrom = cardHcp(c) !== null ? "card" : ph !== null ? "system" : "";
+  const phFrom = systemHcp(c) !== null ? "system" : cardHcp(c) !== null ? "card" : "";
   const net = ph === null ? null : c.holes.map((v, i) => isNum(v) ? Math.max(0, 2 + PAR[i] - (+v - strokesOn(ph, i))) : 0);
   const r = calcGross(c);
   return { ...r, ph, phFrom, net, netOut: net && sum(net.slice(0, 9)), netIn: net && sum(net.slice(9)), netPoints: net && sum(net) };
@@ -1348,7 +1349,7 @@ window.__scorecard = {
         name: entry.name,
         group: entry.group != null ? String(entry.group) : "",
         tee: entry.teeCode || "",
-        hdcp: "",
+        hdcp: entry.playingHandicap != null ? String(entry.playingHandicap) : "",
         written: "",
         cls: "",
         verified: false,
@@ -2337,7 +2338,7 @@ window.__scorecard = {
         name: entry.name,
         group: entry.group != null ? String(entry.group) : "",
         tee: entry.teeCode || "",
-        hdcp: "",
+        hdcp: entry.playingHandicap != null ? String(entry.playingHandicap) : "",
         written: "",
         cls: "",
         verified: false,

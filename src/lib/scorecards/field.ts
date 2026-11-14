@@ -27,6 +27,12 @@ export interface FieldPlayer {
   formulaClass: string;
   frozenIndex: number | null;
   playingHandicap: number | null;
+  /** The course handicap before the playing cap. The formula uses the tee ratings. */
+  courseHandicap: number | null;
+  /** The tee ratings the system handicap was calculated from. */
+  teeRating: number | null;
+  teeSlope: number | null;
+  teePar: number | null;
   /** The tee name stored on the registration, e.g. "Blue". */
   tee: string;
   /** The letter the scorecard uses for that tee: W, B, L (Ladies/Red) or S. */
@@ -161,7 +167,7 @@ export async function loadField(
   const { data: registrationRows, error: registrationError } = await supabase
     .from("registrations")
     .select(
-      "id,player_id,frozen_index,playing_handicap,flight_id,players(full_name),flights(name),tees(name),categories(tees(name))",
+      "id,player_id,frozen_index,playing_handicap,flight_id,players(full_name),flights(name),tees(name,course_rating,slope,par),categories(tees(name,course_rating,slope,par))",
     )
     .eq("tournament_id", tournamentId)
     .eq("club_id", clubId);
@@ -274,8 +280,10 @@ export async function loadField(
       name: string;
       index: number | null;
       flightClass: string;
-      playingHandicap: number | null;
       tee: string;
+      teeRating: number | null;
+      teeSlope: number | null;
+      teePar: number | null;
     }
   >();
   for (const row of registrations) {
@@ -293,12 +301,16 @@ export async function loadField(
       name,
       index: numberOrNull(row.frozen_index),
       flightClass: normalizeClass(flight?.name),
-      playingHandicap: numberOrNull(row.playing_handicap),
       tee: text(registrationTee?.name) || text(categoryTee?.name),
+      teeRating: numberOrNull(registrationTee?.course_rating) ?? numberOrNull(categoryTee?.course_rating),
+      teeSlope: numberOrNull(registrationTee?.slope) ?? numberOrNull(categoryTee?.slope),
+      teePar: numberOrNull(registrationTee?.par) ?? numberOrNull(categoryTee?.par),
     });
   }
 
   const players: FieldPlayer[] = [];
+  const eventMaxIndex = numberOrNull(tournament.max_index);
+  const eventAllowance = numberOrNull(tournament.allowance) ?? 1;
   for (const [id, entry] of byId) {
     const pair = pairByRegistration.get(id);
     const partner = pair ? (byId.get(pair.partnerRegistrationId)?.name ?? "") : "";
@@ -309,6 +321,20 @@ export async function loadField(
         : "";
     const group = groupByRegistration.get(id) ?? null;
     const partnerEntry = pair ? byId.get(pair.partnerRegistrationId) : undefined;
+    // The event's formula: index across the tee's slope/rating/par, rounded, then the event's
+    // playing cap. The card's HDCP box is a separate comparison, never the source.
+    const rawCourse =
+      entry.index !== null && entry.teeRating !== null && entry.teeSlope !== null && entry.teePar !== null
+        ? entry.index * (entry.teeSlope / 113) + (entry.teeRating - entry.teePar)
+        : null;
+    const courseHandicap = rawCourse === null ? null : Math.round(rawCourse);
+    const playingRaw = rawCourse === null ? null : Math.round(rawCourse * eventAllowance);
+    const playingHandicap =
+      playingRaw === null
+        ? null
+        : eventMaxIndex === null
+          ? playingRaw
+          : Math.min(playingRaw, eventMaxIndex);
     players.push({
       playerId: entry.playerId,
       registrationId: id,
@@ -328,7 +354,11 @@ export async function loadField(
       cls: entry.flightClass || formulaClass,
       formulaClass,
       frozenIndex: entry.index,
-      playingHandicap: entry.playingHandicap,
+      courseHandicap,
+      playingHandicap,
+      teeRating: entry.teeRating,
+      teeSlope: entry.teeSlope,
+      teePar: entry.teePar,
       tee: entry.tee,
       teeCode: teeCode(entry.tee),
     });

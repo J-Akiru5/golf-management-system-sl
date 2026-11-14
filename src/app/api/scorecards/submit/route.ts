@@ -145,13 +145,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       });
       continue;
     }
-    const writtenHcp = text(input.hdcp);
+    const cardHcp = text(input.hdcp);
     const systemHcp = player.playingHandicap;
-    if (!writtenHcp && systemHcp === null) {
+    if (systemHcp === null) {
       unmatched.push({
         id,
         name: player.name,
-        message: "The card has no HDCP and the system has no playing handicap for this player.",
+        message: "The system has no playing handicap for this player (no index or tee rating).",
       });
       continue;
     }
@@ -159,6 +159,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     const correctionNote = Object.entries(corrections)
       .map(([key, value]) => `${key} ${value}`)
       .join("; ");
+    const hdcpNote =
+      cardHcp && Number(cardHcp) !== Number(systemHcp)
+        ? `Card HDCP ${cardHcp}; the system playing handicap ${systemHcp} is used.`
+        : "";
     cards.push({
       id: id || `card-${playerId}`,
       playerId,
@@ -168,14 +172,15 @@ export async function POST(request: Request): Promise<NextResponse> {
       session: text(input.session) || player.session,
       group: text(input.group) || (player.group !== null ? String(player.group) : ""),
       tee: text(input.tee) || player.teeCode,
-      hdcp: writtenHcp || String(systemHcp),
-      handicapSource: writtenHcp ? "card" : "system",
+      hdcp: String(systemHcp),
+      cardHdcp: cardHcp,
+      handicapSource: "system",
       systemHcp,
       systemIndex: player.frozenIndex,
       written: text(input.written),
       holes,
       markerPlayerId: text(input.markerPlayerId) || player.partnerPlayerId,
-      note: [text(input.note), correctionNote ? `Tabulator correction: ${correctionNote}.` : ""]
+      note: [text(input.note), correctionNote ? `Tabulator correction: ${correctionNote}.` : "", hdcpNote]
         .filter(Boolean)
         .join(" "),
       corrections,
