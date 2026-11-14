@@ -145,13 +145,17 @@ export async function POST(request: Request): Promise<NextResponse> {
       });
       continue;
     }
+    // The desk owns the handicap. A number written on the paper card is a reading of the card, not a
+    // decision: the desk's index, on the player's tee at the event's allowance, is what the card is
+    // scored with. The card's own figure is kept beside it so the desk can see the difference.
     const writtenHcp = text(input.hdcp);
     const systemHcp = player.playingHandicap;
-    if (!writtenHcp && systemHcp === null) {
+    if (systemHcp === null) {
       unmatched.push({
         id,
         name: player.name,
-        message: "The card has no HDCP and the system has no playing handicap for this player.",
+        message:
+          "The desk has no handicap for this player. Set the index in the desk, then send the card again.",
       });
       continue;
     }
@@ -159,6 +163,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     const correctionNote = Object.entries(corrections)
       .map(([key, value]) => `${key} ${value}`)
       .join("; ");
+    const cardHdcpNote =
+      writtenHcp && writtenHcp !== String(systemHcp)
+        ? `Card handicap ${writtenHcp} not used; the desk handicap ${systemHcp} scores the card.`
+        : "";
     cards.push({
       id: id || `card-${playerId}`,
       playerId,
@@ -168,14 +176,19 @@ export async function POST(request: Request): Promise<NextResponse> {
       session: text(input.session) || player.session,
       group: text(input.group) || (player.group !== null ? String(player.group) : ""),
       tee: text(input.tee) || player.teeCode,
-      hdcp: writtenHcp || String(systemHcp),
-      handicapSource: writtenHcp ? "card" : "system",
+      hdcp: String(systemHcp),
+      handicapSource: "system",
+      cardHdcp: writtenHcp || null,
       systemHcp,
       systemIndex: player.frozenIndex,
       written: text(input.written),
       holes,
       markerPlayerId: text(input.markerPlayerId) || player.partnerPlayerId,
-      note: [text(input.note), correctionNote ? `Tabulator correction: ${correctionNote}.` : ""]
+      note: [
+        text(input.note),
+        correctionNote ? `Tabulator correction: ${correctionNote}.` : "",
+        cardHdcpNote,
+      ]
         .filter(Boolean)
         .join(" "),
       corrections,

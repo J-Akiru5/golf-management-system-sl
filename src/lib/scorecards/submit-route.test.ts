@@ -100,7 +100,7 @@ describe("tabulator submission route", () => {
     expect(body.submission.cards[0].corrections).toEqual({});
   });
 
-  it("keeps the written card handicap and the card as the source", async () => {
+  it("scores the card with the desk handicap even when the card writes another", async () => {
     const response = await POST(
       request({
         event: "24th Bamboo Tee",
@@ -112,10 +112,31 @@ describe("tabulator submission route", () => {
     const body = await response.json();
 
     expect(body.submission.cards[0]).toMatchObject({
-      hdcp: "16.7",
-      handicapSource: "card",
+      hdcp: "15",
+      handicapSource: "system",
+      cardHdcp: "16.7",
       systemHcp: 15,
     });
+    expect(body.submission.cards[0].note).toContain("not used");
+  });
+
+  it("refuses a card when the desk has no handicap for the player", async () => {
+    field.mockResolvedValue({
+      ...fieldLookup,
+      players: [{ ...player, playingHandicap: null }],
+    });
+    const response = await POST(
+      request({
+        event: "24th Bamboo Tee",
+        label: "Day 1 AM",
+        slug: "day1am-r5",
+        cards: [{ ...card, hdcp: "16.7" }],
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.message).toContain("no handicap for this player");
   });
 
   it("keeps a day and group correction and labels it", async () => {
