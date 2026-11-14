@@ -1237,6 +1237,9 @@ window.__scorecard = {
       ...batches().map((entry) => [entry.id, entry.name]),
       ["none", "No batch"],
     ].map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("");
+    // Start on the batch the desk is already reviewing, so adding players keeps them in context.
+    const activeBatch = batches().find((entry) => entry.id === activeId()) || null;
+    if (activeBatch) q("#fp-batch").value = activeBatch.id;
 
     const onPage = (entry) => current().cards.some((card) => nameKey(card.name) === nameKey(entry.name) && dayOf(card) === q("#fp-day").value && sessionOf(card) === q("#fp-session").value);
 
@@ -1370,19 +1373,29 @@ window.__scorecard = {
         return;
       }
       const state = current();
-      const batch = {
+      const active = activeId();
+      const activeBatch = batches().find((entry) => entry.id === active) || null;
+      const batch = activeBatch || {
         id: `batch-${Date.now().toString(36)}`,
         name: `Batch ${batches().length + 1}`,
         createdAt: new Date().toISOString(),
-        cardIds: valid.map((card) => card.id),
+        cardIds: [],
       };
+      if (activeBatch) {
+        // Adding imported cards while a batch is selected keeps them in that batch.
+        activeBatch.cardIds = [...new Set([...activeBatch.cardIds, ...valid.map((card) => card.id)])];
+      } else {
+        batch.cardIds = valid.map((card) => card.id);
+        state.reviewBatches = [...batches(), batch];
+      }
       state.cards = [...state.cards, ...valid];
-      state.reviewBatches = [...batches(), batch];
       state.activeReviewBatchId = batch.id;
       db.setState(state);
       apply();
       const flagged = valid.filter((card) => /Left blank, check the paper card/.test(card.note || "")).length;
-      summary.textContent = `Added ${valid.length} card(s) as ${batch.name}.${flagged ? ` ${flagged} had a cell that could not be read; it is blank and noted on the card.` : ""}`;
+      summary.textContent = activeBatch
+        ? `Added ${valid.length} card(s) to ${batch.name}.${flagged ? ` ${flagged} had a cell that could not be read; it is blank and noted on the card.` : ""}`
+        : `Added ${valid.length} card(s) as ${batch.name}.${flagged ? ` ${flagged} had a cell that could not be read; it is blank and noted on the card.` : ""}`;
       // Save now instead of waiting for the next timer tick, so a failure shows up beside the import.
       void persist(true);
     } catch (error) {
@@ -1858,16 +1871,56 @@ window.__scorecard = {
   });
   batchSelect.addEventListener("change", () => setActive(batchSelect.value));
   clearButton.addEventListener("click", () => removeBatches(batches().filter(isReviewed).map((batch) => batch.id)));
-  // A new blank card must be visible: with a batch or filter active it would be hidden at once.
+  // Add card by hand. When a batch is selected, the blank card joins that batch and the view stays
+  // on it. Only a filter that would hide a blank card (done, issues, a difference) falls back to all.
   const addButtonToolbar = document.getElementById("add");
-  addButtonToolbar.addEventListener("click", () => {
+  function addBlankCard() {
     const state = current();
-    if (activeId() !== "all") state.activeReviewBatchId = "all";
-  }, true);
-  panelAdd.addEventListener("click", () => {
+    const active = activeId();
+    const batch = batches().find((entry) => entry.id === active) || null;
+    const card = {
+      id: `manual-${Date.now().toString(36)}`,
+      manual: true,
+      name: "",
+      group: "",
+      tee: "",
+      hdcp: "",
+      written: "",
+      cls: "",
+      verified: false,
+      holes: Array(18).fill(""),
+    };
+    state.cards.push(card);
+    if (batch) {
+      batch.cardIds = [...new Set([...batch.cardIds, card.id])];
+      state.activeReviewBatchId = batch.id;
+    } else if (active !== "all" && active !== "needs") {
+      // A blank card does not match "done", "issues" or a difference filter; show it in all cards.
+      state.activeReviewBatchId = "all";
+    } else {
+      state.activeReviewBatchId = active;
+    }
+    db.save();
+    searchBox.value = "";
     panelSearch.value = "";
-    addButtonToolbar.click();
-  });
+    show("cards");
+    renderCards();
+    apply();
+    const element = [...cardsRoot.querySelectorAll(".card")].find(
+      (entry) => entry.dataset.id === card.id,
+    );
+    if (element) {
+      element.scrollIntoView({ block: "center" });
+      element.querySelector(".name").focus();
+    }
+    summary.textContent = batch
+      ? `Blank card added to ${batch.name}. Type the name, tee, HDCP and the 18 scores from the paper card.`
+      : "Blank card added. Type the name, tee, HDCP and the 18 scores from the paper card.";
+    void persist(true);
+  }
+  // Replace the page's simple handler so the batch membership is saved with the card.
+  addButtonToolbar.onclick = addBlankCard;
+  panelAdd.addEventListener("click", addBlankCard);
   panelField.addEventListener("click", () => { void openFieldPicker(); });
   for (const input of [scanFile, scanCamera]) {
     input.addEventListener("change", () => {
