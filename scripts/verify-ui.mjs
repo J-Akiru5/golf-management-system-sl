@@ -2132,14 +2132,24 @@ await tabulatorPage.route("**/api/scorecards/field**", (route) =>
 await tabulatorPage.route("**/api/scorecards/session", (route) =>
   route.fulfill({ json: { email: "tabulator@example.com", role: "tabulation" } }),
 );
+let tabulatorPutBody = null;
 await tabulatorPage.route("**/api/scorecards/day1am-r5", (route) => {
   if (route.request().method() === "PUT") {
-    return route.fulfill({ json: { ok: true } });
+    tabulatorPutBody = route.request().postDataJSON();
+    return route.fulfill({
+      json: {
+        ok: true,
+        updatedAt: new Date().toISOString(),
+        updatedBy: "tabulator@example.com",
+        payload: tabulatorPutBody?.payload,
+      },
+    });
   }
   return route.fulfill({
     json: {
       payload: { cards: [], reviewBatches: [], activeReviewBatchId: "all" },
       updatedAt: "2026-11-14T00:00:00.000Z",
+      updatedBy: "maria@example.com",
     },
   });
 });
@@ -2201,6 +2211,77 @@ check(
 await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 checked card", {
   timeout: 10000,
 });
+
+// Phase 2: a card that is only in this browser must survive a reload and go out with the merge.
+const localCard = {
+  id: "local-1",
+  name: "LOCAL, ONE",
+  group: "1",
+  tee: "B",
+  hdcp: "",
+  written: "",
+  verified: false,
+  cls: "A",
+  note: "",
+  source: "",
+  holes: Array(18).fill(""),
+};
+await tabulatorPage.addInitScript((card) => {
+  sessionStorage.setItem("bamboo-tab", "reload-check");
+  localStorage.setItem(
+    "bamboo-scores-day1am-r5-v1-reload-check",
+    JSON.stringify({ cards: [card], mode: "written", savedAt: new Date().toISOString() }),
+  );
+}, localCard);
+await tabulatorPage.reload({ waitUntil: "networkidle", timeout: 120000 });
+await expect
+  .poll(
+    () => tabulatorPutBody?.payload?.cards?.some((entry) => entry.id === "local-1") === true,
+    { timeout: 15000 },
+  )
+  .toBe(true);
+check("a card only in this browser survives a reload and is merged, not dropped", true);
+await expect(tabulatorPage.locator("#sync")).toContainText("kept from this browser", {
+  timeout: 15000,
+});
+check("the page says the browser copy is being kept", true);
+
+// Phase 3: replace-all keeps a snapshot first, and the page can undo it.
+let snapshotBody = null;
+await tabulatorPage.route("**/api/scorecards/day1am-r5/snapshot", (route) => {
+  snapshotBody = route.request().postDataJSON();
+  return route.fulfill({
+    json: { ok: true, path: "snapshots/day1am-r5/check.json", at: new Date().toISOString() },
+  });
+});
+const replacement = {
+  format: "bamboo-scores-edit",
+  version: 1,
+  slug: "day1am-r5",
+  label: "Day 1 AM",
+  cards: [{ id: "from-file-1", name: "FROM, FILE", holes: Array(18).fill("") }],
+};
+tabulatorPage.once("dialog", (dialog) => dialog.accept());
+await tabulatorPage.setInputFiles("#file", {
+  name: "replace.json",
+  mimeType: "application/json",
+  buffer: Buffer.from(JSON.stringify(replacement)),
+});
+await expect
+  .poll(() => snapshotBody?.reason, { timeout: 10000 })
+  .toContain("before replacing");
+check("replace-all keeps a snapshot before it changes the shared copy", true);
+await expect(tabulatorPage.locator("#cards .card input.name").first()).toHaveValue("FROM, FILE", {
+  timeout: 15000,
+});
+await expect(tabulatorPage.locator("#undo")).toBeVisible({ timeout: 10000 });
+check("replace-all can be undone in the page", true);
+await tabulatorPage.click("#undo");
+await expect(tabulatorPage.locator("#cards .card input.name").first()).toHaveValue("LOCAL, ONE", {
+  timeout: 15000,
+});
+await expect(tabulatorPage.locator("#undo")).toBeHidden({ timeout: 10000 });
+check("undo puts the browser copy back", true);
 await tabulatorContext.close();
 
 console.log(`\nconsole errors: ${errors.length}`);
