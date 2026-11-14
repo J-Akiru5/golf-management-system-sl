@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.53.0] - 2026-11-14
+
 ### Added
 - **A clubhouse TV board at `/tv` rolls the scores.** It shows which day is on screen, who played the
   morning and who played the afternoon, and what each scored: net and gross Stableford points, holes
