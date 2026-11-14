@@ -3,13 +3,13 @@ import { type EventCardPlan, planEventCardSave } from "@/lib/scoring/event-card"
 import type { Scorecard } from "@/lib/scoring/types";
 
 /**
- * Saving a desk-checked card under an event's card rules, as one operation.
+ * Saving a desk-checked card under an event's rules, as one operation.
  *
  * The demo and the connected repository both use this, so the order of steps and the refusals are
  * the same in both. Only the three writes differ, and they are handed in.
  *
  * Order matters. A handicap snapshot is frozen once the round starts scoring and approving the first
- * card starts it, so the card handicap is written first, then the card, then the approval.
+ * card starts it, so the WHS handicap snapshot is written first, then the card, then the approval.
  */
 
 export interface SaveEventCardInput {
@@ -17,7 +17,7 @@ export interface SaveEventCardInput {
   /** Who marked the card, when the desk knows. Left out, a stable placeholder marker is used. */
   scorerId?: string | null;
   entries: Scorecard["entries"];
-  /** The HDCP box as typed. Blank counts as 0 under the card rule. */
+  /** The HDCP box as typed. A note only: the playing handicap comes from the index and the tee. */
   cardHandicap: string | null;
   writtenTotal: number | null;
   captureKey: string;
@@ -36,6 +36,11 @@ export type EventCardOutcome = "approved" | "saved" | "already_in";
 export interface SaveEventCardResult {
   view: ScoringRoundView;
   outcome: EventCardOutcome;
+  /**
+   * The HDCP box beside the WHS number when the two differ, for example
+   * "card says 22, plays off 19 (index 16.4, White)". Null when the box agrees or is blank.
+   */
+  cardNote: string | null;
 }
 
 type OkPlan = Extract<EventCardPlan, { ok: true }>;
@@ -43,8 +48,11 @@ type OkPlan = Extract<EventCardPlan, { ok: true }>;
 export interface SaveEventCardDeps {
   /** The round as it stands now. */
   load(): Promise<ScoringRoundView>;
-  /** Stores the card handicap snapshot for this player before scoring starts. */
-  writeSnapshot(plan: OkPlan, view: ScoringRoundView, cardHandicap: string | null): Promise<void>;
+  /**
+   * Stores the handicap snapshot for this player before scoring starts. The plan carries the WHS
+   * playing handicap to store: nothing here reads the card's HDCP box.
+   */
+  writeSnapshot(plan: OkPlan, view: ScoringRoundView): Promise<void>;
   submit(input: SubmitCardInput): Promise<ScoringRoundView>;
   approve(cardId: string, reason: string): Promise<ScoringRoundView>;
   /** ISO date for the in-memory snapshot. */
@@ -71,12 +79,14 @@ export async function saveEventCardFlow(
       playerId: player.playerId,
       playerName: player.playerName,
       handicap: player.handicap,
+      frozenIndex: player.frozenIndex,
+      tee: player.tee,
     })),
     cards: before.cards,
   });
   if (!plan.ok) throw new Error(plan.message);
 
-  if (plan.needsSnapshotWrite) await deps.writeSnapshot(plan, before, input.cardHandicap);
+  if (plan.needsSnapshotWrite) await deps.writeSnapshot(plan, before);
 
   const submitted = await deps.submit({
     playerId: input.playerId,
@@ -105,10 +115,16 @@ export async function saveEventCardFlow(
   const isNew = !known.has(card.id);
 
   // A card that is already approved is the same card coming in again; there is nothing to do.
-  if (card.status === "approved") return { view: submitted, outcome: "already_in" };
+  if (card.status === "approved") {
+    return { view: submitted, outcome: "already_in", cardNote: plan.cardNote };
+  }
   if (!input.approve) {
-    return { view: submitted, outcome: isNew ? "saved" : "already_in" };
+    return {
+      view: submitted,
+      outcome: isNew ? "saved" : "already_in",
+      cardNote: plan.cardNote,
+    };
   }
   const approved = await deps.approve(card.id, plan.auditReason);
-  return { view: approved, outcome: "approved" };
+  return { view: approved, outcome: "approved", cardNote: plan.cardNote };
 }

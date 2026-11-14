@@ -41,6 +41,7 @@ const fieldLookup = {
   maxIndex: 30,
   allowance: 1,
   days: [{ day: 1, date: "2026-11-12" }],
+  tees: [{ code: "B", name: "Blue", courseRating: 69.6, slope: 130, par: 70 }],
   players: [player],
 };
 

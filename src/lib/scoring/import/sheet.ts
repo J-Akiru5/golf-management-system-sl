@@ -1,9 +1,14 @@
 import { searchKey } from "@/lib/names";
 import { normalizeHole } from "@/lib/scorecards/document";
 import { type EventCardMarker, pickDeskMarker } from "../event-card";
-import { type EventScoringRules, readCardHandicap } from "../event-rules";
+import {
+  cardBoxNote,
+  type EventScoringRules,
+  eventPlayingHandicap,
+  readCardBox,
+} from "../event-rules";
 import { checkCardSubmission } from "../submission";
-import type { CardEntry, Scorecard, StrokeLimits } from "../types";
+import type { CardEntry, Scorecard, StrokeLimits, TeeRatings } from "../types";
 
 /**
  * The scoring sheet export, as a bridge into `/scores`.
@@ -15,7 +20,8 @@ import type { CardEntry, Scorecard, StrokeLimits } from "../types";
  *
  * Pure: no database, clock or network. Nothing is guessed. A card is matched to a player by exact
  * name (case, accents, punctuation and word order ignored) or it is listed as unmatched. A blank
- * hole, an unreadable handicap or a written total that does not add up blocks that card by name.
+ * hole, a player with no tee, or a written total that does not add up blocks that card by name. The
+ * HDCP box is kept as a note: the WHS playing handicap comes from the registration index and tee.
  */
 
 export const SHEET_EXPORT_FORMAT = "bamboo-scores-edit";
@@ -42,7 +48,10 @@ export interface SheetExport {
   slug: string;
   label: string;
   exportedAt: string;
-  /** "written": the HDCP box is the playing handicap. "whs": it was converted with the tee. */
+  /**
+   * The sheet's own handicap setting: "written" showed the HDCP box, "whs" converted it. The import
+   * keeps the scores and works the handicap out itself, so either setting reads the same.
+   */
   mode: string;
   cards: SheetCard[];
 }
@@ -162,6 +171,10 @@ export function parseSheetExport(value: unknown): SheetParseResult {
 export interface SheetRosterPlayer {
   playerId: string;
   playerName: string;
+  /** The registration's frozen index, when the caller loaded it. */
+  frozenIndex?: number | null;
+  /** The tee on the registration, when the caller loaded it. Null means there is none. */
+  tee?: TeeRatings | null;
 }
 
 export interface ResolvedSheetCard {
@@ -173,9 +186,12 @@ export interface ResolvedSheetCard {
   entries: CardEntry[];
   /** The written total, or null when the sheet has none. */
   writtenTotal: number | null;
-  /** The HDCP box as typed on the sheet. Blank stays blank; the rule turns it into 0. */
+  /** The HDCP box as typed on the sheet. A note only: the WHS figure decides the handicap. */
   cardHandicap: string;
-  playingHandicap: number;
+  /** The WHS playing handicap the card will be saved with, or null when it cannot be worked out. */
+  playingHandicap: number | null;
+  /** The HDCP box beside the WHS number when the two differ, else null. */
+  cardNote: string | null;
   /** The sheet marks the card verified, so it is approved as well as saved. */
   approve: boolean;
   pickups: number;
@@ -218,6 +234,8 @@ export interface ResolveSheetImportInput {
   holes: readonly { number: number }[];
   players: readonly SheetRosterPlayer[];
   cards: readonly Scorecard[];
+  /** The round's tee, used when the caller did not load the player's own tee. */
+  tee: TeeRatings;
 }
 
 /** Name, accents, case, punctuation and word order ignored: `ADORIO, RONNEL` is `Ronnel Adorio`. */
@@ -238,12 +256,9 @@ export function resolveSheetImport(input: ResolveSheetImportInput): SheetImportP
     fileProblems: [],
   };
 
-  if (input.file.mode !== "written") {
-    plan.fileProblems.push(
-      `This export was worked out with the "${input.file.mode}" handicap setting. The event plays off the handicap written on the card. Set the sheet to the written setting and export again.`,
-    );
-    return plan;
-  }
+  // The sheet's own handicap setting no longer matters: this import keeps the hole scores and works
+  // the playing handicap out from the registration index and tee under the event rule. A sheet
+  // exported with either setting is read the same way.
   if (input.holes.length !== 18) {
     plan.fileProblems.push(
       `The sheet has 18 holes per card, but this round has ${input.holes.length}.`,
@@ -339,13 +354,20 @@ export function resolveSheetImport(input: ResolveSheetImportInput): SheetImportP
       }
     }
 
-    const reading = readCardHandicap(card.hdcp, input.rules.handicap);
-    if (!reading.ok) reasons.push(reading.message);
+    // The playing handicap comes from the player's registration index and tee under the event
+    // rule. The HDCP box on the sheet is kept as a note beside it, never as the number to play off.
+    const tee = player.tee === undefined ? input.tee : player.tee;
+    const handicap = eventPlayingHandicap({
+      index: player.frozenIndex ?? null,
+      tee,
+      rule: input.rules.handicap,
+    });
+    if (!handicap.ok) reasons.push(`${player.playerName}: ${handicap.message}`);
 
     const marker = pickDeskMarker(input.players, player.playerId, input.cards);
     if (!marker) reasons.push("The round has no second player to stand as marker.");
 
-    if (reasons.length > 0 || !reading.ok || !marker) {
+    if (reasons.length > 0 || !handicap.ok || !marker) {
       plan.blocked.push({ card, playerName: player.playerName, reasons });
       continue;
     }
@@ -359,7 +381,13 @@ export function resolveSheetImport(input: ResolveSheetImportInput): SheetImportP
       entries,
       writtenTotal,
       cardHandicap: card.hdcp,
-      playingHandicap: reading.playingHandicap,
+      playingHandicap: handicap.playingHandicap,
+      cardNote: cardBoxNote({
+        box: readCardBox(card.hdcp),
+        playingHandicap: handicap.playingHandicap,
+        index: handicap.index,
+        teeName: tee?.name ?? input.tee.name,
+      }),
       approve: card.verified,
       pickups,
       gross,

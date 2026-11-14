@@ -7,74 +7,182 @@
 <style id="pg">@page { size: portrait; margin: 8mm; }</style>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; font: 12px/1.35 system-ui, "Segoe UI", sans-serif; color: #14201a; background: #f4f6f4; }
-  header { position: sticky; top: 0; z-index: 5; background: #fff; border-bottom: 1px solid #b9c4bd; padding: 10px 16px; }
-  h1 { font-size: 17px; margin: 0 0 2px; }
-  .sub { color: #4d5c54; margin: 0 0 8px; }
-  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .card.remote { outline: 3px solid #b89550; outline-offset: 2px; }
-  .savestate { font-size: 12px; color: #4d5c54; }
-  .savestate.ok { color: #1f5a3c; font-weight: 600; }
-  .savestate.bad { color: #b42318; font-weight: 600; }
-  /* The toolbar wraps to several rows on a phone or a short window. Pinned, it would cover the
-     batch tools and the cards, so on those screens it scrolls away like any other block. */
-  @media (max-width: 900px), (max-height: 900px) { header { position: static; } }
-  button { font: inherit; padding: 6px 12px; border: 1px solid #b9c4bd; background: #fff; color: #14201a; border-radius: 6px; cursor: pointer; }
-  button.on, button.primary { background: #1f5a3c; border-color: #1f5a3c; color: #fff; }
-  button.danger { color: #b42318; }
-  #q { font: inherit; padding: 6px 8px; width: 200px; border: 1px solid #b9c4bd; border-radius: 6px; }
-  #msg { min-height: 1.2em; color: #1f6b45; margin-top: 4px; }
-  #saved { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-weight: 600; border: 1px solid #b9c4bd; color: #4d5c54; background: #fff; }
-  #saved::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #9aa7a0; }
-  #saved.ok { color: #1f6b45; border-color: #1f6b45; background: #eaf6ef; }
-  #saved.ok::before { background: #1f6b45; }
-  #saved.bad { color: #fff; border-color: #b42318; background: #b42318; }
-  #saved.bad::before { background: #fff; }
-  #msg.err { color: #b42318; }
-  main { padding: 14px 16px; max-width: 1280px; margin: 0 auto; }
-  .legend { color: #4d5c54; margin: 0 0 10px; }
-  .chip { display: inline-block; width: 12px; height: 12px; border: 1px solid #b7791f; background: #ffe9a8; vertical-align: -2px; }
-  .chip.e { background: #d7e8ff; border-color: #1d5fbf; }
-  .warn { border: 1px solid #b7791f; background: #fff6dc; padding: 6px 10px; border-radius: 6px; margin: 0 0 10px; }
+  /* TeeLine tokens, copied from src/app/globals.css: this page is a static file in public and cannot
+     read the app's stylesheet. Ivory/forest in light, charcoal/deep green in dark, and print always
+     uses the light set so a card printed from a laptop in dark mode stays black on white. */
+  :root {
+    --surface: #f7f5ee; --surface-raised: #ffffff; --surface-sunken: #efeee7;
+    --line: #e2e4dc; --line-strong: #747d75; --ink: #202522; --ink-muted: #626b64;
+    --forest: #073d2e; --on-forest: #f7f5ee;
+    --fairway: #285d47; --fairway-soft: #e3ebe3;
+    --gold: #b89550; --gold-ink: #755719; --gold-soft: #f2e9d4;
+    --info: #285a8c; --info-soft: #e3ecf6;
+    --primary: #073d2e; --primary-hover: #0b2b23; --on-primary: #f7f5ee;
+    --success: #1e6b43; --success-soft: #e0efe5;
+    --warning: #8a4a00; --warning-soft: #faebd4;
+    --danger: #b42318; --danger-soft: #fbe4e1; --on-danger: #ffffff;
+    --focus: #073d2e;
+    --r-sm: 8px; --r-md: 12px; --r-lg: 18px;
+    --shadow-card: 0 1px 2px rgba(24, 63, 48, .06), 0 1px 3px rgba(24, 63, 48, .06);
+    --shadow-lift: 0 8px 24px rgba(24, 63, 48, .16), 0 2px 6px rgba(24, 63, 48, .10);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #171c19; --surface-raised: #202823; --surface-sunken: #111713;
+      --line: #303a34; --line-strong: #87948b; --ink: #eef1ec; --ink-muted: #b1bbb3;
+      --forest: #0b2b23; --on-forest: #f7f5ee;
+      --fairway: #82c69b; --fairway-soft: #1d3428;
+      --gold: #d7b568; --gold-ink: #e4c77c; --gold-soft: #392f1d;
+      --info: #8dbff0; --info-soft: #172a3b;
+      --primary: #d7b568; --primary-hover: #e5c77a; --on-primary: #171c19;
+      --success: #4ccb88; --success-soft: #163022;
+      --warning: #f29a4b; --warning-soft: #3a2816;
+      --danger: #ff7b70; --danger-soft: #3e1c1a; --on-danger: #171c19;
+      --focus: #d7b568;
+      color-scheme: dark;
+    }
+  }
+  html { scroll-padding-top: 150px; }
+  body { margin: 0; font: 13px/1.4 system-ui, "Segoe UI", sans-serif; color: var(--ink); background: var(--surface); }
+  h1 { font-size: 18px; line-height: 1.25; margin: 0; letter-spacing: -.01em; }
+  .sub { color: var(--ink-muted); margin: 2px 0 0; font-size: 12px; max-width: 78ch; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* Brand row: the TeeLine mark, the event, and the account. It scrolls away with the page. */
+  .masthead { background: var(--surface-raised); border-bottom: 1px solid var(--line); padding: 10px 16px; }
+  .brandrow { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+  .brand { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
+  .logo-brand { width: clamp(140px, 20vw, 190px); height: auto; display: block; }
+  .logo-brand.dark { display: none; }
+  @media (prefers-color-scheme: dark) {
+    .logo-brand.light { display: none; }
+    .logo-brand.dark { display: block; }
+  }
+  .eventblock { min-width: 0; flex: 1 1 260px; }
+  .accountbox { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .who { color: var(--ink-muted); font-size: 12px; max-width: 32ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .signout { margin: 0; }
+  /* The find/filter bar is pinned while the card list scrolls, on a laptop and a tablet alike. It
+     wraps instead of scrolling sideways and never covers more than a third of the window. */
+  .toolbar { position: sticky; top: 0; z-index: 20; background: var(--surface-raised); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-card); padding: 8px 16px; max-height: 33vh; overflow: auto; }
+  .toolrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .toolrow + .toolrow { margin-top: 8px; }
+  .spacer { flex: 1 1 auto; }
+  .segmented { display: inline-flex; }
+  .seg { border-radius: 0; }
+  .seg:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); }
+  .seg:last-child { border-radius: 0 var(--r-sm) var(--r-sm) 0; border-left: 0; }
+  .seg.on { background: var(--forest); border-color: var(--forest); color: var(--on-forest); }
+  button, .btn { font: inherit; min-height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--ink); border-radius: var(--r-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+  button:hover, .btn:hover { background: var(--surface-sunken); }
+  button.primary, .btn.primary, button.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+  button.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  button.danger, .btn.danger { color: var(--danger); border-color: var(--danger); background: var(--surface-raised); }
+  button.danger:hover { background: var(--danger-soft); }
+  button:disabled { opacity: .55; cursor: default; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  input, select { font: inherit; color: var(--ink); }
+  #q, #panel-q, .search { min-height: 44px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-raised); }
+  #q { flex: 1 1 220px; min-width: 160px; }
+  .field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-muted); }
+  .field select { min-height: 44px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-raised); }
+  .stat, .sync { color: var(--ink-muted); font-size: 12px; }
+  @media (max-width: 720px) {
+    .masthead { padding: 8px 10px; }
+    .toolbar { padding: 6px 10px; }
+    .toolrow { gap: 6px; }
+    .toolrow + .toolrow { margin-top: 6px; }
+    .stat, .sync { font-size: 11px; }
+  }
+  #msg { min-height: 1.2em; color: var(--success); margin: 6px 0 0; font-size: 13px; }
+  #msg.err { color: var(--danger); font-weight: 700; }
+  /* One pill for the save state: Saved 14:02, Saving, Not saved: reason. */
+  #saved { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 12px; border-radius: 999px; font-weight: 600; font-size: 12px; border: 1px solid var(--line-strong); color: var(--ink-muted); background: var(--surface-raised); }
+  #saved::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); }
+  #saved.ok { color: var(--success); border-color: var(--success); background: var(--success-soft); }
+  #saved.ok::before { background: var(--success); }
+  #saved.busy { color: var(--gold-ink); border-color: var(--gold); background: var(--gold-soft); }
+  #saved.busy::before { background: var(--gold); }
+  #saved.bad { color: var(--on-danger); border-color: var(--danger); background: var(--danger); }
+  #saved.bad::before { background: var(--on-danger); }
+  .card.remote { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .savestate { font-size: 12px; color: var(--ink-muted); }
+  .savestate.ok { color: var(--success); font-weight: 600; }
+  .savestate.busy { color: var(--gold-ink); font-weight: 600; }
+  .savestate.bad { color: var(--danger); font-weight: 700; }
+  main { padding: 14px 16px 40px; max-width: 1280px; margin: 0 auto; }
+  .legend { color: var(--ink-muted); margin: 0 0 10px; font-size: 12px; }
+  .legend b { color: var(--ink); }
+  .chip { display: inline-block; width: 12px; height: 12px; border: 1px solid var(--gold); background: var(--gold-soft); vertical-align: -2px; }
+  .chip.e { background: var(--info-soft); border-color: var(--info); }
+  .warn { border: 1px solid var(--warning); background: var(--warning-soft); color: var(--warning); padding: 8px 12px; border-radius: var(--r-sm); margin: 0 0 10px; }
   .warn ul { margin: 4px 0 0; padding-left: 18px; }
-  .wrap { overflow-x: auto; background: #fff; }
-  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; background: #fff; }
-  th, td { border: 1px solid #b9c4bd; padding: 3px 4px; text-align: center; white-space: nowrap; }
-  th { background: #1f5a3c; color: #fff; font-weight: 600; }
+  .wrap { overflow-x: auto; background: var(--surface-raised); }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; background: var(--surface-raised); }
+  th, td { border: 1px solid var(--line); padding: 3px 4px; text-align: center; white-space: nowrap; }
+  th { background: var(--forest); color: var(--on-forest); font-weight: 600; }
   .l { text-align: left; }
-  .par td { background: #eef2ef; font-weight: 600; }
-  td.s, th.s { font-weight: 700; } td.s { background: #f3f6f4; }
-  td.x { color: #b42318; font-weight: 700; }
-  td.d { background: #ffe9a8; } td.e { background: #d7e8ff; }
-  td.bad { outline: 2px solid #b42318; outline-offset: -2px; }
-  .inc { color: #7a5a12; } .ok { color: #1f6b45; font-weight: 700; } .no { color: #b7791f; font-weight: 700; }
-  .card { background: #fff; border: 1px solid #b9c4bd; border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; break-inside: avoid; }
-  .card.done { border-color: #1f6b45; border-width: 2px; }
-  .card { position: relative; }
+  .par td { background: var(--surface-sunken); font-weight: 600; }
+  td.s, th.s { font-weight: 700; } td.s { background: var(--surface-sunken); }
+  td.x { color: var(--danger); font-weight: 700; }
+  td.d { background: var(--gold-soft); } td.e { background: var(--info-soft); }
+  td.bad { outline: 2px solid var(--danger); outline-offset: -2px; }
+  .inc { color: var(--gold-ink); } .ok { color: var(--success); font-weight: 700; } .no { color: var(--gold-ink); font-weight: 700; }
+  .card { position: relative; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; margin: 0 0 12px; break-inside: avoid; box-shadow: var(--shadow-card); }
+  .card.done { border-color: var(--success); border-width: 2px; }
   .logo { display: block; width: 96px; height: auto; }
   .card .logo { position: absolute; top: 10px; right: 12px; }
-  header .logo { width: 110px; margin-bottom: 6px; }
+  /* The card's corner mark is the print artwork (forest ink on white), so it gets a white plate in
+     the dark theme instead of disappearing into the card. */
+  @media (prefers-color-scheme: dark) {
+    .card .logo { background: #fff; padding: 3px 5px; border-radius: 6px; }
+  }
   #sheet .logo { width: 110px; margin-bottom: 6px; }
-  .card .name { font: 700 16px system-ui, "Segoe UI", sans-serif; width: min(100%, 420px); border: 1px solid transparent; border-radius: 4px; padding: 2px 4px; margin-left: -4px; color: #14201a; background: transparent; }
-  .card .name:hover, .card .name:focus { border-color: #b9c4bd; background: #fff; }
-  .card .note { color: #7a5a12; font-size: 11px; margin: 4px 0 0; }
-  .meta { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; color: #4d5c54; margin: 2px 0 6px; }
-  .meta input[type=text], .meta select { font: inherit; padding: 2px 4px; border: 1px solid #b9c4bd; border-radius: 4px; width: 56px; background: #fff; color: #14201a; }
-  .meta label { display: inline-flex; gap: 5px; align-items: center; }
-  .meta .chk { color: #14201a; font-weight: 600; }
+  .card .name { font: 700 16px system-ui, "Segoe UI", sans-serif; width: min(100%, 420px); min-height: 40px; border: 1px solid transparent; border-radius: var(--r-sm); padding: 2px 6px; margin-left: -6px; color: var(--ink); background: transparent; }
+  .card .name:hover, .card .name:focus { border-color: var(--line-strong); background: var(--surface-raised); }
+  .card .note { color: var(--gold-ink); font-size: 12px; margin: 6px 0 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; color: var(--ink-muted); margin: 2px 0 8px; font-size: 12px; }
+  .meta input[type=text], .meta select { font: inherit; min-height: 36px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); width: 64px; background: var(--surface-raised); color: var(--ink); }
+  .meta label { display: inline-flex; gap: 6px; align-items: center; }
+  .meta .chk { color: var(--ink); font-weight: 600; }
+  /* The card's own HDCP box is kept as "Card says" and marked when it differs from the system figure. */
+  .meta input[data-f="hdcp"].diff { border-color: var(--gold); background: var(--gold-soft); font-weight: 700; }
+  .hcpinfo { font-size: 12px; color: var(--ink-muted); }
+  .hcpinfo.warn { color: var(--warning); background: var(--warning-soft); border: 1px solid var(--warning); border-radius: 999px; padding: 2px 10px; font-weight: 600; }
+  /* The checked tick is a 44px pill, not a small checkbox lost among the fields. */
+  .verify { min-height: 44px; padding: 0 14px 0 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface-raised); cursor: pointer; }
+  .verify input { width: 22px; height: 22px; accent-color: var(--success); }
+  .card.done .verify { border-color: var(--success); background: var(--success-soft); color: var(--success); }
   .card th.l, .card td.l { width: 64px; }
   td.in { padding: 0; }
-  td.in input { width: 100%; min-width: 30px; border: 0; background: transparent; text-align: center; font: 600 14px system-ui, "Segoe UI", sans-serif; padding: 5px 0; color: inherit; }
-  td.in input:focus { outline: 2px solid #1f5a3c; outline-offset: -2px; background: #fff; }
-  .tot { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 6px; font-size: 13px; }
+  td.in input { width: 100%; min-width: 34px; min-height: 38px; border: 0; background: transparent; text-align: center; font: 600 15px system-ui, "Segoe UI", sans-serif; color: inherit; }
+  td.in input:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; background: var(--surface-raised); }
+  /* The tee select carries a letter and a name ("B · Blue"), so it needs more room than a group box.
+     Screen only: on paper the select is as wide as its text so three cards still fit a page. */
+  @media screen {
+    .meta select[data-f="tee"] { width: 96px; }
+    .meta select[data-f="day"] { width: 92px; }
+    .meta select[data-f="session"] { width: 84px; }
+    .meta select[data-f="cls"] { width: 76px; }
+  }
+  .tot { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 8px; font-size: 13px; }
+  .tot b { font-size: 15px; }
   .gap { height: 6px; }
-  h2 { font-size: 14px; margin: 16px 0 4px; }
+  h2 { font-size: 15px; margin: 16px 0 6px; }
   ul { margin: 0; padding-left: 20px; }
   [hidden] { display: none !important; }
   @media print {
+    /* Paper is always the light set, whatever theme the screen is in. */
+    :root {
+      --surface: #fff; --surface-raised: #fff; --surface-sunken: #eef2ef;
+      --line: #555; --line-strong: #000; --ink: #000; --ink-muted: #222;
+      --forest: #1f5a3c; --on-forest: #fff; --gold: #b7791f; --gold-soft: #fff6dc;
+      --info: #1d5fbf; --info-soft: #eef4ff; --success: #1f6b45; --warning: #7a5a12;
+      --danger: #b42318; --shadow-card: none;
+    }
     /* Three cards to a page. Each card is a fixed 85mm so three fit on A4, Letter and long paper. */
     body { background: #fff; font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    header, .noprint { display: none !important; }
+    .masthead, .toolbar, .noprint { display: none !important; }
     main { padding: 0; max-width: none; }
     .wrap { overflow: visible; }
     tr { break-inside: avoid; }
@@ -88,12 +196,13 @@
     #sheet .logo { width: 30mm; }
     .card .name { font-size: 14px; padding: 0; margin: 0; width: 100%; }
     .meta { gap: 1px 10px; margin: 0 0 3px; font-size: 10px; }
-    .meta input[type=text], .meta select { border: 0; padding: 0; width: auto; max-width: 6em; field-sizing: content; appearance: none; font-weight: 700; color: #000; }
+    .meta input[type=text], .meta select { border: 0; padding: 0; width: auto; max-width: 6em; field-sizing: content; appearance: none; font-weight: 700; color: #000; min-height: 0; }
+    .hcpinfo, .hcpinfo.warn, .verify { border: 0; background: transparent; padding: 0; min-height: 0; border-radius: 0; color: #000; font-size: 10px; }
     .card th, .card td { padding: 1px 2px; font-size: 12px; border-color: #555; }
     .card th { font-size: 14px; }
     .card table { line-height: 1.15; }
     .tot, .meta { line-height: 1.2; }
-    td.in input { font-size: 14px; padding: 1px 0; }
+    td.in input { font-size: 14px; padding: 1px 0; min-height: 0; }
     .card .gap { height: 3px; }
     .tot { margin-top: 3px; font-size: 11px; gap: 2px 14px; }
     td.e { background: transparent; }
@@ -101,38 +210,58 @@
 </style>
 </head>
 <body>
-<header>
-  <img class="logo" id="logo" alt="TeeLine Golf" hidden>
-  <h1 id="title"></h1>
-  <p class="sub">Type over any score. Totals and points update as you type and save in this browser. Use <b>X</b> for a red X, leave a cell empty when nothing was written.</p>
-  <div class="bar">
-    <button id="tabCards" class="on">Player cards</button>
-    <button id="tabSheet">Scoresheet</button>
-    <input id="q" placeholder="Find a player">
-    <label style="display:inline-flex;gap:5px;align-items:center">Handicap used
-      <select id="mode" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px">
-        <option value="written">As written on the card</option>
-        <option value="whs">Converted by tee rating and slope</option>
+<header class="masthead">
+  <div class="brandrow">
+    <a class="brand" href="/scorecard/" title="TeeLine Golf scorecard">
+      <img class="logo-brand light" id="logo" src="/brand/teeline-horizontal-primary.svg" alt="TeeLine Golf" width="190" height="51">
+      <img class="logo-brand dark" src="/brand/teeline-horizontal-reverse.svg" alt="" aria-hidden="true" width="190" height="51">
+    </a>
+    <div class="eventblock">
+      <h1 id="title"></h1>
+      <p class="sub">Type over any score. Totals and points update as you type and save in this browser. Use <b>X</b> for a red X, leave a cell empty when nothing was written.</p>
+    </div>
+    <div class="accountbox">
+      <span id="who" class="who"></span>
+      <a id="deskLink" class="btn" href="/admin" hidden>Back to the desk</a>
+      <form method="post" action="/api/auth/signout" class="signout"><button type="submit" title="Sign out of this account">Sign out</button></form>
+    </div>
+  </div>
+</header>
+<div class="toolbar" id="toolbar" role="region" aria-label="Find, filter and save">
+  <div class="toolrow" id="cardtools">
+    <input id="q" type="search" placeholder="Find a player (press /)" autocomplete="off" aria-label="Find a player">
+    <label class="field">Day
+      <select id="dayFilter" aria-label="Show one playing day"><option value="">All days</option></select></label>
+    <label class="field">Session
+      <select id="sessionFilter" aria-label="Show one AM or PM shotgun">
+        <option value="">Both</option><option value="AM">AM</option><option value="PM">PM</option>
       </select></label>
-    <button id="add">Add card</button>
-    <button id="print" class="primary">Print this view</button>
-    <button id="pdf">Save as PDF</button>
-    <button id="exp" title="Downloads this day's cards to this device as a JSON file">Export JSON (download)</button>
-    <button id="imp" class="primary" title="Add the cards in a JSON file (an export from this page or a scorecard scan). Nothing is downloaded and no card is replaced.">Import JSON</button>
-    <button id="restore" class="danger" title="Replaces every card on this page with the cards in an exported file">Replace all from export…</button>
-    <button id="reset" class="danger">Reset to first reading</button>
-    <button id="undo" hidden title="Undo the last reset or replace, in this browser">Undo</button>
+    <label class="field">Batch <select id="batch-select" aria-label="Show one review batch"><option value="all">All cards</option></select></label>
+    <button type="button" id="add-player" class="primary" title="Search every player in the event, even one who is not in this day's draw, and start a card for the paper card in front of you">Add card for a player</button>
+    <span id="shown" class="stat"></span>
+    <span id="stat" class="stat"></span>
+  </div>
+  <div class="toolrow">
+    <span class="segmented">
+      <button id="tabCards" class="seg on" aria-pressed="true">Player cards</button>
+      <button id="tabSheet" class="seg" aria-pressed="false">Scoresheet</button>
+    </span>
     <span id="saved" role="status" aria-live="polite">Nothing saved yet</span>
-    <span id="sync" role="status" aria-live="polite" style="color:#4d5c54" title="This page shares one copy of the day with everyone signed in. It checks for their changes every few seconds.">Connecting to the shared copy…</span>
-    <span id="stat" style="margin-left:auto;color:#4d5c54"></span>
-    <span id="who" style="color:#4d5c54"></span>
-    <a id="deskLink" href="/admin" hidden style="font:inherit;padding:5px 10px;border:1px solid #b9c4bd;border-radius:6px;color:inherit;text-decoration:none">Back to the desk</a>
-    <form method="post" action="/api/auth/signout" style="margin:0"><button type="submit" class="danger" title="Sign out of this account">Sign out</button></form>
+    <span id="sync" class="sync" role="status" aria-live="polite" title="This page shares one copy of the day with everyone signed in. It checks for their changes every few seconds.">Connecting to the shared copy…</span>
+    <span class="spacer"></span>
+    <button id="add" class="noprint" title="Add one blank card and type the name and 18 scores in from the paper card">Blank card</button>
+    <button id="print" title="Print the cards or the scoresheet as they are shown">Print</button>
+    <button id="pdf" title="Open the print window to save the cards or the scoresheet as a PDF">Save as PDF</button>
+    <button id="exp" title="Downloads this day's cards to this device as a JSON file">Export JSON</button>
+    <button id="imp" title="Add the cards in a JSON file (an export from this page or a scorecard scan). Nothing is downloaded and no card is replaced.">Import JSON</button>
+    <button id="restore" class="danger" title="Replaces every card on this page with the cards in an exported file">Replace…</button>
+    <button id="reset" class="danger" title="Discard every edit and go back to the first reading">Reset</button>
+    <button id="undo" hidden title="Undo the last reset or replace, in this browser">Undo</button>
   </div>
   <div id="msg" role="status" aria-live="polite"></div>
-</header>
+</div>
 <main>
-  <p class="legend noprint"><b>Draft, not an official result.</b> <b style="color:#b42318">X</b> = red X on the card, counted as 0 points. <i class="chip"></i> doubtful first reading · <i class="chip e"></i> changed from the first reading. Points are net Stableford: the handicap gives strokes on the holes in the card's HANDICAP row order. A card with no handicap shows gross points and is not ranked.</p>
+  <p class="legend noprint"><b>Draft, not an official result.</b> <b style="color:var(--danger)">X</b> = red X on the card, counted as 0 points. <i class="chip"></i> doubtful first reading · <i class="chip e"></i> changed from the first reading. Points are net Stableford: each card plays off <b>Plays off N</b>, the system's index converted on the tee written on the card, and the handicap gives strokes on the holes in the card's HANDICAP row order. The HDCP box is kept as <b>Card says</b> and is never used to score. A card with no index on file shows gross points and is not ranked.</p>
   <div id="cards"></div>
   <div id="sheet" hidden></div>
 </main>
@@ -474,7 +603,6 @@ function applyRemote(remote) {
   state.removedBatches = toList(removedBatches);
   if (revOf({ rev: remote.modeRev }) > revOf({ rev: state.modeRev }) && SYNC.mode === SYNCED.mode && remote.mode) {
     state.mode = remote.mode; state.modeRev = remote.modeRev; SYNC.mode = SYNCED.mode = remote.mode;
-    $("mode").value = state.mode === "whs" ? "whs" : "written";
     out.changed += 1;
   }
   if (!state.reviewBatches.some(b => b.id === state.activeReviewBatchId) && !["all", "needs", "done", "issues", "noclass", "unmatched", "groupdiff", "teediff", "hdcpdiff", "daydiff"].includes(state.activeReviewBatchId)) {
@@ -524,11 +652,16 @@ function renderKeepingFocus(highlightIds) {
 resyncHashes();
 // </sync-core>
 const clock = iso => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-function showSaved(ok, text) {
+// The save state is shown in three plain states: Saved 14:02, Saving, Not saved: reason.
+const shortClock = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function showSaved(kind, text) {
   const el = $("saved"); if (!el) return;
-  el.className = ok === null ? "" : ok ? "ok" : "bad"; el.textContent = text;
+  el.className = kind === "ok" ? "ok" : kind === "busy" ? "busy" : kind === "bad" ? "bad" : "";
+  el.textContent = text;
 }
-// Every change is written to this browser and read back, so "Saved" means it is really there.
+// Every change is written to this browser and read back, so a save that reports success is really
+// there. The pill reports the shared copy, which the second script owns; only a local failure is
+// said here.
 function save() {
   state.savedAt = new Date().toISOString();
   stampChanges();
@@ -537,10 +670,9 @@ function save() {
     localStorage.setItem(KEY, text);
     if (localStorage.getItem(KEY) !== text) throw new Error("read back differs");
     saveFailed = false;
-    showSaved(true, "Saved in this browser at " + clock(state.savedAt));
   } catch (e) {
     saveFailed = true;
-    showSaved(false, "NOT SAVED. Press Export JSON now");
+    showSaved("bad", "Not saved: this browser refused the change. Press Export JSON now");
     say("Could not save in this browser. Press Export JSON now to keep your edits.", true);
   }
 }
@@ -572,6 +704,19 @@ const dayOptions = (selected) => {
   if (chosen && !days.includes(chosen)) days.push(chosen);
   return days.sort((a, b) => Number(a) - Number(b)).map(d => `<option value="${d}"${d === chosen ? " selected" : ""}>Day ${d}</option>`).join("");
 };
+// The pinned bar's day and session filter. Empty means every day and both shotguns, so nothing is
+// ever hidden on load; the tabulator narrows the list on purpose.
+let viewDay = "", viewSession = "";
+function fillDayFilter() {
+  const el = $("dayFilter"); if (!el) return;
+  const days = new Set(PLAY_DAYS.map(String));
+  state.cards.forEach(c => { const d = dayOf(c); if (d) days.add(d); });
+  const keep = el.value;
+  el.innerHTML = '<option value="">All days</option>' + [...days].sort((a, b) => Number(a) - Number(b))
+    .map(d => `<option value="${d}">Day ${d}</option>`).join("");
+  el.value = days.has(keep) ? keep : "";
+  viewDay = el.value;
+}
 const classOf = c => c.cls || (fieldFor(c) ? fieldFor(c).cls : "");
 function classNote(c) {
   const f = fieldFor(c);
@@ -595,46 +740,56 @@ function assignmentNote(c) {
 const isNum = v => /^[0-9]{1,2}$/.test(v) && +v > 0;
 const valid = v => v === "" || v === "X" || isNum(v);
 // <handicap-rules>
-// The playing handicap follows the system's own rules (src/lib/routing/handicap.ts, the draw in
-// src/lib/routing/index.ts and src/lib/scoring/handicap.ts). A test keeps this block equal to them.
-//   1. The HDCP written on the card IS the playing handicap, decimal dropped (16.7 plays off 16).
-//      It is never converted again. A plus handicap ("+2") is a negative handicap: strokes go back.
-//   2. With no HDCP on the card, the system's own playing handicap is used: the player's frozen
-//      index, capped at the event's maximum index, converted on the player's tee.
-//   3. The "converted by tee rating and slope" mode treats the card's number as an index instead:
-//      the index is capped at the maximum, then Index x Slope / 113 + (Rating - Par), times the
-//      allowance, rounded once at the end.
-// The maximum index and the allowance are event settings; 30 and 100% apply until the field list says
-// otherwise.
+// The playing handicap is the system's WHS figure for the player's index on the tee written on the
+// card, and nothing else decides it (owner's rule, 14 Nov 2026):
+//   round( min(index, 30) x Slope / 113 + (Rating - Par) ) x allowance
+// It is the same rule as the draw (src/lib/routing/handicap.ts and src/lib/scoring/handicap.ts);
+// src/lib/scorecards/page-handicap.test.ts holds this block equal to that engine over an index grid.
+// The HDCP written on the card is kept as "Card says" and is never used to score anything. A plus
+// handicap ("+2") is a negative index, so strokes go back on the easiest holes. The maximum index
+// and the allowance are event settings; 30 and 100% apply until the field list says otherwise.
 let MAX_INDEX = 30, ALLOWANCE = 1;
 function setHandicapLimits(maxIndex, allowance) {
   if (Number.isFinite(maxIndex) && maxIndex > 0) MAX_INDEX = maxIndex;
   if (Number.isFinite(allowance) && allowance > 0 && allowance <= 1) ALLOWANCE = allowance;
 }
 const wholeStrokes = n => { const r = Math.round(n); return r === 0 ? 0 : r; };
-// What the card's own HDCP box gives, or null when it is empty or not a number.
+// The par the tee is rated against, taken from the tee table when the field list supplies it.
+const teePar = tee => (tee && Number.isFinite(Number(tee.par)) && Number(tee.par) > 0) ? Number(tee.par) : sum(PAR);
+// What the card's own HDCP box says, as a whole number: 16.7 is 16, "+2" is a plus handicap (-2).
 function cardHcp(c) {
   const raw = String(c.hdcp ?? "").trim().replace(/\s+/g, "");
   const m = /^([+-]?)([0-9]+(?:\.[0-9]+)?)$/.exec(raw);
   if (!m) return null;
   const value = m[1] ? -Number(m[2]) : Number(m[2]); // "+2" is a plus handicap, stored negative
-  if (state.mode !== "whs") { const t = Math.trunc(value); return t === 0 ? 0 : t; }
-  const tee = TEES[c.tee]; if (!tee) return null;
-  const index = Math.min(value, MAX_INDEX);
-  return wholeStrokes((index * tee.slope / 113 + (tee.rating - sum(PAR))) * ALLOWANCE);
+  const t = Math.trunc(value);
+  return t === 0 ? 0 : t;
 }
-// The system's playing handicap for this player from the field list, or null. A zero next to an index
-// of 1 or more means the system had no usable tee, so it is not trusted.
-function systemHcp(c) {
-  const f = fieldFor(c);
-  if (!f || f.playingHandicap == null || !Number.isFinite(Number(f.playingHandicap))) return null;
-  const ph = Number(f.playingHandicap);
-  if (ph === 0 && f.frozenIndex != null && f.frozenIndex >= 1) return null;
-  return ph;
+// An index converted on the tee written on the card, or null when either one is missing.
+function whsHcp(index, code) {
+  const tee = TEES[String(code ?? "").trim()];
+  if (!tee) return null;
+  if (index === null || index === undefined || String(index).trim() === "") return null;
+  const value = Number(index);
+  if (!Number.isFinite(value)) return null;
+  const capped = Math.min(value, MAX_INDEX);
+  return wholeStrokes((capped * tee.slope / 113 + (tee.rating - teePar(tee))) * ALLOWANCE);
 }
+// The playing handicap this page scores with, from the field list: the player's index on the tee
+// written on the card. An index of 0, or none on file, is a missing value rather than a scratch
+// player, so the card is left for the admin and is not scored net. A card with no tee letter falls
+// back to the number the desk stored for the player. The card's HDCP box is never part of this.
 function playingHcp(c) {
-  const own = cardHcp(c);
-  return own !== null ? own : systemHcp(c);
+  const f = fieldFor(c);
+  if (!f) return null;
+  if (f.frozenIndex === null || f.frozenIndex === undefined) return null;
+  const index = Number(f.frozenIndex);
+  if (!Number.isFinite(index) || index === 0) return null;
+  const fromIndex = whsHcp(index, c.tee);
+  if (fromIndex !== null) return fromIndex;
+  const stored = (f.playingHandicap === null || f.playingHandicap === undefined) ? null : Number(f.playingHandicap);
+  if (stored === null || !Number.isFinite(stored) || stored === 0) return null;
+  return stored;
 }
 // Strokes received on a hole: one per hole for every full 18, then one more on the hardest holes. A
 // plus handicap gives strokes back on the easiest holes (the highest stroke indexes).
@@ -647,12 +802,53 @@ function strokesOn(ph, i) {
 }
 const fmtPh = ph => ph < 0 ? "+" + (-ph) : String(ph);
 // </handicap-rules>
+const TEE_LABEL = { B: "Blue", W: "White", L: "Ladies", S: "Silver" };
+// The tee table the field list supplies wins over the copy bundled in this page, because a wrong
+// rating would change every net score played off that tee.
+function adoptTees(list) {
+  if (!Array.isArray(list)) return 0;
+  let used = 0;
+  for (const tee of list) {
+    const code = String((tee && tee.code) || "").trim();
+    const rating = Number(tee && tee.courseRating);
+    const slope = Number(tee && tee.slope);
+    if (!code || !Number.isFinite(rating) || !Number.isFinite(slope) || slope <= 0) continue;
+    const par = Number(tee && tee.par);
+    const name = String((tee && tee.name) || (TEES[code] && TEES[code].name) || TEE_LABEL[code] || code);
+    TEES[code] = Number.isFinite(par) && par > 0 ? { rating, slope, par, name } : { rating, slope, name };
+    used += 1;
+  }
+  return used;
+}
+const teeName = code => {
+  const key = String(code || "").trim();
+  if (!key) return "";
+  return (TEES[key] && TEES[key].name) || TEE_LABEL[key] || key;
+};
+// What the card shows as its playing handicap: the system's index on the tee written on the card.
+// An index of 0 or none at all is named as a system problem for the admin, never guessed at.
+function playsOffText(c) {
+  const f = fieldFor(c);
+  if (!f) return { ph: null, warn: true, detail: "", text: "Not on the field list: tell the admin" };
+  const raw = f.frozenIndex;
+  const index = (raw === null || raw === undefined || raw === "") ? null : Number(raw);
+  if (index === null || !Number.isFinite(index) || index === 0) {
+    return { ph: null, warn: true, detail: "", text: index === 0 ? "Index 0 on file, check with admin" : "No index on file, check with admin" };
+  }
+  const ph = playingHcp(c);
+  const tee = String(c.tee || "").trim();
+  if (ph === null) return { ph: null, warn: true, detail: `index ${fmtPh(index)}`, text: `No playing handicap on file: check with admin (index ${fmtPh(index)})` };
+  if (!tee) return { ph, warn: true, detail: `index ${fmtPh(index)}, system tee ${teeName(f.tee) || "–"}`, text: `Plays off ${fmtPh(ph)} (index ${fmtPh(index)}, system tee ${teeName(f.tee) || "–"}) · choose the tee` };
+  // A tee the page has no rating for cannot be converted, so the stored figure is used and the card
+  // says which one it is. Guessing a rating would change every net score on that card.
+  if (!TEES[tee]) return { ph, warn: true, detail: `index ${fmtPh(index)}, stored figure`, text: `Plays off ${fmtPh(ph)} (index ${fmtPh(index)}, stored figure: no rating for tee ${tee})` };
+  return { ph, warn: false, detail: `index ${fmtPh(index)}, ${teeName(tee)}`, text: `Plays off ${fmtPh(ph)} (index ${fmtPh(index)}, ${teeName(tee)})` };
+}
 function calc(c) {
   const ph = playingHcp(c);
-  const phFrom = cardHcp(c) !== null ? "card" : ph !== null ? "system" : "";
   const net = ph === null ? null : c.holes.map((v, i) => isNum(v) ? Math.max(0, 2 + PAR[i] - (+v - strokesOn(ph, i))) : 0);
   const r = calcGross(c);
-  return { ...r, ph, phFrom, net, netOut: net && sum(net.slice(0, 9)), netIn: net && sum(net.slice(9)), netPoints: net && sum(net) };
+  return { ...r, ph, net, netOut: net && sum(net.slice(0, 9)), netIn: net && sum(net.slice(9)), netPoints: net && sum(net) };
 }
 function calcGross(c) {
   const pts = c.holes.map((v, i) => isNum(v) ? Math.max(0, 2 + PAR[i] - +v) : 0);
@@ -699,15 +895,17 @@ function renderCards() {
     <label>Session <select data-f="session" aria-label="AM or PM shotgun">${["AM", "PM"].map(s => `<option value="${s}"${sessionOf(c) === s ? " selected" : ""}>${s}</option>`).join("")}</select></label>
     <label class="chk">Class <select data-f="cls"${c.playerId ? " disabled" : ""}>${["", "A", "B", "C", "D"].map(k => `<option value="${k}"${classOf(c) === k ? " selected" : ""}>${k || "–"}</option>`).join("")}</select></label>
     <span data-k="clsnote" style="font-size:11px"></span>
-    <span data-k="assignnote" style="font-size:11px;color:#b42318"></span>
+    <span data-k="assignnote" style="font-size:11px;color:var(--danger)"></span>
     <label>Group <input type="text" data-f="group" value="${esc(c.group)}"></label>
-    <label>Tee <select data-f="tee">${["", "B", "W", "L"].map(t => `<option value="${t}"${c.tee === t ? " selected" : ""}>${t || "–"}</option>`).join("")}</select></label>
-    <label>HDCP on card <input type="text" data-f="hdcp" value="${esc(c.hdcp)}"></label>
-    <span data-k="syshcp" style="font-size:11px"></span>
+    <label>Tee <select data-f="tee">${["", "B", "W", "L"].map(t => `<option value="${t}"${c.tee === t ? " selected" : ""}>${t ? `${t} · ${esc(teeName(t))}` : "–"}</option>`).join("")}</select></label>
+    <label>Card says <input type="text" data-f="hdcp" value="${esc(c.hdcp)}" aria-label="HDCP written on the paper card" title="What the paper card says. It is kept for the record and never used to score."></label>
+    <span class="hcpinfo" data-k="syshcp"></span>
     <label>Total on card <input type="text" data-f="written" value="${esc(c.written)}"></label>
-    <button type="button" class="primary noprint" data-save title="Save this card to the shared copy now, so everyone signed in can see it. Saving does not mark it checked.">Save card</button>
+    <button type="button" class="noprint" data-save title="Save this card to the shared copy now, so everyone signed in can see it. Saving does not mark it checked.">Save card</button>
     <span class="savestate noprint" data-k="savestate" role="status" aria-live="polite"></span>
-    <label class="chk"><input type="checkbox" data-f="verified"${c.verified ? " checked" : ""}> Checked against the paper card</label>${c.manual ? `<span class="no">Added by hand</span><button type="button" class="danger noprint" data-del style="padding:2px 8px">Remove card</button>` : ""}</div>
+    <label class="chk verify"><input type="checkbox" data-f="verified"${c.verified ? " checked" : ""}> Checked against the paper card</label>
+    ${c.notInSystem ? `<span class="no">Not in the system: tell the admin</span>` : ""}
+    ${c.manual || c.notInSystem ? `<button type="button" class="danger noprint" data-del title="Remove this card and its scores">Remove card</button>` : ""}</div>
   ${c.note ? `<div class="note">Note: ${esc(c.note)}</div>` : ""}
   ${half(c, 0, "OUT")}<div class="gap"></div>${half(c, 9, "IN")}
   <div class="tot" data-k="tot"></div>
@@ -719,10 +917,20 @@ const byId = id => state.cards.find(c => c.id === id);
 function paint(el, c) {
   const r = calc(c);
   el.querySelector('[data-k="clsnote"]').textContent = classNote(c);
-  const f = fieldFor(c);
-  el.querySelector('[data-k="syshcp"]').textContent = f
-    ? `System PH ${f.playingHandicap != null ? fmtPh(Number(f.playingHandicap)) : "–"}${f.frozenIndex != null ? ` · index ${f.frozenIndex}` : ""}`
-    : (c.playerId ? "not on the field list" : "");
+  // The card's playing handicap comes from the system: the admin's index on the tee on the card.
+  const info = playsOffText(c);
+  const syshcp = el.querySelector('[data-k="syshcp"]');
+  syshcp.textContent = info.text;
+  syshcp.className = info.warn ? "hcpinfo warn" : "hcpinfo";
+  // "Card says" is highlighted when the box disagrees with the figure the card is scored on.
+  const says = cardHcp(c);
+  const box = el.querySelector('[data-f="hdcp"]');
+  const differs = says !== null && info.ph !== null && says !== info.ph;
+  box.classList.toggle("diff", differs);
+  box.title = says === null
+    ? "What the paper card says. It is kept for the record and never used to score."
+    : differs ? `The card says ${fmtPh(says)}; the system says ${fmtPh(info.ph)}. The system figure is used.`
+    : "Matches the playing handicap from the system.";
   el.querySelector('[data-k="assignnote"]').textContent = assignmentNote(c);
   const sel = el.querySelector('[data-f="cls"]'); if (document.activeElement !== sel) sel.value = classOf(c);
   const shown = r.net || r.pts;
@@ -737,7 +945,9 @@ function paint(el, c) {
   el.querySelector('[data-k="tot"]').innerHTML =
     `<span>Strokes <b>${r.played === 18 ? r.total : r.total + " over " + r.played + " holes"}</b></span>` +
     `<span>Holes with a score <b>${r.played}/18</b></span>` +
-    (r.net ? `<span>Playing handicap <b>${fmtPh(r.ph)}</b>${r.phFrom === "system" ? ` <small title="The card has no HDCP, so the system's playing handicap for this player is used (frozen index, capped at the event maximum, on the player's tee)">from the system</small>` : ""}</span><span>Net Stableford <b style="font-size:15px">${r.netPoints}</b></span>` : `<span class="no">No handicap${state.mode === "whs" && String(c.hdcp).trim() ? " or tee" : ""}: net not calculated</span>`) +
+    (r.net
+      ? `<span>Playing handicap <b>${fmtPh(r.ph)}</b> <small title="The system's index converted on the tee written on the card; the HDCP box is not used.">${esc(info.detail)}</small></span><span>Net Stableford <b style="font-size:15px">${r.netPoints}</b></span>`
+      : `<span class="no">No playing handicap from the system: net not calculated</span>`) +
     `<span>Gross Stableford <b>${r.points}</b></span>` +
     (r.bad ? `<span class="no">${r.bad} cell(s) are not a number or X</span>` : "") + cmp;
 }
@@ -760,7 +970,7 @@ function renderSheet() {
     const idx = from => Array.from({ length: 9 }, (_, i) => from + i);
     return `<tr><td>${r.net ? n + 1 : "–"}</td><td class="l">${esc(c.name) || "(no name)"}</td><td>${classOf(c) || "–"}</td><td>${esc(c.group)}</td><td>${c.tee || "–"}</td><td>${esc(c.hdcp) || "–"}</td>` +
       idx(0).map(cell).join("") + `<td class="s">${r.out || "–"}</td>` + idx(9).map(cell).join("") + `<td class="s">${r.inn || "–"}</td>` +
-      `<td class="s">${r.played === 18 ? r.total : `<span class="inc">${r.total}*</span>`}</td><td>${r.played}/18</td><td>${r.net ? fmtPh(r.ph) + (r.phFrom === "system" ? "*" : "") : "–"}</td><td>${r.points}</td><td class="s">${r.net ? r.netPoints : "–"}</td>` +
+      `<td class="s">${r.played === 18 ? r.total : `<span class="inc">${r.total}*</span>`}</td><td>${r.played}/18</td><td>${r.net ? fmtPh(r.ph) : "–"}</td><td>${r.points}</td><td class="s">${r.net ? r.netPoints : "–"}</td>` +
       `<td class="${c.verified ? "ok" : "no"}">${c.verified ? "yes" : "no"}</td></tr>`;
   }).join("");
   const skipped = (SRC.skipped || []).map(s => `<li><b>${esc(s.playerName || "No name")}</b>${s.groupNumber ? ` (group ${s.groupNumber})` : ""}: ${esc(s.reason)}</li>`).join("");
@@ -768,7 +978,7 @@ function renderSheet() {
 <div class="warn"><b>Draft. Not an official result.</b><ul>
 <li>${checked} of ${rows.length} cards are ticked as checked against the paper. Shaded cells are doubtful first readings that were not changed.</li>
 <li><b>X</b> is a red X on the card (no number). It is counted as 0 points. That meaning is not confirmed by the organizer.</li>
-<li><b>Net</b> is net Stableford: ${state.mode === "whs" ? "the HDCP on the card is treated as an index and converted with the tee rating and slope" : "the HDCP written on the card is used as the playing handicap (the decimal is dropped, so 16.7 plays off 16)"}, with strokes given in the order of the card's HANDICAP row. <b>PH</b> is the playing handicap used; a plus handicap shows as +n and gives strokes back. A card with no HDCP uses the system's playing handicap for that player (frozen index, capped at the event maximum, on the player's tee), marked <b>*</b>. A card with no HDCP and no system handicap is listed last and not ranked.</li>
+<li><b>Net</b> is net Stableford: each card plays off the system's figure, the player's index capped at ${MAX_INDEX} and converted on the tee written on the card (round(min(index, 30) x slope / 113 + rating - par), allowance ${Math.round(ALLOWANCE * 100)}%), with strokes given in the order of the card's HANDICAP row. <b>PH</b> is the playing handicap used; a plus handicap shows as +n and gives strokes back. The <b>HDCP</b> column is what the paper card says and does not decide anything. A card whose player has no index on file, or an index of 0, is listed last and not ranked.</li>
 <li><b>Class</b> is the team's class from the field list: both partners' indexes, each capped at 30, averaged and rounded (A 0 to 12, B 13 to 18, C 19 to 23, D 24 and above). It does not change any score.</li>
 <li>Strokes marked * add only the holes that have a number, so they are not a gross total. Mulligan and Joker stamps are not applied.</li>
 </ul></div>
@@ -780,21 +990,41 @@ ${skipped ? `<h2>Cards that could not be read (${SRC.skipped.length})</h2><ul>${
 function stats() {
   let edited = 0;
   state.cards.forEach(c => { const o = ORIG[c.id]; if (o) c.holes.forEach((v, i) => { if (v !== (o.holes[i].v === "" ? "" : String(o.holes[i].v))) edited++; }); });
-  $("stat").textContent = `${state.cards.length} cards · ${state.cards.filter(c => c.manual).length} added by hand · ${state.cards.filter(c => c.verified).length} checked · ${edited} scores changed`;
+  const checked = state.cards.filter(c => c.verified).length;
+  $("stat").textContent = `${state.cards.length} cards · ${checked} checked of ${state.cards.length} · ${state.cards.filter(c => c.manual || c.notInSystem).length} added by hand · ${edited} scores changed`;
 }
+// The pinned bar narrows the list: a name, a playing day and one shotgun. Each only ever hides cards
+// from the view; nothing is changed, and clearing the box shows everything again.
 function filter() {
   const q = $("q").value.trim().toLowerCase();
   let n = 0;
   document.querySelectorAll("#cards .card").forEach(el => {
-    const show = el.querySelector(".name").value.toLowerCase().includes(q);
+    const c = byId(el.dataset.id);
+    const show = (!q || el.querySelector(".name").value.toLowerCase().includes(q)) &&
+      (!viewDay || !c || dayOf(c) === viewDay) &&
+      (!viewSession || !c || sessionOf(c) === viewSession);
     el.hidden = !show; el.classList.remove("brk");
     if (show && ++n % 3 === 0) el.classList.add("brk");
   });
+  const narrowed = q || viewDay || viewSession;
+  $("shown").textContent = narrowed ? `${n} of ${state.cards.length} cards shown` : "";
 }
+// The three find controls only hide cards. Clearing them is how a card that was just added or jumped
+// to is made visible again; nothing that is saved changes.
+function clearFind() {
+  viewDay = ""; viewSession = "";
+  $("dayFilter").value = ""; $("sessionFilter").value = ""; $("q").value = "";
+  filter();
+}
+$("dayFilter").addEventListener("change", e => { viewDay = e.target.value; filter(); });
+$("sessionFilter").addEventListener("change", e => { viewSession = e.target.value; filter(); });
 function show(v) {
   view = v;
-  $("cards").hidden = v !== "cards"; $("sheet").hidden = v !== "sheet"; $("q").hidden = v !== "cards";
+  $("cards").hidden = v !== "cards"; $("sheet").hidden = v !== "sheet";
+  $("cardtools").hidden = v !== "cards";
   $("tabCards").classList.toggle("on", v === "cards"); $("tabSheet").classList.toggle("on", v === "sheet");
+  $("tabCards").setAttribute("aria-pressed", v === "cards" ? "true" : "false");
+  $("tabSheet").setAttribute("aria-pressed", v === "sheet" ? "true" : "false");
   $("pg").textContent = `@page { size: ${v === "sheet" ? "landscape" : "portrait"}; margin: 8mm; }`;
   if (v === "sheet") renderSheet();
 }
@@ -825,7 +1055,7 @@ $("q").addEventListener("input", filter);
 // A card that was never scanned: add a blank one and type it in from the paper.
 $("add").onclick = () => {
   const c = { id: "manual-" + Date.now().toString(36), manual: true, name: "", group: "", tee: "", hdcp: "", written: "", cls: "", verified: false, holes: Array(18).fill("") };
-  state.cards.push(c); save(); $("q").value = ""; show("cards"); renderCards(); stats();
+  state.cards.push(c); save(); clearFind(); show("cards"); renderCards(); stats();
   const el = [...document.querySelectorAll("#cards .card")].find(x => x.dataset.id === c.id);
   el.scrollIntoView({ block: "center" }); el.querySelector(".name").focus();
   say("Blank card added. Type the name, tee, HDCP and the 18 scores from the paper card.");
@@ -833,12 +1063,18 @@ $("add").onclick = () => {
 $("cards").addEventListener("click", e => {
   if (!e.target.matches("[data-del]")) return;
   const el = e.target.closest(".card"), c = byId(el.dataset.id);
-  if (!c || !c.manual) return;
-  if (!confirm(`Remove the card you added${c.name ? " for " + c.name : ""}? Its scores are deleted.`)) return;
+  if (!c || !(c.manual || c.notInSystem)) return;
+  if (!confirm(`Remove the card${c.name ? " for " + c.name : ""}? Its scores are deleted.`)) return;
   state.cards.splice(state.cards.indexOf(c), 1); save(); renderCards(); stats(); say("Card removed.");
 });
-$("mode").value = state.mode === "whs" ? "whs" : "written";
-$("mode").onchange = e => { state.mode = e.target.value; save(); document.querySelectorAll("#cards .card").forEach(el => paint(el, byId(el.dataset.id))); if (view === "sheet") renderSheet(); };
+// "/" puts the cursor in the search box from anywhere, so nobody has to scroll up to the pinned bar.
+document.addEventListener("keydown", e => {
+  if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+  e.preventDefault();
+  $("q").focus(); $("q").select();
+});
 $("tabCards").onclick = () => show("cards");
 $("tabSheet").onclick = () => show("sheet");
 $("print").onclick = () => { if (view === "sheet") renderSheet(); window.print(); };
@@ -904,7 +1140,7 @@ $("file").onchange = e => {
     if (!(await takeSnapshot("before replacing all cards from an export"))) return;
     rememberUndo("the replace");
     state = { cards: ok, mode: j.mode || state.mode, modeRev: state.modeRev, reviewBatches: Array.isArray(j.reviewBatches) ? j.reviewBatches : [], activeReviewBatchId: typeof j.activeReviewBatchId === "string" ? j.activeReviewBatchId : "all" };
-    save(); $("mode").value = state.mode === "whs" ? "whs" : "written"; renderCards(); stats(); if (view === "sheet") renderSheet();
+    save(); renderCards(); stats(); if (view === "sheet") renderSheet();
     say(`Loaded ${ok.length} cards from the file. A snapshot of the previous shared copy is kept, and Undo is available until this page is reloaded.`);
   }).catch(err => say("Could not import: " + err.message, true));
 };
@@ -919,12 +1155,12 @@ $("reset").onclick = async () => {
   say("Back to the first reading. A snapshot of the previous shared copy is kept, and Undo is available until this page is reloaded.");
 };
 
-if (SRC.logo) { $("logo").src = SRC.logo; $("logo").hidden = false; }
 $("title").textContent = `${SRC.event} · ${SRC.label} · scores (editable draft)`;
 document.title = `${SRC.label} scores (editable draft)`;
+fillDayFilter();
 renderCards(); stats();
-if (loadedFromBrowser) showSaved(true, state.savedAt ? "Saved work loaded, last saved " + new Date(state.savedAt).toLocaleString() : "Saved work loaded from this browser");
-else showSaved(null, "Nothing saved yet. It saves when you change something");
+if (loadedFromBrowser) showSaved("ok", state.savedAt ? "Loaded this browser's copy, last saved " + shortClock() : "Loaded this browser's copy");
+else showSaved("", "Nothing saved yet");
 
 // The browser makes the PDF: the print window opens with a file name ready, and the desk picks
 // "Save as PDF" as the printer. Nothing is sent anywhere.
@@ -947,13 +1183,15 @@ function __scorecardCheck(id) {
   const cardGroup = String(card.group ?? "").trim();
   const cardTee = String(card.tee ?? "").trim();
   const cardHdcp = String(card.hdcp ?? "").trim();
-  // The system comparison is against what the card itself says, not the system's own fallback.
+  // The card's HDCP box is compared with the figure the card is scored on, which comes from the
+  // system's index on the tee written on the card.
   const cardPh = cardHcp(card);
   const systemClass = field ? field.cls || "" : "";
   const systemGroup = field && field.group != null ? String(field.group) : "";
   const systemTee = field ? field.teeCode || "" : "";
   const systemTeeName = field ? field.tee || "" : "";
-  const systemHdcp = field && field.playingHandicap != null ? String(field.playingHandicap) : "";
+  const playsOff = playingHcp(card);
+  const systemHdcp = playsOff === null ? "" : String(playsOff);
   const systemIndex = field && field.frozenIndex != null ? field.frozenIndex : null;
   const systemDay = field && field.dayNumber != null ? field.dayNumber : null;
   const systemPlayDate = field ? field.playDate || "" : "";
@@ -967,9 +1205,9 @@ function __scorecardCheck(id) {
   // The card's own day and session; the system field list for that day is what it is checked against.
   const documentSession = sessionOf(card);
   const cardDay = dayOf(card);
-  // A playing handicap of 0 beside a real index is an unset system value, not a scratch player.
-  // The difference is still shown, but "Use system" must not copy the 0 onto the card.
-  const hdcpUsable = systemHdcp !== "" && !(Number(systemHdcp) === 0 && systemIndex != null && systemIndex >= 1);
+  // "Use system" copies the figure the card is scored on, which is only there when the system has
+  // an index for the player.
+  const hdcpUsable = systemHdcp !== "";
   const classDiff = Boolean(systemClass && cardClass && systemClass !== cardClass);
   const groupDiff = Boolean((cardGroup || systemGroup) && cardGroup !== systemGroup);
   const teeDiff = Boolean(systemTee && cardTee !== systemTee);
@@ -1022,6 +1260,9 @@ window.__scorecard = {
   setState: (next) => {
     state = next;
     save();
+    // The pinned bar's day list follows the cards, so a card added for another playing day can be
+    // filtered to as soon as it is on the page.
+    fillDayFilter();
     renderCards();
     stats();
   },
@@ -1032,6 +1273,23 @@ window.__scorecard = {
     renderCards();
     stats();
   },
+  // The field list carries the course's tee ratings, so a card converts its index with the
+  // event's own numbers. Without them the copy bundled in this page is used.
+  setTees: (tees) => {
+    const used = adoptTees(tees);
+    if (!used) return 0;
+    renderCards();
+    stats();
+    return used;
+  },
+  // What a card shows as its playing handicap, for the browser checks.
+  playsOff: (id) => {
+    const card = state.cards.find((entry) => entry.id === id);
+    return card ? playsOffText(card) : null;
+  },
+  // The pinned bar's find box, day and session only hide cards. Clearing the three lets a card that
+  // was added or jumped to be shown; nothing that is saved changes.
+  clearFind,
   cardCheck: __scorecardCheck,
   checkField: () => {
     const checks = state.cards.map((card) => __scorecardCheck(card.id)).filter(Boolean);
@@ -1067,6 +1325,8 @@ window.__scorecard = {
   let sessionEnded = false;
   let last = "";
   let saving = false;
+  // Why the shared copy does not have the last change, shown in the save pill and on every card.
+  let saveProblem = "";
   let fieldReady = false;
   let checkCache = null;
   const searchFilter = window.filter;
@@ -1088,9 +1348,7 @@ window.__scorecard = {
     <h2 style="margin:0 0 2px;font-size:15px">Review batches and system check</h2>
     <p class="legend" id="batch-summary" style="margin:0 0 8px"></p>
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 8px">
-      <input id="panel-q" type="search" placeholder="Filter by player name" aria-label="Filter cards by player name" style="font:inherit;padding:6px 8px;border:1px solid #b9c4bd;border-radius:6px;min-width:220px">
-      <label style="display:inline-flex;gap:5px;align-items:center">Batch
-        <select id="batch-select" aria-label="Show one review batch" style="font:inherit;padding:6px 8px;border:1px solid #b9c4bd;border-radius:6px;max-width:260px"></select></label>
+      <input id="panel-q" type="search" placeholder="Filter by player name" aria-label="Filter cards by player name" style="font:inherit;min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--r-sm);min-width:220px">
       <button type="button" id="panel-field" class="primary" title="Pick a day, session and group and the players arrive as blank cards with group, tee and class filled in. No JSON file needed.">Add players from the system</button>
       <button type="button" id="panel-refresh" title="Add any assigned player who is missing from this day and session, without touching the cards already on the page">Refresh list from system</button>
       <button type="button" id="panel-add" title="Add one blank card and type the name and 18 scores in from the paper card">Add card by hand</button>
@@ -1151,7 +1409,8 @@ window.__scorecard = {
   const sendButton = panel.querySelector("#batch-send");
   const addInput = panel.querySelector("#batch-add-file");
   const batchList = panel.querySelector("#batch-list");
-  const batchSelect = panel.querySelector("#batch-select");
+  // The batch picker lives in the pinned bar, so it is reachable while the cards scroll.
+  const batchSelect = document.getElementById("batch-select");
   const clearButton = panel.querySelector("#batch-clear");
   const panelSearch = panel.querySelector("#panel-q");
   const panelAdd = panel.querySelector("#panel-add");
@@ -1308,6 +1567,14 @@ window.__scorecard = {
     }
   }
 
+  // A card the desk jumped to or just added must not stay hidden by the pinned bar's find box, day or
+  // session. Clearing them is the only thing that changes: no card and no score is touched.
+  function clearFind() {
+    panelSearch.value = "";
+    db.clearFind();
+    apply();
+  }
+
   function gotoCard(id) {
     const card = current().cards.find((entry) => entry.id === id);
     if (!card) return;
@@ -1316,6 +1583,7 @@ window.__scorecard = {
       (candidate) => candidate.dataset.id === id,
     );
     if (!element) return;
+    if (element.hidden) clearFind();
     element.scrollIntoView({ behavior: "smooth", block: "center" });
     element.style.outline = "3px solid #b42318";
     window.setTimeout(() => {
@@ -1743,8 +2011,10 @@ window.__scorecard = {
     // two tabulators using the same account never send the same cards twice.
     const alreadySent = state.cards.filter((card) => card.verified && card.sentAt).length;
     const checked = state.cards.filter((card) => card.verified && !card.sentAt);
-    const listed = checked.filter((card) => card.playerId);
-    const nameOnly = checked.filter((card) => !card.playerId);
+    // A card typed in as "not in the system" is never sent as a checked card: the admin has to add
+    // the player first, so it is handed over as a name for matching, not as a scored card.
+    const listed = checked.filter((card) => card.playerId && !card.notInSystem);
+    const nameOnly = checked.filter((card) => !card.playerId || card.notInSystem);
     if (listed.length === 0 && nameOnly.length === 0) {
       summary.textContent = alreadySent
         ? `Nothing new to send: ${alreadySent} checked card${alreadySent === 1 ? " is" : "s are"} already with the admin.`
@@ -1753,15 +2023,12 @@ window.__scorecard = {
     }
     if (listed.length === 0) {
       summary.textContent =
-        "The checked cards have no system player. The admin must add them by name.";
+        "The checked cards are not in the system. The admin must add those players before their cards can be sent.";
       return;
     }
-    const missing = listed.filter((card) => {
-      const field = fieldFor(card);
-      return !String(card.hdcp ?? "").trim() && (!field || field.playingHandicap == null);
-    });
+    const missing = listed.filter((card) => !String(card.hdcp ?? "").trim() && playingHcp(card) === null);
     if (missing.length > 0) {
-      summary.textContent = `${missing.length} checked card${missing.length === 1 ? "" : "s"} have no HDCP on the card and no system handicap. Fill the card's HDCP box or ask the admin to fix the player record.`;
+      summary.textContent = `${missing.length} checked card${missing.length === 1 ? "" : "s"} have no playing handicap from the system (no index on file). Ask the admin to fix the player record, or untick those cards.`;
       return;
     }
     const confirmed = window.confirm(
@@ -1790,7 +2057,8 @@ window.__scorecard = {
               group: card.group,
               tee: card.tee,
               hdcp: String(card.hdcp ?? ""),
-              systemHcp: field?.playingHandicap ?? null,
+              // The figure this page scored with: the system's index on the tee on the card.
+              systemHcp: playingHcp(card),
               systemIndex: field?.frozenIndex ?? null,
               systemGroup: field?.group ?? null,
               systemSession: field?.session ?? "",
@@ -1891,14 +2159,14 @@ window.__scorecard = {
     return answer;
   }
 
-  function scanDialog(content) {
+  function scanDialog(content, width = 460) {
     const overlay = document.createElement("div");
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-label", "Scanned cards");
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(7,61,46,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50";
     const box = document.createElement("div");
-    box.style.cssText = "background:#fff;border-radius:10px;max-width:460px;width:100%;max-height:90vh;overflow:auto;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)";
+    box.style.cssText = `background:var(--surface-raised);color:var(--ink);border-radius:var(--r-md);max-width:${width}px;width:100%;max-height:90vh;overflow:auto;padding:16px;box-shadow:var(--shadow-lift)`;
     box.innerHTML = content;
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -2067,6 +2335,8 @@ window.__scorecard = {
       card.registrationId = entry.registrationId || "";
       card.partnerPlayerId = entry.partnerPlayerId || "";
     }
+    // A card typed in as "not in the system" is matched now, so it can go to the admin as a card.
+    if (card.notInSystem) card.notInSystem = false;
     if (!card.group && entry.group != null) card.group = String(entry.group);
     if (!card.tee && entry.teeCode) card.tee = entry.teeCode;
     return true;
@@ -2313,6 +2583,192 @@ window.__scorecard = {
   scanPick.addEventListener("click", () => scanFile.click());
   scanCameraOpen.addEventListener("click", () => { void openCamera(); });
 
+  // ---- Add a card for a player whose paper card is here ----
+  // The whole field list of the event is searched, not only the day's draw: a player drawn in another
+  // session, or not drawn at all, still has a paper card to type. The card is made for the chosen day
+  // and session with the player's name, player id and tee, so its index and playing handicap come from
+  // the system. A name that is not in the system at all becomes a card that says so.
+  async function openPlayerPicker() {
+    const dialog = scanDialog(`
+      <h2 style="margin:0 0 6px;font-size:18px">Add a card for a player</h2>
+      <p style="margin:0 0 8px;color:var(--ink-muted)">Search every player in the event, not only this day's draw. The card is made for the day and session you choose, with the name, player and tee from the system, so the card shows the system's playing handicap.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px">
+        <input id="pp-q" type="search" placeholder="Search any player in this event" aria-label="Search any player in this event" style="font:inherit;min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--r-sm);flex:1 1 220px">
+        <label class="field">Day <select id="pp-day" style="font:inherit;min-height:44px;padding:0 8px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface-raised);color:var(--ink)">${dayOptions(DOC_DAY)}</select></label>
+        <label class="field">Session <select id="pp-session" style="font:inherit;min-height:44px;padding:0 8px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface-raised);color:var(--ink)"><option${DOC_SESSION === "AM" ? " selected" : ""}>AM</option><option${DOC_SESSION === "PM" ? " selected" : ""}>PM</option></select></label>
+      </div>
+      <div id="pp-list" style="max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 10px;margin:0 0 8px"></div>
+      <p id="pp-note" role="status" style="margin:0 0 10px;font-weight:600"></p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px">
+        <button type="button" id="pp-add" class="primary">Add the selected player</button>
+        <button type="button" id="pp-cancel">Cancel</button>
+      </div>
+      <details id="pp-other" style="border-top:1px solid var(--line);padding-top:10px">
+        <summary style="cursor:pointer;font-weight:600">Player not in the system</summary>
+        <p style="margin:6px 0 8px;color:var(--ink-muted)">Type the name written on the paper card. The card is marked "Not in the system: tell the admin" and is never sent to the admin queue as a checked card until the admin adds the player.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <input id="pp-name" type="text" placeholder="Name on the paper card (LAST, FIRST)" aria-label="Name on the paper card" style="font:inherit;min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--r-sm);flex:1 1 220px">
+          <button type="button" id="pp-addname">Add the card</button>
+        </div>
+      </details>`, 680);
+    const box = dialog.box;
+    const q = (selector) => box.querySelector(selector);
+    let rows = [];
+    let chosenKey = "";
+
+    /** Every player of the event, once, from the day's list or any other loaded list. */
+    function fieldRows(day) {
+      const own = FIELDS[String(day)];
+      const source = own && Object.keys(own).length ? own : (Object.values(FIELDS).find((list) => Object.keys(list).length) || {});
+      const seen = new Set();
+      return Object.values(source).filter((entry) => {
+        const key = entry.playerId || nameKey(entry.name);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    /** What the tabulator should know about this player before adding the card. Never blocks. */
+    function whereIs(entry, day, session) {
+      const same = (card) => (entry.playerId && card.playerId === entry.playerId) || nameKey(card.name) === nameKey(entry.name);
+      const onPage = current().cards.filter((card) => same(card) && dayOf(card) === day && sessionOf(card) === session);
+      if (onPage.length) return { warn: true, text: `already has a card for Day ${day} ${session}` };
+      const drawn = entry.group != null && entry.session ? entry.session : "";
+      if (drawn && drawn !== session) return { warn: true, text: `drawn in ${drawn} on Day ${entry.dayNumber ?? day}` };
+      if (!drawn) return { warn: true, text: `not drawn for Day ${day}; add the card if the paper is here` };
+      return { warn: false, text: `group ${entry.group ?? "–"} · ${entry.teeTime || "no tee time"}` };
+    }
+
+    function draw() {
+      const day = q("#pp-day").value, session = q("#pp-session").value;
+      const needle = q("#pp-q").value.trim().toLowerCase();
+      const list = rows.filter((entry) => !needle || entry.name.toLowerCase().includes(needle));
+      q("#pp-list").innerHTML = list.slice(0, 300).map((entry) => {
+        const key = entry.playerId || nameKey(entry.name);
+        const where = whereIs(entry, day, session);
+        const facts = [entry.frozenIndex != null ? `index ${entry.frozenIndex}` : "no index", entry.tee || "no tee", entry.cls ? `class ${entry.cls}` : ""].filter(Boolean).join(" · ");
+        return `<label style="display:flex;align-items:center;gap:8px;margin:2px 0;min-height:44px"><input type="radio" name="pp-pick" value="${escapeHtml(key)}"${key === chosenKey ? " checked" : ""}> ${escapeHtml(entry.name)} <span style="color:var(--ink-muted)">· ${escapeHtml(facts)} · ${escapeHtml(where.text)}</span>${where.warn ? ' <span class="no">· check</span>' : ""}</label>`;
+      }).join("") || '<span style="color:var(--ink-muted)">No player matches that name.</span>';
+      const picked = rows.find((entry) => (entry.playerId || nameKey(entry.name)) === chosenKey) || null;
+      if (!picked) q("#pp-note").textContent = `${list.length} player${list.length === 1 ? "" : "s"} found. Pick one.`;
+      else {
+        const where = whereIs(picked, day, session);
+        q("#pp-note").textContent = where.text.charAt(0).toUpperCase() + where.text.slice(1) + ".";
+        q("#pp-note").style.color = where.warn ? "var(--warning)" : "var(--ink-muted)";
+      }
+    }
+
+    async function load() {
+      q("#pp-note").textContent = "Reading the field list…";
+      q("#pp-list").innerHTML = "";
+      await loadFieldDay(q("#pp-day").value);
+      rows = fieldRows(q("#pp-day").value);
+      chosenKey = "";
+      if (!rows.length) {
+        q("#pp-note").textContent = "The system returned no players for this event. Use Player not in the system below.";
+        return;
+      }
+      draw();
+    }
+
+    function addCard(entry, day, session) {
+      const state = current();
+      const id = fieldCardId(entry, day, session);
+      const existing = state.cards.find((card) => card.id === id);
+      if (existing) {
+        dialog.close();
+        show("cards");
+        gotoCard(id);
+        summary.textContent = `${entry.name} already has a card for Day ${day} ${session}; it is open now.`;
+        return;
+      }
+      const sameName = state.cards.filter((card) => nameKey(card.name) === nameKey(entry.name) && dayOf(card) === day && sessionOf(card) === session);
+      const card = {
+        id,
+        manual: true,
+        playerId: entry.playerId || "",
+        registrationId: entry.registrationId || "",
+        partnerPlayerId: entry.partnerPlayerId || "",
+        name: entry.name,
+        group: entry.group != null ? String(entry.group) : "",
+        tee: entry.teeCode || "",
+        hdcp: "",
+        written: "",
+        cls: "",
+        verified: false,
+        day: String(day),
+        session,
+        note: [`Added for the paper card. Type the 18 scores${entry.frozenIndex == null ? "; the system has no index for this player" : ""}.`, sameName.length ? `The page already had ${sameName.length} card with this name; this card belongs to the system player.` : ""].filter(Boolean).join(" "),
+        source: "",
+        holes: Array(18).fill(""),
+      };
+      state.cards.push(card);
+      const batch = batches().find((b) => b.id === activeId()) || null;
+      if (batch) { batch.cardIds = [...new Set([...batch.cardIds, card.id])]; state.activeReviewBatchId = batch.id; }
+      else if (activeId() !== "all" && activeId() !== "needs") state.activeReviewBatchId = "all";
+      dialog.close();
+      show("cards");
+      db.setState(state);
+      apply();
+      gotoCard(id);
+      summary.textContent = `Card added for ${entry.name}, Day ${day} ${session}${batch ? ` in ${batch.name}` : ""}. Its playing handicap comes from the system.`;
+      void persist(true);
+    }
+
+    box.addEventListener("change", (event) => {
+      const target = event.target;
+      if (target && target.name === "pp-pick") { chosenKey = target.value; draw(); }
+      else if (target && (target.id === "pp-day" || target.id === "pp-session")) { void load(); }
+    });
+    q("#pp-q").addEventListener("input", draw);
+    q("#pp-cancel").addEventListener("click", () => dialog.close());
+    q("#pp-add").addEventListener("click", () => {
+      const entry = rows.find((candidate) => (candidate.playerId || nameKey(candidate.name)) === chosenKey) || null;
+      if (!entry) { q("#pp-note").textContent = "Pick a player from the list first."; return; }
+      addCard(entry, q("#pp-day").value, q("#pp-session").value);
+    });
+    q("#pp-addname").addEventListener("click", () => {
+      const name = q("#pp-name").value.trim();
+      if (!name) { q("#pp-note").textContent = "Type the name written on the paper card."; q("#pp-name").focus(); return; }
+      const day = q("#pp-day").value, session = q("#pp-session").value;
+      const state = current();
+      const card = {
+        id: `manual-${Date.now().toString(36)}`,
+        manual: true,
+        notInSystem: true,
+        playerId: "",
+        name,
+        group: "",
+        tee: "",
+        hdcp: "",
+        written: "",
+        cls: "",
+        verified: false,
+        day: String(day),
+        session,
+        note: `Not in the system: tell the admin. ${name} is not on the event's player list, so this card cannot go to the admin queue as a checked card until the admin adds the player.`,
+        source: "",
+        holes: Array(18).fill(""),
+      };
+      state.cards.push(card);
+      const batch = batches().find((b) => b.id === activeId()) || null;
+      if (batch) { batch.cardIds = [...new Set([...batch.cardIds, card.id])]; state.activeReviewBatchId = batch.id; }
+      else if (activeId() !== "all" && activeId() !== "needs") state.activeReviewBatchId = "all";
+      dialog.close();
+      show("cards");
+      db.setState(state);
+      apply();
+      gotoCard(card.id);
+      summary.textContent = `Card added for ${name}, marked not in the system. Tell the admin.`;
+      void persist(true);
+    });
+    await load();
+    q("#pp-q").focus();
+  }
+  const addPlayerButton = document.getElementById("add-player");
+  if (addPlayerButton) addPlayerButton.addEventListener("click", () => { void openPlayerPicker(); });
+
   // ---- Filter by name and batch, add a card by hand, remove batches ----
   const searchBox = document.getElementById("q");
   panelSearch.addEventListener("input", () => {
@@ -2356,6 +2812,7 @@ window.__scorecard = {
       state.activeReviewBatchId = active;
     }
     db.save();
+    db.clearFind();
     searchBox.value = "";
     panelSearch.value = "";
     show("cards");
@@ -2449,6 +2906,9 @@ window.__scorecard = {
     // part of it, so it is not overwritten by the answer and goes out with the next save.
     const sent = db.snapshotHashes();
     const unsavedBefore = Object.keys(sent.cards).filter((id) => cardDirty(id));
+    saveProblem = "";
+    refreshSaveBadges();
+    showSaved("busy", "Saving");
     try {
       const response = await fetch(`/api/scorecards/${encodeURIComponent(slug)}`, {
         method: "PUT",
@@ -2459,21 +2919,27 @@ window.__scorecard = {
         const body = await response.json().catch(() => ({}));
         if (response.status === 401) {
           sessionEnded = true;
+          saveProblem = "your session ended";
           status("Your session ended, so nothing more can be saved. Opening the sign-in page…", true);
           window.setTimeout(() => window.location.assign(loginUrl), 1500);
         } else if (response.status === 403) {
+          saveProblem = "this account cannot save";
           status("This account is not on the tabulation team, so it cannot save.", true);
         } else if (response.status === 413) {
+          saveProblem = "the day is too large for one save";
           status("The day is too large to save in one go. Export JSON and tell the admin.", true);
         } else if (response.status === 423) {
           // Another save holds the shared copy for a moment. The edits are local and safe.
+          saveProblem = "another tabulator is saving the shared copy; this page retries";
           status("Another tabulator is saving the shared copy. Your edits are kept; trying again in a moment.");
         } else {
+          saveProblem = body.message ? String(body.message) : `the save failed (HTTP ${response.status})`;
           status(
             `${body.message ?? "The database save failed"} (HTTP ${response.status}). Your edits are still in this browser; it will try again.`,
             true,
           );
         }
+        showSaved("bad", `Not saved: ${saveProblem}`);
         return false;
       }
       const reply = await response.json().catch(() => ({}));
@@ -2496,16 +2962,20 @@ window.__scorecard = {
         apply();
       }
       refreshSaveBadges();
+      showSaved("ok", `Saved ${shortClock()}`);
       // A routine save note must not replace an error the desk still needs to read.
       if (!document.getElementById("msg")?.classList.contains("err")) {
         status(`Saved to the database at ${new Date().toLocaleTimeString()}.`);
       }
       return true;
     } catch {
+      saveProblem = "the database is not reachable";
+      showSaved("bad", `Not saved: ${saveProblem}`);
       status("The database is not reachable. Your edits are still in this browser.", true);
       return false;
     } finally {
       saving = false;
+      refreshSaveBadges();
     }
   }
 
@@ -2631,9 +3101,13 @@ window.__scorecard = {
       }
       // The event's own maximum index and allowance, so the page converts an index the way the draw does.
       if (typeof setHandicapLimits === "function") setHandicapLimits(Number(body.maxIndex), Number(body.allowance));
+      // The course's tee ratings, so a card is converted with the event's own numbers. The copy
+      // bundled in the page is only a fallback for an older deployment that does not send them.
+      if (Array.isArray(body.tees) && body.tees.length && typeof db.setTees === "function") db.setTees(body.tees);
       if (Array.isArray(body.days) && body.days.length) {
         PLAY_DAYS = body.days.map((entry) => entry.day);
         dayOptionsRefresh();
+        fillDayFilter();
       }
       if (String(body.dayNumber) !== day) {
         // The server fell back to another day because this one does not exist; keep it empty.
@@ -2696,6 +3170,7 @@ window.__scorecard = {
         card.playerId = entry.playerId;
         card.registrationId = entry.registrationId;
         card.partnerPlayerId = entry.partnerPlayerId;
+        if (card.notInSystem) card.notInSystem = false;
         continue;
       }
       state.cards.push({
@@ -2784,24 +3259,40 @@ window.__scorecard = {
 
   // ---- Save card: an explicit save for one card, with a visible answer ----
   // Everything is also saved on its own every two seconds; this button is the confirmation. Each card
-  // says "Unsaved changes" while it has edits the shared copy does not hold, and "Saved at ..." once it does.
+  // says "Saving" while its edit is on its way, "Saved 14:02" once the shared copy holds it, and
+  // "Not saved: reason" when the save failed. An edit waiting for the next save says so plainly
+  // instead of pretending it is already on its way.
   const savedStamp = {};
   function refreshSaveBadges() {
+    let waiting = 0;
     for (const element of cardsRoot.querySelectorAll(".card")) {
       const badge = element.querySelector('[data-k="savestate"]');
       if (!badge) continue;
       const id = element.dataset.id;
       if (cardDirty(id)) {
-        badge.textContent = "Unsaved changes";
-        badge.className = "savestate noprint bad";
+        if (saving) {
+          badge.textContent = "Saving";
+          badge.className = "savestate noprint busy";
+        } else if (saveProblem) {
+          badge.textContent = `Not saved: ${saveProblem}`;
+          badge.className = "savestate noprint bad";
+        } else {
+          waiting += 1;
+          badge.textContent = "Unsaved, saving shortly";
+          badge.className = "savestate noprint busy";
+        }
       } else if (savedStamp[id]) {
-        badge.textContent = `Saved at ${new Date(savedStamp[id]).toLocaleTimeString()} · everyone can see it`;
+        badge.textContent = `Saved ${new Date(savedStamp[id]).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
         badge.className = "savestate noprint ok";
       } else {
         badge.textContent = "";
         badge.className = "savestate noprint";
       }
     }
+    // The pill in the pinned bar follows the cards, so nobody reads "Saved" while an edit is only in
+    // this browser waiting for the next save. It is not the pill's job to name a failure; that is
+    // said when the save actually fails.
+    if (waiting > 0 && !saving && !saveProblem) showSaved("busy", "Unsaved, saving shortly");
   }
   cardsRoot.addEventListener("input", () => window.setTimeout(refreshSaveBadges, 0));
   cardsRoot.addEventListener("change", () => window.setTimeout(refreshSaveBadges, 0));
@@ -2813,8 +3304,8 @@ window.__scorecard = {
     const badge = element ? element.querySelector('[data-k="savestate"]') : null;
     button.disabled = true;
     if (badge) {
-      badge.textContent = "Saving…";
-      badge.className = "savestate noprint";
+      badge.textContent = "Saving";
+      badge.className = "savestate noprint busy";
     }
     const ok = await persist(true);
     button.disabled = false;
@@ -2825,7 +3316,7 @@ window.__scorecard = {
       const fresh = [...cardsRoot.querySelectorAll(".card")].find((entry) => entry.dataset.id === id);
       const label = fresh ? fresh.querySelector('[data-k="savestate"]') : null;
       if (label) {
-        label.textContent = "Not saved yet. It will keep trying; your edit is safe on this device.";
+        label.textContent = `Not saved: ${saveProblem || "the save failed"}`;
         label.className = "savestate noprint bad";
       }
     }

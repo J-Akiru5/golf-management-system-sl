@@ -25,7 +25,7 @@ export function parsePublicTab(value: string | string[] | undefined): PublicTab 
  */
 export function publicTabHref(tab: PublicTab, params: PublicTabParams = {}): string {
   if (tab === "players") return "/roster";
-  if (tab === "scores") return "/results";
+  if (tab === "scores") return "/results/all";
   if (tab === "leaderboard") {
     const query = new URLSearchParams();
     if (params.category) query.set("category", params.category);

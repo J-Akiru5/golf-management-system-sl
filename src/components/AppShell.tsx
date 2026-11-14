@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Award,
   Bell,
   CalendarClock,
   CalendarDays,
@@ -158,6 +159,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     },
     { href: "/draw", label: "Draw & pairings", icon: Flag, alert: blocking > 0, group: "main" },
     { href: "/scores", label: "Scores", icon: ClipboardCheck, group: "main" },
+    { href: "/awarding", label: "Awarding lanes", icon: Award, group: "main" },
     { href: "/print", label: "Print center", icon: Printer, group: "main" },
     { href: "/setup", label: "Settings", icon: SlidersHorizontal, group: "main" },
     { href: "/course", label: "Course & holes", icon: MapIcon, group: "more" },

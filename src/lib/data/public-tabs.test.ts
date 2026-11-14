@@ -31,6 +31,6 @@ describe("public tabs", () => {
   });
 
   it("sends the all-scores tab to its own page", () => {
-    expect(publicTabHref("scores")).toBe("/results");
+    expect(publicTabHref("scores")).toBe("/results/all");
   });
 });

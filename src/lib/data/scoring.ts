@@ -26,11 +26,13 @@ import {
   type Scorecard,
   type StandingsResult,
   type StrokeLimits,
+  type TeeRatings,
   type TieBreakPolicy,
   type VerificationPolicy,
   validateScorecard,
 } from "@/lib/scoring";
-import { CORRECTED_HANDICAP_SOURCE } from "@/lib/scoring/event-rules";
+import { planEventHandicap } from "@/lib/scoring/event-card";
+import { CORRECTED_HANDICAP_SOURCE, eventRulesFor } from "@/lib/scoring/event-rules";
 import { checkCardSubmission } from "@/lib/scoring/submission";
 
 export type ScoringRoundStatus = "draft" | "open" | "scoring" | "provisional" | "final";
@@ -54,6 +56,13 @@ export interface ScoringPlayerSeed {
    * claiming a difference.
    */
   frozenIndex?: number | null;
+  /**
+   * The ratings of the tee on the player's registration, loaded so the WHS playing handicap can be
+   * worked out from the index and that tee. Optional: a view that has not loaded it leaves it
+   * undefined and the round's tee is used. Null means the registration has no tee, which stops a
+   * card from being saved with a guessed handicap.
+   */
+  tee?: TeeRatings | null;
 }
 
 export interface ScoringPlayer extends ScoringPlayerSeed {
@@ -542,6 +551,23 @@ export function createDemoScoringRepository(
       });
       if (!validation.approvable) {
         throw new Error(validation.issues.map((issue) => issue.message).join(" "));
+      }
+
+      // Every approved card is scored with the WHS playing handicap, whichever screen sent it. A
+      // card that arrived by import has no snapshot of its own, so it gets one here.
+      const current = view();
+      const player = current.players.find((candidate) => candidate.playerId === card.playerId);
+      if (!player) throw new Error("The card's player is not in this round.");
+      if (eventRulesFor(rulesVersion)) {
+        const plan = planEventHandicap({
+          rulesVersion,
+          roundStatus,
+          tee: seed.course.tee,
+          effectiveDate: new Date(clock()).toISOString().slice(0, 10),
+          player,
+        });
+        if (!plan.ok) throw new Error(plan.message);
+        if (plan.needsSnapshotWrite) cardHandicaps.set(card.playerId, plan.snapshot);
       }
 
       cards = cards.map((candidate) =>

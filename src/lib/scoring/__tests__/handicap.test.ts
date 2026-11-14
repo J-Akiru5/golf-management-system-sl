@@ -165,6 +165,18 @@ describe("handicap snapshot check", () => {
     expect(check.indexDiffers).toBe(false);
   });
 
+  it("does not compare the index of a card snapshot, whose index column holds the playing handicap", () => {
+    const cardSnapshot = { ...snapshot, rounding: "card" as const, index: 19 };
+    const check = checkHandicapSnapshot({
+      handicap: cardSnapshot,
+      frozenIndex: 16.4,
+      roundTeeId: snapshot.teeId,
+    });
+    expect(check.snapshotIndex).toBe(19);
+    expect(check.frozenIndex).toBe(16.4);
+    expect(check.indexDiffers).toBe(false);
+  });
+
   it("flags a snapshot taken from another tee", () => {
     const check = checkHandicapSnapshot({
       handicap: snapshot,

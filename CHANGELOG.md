@@ -9,24 +9,112 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.57.0] - 2026-11-15
+
 ### Added
+- **The draw board can be rearranged by dragging.** Drag a player onto another player to swap the
+  two, in the card view and the table view, or onto a group with room to move them there. A drop is
+  decided by `src/lib/draw/drop-intent.ts`, which asks the same `swapPlayers`, `moveSet` and
+  `dropCheck` the buttons already run, so locks, checks, manual overrides, undo and Live mode behave
+  the same. A full group offers a swap that is finished on a row, and a drop the rules forbid is
+  refused with the action's own reason in a red line instead of being dropped silently. The line
+  after a drop offers the existing one-step Undo. A finger drags from the same handle as a mouse; the
+  Swap and Move buttons, the checkboxes and the command box are unchanged. No migration.
+
+### Migrations shipping with this release
+
+- `20261115000300_correct_handicap_no_rules_version.sql`: **written, not applied.** Apply it after
+  `20261114000300_correct_handicap_snapshot.sql`. It lets a played round's handicap be corrected when
+  the round has no rules version stored, which is true of Day 2 and Day 3.
+
+## [0.56.0] - 2026-11-15
+
+### Added
+- **The public sees nothing until the club releases each category, then the top three.** A new
+  `/results` podium holds six independent lanes: Class A to D, Net overall and Gross overall. A held
+  lane is blank. A counting lane shows the number only, cinema style, driven by the server clock so
+  every phone agrees. A released lane shows the top three with the tie mark the desk confirmed and a
+  one-shot flash. The desk page `/awarding` holds or releases one lane at a time and sets the seconds.
+  All scores moved to `/results/all`. A held lane returns nothing to a direct database call, not just
+  to the page.
+- **A demo flag rehearses the ceremony on staging.** `AWARDING_DEMO=1` serves fictional sample boards
+  on a loop and is refused in production.
+
+### Migrations shipping with this release
+
+- `20261115000200_results_reveal.sql`: **written, not applied.** Without it the blackout still works
+  through the existing release gate, but the per-lane countdown cannot be read by a signed-out page.
+
+
+
+## [0.55.0] - 2026-11-15
+
+### Added
+- **The tabulation page can add a card for any player in the event, or for a name that is not in the
+  system.** "Add card for a player" searches the whole event, not just the day's draw, and says when
+  the player already has a card for that day and session, or is drawn in the other shotgun. A name the
+  event does not hold becomes a card marked "Not in the system: tell the admin", which the admin has
+  to add before the scored card can be sent. No migration.
 - **The tabulator page keeps a snapshot of the shared copy before a reset or a replace, and can undo either action in the page.** "Reset to first reading" now asks for the word RESET. Both it and "Replace all from export" write the current shared document to `snapshots/<slug>/` in the private bucket before changing it; if the snapshot cannot be kept, the action stops and the page says to export JSON first. The Undo button restores the page as it was until the page is reloaded, and the snapshot remains for recovery afterwards. No migration.
 - **The shared scorecard document records who saved it.** `updatedBy` is taken from the signed-in account, and the live label names the account that saved the copy. No migration.
 
+- **A card saved on `/scores` is scored with the WHS playing handicap and can reach the public board
+  by itself** (issue #301). The handicap comes from the player's registration index, capped at the
+  event maximum, converted with the registration tee at the event allowance. The HDCP box on the card
+  is a note only: when it differs it is shown beside the WHS number ("card says 22, plays off 18
+  (index 16.4, White)") and written to the audit sentence, and nothing typed there can change a net
+  score. A player with no index on file, or an index of 0, plays off index 0 and is flagged on the
+  card and in the review list ("Check index") instead of being scored silently. Every card approved on
+  the desk is checked the same way, so a card that arrived by import or from the tabulator gets the
+  WHS snapshot before it is approved; a snapshot that already plays off the same number is left alone,
+  and a frozen snapshot that differs is refused with the fix named (Correct handicap). The Review tab
+  has one publishing control per event and day with three modes: publish every saved card (the
+  default, and what the event runs on), publish checked cards only, and manual. A run of saves is one
+  publication after about two seconds, and a sheet or tabulator import publishes once after the batch.
+  The old publish-on-verify checkbox keeps its meaning (checked only / manual) in a browser that had
+  it set. Migrations: `20261114000100_card_handicap_snapshot.sql` is required for the save path and is
+  **not applied**; `20261115000100_card_handicap_signed_handicap.sql` lets a card snapshot hold a
+  negative playing handicap, is needed only for a player who plays off a negative number, and is
+  **not applied**. Until the signed file is applied such a card is refused with a message naming it.
+
 ### Changed
+- **The HDCP box on `/scores` no longer prefills for a correction.** It holds what the paper card
+  says, and the snapshot no longer stores that number, so the desk types it again instead of being
+  shown the WHS figure as if the card carried it.
+- **The tabulation page looks and works like TeeLine.** It carries the TeeLine mark, the app's colours
+  and 44 px controls; the search, day, session, batch picker, add button and counts sit in one bar
+  that stays on screen while the cards scroll, and `/` puts the cursor in the search box. Each card
+  says "Unsaved, saving shortly", "Saving", "Saved 14:02" or "Not saved: reason", and the same words
+  appear in the bar. A card added or jumped to is no longer left hidden by the find box, day or
+  session. No migration.
+- **A card plays off the WHS playing handicap for the tee written on it.** The page converts the
+  player's index with the course's own tee ratings from the field list (rating, slope and that tee's
+  par), falling back to the page's copy of the ratings if the deployment does not send them. The HDCP
+  box is labelled "Card says", is kept for the record and is never used to score. A player with no
+  index, or an index of 0, is named as a system problem for the admin and is not ranked. No migration.
 - **Two tabulator saves are now serialised around the merge.** The card-by-card merge already kept both people's cards, but two saves arriving in the same moment could both read the same shared copy and the second write would drop the first one's cards. A short lease (`_locks/<slug>.json`, ten seconds, taken over when its holder stops answering) makes the read, merge and write one step. A save that finds the lease held answers 423; the page keeps the edits and retries. No migration.
 
 ### Fixed
 - **A reload no longer replaces this browser's unsaved cards with the shared copy.** The page applied the shared document over its local copy on load, so a save that failed, or a page closed before its first save, lost the work that was only in the browser. The page now keeps the local copy, sends it through the server's card-by-card merge, and shows the merged result; it says how many cards it kept. Each tab also has its own browser copy, with a one-time move of the old shared key.
 - **Two people saving different scores on the same card now see the disagreement on the card.** The newer save still wins the card, but the merge writes a note naming the hole, both scores and the account whose value lost, so the checker looks at the paper card instead of the difference disappearing.
 
-Verified on the branch: `pnpm check` passed (2780 tests, build) and `pnpm check:ui` passed (243 checks, 0 console errors), including a browser check that a card only in the browser survives a reload and is merged, and one that replace-all keeps a snapshot and can be undone. The lease and the snapshot were tested against a fake bucket, not the live Supabase project; the reset prompt itself was not exercised because the bundled page has no first reading.
+Verified on the branches: `pnpm check` and `pnpm check:ui` passed for the save-safety change (2780 tests, 243 browser checks, 0 console errors; the lease and the snapshot were tested against a fake bucket, not the live Supabase project, and the reset prompt was not exercised because the bundled page has no first reading). `pnpm typecheck`, `pnpm lint` and the focused scorecard tests passed for the tabulator change, with the build and the browser suite left to CI.
 
 ### Docs
+- **`src/lib/scorecards/page-tabulator.test.ts` pins the page's shape** (pinned bar, 44 px controls,
+  "Card says", both ways to add a card), and `merge.test.ts` holds that the shared document may only
+  gain fields, so a page opened before the deploy keeps working.
 - **The final-day plan is in `docs/PLAN.md`**: the diagnosis after Day 3, the owner's decisions of 15 Nov,
   the work in flight (#301 to #305) and the guardrails while production is live. 22 resolved issues and
   4 stale pull requests were closed.
 - **`docs/PLAN.md` records the tabulator save-safety change:** the lease, the load merge, the snapshot and undo, and what was not exercised against the live bucket. No code change.
+
+### Migrations shipping with this release
+
+- `20261115000100_card_handicap_signed_handicap.sql`: **written, not applied.** Needed only for a
+  card that plays off a negative number. Until it runs, such a card is refused with a message naming
+  the file; every card that plays off 0 or more saves normally.
+- `20261114000100_card_handicap_snapshot.sql`: **applied.** `save_card_handicap_snapshot` is live.
 
 ## [0.54.0] - 2026-11-14
 

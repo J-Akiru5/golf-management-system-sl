@@ -815,6 +815,20 @@ export const en = {
   release: {
     heldTitle: "This section is held by the organizer.",
     heldBody: "The organizer has not released it yet. Check again later.",
+    blackoutTitle: "Results will be shown at the awarding.",
+    blackoutBody:
+      "Scores and the player list are paused while the club prepares the awarding. Pairings and tee times stay open.",
+    countdownLabel: "Results in",
+    revealing: "Revealing the results…",
+    countdownNote: "This page updates by itself.",
+  },
+  // The awarding boards (issue 302). Six lanes, released one at a time by the desk.
+  awarding: {
+    title: "Awarding results",
+    subtitle: "Class by class, as the club calls them",
+    boardPending: "The board for this class is being confirmed.",
+    tieLabel: "Tied",
+    demoNote: "Demo preview: sample scores, not the club's results.",
   },
   // Public feedback (issue 208). Nothing here shows a submission to anyone but the visitor and the
   // club's staff.

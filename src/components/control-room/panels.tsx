@@ -22,11 +22,13 @@ import {
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import { PublicReleaseLink } from "@/components/control-room/PublicReleaseLink";
+import { ResultsBlackoutCard } from "@/components/desk/ResultsBlackoutCard";
 import { PublishDialog } from "@/components/draw/PublishDialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { checkTournament } from "@/lib/data/config-checks";
 import type { Issue } from "@/lib/draw/validate";
+import { useDesk } from "@/lib/store/desk-store";
 import { type ActivityEntry, ago, useActivity } from "@/lib/ui/activity";
 import type { useBoard } from "@/lib/ui/board";
 import { cn } from "@/lib/ui/cn";
@@ -338,6 +340,8 @@ export function PublishPanel({
   dataHelp?: string;
 }) {
   const { dispatch, isPublished, changedSincePublish } = b;
+  const { member } = useDesk();
+  const canEdit = b.status === "demo" || member?.role === "owner" || member?.role === "organizer";
   const [open, setOpen] = useState(false);
   const ordered = [...b.blocking, ...b.warnings];
   return (
@@ -358,6 +362,14 @@ export function PublishPanel({
         </span>
       </div>
       {b.tournament && <PublicReleaseLink tournamentId={b.tournament.id} />}
+      {b.tournament && (
+        <ResultsBlackoutCard
+          tournamentId={b.tournament.id}
+          canEdit={canEdit}
+          demo={b.status === "demo"}
+          compact
+        />
+      )}
       {!b.draw ? (
         <div className="mt-3 grid gap-2">
           <p className="text-[13px] text-ink-muted">
