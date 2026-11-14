@@ -369,7 +369,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       title: "Tournament Director's authority",
       summary:
         "The Director's decision is final, and the competition closes when the prizes are presented.",
-      source: "Conditions of Play, page 4",
+      source: "Committee decision",
       paragraphs: [
         "Decisions by the Tournament Director in all matters affecting play shall be final.",
         "The Tournament Director reserves the right to change the format, rules, prizes, right to accept, reject or adjust handicap of any player in the interest of fair play and other conditions as it sees fit.",

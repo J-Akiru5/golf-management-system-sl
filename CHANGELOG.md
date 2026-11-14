@@ -10,10 +10,9 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
-- **The Tournament Director's authority has its own section on `/rules`.** The exact wording from
-  page 4 of the Conditions of Play says the Director's decision is final, the Director may change the
-  format, rules, prizes and handicaps in the interest of fair play, and the competition closes when
-  the prizes are presented.
+- **The Tournament Director's authority has its own section on `/rules`.** The exact wording says
+  the Director's decision is final, the Director may change the format, rules, prizes and handicaps
+  in the interest of fair play, and the competition closes when the prizes are presented.
 
 ### Changed
 - **The public Conditions of Play PDF no longer carries the committee's meeting agenda.** Pages 5-8
@@ -21,6 +20,9 @@ Supabase project, because the code and the database are released separately.
   printed conditions and the scheduling and pairing guidelines, five pages in all. The confirmed
   answers remain on `/rules`, with a source line that says "committee decision" where the PDF no
   longer prints them.
+- **The PDF no longer prints the Tournament Director's three-paragraph authority clause.** The
+  wording is kept on `/rules` as a committee decision. The printed conditions now end with the
+  hole-in-one rule.
 
 ## [0.51.0] - 2026-11-14
 
