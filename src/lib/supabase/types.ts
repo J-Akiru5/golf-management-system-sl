@@ -1131,7 +1131,7 @@ export interface Database {
         Returns: Json;
       };
       /**
-       * The reveal time of a results blackout, or null. Added by 20261115000100 (NOT applied yet);
+       * The reveal time of a results blackout, or null. Added by 20261115000200 (NOT applied yet);
        * an older database answers PGRST202 and the public shows the holding screen without a
        * countdown.
        */

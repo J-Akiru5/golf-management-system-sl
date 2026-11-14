@@ -348,7 +348,7 @@ export default async function HomePage() {
           <div className="hero-actions">
             {phase === "past" ? (
               <>
-                <Link className="button-light" href="/results">
+                <Link className="button-light" href="/results/all">
                   See all scores <ArrowRight aria-hidden="true" />
                 </Link>
                 <Link className="button-quiet" href="/pairings">
@@ -361,7 +361,7 @@ export default async function HomePage() {
                   {phase === "live" ? "Find my tee time" : "View published pairings"}{" "}
                   <ArrowRight aria-hidden="true" />
                 </Link>
-                <Link className="button-quiet" href="/results">
+                <Link className="button-quiet" href="/results/all">
                   See all scores <ArrowRight aria-hidden="true" />
                 </Link>
               </>

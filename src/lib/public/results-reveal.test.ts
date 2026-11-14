@@ -4,9 +4,22 @@ import {
   blackoutFlags,
   blackoutHeld,
   formatCountdown,
+  heldLanes,
+  LANES_KEY,
+  type LaneReveal,
+  laneIsHeld,
+  laneLabel,
+  lanePhase,
+  laneRemainingMs,
+  laneSecondsRemaining,
+  laneSignature,
+  mergeLaneReveal,
   mergeRevealKey,
+  parseLaneRevealMap,
+  parseLaneState,
   parseRevealAt,
   parseRevealPoll,
+  REVEAL_LANES,
   revealAtFromSeconds,
   revealIsDue,
   revealPhase,
@@ -14,6 +27,7 @@ import {
   revealRemainingMs,
   revealSeconds,
   revealSignature,
+  storedLaneReveal,
   storedRevealAt,
 } from "./results-reveal";
 
@@ -82,7 +96,12 @@ describe("the reveal time", () => {
   it("writes the key without touching the release keys or unknown keys", () => {
     const before = { leaderboard: false, roster: false, advisory: true };
     const withTime = mergeRevealKey(before, at);
-    expect(withTime).toEqual({ leaderboard: false, roster: false, advisory: true, resultsRevealAt: at });
+    expect(withTime).toEqual({
+      leaderboard: false,
+      roster: false,
+      advisory: true,
+      resultsRevealAt: at,
+    });
     // The release flags the desk set are not ours to change.
     expect(withTime.leaderboard).toBe(false);
     expect(withTime.roster).toBe(false);
@@ -167,12 +186,8 @@ describe("the countdown", () => {
   });
 
   it("is null when there is no reveal time or no usable server time", () => {
-    expect(
-      revealRemainingMs({ revealAt: null, serverNow, receivedAt: 0, now: 0 }),
-    ).toBeNull();
-    expect(
-      revealRemainingMs({ revealAt, serverNow: "soon", receivedAt: 0, now: 0 }),
-    ).toBeNull();
+    expect(revealRemainingMs({ revealAt: null, serverNow, receivedAt: 0, now: 0 })).toBeNull();
+    expect(revealRemainingMs({ revealAt, serverNow: "soon", receivedAt: 0, now: 0 })).toBeNull();
   });
 
   it("prints whole seconds, rounding up so the last second is shown", () => {
@@ -219,11 +234,11 @@ describe("the phase the page shows", () => {
 
 describe("the poll signature", () => {
   it("changes when a blackout key changes or a reveal time is set or cleared", () => {
-    const both = { leaderboard: true, roster: true };
-    const hidden = { leaderboard: false, roster: false };
+    const released = { leaderboard: false, roster: false };
+    const hidden = { leaderboard: true, roster: true };
     const at = "2026-11-15T14:00:15.000Z";
 
-    expect(revealSignature(both, null)).toBe("00|-");
+    expect(revealSignature(released, null)).toBe("00|-");
     expect(revealSignature(hidden, null)).toBe("11|-");
     expect(revealSignature(hidden, at)).toBe(`11|${at}`);
     // A timestamp written a few milliseconds apart is one hold, not two.
@@ -231,16 +246,192 @@ describe("the poll signature", () => {
   });
 
   it("reads the poll's answer and treats a malformed one as no answer", () => {
-    expect(parseRevealPoll({ held: { leaderboard: false, roster: false }, revealAt: null })).toEqual({
+    expect(
+      parseRevealPoll({ held: { leaderboard: false, roster: false }, revealAt: null }),
+    ).toEqual({
       held: { leaderboard: false, roster: false },
       revealAt: null,
+      lanes: parseLaneRevealMap(null),
     });
     expect(
-      parseRevealPoll({ held: { leaderboard: true, roster: false }, revealAt: "2026-11-15T14:00:15Z" })
-        ?.revealAt,
+      parseRevealPoll({
+        held: { leaderboard: true, roster: false },
+        revealAt: "2026-11-15T14:00:15Z",
+      })?.revealAt,
     ).toBe("2026-11-15T14:00:15.000Z");
     expect(parseRevealPoll({ held: { leaderboard: "no" }, revealAt: null })).toBeNull();
     expect(parseRevealPoll({ held: {}, revealAt: null })).toBeNull();
     expect(parseRevealPoll(null)).toBeNull();
+  });
+});
+
+describe("the awarding lanes", () => {
+  const at = "2026-11-15T14:00:15.000Z";
+  const serverNow = "2026-11-15T14:00:00.000Z";
+  const laneOf = (state: "held" | "released", releaseAt: string | null): LaneReveal => ({
+    state,
+    releaseAt,
+    board: [],
+  });
+
+  it("names the six lanes in the order the desk shows them", () => {
+    expect(REVEAL_LANES.map((lane) => lane.id)).toEqual([
+      "classA",
+      "classB",
+      "classC",
+      "classD",
+      "netOverall",
+      "grossOverall",
+    ]);
+    expect(REVEAL_LANES.map((lane) => lane.label)).toEqual([
+      "Class A",
+      "Class B",
+      "Class C",
+      "Class D",
+      "Net overall",
+      "Gross overall",
+    ]);
+    expect(laneLabel("classC")).toBe("Class C");
+  });
+
+  it("always answers all six lanes, so a missing one cannot read as a gap", () => {
+    // The map is written lane by lane; this guards a lane added on one side only.
+    const ids = Object.keys(parseLaneRevealMap(null)).sort();
+    expect(ids).toEqual(REVEAL_LANES.map((lane) => lane.id).sort());
+  });
+
+  it("releases a lane it knows nothing about, and never guesses a time", () => {
+    const lanes = parseLaneRevealMap(null);
+    expect(lanes.classA).toEqual({ state: "released", releaseAt: null, board: [] });
+    expect(heldLanes(lanes)).toEqual([]);
+
+    // An older event row, a malformed lane and an unknown state are all released.
+    expect(parseLaneRevealMap("broken").classB.state).toBe("released");
+    expect(parseLaneRevealMap({ classB: "held" }).classB.state).toBe("released");
+    expect(parseLaneRevealMap({ classB: { state: "paused" } }).classB.state).toBe("released");
+    expect(parseLaneState("held")).toBe("held");
+    expect(parseLaneState("released")).toBe("released");
+    expect(parseLaneState(true)).toBe("released");
+  });
+
+  it("reads one held lane with its countdown, ignoring a time it cannot use", () => {
+    const lanes = parseLaneRevealMap({
+      classA: { state: "held", releaseAt: at },
+      classB: { state: "held", releaseAt: "soon" },
+      classC: { state: "released", releaseAt: at },
+    });
+    expect(lanes.classA).toEqual({ state: "held", releaseAt: at, board: [] });
+    // Held with no usable time is the calm holding screen, not a broken countdown.
+    expect(lanes.classB).toEqual({ state: "held", releaseAt: null, board: [] });
+    // A released lane carries no countdown even if a stale one was stored.
+    expect(lanes.classC).toEqual({ state: "released", releaseAt: null, board: [] });
+    expect(heldLanes(lanes)).toEqual(["classA", "classB"]);
+    expect(laneIsHeld(lanes.classA)).toBe(true);
+    expect(laneIsHeld(lanes.classC)).toBe(false);
+  });
+
+  it("is stored inside the event row, one lane at a time", () => {
+    const publishViews = {
+      leaderboard: false,
+      roster: false,
+      resultsRevealAt: at,
+      resultsLanes: { classA: { state: "held", releaseAt: at } },
+      aKeyThisBuildDoesNotKnow: "kept",
+    };
+
+    const stored = storedLaneReveal(publishViews);
+    expect(stored.classA).toEqual({ state: "held", releaseAt: at, board: [] });
+    // An untouched lane is released.
+    expect(stored.netOverall.state).toBe("released");
+    expect(storedLaneReveal(null).classA.state).toBe("released");
+
+    const next = mergeLaneReveal(publishViews, "classC", {
+      state: "held",
+      releaseAt: at,
+      board: [],
+    });
+    expect(next.resultsLanes).toEqual({
+      classA: { state: "held", releaseAt: at },
+      classC: { state: "held", releaseAt: at },
+    });
+    // Writing one lane leaves every other key and lane exactly as it was.
+    expect(next.leaderboard).toBe(false);
+    expect(next.roster).toBe(false);
+    expect(next.resultsRevealAt).toBe(at);
+    expect(next.aKeyThisBuildDoesNotKnow).toBe("kept");
+    expect(LANES_KEY).toBe("resultsLanes");
+
+    // Releasing a lane drops its time, so a stale countdown cannot outlive the release.
+    const released = mergeLaneReveal(next, "classA", {
+      state: "released",
+      releaseAt: at,
+      board: [],
+    });
+    expect((released.resultsLanes as Record<string, unknown>).classA).toEqual({
+      state: "released",
+    });
+  });
+
+  it("writes a first lane into an event with no stored lanes", () => {
+    expect(mergeLaneReveal(null, "classD", { state: "held", releaseAt: at, board: [] })).toEqual({
+      resultsLanes: { classD: { state: "held", releaseAt: at } },
+    });
+  });
+
+  it("counts down from the server clock, per lane", () => {
+    const lane = laneOf("held", at);
+    const remaining = laneRemainingMs({ lane, serverNow, receivedAt: 30_000, now: 33_000 });
+    expect(remaining).toBe(12_000);
+    // The whole seconds a phone prints.
+    expect(laneSecondsRemaining({ lane, serverNow, receivedAt: 0, now: 0 })).toBe(15);
+    expect(laneSecondsRemaining({ lane, serverNow, receivedAt: 0, now: 14_100 })).toBe(1);
+    expect(laneSecondsRemaining({ lane, serverNow, receivedAt: 0, now: 90_000 })).toBe(0);
+
+    // A released lane has nothing to count.
+    const released = laneOf("released", null);
+    expect(laneRemainingMs({ lane: released, serverNow, receivedAt: 0, now: 0 })).toBeNull();
+    expect(laneSecondsRemaining({ lane: released, serverNow, receivedAt: 0, now: 0 })).toBeNull();
+    // Held with no time is no countdown either.
+    const noTime = laneOf("held", null);
+    expect(laneSecondsRemaining({ lane: noTime, serverNow, receivedAt: 0, now: 0 })).toBeNull();
+  });
+
+  it("shows the lane only once the desk has released it", () => {
+    const held = laneOf("held", at);
+    expect(lanePhase({ lane: held, remainingMs: 12_000 })).toBe("counting");
+    expect(lanePhase({ lane: held, remainingMs: 0 })).toBe("due");
+    expect(lanePhase({ lane: held, remainingMs: null })).toBe("hidden");
+    // The clock alone never releases a lane; the stored state is the gate.
+    const released = laneOf("released", at);
+    expect(lanePhase({ lane: released, remainingMs: 12_000 })).toBe("released");
+  });
+
+  it("changes the poll signature when one lane moves", () => {
+    const lanes = parseLaneRevealMap(null);
+    expect(laneSignature(lanes)).toBe(
+      "classA:released@-|classB:released@-|classC:released@-|classD:released@-|netOverall:released@-|grossOverall:released@-",
+    );
+    const moved = mergeLaneReveal({}, "classA", { state: "held", releaseAt: at, board: [] });
+    const hidden = storedLaneReveal({ [LANES_KEY]: moved[LANES_KEY] });
+    expect(laneSignature(hidden)).not.toBe(laneSignature(lanes));
+    // The same timestamp written in another timezone is one hold, not a new one.
+    const offset = storedLaneReveal({
+      [LANES_KEY]: { classA: { state: "held", releaseAt: "2026-11-15T14:00:15+00:00" } },
+    });
+    expect(laneSignature(offset)).toBe(laneSignature(hidden));
+  });
+
+  it("reads the lanes out of the poll's answer", () => {
+    const poll = parseRevealPoll({
+      held: { leaderboard: false, roster: false },
+      revealAt: null,
+      lanes: { classA: { state: "held", releaseAt: at } },
+    });
+    expect(poll?.lanes.classA).toEqual({ state: "held", releaseAt: at, board: [] });
+    expect(poll?.lanes.classB.state).toBe("released");
+
+    // An endpoint that does not send lanes is six released lanes, never a frozen page.
+    const older = parseRevealPoll({ held: { leaderboard: true, roster: true }, revealAt: at });
+    expect(heldLanes(older?.lanes ?? parseLaneRevealMap(null))).toEqual([]);
   });
 });

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RevealPoller } from "@/components/public/RevealPoller";
 import { TvBoardView, TvIdle } from "@/components/tv/TvBoard";
 import { TvHoldingView } from "@/components/tv/TvHolding";
 import { applyLiveClasses, liveClassesFromProgramme } from "@/lib/data/public-team-leaderboard";
@@ -9,8 +10,8 @@ import {
   readPublicRevealState,
   readPublicTeamLeaderboard,
 } from "@/lib/data/supabase/public-cache";
+import { blackoutFlags, revealSignature } from "@/lib/public/results-reveal";
 import { buildScoreSessions, buildScoreStarts } from "@/lib/public/score-sessions";
-import { blackoutFlags } from "@/lib/public/results-reveal";
 import { buildTvBoard, manilaDateIso } from "@/lib/public/tv-board";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { DemoTv } from "./DemoTv";
@@ -90,5 +91,14 @@ export default async function TvPage() {
   const withLiveClasses = applyLiveClasses(data, liveClassesFromProgramme(programme));
   const board = buildTvBoard(withLiveClasses, sessions, manilaDateIso(), starts);
 
-  return <TvBoardView board={board} />;
+  return (
+    <>
+      <TvBoardView board={board} />
+      {/* The board itself reloads once a minute, which is right for a score and wrong for a
+          blackout: a screen on the wall must go dark when the desk hides the results, not up to a
+          minute later. The reveal poll is the cheap check the holding screen already uses, asked
+          every five seconds so the wall hides and comes back with the countdown. */}
+      <RevealPoller rendered={revealSignature(blackoutFlags(release), null)} baseMs={5_000} />
+    </>
+  );
 }

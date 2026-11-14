@@ -7,7 +7,10 @@ import { SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import type { PublicReleaseState } from "@/lib/data/public";
 import { refreshPublicPage } from "@/lib/data/supabase/draw-sync";
-import { loadPublicReleaseState, loadPublicRevealState } from "@/lib/data/supabase/public-programme";
+import {
+  loadPublicReleaseState,
+  loadPublicRevealState,
+} from "@/lib/data/supabase/public-programme";
 import {
   holdResults,
   loadStoredReveal,
@@ -16,10 +19,10 @@ import {
 } from "@/lib/data/supabase/results-blackout";
 import { setDemoRelease, setDemoReveal, useDemoReleaseState } from "@/lib/demo/public-release";
 import {
+  formatCountdown,
   REVEAL_DEFAULT_SECONDS,
   REVEAL_MAX_SECONDS,
   REVEAL_MIN_SECONDS,
-  formatCountdown,
   revealAtFromSeconds,
   revealIsDue,
   revealSeconds,
@@ -146,9 +149,9 @@ export function ResultsBlackoutCard({
   }, [router, tournamentId, useLocal]);
 
   useEffect(() => {
-    if (now === 0 || !revealAt) return;
-    if (revealIsDue(revealAt, now)) void complete();
-  }, [complete, now, revealAt]);
+    if (now === 0 || !shownReveal) return;
+    if (revealIsDue(shownReveal, now)) void complete();
+  }, [complete, now, shownReveal]);
 
   const hideNow = async () => {
     if (!canEdit || busy) return;
@@ -242,7 +245,9 @@ export function ResultsBlackoutCard({
       setPublicCountdown(null);
       router.refresh();
     } catch (writeError) {
-      setError(writeError instanceof Error ? writeError.message : "Could not cancel the countdown.");
+      setError(
+        writeError instanceof Error ? writeError.message : "Could not cancel the countdown.",
+      );
     } finally {
       setBusy(null);
     }
@@ -282,15 +287,16 @@ export function ResultsBlackoutCard({
       {shownReveal && (
         <p className="hint m-0" role="note" data-testid="blackout-keep-open">
           <Timer className="mr-1 inline size-4" aria-hidden="true" />
-          Keep this page open until it reaches zero. This page is what releases the results; if it is
-          closed, the public pages stay on the holding screen until someone opens this page again.
+          Keep this page open until it reaches zero. This page is what releases the results; if it
+          is closed, the public pages stay on the holding screen until someone opens this page
+          again.
         </p>
       )}
 
       {shownReveal && !useLocal && publicCountdown === false && (
         <p className="notice warn m-0" role="status">
           The public countdown needs <code>public_reveal_state()</code> from
-          <code> 20261115000100_results_reveal.sql</code>, which is not applied yet. Until then the
+          <code> 20261115000200_results_reveal.sql</code>, which is not applied yet. Until then the
           public pages show the holding screen with no countdown, and this page still reveals on
           time.
         </p>

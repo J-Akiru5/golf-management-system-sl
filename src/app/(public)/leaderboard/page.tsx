@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ResultTable } from "@/components/public/LeaderboardResults";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
+import { RevealPoller } from "@/components/public/RevealPoller";
 import { TeamLeaderboard } from "@/components/public/TeamLeaderboard";
 import {
   loadPublicPhotos,
@@ -29,7 +30,8 @@ import {
 } from "@/lib/data/supabase/public-cache";
 import { getI18n } from "@/lib/i18n/server";
 import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
-import { blackoutFlags } from "@/lib/public/results-reveal";
+import { POLL_MS } from "@/lib/public/pairings-live";
+import { blackoutFlags, revealSignature } from "@/lib/public/results-reveal";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { DemoLeaderboard } from "./DemoLeaderboard";
@@ -166,12 +168,12 @@ export default async function LeaderboardPage({
       />
       <div className="lb-more no-print">
         <p className="hint m-0">{t("programme.leaderboardOnlyTop")}</p>
-        <Link className="btn ghost" href="/results" data-testid="leaderboard-see-all">
+        <Link className="btn ghost" href="/results/all" data-testid="leaderboard-see-all">
           {t("programme.scoresSeeAll")}
         </Link>
       </div>
       <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/results">{t("programme.navScores")}</Link>
+        <Link href="/results/all">{t("programme.navScores")}</Link>
         <span aria-hidden="true">·</span>
         <Link href="/pairings">{t("programme.navPairings")}</Link>
         <span aria-hidden="true">·</span>

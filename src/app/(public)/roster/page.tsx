@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { RosterPage, type RosterUnavailable } from "@/components/public/RosterView";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
+import { RosterPage, type RosterUnavailable } from "@/components/public/RosterView";
 import { toPublicRoster } from "@/lib/data/public";
 import {
   readPublicAdvisory,

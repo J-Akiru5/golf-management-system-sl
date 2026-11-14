@@ -2,7 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PublicBottomBar } from "@/components/MobileTabBar";
@@ -94,7 +94,7 @@ export function RosterPage({
           </a>
         </div>
       ) : unavailable === "held" ? (
-        holding ?? <HeldNotice testId="roster-held" />
+        (holding ?? <HeldNotice testId="roster-held" />)
       ) : unavailable === "unpublished" ? (
         <section className="pairings-empty" role="status" data-testid="roster-empty">
           <h2>{t("pairings.notOutTitle")}</h2>

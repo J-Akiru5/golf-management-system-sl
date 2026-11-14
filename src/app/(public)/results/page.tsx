@@ -1,140 +1,149 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { AwardingPodium } from "@/components/public/AwardingPodium";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
-import { ResultsHolding } from "@/components/public/ResultsHolding";
-import { ScoresView } from "@/components/public/ScoresView";
-import { applyLiveClasses, liveClassesFromProgramme } from "@/lib/data/public-team-leaderboard";
+import { buildTeamLeaderboard } from "@/lib/data/public-team-leaderboard";
 import {
-  readPublicAdvisory,
-  readPublicPairings,
-  readPublicProgramme,
   readPublicReleaseState,
   readPublicRevealState,
   readPublicTeamLeaderboard,
 } from "@/lib/data/supabase/public-cache";
+import { demoLaneReveal } from "@/lib/demo/awarding";
 import { getI18n } from "@/lib/i18n/server";
-import { advisoryForToday } from "@/lib/public/advisory";
-import { blackoutFlags } from "@/lib/public/results-reveal";
-import { buildScoreSessions } from "@/lib/public/score-sessions";
+import { buildAwardingBoards } from "@/lib/public/awarding";
+import { awardingDemoOn } from "@/lib/public/awarding-demo";
+import { type LaneRevealMap, REVEAL_LANES } from "@/lib/public/results-reveal";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { DemoResults } from "./DemoResults";
 
-export const metadata: Metadata = { title: "All scores" };
+export const metadata: Metadata = {
+  title: "Awarding results",
+  description:
+    "The class champions and the net and gross overall winners, released by the club category by category as the awarding is called.",
+  alternates: { canonical: "/results" },
+  robots: { index: false, follow: false },
+};
+
 export const dynamic = "force-dynamic";
 
-const dateLabel = (date: string) =>
-  new Date(`${date}T00:00:00`).toLocaleDateString("en-PH", { dateStyle: "long" });
+/** Every lane held with no board: what the page shows before the club releases anything. */
+function allHeld(): LaneRevealMap {
+  const held = {} as LaneRevealMap;
+  for (const lane of REVEAL_LANES) {
+    held[lane.id] = { state: "held", releaseAt: null, board: [] };
+  }
+  return held;
+}
+
+/** Every lane released with its board: the degradation when the lane reader is not applied. */
+function allReleasedBoards(teams: ReturnType<typeof buildTeamLeaderboard>["teams"]): LaneRevealMap {
+  const boards = buildAwardingBoards(teams);
+  return {
+    classA: { state: "released", releaseAt: null, board: boards.classA },
+    classB: { state: "released", releaseAt: null, board: boards.classB },
+    classC: { state: "released", releaseAt: null, board: boards.classC },
+    classD: { state: "released", releaseAt: null, board: boards.classD },
+    netOverall: { state: "released", releaseAt: null, board: boards.netOverall },
+    grossOverall: { state: "released", releaseAt: null, board: boards.grossOverall },
+  };
+}
 
 /**
- * The public "All scores" board: every player with a published card, not only the ten teams the
- * board lists. It reads the same frozen publication as the leaderboard, so nothing here can show a
- * score the desk has not published, and it takes the morning/afternoon split from the published
- * pairings rather than adding a database read of its own.
+ * The public awarding page: six boards, released one at a time by the desk.
+ *
+ * Where the boards come from, in order of what the deployment can do:
+ *
+ * 1. **Demo (staging only).** `AWARDING_DEMO=1` serves the demo build's fixed sample boards on a
+ *    three-minute loop, so the blank board, the countdown and the flash can be rehearsed on a phone
+ *    without a database and without a real result. The flag is refused on a production deployment
+ *    (see `awarding-demo.ts`), so this path cannot reach the live event.
+ * 2. **Lane state from the database.** `public_reveal_state()` returns each lane's state and, for a
+ *    released lane only, the top three the desk confirmed. A held lane arrives with no name and no
+ *    score, so nothing is in the HTML or in the response to read around the page.
+ * 3. **The existing release gate.** On a deployment that has not applied the awarding migration the
+ *    function answers nothing, and the page falls back to the leaderboard release key the desk
+ *    already controls: held means all six boards blank, released means all six show. That is the
+ *    documented degradation, and it is still a database gate, never a hidden element.
  */
-export default async function ResultsPage() {
+export default async function AwardingResultsPage() {
   const { t } = await getI18n();
+  const serverNow = new Date().toISOString();
+
+  if (awardingDemoOn()) {
+    return (
+      <PodiumShell footer={false} title={t("awarding.title")} subtitle={t("awarding.subtitle")}>
+        <AwardingPodium lanes={demoLaneReveal(Date.now())} serverNow={serverNow} demo />
+      </PodiumShell>
+    );
+  }
 
   if (!isSupabaseConfigured()) {
-    return <DemoResults />;
+    return (
+      <PodiumShell title={t("awarding.title")} subtitle={t("awarding.subtitle")}>
+        <AwardingPodium lanes={allHeld()} serverNow={serverNow} />
+      </PodiumShell>
+    );
   }
 
-  // The release state and the programme come first, on their own. A held results surface means
-  // this page asks for no score at all; the holding screen is rendered from the release alone.
-  const [releaseResult, programmeResult, advisoryResult] = await Promise.allSettled([
+  // The release state is the safety net and the lane read is the real gate. Both are read first;
+  // no score is fetched while the lanes are held.
+  const [revealResult, releaseResult] = await Promise.allSettled([
+    readPublicRevealState(),
     readPublicReleaseState(),
-    readPublicProgramme(),
-    readPublicAdvisory(),
   ]);
+  const reveal = revealResult.status === "fulfilled" ? revealResult.value : null;
   const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
-  const programme = programmeResult.status === "fulfilled" ? programmeResult.value : null;
-  const advisory = advisoryForToday(
-    advisoryResult.status === "fulfilled" ? advisoryResult.value : null,
-  );
 
-  if (release?.leaderboard === false && programme) {
-    const reveal = await readPublicRevealState().catch(() => null);
-    return (
-      <LeaderboardShell active="scores" advisory={advisory}>
-        <ResultsHolding
-          revealAt={reveal?.revealAt ?? null}
-          serverNow={new Date().toISOString()}
-          held={blackoutFlags(release)}
-        />
-      </LeaderboardShell>
-    );
-  }
-
-  // The pairings give the morning/afternoon split, not a score, so they are read on their own.
-  const pairingsResult = await Promise.allSettled([readPublicPairings()]);
-  const pairings = pairingsResult[0].status === "fulfilled" ? pairingsResult[0].value : null;
-
-  let data: Awaited<ReturnType<typeof readPublicTeamLeaderboard>> = null;
-  let failure = "";
-  try {
-    data = await readPublicTeamLeaderboard();
-  } catch (error) {
-    failure = error instanceof Error ? error.message : t("programme.leaderboardFailed");
-  }
-
-  if (!data && !failure) {
-    if (!programme) {
-      return (
-        <LeaderboardShell active="scores" advisory={advisory}>
-          <section className="pairings-empty" role="status" data-testid="scores-unpublished">
-            <h2>{t("pairings.notOutTitle")}</h2>
-            <p>{t("pairings.notOutBody")}</p>
-          </section>
-        </LeaderboardShell>
-      );
+  let lanes: LaneRevealMap;
+  if (reveal) {
+    lanes = reveal.lanes;
+  } else if (release?.leaderboard === false) {
+    // No lane reader, and the desk is holding the leaderboard: every board blank.
+    lanes = allHeld();
+  } else {
+    // No lane reader and the results are released: the page shows every board once, which is the
+    // pre-lane behaviour the club already knows.
+    try {
+      const data = await readPublicTeamLeaderboard();
+      lanes = data ? allReleasedBoards(buildTeamLeaderboard(data).teams) : allHeld();
+    } catch {
+      lanes = allHeld();
     }
-    return (
-      <LeaderboardShell active="scores" advisory={advisory}>
-        <div className="notice" role="status" data-testid="scores-unavailable">
-          {t("programme.scoresUnavailable")}
-        </div>
-      </LeaderboardShell>
-    );
   }
-
-  if (failure || !data) {
-    return (
-      <LeaderboardShell active="scores" advisory={advisory}>
-        <div className="notice" role="alert">
-          {failure || t("programme.leaderboardFailed")}
-        </div>
-      </LeaderboardShell>
-    );
-  }
-
-  const sessions = buildScoreSessions(pairings?.published?.groups ?? []);
-  const rows = applyLiveClasses(data, liveClassesFromProgramme(programme)).rows;
 
   return (
-    <LeaderboardShell
-      active="scores"
-      eventName={data.eventName}
-      dateText={data.rounds.map((round) => dateLabel(round.playDate)).join(" · ")}
-      advisory={advisory}
-    >
-      {data.rounds.length === 0 ? (
-        <section className="pairings-empty" role="status" data-testid="scores-empty">
-          <h2>{t("programme.scoresEmptyTitle")}</h2>
-          <p>{t("programme.scoresEmptyBody")}</p>
-        </section>
-      ) : rows.length === 0 ? (
-        <div className="notice" role="status" data-testid="scores-no-cards">
-          {t("programme.leaderboardNoCards")}
-        </div>
-      ) : (
-        <ScoresView data={{ ...data, rows }} sessions={sessions} />
+    <PodiumShell title={t("awarding.title")} subtitle={t("awarding.subtitle")}>
+      <AwardingPodium lanes={lanes} serverNow={serverNow} />
+    </PodiumShell>
+  );
+}
+
+/** The public results frame: the same head and footer as the board, with the awarding in the body. */
+function PodiumShell({
+  title,
+  subtitle,
+  footer = true,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  footer?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <LeaderboardShell eventName={title} dateText={subtitle} active="scores">
+      {children}
+      {footer && (
+        <nav className="site-foot-nav no-print" aria-label="Footer">
+          <Link href="/leaderboard">Leaderboard</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/pairings">Pairings</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/roster">Players</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/results/all">All scores</Link>
+        </nav>
       )}
-      <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/pairings">{t("programme.navPairings")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/roster">{t("programme.navPlayers")}</Link>
-      </nav>
     </LeaderboardShell>
   );
 }

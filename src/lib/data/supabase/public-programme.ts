@@ -6,7 +6,7 @@ import {
   parsePublicReleaseState,
 } from "@/lib/data/public";
 import type { PublicProgramme } from "@/lib/data/types";
-import { parseRevealAt } from "@/lib/public/results-reveal";
+import { type LaneRevealMap, parseLaneRevealMap, parseRevealAt } from "@/lib/public/results-reveal";
 import type { Database } from "@/lib/supabase/types";
 
 /**
@@ -55,16 +55,19 @@ export async function loadPublicReleaseState(
 }
 
 /**
- * The reveal time of a results blackout, or null.
+ * The reveal state of a results blackout: the event id, the stopgap whole-page reveal time, and the
+ * six awarding lanes.
  *
- * `public_reveal_state()` is the one public read of the time the organizer set. It returns the
- * event id and the reveal time and nothing else: no player, score, tee or photo data, and no other
- * key of the stored `publish_views` object. A database without the function answers PGRST202 and
- * the page shows the holding screen with no countdown, which is the documented degradation.
+ * `public_reveal_state()` is the one public read of the times the organizer set. It returns the
+ * event id, the reveal time and, per lane, a state and a reveal time, and nothing else: no player,
+ * score, tee or photo data, and no other key of the stored `publish_views` object. A database
+ * without the function answers PGRST202 and the page shows the holding screen with no countdown,
+ * which is the documented degradation.
  */
 export interface PublicRevealState {
   tournamentId: string | null;
   revealAt: string | null;
+  lanes: LaneRevealMap;
 }
 
 export function parsePublicRevealState(value: unknown): PublicRevealState | null {
@@ -75,7 +78,11 @@ export function parsePublicRevealState(value: unknown): PublicRevealState | null
       ? record.tournamentId
       : null;
   if (!tournamentId) return null;
-  return { tournamentId, revealAt: parseRevealAt(record.revealAt) };
+  return {
+    tournamentId,
+    revealAt: parseRevealAt(record.revealAt),
+    lanes: parseLaneRevealMap(record.lanes),
+  };
 }
 
 export async function loadPublicRevealState(

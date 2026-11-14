@@ -9,7 +9,11 @@ import type { PublicAdvisory } from "@/lib/public/advisory";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { loadPublicAdvisory } from "./public-advisory";
 import { loadPublicPairings } from "./public-pairings";
-import { loadPublicProgramme, loadPublicReleaseState, loadPublicRevealState } from "./public-programme";
+import {
+  loadPublicProgramme,
+  loadPublicReleaseState,
+  loadPublicRevealState,
+} from "./public-programme";
 
 /**
  * The public pages read the same frozen publication for every visitor, and the only thing that

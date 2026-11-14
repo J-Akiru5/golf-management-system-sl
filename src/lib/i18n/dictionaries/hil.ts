@@ -833,6 +833,15 @@ export const hil: Dictionary = {
     revealing: "Revealing the results…",
     countdownNote: "This page updates by itself.",
   },
+  // The awarding boards (issue 302). English draft, 15 Nov 2026: marked in docs/i18n-review.md for
+  // the Hiligaynon pass.
+  awarding: {
+    title: "Awarding results",
+    subtitle: "Class by class, as the club calls them",
+    boardPending: "The board for this class is being confirmed.",
+    tieLabel: "Tied",
+    demoNote: "Demo preview: sample scores, not the club's results.",
+  },
   // Pampubliko nga feedback (issue 208). Ini ang mga tinaga nga makita sang bisita.
   feedback: {
     link: "Magpadala sang feedback",

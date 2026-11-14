@@ -62,6 +62,9 @@ guides are English on purpose (decision 18) and are not part of this review.
   `release.countdownLabel`, `release.revealing` and `release.countdownNote` are the holding screen
   and countdown shown while the desk holds the results and the player list. Tagalog and Hiligaynon
   currently carry the English text as their draft; both need the usual read-aloud pass.
+- **Awarding boards, added 15 Nov 2026.** `awarding.title`, `awarding.subtitle`,
+  `awarding.boardPending`, `awarding.tieLabel` and `awarding.demoNote` are the awarding page's own
+  words. English draft in Tagalog and Hiligaynon, same read-aloud pass.
 - The desk (organizer) screens are English only for now; decision 18 covers whether that changes.
 - Nothing is translated in the database: event names, custom questions and player names are whatever
   the club typed. The entry form's own words are translated, but anything the club filled in on

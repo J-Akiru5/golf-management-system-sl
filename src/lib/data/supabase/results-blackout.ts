@@ -1,6 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PublicReleaseState } from "@/lib/data/public";
-import { mergeRevealKey, storedRevealAt } from "@/lib/public/results-reveal";
+import {
+  type LaneReveal,
+  type LaneRevealMap,
+  mergeLaneReveal,
+  mergeRevealKey,
+  type RevealLaneId,
+  storedLaneReveal,
+  storedRevealAt,
+} from "@/lib/public/results-reveal";
 import type { Database, Json } from "@/lib/supabase/types";
 import { setPublicRelease } from "./public-programme";
 
@@ -8,13 +16,17 @@ import { setPublicRelease } from "./public-programme";
  * The desk's side of the results blackout.
  *
  * The hold itself uses `set_public_release()`, the same enforced function the release card already
- * calls, so nothing here can widen what a signed-out reader may see. The reveal *time* is a key
+ * calls, so nothing here can widen what a signed-out reader may see. The reveal time is a key
  * inside `tournaments.publish_views`, written by the organizer's own row update: the table's RLS
  * policy already allows an owner or organizer to update the event, and `publish_allows()` only ever
  * looks up the key it is asked about, so an extra key is inert to the database gate. The public
- * reads it through `public_reveal_state()` (20261115000100, not applied yet); without that function
+ * reads it through `public_reveal_state()` (20261115000200, not applied yet); without that function
  * the hold and the manual reveal still work and the public shows the holding screen with no
  * countdown.
+ *
+ * The awarding is released one lane at a time, so the same object carries
+ * `publish_views -> resultsLanes -> { lane: { state, releaseAt } }`. One lane write never touches
+ * another lane, a surface key, or a key this build does not know.
  *
  * Writing `publish_views` is a read-merge-write because the column is one JSON object shared with
  * the release switches. The merge keeps every other key exactly as it was, and the card does the
@@ -43,6 +55,45 @@ export async function saveStoredReveal(
   tournamentId: string,
   revealAt: string | null,
 ): Promise<void> {
+  await writePublishViews(client, tournamentId, (stored) => mergeRevealKey(stored, revealAt));
+}
+
+/**
+ * The six awarding lanes as they are stored on the event row, or all released when nothing is
+ * stored. Owner/organizer read only.
+ */
+export async function loadLaneReveal(
+  client: SupabaseClient<Database>,
+  tournamentId: string,
+): Promise<LaneRevealMap> {
+  const { data, error } = await client
+    .from("tournaments")
+    .select("publish_views")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  if (error) throw new Error(`Could not read the awarding lanes: ${error.message}`);
+  return storedLaneReveal(data?.publish_views);
+}
+
+/**
+ * Writes one lane's state and countdown, leaving the other five lanes and every other key as they
+ * were. `releaseAt` is ignored for a released lane so a stale countdown never outlives a release.
+ */
+export async function saveLaneReveal(
+  client: SupabaseClient<Database>,
+  tournamentId: string,
+  laneId: RevealLaneId,
+  lane: LaneReveal,
+): Promise<void> {
+  await writePublishViews(client, tournamentId, (stored) => mergeLaneReveal(stored, laneId, lane));
+}
+
+/** One read, one merges, one write. The stamp and the actor are what the release card writes. */
+async function writePublishViews(
+  client: SupabaseClient<Database>,
+  tournamentId: string,
+  merge: (stored: unknown) => Record<string, unknown>,
+): Promise<void> {
   const { data, error } = await client
     .from("tournaments")
     .select("publish_views")
@@ -51,7 +102,7 @@ export async function saveStoredReveal(
   if (error) throw new Error(`Could not read the event before saving: ${error.message}`);
 
   const { data: user } = await client.auth.getUser();
-  const next = mergeRevealKey(data?.publish_views, revealAt);
+  const next = merge(data?.publish_views);
   const { error: writeError } = await client
     .from("tournaments")
     .update({

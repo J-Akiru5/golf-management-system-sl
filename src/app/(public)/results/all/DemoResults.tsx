@@ -5,8 +5,8 @@ import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { ScoresView } from "@/components/public/ScoresView";
 import { sampleTeamLeaderboardData } from "@/lib/demo/public-leaderboard";
 import { useDemoReleaseState } from "@/lib/demo/public-release";
-import { blackoutFlags } from "@/lib/public/results-reveal";
 import type { ScoreSession } from "@/lib/public/public-scores";
+import { blackoutFlags } from "@/lib/public/results-reveal";
 
 const dateLabel = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-PH", { dateStyle: "long" });

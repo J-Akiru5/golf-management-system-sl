@@ -142,7 +142,8 @@ export function setDemoReveal(tournamentId: string, revealAt: string | null): De
 }
 
 /**
- * Read the current demo switches. The first render (server and hydration) uses the sample default, * then an effect reads localStorage. That keeps SSR and hydration identical while still making a
+ * Read the current demo switches. The first render (server and hydration) uses the sample default,
+ * then an effect reads localStorage. That keeps SSR and hydration identical while still making a
  * toggle in another tab update the preview.
  */
 export function useDemoReleaseState(tournamentId: string): DemoReleaseState {

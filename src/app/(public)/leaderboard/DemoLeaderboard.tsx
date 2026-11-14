@@ -48,7 +48,7 @@ export function DemoLeaderboard({ filters }: { filters: { category: string; flig
           />
           <div className="lb-more no-print">
             <p className="hint m-0">{t("programme.leaderboardOnlyTop")}</p>
-            <Link className="btn ghost" href="/results" data-testid="leaderboard-see-all">
+            <Link className="btn ghost" href="/results/all" data-testid="leaderboard-see-all">
               {t("programme.scoresSeeAll")}
             </Link>
           </div>

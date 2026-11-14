@@ -9,6 +9,11 @@ import type { PublicReleaseState } from "@/lib/data/public";
  * module only decides what a page *says* while the hold is on: the holding screen, a countdown to
  * the stored reveal time, or the results once the database has released them.
  *
+ * The awarding is released one lane at a time (Class A to D, Net overall, Gross overall), so the
+ * same countdown is modelled per lane: an id, a state of held or released, the time the lane is
+ * due, and the seconds left. The lane model is the one the awarding screen and the public top-three
+ * boards will use; the two surface keys above stay as the database's safety net underneath it.
+ *
  * Pure: no clock of its own, no network, no React. Every function takes the values it needs, so the
  * countdown, the phases and the polling interval are tested without a browser.
  */
@@ -18,11 +23,248 @@ export const BLACKOUT_SURFACES = ["leaderboard", "roster"] as const;
 
 export type BlackoutSurface = (typeof BLACKOUT_SURFACES)[number];
 
-/** The blackout keys, as released (`true`) or held (`false`). */
+/** The blackout keys as the page asks about them: true when the desk is holding that surface. */
 export type BlackoutFlags = Record<BlackoutSurface, boolean>;
 
 /** The key inside `tournaments.publish_views` that holds the reveal time. */
 export const REVEAL_KEY = "resultsRevealAt";
+
+/* -------------------------------------------------------------------------------------------------
+ * The six awarding lanes.
+ * ------------------------------------------------------------------------------------------------ */
+
+/**
+ * The lanes the awarding is released in, in the order the desk shows them. Four class champions and
+ * two overall boards. The ids are the keys stored under `publish_views -> resultsLanes`; adding a
+ * lane here without adding it to the database read (or the other way round) is a bug.
+ */
+export const REVEAL_LANES = [
+  { id: "classA", label: "Class A" },
+  { id: "classB", label: "Class B" },
+  { id: "classC", label: "Class C" },
+  { id: "classD", label: "Class D" },
+  { id: "netOverall", label: "Net overall" },
+  { id: "grossOverall", label: "Gross overall" },
+] as const;
+
+export type RevealLane = (typeof REVEAL_LANES)[number];
+export type RevealLaneId = RevealLane["id"];
+
+/** The key inside `tournaments.publish_views` that holds the six lanes. */
+export const LANES_KEY = "resultsLanes";
+
+/** `held` means the lane shows nothing yet; `released` means its board is public. */
+export type LaneReleaseState = "held" | "released";
+
+/** The board stops at three rows. Ties do not expand it. */
+export const BOARD_SIZE = 3;
+
+/** One confirmed row of an awarding board, as the public page prints it. */
+export interface AwardingBoardRow {
+  /** 1, 2 or 3 as the board shows it. */
+  position: number;
+  /** The player or pair, as the published board prints it. */
+  name: string;
+  /** The lane's score: Stableford points on the lane's basis. */
+  score: number | null;
+  /** True when the row shares its score with another row on the board. */
+  tie: boolean;
+}
+
+export type AwardingBoard = AwardingBoardRow[];
+
+export interface LaneReveal {
+  state: LaneReleaseState;
+  /** When the countdown ends. Null while the lane has no countdown. */
+  releaseAt: string | null;
+  /** The top three the desk confirmed. Empty while the lane has no confirmed board. */
+  board: AwardingBoard;
+}
+
+/** All six lanes. Always complete: a missing lane is the documented default, never a gap. */
+export type LaneRevealMap = Record<RevealLaneId, LaneReveal>;
+
+const isBoardRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** One stored row, or null when it is not a row a board may print. */
+export function parseAwardingBoardRow(value: unknown): AwardingBoardRow | null {
+  if (!isBoardRecord(value)) return null;
+  const name = typeof value.name === "string" ? value.name.trim() : "";
+  if (name === "") return null;
+  const position =
+    typeof value.position === "number" && Number.isFinite(value.position)
+      ? Math.max(1, Math.trunc(value.position))
+      : null;
+  if (position === null) return null;
+  const score =
+    typeof value.score === "number" && Number.isFinite(value.score) ? value.score : null;
+  return { position, name, score, tie: value.tie === true };
+}
+
+/**
+ * A stored board. A board that is not a list of usable rows is an empty board, never a crash and
+ * never a guessed row: the public page prints only what the desk confirmed.
+ */
+export function parseAwardingBoard(value: unknown): AwardingBoard {
+  if (!Array.isArray(value)) return [];
+  const rows: AwardingBoardRow[] = [];
+  for (const entry of value) {
+    const row = parseAwardingBoardRow(entry);
+    if (row) rows.push(row);
+    if (rows.length === BOARD_SIZE) break;
+  }
+  return rows;
+}
+
+/** The `T` a tied row prints, and the empty string every other row prints. */
+export function tieMark(row: AwardingBoardRow): string {
+  return row.tie ? "T" : "";
+}
+
+/** The score as the board prints it. A row with no score prints nothing rather than a zero. */
+export function boardScoreText(row: AwardingBoardRow): string {
+  return row.score === null ? "" : String(row.score);
+}
+
+/**
+ * A lane nobody has touched is released with an empty board, the same default the database gate uses
+ * for a surface: a read that is missing, old or malformed must never be the reason a live page goes
+ * dark. An empty board on a released lane is a desk that has not confirmed one yet, and the page
+ * says so instead of inventing a winner.
+ */
+export function defaultLaneReveal(): LaneReveal {
+  return { state: "released", releaseAt: null, board: [] };
+}
+
+export function parseLaneState(value: unknown): LaneReleaseState {
+  return value === "held" ? "held" : "released";
+}
+
+/** One lane from its stored object. A held lane with an unusable time has no countdown. */
+export function parseLaneReveal(value: unknown): LaneReveal {
+  if (!isRecord(value)) return defaultLaneReveal();
+  const state = parseLaneState(value.state);
+  const board = parseAwardingBoard(value.board);
+  if (state === "released") return { state, releaseAt: null, board };
+  return { state, releaseAt: parseRevealAt(value.releaseAt), board };
+}
+
+export function parseLaneRevealMap(value: unknown): LaneRevealMap {
+  const record = isRecord(value) ? value : {};
+  return {
+    classA: parseLaneReveal(record.classA),
+    classB: parseLaneReveal(record.classB),
+    classC: parseLaneReveal(record.classC),
+    classD: parseLaneReveal(record.classD),
+    netOverall: parseLaneReveal(record.netOverall),
+    grossOverall: parseLaneReveal(record.grossOverall),
+  };
+}
+
+/** The lanes stored inside a `publish_views` object. */
+export function storedLaneReveal(publishViews: unknown): LaneRevealMap {
+  if (!isRecord(publishViews)) return parseLaneRevealMap(null);
+  return parseLaneRevealMap(publishViews[LANES_KEY]);
+}
+
+/**
+ * The `publish_views` object with one lane written and every other key and lane copied as it was.
+ * A released lane keeps its confirmed board and drops its reveal time, so a stale countdown can
+ * never outlive the release.
+ */
+export function mergeLaneReveal(
+  publishViews: unknown,
+  laneId: RevealLaneId,
+  lane: LaneReveal,
+): Record<string, unknown> {
+  const next: Record<string, unknown> = isRecord(publishViews) ? { ...publishViews } : {};
+  const stored = next[LANES_KEY];
+  const lanes: Record<string, unknown> = isRecord(stored) ? { ...stored } : {};
+  const state = parseLaneState(lane.state);
+  const releaseAt = state === "held" ? parseRevealAt(lane.releaseAt) : null;
+  const board = parseAwardingBoard(lane.board);
+  lanes[laneId] = {
+    state,
+    ...(releaseAt === null ? {} : { releaseAt }),
+    ...(board.length === 0 ? {} : { board }),
+  };
+  next[LANES_KEY] = lanes;
+  return next;
+}
+
+/** True while a lane shows nothing yet. */
+export function laneIsHeld(lane: LaneReveal): boolean {
+  return lane.state === "held";
+}
+
+/** The lanes still held, in panel order. */
+export function heldLanes(lanes: LaneRevealMap): RevealLaneId[] {
+  return REVEAL_LANES.filter((lane) => lanes[lane.id].state === "held").map((lane) => lane.id);
+}
+
+/** The label a screen prints for a lane id. */
+export function laneLabel(laneId: RevealLaneId): string {
+  return REVEAL_LANES.find((lane) => lane.id === laneId)?.label ?? laneId;
+}
+
+/**
+ * How long a lane has left, measured from the server's clock rather than the device's. Null for a
+ * released lane or a lane with no countdown.
+ */
+export function laneRemainingMs({
+  lane,
+  serverNow,
+  receivedAt,
+  now,
+}: {
+  lane: LaneReveal;
+  serverNow: string | number;
+  receivedAt: number;
+  now: number;
+}): number | null {
+  if (lane.state === "released") return null;
+  return revealRemainingMs({ revealAt: lane.releaseAt, serverNow, receivedAt, now });
+}
+
+/** The whole seconds left on a lane, rounding up so the last second is shown. Null if released. */
+export function laneSecondsRemaining(input: {
+  lane: LaneReveal;
+  serverNow: string | number;
+  receivedAt: number;
+  now: number;
+}): number | null {
+  const remaining = laneRemainingMs(input);
+  if (remaining === null) return null;
+  return Math.max(0, Math.ceil(remaining / 1000));
+}
+
+/**
+ * What a lane's board should say. The same four phases as the whole-page hold, per lane:
+ * `revealed` (show the top three), `hidden` (held, no countdown), `counting`, and `due` (the time
+ * has passed but the desk has not released it yet, so it stays hidden).
+ */
+export type LanePhase = "released" | "hidden" | "counting" | "due";
+
+export function lanePhase({
+  lane,
+  remainingMs,
+}: {
+  lane: LaneReveal;
+  remainingMs: number | null;
+}): LanePhase {
+  if (lane.state === "released") return "released";
+  if (remainingMs === null) return "hidden";
+  return remainingMs > 0 ? "counting" : "due";
+}
+
+/** What identifies the six lanes on screen: state and countdown end, lane by lane. */
+export function laneSignature(lanes: LaneRevealMap): string {
+  return REVEAL_LANES.map((lane) => {
+    const value = lanes[lane.id];
+    return `${lane.id}:${value.state}@${parseRevealAt(value.releaseAt) ?? "-"}`;
+  }).join("|");
+}
 
 export const REVEAL_MIN_SECONDS = 1;
 export const REVEAL_MAX_SECONDS = 600;
@@ -65,8 +307,9 @@ export function mergeRevealKey(
 
 /** The number of seconds a reveal starts in, clamped to 1-600. Anything unusable is the default. */
 export function revealSeconds(input: unknown): number {
-  const value =
-    typeof input === "number" ? input : typeof input === "string" ? Number(input.trim()) : Number.NaN;
+  let value = Number.NaN;
+  if (typeof input === "number") value = input;
+  else if (typeof input === "string" && input.trim() !== "") value = Number(input.trim());
   if (!Number.isFinite(value)) return REVEAL_DEFAULT_SECONDS;
   return Math.min(REVEAL_MAX_SECONDS, Math.max(REVEAL_MIN_SECONDS, Math.round(value)));
 }
@@ -169,19 +412,25 @@ export function revealPollBaseMs(remainingMs: number | null): number {
   return 5_000;
 }
 
-/** What identifies the hold a page is showing: both keys plus the reveal time. */
+/** What identifies the hold a page is showing: both keys (true = held) plus the reveal time. */
 export function revealSignature(held: BlackoutFlags, revealAt: string | null): string {
   const flags = BLACKOUT_SURFACES.map((surface) => (held[surface] ? "1" : "0")).join("");
   return `${flags}|${parseRevealAt(revealAt) ?? "-"}`;
 }
 
-/** The body `/api/results/reveal` answers with: both blackout keys and the reveal time. */
+/** The body `/api/results/reveal` answers with: the surface keys, the reveal time, and the lanes. */
 export interface RevealPoll {
   held: BlackoutFlags;
   revealAt: string | null;
+  /** The six awarding lanes, always complete. */
+  lanes: LaneRevealMap;
 }
 
-/** Validates the poll's answer. A malformed body is a failed check, never a release. */
+/**
+ * Validates the poll's answer. A malformed body is a failed check, never a release. The lanes are
+ * read leniently: an older endpoint that does not send them is six released lanes, which is the
+ * same default the database gate uses, so a page never freezes on a missing section.
+ */
 export function parseRevealPoll(value: unknown): RevealPoll | null {
   if (!isRecord(value) || !isRecord(value.held)) return null;
   const held = value.held;
@@ -189,5 +438,6 @@ export function parseRevealPoll(value: unknown): RevealPoll | null {
   return {
     held: { leaderboard: held.leaderboard, roster: held.roster },
     revealAt: parseRevealAt(value.revealAt),
+    lanes: parseLaneRevealMap(value.lanes),
   };
 }

@@ -1511,8 +1511,8 @@ check(
 );
 
 // ------------------------------------------- All scores: the whole field, by day and session
-await phoneGo("/results");
-await noSideways("/results");
+await phoneGo("/results/all");
+await noSideways("/results/all");
 const scoreRows = phonePage.locator('[data-testid="scores-list"] .lb-team');
 const fieldSize = await scoreRows.count();
 check("All scores lists more than a top 10", fieldSize > 10, `(${fieldSize} rows)`);
@@ -2202,6 +2202,205 @@ await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 chec
   timeout: 10000,
 });
 await tabulatorContext.close();
+
+// ------------------------------------------------------- results blackout and reveal
+// The awarding: the desk holds the results and the player list, the public sees a holding screen
+// and a countdown, and no score is on the page in the meantime. The demo store is the same switch
+// the desk's own demo card writes, and the demo pages are the same components the live pages use.
+section("results blackout and reveal");
+
+const blackoutSeed = (revealInMs) => {
+  const revealAt = new Date(Date.now() + revealInMs).toISOString();
+  return { revealAt };
+};
+
+const blackoutText = async (p) => (await p.locator("body").innerText()).replace(/\s+/g, " ").trim();
+const carriesNoScore = (text) =>
+  !/\bpts\b/.test(text) && !text.includes("Antonio Alcantara") && !text.includes("Stableford");
+
+const blackoutContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const blackoutPage = await blackoutContext.newPage();
+watch(blackoutPage);
+const blackoutReveal = blackoutSeed(90_000);
+await blackoutContext.addInitScript(({ revealAt }) => {
+  try {
+    window.localStorage.setItem(
+      "teeline.demo.public-release.v1",
+      JSON.stringify({
+        "bamboo-tee-2026": {
+          leaderboard: false,
+          roster: false,
+          revealAt,
+          updatedAt: new Date().toISOString(),
+          updatedBy: "Demo organizer",
+        },
+      }),
+    );
+  } catch {
+    // Storage off: the holding-screen checks below report what they see.
+  }
+}, blackoutReveal);
+
+const blackoutGo = async (path) =>
+  blackoutPage.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+
+await blackoutGo("/leaderboard");
+await expect(blackoutPage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+const blackoutLeaderboard = await blackoutText(blackoutPage);
+check(
+  "the leaderboard shows the holding screen while the blackout is on",
+  (await blackoutPage.getByTestId("results-holding").count()) === 1,
+);
+check(
+  "the holding screen says the results will be shown at the awarding",
+  blackoutLeaderboard.includes("Results will be shown at the awarding"),
+);
+check(
+  "the leaderboard carries no score text while hidden",
+  carriesNoScore(blackoutLeaderboard) &&
+    (await blackoutPage.getByTestId("leaderboard-cards").count()) === 0,
+  `(${blackoutLeaderboard.slice(0, 90)})`,
+);
+const blackoutCountdown = blackoutPage.locator(
+  '[data-testid="reveal-countdown"] .reveal-countdown-value',
+);
+await expect(blackoutCountdown).toBeVisible({ timeout: 15000 });
+await expect
+  .poll(async () => (await blackoutCountdown.innerText()).trim(), { timeout: 15000 })
+  .toMatch(/^\d+:\d{2}$/);
+check(
+  "the holding screen counts down to the stored reveal time",
+  true,
+  `(${(await blackoutCountdown.innerText()).trim()})`,
+);
+await blackoutPage.screenshot({ path: `${SHOTS}/results-blackout-leaderboard.png` });
+
+await blackoutGo("/results/all");
+await expect(blackoutPage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+const blackoutScores = await blackoutText(blackoutPage);
+check(
+  "All scores shows the same holding screen and no scores",
+  blackoutScores.includes("Results will be shown at the awarding") &&
+    (await blackoutPage.getByTestId("scores-list").count()) === 0 &&
+    (await blackoutPage.getByTestId("scores-table").count()) === 0 &&
+    carriesNoScore(blackoutScores),
+);
+
+await blackoutGo("/roster");
+await expect(blackoutPage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+const blackoutRoster = await blackoutText(blackoutPage);
+check(
+  "the roster is held and lists no player",
+  blackoutRoster.includes("Results will be shown at the awarding") &&
+    (await blackoutPage.locator("a.player-card-link").count()) === 0 &&
+    !blackoutRoster.includes("ULYSSES ORDO"),
+);
+
+await blackoutGo("/pairings?tab=profile");
+await expect(blackoutPage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+check(
+  "a player profile deep link is held too",
+  (await blackoutPage.getByTestId("player-profile").count()) === 0 &&
+    (await blackoutPage.getByTestId("profile-tee-times").count()) === 0,
+);
+await blackoutPage.screenshot({ path: `${SHOTS}/results-blackout-profile.png` });
+await blackoutContext.close();
+
+// A reveal time that has already passed, with the surfaces still held: the public stays on the
+// holding screen. The database is the gate, so a fast or wrong device clock cannot reveal anything.
+const dueContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const duePage = await dueContext.newPage();
+watch(duePage);
+const dueReveal = blackoutSeed(-5_000);
+await dueContext.addInitScript(({ revealAt }) => {
+  window.localStorage.setItem(
+    "teeline.demo.public-release.v1",
+    JSON.stringify({
+      "bamboo-tee-2026": { leaderboard: false, roster: false, revealAt },
+    }),
+  );
+}, dueReveal);
+await duePage.goto(`${BASE}/leaderboard`, { waitUntil: "networkidle", timeout: 120000 });
+await expect(duePage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+const dueText = await blackoutText(duePage);
+check(
+  "a reveal time that has passed without a release keeps the results hidden",
+  /revealing the results/i.test(dueText) &&
+    (await duePage.getByTestId("leaderboard-cards").count()) === 0 &&
+    carriesNoScore(dueText),
+);
+await dueContext.close();
+
+// The controls are the desk card. In the demo it writes the same local store the pages read, so the
+// whole loop can be exercised without a database: hide, count down, then let it reveal by itself.
+const cardContext = await browser.newContext({ viewport: { width: 1280, height: 950 } });
+const cardPage = await cardContext.newPage();
+watch(cardPage);
+await cardPage.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+  } catch {}
+});
+await cardPage.goto(`${BASE}/admin`, { waitUntil: "networkidle", timeout: 120000 });
+const blackoutCard = cardPage.getByTestId("results-blackout");
+await expect(blackoutCard).toBeVisible({ timeout: 30000 });
+check("the control room carries the blackout controls", (await blackoutCard.count()) === 1);
+await blackoutCard.getByTestId("blackout-seconds").fill("3");
+cardPage.once("dialog", (dialog) => dialog.accept());
+await blackoutCard.getByTestId("blackout-reveal").click();
+await expect(blackoutCard.getByTestId("blackout-countdown")).toBeVisible({ timeout: 20000 });
+check("the reveal records a time and shows the countdown in the desk", true);
+await expect(
+  blackoutCard.getByTestId("blackout-keep-open"),
+).toContainText("Keep this page open");
+check(
+  "the desk says the page has to stay open to finish the reveal",
+  (await blackoutCard.getByTestId("blackout-keep-open").count()) === 1,
+);
+// Three seconds later the demo desk releases both keys by itself, and the card says so.
+await expect
+  .poll(async () => (await blackoutCard.innerText()).includes("Results and players public"), {
+    timeout: 20000,
+  })
+  .toBeTruthy();
+check("the desk finishes the reveal when the countdown reaches zero", true);
+await cardPage.goto(`${BASE}/leaderboard`, { waitUntil: "networkidle", timeout: 120000 });
+check(
+  "the leaderboard is back after the reveal",
+  (await cardPage.getByTestId("results-holding").count()) === 0 &&
+    (await cardPage.getByTestId("leaderboard-cards").count()) > 0,
+);
+await cardContext.close();
+
+// ------------------------------------------------------------- awarding podium (issue 302)
+// The demo build has no database and no demo flag, so the awarding page opens with every lane
+// held: six blank boards and not one name or score to read. The released boards and the cinema
+// countdown are checked by the unit tests on the lane model; the browser only proves the blank page.
+section("awarding podium");
+const podiumContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const podiumPage = await podiumContext.newPage();
+watch(podiumPage);
+await podiumPage.goto(`${BASE}/results`, { waitUntil: "networkidle", timeout: 120000 });
+await expect(podiumPage.getByTestId("awarding-podium")).toBeVisible({ timeout: 20000 });
+const podiumLanes = podiumPage.locator('[data-testid^="awarding-lane-"]');
+check("the awarding page shows the six lanes", (await podiumLanes.count()) === 6);
+check(
+  "every lane is held and prints no row",
+  (await podiumPage.locator('[data-testid="awarding-row"]').count()) === 0 &&
+    (await podiumPage.locator('[data-phase="hidden"]').count()) === 6,
+);
+const podiumText = (await podiumPage.locator("body").innerText()).replace(/\s+/g, " ").trim();
+check(
+  "the held page carries no score or sample name",
+  !/\bpts\b/.test(podiumText) &&
+    !podiumText.includes("Antonio Alcantara") &&
+    podiumText.includes("Results will be shown at the awarding"),
+);
+await podiumPage.screenshot({ path: `${SHOTS}/awarding-held.png` });
+await podiumContext.close();
 
 console.log(`\nconsole errors: ${errors.length}`);
 for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 1200));

@@ -2,6 +2,7 @@
 
 import { LockKeyhole } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n/context";
 import {
   type BlackoutFlags,
   formatCountdown,
@@ -9,7 +10,6 @@ import {
   revealPollBaseMs,
   revealSignature,
 } from "@/lib/public/results-reveal";
-import { useI18n } from "@/lib/i18n/context";
 import { RevealPoller } from "./RevealPoller";
 import { useRevealCountdown } from "./useRevealCountdown";
 
@@ -44,12 +44,16 @@ export function ResultsHolding({
 
       {counting && (
         <div className="reveal-countdown" data-testid="reveal-countdown">
-          <p className="reveal-countdown-label">
-            {phase === "due" ? t("release.revealing") : t("release.countdownLabel")}
-          </p>
-          <p className="reveal-countdown-value" aria-live="polite">
-            {phase === "due" ? "…" : formatCountdown(remaining)}
-          </p>
+          {phase === "due" ? (
+            <p className="reveal-countdown-label">{t("release.revealing")}</p>
+          ) : (
+            <>
+              <p className="reveal-countdown-label">{t("release.countdownLabel")}</p>
+              <p className="reveal-countdown-value" aria-live="polite">
+                {formatCountdown(remaining)}
+              </p>
+            </>
+          )}
         </div>
       )}
 
