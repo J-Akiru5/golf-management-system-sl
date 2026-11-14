@@ -1,4 +1,5 @@
 node_modules
+.worktrees/
 .next
 out
 .env*
@@ -26,3 +27,6 @@ demo-video/out/
 # Local backups before a wipe
 backups/
 data/
+
+# Staging watcher state, logs and its own worktree
+.watch-staging/

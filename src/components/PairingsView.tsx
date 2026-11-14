@@ -591,14 +591,6 @@ export function PairingsView({
               <button type="button" className="btn p-action-primary" onClick={findMe}>
                 {t("pairings.findMe")}
               </button>
-              <button
-                type="button"
-                className="btn ghost"
-                data-help="pairings-print"
-                onClick={() => window.print()}
-              >
-                {t("common.print")}
-              </button>
             </div>
             {notListed && (
               <span className="p-notice" role="status">
@@ -636,14 +628,6 @@ export function PairingsView({
         <div className={`p-actions no-print${actionsVisible ? " is-visible" : ""}`}>
           <button type="button" className="btn p-action-primary" onClick={findMe}>
             {t("pairings.findMe")}
-          </button>
-          <button
-            type="button"
-            className="btn ghost"
-            data-help="pairings-print"
-            onClick={() => window.print()}
-          >
-            {t("common.print")}
           </button>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTeamClasses, averageIndex } from "./classify";
+import { applyTeamClasses, averageIndex, teamClassValue } from "./classify";
 import type { FlightRule, Registration } from "./types";
 
 const flights: FlightRule[] = [
@@ -21,6 +21,61 @@ const reg = (playerId: string, index: number | null, teamKey: string | null): Re
   teeId: "blue",
   playingHandicap: 0,
   flightId: "a",
+});
+
+describe("teamClassValue", () => {
+  it("returns the number a pair is classed on, not either partner's own", () => {
+    const members = [
+      { index: 8, playingHandicap: 9 },
+      { index: 18, playingHandicap: 20 },
+    ];
+
+    // 8 and 18 average 13, which is Class B, although the first is Class A on their own.
+    expect(teamClassValue(members, "index", 30)).toBe(13);
+  });
+
+  it("counts an index above the event maximum as the maximum", () => {
+    // 40 counts as 30, so the pair averages 22, not 27.
+    expect(
+      teamClassValue(
+        [
+          { index: 40, playingHandicap: 44 },
+          { index: 14, playingHandicap: 15 },
+        ],
+        "index",
+        30,
+      ),
+    ).toBe(22);
+  });
+
+  it("classes a player drawn alone on their own number", () => {
+    expect(teamClassValue([{ index: 22, playingHandicap: 25 }], "index", 30)).toBe(22);
+    expect(teamClassValue([{ index: 22, playingHandicap: 25 }], "courseHandicap", 30)).toBe(25);
+  });
+
+  it("uses the playing handicap when the event classes on the course handicap", () => {
+    const members = [
+      { index: 12, playingHandicap: 14 },
+      { index: 20, playingHandicap: 23 },
+    ];
+
+    // The indexes average 16 (Class B). The playing handicaps average 18.5 (Class C).
+    expect(teamClassValue(members, "index", 30)).toBe(16);
+    expect(teamClassValue(members, "courseHandicap", 30)).toBe(18.5);
+  });
+
+  it("counts a blank number as 0, so a pair is never left without a class", () => {
+    expect(
+      teamClassValue(
+        [
+          { index: 20, playingHandicap: 22 },
+          { index: null, playingHandicap: null },
+        ],
+        "index",
+        30,
+      ),
+    ).toBe(10);
+  });
 });
 
 describe("averageIndex", () => {
@@ -99,5 +154,32 @@ describe("applyTeamClasses", () => {
     expect([member.flightId, guest.flightId]).toEqual(["c", "a"]);
     expect(member.reasons.join(" ")).toContain("differ");
     expect(guest.reasons.join(" ")).toContain("differ");
+  });
+
+  it("does not invent a pair class when the stored override names none", () => {
+    const member = reg("member", 0, "team-empty");
+    member.classSource = "stored";
+    member.flightId = null;
+    const guest = reg("guest", 14, "team-empty");
+    guest.flightId = "b";
+
+    applyTeamClasses([member, guest], flights, 30);
+
+    expect(member.flightId).toBeNull();
+    expect(guest.flightId).toBe("b");
+    expect([member.reasons, guest.reasons].flat().join(" ")).not.toContain("average");
+  });
+
+  it("cuts the pair on the course handicap when the event classes on it", () => {
+    const member = reg("member", 12, "team-ch");
+    member.playingHandicap = 14;
+    const guest = reg("guest", 20, "team-ch");
+    guest.playingHandicap = 23;
+
+    applyTeamClasses([member, guest], flights, 30, "courseHandicap");
+
+    // The playing handicaps average 18.5, which is Class C; the indexes average 16, which is Class B.
+    expect([member.flightId, guest.flightId]).toEqual(["c", "c"]);
+    expect(member.reasons.join(" ")).toContain("average course handicap 18.5");
   });
 });

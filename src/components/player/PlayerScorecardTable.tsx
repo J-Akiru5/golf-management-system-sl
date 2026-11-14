@@ -66,16 +66,18 @@ function NineTable({
   const edge = "border border-[#b9c4bd]";
 
   const paperHead = `${edge} bg-[#1f5a3c] font-semibold text-white`;
-  const headCell = `${paperHead} px-0 py-2 text-center text-[11px] tnum sm:text-[12px]`;
-  const corner = `${paperHead} sticky left-0 z-20 w-[3.75rem] px-1.5 py-2 text-left text-[9px] uppercase tracking-wide sm:text-[10px]`;
-  const totalHead = `${paperHead} px-1 py-2 text-center text-[9px] uppercase tracking-wide sm:text-[10px]`;
+  // Read from an arm's length in the sun: the card's numbers are the point of the page, so they are
+  // set at 13/14px rather than the 11/12px of a desk table, and every row is taller to match.
+  const headCell = `${paperHead} px-0 py-2.5 text-center text-[12px] tnum sm:text-[13px]`;
+  const corner = `${paperHead} sticky left-0 z-20 w-[4.5rem] px-2 py-2.5 text-left text-[10px] uppercase tracking-wide sm:text-[11px]`;
+  const totalHead = `${paperHead} px-1.5 py-2.5 text-center text-[10px] uppercase tracking-wide sm:text-[11px]`;
 
   const labelCell = (tint: string) =>
-    `sticky left-0 z-10 w-[3.75rem] whitespace-nowrap ${edge} px-1.5 py-1.5 text-left text-[9px] font-semibold uppercase tracking-wide text-[#14201a] sm:text-[10px] ${tint}`;
+    `sticky left-0 z-10 w-[4.5rem] whitespace-nowrap ${edge} px-2 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wide text-[#14201a] sm:text-[11px] ${tint}`;
   const cell = (tint: string) =>
-    `${edge} px-0 py-1.5 text-center text-[11px] tnum text-[#14201a] sm:text-[12px] ${tint}`;
+    `${edge} px-0 py-2.5 text-center text-[13px] tnum text-[#14201a] sm:text-[14px] ${tint}`;
   const totalCell = (tint: string) =>
-    `${edge} px-1 py-1.5 text-center text-[11px] font-bold tnum text-[#14201a] sm:text-[12px] ${tint}`;
+    `${edge} px-1.5 py-2.5 text-center text-[13px] font-bold tnum text-[#14201a] sm:text-[14px] ${tint}`;
 
   return (
     <div
@@ -85,14 +87,14 @@ function NineTable({
       aria-label={caption}
       data-testid={`player-scorecard-${card.roundId}-${from}`}
     >
-      <table className="w-full min-w-[22rem] table-fixed border-separate border-spacing-0 text-[11px] print:min-w-0 sm:text-[12px]">
+      <table className="w-full min-w-[26rem] table-fixed border-separate border-spacing-0 text-[13px] print:min-w-0 sm:text-[14px]">
         <caption className="sr-only">{caption}</caption>
         <colgroup>
-          <col className="w-[3.75rem]" />
+          <col className="w-[4.5rem]" />
           {rows.map((_, index) => (
-            <col key={from + index} className="w-[1.75rem]" />
+            <col key={from + index} className="w-[2.1rem]" />
           ))}
-          <col className="w-[2.5rem]" />
+          <col className="w-[3rem]" />
         </colgroup>
         <thead>
           <tr>
@@ -126,7 +128,7 @@ function NineTable({
               {t("player.scorecard.strokeIndex")}
             </th>
             {rows.map((hole, index) => (
-              <td key={from + index} className={cell(muted)}>
+              <td key={from + index} className={cell(`${plain} ${muted}`)}>
                 {hole?.strokeIndex ?? "-"}
               </td>
             ))}
@@ -152,7 +154,7 @@ function NineTable({
               {t("player.scorecard.hcp")}
             </th>
             {rows.map((hole, index) => (
-              <td key={from + index} className={cell(muted)}>
+              <td key={from + index} className={cell(`${plain} ${muted}`)}>
                 {hole ? handicapStrokeLabel(hole.handicapStrokes) : "-"}
               </td>
             ))}
@@ -215,7 +217,8 @@ export function PlayerScorecardTable({ card, t }: { card: PortalScorecard; t: Tr
 
   return (
     <div className="grid gap-2">
-      <p className="hint m-0 hidden max-[389px]:block">{t("player.scorecard.swipe")}</p>
+      {/* Bigger numbers need a little more room than a 390px phone has, so say so wherever it scrolls. */}
+      <p className="hint m-0 block text-[14px] min-[480px]:hidden">{t("player.scorecard.swipe")}</p>
       <NineTable
         card={card}
         rows={rows.slice(0, 9)}

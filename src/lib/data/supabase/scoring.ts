@@ -1,18 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { saveEventCardFlow } from "@/lib/data/event-card";
 import {
   type OpenRoundDrawGroup,
   type OpenRoundSnapshot,
   openRoundErrorMessage,
 } from "@/lib/data/open-round";
-import type {
-  OpenRoundInput,
-  ResolveHoleInput,
-  ScoringPlayer,
-  ScoringPublication,
-  ScoringRepository,
-  ScoringRoundStatus,
-  ScoringRoundView,
-  SubmitCardInput,
+import {
+  type CorrectHandicapInput,
+  handicapCorrectionProblem,
+  type OpenRoundInput,
+  type ResolveHoleInput,
+  type ScoringPlayer,
+  type ScoringPublication,
+  type ScoringRepository,
+  type ScoringRoundStatus,
+  type ScoringRoundView,
+  type SubmitCardInput,
 } from "@/lib/data/scoring";
 import { refreshPublicPage } from "@/lib/data/supabase/draw-sync";
 import { displayName } from "@/lib/format";
@@ -31,6 +34,7 @@ import {
   type TieBreakPolicy,
   type VerificationPolicy,
 } from "@/lib/scoring";
+import { CARD_HANDICAP_SOURCE } from "@/lib/scoring/event-rules";
 import { checkCardSubmission } from "@/lib/scoring/submission";
 import type { Database, Json } from "@/lib/supabase/generated-types";
 import type { Database as AppDatabase } from "@/lib/supabase/types";
@@ -330,7 +334,13 @@ export function createSupabaseScoringRepository(
             slope: snapshot.slope,
             coursePar: snapshot.course_par,
             allowance: Number(snapshot.allowance),
-            rounding: snapshot.rounding as HandicapRounding,
+            // A snapshot saved from the card's HDCP box is stored as "single" (the database only
+            // knows whs and single) and marked by its source. Read it back as the card rule, or the
+            // engine would recompute it from the tee and call it a mismatch.
+            rounding:
+              snapshot.index_source === CARD_HANDICAP_SOURCE
+                ? "card"
+                : (snapshot.rounding as HandicapRounding),
             courseHandicap: snapshot.course_handicap,
             playingHandicap: snapshot.playing_handicap,
             rulesVersion: snapshot.rules_version,
@@ -565,7 +575,7 @@ export function createSupabaseScoringRepository(
     return view;
   }
 
-  return {
+  const repository: Omit<ScoringRepository, "saveEventCard"> = {
     loadRound,
     loadOpenRoundState,
 
@@ -753,6 +763,40 @@ export function createSupabaseScoringRepository(
       return refresh(tournamentId, dayNumber);
     },
 
+    async correctHandicap(tournamentId, input: CorrectHandicapInput, dayNumber) {
+      const view = await refresh(tournamentId, dayNumber);
+      const problem = handicapCorrectionProblem(input, view.roundStatus);
+      if (problem) throw new Error(problem);
+
+      const player = view.players.find((candidate) => candidate.playerId === input.playerId);
+      if (!player) throw new Error("Player not found in this round.");
+      if (!player.roundEntryId) throw new Error("The player has no round entry.");
+
+      // The generated types predate this function, so the call is typed by hand, as the card
+      // handicap write is above.
+      const call = db.rpc as unknown as (
+        name: string,
+        args: Record<string, unknown>,
+      ) => PromiseLike<{ error: { message: string } | null }>;
+      const { error } = await call.call(db, "correct_handicap_snapshot", {
+        p_round_entry: player.roundEntryId,
+        p_index: input.index,
+        p_effective: input.effectiveDate,
+        p_reason: input.reason.trim(),
+      });
+      if (error) {
+        const missing = /could not find the function|PGRST202|does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "The handicap correction function is not installed in the database yet. Apply migration 20261114000300_correct_handicap_snapshot.sql first."
+            : `Could not correct the handicap for ${player.playerName}: ${error.message}`,
+        );
+      }
+      // The function recalculates that player's result. Publishing the new result is the caller's
+      // decision, so nothing here clears the public cache.
+      return refresh(tournamentId, dayNumber);
+    },
+
     async publishRound(tournamentId, note, dayNumber) {
       const view = await refresh(tournamentId, dayNumber);
       const { error } = await db.rpc("publish_round", {
@@ -775,6 +819,46 @@ export function createSupabaseScoringRepository(
       // Final results replace the provisional ones on the same public tables.
       publicDataChanged();
       return refresh(tournamentId, dayNumber);
+    },
+  };
+
+  return {
+    ...repository,
+
+    async saveEventCard(tournamentId, input, dayNumber) {
+      return saveEventCardFlow(
+        {
+          load: () => refresh(tournamentId, dayNumber),
+          async writeSnapshot(plan, view, cardHandicap) {
+            const player = view.players.find((candidate) => candidate.playerId === input.playerId);
+            if (!player?.roundEntryId) throw new Error("The player has no round entry.");
+            // The generated types predate this function, so the call is typed by hand.
+            const call = db.rpc as unknown as (
+              name: string,
+              args: Record<string, unknown>,
+            ) => PromiseLike<{ error: { message: string } | null }>;
+            const { error } = await call.call(db, "save_card_handicap_snapshot", {
+              p_round_entry: player.roundEntryId,
+              p_card_handicap: cardHandicap ?? "",
+            });
+            if (error) {
+              const missing = /could not find the function|PGRST202|does not exist/i.test(
+                error.message,
+              );
+              throw new Error(
+                missing
+                  ? "The card handicap function is not installed in the database yet. Apply migration 20261114000100_card_handicap_snapshot.sql first."
+                  : `Could not save the card handicap for ${player.playerName}: ${error.message}`,
+              );
+            }
+          },
+          submit: (card) => repository.submitCard(tournamentId, card, dayNumber),
+          approve: (cardId, reason) =>
+            repository.approveCard(tournamentId, cardId, reason, dayNumber),
+          today: () => new Date().toISOString().slice(0, 10),
+        },
+        input,
+      );
     },
   };
 }

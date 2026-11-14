@@ -43,6 +43,7 @@ import type { DaySessionChoice } from "@/lib/data/day-selection";
 import { selectIndexForCutOff } from "@/lib/data/frozen";
 import { instructionText } from "@/lib/data/instructions";
 import { fmtIso } from "@/lib/data/labels";
+import { partnerOf } from "@/lib/data/registrations";
 import { daySessionSummary, registeredDayBadges } from "@/lib/data/sessions";
 import { teeTimesNeedConfirmation } from "@/lib/data/tee-time-choices";
 import {
@@ -224,6 +225,10 @@ function RegisterDesk() {
     [players, regById, entries, names],
   );
   const savedReg = savedId ? regById.get(savedId) : null;
+  // The other half of the pair being corrected, so the edit classes both partners together.
+  const overridePartner = override === null ? null : partnerOf(override.entry, entries);
+  const overridePartnerReg =
+    overridePartner === null ? null : (regById.get(overridePartner.playerId) ?? null);
   const savedEntry = savedId ? entries.find((e) => e.playerId === savedId) : null;
   const savedPlayer = savedId ? players.find((p) => p.id === savedId) : null;
   // The event accepts the player's index on the cut-off day: the last NGAP record on or before it,
@@ -1720,6 +1725,8 @@ function RegisterDesk() {
           cutOffIndex={cutOffIndex?.index ?? null}
           cutOffIndexDate={cutOffIndex?.record?.effectiveDate ?? null}
           newerIndexDate={cutOffIndex?.newer?.effectiveDate ?? null}
+          partnerEntry={overridePartner}
+          partnerRegistration={overridePartnerReg}
           onSave={(input) => {
             // The adapter writes the birthdate with the override, and shows both only when the
             // database has them. A blank birthdate is normal for a guest: the player record is

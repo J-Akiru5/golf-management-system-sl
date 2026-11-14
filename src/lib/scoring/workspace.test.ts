@@ -247,6 +247,24 @@ describe("scorecardReadiness", () => {
     expect(scorecardReadiness(readinessInput()).blockers).toEqual([]);
   });
 
+  it("asks for a marker unless the event does not record one", () => {
+    const missing = scorecardReadiness(readinessInput({ scorerId: "" }));
+    expect(missing.ready).toBe(false);
+    expect(missing.label).toBe("Choose a different marker");
+
+    const optional = scorecardReadiness(readinessInput({ scorerId: "", markerRequired: false }));
+    expect(optional.ready).toBe(true);
+    expect(optional.blockers).toEqual([]);
+  });
+
+  it("still refuses a player marking their own card when the marker is optional", () => {
+    const result = scorecardReadiness(
+      readinessInput({ scorerId: "player-1", markerRequired: false }),
+    );
+    expect(result.ready).toBe(false);
+    expect(result.label).toBe("Choose a different marker");
+  });
+
   it("trims the correction reason before measuring it", () => {
     const short = scorecardReadiness(
       readinessInput({ correction: true, correctionReason: "  ab  " }),

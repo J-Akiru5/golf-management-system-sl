@@ -325,7 +325,6 @@ export const PLAYER_GUIDES: HelpGuide[] = [
       { text: key("help.player.pairings.find"), anchor: "pairings-search" },
       { text: key("help.player.pairings.flight"), anchor: "pairings-flight" },
       { text: key("help.player.pairings.read"), anchor: "pairings-groups" },
-      { text: key("help.player.pairings.print"), anchor: "pairings-print" },
     ],
   },
 ];

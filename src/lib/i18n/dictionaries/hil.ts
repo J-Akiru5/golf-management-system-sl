@@ -541,7 +541,7 @@ export const hil: Dictionary = {
       },
       pairings: {
         title: "Pangitaa ang imo grupo",
-        summary: "Paano basahon ang pairings page, kag paano i-print ini.",
+        summary: "Paano basahon ang pairings page.",
         find: "I-type ang parte sang imo ngalan agod makita ang imo grupo.",
         flight: "Ginapagamay sang flight filter ang malaba nga listahan.",
         read: "Makita sa imo card ang hole ukon tee, ang wave kag ang oras.",

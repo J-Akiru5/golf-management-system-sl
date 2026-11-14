@@ -95,9 +95,34 @@ export function ScoresView({
       <div className="scores-head">
         <h2 id="scores-heading">{t("programme.scoresTitle")}</h2>
         <p>{t("programme.scoresIntro")}</p>
-        <Link className="scores-other" href="/leaderboard">
+        <Link className="scores-other" href="/leaderboard" data-testid="scores-teams-button">
           {t("programme.scoresSeeTeams")}
+          <span aria-hidden="true">→</span>
         </Link>
+      </div>
+
+      {/* First control on the page: a member's own name is what most of them came to find. */}
+      <div className="grid gap-2 scores-find">
+        <label className="lb-filter">
+          <span className="lb-filter-label">{t("programme.scoresFind")}</span>
+          <input
+            type="search"
+            className="lb-select scores-search-input no-print"
+            placeholder={t("programme.scoresFind")}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            data-testid="scores-search"
+          />
+        </label>
+        {query !== "" && (
+          <button
+            type="button"
+            className="btn ghost justify-self-start no-print"
+            onClick={() => setQuery("")}
+          >
+            {t("pairings.clearQuery")}
+          </button>
+        )}
       </div>
 
       <div className="scores-view no-print" role="group" aria-labelledby="scores-view-label">
@@ -186,29 +211,6 @@ export function ScoresView({
             </select>
           </label>
         ) : null}
-      </div>
-
-      <div className="grid gap-2">
-        <label className="lb-filter">
-          <span className="lb-filter-label">{t("programme.scoresFind")}</span>
-          <input
-            type="search"
-            className="lb-select scores-search-input no-print"
-            placeholder={t("programme.scoresFind")}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            data-testid="scores-search"
-          />
-        </label>
-        {query !== "" && (
-          <button
-            type="button"
-            className="btn ghost justify-self-start no-print"
-            onClick={() => setQuery("")}
-          >
-            {t("pairings.clearQuery")}
-          </button>
-        )}
       </div>
 
       <p className="scores-count" role="status" data-testid="scores-count">

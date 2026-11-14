@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireScorecardAccess } from "@/lib/scorecards/access";
 import { cleanLabel, normalizeSlug, validateScorecardPayload } from "@/lib/scorecards/document";
+import { mergeScorecardPayloads } from "@/lib/scorecards/merge";
 import { getScorecardStore, ScorecardStoreUnavailable } from "@/lib/scorecards/store";
 
 export const runtime = "nodejs";
@@ -22,7 +23,7 @@ function storeError(error: unknown): NextResponse | null {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ slug: string }> },
 ): Promise<NextResponse> {
   const access = await requireScorecardAccess();
@@ -34,7 +35,19 @@ export async function GET(
     const store = await getScorecardStore();
     const document = await store.get(slug);
     if (!document) return jsonError(404, "No scorecard has been saved under that key yet.");
-    return NextResponse.json(document);
+    // Every tabulator polls for other people's changes. Asking with the time of the copy already held
+    // costs one small answer instead of the whole document when nothing has changed.
+    const since = new URL(request.url).searchParams.get("since");
+    const serverTime = Date.now();
+    if (since && since === document.updatedAt) {
+      return NextResponse.json({
+        ok: true,
+        unchanged: true,
+        updatedAt: document.updatedAt,
+        serverTime,
+      });
+    }
+    return NextResponse.json({ ...document, serverTime });
   } catch (error) {
     return (
       storeError(error) ??
@@ -63,13 +76,34 @@ export async function PUT(
   if (!checked.ok) return jsonError(400, checked.message);
   try {
     const store = await getScorecardStore();
+    // The document is shared by everyone signed in to the scorecard, so a save is merged into what
+    // is stored, card by card, instead of replacing it. Otherwise the last person to save would erase
+    // everyone else's cards, and nobody would see anyone else's work.
+    const stored = await store.get(slug);
+    const now = Date.now();
+    const merged = mergeScorecardPayloads(stored ? stored.payload : null, checked.payload, now);
+    const recheck = validateScorecardPayload(merged.payload);
+    if (!recheck.ok) return jsonError(400, recheck.message);
+    if (stored && !merged.changed) {
+      return NextResponse.json({
+        ok: true,
+        updatedAt: stored.updatedAt,
+        serverTime: now,
+        payload: recheck.payload,
+      });
+    }
     const document = await store.put({
       slug,
-      event: cleanLabel(body.event, "24th Bamboo Tee"),
-      label: cleanLabel(body.label, "Day 1 AM"),
-      payload: checked.payload,
+      event: cleanLabel(body.event, stored?.event ?? "24th Bamboo Tee"),
+      label: cleanLabel(body.label, stored?.label ?? "Day 1 AM"),
+      payload: recheck.payload,
     });
-    return NextResponse.json({ ok: true, updatedAt: document.updatedAt });
+    return NextResponse.json({
+      ok: true,
+      updatedAt: document.updatedAt,
+      serverTime: now,
+      payload: recheck.payload,
+    });
   } catch (error) {
     return (
       storeError(error) ??
