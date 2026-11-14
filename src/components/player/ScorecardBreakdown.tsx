@@ -322,17 +322,27 @@ export function ScorecardBreakdown({
           </p>
         </div>
 
-        <dl className="m-0 grid w-full grid-cols-3 gap-x-3 gap-y-2 sm:w-auto sm:grid-cols-5 sm:gap-x-5 sm:text-right">
+        {/* Two figures, the ones the board is scored on: gross points and net points. Strokes and to
+            par are hole-by-hole detail the table below already carries. Net points is the pair's score,
+            so it is set in green a size up; gross points stays quiet. */}
+        <dl className="m-0 grid w-full grid-cols-2 gap-x-6 gap-y-3 sm:w-auto sm:gap-x-10 sm:text-right">
           {[
-            { label: t("player.scorecard.gross"), value: card.grossStrokes },
-            { label: t("player.scorecard.net"), value: card.netStrokes },
-            { label: t("player.scorecard.toPar"), value: formatToPar(relationToPar(card)) },
             { label: t("player.scorecard.grossPoints"), value: card.grossPoints },
-            { label: t("player.scorecard.netPoints"), value: card.netPoints },
+            { label: t("player.scorecard.netPoints"), value: card.netPoints, key: true },
           ].map((fact) => (
-            <div key={fact.label} className="grid min-w-0 gap-0.5">
-              <dt className="small-h">{fact.label}</dt>
-              <dd className="m-0 font-semibold tnum">{numberText(fact.value)}</dd>
+            <div key={fact.label} className="grid min-w-0 gap-1">
+              <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-muted sm:text-[13px]">
+                {fact.label}
+              </dt>
+              <dd
+                className={
+                  fact.key
+                    ? "m-0 text-[23px] font-bold leading-tight text-fairway tnum sm:text-[25px]"
+                    : "m-0 text-[20px] font-bold leading-tight tnum sm:text-[22px]"
+                }
+              >
+                {numberText(fact.value)}
+              </dd>
             </div>
           ))}
         </dl>

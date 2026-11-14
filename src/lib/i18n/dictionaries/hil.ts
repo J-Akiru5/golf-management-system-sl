@@ -275,7 +275,7 @@ export const hil: Dictionary = {
     footer:
       "Ngalan, home club, handicap, kategorya, flight, hole kag oras lamang. Wala sang contact details ukon litrato.",
     home: "TEELINE GOLF HOME",
-    backHome: "Balik sa main nga pahina",
+    backHome: "Balik sa home",
     backToPairings: "Balik sa pairings",
     checkAgain: "Tan-awa liwat",
     demoFooter:
@@ -389,8 +389,9 @@ export const hil: Dictionary = {
     leaderboardGrossPts: "Gross pts",
     leaderboardToPar: "Kontra sa par",
     leaderboardPlayerFigures: "Net {net} · Gross {gross}",
-    leaderboardScorecards: "Mga scorecard",
-    leaderboardHideScorecards: "Itago ang mga scorecard",
+    leaderboardScorecards: "Tan-awa ang scorecard",
+    leaderboardCardPick: "Scorecard",
+    leaderboardHideScorecards: "Itago ang scorecard",
     leaderboardNoCardYet: "Wala pa na-publish nga scorecard.",
     leaderboardEmptyTitle: "Wala pa na-publish nga score",
     leaderboardEmptyFiltered: "Wala pa na-publish nga score para sa sini nga kategorya ukon klase.",

@@ -274,7 +274,7 @@ export const tl: Dictionary = {
     footer:
       "Pangalan, home club, handicap, kategorya, flight, hole at oras lamang. Walang contact details o litrato.",
     home: "TEELINE GOLF HOME",
-    backHome: "Bumalik sa pangunahing pahina",
+    backHome: "Bumalik sa home",
     backToPairings: "Bumalik sa pairings",
     checkAgain: "Tingnan muli",
     demoFooter:
@@ -387,8 +387,9 @@ export const tl: Dictionary = {
     leaderboardGrossPts: "Gross pts",
     leaderboardToPar: "Laban sa par",
     leaderboardPlayerFigures: "Net {net} · Gross {gross}",
-    leaderboardScorecards: "Mga scorecard",
-    leaderboardHideScorecards: "Itago ang mga scorecard",
+    leaderboardScorecards: "Tingnan ang scorecard",
+    leaderboardCardPick: "Scorecard",
+    leaderboardHideScorecards: "Itago ang scorecard",
     leaderboardNoCardYet: "Wala pang na-publish na scorecard.",
     leaderboardEmptyTitle: "Wala pang na-publish na score",
     leaderboardEmptyFiltered: "Wala pang na-publish na score para sa kategorya o klase na ito.",

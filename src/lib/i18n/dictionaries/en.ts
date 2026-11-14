@@ -275,7 +275,7 @@ export const en = {
     footer:
       "Names, home club, handicap, category, flight, hole and time only. No contact details or photos.",
     home: "TEELINE GOLF HOME",
-    backHome: "Back to main page",
+    backHome: "Back home",
     backToPairings: "Back to pairings",
     checkAgain: "Check again",
     demoFooter:
@@ -388,8 +388,9 @@ export const en = {
     leaderboardGrossPts: "Gross pts",
     leaderboardToPar: "To par",
     leaderboardPlayerFigures: "Net {net} · Gross {gross}",
-    leaderboardScorecards: "Scorecards",
-    leaderboardHideScorecards: "Hide scorecards",
+    leaderboardScorecards: "View scorecard",
+    leaderboardCardPick: "Scorecard",
+    leaderboardHideScorecards: "Hide scorecard",
     leaderboardNoCardYet: "No scorecard published yet.",
     leaderboardEmptyTitle: "No scores are published yet",
     leaderboardEmptyFiltered: "No scores have been published for this category or class yet.",
