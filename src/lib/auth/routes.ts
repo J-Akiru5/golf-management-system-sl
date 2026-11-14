@@ -90,6 +90,11 @@ export function decide(input: {
 
   if (pathname === "/login") {
     if (identity === "signed-out") return { type: "allow" };
+    // A stale session can still look signed in to the proxy while the scorecard API refuses it.
+    // The page sends the account here with this code; show the form instead of bouncing it back.
+    if (new URLSearchParams(search).get("error") === "sign_in_required") {
+      return { type: "allow" };
+    }
     return {
       type: "redirect",
       to: landingFor({ next: input.next ?? null, identity, staffRole: input.staffRole }),

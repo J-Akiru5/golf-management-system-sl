@@ -102,6 +102,14 @@ describe("decide", () => {
       type: "redirect",
       to: "/my",
     });
+    expect(
+      decide({
+        pathname: "/login",
+        search: "?next=%2Fscorecard%2F&error=sign_in_required",
+        next: "/scorecard/",
+        identity: "tabulation",
+      }),
+    ).toEqual({ type: "allow" });
   });
 
   it("respects where a sign-in link was aiming, within the account's area", () => {
