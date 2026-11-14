@@ -9,6 +9,16 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **Editing a player's index now corrects their played rounds.** The Edit index dialog works the
+  playing handicap out from the registration's own tee (the category tee only when the registration
+  has none), shows which tee it used, and saves that tee back, so an edit no longer replaces the tee
+  taken from the paper cards. After the registration is saved, every round being scored or published
+  that the player has a card in is corrected through `correct_handicap_snapshot`, and a round that was
+  published is published again, so the public page shows the new number. A round that refuses is named
+  in the desk's error message; the registration save stays. Owner and organizer only, as the database
+  requires. No migration.
+
 ### Changed
 - **Every published card of Days 1 to 3 now plays off the WHS playing handicap for the tee written on
   the card** (owner, 14 Nov 2026). The number in the HDCP box no longer decides anything; a player with
