@@ -4,7 +4,7 @@ Golf tournament management for **Iloilo Golf & Country Club (IGCC)**, built by *
 The organizer adds players; the system routes each one to a category, tee, flight, group and start
 slot; the organizer reviews, overrides and publishes; players read their pairings on a phone.
 
-> **Status date:** 14 Nov 2026 · **Production:** `v0.53.0` (live; the 0.52.1 tabulator fix reached production through 0.52.2 after Vercel blocked the 0.52.1 merge, see the decision log, 14 Nov 2026) · **Branches:** `develop` (integration, no deploy), `staging` (preview), `main` (production) ·
+> **Status date:** 15 Nov 2026 · **Production:** `v0.53.0` (live; the 0.52.1 tabulator fix reached production through 0.52.2 after Vercel blocked the 0.52.1 merge, see the decision log, 14 Nov 2026) · **Branches:** `develop` (integration, no deploy), `staging` (preview), `main` (production) ·
 > **Product name:** TeeLine Golf (approved direction; trademark clearance has not been established)
 
 This is the single plan for humans and AI agents. Section 1 is the 60-second version. Everything
@@ -46,6 +46,63 @@ Applied on 13 Nov 2026 and checked against the live project and `https://golf.sy
 Not blockers for the roster, still open: 39 public players have no class and 47 no category, because
 their entries were never routed. `SIASON, TIM` carries `203` on the sheet; the live index is 20.3 and
 is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, VICTOR`.
+
+---
+
+## Final day of the 24th Bamboo Tee (plan of 15 Nov 2026)
+
+Production is `v0.54.0`. Day 4 is the last playing day: every score and every handicap has to be final
+by the awarding. The owner is on the floor; the orchestrator builds, reviews and releases.
+
+### Diagnosis after Day 3
+
+| Area | What happened | State on 15 Nov |
+| --- | --- | --- |
+| Handicap | Cards were scored with whatever was typed in the HDCP box, so the public showed handicaps the admin never set | **Rule settled 14 Nov:** the WHS playing handicap for the player's tee is the only source. Days 1 to 3 normalized and published. An index edit corrects and republishes played rounds (v0.54.0). Still open: the card save on `/scores` and the tabulator page use the box (#301, #303, #296) |
+| Publishing | Scores reached the public through one-off scripts and manual publishes | Publish on save becomes a setting per day (#301). Provisional publication is on for all four days |
+| Tabulator | Search scrolls away, no branding, a card for a player not on the list is hard to add | #303 |
+| Schedule changes | Swap exists (v0.46.0) but is not obvious | Drag and drop on the board and table view (#304) |
+| Awarding | No way to hide results or reveal them together | Blackout and timed reveal (#302) |
+| Data still unchecked | 59 published cards belong to players with index 0 or none on file; snapshot alignment SQL 4 not run | #305 checklist |
+| Issues | 43 open, many already shipped | 22 closed with evidence on 15 Nov; 4 stale pull requests closed |
+
+### Decisions the owner made on 15 Nov 2026
+
+- **Publish on save.** A card saved on the admin side goes public at once, as a setting per day with
+  three modes (every save, checked only, manual). Today runs on every save; corrections are gathered after.
+- **Blackout hides everything about results and players**: leaderboard, All scores, scorecards,
+  profiles, roster and the TV board. Pairings, tee times and rules stay. The reveal is a countdown the
+  admin sets in seconds.
+- **Migrations are allowed, the owner runs them.** Features must work without them where possible.
+- **The orchestrator's builders build all of today's work.** Karl and Lou review and support the floor.
+
+### Work in flight
+
+| Issue | What | Branch | Reviewer |
+| --- | --- | --- | --- |
+| [#301](https://github.com/J-Akiru5/golf-management-system-sl/issues/301) | WHS handicap on save, publish-on-save setting | `agent/fd-scores` | Karl |
+| [#302](https://github.com/J-Akiru5/golf-management-system-sl/issues/302) | Results blackout and timed reveal | `agent/fd-blackout` | Lou |
+| [#303](https://github.com/J-Akiru5/golf-management-system-sl/issues/303) | Tabulator: branding, sticky search, system handicap, add a card | `agent/fd-tabulator` | Karl |
+| [#304](https://github.com/J-Akiru5/golf-management-system-sl/issues/304) | Drag and drop on the draw board | `agent/fd-dragdrop` | Lou |
+| [#305](https://github.com/J-Akiru5/golf-management-system-sl/issues/305) | Guardrails and the day's checklist | none | Jeff |
+
+Release order: #301 and #303 first (scoring and handicap), then #302 before 2 p.m., then #304.
+
+### Guardrails while production is live
+
+1. **One release train.** Work goes to `develop`, then one release pull request to `main` with both
+   required checks green. No direct push to `main`, and no second release branch in flight.
+2. **Scoring and handicap changes** need a test for the changed rule and a dry run against live data
+   before any write.
+3. **Scripts that write live data** print a plan first, write a backup, and are re-run to prove a
+   second run changes nothing.
+4. **Migrations** are run by the owner only, one file at a time. Each is read first for storage
+   deletes and for the function bodies it replaces.
+5. **A published version is never edited or deleted.** A correction is a new version.
+6. **Builders never push.** One issue, one branch, one worktree; builders that touch the same files
+   run one after another.
+7. **No player names** in this public repository's issues or commits.
+8. **The blackout gate is the database's.** A page that hides results in the browser only does not count.
 
 ---
 

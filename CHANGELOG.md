@@ -9,6 +9,11 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Docs
+- **The final-day plan is in `docs/PLAN.md`**: the diagnosis after Day 3, the owner's decisions of 15 Nov,
+  the work in flight (#301 to #305) and the guardrails while production is live. 22 resolved issues and
+  4 stale pull requests were closed.
+
 ## [0.54.0] - 2026-11-14
 
 ### Added
