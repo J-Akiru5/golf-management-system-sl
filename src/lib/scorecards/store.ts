@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 export interface StoredScorecardDocument {
@@ -6,6 +7,14 @@ export interface StoredScorecardDocument {
   label: string;
   payload: Record<string, unknown>;
   updatedAt: string;
+  /** The account that saved it last. Null on documents written before this was recorded. */
+  updatedBy: string | null;
+}
+
+export interface ScorecardSnapshot {
+  /** The object path, or null when there was no document to copy yet. */
+  path: string | null;
+  at: string;
 }
 
 export interface ScorecardStore {
@@ -20,11 +29,54 @@ export interface ScorecardStore {
     event: string;
     label: string;
     payload: Record<string, unknown>;
+    updatedBy?: string | null;
   }): Promise<StoredScorecardDocument>;
+  /**
+   * Runs a read, merge and write as one step. Two tabulators saving at the same moment would
+   * otherwise both read the same copy and the second write would drop the first one's cards.
+   */
+  locked<T>(slug: string, by: string | null, run: () => Promise<T>): Promise<T>;
+  /** Copies the current document aside, so a reset or a replace can be recovered. */
+  snapshot(input: { slug: string; reason: string; by: string | null }): Promise<ScorecardSnapshot>;
   close(): void;
 }
 
 export class ScorecardStoreUnavailable extends Error {}
+
+/** Another save holds the lease for this page. The caller should retry in a moment. */
+export class ScorecardStoreBusy extends Error {}
+
+/** How long one save may hold the lease before a crashed request's lock is taken over. */
+const LOCK_LEASE_MS = 10_000;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseDocument(parsed: unknown): StoredScorecardDocument | null {
+  if (!isRecord(parsed)) return null;
+  const document = parsed;
+  if (
+    typeof document.slug !== "string" ||
+    typeof document.event !== "string" ||
+    typeof document.label !== "string" ||
+    typeof document.updatedAt !== "string" ||
+    !isRecord(document.payload)
+  ) {
+    return null;
+  }
+  return {
+    slug: document.slug,
+    event: document.event,
+    label: document.label,
+    updatedAt: document.updatedAt,
+    updatedBy:
+      typeof document.updatedBy === "string" && document.updatedBy.trim()
+        ? document.updatedBy.trim()
+        : null,
+    payload: document.payload,
+  };
+}
 
 /**
  * The team store. The deployed app has no writable disk, so the document is one JSON object in a
@@ -84,7 +136,71 @@ export function createSupabaseScorecardStore(
     }
   }
 
-  return {
+  const lockPath = (slug: string) => `_locks/${slug}.json`;
+
+  async function readLock(slug: string): Promise<{ nonce: string; at: number } | null> {
+    const { data, error } = await guarded("Could not read the scorecard save lock", () =>
+      bucket.download(lockPath(slug)),
+    );
+    if (error || !data) return null;
+    try {
+      const parsed = JSON.parse(await data.text()) as unknown;
+      if (!isRecord(parsed)) return null;
+      return {
+        nonce: typeof parsed.nonce === "string" ? parsed.nonce : "",
+        at: typeof parsed.at === "number" && Number.isFinite(parsed.at) ? parsed.at : 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * A lock object in the same bucket, created without upsert so the create is the claim. A lease
+   * that has run out can be taken over, and the nonce stops a late request from releasing a lock
+   * that now belongs to someone else. The document is the only shared state, so this is enough to
+   * make the read-merge-write one step without a database table.
+   */
+  async function acquireLock(slug: string, by: string | null): Promise<string> {
+    const path = lockPath(slug);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const nonce = randomUUID();
+      const body = new Blob([JSON.stringify({ nonce, at: Date.now(), by })], {
+        type: "application/json",
+      });
+      const { error } = await guarded("Could not take the scorecard save lock", () =>
+        bucket.upload(path, body, { contentType: "application/json", upsert: false }),
+      );
+      if (!error) return nonce;
+      const duplicate =
+        Number(error.statusCode) === 409 || /already exists|duplicate/i.test(error.message);
+      if (!duplicate) {
+        throw new ScorecardStoreUnavailable(
+          `Could not take the scorecard save lock: ${error.message}`,
+        );
+      }
+      const held = await readLock(slug);
+      if (!held) continue; // it was released between the two calls
+      if (Date.now() - held.at < LOCK_LEASE_MS) {
+        throw new ScorecardStoreBusy(
+          "Another tabulator is saving this page. Your edits are kept and the save will try again.",
+        );
+      }
+      // The holder stopped answering. Clear the expired lease and try once more.
+      await guarded("Could not clear an expired scorecard save lock", () => bucket.remove([path]));
+    }
+    throw new ScorecardStoreBusy(
+      "Another tabulator is saving this page. Your edits are kept and the save will try again.",
+    );
+  }
+
+  async function releaseLock(slug: string, nonce: string): Promise<void> {
+    const held = await readLock(slug);
+    if (!held || held.nonce !== nonce) return;
+    await bucket.remove([lockPath(slug)]);
+  }
+
+  const store: ScorecardStore = {
     async get(slug) {
       await ensureBucket();
       const { data, error } = await guarded("Could not read the scorecard document", () =>
@@ -96,23 +212,11 @@ export function createSupabaseScorecardStore(
           `Could not read the scorecard document: ${error.message}`,
         );
       }
-      const text = await data.text();
-      const parsed = JSON.parse(text) as unknown;
-      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-        throw new ScorecardStoreUnavailable("The stored scorecard document is not an object.");
-      }
-      const document = parsed as Record<string, unknown>;
-      if (
-        typeof document.slug !== "string" ||
-        typeof document.event !== "string" ||
-        typeof document.label !== "string" ||
-        typeof document.updatedAt !== "string" ||
-        typeof document.payload !== "object" ||
-        document.payload === null
-      ) {
+      const parsed = JSON.parse(await data.text()) as unknown;
+      const document = parseDocument(parsed);
+      if (!document)
         throw new ScorecardStoreUnavailable("The stored scorecard document is incomplete.");
-      }
-      return document as unknown as StoredScorecardDocument;
+      return document;
     },
     async list() {
       await ensureBucket();
@@ -130,20 +234,8 @@ export function createSupabaseScorecardStore(
         try {
           const { data: file, error: downloadError } = await bucket.download(entry.name);
           if (downloadError || !file) continue;
-          const parsed = JSON.parse(await file.text()) as unknown;
-          if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) continue;
-          const document = parsed as Record<string, unknown>;
-          if (
-            typeof document.slug !== "string" ||
-            typeof document.event !== "string" ||
-            typeof document.label !== "string" ||
-            typeof document.updatedAt !== "string" ||
-            typeof document.payload !== "object" ||
-            document.payload === null
-          ) {
-            continue;
-          }
-          documents.push(document as unknown as StoredScorecardDocument);
+          const document = parseDocument(JSON.parse(await file.text()) as unknown);
+          if (document) documents.push(document);
         } catch {
           // A half-written object is skipped; the rest of the queue still loads.
         }
@@ -153,7 +245,14 @@ export function createSupabaseScorecardStore(
     async put(input) {
       await ensureBucket();
       const updatedAt = new Date().toISOString();
-      const document: StoredScorecardDocument = { ...input, updatedAt };
+      const document: StoredScorecardDocument = {
+        slug: input.slug,
+        event: input.event,
+        label: input.label,
+        payload: input.payload,
+        updatedAt,
+        updatedBy: input.updatedBy ?? null,
+      };
       const body = new Blob([JSON.stringify(document)], { type: "application/json" });
       const { error } = await guarded("Could not save the scorecard document", () =>
         bucket.upload(`${input.slug}.json`, body, {
@@ -168,10 +267,44 @@ export function createSupabaseScorecardStore(
       }
       return document;
     },
+    async locked(slug, by, run) {
+      await ensureBucket();
+      const nonce = await acquireLock(slug, by);
+      try {
+        return await run();
+      } finally {
+        try {
+          await releaseLock(slug, nonce);
+        } catch {
+          // The lease expires on its own; a failed release must not fail the save.
+        }
+      }
+    },
+    async snapshot(input) {
+      const at = new Date().toISOString();
+      const document = await store.get(input.slug);
+      if (!document) return { path: null, at };
+      const stamp = at.replace(/[:.]/g, "-");
+      const path = `snapshots/${input.slug}/${stamp}-${randomUUID().slice(0, 8)}.json`;
+      const body = new Blob(
+        [JSON.stringify({ reason: input.reason, by: input.by, at, document })],
+        { type: "application/json" },
+      );
+      const { error } = await guarded("Could not keep the scorecard snapshot", () =>
+        bucket.upload(path, body, { contentType: "application/json", upsert: false }),
+      );
+      if (error) {
+        throw new ScorecardStoreUnavailable(
+          `Could not keep the scorecard snapshot: ${error.message}`,
+        );
+      }
+      return { path, at };
+    },
     close() {
       // The Supabase client is stateless for these calls.
     },
   };
+  return store;
 }
 
 let shared: ScorecardStore | null = null;

@@ -93,6 +93,7 @@ export function buildDemoScoringSeed(): ScoringRoundSeed {
       flightId: "demo-flight",
       handicap: calculated.ok ? calculated.snapshot : null,
       frozenIndex: player.frozenIndex,
+      tee: DEMO_SCORING_TEE,
     };
   });
 

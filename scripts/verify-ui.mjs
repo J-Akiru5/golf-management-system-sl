@@ -527,13 +527,22 @@ await expect(queueRows).toHaveCount(4, { timeout: 15000 });
 await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
 const fastCards = page.locator('section[aria-labelledby="score-cards"]');
 await expect(fastCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
-const autoPublishBox = fastCards.getByRole("checkbox", {
-  name: "Publish verified cards automatically",
-});
-await expect(autoPublishBox).toBeChecked({ timeout: 15000 });
-check("a verified card is set to publish automatically", true);
+const publishMode = fastCards.getByLabel("Publishing");
+await expect(publishMode).toHaveValue("every", { timeout: 15000 });
+const publishModeLabels = (await publishMode.locator("option").allTextContents()).map((label) =>
+  label.trim(),
+);
+check(
+  "a saved card is set to publish automatically",
+  publishModeLabels.join(" | ") ===
+    "Publish every saved card | Publish checked cards only | Manual",
+  `(${publishModeLabels.join(" | ")})`,
+);
 await fastCards.getByRole("button", { name: "Approve" }).first().click();
 await expect(fastCards.locator("tbody tr .pill.ok")).toHaveCount(1, { timeout: 20000 });
+// The default mode publishes the approved card after its short pause, in one batch.
+await expect(fastCards.getByText(/Last publish v\d+/)).toBeVisible({ timeout: 20000 });
+check("an approved card is published without a second click", true);
 await scoresTab("Enter card", 'section[aria-labelledby="card-queue"]');
 await expect(queueTiles.nth(1)).toHaveText("1", { timeout: 20000 });
 check("an approved card counts as verified in the queue", true);
@@ -2132,14 +2141,24 @@ await tabulatorPage.route("**/api/scorecards/field**", (route) =>
 await tabulatorPage.route("**/api/scorecards/session", (route) =>
   route.fulfill({ json: { email: "tabulator@example.com", role: "tabulation" } }),
 );
+let tabulatorPutBody = null;
 await tabulatorPage.route("**/api/scorecards/day1am-r5", (route) => {
   if (route.request().method() === "PUT") {
-    return route.fulfill({ json: { ok: true } });
+    tabulatorPutBody = route.request().postDataJSON();
+    return route.fulfill({
+      json: {
+        ok: true,
+        updatedAt: new Date().toISOString(),
+        updatedBy: "tabulator@example.com",
+        payload: tabulatorPutBody?.payload,
+      },
+    });
   }
   return route.fulfill({
     json: {
       payload: { cards: [], reviewBatches: [], activeReviewBatchId: "all" },
       updatedAt: "2026-11-14T00:00:00.000Z",
+      updatedBy: "maria@example.com",
     },
   });
 });
@@ -2176,11 +2195,22 @@ check(
   listedNames.join(" / "),
 );
 check(
-  "the system playing handicap is shown",
+  "the playing handicap is the system's index on the tee on the card",
   (await tabulatorPage.locator('#cards .card [data-k="syshcp"]').first().textContent())?.includes(
-    "System PH 12",
+    "Plays off 11 (index 10.2, Blue)",
   ) === true,
 );
+const toolbarSticky = await tabulatorPage.evaluate(
+  () => getComputedStyle(document.getElementById("toolbar")).position,
+);
+check("the find and filter bar is pinned", toolbarSticky === "sticky", toolbarSticky);
+const barHoldsTools = await tabulatorPage.evaluate(() => {
+  const bar = document.getElementById("toolbar");
+  return ["q", "dayFilter", "sessionFilter", "batch-select", "add-player", "saved", "stat"].every(
+    (id) => bar.contains(document.getElementById(id)),
+  );
+});
+check("search, day, session, batch, save state and counts are in the pinned bar", barHoldsTools);
 const firstNameEditable = await tabulatorPage
   .locator("#cards .card input.name")
   .first()
@@ -2201,6 +2231,143 @@ check(
 await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 checked card", {
   timeout: 10000,
 });
+
+// The bar stays on screen while the cards scroll, so the search is always one keystroke away.
+await tabulatorPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+const searchPos = await tabulatorPage.locator("#q").boundingBox();
+check(
+  "the search box is still on screen after scrolling to the last card",
+  Boolean(searchPos && searchPos.y >= 0 && searchPos.y < 240),
+  searchPos ? `y ${Math.round(searchPos.y)}` : "missing",
+);
+await tabulatorPage.evaluate(() => window.scrollTo(0, 0));
+
+// A card for a player who is on the event's list but not in this day's draw.
+await tabulatorPage.click("#add-player");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]').first()).toBeVisible({
+  timeout: 10000,
+});
+await tabulatorPage.locator("#pp-q").fill("FIVE");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]')).toHaveCount(1, {
+  timeout: 10000,
+});
+const drawerNote = await tabulatorPage.locator("#pp-list").textContent();
+check(
+  "a player outside the day's draw is found and named as such",
+  drawerNote?.includes("UNASSIGNED, FIVE") === true && drawerNote?.includes("not drawn for Day 1") === true,
+  drawerNote ?? "",
+);
+await tabulatorPage.locator('#pp-list input[name="pp-pick"]').first().check();
+await tabulatorPage.click("#pp-add");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(4, { timeout: 10000 });
+check("a card is added for the player outside the draw", true);
+// The same player again must not become a second card; the existing card is opened instead.
+await tabulatorPage.click("#add-player");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]').first()).toBeVisible({
+  timeout: 10000,
+});
+await tabulatorPage.locator("#pp-q").fill("FIVE");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]')).toHaveCount(1, {
+  timeout: 10000,
+});
+const alreadyNote = await tabulatorPage.locator("#pp-list").textContent();
+check(
+  "a player who already has a card for that day and session is flagged",
+  alreadyNote?.includes("already has a card for Day 1 AM") === true,
+  alreadyNote ?? "",
+);
+await tabulatorPage.locator('#pp-list input[name="pp-pick"]').first().check();
+await tabulatorPage.click("#pp-add");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(4, { timeout: 10000 });
+check("adding the same player again does not create a second card", true);
+
+// The second way in: a name that is not in the system at all.
+await tabulatorPage.click("#add-player");
+await expect(tabulatorPage.locator("#pp-other summary")).toBeVisible({ timeout: 10000 });
+await tabulatorPage.click("#pp-other summary");
+await tabulatorPage.locator("#pp-name").fill("STRANGER, SAM");
+await tabulatorPage.click("#pp-addname");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(5, { timeout: 10000 });
+const strangerCard = tabulatorPage
+  .locator("#cards .card")
+  .filter({ has: tabulatorPage.locator('input.name[value="STRANGER, SAM"]') });
+check(
+  "a player not in the system is marked so on the card",
+  (await strangerCard.locator(".no").first().textContent())?.includes(
+    "Not in the system: tell the admin",
+  ) === true,
+);
+
+// Phase 2: a card that is only in this browser must survive a reload and go out with the merge.
+const localCard = {
+  id: "local-1",
+  name: "LOCAL, ONE",
+  group: "1",
+  tee: "B",
+  hdcp: "",
+  written: "",
+  verified: false,
+  cls: "A",
+  note: "",
+  source: "",
+  holes: Array(18).fill(""),
+};
+await tabulatorPage.addInitScript((card) => {
+  sessionStorage.setItem("bamboo-tab", "reload-check");
+  localStorage.setItem(
+    "bamboo-scores-day1am-r5-v1-reload-check",
+    JSON.stringify({ cards: [card], mode: "written", savedAt: new Date().toISOString() }),
+  );
+}, localCard);
+await tabulatorPage.reload({ waitUntil: "networkidle", timeout: 120000 });
+await expect
+  .poll(
+    () => tabulatorPutBody?.payload?.cards?.some((entry) => entry.id === "local-1") === true,
+    { timeout: 15000 },
+  )
+  .toBe(true);
+check("a card only in this browser survives a reload and is merged, not dropped", true);
+await expect(tabulatorPage.locator("#sync")).toContainText("kept from this browser", {
+  timeout: 15000,
+});
+check("the page says the browser copy is being kept", true);
+
+// Phase 3: replace-all keeps a snapshot first, and the page can undo it.
+let snapshotBody = null;
+await tabulatorPage.route("**/api/scorecards/day1am-r5/snapshot", (route) => {
+  snapshotBody = route.request().postDataJSON();
+  return route.fulfill({
+    json: { ok: true, path: "snapshots/day1am-r5/check.json", at: new Date().toISOString() },
+  });
+});
+const replacement = {
+  format: "bamboo-scores-edit",
+  version: 1,
+  slug: "day1am-r5",
+  label: "Day 1 AM",
+  cards: [{ id: "from-file-1", name: "FROM, FILE", holes: Array(18).fill("") }],
+};
+tabulatorPage.once("dialog", (dialog) => dialog.accept());
+await tabulatorPage.setInputFiles("#file", {
+  name: "replace.json",
+  mimeType: "application/json",
+  buffer: Buffer.from(JSON.stringify(replacement)),
+});
+await expect
+  .poll(() => snapshotBody?.reason, { timeout: 10000 })
+  .toContain("before replacing");
+check("replace-all keeps a snapshot before it changes the shared copy", true);
+await expect(tabulatorPage.locator("#cards .card input.name").first()).toHaveValue("FROM, FILE", {
+  timeout: 15000,
+});
+await expect(tabulatorPage.locator("#undo")).toBeVisible({ timeout: 10000 });
+check("replace-all can be undone in the page", true);
+await tabulatorPage.click("#undo");
+await expect(tabulatorPage.locator("#cards .card input.name").first()).toHaveValue("LOCAL, ONE", {
+  timeout: 15000,
+});
+await expect(tabulatorPage.locator("#undo")).toBeHidden({ timeout: 10000 });
+check("undo puts the browser copy back", true);
 await tabulatorContext.close();
 
 console.log(`\nconsole errors: ${errors.length}`);

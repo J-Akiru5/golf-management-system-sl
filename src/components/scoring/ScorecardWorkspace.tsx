@@ -16,9 +16,11 @@ import type { ScoringPlayer, ScoringRoundView } from "@/lib/data/scoring";
 import type { HoleDefinition, Scorecard } from "@/lib/scoring";
 import { buildCardContext } from "@/lib/scoring/card-context";
 import {
-  cardHandicapSnapshot,
+  cardBoxNote,
   type EventScoringRules,
-  readCardHandicap,
+  eventHandicapSnapshot,
+  eventPlayingHandicap,
+  readCardBox,
 } from "@/lib/scoring/event-rules";
 import type { ScanCardReview } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
@@ -95,6 +97,11 @@ function Pill({ tone, children }: { tone: "ok" | "warn" | "info"; children: Reac
   return <span className={`pill ${tone}`}>{children}</span>;
 }
 
+/** "card says 22" -> "Card says 22", for the start of a sentence. */
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 export function ScorecardWorkspace({
   tournamentId,
   view,
@@ -140,18 +147,50 @@ export function ScorecardWorkspace({
   onCardHandicapChange,
 }: ScorecardWorkspaceProps) {
   const written = writtenOnCard.trim() === "" ? null : Number(writtenOnCard);
-  // Under the card rules the playing handicap is the HDCP box, not the round's WHS snapshot.
-  const handicapReading = eventRules ? readCardHandicap(cardHandicap, eventRules.handicap) : null;
+  // The playing handicap is the WHS figure for the player's registration index and tee. The HDCP
+  // box is only a note beside it, so nothing the desk types there can change the net score.
+  const cardBox = readCardBox(cardHandicap);
+  const playerTee = selectedPlayer?.tee === undefined ? view.course.tee : selectedPlayer.tee;
+  const eventHandicap = eventRules
+    ? eventPlayingHandicap({
+        index: selectedPlayer?.frozenIndex ?? null,
+        tee: playerTee,
+        rule: eventRules.handicap,
+      })
+    : null;
   const cardSnapshot =
-    eventRules && handicapReading?.ok
-      ? cardHandicapSnapshot({
-          reading: handicapReading,
+    eventRules && eventHandicap?.ok && playerTee
+      ? eventHandicapSnapshot({
+          handicap: eventHandicap,
           rules: eventRules,
-          tee: view.course.tee,
+          tee: playerTee,
           effectiveDate: new Date().toISOString().slice(0, 10),
         })
       : null;
-  const handicapProblem = handicapReading && !handicapReading.ok ? handicapReading.message : null;
+  const handicapProblem = eventHandicap && !eventHandicap.ok ? eventHandicap.message : null;
+  const handicapFixLabel =
+    eventHandicap && !eventHandicap.ok && eventHandicap.code === "no_tee"
+      ? "Set the player's tee"
+      : "Fix the handicap";
+  // "card says 22, plays off 19 (index 16.4, White)" when the box disagrees with the WHS number.
+  const cardNote =
+    eventHandicap?.ok && playerTee
+      ? cardBoxNote({
+          box: cardBox,
+          playingHandicap: eventHandicap.playingHandicap,
+          index: eventHandicap.index,
+          teeName: playerTee.name,
+        })
+      : null;
+  const handicapHint = !eventRules
+    ? ""
+    : (handicapProblem ??
+      (eventHandicap?.ok
+        ? `${capitalise(
+            cardNote ??
+              `plays off ${eventHandicap.playingHandicap} (index ${eventHandicap.index}, ${playerTee?.name ?? "the registration tee"})`,
+          )}.${eventHandicap.warning ? ` ${capitalise(eventHandicap.warning)}.` : ""}`
+        : ""));
   const shownHandicap = eventRules ? cardSnapshot : (selectedPlayer?.handicap ?? null);
   const reviews: Record<number, ScorecardReviewState> = {};
   if (scanned) {
@@ -182,7 +221,7 @@ export function ScorecardWorkspace({
     : players.length < 2
       ? "At least two players are needed"
       : readiness.ready && handicapProblem
-        ? "Fix the HDCP"
+        ? handicapFixLabel
         : readiness.label;
 
   const summary = summariseScorecard({
@@ -220,8 +259,7 @@ export function ScorecardWorkspace({
     dayNumber: view.dayNumber,
     markerName: eventRules ? null : (selectedScorer?.playerName ?? null),
     playingHandicap: playingHandicapShown,
-    cardHandicap:
-      eventRules && handicapReading?.ok ? handicapReading.cardValue : context?.cardHandicap,
+    cardHandicap: eventRules ? cardBox.value : context?.cardHandicap,
     className: context?.className,
     partnerName: context?.partnerName,
     teamHandicap: context?.teamHandicap,
@@ -288,15 +326,10 @@ export function ScorecardWorkspace({
               className={`hint m-0 lg:col-span-3 ${handicapProblem ? "text-danger" : ""}`}
               role="status"
             >
-              {handicapProblem ??
-                (handicapReading?.ok && handicapReading.blank
-                  ? "Blank counts as 0: this card plays off 0."
-                  : handicapReading?.ok
-                    ? `Plays off ${handicapReading.playingHandicap} (the decimal is dropped).`
-                    : "")}
-              {selectedPlayer?.frozenIndex !== undefined && selectedPlayer.frozenIndex !== null
-                ? ` Registration index: ${selectedPlayer.frozenIndex}.`
-                : ""}
+              {handicapHint}
+              {handicapHint ? " " : ""}
+              The card is scored with the WHS playing handicap from the registration index and tee,
+              so the number in this box is a note only.
             </p>
           )}
           {!ready && blockers.length > 1 && (

@@ -4,7 +4,7 @@ Golf tournament management for **Iloilo Golf & Country Club (IGCC)**, built by *
 The organizer adds players; the system routes each one to a category, tee, flight, group and start
 slot; the organizer reviews, overrides and publishes; players read their pairings on a phone.
 
-> **Status date:** 14 Nov 2026 · **Production:** `v0.53.0` (live; the 0.52.1 tabulator fix reached production through 0.52.2 after Vercel blocked the 0.52.1 merge, see the decision log, 14 Nov 2026) · **Branches:** `develop` (integration, no deploy), `staging` (preview), `main` (production) ·
+> **Status date:** 15 Nov 2026 · **Production:** `v0.53.0` (live; the 0.52.1 tabulator fix reached production through 0.52.2 after Vercel blocked the 0.52.1 merge, see the decision log, 14 Nov 2026) · **Branches:** `develop` (integration, no deploy), `staging` (preview), `main` (production) ·
 > **Product name:** TeeLine Golf (approved direction; trademark clearance has not been established)
 
 This is the single plan for humans and AI agents. Section 1 is the 60-second version. Everything
@@ -46,6 +46,63 @@ Applied on 13 Nov 2026 and checked against the live project and `https://golf.sy
 Not blockers for the roster, still open: 39 public players have no class and 47 no category, because
 their entries were never routed. `SIASON, TIM` carries `203` on the sheet; the live index is 20.3 and
 is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, VICTOR`.
+
+---
+
+## Final day of the 24th Bamboo Tee (plan of 15 Nov 2026)
+
+Production is `v0.54.0`. Day 4 is the last playing day: every score and every handicap has to be final
+by the awarding. The owner is on the floor; the orchestrator builds, reviews and releases.
+
+### Diagnosis after Day 3
+
+| Area | What happened | State on 15 Nov |
+| --- | --- | --- |
+| Handicap | Cards were scored with whatever was typed in the HDCP box, so the public showed handicaps the admin never set | **Rule settled 14 Nov:** the WHS playing handicap for the player's tee is the only source. Days 1 to 3 normalized and published. An index edit corrects and republishes played rounds (v0.54.0). Still open: the card save on `/scores` and the tabulator page use the box (#301, #303, #296) |
+| Publishing | Scores reached the public through one-off scripts and manual publishes | Publish on save becomes a setting per day (#301). Provisional publication is on for all four days |
+| Tabulator | Search scrolls away, no branding, a card for a player not on the list is hard to add | #303 |
+| Schedule changes | Swap exists (v0.46.0) but is not obvious | Drag and drop on the board and table view (#304) |
+| Awarding | No way to hide results or reveal them together | Blackout and timed reveal (#302) |
+| Data still unchecked | 59 published cards belong to players with index 0 or none on file; snapshot alignment SQL 4 not run | #305 checklist |
+| Issues | 43 open, many already shipped | 22 closed with evidence on 15 Nov; 4 stale pull requests closed |
+
+### Decisions the owner made on 15 Nov 2026
+
+- **Publish on save.** A card saved on the admin side goes public at once, as a setting per day with
+  three modes (every save, checked only, manual). Today runs on every save; corrections are gathered after.
+- **Blackout hides everything about results and players**: leaderboard, All scores, scorecards,
+  profiles, roster and the TV board. Pairings, tee times and rules stay. The reveal is a countdown the
+  admin sets in seconds.
+- **Migrations are allowed, the owner runs them.** Features must work without them where possible.
+- **The orchestrator's builders build all of today's work.** Karl and Lou review and support the floor.
+
+### Work in flight
+
+| Issue | What | Branch | Reviewer |
+| --- | --- | --- | --- |
+| [#301](https://github.com/J-Akiru5/golf-management-system-sl/issues/301) | WHS handicap on save, publish-on-save setting | `agent/fd-scores` | Karl |
+| [#302](https://github.com/J-Akiru5/golf-management-system-sl/issues/302) | Results blackout and timed reveal | `agent/fd-blackout` | Lou |
+| [#303](https://github.com/J-Akiru5/golf-management-system-sl/issues/303) | Tabulator: branding, sticky search, system handicap, add a card | `agent/fd-tabulator` | Karl |
+| [#304](https://github.com/J-Akiru5/golf-management-system-sl/issues/304) | Drag and drop on the draw board | `agent/fd-dragdrop` | Lou |
+| [#305](https://github.com/J-Akiru5/golf-management-system-sl/issues/305) | Guardrails and the day's checklist | none | Jeff |
+
+Release order: #301 and #303 first (scoring and handicap), then #302 before 2 p.m., then #304.
+
+### Guardrails while production is live
+
+1. **One release train.** Work goes to `develop`, then one release pull request to `main` with both
+   required checks green. No direct push to `main`, and no second release branch in flight.
+2. **Scoring and handicap changes** need a test for the changed rule and a dry run against live data
+   before any write.
+3. **Scripts that write live data** print a plan first, write a backup, and are re-run to prove a
+   second run changes nothing.
+4. **Migrations** are run by the owner only, one file at a time. Each is read first for storage
+   deletes and for the function bodies it replaces.
+5. **A published version is never edited or deleted.** A correction is a new version.
+6. **Builders never push.** One issue, one branch, one worktree; builders that touch the same files
+   run one after another.
+7. **No player names** in this public repository's issues or commits.
+8. **The blackout gate is the database's.** A page that hides results in the browser only does not count.
 
 ---
 
@@ -192,6 +249,7 @@ through a pull request to `develop`.
 | Tabulator assigned list and admin handoff (14 Nov 2026) | **Released in v0.51.0; the card-handicap migration is not applied. No data migration: the deploy changes code only, and the live scorecard documents were backed up before promotion (`backups/scorecard-documents-2026-11-14T02-58-00-880Z`, `day1am-r5` with 145 cards).** A fresh day/session page auto-lists every assigned player with a group and tee time, in start order, with the system playing handicap. Only the 18 hole scores and the card's HDCP box are typed; name, class and system handicap are read-only. A day, session, group or tee corrected by the tabulator is kept and labelled. An existing day with cards is never changed on load; **Refresh list from system** adds a missing player explicitly. **Send checked cards to admin** freezes only the checked cards, uses the card HDCP first and the system playing handicap when the box is blank, keeps the partner as marker, and leaves name-only cards for the admin. `/scores/review` lists the submissions; the admin reviews one, imports and approves it with a staff session, then publishes. The tabulator cannot approve or publish. The card-handicap migration is written and **not applied**; the admin import fails with a plain message until the owner runs it | `public/scorecard/index.html`, `src/lib/scorecards/field.ts`, `src/app/api/scorecards/submit`, `src/app/api/scorecards/submissions`, `src/components/scoring/TabulatorSubmissionsPanel.tsx`, `SheetImportPanel.tsx`, `ScoresDesk.tsx`, `src/lib/scorecards/submit-route.test.ts`, `src/lib/auth/routes.ts`; `pnpm check` passed (2612 tests, build), `pnpm check:ui` passed (222 checks, 0 console errors); migration not applied |
 | Tabulator live sync for several users (14 Nov 2026) | **Released as v0.52.1 (PR #285, merge `cd6ca4d`, tag `v0.52.1`) and live since v0.52.2.** Vercel blocked the deploy of the 0.52.1 merge, so v0.52.2 (PR #286, no code change) was merged under a Vercel team member's identity to deploy the same code; the live page was checked and carries the Save card button, the sync status line and the "checked of" batch counts. No migration. Cause of the reported problem: the page read the shared document once at load and every save replaced the whole document, so a save by user 1 never reached users 2 and 3 and the last save erased the others. It was not a database fault: the document is one JSON file in the private `scorecard-documents` bucket and the plan upgrade does not touch it. Now each card and batch has a `rev` on the server clock, removals are tombstones, `PUT /api/scorecards/[slug]` merges with the stored document (`src/lib/scorecards/merge.ts`, 12 tests) and returns the merged copy, and `GET ?since=` answers `unchanged` cheaply. The page polls every 3 seconds, adopts others' cards without touching a card with unsaved edits, keeps the cursor, and one player added twice becomes one card (`fieldCardId`). A device that worked offline or on the older page merges in without loss: a blank hole takes the other side's score, a clash keeps the shared score and writes the other in the card note. Each card has a **Save card** button ("Saved at ... · everyone can see it" or "Unsaved changes"), each batch reads "24 checked of 132", and **Send checked cards to admin** sends only checked cards not yet sent, so two tabulators never send the same cards twice. Tried with two separate browser origins against the real bucket: a new card, an edit, the checked tick and a removal each arrived within one poll, typing was not interrupted, and an offline device lost nothing; the test documents were deleted. **Limit:** two people editing the same card within the same few seconds is last save wins for that card | `src/lib/scorecards/merge.ts`, `src/app/api/scorecards/[slug]/route.ts`, `public/scorecard/index.html`; 2702 tests, build and 238 browser checks passed |
 | Tabulator Import JSON merges by player (14 Nov 2026) | **Released as v0.52.3 (PR #289); no migration.** Import JSON used to skip only a card with the same id, so a file with other ids duplicated every player already on the page and ignored the file's scores for a card already there. It now runs through the photo scan's review (`reviewIncoming`, `planScan`, `mergeInto`): day, session and batch are chosen, the dialog starts on every card on the page, cards are matched by player name, an existing card takes only the file's scores for its blank holes (a clash keeps the card's score and is noted), and a player with no card gets one linked to the system's player (`linkToSystem`). Tried against the real field list with a scan file that overlapped two cards: no duplicate, 33 scores added, the stranger added with a note | `public/scorecard/index.html` |
+| Tabulator save safety (15 Nov 2026) | **Built on `fix/scorecard-stale-save`; no migration.** The v0.52.1 merge is kept, and the holes around it are closed. (1) A ten-second lease at `_locks/<slug>.json`, taken over when its holder stops answering, makes the read, merge and write one step, so two saves arriving together cannot merge over the same copy; a held lease answers 423 and the page retries with the edits still in the browser. (2) The document records `updatedBy` from the session, and the live label names the account. (3) The page no longer applies the shared copy over its local cards on load: it keeps the local copy, sends it through the merge and says how many cards it kept; each tab has its own browser key, with a one-time move of the old key. A same-card score clash now writes a note naming the hole, both scores and the account whose value lost. Reset and replace snapshot the shared copy to `snapshots/<slug>/` first, reset asks for RESET, and Undo is available until reload. **Not exercised:** the lease and snapshot against the live Supabase bucket (the tests use a fake bucket), and the reset prompt itself (the bundled page has no first reading; replace-all covers the same snapshot and undo path) | `src/lib/scorecards/store.ts`, `src/lib/scorecards/merge.ts`, `src/app/api/scorecards/[slug]/route.ts`, `src/app/api/scorecards/[slug]/snapshot/route.ts`, `public/scorecard/index.html`, `scripts/verify-ui.mjs`; `pnpm check` passed (2780 tests, build), `pnpm check:ui` passed (243 checks, 0 console errors), 5 new browser checks, 5 new merge tests, 7 new store tests, 4 new route tests; no migration |
 | Public profile shows every player's playing handicap (14 Nov 2026) | **Released as v0.52.4 (PR #290). The migration was run by the owner in the Supabase SQL editor on 14 Nov 2026 and the public function was checked to return `playingHandicap`.** The public profile read the playing handicap only from the player's published cards (`cards[0]`), so players without a published card showed a dash. `profilePlayingHandicap` now uses the card's handicap when there is one and otherwise the playing handicap the system holds on the player's entry, which `public_player_scorecard()` has to return: `20261114000400_public_profile_playing_handicap.sql` is that function with two added lines (checked by test to be exactly that), same release gate and grants, no table or policy change. **Data fill (14 Nov 2026, owner's go):** 28 confirmed entries had no stored playing handicap because they were confirmed from the sheet with no category; 26 of them (those with an index) were filled with the draw's formula on their own tee, or Blue, the open division, when they had none (`min(index, 30)` then the tee formula, allowance 100%, four of them come out at 34), and only entries still empty were written. Hong, Keun Seon and Santa Maria, Joey have no index and were not filled. The values before the change are in `backups/registrations-playing-handicap-2026-11-14T07-48-40-134Z` (local, git-ignored). Three scored players have a round snapshot of 0 although they have an index (Jamelo 25.4, Bautista 16.9, Camot 23.4) and two are stored at 34 (Diaz, Tobes): not touched, they change real scores. The stored value is the draw's, so it does not yet reflect the owner's cap-at-30 decision (not built) | `src/lib/data/public-profile.ts`, `src/components/public/PlayerProfileView.tsx`, `supabase/migrations/20261114000400_public_profile_playing_handicap.sql` |
 
 Whole suite: 76 test files, 776 tests passing (`pnpm test`) on the merged `develop` tree; the scoring

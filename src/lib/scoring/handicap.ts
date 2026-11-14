@@ -5,6 +5,7 @@ import type {
   HandicapProblem,
   HandicapSnapshot,
   HoleDefinition,
+  SnapshotRounding,
 } from "./types";
 import { HANDICAP_INDEX_LIMITS, isIsoDate, isNonEmptyString, teeProblems } from "./validation";
 
@@ -128,16 +129,23 @@ export interface HandicapSnapshotCheck {
  * so the desk can check it. A difference is never corrected or hidden here. An index is stored to
  * one decimal, so a real difference is at least 0.1; the small threshold keeps floating-point
  * noise from flagging an identical value.
+ *
+ * A card snapshot is not compared on its index. `save_card_handicap_snapshot` stores the playing
+ * handicap it is handed in the snapshot's index column as well, so that number is not the player's
+ * index and comparing the two would raise a difference on every card.
  */
 export function checkHandicapSnapshot(input: {
-  handicap: Pick<HandicapSnapshot, "index" | "teeId"> | null;
+  handicap: (Pick<HandicapSnapshot, "index" | "teeId"> & { rounding?: SnapshotRounding }) | null;
   frozenIndex: number | null | undefined;
   roundTeeId: string | null | undefined;
 }): HandicapSnapshotCheck {
   const snapshotIndex = input.handicap?.index ?? null;
   const frozenIndex = input.frozenIndex ?? null;
   const indexDiffers =
-    snapshotIndex !== null && frozenIndex !== null && Math.abs(snapshotIndex - frozenIndex) >= 0.05;
+    input.handicap?.rounding !== "card" &&
+    snapshotIndex !== null &&
+    frozenIndex !== null &&
+    Math.abs(snapshotIndex - frozenIndex) >= 0.05;
   const teeDiffers = Boolean(
     input.handicap && input.roundTeeId && input.handicap.teeId !== input.roundTeeId,
   );
