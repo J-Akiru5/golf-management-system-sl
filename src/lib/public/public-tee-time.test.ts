@@ -9,10 +9,10 @@ describe("publicTeeTime", () => {
     expect(publicTeeTime({ dayNumber: 4, afternoon: false })).toBe("06:00");
   });
 
-  it("prints the afternoon session, earlier on Sunday", () => {
+  it("prints the afternoon session, earlier on the last two days", () => {
     expect(publicTeeTime({ dayNumber: 1, afternoon: true })).toBe("12:30");
     expect(publicTeeTime({ dayNumber: 2, afternoon: true })).toBe("12:30");
-    expect(publicTeeTime({ dayNumber: 3, afternoon: true })).toBe("12:30");
+    expect(publicTeeTime({ dayNumber: 3, afternoon: true })).toBe("12:00");
     expect(publicTeeTime({ dayNumber: 4, afternoon: true })).toBe("11:30");
   });
 

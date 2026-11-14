@@ -1,4 +1,10 @@
-import { applyTeamClasses, defaultCategoryFor, matchCategories, matchFlights } from "./classify";
+import {
+  applyTeamClasses,
+  classValueOf,
+  defaultCategoryFor,
+  matchCategories,
+  matchFlights,
+} from "./classify";
 import { chunk, groupSizes, packUnits } from "./groups";
 import { ageOn, playingHandicap } from "./handicap";
 import {
@@ -23,7 +29,7 @@ import type {
   TournamentConfig,
 } from "./types";
 
-export { averageIndex, defaultCategoryFor } from "./classify";
+export { averageIndex, classValueOf, defaultCategoryFor, teamClassValue } from "./classify";
 export { ageOn, courseHandicap, playingHandicap, rawCourseHandicap } from "./handicap";
 export { addMinutes } from "./schedule";
 export * from "./types";
@@ -169,16 +175,18 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
   }
 
   // The club classes the field on the handicap index: a player's own index, and for a member-guest
-  // pair the average of the two. The course handicap converter still sets the playing handicap.
-  const value = index;
+  // pair the average of the two. An event that classes on the course handicap compares that number
+  // instead, the same one the desk's correction dialog shows, so the two never disagree.
+  const value = classValueOf(reg, config.flightBasis, config.maxIndex);
   // Class first: the ranges are field-wide, so a player joins a class on their number alone and the
   // tee group plays no part.
   const flightMatches = matchFlights(flights, value);
   if (flightMatches.length !== 1) {
+    const basis = config.flightBasis === "courseHandicap" ? "course handicap" : "index";
     return review(
       flightMatches.length === 0
-        ? `No class covers index ${value}.`
-        : `Class ranges overlap at ${value}.`,
+        ? `No class covers ${basis} ${value}.`
+        : `Class ranges overlap at ${basis} ${value}.`,
     );
   }
   reg.flightId = (flightMatches[0] as FlightRule).id;
@@ -244,7 +252,7 @@ export function route(input: RoutingInput, options: RouteOptions = {}): RoutingR
   ];
   // A member-guest pair is classed on the average of the two indexes, before any grouping, so both
   // partners share one class and cannot be split across groups.
-  applyTeamClasses(registrations, flights, config.maxIndex);
+  applyTeamClasses(registrations, flights, config.maxIndex, config.flightBasis);
   const byId = new Map(registrations.map((r) => [r.playerId, r]));
   const warnings: string[] = [];
 

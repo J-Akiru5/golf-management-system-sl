@@ -7,6 +7,7 @@ import {
   TEST_COURSE,
   TEST_POLICY,
 } from "@/lib/scoring/__tests__/fixtures";
+import { CORRECTED_HANDICAP_SOURCE } from "@/lib/scoring/event-rules";
 import type { Database } from "@/lib/supabase/types";
 import { assessOpenRound, missingSettingsMessage, OPEN_ROUND_MESSAGES } from "./open-round";
 import { createDemoScoringRepository, type OpenRoundInput, type ScoringRoundSeed } from "./scoring";
@@ -453,6 +454,92 @@ function openInput(overrides: Partial<OpenRoundInput> = {}): OpenRoundInput {
     ...overrides,
   };
 }
+
+describe("demo scoring repository correcting a handicap snapshot", () => {
+  it("replaces the snapshot the scores are read from and names the correction", async () => {
+    const repo = repository();
+
+    const corrected = await repo.correctHandicap("tournament-1", {
+      playerId: "p1",
+      index: 10,
+      effectiveDate: "2026-11-14",
+      reason: "The NGAP sheet shows 10.0, not 18.0.",
+    });
+
+    // 10 x (128 / 113) + (71.5 - 72) = 10.8, so course and playing handicap are both 11.
+    expect(corrected.players[0]?.handicap).toMatchObject({
+      index: 10,
+      indexSource: CORRECTED_HANDICAP_SOURCE,
+      indexEffectiveDate: "2026-11-14",
+      courseHandicap: 11,
+      playingHandicap: 11,
+    });
+    // The other player's snapshot is untouched.
+    expect(corrected.players[1]?.handicap).toMatchObject({ index: 0 });
+  });
+
+  it("caps the corrected index at the event maximum", async () => {
+    const repo = repository({ maxIndex: 12 });
+
+    const corrected = await repo.correctHandicap("tournament-1", {
+      playerId: "p1",
+      index: 20,
+      effectiveDate: "2026-11-14",
+      reason: "The sheet writes 20.0; the event caps at 12.",
+    });
+
+    // 12 x (128 / 113) + (71.5 - 72) = 13.1, so the snapshot holds the capped index and 13.
+    expect(corrected.players[0]?.handicap).toMatchObject({
+      index: 12,
+      playingHandicap: 13,
+    });
+  });
+
+  it("refuses a short reason, an index outside -10 to 54, a bad date and a final round", async () => {
+    const repo = repository();
+    const base = {
+      playerId: "p1",
+      index: 10,
+      effectiveDate: "2026-11-14",
+      reason: "Sheet corrected.",
+    };
+
+    await expect(repo.correctHandicap("tournament-1", { ...base, reason: "  " })).rejects.toThrow(
+      /reason/i,
+    );
+    await expect(repo.correctHandicap("tournament-1", { ...base, index: -11 })).rejects.toThrow(
+      /between -10 and 54/,
+    );
+    await expect(repo.correctHandicap("tournament-1", { ...base, index: 54.5 })).rejects.toThrow(
+      /between -10 and 54/,
+    );
+    await expect(
+      repo.correctHandicap("tournament-1", { ...base, effectiveDate: "14 Nov 2026" }),
+    ).rejects.toThrow(/effective date/i);
+
+    const final = repository({ roundStatus: "final" });
+    await expect(final.correctHandicap("tournament-1", base)).rejects.toThrow(/final/i);
+  });
+
+  it("leaves the snapshot alone when a correction is refused", async () => {
+    const repo = repository();
+
+    await expect(
+      repo.correctHandicap("tournament-1", {
+        playerId: "p1",
+        index: 10,
+        effectiveDate: "2026-11-14",
+        reason: "x",
+      }),
+    ).rejects.toThrow(/reason/i);
+
+    const view = await repo.loadRound("tournament-1");
+    expect(view?.players[0]?.handicap).toMatchObject({
+      index: 18,
+      indexSource: "NGAP export 2026-11",
+    });
+  });
+});
 
 describe("demo scoring repository opening a round", () => {
   it("opens a draft round from a published draw", async () => {
@@ -1088,5 +1175,43 @@ describe("connected scoring repository resolving a hole", () => {
 
     const resolved = fake.rpcCalls.find((call) => call.name === "resolve_hole");
     expect(resolved?.args.p_strokes).toBe(4);
+  });
+});
+
+describe("connected scoring repository correcting a handicap", () => {
+  it("sends the round entry, index, date and reason, then reloads the round", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await repo.correctHandicap("t1", {
+      playerId: WIRE_PLAYER_ID,
+      index: 10,
+      effectiveDate: "2026-11-14",
+      reason: "  The NGAP sheet shows 10.0, not 18.0.  ",
+    });
+
+    expect(fake.rpcCalls.map((call) => call.name)).toEqual(["correct_handicap_snapshot"]);
+    expect(fake.rpcCalls[0]?.args).toEqual({
+      p_round_entry: "entry-p1",
+      p_index: 10,
+      p_effective: "2026-11-14",
+      p_reason: "The NGAP sheet shows 10.0, not 18.0.",
+    });
+  });
+
+  it("refuses a short reason before it calls the database", async () => {
+    const fake = fakeScoringClient();
+    const repo = createSupabaseScoringRepository({ client: fake.client });
+
+    await expect(
+      repo.correctHandicap("t1", {
+        playerId: WIRE_PLAYER_ID,
+        index: 10,
+        effectiveDate: "2026-11-14",
+        reason: " ",
+      }),
+    ).rejects.toThrow(/reason/i);
+
+    expect(fake.rpcCalls).toEqual([]);
   });
 });

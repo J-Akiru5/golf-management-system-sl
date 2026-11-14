@@ -1,4 +1,9 @@
 import {
+  type SaveEventCardInput,
+  type SaveEventCardResult,
+  saveEventCardFlow,
+} from "@/lib/data/event-card";
+import {
   assessOpenRound,
   OPEN_ROUND_MESSAGES,
   type OpenRoundSettingsInput,
@@ -9,11 +14,13 @@ import type { FinalizationAuthority } from "@/lib/scoring";
 import {
   buildStandings,
   type CanonicalRound,
+  calculateHandicap,
   checkFinalization,
   DEFAULT_STROKE_LIMITS,
   deriveCanonicalHoleScores,
   type FinalizationReadiness,
   type HandicapSnapshot,
+  isIsoDate,
   type Resolution,
   type RoundCourse,
   type Scorecard,
@@ -23,6 +30,7 @@ import {
   type VerificationPolicy,
   validateScorecard,
 } from "@/lib/scoring";
+import { CORRECTED_HANDICAP_SOURCE } from "@/lib/scoring/event-rules";
 import { checkCardSubmission } from "@/lib/scoring/submission";
 
 export type ScoringRoundStatus = "draft" | "open" | "scoring" | "provisional" | "final";
@@ -77,6 +85,11 @@ export interface ScoringRoundSeed {
   provisionalPublication?: boolean;
   /** The rules version stored on the round. The demo does not need one to score. */
   rulesVersion?: string | null;
+  /**
+   * The event's maximum index. A corrected index is capped at it the way `save_handicap_snapshot`
+   * does. Left out or null, the demo applies no cap.
+   */
+  maxIndex?: number | null;
   /**
    * The published draw the demo can open a round from. When left out, the demo treats one group
    * holding every seeded player as published at revision 1.
@@ -159,6 +172,54 @@ export interface OpenRoundInput extends OpenRoundSettingsInput {
   dayNumber?: number | null;
 }
 
+export interface CorrectHandicapInput {
+  /** The player whose round snapshot is being corrected. */
+  playerId: string;
+  /** The corrected Handicap Index, before the event maximum is applied. */
+  index: number;
+  /** ISO date the corrected index is valid from. */
+  effectiveDate: string;
+  /** Why the index changed. Written to the scoring audit, so it is required. */
+  reason: string;
+}
+
+/**
+ * The bounds a correction accepts. Narrower than the snapshot's own storage check (-20 to 54) on
+ * purpose: `correct_handicap_snapshot` refuses anything below -10, and both repositories refuse the
+ * same values here before starting a write.
+ */
+export const CORRECTION_INDEX_LIMITS = { min: -10, max: 54 } as const;
+
+/**
+ * Checks a correction before either repository writes it. Returns the plain sentence to show, or
+ * null when the input is acceptable.
+ *
+ * The database function applies the same rules in the same order. This helper keeps the demo, the
+ * screen and the connected repository from starting a write that the database will refuse.
+ */
+export function handicapCorrectionProblem(
+  input: CorrectHandicapInput,
+  roundStatus: ScoringRoundStatus,
+): string | null {
+  if (roundStatus === "final") {
+    return "The round is final, so its handicap snapshot cannot be corrected.";
+  }
+  if (input.reason.trim().length < 3) {
+    return "A handicap correction needs a reason of at least 3 characters.";
+  }
+  if (
+    !Number.isFinite(input.index) ||
+    input.index < CORRECTION_INDEX_LIMITS.min ||
+    input.index > CORRECTION_INDEX_LIMITS.max
+  ) {
+    return `The Handicap Index must be between ${CORRECTION_INDEX_LIMITS.min} and ${CORRECTION_INDEX_LIMITS.max}.`;
+  }
+  if (!isIsoDate(input.effectiveDate)) {
+    return "The Handicap Index needs its effective date.";
+  }
+  return null;
+}
+
 export interface ScoringRepository {
   /**
    * The round for the playing day the desk is on. A null or missing day reads the earliest round,
@@ -177,6 +238,16 @@ export interface ScoringRepository {
     input: SubmitCardInput,
     dayNumber?: number | null,
   ): Promise<ScoringRoundView>;
+  /**
+   * Saves a desk-checked card under the event's card rules in one step: the handicap written on
+   * the card, the card, and (when the desk has checked it) its approval, each with its audit row.
+   * Refuses with a plain sentence when the round is not on the event rules.
+   */
+  saveEventCard(
+    tournamentId: string,
+    input: SaveEventCardInput,
+    dayNumber?: number | null,
+  ): Promise<SaveEventCardResult>;
   approveCard(
     tournamentId: string,
     cardId: string,
@@ -198,6 +269,17 @@ export interface ScoringRepository {
   resolveHole(
     tournamentId: string,
     input: ResolveHoleInput,
+    dayNumber?: number | null,
+  ): Promise<ScoringRoundView>;
+  /**
+   * Corrects the handicap snapshot the round is scored from, after the round has left draft/open.
+   * The database lifts its freeze for this one write, recalculates that player's result and records
+   * who, why, the old values and the new ones. Owner or organizer only. Publishing is the caller's
+   * decision.
+   */
+  correctHandicap(
+    tournamentId: string,
+    input: CorrectHandicapInput,
     dayNumber?: number | null,
   ): Promise<ScoringRoundView>;
   publishRound(
@@ -243,6 +325,8 @@ export function createDemoScoringRepository(
   let tieBreak: TieBreakPolicy | null = seed.tieBreak ?? null;
   let rulesVersion: string | null = seed.rulesVersion ?? null;
   const captureKeys = new Map<string, string>();
+  /** Card handicap snapshots written under an event's card rules, by player. */
+  const cardHandicaps = new Map<string, HandicapSnapshot>();
 
   let lastTick = 0;
   const nextIso = () => {
@@ -254,6 +338,7 @@ export function createDemoScoringRepository(
     const policy: VerificationPolicy = { ...seed.policy, requiredCards };
     const players: ScoringPlayer[] = seed.players.map((player) => ({
       ...player,
+      handicap: cardHandicaps.get(player.playerId) ?? player.handicap,
       canonical: deriveCanonicalHoleScores({
         roundId: seed.roundId,
         playerId: player.playerId,
@@ -342,7 +427,7 @@ export function createDemoScoringRepository(
     };
   }
 
-  return {
+  const repository: Omit<ScoringRepository, "saveEventCard"> = {
     async loadRound(tournamentId, dayNumber) {
       if (tournamentId !== seed.tournamentId) return null;
       if (dayNumber !== undefined && dayNumber !== null && (seed.dayNumber ?? 1) !== dayNumber) {
@@ -537,6 +622,48 @@ export function createDemoScoringRepository(
       return view();
     },
 
+    async correctHandicap(tournamentId, input) {
+      assertTournament(tournamentId);
+      const problem = handicapCorrectionProblem(input, roundStatus);
+      if (problem) throw new Error(problem);
+
+      const current = view();
+      const player = current.players.find((candidate) => candidate.playerId === input.playerId);
+      if (!player) throw new Error("Player not found in this round.");
+      const existing = cardHandicaps.get(input.playerId) ?? player.handicap;
+      if (!existing) throw new Error("This player has no handicap snapshot to correct.");
+
+      // The same arithmetic as the database: cap at the event maximum, round the index to one
+      // decimal, then work out Course and Playing Handicap from the snapshot's tee ratings and the
+      // round's allowance. A card snapshot reads as "card" here but is stored as "single", which is
+      // the mode the correction keeps.
+      const capped =
+        seed.maxIndex === null || seed.maxIndex === undefined
+          ? input.index
+          : Math.min(input.index, seed.maxIndex);
+      const calculation = calculateHandicap({
+        index: Math.round(capped * 10) / 10,
+        indexSource: CORRECTED_HANDICAP_SOURCE,
+        indexEffectiveDate: input.effectiveDate,
+        tee: {
+          id: existing.teeId,
+          name: seed.course.tee.name,
+          courseRating: existing.courseRating,
+          slope: existing.slope,
+          par: existing.coursePar,
+        },
+        allowance: existing.allowance,
+        rounding: existing.rounding === "card" ? "single" : existing.rounding,
+        rulesVersion: existing.rulesVersion,
+      });
+      if (!calculation.ok) {
+        throw new Error(calculation.problems.map((issue) => issue.message).join(" "));
+      }
+
+      cardHandicaps.set(input.playerId, calculation.snapshot);
+      return view();
+    },
+
     async publishRound(tournamentId) {
       assertTournament(tournamentId);
       if (!seed.provisionalPublication) {
@@ -580,6 +707,28 @@ export function createDemoScoringRepository(
       ];
       roundStatus = "final";
       return view();
+    },
+  };
+
+  return {
+    ...repository,
+    async saveEventCard(tournamentId, input, dayNumber) {
+      assertTournament(tournamentId);
+      if (dayNumber !== undefined && dayNumber !== null && (seed.dayNumber ?? 1) !== dayNumber) {
+        throw new Error("This scoring round is for another playing day.");
+      }
+      return saveEventCardFlow(
+        {
+          load: async () => view(),
+          writeSnapshot: async (plan) => {
+            cardHandicaps.set(input.playerId, plan.snapshot);
+          },
+          submit: (card) => repository.submitCard(tournamentId, card),
+          approve: (cardId, reason) => repository.approveCard(tournamentId, cardId, reason),
+          today: () => new Date(clock()).toISOString().slice(0, 10),
+        },
+        input,
+      );
     },
   };
 }

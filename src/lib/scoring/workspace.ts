@@ -21,6 +21,11 @@ export interface ScorecardReadinessInput {
   correction?: boolean;
   correctionReason?: string;
   issues?: readonly CardIssue[];
+  /**
+   * False when the event does not record markers, so the desk is not asked for one. A marker the
+   * desk did name is still checked against the player. Defaults to true.
+   */
+  markerRequired?: boolean;
 }
 
 export interface ScorecardReadiness {
@@ -126,9 +131,11 @@ export function scorecardReadiness(input: ScorecardReadinessInput): ScorecardRea
   const playerId = input.playerId.trim();
   const scorerId = input.scorerId.trim();
 
+  const markerRequired = input.markerRequired ?? true;
+
   if (!playerChosen) blockers.push("Choose a player.");
   if (!markerChosen) {
-    blockers.push("Choose a marker.");
+    if (markerRequired) blockers.push("Choose a marker.");
   } else if (playerChosen && playerId === scorerId) {
     blockers.push("Choose a different marker: a player cannot mark their own card.");
   }
@@ -179,7 +186,7 @@ export function scorecardReadiness(input: ScorecardReadinessInput): ScorecardRea
 
   if (!playerChosen) {
     label = "Choose a player";
-  } else if (!markerChosen || playerId === scorerId) {
+  } else if ((!markerChosen && markerRequired) || (markerChosen && playerId === scorerId)) {
     label = "Choose a different marker";
   } else if (missingHoles > 0) {
     label = `Needs ${holeCount(missingHoles)}`;

@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const createBucket = vi.fn();
 const upload = vi.fn();
 const download = vi.fn();
+const list = vi.fn();
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
-    storage: { createBucket, from: () => ({ upload, download }) },
+    storage: { createBucket, from: () => ({ upload, download, list }) },
   }),
 }));
 
@@ -18,6 +19,7 @@ beforeEach(() => {
   createBucket.mockReset();
   upload.mockReset();
   download.mockReset();
+  list.mockReset();
 });
 
 afterEach(() => {
@@ -61,5 +63,31 @@ describe("createSupabaseScorecardStore", () => {
     upload.mockRejectedValue(new Error("socket hang up"));
     const store = createSupabaseScorecardStore();
     await expect(store.put(input)).rejects.toThrow(/socket hang up/);
+  });
+
+  it("lists the saved day documents and skips a broken object", async () => {
+    createBucket.mockResolvedValue({ error: null });
+    list.mockResolvedValue({
+      data: [{ name: "day1am-r5.json" }, { name: "day2pm.json" }, { name: "notes.txt" }],
+      error: null,
+    });
+    download.mockImplementation((name: string) =>
+      Promise.resolve({
+        data: new Blob([
+          name === "day1am-r5.json"
+            ? JSON.stringify({
+                ...input,
+                updatedAt: "2026-11-14T00:00:00.000Z",
+                payload: { submission: { at: "2026-11-14T00:00:00.000Z" } },
+              })
+            : JSON.stringify({ broken: true }),
+        ]),
+        error: null,
+      }),
+    );
+    const store = createSupabaseScorecardStore();
+    const documents = await store.list();
+    expect(documents.map((document) => document.slug)).toEqual(["day1am-r5"]);
+    expect(list).toHaveBeenCalledWith("", { limit: 200 });
   });
 });

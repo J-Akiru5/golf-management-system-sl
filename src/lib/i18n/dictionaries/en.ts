@@ -275,7 +275,7 @@ export const en = {
     footer:
       "Names, home club, handicap, category, flight, hole and time only. No contact details or photos.",
     home: "TEELINE GOLF HOME",
-    backHome: "Back to main page",
+    backHome: "Back home",
     backToPairings: "Back to pairings",
     checkAgain: "Check again",
     demoFooter:
