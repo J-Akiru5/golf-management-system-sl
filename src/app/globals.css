@@ -9763,15 +9763,17 @@ html[data-textsize="large"] {
 }
 
 .footer-powered span {
-  color: rgb(197 211 202 / 72%);
-  font: 700 10px / 1 var(--f-sans);
+  color: rgb(197 211 202 / 82%);
+  font: 700 11px / 1 var(--f-sans);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
+/* A sponsor's mark is meant to be read from across the room, so it sits at the size of a partner
+   logo rather than the size of the small print around it. */
 .footer-powered img {
   width: auto;
-  height: 17px;
+  height: 30px;
   filter: brightness(0) invert(1);
-  opacity: 0.9;
+  opacity: 0.95;
 }
