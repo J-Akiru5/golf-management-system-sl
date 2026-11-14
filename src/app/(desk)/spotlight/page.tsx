@@ -45,6 +45,11 @@ export default function SpotlightPicker() {
         </div>
         <div className="row">
           <Button variant="secondary" asChild>
+            <Link href="/tv">
+              <MonitorPlay aria-hidden="true" /> Score board
+            </Link>
+          </Button>
+          <Button variant="secondary" asChild>
             <Link href={`/spotlight/rotate${suffix}`}>
               <Repeat aria-hidden="true" /> Rotate all
             </Link>

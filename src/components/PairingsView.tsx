@@ -405,13 +405,12 @@ export function PairingsView({
             ) : (
               <b className="p-time">{fmtTime(time)}</b>
             ))}
-          {group.flight !== "" && <span className="p-flight-top">{group.flight}</span>}
-          {own && <span className="p-own-chip">{t("pairings.ownGroup")}</span>}
-          <svg className="p-golf-flag" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-            <path d="M9 44V4" />
-            <path d="M9 6c9-4 9 4 18 0 6-2.6 7-3.2 12-4v14c-5 .8-6 1.4-12 4-9 4-9-4-18 0Z" />
-            <circle cx="23" cy="38" r="1.6" />
-          </svg>
+          {/* The hole alone on the first line and the tee time on the right; the class sits under
+              them on the left, and the flag waits at the foot of the card. */}
+          <div className="p-card-meta">
+            {group.flight !== "" && <span className="p-flight-top">{group.flight}</span>}
+            {own && <span className="p-own-chip">{t("pairings.ownGroup")}</span>}
+          </div>
         </div>
         <ul className="p-players">
           {group.players.map((player) => {
@@ -436,6 +435,12 @@ export function PairingsView({
             <span className="p-flight">{group.flight}</span>
           </div>
         )}
+        {/* The card's own mark, at its foot, where a printed card carries one. */}
+        <svg className="p-golf-flag" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <path d="M9 44V4" />
+          <path d="M9 6c9-4 9 4 18 0 6-2.6 7-3.2 12-4v14c-5 .8-6 1.4-12 4-9 4-9-4-18 0Z" />
+          <circle cx="23" cy="38" r="1.6" />
+        </svg>
       </article>
     );
   };

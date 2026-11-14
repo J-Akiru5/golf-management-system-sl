@@ -33,7 +33,7 @@ export function LeaderboardShell({
   const { t } = useI18n();
   return (
     <main className="public public-pairings mobile-bar-space">
-      <header className="public-head public-appbar !p-4 sm:!p-5">
+      <header className="public-head public-appbar p-4 sm:p-5">
         <PublicBackLink label={t("pairings.backHome")} />
         <div className="public-appbar-controls flex items-center gap-2">
           <ThemeToggle compact tone="nav" />
