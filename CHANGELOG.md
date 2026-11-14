@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Docs
+- **`docs/PLAN.md` records 0.52.1 and what followed it:** the live-sync release and its Vercel-blocked
+  first deploy, the rule that merges to `main` and `staging` are made as `J-Akiru5`, the owner's
+  decision to cap the playing handicap at the event maximum (not built), the stale
+  `fix/0.51.1-handicap-scan` branch, and the four tabulation accounts. No code change.
+
 ## [0.52.1] - 2026-11-14
 
 ### Fixed
