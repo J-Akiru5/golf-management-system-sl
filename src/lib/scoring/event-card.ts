@@ -1,16 +1,23 @@
 import {
-  type CardHandicapReading,
-  cardHandicapSnapshot,
+  type CardBoxReading,
+  cardBoxNote,
+  type EventHandicapResult,
   type EventScoringRules,
+  eventHandicapSnapshot,
+  eventPlayingHandicap,
   eventRulesFor,
-  readCardHandicap,
+  readCardBox,
 } from "./event-rules";
 import type { HandicapSnapshot, Scorecard, TeeRatings } from "./types";
 
 /**
- * Decides, before anything is written, whether a card can be saved under an event's card rules,
- * and says exactly what the save will do. Both the demo repository and the connected one call this
- * so they refuse the same cards for the same reasons.
+ * Decides, before anything is written, whether a card can be saved under an event's rules, and says
+ * exactly what the save will do. Both the demo repository and the connected one call this so they
+ * refuse the same cards for the same reasons.
+ *
+ * The playing handicap comes from the player's registration index and tee, never from the number in
+ * the card's HDCP box. That box is read only to put a note beside the WHS figure when the two
+ * differ.
  *
  * Pure: no database, clock or network. The caller says what day it is.
  */
@@ -19,19 +26,30 @@ export interface EventCardPlayer {
   playerId: string;
   playerName: string;
   handicap: HandicapSnapshot | null;
+  /**
+   * The registration's frozen index. Null means no index is on file. Left out, the caller did not
+   * load it, which is read as no index on file and flagged for the desk to check.
+   */
+  frozenIndex?: number | null;
+  /**
+   * The ratings of the tee on the registration. Null means the registration has no tee, which
+   * blocks the save. Left out, the caller did not load it and the round's tee is used.
+   */
+  tee?: TeeRatings | null;
 }
 
 export interface EventCardPlanInput {
   rulesVersion: string | null;
   roundStatus: "draft" | "open" | "scoring" | "provisional" | "final";
   requiredCards: number | null;
+  /** The round's tee, used when the caller did not load the player's own tee. */
   tee: TeeRatings;
-  /** ISO date the card handicap is valid from. Used for the in-memory snapshot. */
+  /** ISO date the handicap is valid from. Used for the in-memory snapshot. */
   effectiveDate: string;
   playerId: string;
   /** Who marked the card, when the desk knows. Left out, a stable placeholder is chosen. */
   scorerId?: string | null;
-  /** The HDCP box as typed. Blank counts as the rule's blank value. */
+  /** The HDCP box as typed. A note only: it never decides the playing handicap. */
   cardHandicap: string | null | undefined;
   players: readonly EventCardPlayer[];
   cards: readonly Pick<Scorecard, "playerId" | "scorerId" | "status" | "revision">[];
@@ -49,7 +67,12 @@ export type EventCardPlan =
   | {
       ok: true;
       rules: EventScoringRules;
-      reading: Extract<CardHandicapReading, { ok: true }>;
+      /** The WHS working: the index used, whether it was capped, and the handicaps it gives. */
+      handicap: Extract<EventHandicapResult, { ok: true }>;
+      /** The HDCP box as typed, kept for the note and the audit sentence. */
+      cardBox: CardBoxReading;
+      /** "card says 22, plays off 19 (index 16.4, White)" when the box disagrees, else null. */
+      cardNote: string | null;
       marker: EventCardMarker;
       /** The snapshot the engine will score net points from. */
       snapshot: HandicapSnapshot;
@@ -147,35 +170,58 @@ export function planEventCardSave(input: EventCardPlanInput): EventCardPlan {
     return { ok: false, message: "A card needs a second player in the round to stand as marker." };
   }
 
-  const reading = readCardHandicap(input.cardHandicap, rules.handicap);
-  if (!reading.ok) {
-    return { ok: false, message: `${player.playerName}: ${reading.message}` };
+  // The playing handicap is the WHS figure for the registration index on the registration tee.
+  // A player with no tee cannot be worked out, so the save stops here with the fix named.
+  const tee = player.tee === undefined ? input.tee : player.tee;
+  if (!tee) {
+    return {
+      ok: false,
+      message: `${player.playerName}: no tee is recorded on the registration. Set the player's tee in the field list, then save the card.`,
+    };
+  }
+  const handicap = eventPlayingHandicap({
+    index: player.frozenIndex ?? null,
+    tee,
+    rule: rules.handicap,
+  });
+  if (!handicap.ok) {
+    return { ok: false, message: `${player.playerName}: ${handicap.message}` };
   }
 
-  const needsSnapshotWrite = player.handicap?.playingHandicap !== reading.playingHandicap;
+  const needsSnapshotWrite = player.handicap?.playingHandicap !== handicap.playingHandicap;
   if (needsSnapshotWrite && player.handicap !== null && input.roundStatus !== "open") {
     return {
       ok: false,
-      message: `${player.playerName} already has a handicap snapshot of ${player.handicap.playingHandicap}, and it is frozen once scoring starts, so it cannot change to the card's ${reading.playingHandicap}. An owner has to decide how to correct it.`,
+      message: `${player.playerName} already has a handicap snapshot of ${player.handicap.playingHandicap}, and it is frozen once scoring starts, so it cannot change to the WHS figure of ${handicap.playingHandicap}. An owner has to decide how to correct it.`,
     };
   }
 
-  const snapshot = cardHandicapSnapshot({
-    reading,
+  const cardBox = readCardBox(input.cardHandicap);
+  const cardNote = cardBoxNote({
+    box: cardBox,
+    playingHandicap: handicap.playingHandicap,
+    index: handicap.index,
+    teeName: tee.name,
+  });
+  const snapshot = eventHandicapSnapshot({
+    handicap,
     rules,
-    tee: input.tee,
+    tee,
     effectiveDate: input.effectiveDate,
   });
-  const written = reading.blank ? "blank" : String(input.cardHandicap).trim();
+
+  const written = cardBox.text === "" ? "blank" : cardBox.text;
   return {
     ok: true,
     rules,
-    reading,
+    handicap,
+    cardBox,
+    cardNote,
     marker,
     snapshot,
     needsSnapshotWrite,
-    auditReason: `Desk-checked card under ${rules.id}. HDCP on card ${written}, plays off ${reading.playingHandicap}.${
-      marker.placeholder ? " Marker not recorded; the stored marker is a placeholder." : ""
-    }`,
+    auditReason: `Desk-checked card under ${rules.id}. WHS playing handicap ${handicap.playingHandicap} for index ${handicap.index} on ${tee.name}; HDCP on card ${written}.${
+      handicap.warning ? ` ${handicap.warning}.` : ""
+    }${marker.placeholder ? " Marker not recorded; the stored marker is a placeholder." : ""}`,
   };
 }

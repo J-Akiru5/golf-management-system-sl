@@ -49,8 +49,11 @@ function buildPlan(round: ScoringRoundView, file: SheetExport): SheetImportPlan 
     players: round.players.map((player) => ({
       playerId: player.playerId,
       playerName: player.playerName,
+      frozenIndex: player.frozenIndex,
+      tee: player.tee,
     })),
     cards: round.cards,
+    tee: round.course.tee,
   });
 }
 
@@ -478,7 +481,7 @@ function ReadyTable({ cards }: { cards: readonly ResolvedSheetCard[] }) {
               <td className="mono">{card.group || "—"}</td>
               <td>{card.playerName}</td>
               <td className="mono">{card.cardHandicap || "blank"}</td>
-              <td className="mono">{card.playingHandicap}</td>
+              <td className="mono">{card.playingHandicap ?? "—"}</td>
               <td className="mono">{card.gross}</td>
               <td className="mono">{card.pickups}</td>
               <td>{card.approve ? "Approve" : "Wait for approval"}</td>

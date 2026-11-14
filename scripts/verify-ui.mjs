@@ -527,13 +527,22 @@ await expect(queueRows).toHaveCount(4, { timeout: 15000 });
 await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
 const fastCards = page.locator('section[aria-labelledby="score-cards"]');
 await expect(fastCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
-const autoPublishBox = fastCards.getByRole("checkbox", {
-  name: "Publish verified cards automatically",
-});
-await expect(autoPublishBox).toBeChecked({ timeout: 15000 });
-check("a verified card is set to publish automatically", true);
+const publishMode = fastCards.getByLabel("Publishing");
+await expect(publishMode).toHaveValue("every", { timeout: 15000 });
+const publishModeLabels = (await publishMode.locator("option").allTextContents()).map((label) =>
+  label.trim(),
+);
+check(
+  "a saved card is set to publish automatically",
+  publishModeLabels.join(" | ") ===
+    "Publish every saved card | Publish checked cards only | Manual",
+  `(${publishModeLabels.join(" | ")})`,
+);
 await fastCards.getByRole("button", { name: "Approve" }).first().click();
 await expect(fastCards.locator("tbody tr .pill.ok")).toHaveCount(1, { timeout: 20000 });
+// The default mode publishes the approved card after its short pause, in one batch.
+await expect(fastCards.getByText(/Last publish v\d+/)).toBeVisible({ timeout: 20000 });
+check("an approved card is published without a second click", true);
 await scoresTab("Enter card", 'section[aria-labelledby="card-queue"]');
 await expect(queueTiles.nth(1)).toHaveText("1", { timeout: 20000 });
 check("an approved card counts as verified in the queue", true);

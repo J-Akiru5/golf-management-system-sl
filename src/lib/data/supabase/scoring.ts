@@ -209,6 +209,19 @@ export function createSupabaseScoringRepository(
 
     if (!holes?.length || !tees?.length) return null;
 
+    const teeById = new Map(
+      tees.map((tee) => [
+        tee.id,
+        {
+          id: tee.id,
+          name: tee.name,
+          courseRating: Number(tee.course_rating),
+          slope: tee.slope,
+          par: tee.par,
+        },
+      ]),
+    );
+
     const firstSnapshot = snapshotRows?.find((snapshot) =>
       entries?.some((entry) => entry.id === snapshot.round_entry_id),
     );
@@ -363,6 +376,10 @@ export function createSupabaseScoringRepository(
           // registration column is nullable; null means no index was frozen, not zero.
           frozenIndex:
             registration.frozen_index === null ? null : Number(registration.frozen_index),
+          // The tee on the registration, not the round's: the WHS playing handicap a card is saved
+          // with is worked out from the player's own tee. A registration with no tee reads as null,
+          // which stops a save rather than guessing the round's.
+          tee: registration.tee_id === null ? null : (teeById.get(registration.tee_id) ?? null),
           canonical: deriveCanonicalHoleScores({
             roundId: round.id,
             playerId: registration.player_id,
@@ -829,9 +846,13 @@ export function createSupabaseScoringRepository(
       return saveEventCardFlow(
         {
           load: () => refresh(tournamentId, dayNumber),
-          async writeSnapshot(plan, view, cardHandicap) {
+          async writeSnapshot(plan, view) {
             const player = view.players.find((candidate) => candidate.playerId === input.playerId);
             if (!player?.roundEntryId) throw new Error("The player has no round entry.");
+            // The stored number is the WHS playing handicap the plan worked out from the
+            // registration index and tee, never the HDCP box on the card. The function accepts a
+            // plain number and stores it as the snapshot's playing handicap.
+            const playingHandicap = plan.snapshot.playingHandicap;
             // The generated types predate this function, so the call is typed by hand.
             const call = db.rpc as unknown as (
               name: string,
@@ -839,16 +860,27 @@ export function createSupabaseScoringRepository(
             ) => PromiseLike<{ error: { message: string } | null }>;
             const { error } = await call.call(db, "save_card_handicap_snapshot", {
               p_round_entry: player.roundEntryId,
-              p_card_handicap: cardHandicap ?? "",
+              p_card_handicap: String(playingHandicap),
             });
             if (error) {
               const missing = /could not find the function|PGRST202|does not exist/i.test(
                 error.message,
               );
+              if (missing) {
+                throw new Error(
+                  "The card handicap function is not installed in the database yet. Apply migration 20261114000100_card_handicap_snapshot.sql first.",
+                );
+              }
+              // The installed function only accepts 0 and above. A plus player or an index of 0 on
+              // a tee rated below par plays off a negative number, which needs the signed handicap
+              // migration before it can be stored.
+              if (/not a plain number/i.test(error.message)) {
+                throw new Error(
+                  `${player.playerName} plays off ${playingHandicap}, and the installed card handicap function only stores 0 or more. The owner has to apply migration 20261115000100_card_handicap_signed_handicap.sql before a negative playing handicap can be saved.`,
+                );
+              }
               throw new Error(
-                missing
-                  ? "The card handicap function is not installed in the database yet. Apply migration 20261114000100_card_handicap_snapshot.sql first."
-                  : `Could not save the card handicap for ${player.playerName}: ${error.message}`,
+                `Could not save the card handicap for ${player.playerName}: ${error.message}`,
               );
             }
           },

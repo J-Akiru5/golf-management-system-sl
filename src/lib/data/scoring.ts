@@ -26,6 +26,7 @@ import {
   type Scorecard,
   type StandingsResult,
   type StrokeLimits,
+  type TeeRatings,
   type TieBreakPolicy,
   type VerificationPolicy,
   validateScorecard,
@@ -54,6 +55,13 @@ export interface ScoringPlayerSeed {
    * claiming a difference.
    */
   frozenIndex?: number | null;
+  /**
+   * The ratings of the tee on the player's registration, loaded so the WHS playing handicap can be
+   * worked out from the index and that tee. Optional: a view that has not loaded it leaves it
+   * undefined and the round's tee is used. Null means the registration has no tee, which stops a
+   * card from being saved with a guessed handicap.
+   */
+  tee?: TeeRatings | null;
 }
 
 export interface ScoringPlayer extends ScoringPlayerSeed {

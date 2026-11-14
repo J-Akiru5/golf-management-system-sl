@@ -56,7 +56,9 @@ function fakeDatabase(options: { missingSnapshotFunction?: boolean } = {}) {
     registrations: ["p1", "p2", "p3"].map((id) => ({
       id: `reg-${id}`,
       player_id: id,
-      frozen_index: 12,
+      // Alpha's registration index and tee: index 16.4 on the test tee plays off 18 under WHS.
+      frozen_index: 16.4,
+      tee_id: TEST_TEE.id,
     })),
     players: [
       { id: "p1", full_name: "Alpha One" },
@@ -131,6 +133,13 @@ function fakeDatabase(options: { missingSnapshotFunction?: boolean } = {}) {
         };
       }
       const text = String(args.p_card_handicap ?? "").trim();
+      // The real function accepts a plain number only: a negative value is refused the same way.
+      if (text !== "" && !/^[0-9]+(\.[0-9]+)?$/.test(text)) {
+        return {
+          data: null,
+          error: { message: `The card handicap "${text}" is not a plain number` },
+        };
+      }
       const value = text === "" ? 0 : Number(text);
       const playing = Math.floor(value);
       state.handicap_snapshots = [
@@ -207,7 +216,7 @@ function fakeDatabase(options: { missingSnapshotFunction?: boolean } = {}) {
   return { client: client as unknown as SupabaseClient<Database>, calls, state };
 }
 
-/** The 16.7 card with one X, the same card the demo repository's hand calculation uses. */
+/** The card with one X, the same card the demo repository's hand calculation uses. */
 const CELLS = [
   "5",
   "4",
@@ -248,7 +257,7 @@ function input(overrides: Record<string, unknown> = {}) {
 }
 
 describe("the connected repository saving a card under the event rules", () => {
-  it("writes the card handicap, then the card, then the approval, and scores to the hand calculation", async () => {
+  it("writes the WHS handicap, then the card, then the approval, and scores to the hand calculation", async () => {
     const { client, calls } = fakeDatabase();
     const repo = createSupabaseScoringRepository({ client: client as never });
 
@@ -260,17 +269,55 @@ describe("the connected repository saving a card under the event rules", () => {
       "submit_scorecard",
       "approve_scorecard",
     ]);
-    expect(calls[0]?.args).toEqual({ p_round_entry: "entry-p1", p_card_handicap: "16.7" });
+    // Index 16.4 on the test tee is 18, not the 16.7 in the card's HDCP box.
+    expect(calls[0]?.args).toEqual({ p_round_entry: "entry-p1", p_card_handicap: "18" });
     // The stored marker is a different player in the round, the same one every time.
     expect(calls[1]?.args).toMatchObject({ p_round_entry: "entry-p1", p_scorer_id: "p2" });
     // The approval carries the audit sentence.
     expect(calls[2]?.args.p_reason).toContain("bamboo-tee-2026");
-    expect(calls[2]?.args.p_reason).toContain("plays off 16");
+    expect(calls[2]?.args.p_reason).toContain("plays off 18");
 
     const alpha = view.players.find((player) => player.playerId === "p1");
-    expect(alpha?.handicap).toMatchObject({ rounding: "card", playingHandicap: 16, index: 16.7 });
+    expect(alpha?.handicap).toMatchObject({ rounding: "card", playingHandicap: 18 });
     const row = view.standings.net.rows.find((candidate) => candidate.playerId === "p1");
-    expect(row).toMatchObject({ netPoints: 46, grossPoints: 31, grossStrokes: 73 });
+    expect(row).toMatchObject({ netPoints: 47, grossPoints: 31, grossStrokes: 73 });
+  });
+
+  it("says the card's box beside the WHS number", async () => {
+    const { client } = fakeDatabase();
+    const repo = createSupabaseScoringRepository({ client: client as never });
+    const { cardNote } = await repo.saveEventCard("t1", input({ cardHandicap: "22" }), 3);
+    expect(cardNote).toBe("card says 22, plays off 18 (index 16.4, White)");
+  });
+
+  it("refuses a negative playing handicap with the fix named", async () => {
+    const { client, state } = fakeDatabase();
+    // An index of 0 on a tee rated two under par plays off -2, which the installed function refuses.
+    state.tees = [
+      {
+        id: TEST_TEE.id,
+        name: TEST_TEE.name,
+        course_rating: TEST_TEE.par - 2,
+        slope: TEST_TEE.slope,
+        par: TEST_TEE.par,
+      },
+    ];
+    for (const registration of state.registrations ?? []) registration.frozen_index = 0;
+    const repo = createSupabaseScoringRepository({ client: client as never });
+
+    await expect(repo.saveEventCard("t1", input(), 3)).rejects.toThrow(
+      "20261115000100_card_handicap_signed_handicap.sql",
+    );
+  });
+
+  it("refuses a registration with no tee and writes no card", async () => {
+    const { client, calls, state } = fakeDatabase();
+    const first = state.registrations?.[0];
+    if (first) first.tee_id = null;
+    const repo = createSupabaseScoringRepository({ client: client as never });
+
+    await expect(repo.saveEventCard("t1", input(), 3)).rejects.toThrow("no tee");
+    expect(calls).toEqual([]);
   });
 
   it("does not write the same card twice", async () => {
