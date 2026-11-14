@@ -12,6 +12,10 @@
   h1 { font-size: 17px; margin: 0 0 2px; }
   .sub { color: #4d5c54; margin: 0 0 8px; }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .card.remote { outline: 3px solid #b89550; outline-offset: 2px; }
+  .savestate { font-size: 12px; color: #4d5c54; }
+  .savestate.ok { color: #1f5a3c; font-weight: 600; }
+  .savestate.bad { color: #b42318; font-weight: 600; }
   /* The toolbar wraps to several rows on a phone or a short window. Pinned, it would cover the
      batch tools and the cards, so on those screens it scrolls away like any other block. */
   @media (max-width: 900px), (max-height: 900px) { header { position: static; } }
@@ -118,6 +122,7 @@
     <button id="restore" class="danger" title="Replaces every card on this page with the cards in an exported file">Replace all from export…</button>
     <button id="reset" class="danger">Reset to first reading</button>
     <span id="saved" role="status" aria-live="polite">Nothing saved yet</span>
+    <span id="sync" role="status" aria-live="polite" style="color:#4d5c54" title="This page shares one copy of the day with everyone signed in. It checks for their changes every few seconds.">Connecting to the shared copy…</span>
     <span id="stat" style="margin-left:auto;color:#4d5c54"></span>
     <span id="who" style="color:#4d5c54"></span>
     <a id="deskLink" href="/admin" hidden style="font:inherit;padding:5px 10px;border:1px solid #b9c4bd;border-radius:6px;color:inherit;text-decoration:none">Back to the desk</a>
@@ -281,6 +286,212 @@ function load() {
 let loadedFromBrowser = false, saveFailed = false;
 let state = load();
 let view = "cards";
+// <sync-core>
+// ---- Several tabulators, one shared document ----
+// Everyone signed in works on the same cards, so a save must never replace what the others saved and a
+// page must pick up what the others did. Every card and batch carries a revision (`rev`, on the
+// server's clock) that is stamped here whenever its content changes. The server merges saves card by
+// card (src/lib/scorecards/merge.ts), and this page adopts the merged result without touching a card
+// that has edits not yet saved.
+const CLIENT_ID = (() => {
+  const make = () => "c-" + Math.random().toString(36).slice(2, 10);
+  try {
+    let id = localStorage.getItem("bamboo-client-id");
+    if (!id) { id = make(); localStorage.setItem("bamboo-client-id", id); }
+    return id;
+  } catch (e) { return make(); }
+})();
+let clockSkew = 0; // the server's clock minus this device's clock, so stamps agree between devices
+const syncNow = () => Date.now() + clockSkew;
+const revOf = x => (x && typeof x.rev === "number" && isFinite(x.rev)) ? x.rev : 0;
+const hashCard = c => JSON.stringify({ ...c, rev: 0, by: "" });
+const hashBatch = b => JSON.stringify({ ...b, rev: 0 });
+// SYNC: the content each card/batch had when it was last stamped. SYNCED: the content the server was
+// last known to hold. A card where the two differ has local edits that are not saved yet.
+const SYNC = { cards: {}, batches: {}, mode: undefined };
+const SYNCED = { cards: {}, batches: {}, mode: undefined };
+function resyncHashes() {
+  SYNC.cards = {}; SYNC.batches = {};
+  state.cards.forEach(c => { SYNC.cards[c.id] = hashCard(c); });
+  (state.reviewBatches || []).forEach(b => { SYNC.batches[b.id] = hashBatch(b); });
+  SYNC.mode = state.mode;
+  SYNCED.cards = { ...SYNC.cards }; SYNCED.batches = { ...SYNC.batches }; SYNCED.mode = SYNC.mode;
+}
+// Called on every save: a card, batch or mode whose content changed gets a new revision; one that
+// disappeared leaves a removal marker so the removal reaches the others too.
+function stampChanges() {
+  const now = syncNow();
+  state.removedCards = state.removedCards || [];
+  state.removedBatches = state.removedBatches || [];
+  const seen = new Set();
+  for (const c of state.cards) {
+    seen.add(c.id);
+    const h = hashCard(c);
+    if (SYNC.cards[c.id] !== h) { c.rev = now; c.by = CLIENT_ID; SYNC.cards[c.id] = h; }
+  }
+  for (const id of Object.keys(SYNC.cards)) {
+    if (seen.has(id)) continue;
+    state.removedCards = state.removedCards.filter(t => t.id !== id);
+    state.removedCards.push({ id, rev: now });
+    delete SYNC.cards[id];
+  }
+  const batchSeen = new Set();
+  for (const b of state.reviewBatches || []) {
+    batchSeen.add(b.id);
+    const h = hashBatch(b);
+    if (SYNC.batches[b.id] !== h) { b.rev = now; SYNC.batches[b.id] = h; }
+  }
+  for (const id of Object.keys(SYNC.batches)) {
+    if (batchSeen.has(id)) continue;
+    state.removedBatches = state.removedBatches.filter(t => t.id !== id);
+    state.removedBatches.push({ id, rev: now });
+    delete SYNC.batches[id];
+  }
+  if (SYNC.mode !== state.mode) { state.modeRev = now; SYNC.mode = state.mode; }
+}
+// What this page holds right now, taken just before a save is sent.
+function snapshotHashes() {
+  return { cards: { ...SYNC.cards }, batches: { ...SYNC.batches }, mode: SYNC.mode };
+}
+// A save went through: the server now holds what was sent.
+function markSynced(snapshot) {
+  for (const id of Object.keys(snapshot.cards)) SYNCED.cards[id] = snapshot.cards[id];
+  for (const id of Object.keys(snapshot.batches)) SYNCED.batches[id] = snapshot.batches[id];
+  SYNCED.mode = snapshot.mode;
+}
+const cardDirty = id => SYNC.cards[id] !== SYNCED.cards[id];
+const batchDirty = id => SYNC.batches[id] !== SYNCED.batches[id];
+function setClockSkew(serverTime) {
+  if (typeof serverTime === "number" && isFinite(serverTime)) clockSkew = serverTime - Date.now();
+}
+// Takes the shared document from the server. Cards edited here and not yet saved stay as they are;
+// everything else becomes what the server has. Returns what changed so the page can say so.
+function applyRemote(remote) {
+  const out = { changed: 0, added: 0, removed: 0, dirty: 0, legacy: 0, ids: [] };
+  if (!remote || !Array.isArray(remote.cards)) return out;
+  const removedCards = {};
+  [].concat(state.removedCards || [], remote.removedCards || []).forEach(t => { removedCards[t.id] = Math.max(removedCards[t.id] || 0, revOf(t)); });
+  const removedBatches = {};
+  [].concat(state.removedBatches || [], remote.removedBatches || []).forEach(t => { removedBatches[t.id] = Math.max(removedBatches[t.id] || 0, revOf(t)); });
+
+  const localById = {};
+  state.cards.forEach(c => { localById[c.id] = c; });
+  const nextCards = [];
+  const taken = new Set();
+  for (const sc of remote.cards) {
+    taken.add(sc.id);
+    const lc = localById[sc.id];
+    // Removed here after the shared copy last changed it: the removal is on its way, so the card must
+    // not come back from the copy that has not heard of it yet.
+    if (!lc && (removedCards[sc.id] || -1) >= revOf(sc)) continue;
+    // Both copies are older than revisions: this device worked offline, or on an older version of the
+    // page, and the shared copy was saved by someone else. Neither is known to be newer, so nothing
+    // typed on either side is dropped: blank holes take the other side's score, a hole where both
+    // typed something keeps the shared score and the card note records this device's.
+    if (lc && !cardDirty(sc.id) && revOf(lc) === 0 && revOf(sc) === 0 && hashCard(lc) !== hashCard(sc)) {
+      const clashes = [];
+      const holes = sc.holes.map((value, i) => {
+        const mine = lc.holes[i] || "";
+        if (value === "" || value === undefined) return mine;
+        if (mine && mine !== value) clashes.push(`hole ${i + 1}: shared ${value}, this device ${mine}`);
+        return value;
+      });
+      nextCards.push({
+        ...sc,
+        holes,
+        verified: !!(sc.verified || lc.verified),
+        note: [sc.note, clashes.length ? `This device had other scores on ${clashes.join("; ")}. The shared score was kept.` : ""].filter(Boolean).join(" "),
+      });
+      out.changed += 1; out.legacy += 1; out.ids.push(sc.id);
+      // SYNC still holds this device's old copy, so the next save sees a change and sends the merge.
+      continue;
+    }
+    if (lc && (cardDirty(sc.id) || revOf(lc) > revOf(sc))) {
+      nextCards.push(lc); out.dirty += 1; continue;
+    }
+    if (!lc) out.added += 1;
+    else if (hashCard(lc) !== hashCard(sc)) { out.changed += 1; out.ids.push(sc.id); }
+    nextCards.push(sc);
+    SYNC.cards[sc.id] = hashCard(sc); SYNCED.cards[sc.id] = SYNC.cards[sc.id];
+  }
+  for (const lc of state.cards) {
+    if (taken.has(lc.id)) continue;
+    // Not on the server. Either it is new here and not sent yet, or someone removed it.
+    if (!cardDirty(lc.id) && (removedCards[lc.id] || -1) >= revOf(lc)) {
+      out.removed += 1; delete SYNC.cards[lc.id]; delete SYNCED.cards[lc.id]; continue;
+    }
+    nextCards.push(lc); out.dirty += 1;
+  }
+
+  const localBatch = {};
+  (state.reviewBatches || []).forEach(b => { localBatch[b.id] = b; });
+  const nextBatches = [];
+  const batchTaken = new Set();
+  for (const sb of remote.reviewBatches || []) {
+    batchTaken.add(sb.id);
+    const lb = localBatch[sb.id];
+    if (!lb && (removedBatches[sb.id] || -1) >= revOf(sb)) continue;
+    if (lb && (batchDirty(sb.id) || revOf(lb) > revOf(sb))) {
+      nextBatches.push({ ...lb, cardIds: [...new Set([...(lb.cardIds || []), ...(sb.cardIds || [])])] });
+      continue;
+    }
+    nextBatches.push(sb);
+    SYNC.batches[sb.id] = hashBatch(sb); SYNCED.batches[sb.id] = SYNC.batches[sb.id];
+  }
+  for (const lb of state.reviewBatches || []) {
+    if (batchTaken.has(lb.id)) continue;
+    if (!batchDirty(lb.id) && (removedBatches[lb.id] || -1) >= revOf(lb)) {
+      delete SYNC.batches[lb.id]; delete SYNCED.batches[lb.id]; continue;
+    }
+    nextBatches.push(lb);
+  }
+  nextBatches.sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+
+  const toList = map => Object.keys(map).map(id => ({ id, rev: map[id] }));
+  const before = JSON.stringify([state.cards.map(c => [c.id, revOf(c)]), (state.reviewBatches || []).map(b => [b.id, revOf(b)])]);
+  state.cards = nextCards;
+  state.reviewBatches = nextBatches;
+  state.removedCards = toList(removedCards);
+  state.removedBatches = toList(removedBatches);
+  if (revOf({ rev: remote.modeRev }) > revOf({ rev: state.modeRev }) && SYNC.mode === SYNCED.mode && remote.mode) {
+    state.mode = remote.mode; state.modeRev = remote.modeRev; SYNC.mode = SYNCED.mode = remote.mode;
+    $("mode").value = state.mode === "whs" ? "whs" : "written";
+    out.changed += 1;
+  }
+  if (!state.reviewBatches.some(b => b.id === state.activeReviewBatchId) && !["all", "needs", "done", "issues", "noclass", "unmatched", "groupdiff", "teediff", "hdcpdiff", "daydiff"].includes(state.activeReviewBatchId)) {
+    state.activeReviewBatchId = "all";
+  }
+  const after = JSON.stringify([state.cards.map(c => [c.id, revOf(c)]), state.reviewBatches.map(b => [b.id, revOf(b)])]);
+  if (out.changed || out.added || out.removed || before !== after) {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* the shared copy still holds it */ }
+    renderKeepingFocus(out.ids);
+  }
+  // A card merged from two older copies is a change made here; saving stamps it and sends it on.
+  if (out.legacy) save();
+  return out;
+}
+// Redraws the cards after a change from elsewhere without taking the cursor away from whoever is typing.
+function renderKeepingFocus(highlightIds) {
+  const active = document.activeElement;
+  let keep = null;
+  const card = active && active.closest ? active.closest("#cards .card") : null;
+  if (card) keep = { id: card.dataset.id, f: active.dataset.f, h: active.dataset.h, start: active.selectionStart, end: active.selectionEnd };
+  const y = window.scrollY;
+  renderCards(); stats();
+  if (view === "sheet") renderSheet();
+  window.scrollTo(0, y);
+  if (keep) {
+    const el = [...document.querySelectorAll("#cards .card")].find(e => e.dataset.id === keep.id);
+    const input = el && el.querySelector(keep.f ? `[data-f="${keep.f}"]` : `[data-h="${keep.h}"]`);
+    if (input) { input.focus(); try { input.setSelectionRange(keep.start, keep.end); } catch (e) { /* not a text field */ } }
+  }
+  (highlightIds || []).forEach(id => {
+    const el = [...document.querySelectorAll("#cards .card")].find(e => e.dataset.id === id);
+    if (el) { el.classList.add("remote"); setTimeout(() => el.classList.remove("remote"), 5000); }
+  });
+}
+resyncHashes();
+// </sync-core>
 const clock = iso => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 function showSaved(ok, text) {
   const el = $("saved"); if (!el) return;
@@ -289,6 +500,7 @@ function showSaved(ok, text) {
 // Every change is written to this browser and read back, so "Saved" means it is really there.
 function save() {
   state.savedAt = new Date().toISOString();
+  stampChanges();
   try {
     const text = JSON.stringify(state);
     localStorage.setItem(KEY, text);
@@ -462,6 +674,8 @@ function renderCards() {
     <label>HDCP on card <input type="text" data-f="hdcp" value="${esc(c.hdcp)}"></label>
     <span data-k="syshcp" style="font-size:11px"></span>
     <label>Total on card <input type="text" data-f="written" value="${esc(c.written)}"></label>
+    <button type="button" class="primary noprint" data-save title="Save this card to the shared copy now, so everyone signed in can see it. Saving does not mark it checked.">Save card</button>
+    <span class="savestate noprint" data-k="savestate" role="status" aria-live="polite"></span>
     <label class="chk"><input type="checkbox" data-f="verified"${c.verified ? " checked" : ""}> Checked against the paper card</label>${c.manual ? `<span class="no">Added by hand</span><button type="button" class="danger noprint" data-del style="padding:2px 8px">Remove card</button>` : ""}</div>
   ${c.note ? `<div class="note">Note: ${esc(c.note)}</div>` : ""}
   ${half(c, 0, "OUT")}<div class="gap"></div>${half(c, 9, "IN")}
@@ -728,6 +942,8 @@ window.__scorecard = {
   event: SRC.event,
   label: SRC.label,
   getState: () => state,
+  snapshotHashes, markSynced, applyRemote, setClockSkew, resyncHashes,
+  clientId: CLIENT_ID,
   setState: (next) => {
     state = next;
     save();
@@ -931,6 +1147,7 @@ window.__scorecard = {
       if (card && !matches(card)) element.hidden = true;
     }
     updatePanel();
+    refreshSaveBadges();
   }
 
   function setActive(next) {
@@ -1050,8 +1267,16 @@ window.__scorecard = {
     const active = activeId();
     const done = cards.filter((card) => card.verified).length;
     const needs = cards.length - done;
+    const waitingToSend = cards.filter((card) => card.verified && !card.sentAt).length;
+    sendButton.textContent = waitingToSend
+      ? `Send checked cards to admin (${waitingToSend})`
+      : "Send checked cards to admin";
     const visible = cards.filter(matches).length;
-    summary.textContent = `${visible} of ${cards.length} cards shown · ${done} checked · ${needs} waiting`;
+    const shownBatch = batches().find((entry) => entry.id === active);
+    const batchLine = shownBatch
+      ? ` · ${shownBatch.name}: ${batchCount(shownBatch).done} checked of ${batchCount(shownBatch).total} players, ${batchCount(shownBatch).total - batchCount(shownBatch).done} still to check`
+      : "";
+    summary.textContent = `${visible} of ${cards.length} cards shown · ${done} checked · ${needs} waiting${batchLine}`;
     allButton.textContent = `All cards (${cards.length})`;
     needsButton.textContent = `Needs review (${needs})`;
     doneButton.textContent = `Reviewed (${done})`;
@@ -1089,7 +1314,7 @@ window.__scorecard = {
         const count = batchCount(batch);
         const selected = active === batch.id;
         const name = escapeHtml(batch.name);
-        return `<span style="display:inline-flex;gap:2px"><button type="button" data-batch="${escapeHtml(batch.id)}" class="${selected ? "on" : ""}" aria-pressed="${selected ? "true" : "false"}">${name} (${count.done}/${count.total})</button><button type="button" data-batch-del="${escapeHtml(batch.id)}" title="Remove this batch. Its cards stay on the page." aria-label="Remove batch ${name}">×</button></span>`;
+        return `<span style="display:inline-flex;gap:2px"><button type="button" data-batch="${escapeHtml(batch.id)}" class="${selected ? "on" : ""}" aria-pressed="${selected ? "true" : "false"}" title="${count.done} of ${count.total} players checked against the paper card">${name} · <b>${count.done}</b> checked of <b>${count.total}</b></button><button type="button" data-batch-del="${escapeHtml(batch.id)}" title="Remove this batch. Its cards stay on the page." aria-label="Remove batch ${name}">×</button></span>`;
       })
       .join("");
     for (const button of batchList.querySelectorAll("button[data-batch]")) {
@@ -1103,7 +1328,7 @@ window.__scorecard = {
       ["all", "All cards"],
       ["needs", "Needs review"],
       ["done", "Reviewed"],
-      ...list.map((batch) => [batch.id, `${batch.name} (${batchCount(batch).done}/${batchCount(batch).total})`]),
+      ...list.map((batch) => [batch.id, `${batch.name} · ${batchCount(batch).done} checked of ${batchCount(batch).total}`]),
     ];
     batchSelect.innerHTML = choices
       .map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`)
@@ -1238,6 +1463,13 @@ window.__scorecard = {
     q("#nb-name").select();
   }
 
+  // One id for one player on one day and session, the same on every device, so the same player added
+  // by two tabulators is one card after the merge, never two.
+  function fieldCardId(entry, day, session) {
+    const who = entry.playerId || nameKey(entry.name).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    return `fld-${who}-d${day}-${String(session).toLowerCase()}`;
+  }
+
   // ---- Add players from the system's field list ----
   // The system already knows who plays when. Choose a day and session (and a group) and the players
   // arrive as blank cards with their name, group, tee and class filled in, so only the scores are
@@ -1342,9 +1574,12 @@ window.__scorecard = {
       const picked = rows.filter((entry) => chosen.has(nameKey(entry.name)) && !onPage(entry));
       if (picked.length === 0) { q("#fp-count").textContent = "Select at least one player who is not on the page yet."; return; }
       const stamp = Date.now().toString(36);
-      const fresh = picked.map((entry, index) => ({
-        id: `fld-${stamp}-${index}`,
-        manual: true,
+      const fresh = picked.map((entry) => ({
+        id: fieldCardId(entry, day, session),
+        manual: false,
+        playerId: entry.playerId || "",
+        registrationId: entry.registrationId || "",
+        partnerPlayerId: entry.partnerPlayerId || "",
         name: entry.name,
         group: entry.group != null ? String(entry.group) : "",
         tee: entry.teeCode || "",
@@ -1359,7 +1594,9 @@ window.__scorecard = {
         holes: Array(18).fill(""),
       }));
       const state = current();
-      state.cards = [...state.cards, ...fresh];
+      // A card with this id may already be here (another tabulator added the same player a moment ago).
+      const known = new Set(state.cards.map((card) => card.id));
+      state.cards = [...state.cards, ...fresh.filter((card) => !known.has(card.id))];
       const target = q("#fp-batch").value;
       let batch = null;
       if (target === "new") {
@@ -1444,11 +1681,16 @@ window.__scorecard = {
   // here: the admin imports the frozen cards with a staff session and publishes them.
   async function sendCheckedCards() {
     const state = current();
-    const checked = state.cards.filter((card) => card.verified);
+    // Only cards not sent yet (a card that was edited after it was sent counts as unsent again), so
+    // two tabulators using the same account never send the same cards twice.
+    const alreadySent = state.cards.filter((card) => card.verified && card.sentAt).length;
+    const checked = state.cards.filter((card) => card.verified && !card.sentAt);
     const listed = checked.filter((card) => card.playerId);
     const nameOnly = checked.filter((card) => !card.playerId);
     if (listed.length === 0 && nameOnly.length === 0) {
-      summary.textContent = "No checked cards to send. Tick the cards you have checked against the paper.";
+      summary.textContent = alreadySent
+        ? `Nothing new to send: ${alreadySent} checked card${alreadySent === 1 ? " is" : "s are"} already with the admin.`
+        : "No checked cards to send. Tick the cards you have checked against the paper.";
       return;
     }
     if (listed.length === 0) {
@@ -2115,6 +2357,10 @@ window.__scorecard = {
     const text = JSON.stringify(state);
     if (!force && text === last) return true;
     saving = true;
+    // What this page holds as it goes out. Anything changed while the request is in flight is not
+    // part of it, so it is not overwritten by the answer and goes out with the next save.
+    const sent = db.snapshotHashes();
+    const unsavedBefore = Object.keys(sent.cards).filter((id) => cardDirty(id));
     try {
       const response = await fetch(`/api/scorecards/${encodeURIComponent(slug)}`, {
         method: "PUT",
@@ -2139,7 +2385,21 @@ window.__scorecard = {
         }
         return false;
       }
+      const reply = await response.json().catch(() => ({}));
+      db.setClockSkew(reply.serverTime);
+      if (reply.updatedAt) lastUpdatedAt = reply.updatedAt;
+      db.markSynced(sent);
+      for (const id of unsavedBefore) if (SYNC.cards[id] === sent.cards[id]) savedStamp[id] = Date.now();
       last = text;
+      // The server merged this save with what others saved. Take the merged copy back, so their
+      // cards appear here, and keep any card that was edited while this save was on its way.
+      if (reply.payload && Array.isArray(reply.payload.cards)) {
+        const result = db.applyRemote(reply.payload);
+        if (result.dirty === 0) last = JSON.stringify(db.getState());
+        showSync(remoteNote(result));
+        apply();
+      }
+      refreshSaveBadges();
       // A routine save note must not replace an error the desk still needs to read.
       if (!document.getElementById("msg")?.classList.contains("err")) {
         status(`Saved to the database at ${new Date().toLocaleTimeString()}.`);
@@ -2188,10 +2448,13 @@ window.__scorecard = {
       if (response.ok) {
         const document = await response.json();
         if (document && document.payload && Array.isArray(document.payload.cards)) {
-          db.setState(document.payload);
-          last = JSON.stringify(db.getState());
+          db.setClockSkew(document.serverTime);
+          lastUpdatedAt = document.updatedAt;
+          // The shared copy wins for every card this page has not changed since it last saved. A card
+          // this page edited later than the shared copy stays, and the save that follows merges it in.
+          db.applyRemote(document.payload);
           status(
-            `Loaded the database copy saved ${new Date(document.updatedAt).toLocaleString()}.`,
+            `Loaded the shared copy saved ${new Date(document.updatedAt).toLocaleString()}.`,
           );
         }
       } else if (response.status === 401) {
@@ -2209,7 +2472,10 @@ window.__scorecard = {
       status("The database is not reachable. The embedded scorecard is still editable.", true);
     } finally {
       ready = true;
-      last = JSON.stringify(db.getState());
+      // Empty on purpose: the first save after loading goes out even if nothing was typed, so this
+      // page's own newer work is merged into the shared copy.
+      last = "";
+      showSync("");
       apply();
     }
   }
@@ -2329,7 +2595,7 @@ window.__scorecard = {
         continue;
       }
       state.cards.push({
-        id: `fld-${entry.playerId}`,
+        id: fieldCardId(entry, day, session),
         manual: false,
         playerId: entry.playerId,
         registrationId: entry.registrationId,
@@ -2366,13 +2632,13 @@ window.__scorecard = {
       : "The assigned list is up to date.";
   }
 
-  // A frozen submission stops matching the page as soon as a card changes. The admin must not
-  // import stale scores, so the send marker is cleared and the tabulator sends again.
-  function clearSubmission() {
-    const state = current();
-    if (!state.submission) return;
-    state.submission = null;
-    for (const card of state.cards) delete card.sentAt;
+  // A card that is edited after it was sent no longer matches what the admin holds, so that card (and
+  // only that card) goes back to unsent and is sent again with the next batch.
+  function clearSubmission(event) {
+    const element = event && event.target && event.target.closest ? event.target.closest(".card") : null;
+    const card = element ? current().cards.find((entry) => entry.id === element.dataset.id) : null;
+    if (!card || !card.sentAt) return;
+    delete card.sentAt;
     db.save();
   }
   cardsRoot.addEventListener("input", clearSubmission, true);
@@ -2411,6 +2677,110 @@ window.__scorecard = {
   window.setInterval(() => {
     if (ready && !sessionEnded) void persist();
   }, 2000);
+
+  // ---- Save card: an explicit save for one card, with a visible answer ----
+  // Everything is also saved on its own every two seconds; this button is the confirmation. Each card
+  // says "Unsaved changes" while it has edits the shared copy does not hold, and "Saved at ..." once it does.
+  const savedStamp = {};
+  function refreshSaveBadges() {
+    for (const element of cardsRoot.querySelectorAll(".card")) {
+      const badge = element.querySelector('[data-k="savestate"]');
+      if (!badge) continue;
+      const id = element.dataset.id;
+      if (cardDirty(id)) {
+        badge.textContent = "Unsaved changes";
+        badge.className = "savestate noprint bad";
+      } else if (savedStamp[id]) {
+        badge.textContent = `Saved at ${new Date(savedStamp[id]).toLocaleTimeString()} · everyone can see it`;
+        badge.className = "savestate noprint ok";
+      } else {
+        badge.textContent = "";
+        badge.className = "savestate noprint";
+      }
+    }
+  }
+  cardsRoot.addEventListener("input", () => window.setTimeout(refreshSaveBadges, 0));
+  cardsRoot.addEventListener("change", () => window.setTimeout(refreshSaveBadges, 0));
+  cardsRoot.addEventListener("click", async (event) => {
+    const button = event.target && event.target.closest ? event.target.closest("[data-save]") : null;
+    if (!button) return;
+    const element = button.closest(".card");
+    const id = element ? element.dataset.id : "";
+    const badge = element ? element.querySelector('[data-k="savestate"]') : null;
+    button.disabled = true;
+    if (badge) {
+      badge.textContent = "Saving…";
+      badge.className = "savestate noprint";
+    }
+    const ok = await persist(true);
+    button.disabled = false;
+    if (ok) {
+      savedStamp[id] = Date.now();
+      refreshSaveBadges();
+    } else {
+      const fresh = [...cardsRoot.querySelectorAll(".card")].find((entry) => entry.dataset.id === id);
+      const label = fresh ? fresh.querySelector('[data-k="savestate"]') : null;
+      if (label) {
+        label.textContent = "Not saved yet. It will keep trying; your edit is safe on this device.";
+        label.className = "savestate noprint bad";
+      }
+    }
+  });
+
+  // ---- Live sync: pick up what the other tabulators did ----
+  // Every few seconds the page asks the server whether the shared copy changed. The ask carries the
+  // time of the copy already held, so when nothing changed the answer is a few bytes. A change is merged
+  // in card by card, and a card being edited here is never overwritten.
+  let lastUpdatedAt = "";
+  const syncLabel = document.getElementById("sync");
+  function remoteNote(result) {
+    const bits = [];
+    if (result.added) bits.push(`${result.added} new card${result.added === 1 ? "" : "s"}`);
+    if (result.changed) bits.push(`${result.changed} updated`);
+    if (result.removed) bits.push(`${result.removed} removed`);
+    return bits.length ? `from other users: ${bits.join(", ")}` : "";
+  }
+  function showSync(note) {
+    if (!syncLabel) return;
+    syncLabel.textContent = `Live · synced ${new Date().toLocaleTimeString()}${note ? ` · ${note}` : ""}`;
+  }
+  async function pollRemote() {
+    if (!ready || saving || sessionEnded || document.hidden) return;
+    try {
+      const query = lastUpdatedAt ? `?since=${encodeURIComponent(lastUpdatedAt)}` : "";
+      const response = await fetch(`/api/scorecards/${encodeURIComponent(slug)}${query}`, { cache: "no-store" });
+      if (response.status === 401) {
+        sessionEnded = true;
+        status("Your session ended, so nothing more can be saved. Opening the sign-in page…", true);
+        window.setTimeout(() => window.location.assign(loginUrl), 1500);
+        return;
+      }
+      if (!response.ok) {
+        if (syncLabel) syncLabel.textContent = "Shared copy not reachable · retrying";
+        return;
+      }
+      const body = await response.json();
+      db.setClockSkew(body.serverTime);
+      if (body.unchanged) {
+        showSync("");
+        return;
+      }
+      if (body.payload && Array.isArray(body.payload.cards) && !saving) {
+        lastUpdatedAt = body.updatedAt;
+        const result = db.applyRemote(body.payload);
+        // Edits made here and not saved yet keep this page's copy different from the shared one, so
+        // they must still go out; otherwise the page and the shared copy now agree.
+        if (result.dirty === 0) last = JSON.stringify(db.getState());
+        showSync(remoteNote(result));
+        apply();
+      }
+    } catch {
+      if (syncLabel) syncLabel.textContent = "Offline · your edits stay on this device and will sync";
+    }
+  }
+  window.setInterval(() => { void pollRemote(); }, 3000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) void pollRemote(); });
+  window.addEventListener("online", () => { void persist(true).then(() => pollRemote()); });
 
   apply();
   void loadSession();
