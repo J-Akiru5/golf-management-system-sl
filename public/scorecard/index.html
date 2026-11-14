@@ -1818,12 +1818,13 @@ window.__scorecard = {
       db.save();
       apply();
       const rejected = body.submission.unmatched.length;
-      summary.textContent = `Sent ${body.submission.cards.length} checked card${body.submission.cards.length === 1 ? "" : "s"} to the admin queue at ${new Date(body.submission.at).toLocaleTimeString()}.${body.submission.nameOnly.length ? ` ${body.submission.nameOnly.length} name-only card${body.submission.nameOnly.length === 1 ? "" : "s"} left for the admin.` : ""}${rejected ? ` ${rejected} card${rejected === 1 ? "" : "s"} not accepted: ${body.submission.unmatched.map((entry) => entry.name || entry.id).join(", ")}.` : ""}`;
+      const sentMessage = `Sent ${body.submission.cards.length} checked card${body.submission.cards.length === 1 ? "" : "s"} to the admin queue at ${new Date(body.submission.at).toLocaleTimeString()}.${body.submission.nameOnly.length ? ` ${body.submission.nameOnly.length} name-only card${body.submission.nameOnly.length === 1 ? "" : "s"} left for the admin.` : ""}${rejected ? ` ${rejected} card${rejected === 1 ? "" : "s"} not accepted: ${body.submission.unmatched.map((entry) => entry.name || entry.id).join(", ")}.` : ""}`;
       const saved = await persist(true);
-      if (!saved) {
-        summary.textContent =
-          "The cards were frozen, but the database save failed. They are not in the admin queue yet; the page will retry the save.";
-      }
+      // persist() redraws the panel, so the sent message is written after it. Writing it before
+      // let the ordinary "N cards shown" line replace it and the desk could not tell the send worked.
+      summary.textContent = saved
+        ? sentMessage
+        : "The cards were frozen, but the database save failed. They are not in the admin queue yet; the page will retry the save.";
     } catch (error) {
       summary.textContent = error instanceof Error ? error.message : String(error);
     } finally {
