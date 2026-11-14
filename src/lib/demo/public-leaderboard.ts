@@ -139,6 +139,8 @@ export function samplePlayerProfileData(player: {
       id: player.id,
       name: player.name,
       index: player.index,
+      // The sample cards carry the sample handicap, and the profile prefers a card's.
+      playingHandicap: null,
       category: player.category ?? team?.[2] ?? null,
       flight: player.flight ?? team?.[3] ?? null,
       pairNumber: team ? teamIndex + 1 : null,

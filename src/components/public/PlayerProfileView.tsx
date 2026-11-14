@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ScorecardBreakdown } from "@/components/player/ScorecardBreakdown";
-import type { PublicPlayerProfileData, PublicProfileTeeTime } from "@/lib/data/public-profile";
+import {
+  type PublicPlayerProfileData,
+  type PublicProfileTeeTime,
+  profilePlayingHandicap,
+} from "@/lib/data/public-profile";
 import type { PublicTeamStanding } from "@/lib/data/public-team-leaderboard";
 import { fmtHcp, fmtTime, shortDate } from "@/lib/format";
 import type { Translate } from "@/lib/i18n/t";
@@ -24,7 +28,7 @@ export function PlayerProfileView({
 }) {
   const { player, partner, cards } = data;
   const rank = team ? (team.tied ? `T${team.rank}` : String(team.rank)) : null;
-  const playingHandicap = cards[0]?.playingHandicap ?? null;
+  const playingHandicap = profilePlayingHandicap(data);
   return (
     <div className="grid gap-4" data-testid="player-profile">
       <section className="card grid gap-3" aria-labelledby="profile-name">
