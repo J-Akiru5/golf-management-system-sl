@@ -1,4 +1,4 @@
-import type { CategoryRule, FlightRule, Gender, Registration } from "./types";
+import type { CategoryRule, ClassBasis, FlightRule, Gender, Registration } from "./types";
 
 /**
  * Picks the category whose gender and age band match. Returns the matches so the caller can
@@ -42,6 +42,34 @@ export function averageIndex(indexes: (number | null)[]): number {
 }
 
 /**
+ * The number one player is classed on, in the event's basis. An index above the event maximum counts
+ * as the maximum, the same cap the single-player draw uses; a blank number counts as 0, so a pair is
+ * never held back by a missing one.
+ */
+export function classValueOf(
+  member: { index: number | null; playingHandicap: number | null },
+  basis: ClassBasis = "index",
+  maxIndex?: number,
+): number {
+  if (basis === "courseHandicap") return member.playingHandicap ?? 0;
+  if (member.index === null) return 0;
+  return maxIndex === undefined ? member.index : Math.min(member.index, maxIndex);
+}
+
+/**
+ * The number a team is classed on: the average of its members' values in the event's basis, rounded
+ * to one decimal. One member gives their own value, so a player drawn alone is classed on their own
+ * number. The desk's index dialog calls this too, so the class it shows is the class the draw cuts.
+ */
+export function teamClassValue(
+  members: { index: number | null; playingHandicap: number | null }[],
+  basis: ClassBasis = "index",
+  maxIndex?: number,
+): number {
+  return averageIndex(members.map((member) => classValueOf(member, basis, maxIndex)));
+}
+
+/**
  * Classes a member-guest pair together: both partners take the class that covers the average of their
  * indexes, so the two play in one class and are never split into different groups. A team whose
  * average covers no class, or more than one, keeps the classes it was given player by player.
@@ -50,6 +78,7 @@ export function applyTeamClasses(
   registrations: Registration[],
   flights: FlightRule[],
   maxIndex?: number,
+  basis: ClassBasis = "index",
 ): void {
   const teams = new Map<string, Registration[]>();
   for (const reg of registrations) {
@@ -83,23 +112,25 @@ export function applyTeamClasses(
         for (const member of members) {
           member.reasons.push("The pair's stored card classes differ; the desk must choose one.");
         }
-        continue;
       }
+      // A stored override that names no class has not classed the pair: nothing is re-cut here, so
+      // the desk is never shown a class the organizer did not choose.
+      continue;
     }
-    // An index above the event maximum counts as the maximum, the same cap the single-player draw uses.
-    const value = averageIndex(
-      members.map((member) =>
-        member.index !== null && maxIndex !== undefined
-          ? Math.min(member.index, maxIndex)
-          : member.index,
-      ),
-    );
+    // An index above the event maximum counts as the maximum, the same cap the single-player draw
+    // uses. The number is read in the event's basis, so a class cut on the course handicap is the
+    // same number the desk's correction dialog shows.
+    const value = teamClassValue(members, basis, maxIndex);
     const matches = matchFlights(flights, value);
     if (matches.length !== 1) continue;
     const flight = matches[0] as FlightRule;
     for (const member of members) {
       member.flightId = flight.id;
-      member.reasons.push(`Class ${flight.name} is cut on the pair's average index ${value}.`);
+      member.reasons.push(
+        `Class ${flight.name} is cut on the pair's average ${
+          basis === "courseHandicap" ? "course handicap" : "index"
+        } ${value}.`,
+      );
     }
   }
 }

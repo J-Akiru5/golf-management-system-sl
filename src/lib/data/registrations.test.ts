@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CategoryRule, FlightRule, Tee } from "@/lib/routing";
-import { registrationFor } from "./registrations";
+import { partnerOf, registrationFor } from "./registrations";
 import type { PlayerRecord, RegistrationEntry, Tournament } from "./types";
 
 const tees: Tee[] = [{ id: "white", name: "White", courseRating: 71.5, slope: 128, par: 72 }];
@@ -117,6 +117,8 @@ describe("registrationFor", () => {
     expect(reg.playingHandicap).toBe(12);
     expect(reg.age).toBe(46);
     expect(reg.ageKnown).toBe(true);
+    // The desk's stored class is the pair's class, so applyTeamClasses can give it to both partners.
+    expect(reg.classSource).toBe("stored");
     expect(reg.reasons).toEqual([
       "Gender is still missing; the category was chosen by the organizer.",
     ]);
@@ -234,5 +236,30 @@ describe("registrationFor", () => {
     expect(reg.provisional).toBe(false);
     expect(reg.flightId).toBe("r-a");
     expect(reg.playingHandicap).toBe(12);
+  });
+});
+
+describe("partnerOf", () => {
+  it("finds the other entry with the same pair number", () => {
+    const member = entry({ id: "member", teamNo: 4 });
+    const guest = entry({ id: "guest", teamNo: 4, playerId: "player-2" });
+    const solo = entry({ id: "solo", teamNo: null, playerId: "player-3" });
+
+    expect(partnerOf(member, [member, guest, solo])?.id).toBe("guest");
+    expect(partnerOf(guest, [member, guest, solo])?.id).toBe("member");
+  });
+
+  it("returns nothing for a player without a pair", () => {
+    const solo = entry({ teamNo: null });
+    const other = entry({ id: "other", teamNo: 7, playerId: "player-2" });
+
+    expect(partnerOf(solo, [solo, other])).toBeNull();
+  });
+
+  it("returns nothing when neither entry has a pair number", () => {
+    const a = entry({ id: "a", teamNo: undefined });
+    const b = entry({ id: "b", teamNo: undefined, playerId: "player-2" });
+
+    expect(partnerOf(a, [a, b])).toBeNull();
   });
 });

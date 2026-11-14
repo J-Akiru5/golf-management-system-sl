@@ -196,6 +196,16 @@ export interface OverrideReadyInput {
   teeId: string | null;
   flightId: string | null;
   playingHandicap: number | null;
+  /**
+   * The other entry of the player's pair, when the edit classes a pair. Its class is written with
+   * this one, so a reload or a redraw keeps both partners in one class. Null when unpaired.
+   */
+  partnerEntryId?: string | null;
+  /**
+   * The class the pair is cut on. Written to the partner's row only; the edited entry takes
+   * `flightId`. Null when the pair is not classed, so the partner keeps the class it has.
+   */
+  pairFlightId?: string | null;
   reason: string;
   /** Details that are still missing and stay visible as pending notes. */
   pending: string[];
@@ -542,6 +552,15 @@ export function createMockAdapters(state: DeskState, dispatch: Dispatch<Action>)
           type: "updatePlayer",
           id: entry.playerId,
           patch: { birthdate: input.birthdate },
+        });
+      }
+      // The pair is classed together, so the partner's row takes the same class. Only the class is
+      // touched: the partner is not an override of its own.
+      if (input.partnerEntryId && input.pairFlightId) {
+        dispatch({
+          type: "updateEntry",
+          id: input.partnerEntryId,
+          patch: { flightId: input.pairFlightId },
         });
       }
       dispatch({
