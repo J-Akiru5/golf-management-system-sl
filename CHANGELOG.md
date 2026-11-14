@@ -29,6 +29,15 @@ Supabase project, because the code and the database are released separately.
   changes no table, constraint, trigger or policy. Saving a card under the rules fails with a plain
   message until it is applied.
 
+### Fixed
+- **Editing one partner's index classes the pair, and an index above the event maximum no longer
+  bypasses the cap (#268).** The Edit index dialog cuts the class on the average of both partners'
+  numbers, in the event's flight basis, with an index above `maxIndex` counted as the maximum, and
+  saves that class on the partner's registration too. The desk, the player page and the board then
+  show both partners in one class without a redraw. The playing handicap is worked out from the
+  capped index while the index entered is kept on file. The routing engine now classes on
+  `flightBasis`, so the dialog and the draw always agree. No migration.
+
 ## [0.50.1] - 2026-11-14
 
 ### Fixed

@@ -34,6 +34,7 @@ import { PlayerDetailsForm } from "@/components/player/PlayerDetailsForm";
 import { Button } from "@/components/ui/button";
 import { selectIndexForCutOff } from "@/lib/data/frozen";
 import { fmtIso } from "@/lib/data/labels";
+import { partnerOf } from "@/lib/data/registrations";
 import { registeredDayBadges } from "@/lib/data/sessions";
 import { PAYMENT_LABEL } from "@/lib/data/types";
 import { displayName, fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
@@ -129,6 +130,9 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
 
   const shotgun = tournament.config.startFormat === "shotgun";
   const group = draw?.find((g) => g.playerIds.includes(player.id)) ?? null;
+  // The other half of the pair, so an index edit classes both partners together.
+  const partnerEntry = entry ? partnerOf(entry, entries) : null;
+  const partnerReg = partnerEntry ? (regById.get(partnerEntry.playerId) ?? null) : null;
   const dayBadges = entry
     ? registeredDayBadges(
         entry,
@@ -783,6 +787,8 @@ export default function PlayerProfile({ params }: { params: Promise<{ id: string
           cutOffIndex={cutOff.index}
           cutOffIndexDate={cutOff.record?.effectiveDate ?? null}
           newerIndexDate={cutOff.newer?.effectiveDate ?? null}
+          partnerEntry={partnerEntry}
+          partnerRegistration={partnerReg}
           onSave={(input) => {
             void adapters.registrations.overrideReady(entry.id, input);
             setEditingIndex(false);

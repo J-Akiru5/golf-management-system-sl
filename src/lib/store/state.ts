@@ -1,12 +1,7 @@
 import { daysOfTournament, isFinalPlayingDay, selectedDaysOf } from "@/lib/data/dates";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { isPlayerRemoved } from "@/lib/data/player-state";
-import {
-  hasStoredRouting,
-  missingFactsFor,
-  playsUnclassified,
-  registrationFor,
-} from "@/lib/data/registrations";
+import { missingFactsFor, playsUnclassified, registrationFor } from "@/lib/data/registrations";
 import { sessionsForDay } from "@/lib/data/sessions";
 import type {
   Caddie,
@@ -398,19 +393,19 @@ export function buildRegistrations(s: DeskState): DeskRegistration[] {
       entry,
       records: recordsFor(s, player.id),
     });
-    // A pair is classed together, so the team number rides along. An organizer override keeps the
-    // class the organizer chose and is left out of the team class.
+    // A pair is classed together, so the team number rides along even when the desk stored the
+    // class by hand: applyTeamClasses then gives both partners that one stored class.
     out.push({
       ...reg,
       reasons: [...reg.reasons],
-      teamKey: entry.teamNo != null && !hasStoredRouting(entry) ? `team-${entry.teamNo}` : null,
+      teamKey: entry.teamNo == null ? null : `team-${entry.teamNo}`,
       pairKey: entry.teamNo == null ? null : `team-${entry.teamNo}`,
     });
   }
   // The class of a member-guest pair is the average of both indexes, the same rule the engine
   // draws by. Without it each partner is judged on their own index and the draw checks report a
   // pair as "from another flight" although the engine grouped it correctly.
-  applyTeamClasses(out, t.flights, t.config.maxIndex);
+  applyTeamClasses(out, t.flights, t.config.maxIndex, t.config.flightBasis);
   return out;
 }
 

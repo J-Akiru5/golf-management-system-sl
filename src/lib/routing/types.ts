@@ -67,6 +67,9 @@ export interface ProvisionalPlayer {
 
 export type StartFormat = "shotgun" | "two_tee";
 
+/** What an event's class ranges are compared against. */
+export type ClassBasis = "index" | "courseHandicap";
+
 /** A playing day runs two shotguns, a morning and an afternoon. */
 export type Session = "AM" | "PM";
 
@@ -100,7 +103,7 @@ export interface TournamentConfig {
   /** 1 = 100%. */
   allowance: number;
   /** What flight ranges are compared against. */
-  flightBasis: "index" | "courseHandicap";
+  flightBasis: ClassBasis;
   startFormat: StartFormat;
   holes: number;
   /** Largest group size. */

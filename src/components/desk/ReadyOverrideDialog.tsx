@@ -12,7 +12,7 @@ import type {
   Tournament,
 } from "@/lib/data/types";
 import { ageOn, playingHandicap, type Tee } from "@/lib/routing";
-import { matchFlights } from "@/lib/routing/classify";
+import { matchFlights, teamClassValue } from "@/lib/routing/classify";
 
 const INDEX_MIN = -10;
 const INDEX_MAX = 54;
@@ -38,6 +38,8 @@ export function ReadyOverrideDialog({
   cutOffIndex,
   cutOffIndexDate,
   newerIndexDate,
+  partnerEntry = null,
+  partnerRegistration = null,
   onSave,
 }: {
   open: boolean;
@@ -55,6 +57,13 @@ export function ReadyOverrideDialog({
   cutOffIndexDate: string | null;
   /** A record dated after the cut-off. Shown as a note; the event never uses it. */
   newerIndexDate: string | null;
+  /**
+   * The other entry of the player's pair, when the club paired them. The class is cut on both
+   * partners, so the save writes it to both rows.
+   */
+  partnerEntry?: RegistrationEntry | null;
+  /** That partner's registration, for the index and playing handicap the pair is classed on. */
+  partnerRegistration?: DeskRegistration | null;
   onSave: (input: OverrideReadyInput) => void;
 }) {
   // A ready entry is being corrected, so the dialog starts from the index the event uses now. An
@@ -82,12 +91,16 @@ export function ReadyOverrideDialog({
     indexValue === null ||
     (Number.isFinite(indexValue) && indexValue >= INDEX_MIN && indexValue <= INDEX_MAX);
   const overLimit = indexValue !== null && indexValid && indexValue > tournament.config.maxIndex;
+  // The event caps an index above its maximum. The index is kept as entered, and the class and the
+  // playing handicap are worked out from the capped number, exactly as the draw does.
+  const cappedIndex =
+    indexValue === null || !indexValid ? null : Math.min(indexValue, tournament.config.maxIndex);
   const age = birthdate ? ageOn(birthdate, tournament.config.date) : null;
   const category = tournament.categories.find((item) => item.id === categoryId) ?? null;
   const tee = category ? (tees.find((item) => item.id === category.teeId) ?? null) : null;
   const playing =
-    indexValue !== null && indexValid && tee
-      ? playingHandicap(indexValue, tee, tournament.config.allowance)
+    cappedIndex !== null && tee
+      ? playingHandicap(cappedIndex, tee, tournament.config.allowance)
       : null;
   // The conditions of play let the committee adjust a course handicap. The adjustment is strokes on
   // the computed number, and it is stored with the reason below.
@@ -95,20 +108,33 @@ export function ReadyOverrideDialog({
   const adjustmentValid =
     Number.isInteger(adjustmentValue) && Math.abs(adjustmentValue) <= ADJUSTMENT_MAX;
   const adjusted = playing === null ? null : playing + adjustmentValue;
+  // A pair is classed on both partners, not on the player whose index changed: the average of the
+  // two numbers in the event's basis, with an index above the maximum counted as the maximum. An
+  // unpaired player is classed on their own number, which is the same rule with one member.
+  const paired = partnerEntry !== null;
+  const pairValue = teamClassValue(
+    paired
+      ? [
+          { index: indexValue, playingHandicap: adjusted },
+          {
+            // The partner's registration carries the number the draw uses. Its entry is the fallback
+            // when the row cannot be built, so a pair is never classed on half its number.
+            index: partnerRegistration?.frozenIndex ?? partnerEntry?.frozen.index ?? null,
+            playingHandicap: partnerRegistration?.playingHandicap ?? null,
+          },
+        ]
+      : [{ index: indexValue, playingHandicap: adjusted }],
+    tournament.config.flightBasis,
+    tournament.config.maxIndex,
+  );
+  const basisLabel =
+    tournament.config.flightBasis === "courseHandicap" ? "course handicap" : "index";
   // Classes are cut over the whole field; the category a flight row hangs off is storage only.
   const flightOptions = tournament.flights;
   const matchingFlights = useMemo(() => {
     if (indexValue === null || !indexValid || !category || playing === null) return [];
-    const value = tournament.config.flightBasis === "index" ? indexValue : playing;
-    return matchFlights(tournament.flights, value);
-  }, [
-    category,
-    indexValid,
-    indexValue,
-    playing,
-    tournament.config.flightBasis,
-    tournament.flights,
-  ]);
+    return matchFlights(tournament.flights, pairValue);
+  }, [category, indexValid, indexValue, pairValue, playing, tournament.flights]);
   // Until the desk picks a flight by hand, a new index moves the player into the one flight it
   // falls in, so correcting the index also corrects the class.
   const autoFlight =
@@ -155,6 +181,10 @@ export function ReadyOverrideDialog({
       teeId: tee?.id ?? null,
       flightId: flight?.id ?? null,
       playingHandicap: adjusted,
+      // A pair is stored on both rows, so neither partner is left in an old class after a reload
+      // or a redraw. Only the class is copied: the partner is not an override of its own.
+      partnerEntryId: partnerEntry?.id ?? null,
+      pairFlightId: paired ? (flight?.id ?? null) : null,
       reason: reason.trim(),
       pending,
     });
@@ -180,8 +210,9 @@ export function ReadyOverrideDialog({
               {editing ? (
                 <>
                   <b>Correct the index this event uses.</b> The playing handicap is worked out again
-                  and the flight follows the new index unless you choose one. Redraw or move the
-                  player on the board if the group should change too.
+                  from the capped index and the class follows{" "}
+                  {paired ? "the average of both partners" : "the new index"} unless you choose one.
+                  Redraw or move the player on the board if the group should change too.
                 </>
               ) : (
                 <>
@@ -297,10 +328,14 @@ export function ReadyOverrideDialog({
               {!categoryId
                 ? "Leave it blank until the category is known."
                 : matchingFlights.length === 1
-                  ? `The index falls in ${matchingFlights[0]?.name}.`
+                  ? paired
+                    ? `The pair's average ${basisLabel} is ${pairValue}, which falls in ${matchingFlights[0]?.name}.`
+                    : `The ${basisLabel} is ${pairValue}, which falls in ${matchingFlights[0]?.name}.`
                   : matchingFlights.length > 1
                     ? "The flight ranges overlap; choose the one the organizer confirmed."
-                    : "No flight matches this index automatically."}
+                    : paired
+                      ? `No flight matches the pair's average ${basisLabel} of ${pairValue}.`
+                      : `No flight matches ${basisLabel} ${pairValue} automatically.`}
             </span>
           </label>
 
@@ -321,11 +356,18 @@ export function ReadyOverrideDialog({
             </div>
           </div>
 
+          {paired && partnerRegistration && (
+            <p className="hint">
+              Paired with <b>{partnerRegistration.playerName}</b>. The class is cut on both
+              partners&apos; average {basisLabel} of {pairValue} and is saved on both entries.
+            </p>
+          )}
+
           {overLimit && (
             <p className="notice warn flex items-start gap-2 text-[13px]" role="status">
               <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-              This index is above the event limit of {tournament.config.maxIndex}. The draw uses{" "}
-              {tournament.config.maxIndex} for this player; the index entered is kept on file.
+              This index is above the event limit of {tournament.config.maxIndex}. The class and the
+              playing handicap use {tournament.config.maxIndex}; the index entered is kept on file.
             </p>
           )}
 

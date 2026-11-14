@@ -121,3 +121,87 @@ describe("a member-guest pair is classed on its average index", () => {
     expect(pick(paired, a.id)?.flightId).toBe(pick(paired, b.id)?.flightId);
   });
 });
+
+describe("an index edit on one partner classes the pair", () => {
+  it("keeps the pair key when a class is stored, so both partners take it", () => {
+    const before = initialState();
+    const tournament = before.tournaments.find((t) => t.id === before.activeTournamentId);
+    if (!tournament) throw new Error("demo has an active tournament");
+    const [a, b] = before.entries.filter((e) => e.tournamentId === tournament.id && !e.overridden);
+    if (!a || !b) throw new Error("demo has two entries");
+    const category = tournament.categories[0];
+    if (!category) throw new Error("demo has a category");
+
+    const state = {
+      ...before,
+      entries: before.entries.map((e) => {
+        if (e.id === a.id) {
+          // The desk corrected one partner's index and stored the pair's class with it.
+          return {
+            ...e,
+            teamNo: 4,
+            status: "ok" as const,
+            overridden: true,
+            categoryId: category.id,
+            teeId: category.teeId,
+            flightId: "d",
+            playingHandicap: 26,
+            frozen: { ...e.frozen, index: 2 },
+          };
+        }
+        if (e.id === b.id) {
+          return { ...e, teamNo: 4, frozen: { ...e.frozen, index: 27 } };
+        }
+        return e;
+      }),
+    };
+
+    const regs = buildRegistrations(state);
+    const pick = (id: string) => regs.find((r) => r.entryId === id);
+    // The stored class is Class D. The average index of 2 and 27 is 14.5, which is Class B, so this
+    // only holds because the pair key is kept and the stored class is applied to both partners.
+    expect(pick(a.id)?.flightId).toBe("d");
+    expect(pick(b.id)?.flightId).toBe("d");
+    expect(pick(b.id)?.teamKey).toBe("team-4");
+    expect(pick(b.id)?.pairKey).toBe("team-4");
+  });
+
+  it("does not invent a pair class when the stored override names none", () => {
+    const before = initialState();
+    const tournament = before.tournaments.find((t) => t.id === before.activeTournamentId);
+    if (!tournament) throw new Error("demo has an active tournament");
+    const [a, b] = before.entries.filter((e) => e.tournamentId === tournament.id && !e.overridden);
+    if (!a || !b) throw new Error("demo has two entries");
+
+    const state = {
+      ...before,
+      entries: before.entries.map((e) =>
+        e.id === a.id
+          ? {
+              ...e,
+              teamNo: 9,
+              status: "ok" as const,
+              overridden: true,
+              categoryId: null,
+              teeId: null,
+              flightId: null,
+              playingHandicap: null,
+              frozen: { ...e.frozen, index: 2 },
+            }
+          : e.id === b.id
+            ? { ...e, teamNo: 9, frozen: { ...e.frozen, index: 27 } }
+            : e,
+      ),
+    };
+
+    const regs = buildRegistrations(state);
+    const stored = regs.find((r) => r.entryId === a.id);
+    const partner = regs.find((r) => r.entryId === b.id);
+    // The override has no class yet, so the player plays Unclassified and the partner keeps the
+    // class their own index gives them. Nothing is guessed.
+    expect(stored?.flightId).toBeNull();
+    expect(stored?.provisional).toBe(true);
+    expect(partner?.flightId).not.toBeNull();
+    expect(partner?.flightId).not.toBe(stored?.flightId);
+  });
+});

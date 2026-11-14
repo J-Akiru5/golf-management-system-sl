@@ -1123,6 +1123,17 @@ export function createSupabaseAdapters(
           ...(latestState().entries.find((item) => item.id === entryId) ?? entry),
           ...patch,
         };
+        // A pair is classed together, so the partner's row takes the same class inside this one
+        // queued write: the desk never shows half a pair. Only `flight_id` is touched, so the
+        // partner keeps its own status and is not marked as an override.
+        if (input.partnerEntryId && input.pairFlightId) {
+          const { error: pairError } = await client
+            .from("registrations")
+            .update({ flight_id: input.pairFlightId })
+            .eq("club_id", clubId)
+            .eq("id", input.partnerEntryId);
+          fail("Could not save the pair's class", pairError);
+        }
         const { error } = await client
           .from("registrations")
           .update({
@@ -1142,6 +1153,13 @@ export function createSupabaseAdapters(
           .eq("club_id", clubId)
           .eq("id", entryId);
         fail("Could not mark the player ready", error);
+        if (input.partnerEntryId && input.pairFlightId) {
+          dispatch({
+            type: "updateEntry",
+            id: input.partnerEntryId,
+            patch: { flightId: input.pairFlightId },
+          });
+        }
         dispatch({ type: "updateEntry", id: entryId, patch });
       });
     },
