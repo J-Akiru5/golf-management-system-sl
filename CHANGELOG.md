@@ -26,8 +26,9 @@ Supabase project, because the code and the database are released separately.
 - **A class corrected in the desk follows the player's live results.** Migration
   `20261114000500_class_and_handicap_follow_desk.sql` adds a trigger that carries a registration's
   class change into `round_results`, and a service-role `reset_handicap_from_desk` function for the
-  one-off backfill. It is **written and not applied**; until it is applied the class/backfill part
-  waits, while the tabulator scoring change above works from the desk number.
+  one-off backfill. It is **applied on the live project**; `reset_handicap_from_desk` is present and
+  the class change now reaches live results. The tabulator scoring change above works from the desk
+  number independently.
 - **One-off desk sync script:** `scripts/desk-sync-2026-11-14.sql` is included for the record. It is
   not a migration and the app never runs it.
 
