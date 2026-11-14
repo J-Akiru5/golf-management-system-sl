@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.57.0] - 2026-11-15
+
 ### Added
 - **The draw board can be rearranged by dragging.** Drag a player onto another player to swap the
   two, in the card view and the table view, or onto a group with room to move them there. A drop is
