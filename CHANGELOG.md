@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Docs
+- **`docs/PLAN.md` records 0.52.1 and what followed it:** the live-sync release and its Vercel-blocked
+  first deploy, the rule that merges to `main` and `staging` are made as `J-Akiru5`, the owner's
+  decision to cap the playing handicap at the event maximum (not built), the stale
+  `fix/0.51.1-handicap-scan` branch, and the four tabulation accounts. No code change.
+
 ## [0.53.0] - 2026-11-14
 
 ### Added
@@ -21,12 +27,6 @@ Supabase project, because the code and the database are released separately.
 - **A staging watcher for the owner's PC (`pnpm watch:staging`).** It listens to `staging`, builds the
   release candidate, runs the checks, opens the release pull request and waits for the owner's `ship`
   label before anything reaches `main`. Tooling only: no change to the app. See `docs/VERSIONING.md`.
-
-### Docs
-- **`docs/PLAN.md` records 0.52.1 and what followed it:** the live-sync release and its Vercel-blocked
-  first deploy, the rule that merges to `main` and `staging` are made as `J-Akiru5`, the owner's
-  decision to cap the playing handicap at the event maximum (not built), the stale
-  `fix/0.51.1-handicap-scan` branch, and the four tabulation accounts. No code change.
 
 ## [0.52.4] - 2026-11-14
 
