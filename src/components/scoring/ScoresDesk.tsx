@@ -16,6 +16,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
+import { CardQueuePanel } from "@/components/scoring/CardQueuePanel";
+import { CorrectHandicapDialog } from "@/components/scoring/CorrectHandicapDialog";
 import { OpenRoundPanel } from "@/components/scoring/OpenRoundPanel";
 import { PlayerLink } from "@/components/scoring/PlayerLink";
 import { ScorecardImportPanel } from "@/components/scoring/ScorecardImportPanel";
@@ -25,9 +27,11 @@ import { SheetImportPanel } from "@/components/scoring/SheetImportPanel";
 import { TabulatorSubmissionsPanel } from "@/components/scoring/TabulatorSubmissionsPanel";
 import { Button } from "@/components/ui/button";
 import type { ClubRole } from "@/lib/auth/member";
+import { isFinalPlayingDay } from "@/lib/data/dates";
 import { type OpenRoundSnapshot, openRoundErrorMessage } from "@/lib/data/open-round";
 import { canOpenPlayerProfile } from "@/lib/data/player-profile";
-import type { OpenRoundInput, ScoringRoundView } from "@/lib/data/scoring";
+import type { CorrectHandicapInput, OpenRoundInput, ScoringRoundView } from "@/lib/data/scoring";
+import { sessionForTimeIn, sessionsForDay } from "@/lib/data/sessions";
 import { fmtHcp, fmtIndex } from "@/lib/format";
 import {
   type CardIssue,
@@ -39,6 +43,14 @@ import {
   type StandingsRow,
   validateScorecard,
 } from "@/lib/scoring";
+import {
+  buildCardQueue,
+  type CardQueueFilters,
+  type CardQueuePlacement,
+  cardQueueCounts,
+  filterCardQueue,
+  nextCardInQueue,
+} from "@/lib/scoring/card-queue";
 import { classLabel } from "@/lib/scoring/class-label";
 import { pickDeskMarker } from "@/lib/scoring/event-card";
 import { eventRulesFor } from "@/lib/scoring/event-rules";
@@ -51,9 +63,15 @@ import {
   readCardValues,
 } from "@/lib/scoring/submission";
 import { useDesk } from "@/lib/store/desk-store";
+import { playingDaysOfEvent } from "@/lib/store/state";
 
 const DEMO_NOTICE =
   "Sample scoring preview. Cards, approvals, resolutions and standings live in this browser only and are not written to the database. The scoring schema and RPCs are applied; this screen is not wired to them yet.";
+
+/** The browser's own choice for one event and day. The round still decides whether it can publish. */
+function autoPublishKey(tournamentId: string, day: number | null): string {
+  return `teeline-auto-publish:${tournamentId}:${day ?? "all"}`;
+}
 
 /** A manual card starts empty. A cell is only ever filled by a person or by the reader. */
 function blankStrokes(holes: readonly HoleDefinition[]): Record<number, string> {
@@ -71,7 +89,8 @@ function issueLabel(issues: CardIssue[]): string {
 }
 
 export function ScoresDesk({ tab }: { tab: ScoresTab }) {
-  const { member, tournament, scoring, status, drawDay } = useDesk();
+  const { member, tournament, scoring, status, drawDay, setDrawDay, days, draw, entryByPlayer } =
+    useDesk();
   const router = useRouter();
   const tournamentId = tournament?.id ?? "";
   /** Every read and write names the playing day, so day 3 is never day 1. */
@@ -124,6 +143,28 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const submitGate = useRef(createSubmitGate());
   /** The Review page hands a card back through ?card=…; apply it once when the round loads. */
   const queryApplied = useRef(false);
+  /**
+   * The card queue's filters. The day switches the round itself, the same day every desk screen
+   * uses; session, class, state and search only narrow the players already loaded.
+   */
+  const [queueFilters, setQueueFilters] = useState<CardQueueFilters>({
+    session: "all",
+    classKey: null,
+    state: "all",
+    query: "",
+  });
+  /** The sheet that corrects the snapshot this played round is scored from. */
+  const [correctingHandicap, setCorrectingHandicap] = useState(false);
+  /**
+   * Publish a verified card without a second click. The choice is remembered per event and day in
+   * this browser; the round must still allow provisional publication.
+   */
+  const [autoPublish, setAutoPublish] = useState(true);
+  const autoPublishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingVerified = useRef<string[]>([]);
+  /** The control the desk gets back after a selection or a save. The token re-runs the same id. */
+  const [focusRequest, setFocusRequest] = useState<{ id: string; token: number } | null>(null);
+  const focusToken = useRef(0);
 
   const players = view?.players ?? [];
   const holes = view?.course.holes ?? [];
@@ -134,6 +175,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     member?.role === "owner" ||
     member?.role === "organizer" ||
     member?.role === "desk";
+  /** A played round's snapshot correction is a committee action, not a desk edit. */
+  const canCorrectHandicap =
+    status === "demo" || member?.role === "owner" || member?.role === "organizer";
   // Demo has no auth at all (`member` is undefined); a signed-in account always has a role. The
   // profile link is only painted when the account may actually open a staff profile page.
   const profileRole = member === undefined ? undefined : (member?.role ?? null);
@@ -148,6 +192,170 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const courseKey = view
     ? `${view.roundId}:${holes.map((hole) => `${hole.number}:${hole.par}:${hole.strokeIndex}`).join("|")}`
     : "";
+
+  /** The day's morning and afternoon, from the day's own stored times and the event's. */
+  const sessions = useMemo(() => {
+    const dayRow = days.find((candidate) => candidate.dayNumber === day) ?? null;
+    return sessionsForDay(
+      {
+        startTime: dayRow?.startTime ?? tournament?.config.firstTeeTime,
+        pmStartTime: dayRow?.pmStartTime,
+      },
+      {
+        eventPmStart: tournament?.config.pmFirstTeeTime,
+        finalDay: dayRow ? isFinalPlayingDay(dayRow, days) : false,
+      },
+    );
+  }, [days, day, tournament]);
+
+  /**
+   * Where each player is in the day's field: the live board first, then what the entry recorded.
+   * Both are already loaded, so the queue never asks the database for this.
+   */
+  const placements = useMemo(() => {
+    const map = new Map<string, CardQueuePlacement>();
+    const forPlayer = (playerId: string) => {
+      const existing = map.get(playerId);
+      if (existing) return existing;
+      const created: CardQueuePlacement = {};
+      map.set(playerId, created);
+      return created;
+    };
+
+    for (const group of draw ?? []) {
+      const session = sessionForTimeIn(sessions, group.time)?.key ?? null;
+      for (const playerId of group.playerIds) {
+        map.set(playerId, {
+          groupNumber: group.number,
+          startHole: group.startHole,
+          teeTime: group.time,
+          session,
+        });
+      }
+    }
+
+    for (const [playerId, entry] of entryByPlayer) {
+      const placement = forPlayer(playerId);
+      const chosen = day === null ? null : (entry.daySessions?.[day] ?? null);
+      const assigned = day === null ? null : (entry.dayTee?.[day] ?? null);
+      if (placement.session === undefined || placement.session === null) {
+        placement.session = chosen;
+      }
+      if (placement.startHole === undefined || placement.startHole === null) {
+        placement.startHole = assigned?.startHole ?? null;
+      }
+      if (placement.teeTime === undefined || placement.teeTime === null) {
+        placement.teeTime = assigned?.teeTime ?? null;
+      }
+      if ((placement.session === undefined || placement.session === null) && placement.teeTime) {
+        placement.session = sessionForTimeIn(sessions, placement.teeTime)?.key ?? null;
+      }
+    }
+    return map;
+  }, [draw, entryByPlayer, sessions, day]);
+
+  const queuePlayers = useMemo(
+    () =>
+      players.map((player) => ({
+        playerId: player.playerId,
+        playerName: player.playerName,
+        className: player.flightName ?? null,
+        classKey: player.flightId,
+      })),
+    [players],
+  );
+
+  const cardQueue = useMemo(
+    () => buildCardQueue(queuePlayers, view?.cards ?? [], placements),
+    [queuePlayers, view?.cards, placements],
+  );
+
+  /** The day, session and class scope: the counts describe this, not the search box. */
+  const scopedQueue = useMemo(
+    () =>
+      filterCardQueue(cardQueue, {
+        session: queueFilters.session,
+        classKey: queueFilters.classKey,
+        state: "all",
+        query: "",
+      }),
+    [cardQueue, queueFilters.session, queueFilters.classKey],
+  );
+  const visibleQueue = useMemo(
+    () => filterCardQueue(cardQueue, queueFilters),
+    [cardQueue, queueFilters],
+  );
+  const queueCounts = useMemo(() => cardQueueCounts(scopedQueue), [scopedQueue]);
+
+  const classOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const entry of cardQueue) {
+      if (entry.classKey !== null && entry.className !== null && !seen.has(entry.classKey)) {
+        seen.set(entry.classKey, entry.className);
+      }
+    }
+    return [...seen]
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [cardQueue]);
+
+  const dayOptions = useMemo(
+    () =>
+      playingDaysOfEvent(days).map((dayRow) => ({
+        value: dayRow.dayNumber,
+        label: dayRow.label?.trim() || `Day ${dayRow.dayNumber}`,
+      })),
+    [days],
+  );
+
+  const queueScopeLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (day !== null) parts.push(`Day ${day}`);
+    if (queueFilters.session !== "all") parts.push(`${queueFilters.session} session`);
+    const chosenClass = classOptions.find((option) => option.value === queueFilters.classKey);
+    if (chosenClass) parts.push(chosenClass.label);
+    return parts.length > 0 ? `in ${parts.join(" · ")}` : "in this round";
+  }, [day, queueFilters.session, queueFilters.classKey, classOptions]);
+
+  /** The group and hole the selected player starts on, shown beside the card. */
+  const selectedGroupLabel = useMemo(() => {
+    if (!playerId) return undefined;
+    const placement = placements.get(playerId);
+    if (!placement || placement.groupNumber === null || placement.groupNumber === undefined) {
+      return undefined;
+    }
+    return placement.startHole === null || placement.startHole === undefined
+      ? String(placement.groupNumber)
+      : `${placement.groupNumber} · hole ${placement.startHole}`;
+  }, [placements, playerId]);
+
+  // Puts the keyboard back on the next field that needs typing, after a pick or a save.
+  useEffect(() => {
+    if (!focusRequest) return;
+    const element = document.getElementById(focusRequest.id);
+    if (element instanceof HTMLInputElement) {
+      element.focus();
+      element.select();
+    }
+  }, [focusRequest]);
+
+  // The auto-publish choice belongs to this browser, event and day. A stored "0" turns it off.
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(autoPublishKey(tournamentId, day));
+      if (stored !== null) setAutoPublish(stored === "1");
+    } catch {
+      // Storage off: keep the default, which publishes after verification.
+    }
+  }, [tournamentId, day]);
+
+  // A queued publish dies with the screen; the next verification schedules a new one.
+  useEffect(
+    () => () => {
+      if (autoPublishTimer.current) clearTimeout(autoPublishTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!tournamentId) return;
@@ -273,6 +481,88 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     }
   }
 
+  /**
+   * Corrects the snapshot this round is scored from. The sheet stays open on a refusal, so the
+   * reason and the corrected numbers are not lost. The result is recalculated by the database; the
+   * public board waits for the next publish.
+   */
+  async function correctHandicap(input: CorrectHandicapInput) {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await scoring.correctHandicap(tournamentId, input, day);
+      setView(next);
+      setSavedNote(
+        "Handicap corrected and the player's result recalculated. Publish the round to update the public board.",
+      );
+      setCorrectingHandicap(false);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(message);
+      throw reason instanceof Error ? reason : new Error(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Collects the cards verified in a short burst and publishes once. The board's Live mode batches
+   * its edits the same way, so a run of approvals is one publication, not one per card.
+   */
+  function scheduleAutoPublish(players: string[]) {
+    if (!autoPublish) return;
+    if (!view?.provisionalPublication || view.roundStatus === "final") return;
+    pendingVerified.current.push(...players);
+    if (autoPublishTimer.current) clearTimeout(autoPublishTimer.current);
+    autoPublishTimer.current = setTimeout(() => {
+      void publishVerified();
+    }, 2000);
+  }
+
+  async function publishVerified() {
+    const names = pendingVerified.current;
+    pendingVerified.current = [];
+    if (names.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await scoring.publishRound(
+        tournamentId,
+        `Automatic publish after verification: ${names.join(", ")}`,
+        day,
+      );
+      setView(next);
+      setSavedNote(
+        `Published automatically after ${names.length} verified ${names.length === 1 ? "card" : "cards"}.`,
+      );
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(
+        `The ${names.length === 1 ? "card is" : "cards are"} approved, but the automatic publish failed: ${message} Use Publish provisional.`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Approves one card, then lets the debounced publish carry it to the public board. */
+  async function approveCard(cardId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await scoring.approveCard(tournamentId, cardId, "Desk approval", day);
+      setView(next);
+      const card = next.cards.find((candidate) => candidate.id === cardId);
+      const name =
+        next.players.find((player) => player.playerId === card?.playerId)?.playerName ?? cardId;
+      scheduleAutoPublish([name]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function openRound(input: OpenRoundInput) {
     setBusy(true);
     setError(null);
@@ -390,7 +680,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
 
   /**
    * The player picker is the correction picker too: an existing current card opens for a new
-   * revision, and a player with no card starts a fresh entry.
+   * revision, and a player with no card starts a fresh entry. A new entry puts the keyboard on the
+   * first field that still needs typing, so a card is picked and typed without the mouse.
    */
   function changePlayer(next: string) {
     const existing = [...(view?.cards ?? [])]
@@ -415,6 +706,49 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
           "",
       );
     }
+    requestFocus(eventRules ? "card-handicap" : firstHoleId());
+  }
+
+  function requestFocus(id: string) {
+    focusToken.current += 1;
+    setFocusRequest({ id, token: focusToken.current });
+  }
+
+  /** The id of the round's first score cell, where a fresh card starts typing. */
+  function firstHoleId(): string {
+    const first = holes[0];
+    return first ? `hole-${first.number}` : "score-submit";
+  }
+
+  /**
+   * Starts a blank card for the next player after a save. It is the same reset a fresh entry gets,
+   * but the saved note stays on screen and the keyboard lands on the card's first field.
+   */
+  function beginCardFor(nextPlayerId: string) {
+    setEditingCard(null);
+    setCorrectionReason("");
+    setEditCaptureKey("");
+    setScanImage(null);
+    setScanExtraction(null);
+    setScanCaptureKey("");
+    setScanReader({});
+    setScanConfirmed(false);
+    setSubmitNote("");
+    setPendingSubmit(null);
+    setError(null);
+    setPlayerId(nextPlayerId);
+    setStrokes(blankStrokes(holes));
+    setWrittenOnCard("");
+    setCardHandicap("");
+    if (nextPlayerId === scorerId) {
+      const rotation = reciprocalRotation(players.map((player) => player.playerId));
+      setScorerId(
+        rotation.find((assignment) => assignment.playerId === nextPlayerId)?.scorerId ??
+          players.find((player) => player.playerId !== nextPlayerId)?.playerId ??
+          "",
+      );
+    }
+    requestFocus(eventRules ? "card-handicap" : firstHoleId());
   }
 
   /** Enter moves to the next hole in order, so a desk can type a whole card without the mouse. */
@@ -425,11 +759,15 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       target.focus();
       target.select();
     } else {
-      document.getElementById("score-submit")?.focus();
+      // The last hole hands the desk to the save that opens the next card, so a card is typed and
+      // saved in one run. A correction has no next-card action; it gets the plain save.
+      const saveNext = document.getElementById("score-submit-next");
+      const save = document.getElementById("score-submit");
+      (saveNext ?? save)?.focus();
     }
   }
 
-  async function submitCard() {
+  async function submitCard(advanceToNextCard = false) {
     const gate = submitGate.current;
     // A second tap, a double click or a key repeat never reaches the repository.
     if (!gate.tryEnter()) return;
@@ -511,6 +849,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         ? editCaptureKey || globalThis.crypto.randomUUID()
         : scanCaptureKey || retryKey || globalThis.crypto.randomUUID();
       if (!editingCard) setPendingSubmit({ key: captureKey, signature });
+      // The next card to open once this one is saved, chosen from the view the save returns.
+      const advance = { playerId: "" };
       await run(async () => {
         const image = scanImage
           ? {
@@ -547,6 +887,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
             saved.outcome === "approved"
               ? `Card saved and approved for ${playerName || "this player"}. It counts now.`
               : `The card for ${playerName || "this player"} was already in.`;
+          if (saved.outcome === "approved") {
+            scheduleAutoPublish([playerName || targetPlayerId]);
+          }
         } else {
           next = await scoring.submitCard(
             tournamentId,
@@ -565,6 +908,17 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
           );
           note = `Card saved for ${playerName || "this player"} and sent for approval. It does not count until it is approved.`;
         }
+        // "Save and next" hands the desk the next card without the mouse. A correction, or the
+        // plain save, stays put: the desk is on that player's card on purpose.
+        if (advanceToNextCard && !editingCard) {
+          const savedQueue = filterCardQueue(buildCardQueue(queuePlayers, next.cards, placements), {
+            session: queueFilters.session,
+            classKey: queueFilters.classKey,
+            state: "all",
+            query: "",
+          });
+          advance.playerId = nextCardInQueue(savedQueue, targetPlayerId)?.playerId ?? "";
+        }
         setEditingCard(null);
         setCorrectionReason("");
         setEditCaptureKey("");
@@ -574,6 +928,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         setSavedNote(note);
         return next;
       });
+      if (advance.playerId) beginCardFor(advance.playerId);
     } finally {
       setSubmitting(false);
       gate.leave();
@@ -806,6 +1161,19 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
               mode="disable"
               disabledReason="Only club staff can enter or correct cards."
             >
+              <CardQueuePanel
+                entries={visibleQueue}
+                counts={queueCounts}
+                scopeLabel={queueScopeLabel}
+                dayNumber={day}
+                dayOptions={dayOptions}
+                classOptions={classOptions}
+                filters={queueFilters}
+                currentPlayerId={playerId}
+                onFiltersChange={setQueueFilters}
+                onDayChange={setDrawDay}
+                onSelect={changePlayer}
+              />
               <section
                 id="score-entry-card"
                 aria-labelledby="score-entry"
@@ -824,7 +1192,10 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   scorerId={scorerId}
                   selectedPlayer={selectedPlayer}
                   selectedScorer={selectedScorer}
-                  context={{ className: selectedPlayer?.flightName }}
+                  context={{
+                    className: selectedPlayer?.flightName,
+                    groupLabel: selectedGroupLabel,
+                  }}
                   editingCard={editingCard}
                   editingPlayerName={editingPlayerName}
                   profileRole={profileRole}
@@ -842,6 +1213,14 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                     setStrokes((current) => ({ ...current, [hole]: value }))
                   }
                   onEnter={focusAfter}
+                  onHandicapEnter={() => requestFocus(firstHoleId())}
+                  onCorrectHandicap={
+                    canCorrectHandicap &&
+                    selectedPlayer?.handicap &&
+                    selectedPlayer.handicap.rounding !== "card"
+                      ? () => setCorrectingHandicap(true)
+                      : undefined
+                  }
                   scan={scan}
                   scanned={scanned}
                   scanImage={scanImage}
@@ -851,7 +1230,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   submitNote={submitNote}
                   savedNote={savedNote}
                   onApplyScan={applyScan}
-                  onSubmit={() => void submitCard()}
+                  onSubmit={() => void submitCard(false)}
+                  onSubmitNext={() => void submitCard(true)}
                   onStartAnother={startAnother}
                   onFillPar={() => setStrokes(strokesFor(holes))}
                   eventRules={eventRules}
@@ -870,6 +1250,30 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
               subtitle="Approve only after the card is checked. Low-confidence values need a person to confirm them."
               dataHelp="scores-cards"
             >
+              <label className="flex min-h-11 items-center gap-2 text-[13px]">
+                <input
+                  type="checkbox"
+                  checked={autoPublish}
+                  onChange={(event) => {
+                    const next = event.target.checked;
+                    setAutoPublish(next);
+                    try {
+                      window.localStorage.setItem(
+                        autoPublishKey(tournamentId, day),
+                        next ? "1" : "0",
+                      );
+                    } catch {
+                      // Storage off: the choice still applies until this screen closes.
+                    }
+                  }}
+                />
+                Publish verified cards automatically
+              </label>
+              <p className="hint">
+                A verified card reaches the public board after a short pause, in one publication for
+                a run of cards. The Publish provisional button still works, and this choice is
+                remembered in this browser for this event and day.
+              </p>
               {view.cards.length === 0 ? (
                 <p className="muted">No cards yet. Enter one above.</p>
               ) : (
@@ -896,11 +1300,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                           onRejectReason={(value) =>
                             setRejectReasons((current) => ({ ...current, [card.id]: value }))
                           }
-                          onApprove={() =>
-                            void run(() =>
-                              scoring.approveCard(tournamentId, card.id, "Desk approval", day),
-                            )
-                          }
+                          onApprove={() => void approveCard(card.id)}
                           onReject={() => {
                             const reason = (rejectReasons[card.id] ?? "").trim();
                             if (!reason) {
@@ -1172,6 +1572,19 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
             </SectionCard>
           )}
         </>
+      )}
+      {correctingHandicap && selectedPlayer?.handicap && view && (
+        <CorrectHandicapDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setCorrectingHandicap(false);
+          }}
+          playerId={selectedPlayer.playerId}
+          playerName={selectedPlayer.playerName}
+          handicap={selectedPlayer.handicap}
+          roundStatus={view.roundStatus}
+          onSave={correctHandicap}
+        />
       )}
     </div>
   );

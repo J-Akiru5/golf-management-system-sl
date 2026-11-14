@@ -63,6 +63,10 @@ export interface ScorecardWorkspaceProps {
   onScorerChange: (playerId: string) => void;
   onStrokeChange: (hole: number, value: string) => void;
   onEnter: (hole: number) => void;
+  /** Enter in the card's HDCP box moves the desk into the grid: type the handicap, then the card. */
+  onHandicapEnter?: () => void;
+  /** Owner or organizer only: corrects the snapshot this round is scored from. */
+  onCorrectHandicap?: () => void;
   scan: ScanCardReview;
   scanned: boolean;
   scanImage: ScorecardScanImage | null;
@@ -72,7 +76,10 @@ export interface ScorecardWorkspaceProps {
   submitNote: string;
   savedNote: string;
   onApplyScan: (apply: ScorecardScanApply) => void;
+  /** Saves the card and stays on it, for a correction or a card that may need a second look. */
   onSubmit: () => void;
+  /** Saves the card and opens the next card in the queue, from the keyboard. */
+  onSubmitNext: () => void;
   onStartAnother: () => void;
   onFillPar: () => void;
   /**
@@ -113,6 +120,8 @@ export function ScorecardWorkspace({
   onScorerChange,
   onStrokeChange,
   onEnter,
+  onHandicapEnter,
+  onCorrectHandicap,
   scan,
   scanned,
   scanImage,
@@ -123,6 +132,7 @@ export function ScorecardWorkspace({
   savedNote,
   onApplyScan,
   onSubmit,
+  onSubmitNext,
   onStartAnother,
   onFillPar,
   eventRules = null,
@@ -248,6 +258,11 @@ export function ScorecardWorkspace({
                   autoComplete="off"
                   value={cardHandicap}
                   onChange={(event) => onCardHandicapChange?.(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    onHandicapEnter?.();
+                  }}
                   placeholder="As written, e.g. 16.7"
                   aria-invalid={handicapProblem ? true : undefined}
                   aria-describedby="card-handicap-hint"
@@ -310,7 +325,7 @@ export function ScorecardWorkspace({
         </div>
         {/*
           The phone's stuck bar. It comes after the comboboxes in the DOM so Tab still goes
-          Player, Marker, Submit; `order-first` puts it at the top of the page below `lg`, and from
+          Player, Marker, Save; `order-first` puts it at the top of the page below `lg`, and from
           `lg` up it is the third column of the sticky card. `bg-surface-raised` is solid so the
           card scrolling underneath never shows through.
         */}
@@ -320,15 +335,38 @@ export function ScorecardWorkspace({
           </span>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <Pill tone={ready ? "ok" : "warn"}>{statusLabel}</Pill>
+            {!editingCard && (
+              <Button
+                id="score-submit-next"
+                variant="primary"
+                size="sm"
+                className="min-h-11"
+                onClick={onSubmitNext}
+                disabled={!ready || busy || submitting}
+                title="Saves this card and opens the next card in the queue."
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    Saving card…
+                  </>
+                ) : eventRules ? (
+                  "Save, approve and next"
+                ) : (
+                  "Save and next card"
+                )}
+              </Button>
+            )}
             <Button
               id="score-submit"
-              variant="primary"
+              variant={editingCard ? "primary" : "secondary"}
               size="sm"
+              className="min-h-11"
               onClick={onSubmit}
               disabled={!ready || busy || submitting}
               data-help="scores-submit"
             >
-              {submitting ? (
+              {submitting && editingCard ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Saving card…
@@ -599,6 +637,7 @@ export function ScorecardWorkspace({
             handicap={eventRules ? cardSnapshot : selectedPlayer.handicap}
             frozenIndex={selectedPlayer.frozenIndex}
             course={view.course}
+            onCorrect={onCorrectHandicap}
           />
         )}
       </div>

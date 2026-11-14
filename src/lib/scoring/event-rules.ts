@@ -55,6 +55,13 @@ export function eventRulesFor(rulesVersion: string | null | undefined): EventSco
 /** Stored as the snapshot's index source. The connected view reads it to tell a card snapshot apart. */
 export const CARD_HANDICAP_SOURCE = "Scorecard HDCP box";
 
+/**
+ * Stored as the snapshot's index source when an organizer corrects the index after the round has
+ * left draft/open. Written by `correct_handicap_snapshot` in
+ * 20261114000300_correct_handicap_snapshot.sql, and by the demo repository.
+ */
+export const CORRECTED_HANDICAP_SOURCE = "Manual correction";
+
 export type CardHandicapReading =
   | {
       ok: true;

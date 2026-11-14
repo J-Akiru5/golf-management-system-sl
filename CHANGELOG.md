@@ -9,6 +9,84 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-11-14
+
+### Added
+- **A player's handicap record can be added or corrected from their page (#204).** Handicap history
+  has **Add index** for an owner or organizer, and **Edit** on every record. Saving a date that
+  already has a record updates it; a new date adds one. The sheet changes the player's record
+  history only, not the index the current event uses, and says so next to a pointer to the existing
+  **Edit index** button. The write is audited with the actor, the time, the old and new index, the
+  date and the reason, and the database refuses a desk account. Demo mode works from memory.
+- **Migration written, not applied:** `20261114000200_save_handicap_record.sql` adds one function,
+  `save_handicap_record`, which performs the role check, the range and reason checks, the upsert on
+  `(player_id, effective_date)` and the audit row. It changes no table, constraint, trigger or
+  policy. Saving a record in connected mode fails with a plain message until it is applied.
+- **`/scores` can save a card under the 24th Bamboo Tee rules (#258).** When a round's rules version
+  is `bamboo-tee-2026`, the entry form asks for the HDCP written on the card instead of a marker,
+  and **Save and approve card** stores the handicap, the card and its approval in one step, each
+  with its own audit row. The playing handicap is the HDCP box with the decimal dropped (16.7 plays
+  off 16) and a blank box counts as 0. One desk-checked card is enough, so the round has to be
+  opened with one required card. An X is a pick-up: 0 points, no stroke count. The marker is not
+  asked for or shown: a stable stand-in player is stored because the database needs one, and the
+  approval's audit sentence says so. A round on any other rules version is unchanged.
+- **The scoring sheet export imports into `/scores`.** Scores, Review has a new panel for the JSON
+  the sheet at `/scorecard/` exports (`bamboo-scores-edit`). Every card is matched to a player by
+  exact name or listed as unmatched. A blank hole, an unreadable handicap, a written total that does
+  not add up, or a second card for the same player blocks that card by name. Cards the sheet marks
+  verified are saved and approved; the rest are saved for approval. Importing the same file again
+  changes nothing. A file set to the sheet's WHS setting is refused whole.
+- **Migration written, not applied:** `20261114000100_card_handicap_snapshot.sql` adds one function,
+  `save_card_handicap_snapshot`, which stores the card's handicap in the round's snapshot. It
+  changes no table, constraint, trigger or policy. Saving a card under the rules fails with a plain
+  message until it is applied.
+- **The handicap a played round is scored from can be corrected by an owner or organizer (#204,
+  #270 point 2).** The Scores screen's handicap summary has **Correct handicap**; the sheet takes
+  the index, the effective date and a reason. The database records who made the change, why, and
+  the old and new values, recalculates that player's result, and the next publish carries it to the
+  public board. It refuses a final round and a change without a reason. The player's record history
+  and the event's frozen index stay separate.
+- **Migration written, not applied:** `20261114000300_correct_handicap_snapshot.sql` replaces the
+  `handicap_snapshot_guard()` body with a bypass that only the new
+  `correct_handicap_snapshot` function turns on for its own transaction, and adds that function. It
+  changes no table, column, policy or data. Until it is applied, the correction sheet fails with a
+  plain message and the build is unchanged.
+- **Manual score entry on `/scores` is keyboard-first (#259).** Find a card by any part of the
+  name, or filter by day, session, class and card state; the tiles count entered, verified and
+  still missing for the chosen session. The 18-hole grid takes digits or `X`, Tab or Enter moves
+  to the next hole, and **Save and next** opens the next card with the keyboard on its first field.
+  The cells are 44px on a tablet and the group or starting hole is shown beside the card.
+- **A verified card publishes itself (#260).** After a card is approved, the desk publishes the
+  round after a two-second pause, one publication for a run of cards, and clears the shared public
+  reads through the existing publish path. The choice is remembered in this browser for the event
+  and day, and the **Publish provisional** button remains the manual path. Not in this change: a
+  server-side per-round setting and one-step undo; both are recorded as follow-ups.
+- **The tabulation page starts from the players the desk assigned, not a blank page.** On a fresh day
+  and session page (Day 3 AM, Day 3 PM and so on), the page lists every player with a group and tee
+  time for that session, in start order, with their group, tee and system playing handicap. Only the
+  18 hole scores and the card's HDCP box are typed; the name, class and system handicap are read-only.
+  A day, session, group or tee the tabulator corrects is kept and labelled for the admin. An existing
+  day with cards is never changed on load; **Refresh list from system** is the explicit way to add a
+  missing player.
+- **Checked cards go to the admin's scoring queue.** **Send checked cards to admin** freezes only the
+  cards ticked against the paper, resolves a blank HDCP box to the system playing handicap, keeps the
+  partner as marker, and leaves name-only cards for the admin to match. `/scores/review` lists the
+  submissions; the admin reviews one, imports and approves it with their own staff session, and
+  publishes. The tabulator cannot approve or publish. The live day documents are read as they are and
+  never reset by the deploy.
+
+### Fixed
+- **The tabulator stops its save timer when the session ends, and the sign-in page shows the form
+  instead of bouncing a stale session between `/login` and `/scorecard/`.** A stale tabulation
+  session previously produced a refresh loop every couple of seconds.
+- **Editing one partner's index classes the pair, and an index above the event maximum no longer
+  bypasses the cap (#268).** The Edit index dialog cuts the class on the average of both partners'
+  numbers, in the event's flight basis, with an index above `maxIndex` counted as the maximum, and
+  saves that class on the partner's registration too. The desk, the player page and the board then
+  show both partners in one class without a redraw. The playing handicap is worked out from the
+  capped index while the index entered is kept on file. The routing engine now classes on
+  `flightBasis`, so the dialog and the draw always agree. No migration.
+
 ## [0.51.0] - 2026-11-14
 
 ### Added

@@ -127,4 +127,41 @@ describe("mock adapters", () => {
     expect(byId(member.id)?.teamNo).toBe(124);
     expect(byId(member2.id)?.teamNo).toBe(125);
   });
+
+  it("saves a manual handicap record for a demo player", async () => {
+    let state = initialState();
+    const dispatch = (action: Action) => {
+      state = reducer(state, action);
+    };
+    const adapters = createMockAdapters(state, dispatch);
+    const player = state.players[0];
+    if (!player) throw new Error("The demo seed has no players.");
+
+    await adapters.players.saveHandicapRecord(player.id, {
+      index: 14.2,
+      effectiveDate: "2026-11-14",
+      reason: "Added from the scorecard",
+    });
+
+    const saved = state.records.find(
+      (row) => row.playerId === player.id && row.effectiveDate === "2026-11-14",
+    );
+    expect(saved?.index).toBe(14.2);
+    expect(saved?.source).toBe("manual_fix");
+  });
+
+  it("refuses a demo record outside the index range", async () => {
+    const state = initialState();
+    const player = state.players[0];
+    if (!player) throw new Error("The demo seed has no players.");
+    const adapters = createMockAdapters(state, () => {});
+
+    await expect(
+      adapters.players.saveHandicapRecord(player.id, {
+        index: 60,
+        effectiveDate: "2026-11-14",
+        reason: "Outside the record range",
+      }),
+    ).rejects.toThrow("The handicap index must be a number from -10 to 54.");
+  });
 });

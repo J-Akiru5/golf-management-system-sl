@@ -1,5 +1,6 @@
 import { CircleAlert } from "lucide-react";
 import { PlayerLink } from "@/components/scoring/PlayerLink";
+import { Button } from "@/components/ui/button";
 import type { ClubRole } from "@/lib/auth/member";
 import { fmtIso } from "@/lib/data/labels";
 import { fmtHcp, fmtIndex } from "@/lib/format";
@@ -8,9 +9,10 @@ import { checkHandicapSnapshot, type HandicapSnapshot, type RoundCourse } from "
 /**
  * The handicap a round actually uses, shown where the desk enters and checks cards.
  *
- * It is deliberately display-only. The snapshot is the scoring input; the registration freeze is
- * shown beside it so a checker can see when the two disagree. Correcting either belongs on the
- * player or registration record, not on a scorecard, so the player's name links there.
+ * It is display-only by default. The snapshot is the scoring input; the registration freeze is
+ * shown beside it so a checker can see when the two disagree. An owner or organizer may correct the
+ * snapshot for a played round through the guarded function, which audits the change and recalculates
+ * the result; the player's record history stays on the player page.
  */
 export function HandicapSummary({
   playerId,
@@ -19,6 +21,7 @@ export function HandicapSummary({
   handicap,
   frozenIndex,
   course,
+  onCorrect,
 }: {
   playerId: string;
   playerName: string;
@@ -27,6 +30,8 @@ export function HandicapSummary({
   handicap: HandicapSnapshot | null;
   frozenIndex?: number | null;
   course: RoundCourse;
+  /** Owner or organizer only: corrects the snapshot this played round is scored from. */
+  onCorrect?: () => void;
 }) {
   const check = checkHandicapSnapshot({
     handicap,
@@ -53,6 +58,11 @@ export function HandicapSummary({
             handicap.
           </p>
         </div>
+        {onCorrect && handicap && (
+          <Button variant="secondary" size="sm" onClick={onCorrect}>
+            Correct handicap
+          </Button>
+        )}
       </div>
 
       {!handicap ? (
@@ -150,8 +160,9 @@ export function HandicapSummary({
                 )}
               </ul>
               <p className="m-0 text-[13px]">
-                The scorecard is not the place to change it. Open the player record to check the
-                index and the freeze.
+                {onCorrect
+                  ? "Use Correct handicap to change the snapshot for this round. The scoring audit records who made the change and why."
+                  : "The scorecard is not the place to change it. Open the player record to check the index and the freeze."}
               </p>
             </div>
           )}

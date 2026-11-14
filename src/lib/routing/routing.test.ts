@@ -176,6 +176,20 @@ describe("classification", () => {
     const byCh = classifyPlayer(p, input([], { flightBasis: "courseHandicap" }));
     expect(byIndex.flightId).toBe("a");
     expect(byCh.playingHandicap).toBe(Math.round(12 * (128 / 113) + (71.5 - 72)));
+    // 12 is Class A; the same player's course handicap of 13 is Class B. The engine follows the
+    // event's basis, the same number the desk's correction dialog shows.
+    expect(byCh.flightId).toBe("b");
+  });
+
+  it("caps an index above the maximum before classing by course handicap too", () => {
+    const p = player({ birthdate: "1990-01-01", index: 40 });
+    const capped = classifyPlayer(p, input([], { flightBasis: "courseHandicap", maxIndex: 24 }));
+    // 24 is the capped index, so the course handicap is computed from 24 (27 strokes), not 40 (45),
+    // and 27 is Class C. Without the cap no class would cover the number.
+    expect(capped.playingHandicap).toBe(27);
+    expect(capped.flightId).toBe("c");
+    // The index on file is left as it is.
+    expect(capped.index).toBe(40);
   });
 });
 
@@ -324,6 +338,21 @@ describe("route", () => {
     );
 
     expect(out.registrations.every((entry) => entry.flightId === "c")).toBe(true);
+  });
+
+  it("classes a pair on the average in the event's basis, not on one partner's number", () => {
+    const players = [
+      player({ index: 8, teamKey: "pair-basis" }),
+      player({ index: 18, teamKey: "pair-basis" }),
+    ];
+
+    const byIndex = route(input(players, { flightBasis: "index" }));
+    expect(byIndex.registrations.map((entry) => entry.flightId)).toEqual(["b", "b"]);
+
+    // On the course handicap the same two numbers are 9 and 20, which average 14.5 and still land
+    // in Class B, so the two partners stay together and share the class the event cuts.
+    const byCourse = route(input(players, { flightBasis: "courseHandicap" }));
+    expect(byCourse.registrations.every((entry) => entry.flightId === "b")).toBe(true);
   });
 
   it("flags groups smaller than the minimum", () => {

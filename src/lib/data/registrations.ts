@@ -75,6 +75,18 @@ export function hasStoredRouting(entry: RegistrationEntry): boolean {
 }
 
 /**
+ * The other entry of the player's pair, when the club paired them. A member-guest pair is classed on
+ * both partners, so an index edit has to name the partner it changes with the player.
+ */
+export function partnerOf(
+  entry: RegistrationEntry,
+  entries: RegistrationEntry[],
+): RegistrationEntry | null {
+  if (entry.teamNo === null || entry.teamNo === undefined) return null;
+  return entries.find((other) => other.id !== entry.id && other.teamNo === entry.teamNo) ?? null;
+}
+
+/**
  * Builds the desk's view of one registration: the routing result for the frozen index, plus the
  * freeze provenance. Pure and side-effect free, so the draw, the registration desk and the tests
  * all read the same numbers.
@@ -122,6 +134,8 @@ export function registrationFor({
       teeId: entry.teeId ?? null,
       playingHandicap: entry.playingHandicap ?? null,
       flightId: entry.flightId ?? null,
+      // The desk's stored class is the pair's class: applyTeamClasses gives it to both partners.
+      classSource: "stored",
       ageKnown: player.birthdate !== null,
       flags: [],
       entryId: entry.id,
