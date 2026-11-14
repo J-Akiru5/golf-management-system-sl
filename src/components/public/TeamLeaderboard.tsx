@@ -38,7 +38,9 @@ function score(value: number | null): string {
 function TeamRow({ team, cards }: { team: PublicTeamStanding; cards: PublicTeamCards }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
   const panelId = useId();
+  const pickId = useId();
 
   const memberId = team.playerIds[0] ?? null;
   const guestId = team.playerIds[1] ?? null;
@@ -56,6 +58,20 @@ function TeamRow({ team, cards }: { team: PublicTeamStanding; cards: PublicTeamC
     { label: t("programme.leaderboardMember"), id: memberId, name: team.memberName },
     { label: t("programme.leaderboardGuest"), id: guestId, name: team.guestName },
   ];
+
+  // Every published card the team has, in one list: a team can carry four of them, and a dropdown
+  // shows one at a time instead of stacking all four under the row.
+  const cardOptions = partners.flatMap((partner) =>
+    (partner.id ? (cards[partner.id] ?? []) : []).map((card) => ({
+      key: `${partner.id}-${card.roundId}`,
+      label: `${partner.name ?? "—"} · ${t("programme.scoresDay", { day: card.dayNumber })}`,
+      card,
+    })),
+  );
+  const firstKey = cardOptions[0]?.key ?? null;
+  const selectedKey =
+    picked !== null && cardOptions.some((option) => option.key === picked) ? picked : firstKey;
+  const selected = cardOptions.find((option) => option.key === selectedKey) ?? null;
 
   return (
     <li
@@ -130,29 +146,32 @@ function TeamRow({ team, cards }: { team: PublicTeamStanding; cards: PublicTeamC
         </svg>
       )}
       <div id={panelId} hidden={!open} data-testid="team-scorecards">
-        {open && (
-          <div className="grid gap-4 border-t border-line px-3 py-3">
-            {partners.map((partner) => {
-              const partnerCards = partner.id ? (cards[partner.id] ?? []) : [];
-              return (
-                <div key={partner.label} className="grid gap-3">
-                  <h4 className="m-0 text-[15px] leading-5">{partner.name ?? "—"}</h4>
-                  {partnerCards.length > 0 ? (
-                    partnerCards.map((card) => (
-                      <PaperScorecard
-                        key={card.roundId}
-                        card={card}
-                        title={`${partner.name ?? "—"} · Day ${card.dayNumber}`}
-                      />
-                    ))
-                  ) : (
-                    <p className="hint m-0">{t("programme.leaderboardNoCardYet")}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {open &&
+          (selected ? (
+            <div className="lb-cards">
+              <label className="lb-cards-pick" htmlFor={pickId}>
+                <span>{t("programme.leaderboardCardPick")}</span>
+                <select
+                  id={pickId}
+                  className="lb-select"
+                  value={selected.key}
+                  onChange={(event) => setPicked(event.target.value)}
+                  data-testid="team-scorecard-select"
+                >
+                  {cardOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {/* The picker above already names the player and the day, so the card starts at its
+                  own figures instead of repeating the heading. */}
+              <PaperScorecard key={selected.key} card={selected.card} />
+            </div>
+          ) : (
+            <p className="hint lb-cards-empty">{t("programme.leaderboardNoCardYet")}</p>
+          ))}
       </div>
     </li>
   );

@@ -202,7 +202,7 @@ export default async function PublicPairingsPage({
     <main className="public public-pairings mobile-bar-space">
       <PlayerOfflineNotice path="/pairings" />
       <PairingsLive signature={liveSignature} />
-      <header className="public-head public-appbar !p-4 sm:!p-5">
+      <header className="public-head public-appbar p-4 sm:p-5">
         {/* Inside a player's profile the way back is the pairings list; everywhere else it is the
             main page. */}
         <PublicBackLink label={t(back.labelKey)} href={back.href} />

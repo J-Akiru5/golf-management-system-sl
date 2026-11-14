@@ -48,7 +48,7 @@ export function RosterPage({
   const { t } = useI18n();
   return (
     <main className="public public-pairings mobile-bar-space">
-      <header className="public-head public-appbar !p-4 sm:!p-5">
+      <header className="public-head public-appbar p-4 sm:p-5">
         <PublicBackLink label={t("pairings.backHome")} />
         <div className="public-appbar-controls flex items-center gap-2">
           <ThemeToggle compact tone="nav" />
@@ -119,6 +119,15 @@ export function RosterPage({
   );
 }
 
+/**
+ * The flight's colour, from its place in the roster: the same four tones the pairing cards use, so a
+ * member reads a flight as one colour across both lists.
+ */
+function flightTone(flights: string[], flight: string): number {
+  const index = flights.indexOf(flight);
+  return index < 0 ? 0 : index % 4;
+}
+
 function RosterDirectory({ players }: { players: PublicRosterPlayer[] }) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
@@ -186,39 +195,44 @@ function RosterDirectory({ players }: { players: PublicRosterPlayer[] }) {
           {t("pairings.noMatch")}
         </p>
       ) : (
-        <ul className="plain player-cards" data-testid="roster-list">
+        <ul className="plain player-cards roster-cards" data-testid="roster-list">
           {matches.map((player, index) => {
             const href = player.id ? publicTabHref("profile", { player: player.id }) : null;
+            // The name holds the left and the index the far right, the way a pairing card holds its
+            // hole and tee time; the class line sits under both with the flag beside it.
             const content = (
               <>
-                <span className="player-card-head">
+                <span className="player-card-top">
                   <b className="player-card-name">{player.name}</b>
-                  {href && <ChevronRight className="player-card-arrow" aria-hidden="true" />}
+                  <span className="player-card-index">
+                    <span className="player-card-index-label">{t("programme.index")}</span>
+                    {fmtIndex(player.index)}
+                  </span>
+                  <span className="player-card-class">
+                    {[player.category, player.flight].filter(Boolean).join(" · ") ||
+                      t("programme.unflighted")}
+                  </span>
                 </span>
-                <span className="player-card-meta">
-                  {[player.category, player.flight].filter(Boolean).join(" · ") ||
-                    t("programme.unflighted")}
-                </span>
-                <dl className="player-facts">
-                  <div>
-                    <dt>{t("programme.index")}</dt>
-                    <dd className="player-fact-index">{fmtIndex(player.index)}</dd>
-                  </div>
-                  {player.homeCourse && (
-                    <div>
-                      <dt>{t("programme.homeCourse")}</dt>
-                      <dd className="min-w-0 break-words text-right">{player.homeCourse}</dd>
-                    </div>
-                  )}
-                </dl>
-                {href && (
-                  <span className="player-card-cta">
-                    {t("programme.viewScores")}
-                    <ChevronRight aria-hidden="true" />
+                {player.homeCourse && (
+                  <span className="player-card-row">
+                    <span className="player-card-row-label">{t("programme.homeCourse")}</span>
+                    <span className="player-card-row-value">{player.homeCourse}</span>
                   </span>
                 )}
+                {href && (
+                  <>
+                    {/* Holds the button off the last line and pins it to the card's foot, so every
+                        card in a row presses at the same height. */}
+                    <span className="player-card-gap" aria-hidden="true" />
+                    <span className="player-card-foot">
+                      {t("programme.viewScores")}
+                      <ChevronRight aria-hidden="true" />
+                    </span>
+                  </>
+                )}
+                {/* The club's flag, the same mark the pairing cards carry, set into the card's face. */}
                 <svg
-                  className="player-card-flag"
+                  className="player-card-golf"
                   viewBox="0 0 48 48"
                   aria-hidden="true"
                   focusable="false"
@@ -232,11 +246,20 @@ function RosterDirectory({ players }: { players: PublicRosterPlayer[] }) {
             return (
               <li key={player.id ?? `${player.name}-${index}`}>
                 {href ? (
-                  <Link href={href} className="player-card player-card-link">
+                  <Link
+                    href={href}
+                    className="player-card player-card-link"
+                    data-tone={player.flight ? flightTone(flights, player.flight) : undefined}
+                  >
                     {content}
                   </Link>
                 ) : (
-                  <div className="player-card">{content}</div>
+                  <div
+                    className="player-card"
+                    data-tone={player.flight ? flightTone(flights, player.flight) : undefined}
+                  >
+                    {content}
+                  </div>
                 )}
               </li>
             );
