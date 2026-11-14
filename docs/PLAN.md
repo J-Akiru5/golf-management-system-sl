@@ -99,7 +99,7 @@ independent and can run in parallel.
 
 | Work | State | Migration | Evidence |
 | --- | --- | --- | --- |
-| #268 pair-average class on an index edit | **On `develop`.** The dialog classes both partners on the capped average in the event's flight basis, saves the class on the partner's row, and the engine now honours `flightBasis`. | None | `pnpm check` (2,683 tests and build) and `pnpm check:ui` (238 checks) on the merged tree |
+| #268 pair-average class on an index edit | **On `develop`.** The dialog classes both partners on the capped average in the event's flight basis, saves the class on the partner's row, and the engine now honours `flightBasis`. | None | `pnpm check` (2,690 tests and build) and `pnpm check:ui` (238 checks) on the merged tree |
 | #204 player handicap record | **On `develop`.** The player page's Handicap history has Add index and Edit for an owner or organizer. One record per player and date; one audit row with the old and new index, the date and the reason. | `20261114000200_save_handicap_record.sql`, **NOT APPLIED** | Same gate; the record path fails soft until the function is applied |
 | #204 / #270 point 2 played-round correction | **On `develop`.** `/scores` has Correct handicap for an owner or organizer. The guarded function audits the change, recalculates that player's result, and the next publish carries it to the public board. | `20261114000300_correct_handicap_snapshot.sql`, **NOT APPLIED** | Same gate; the sheet fails soft until the function is applied |
 | #259 fast manual entry | **On `develop`.** Name search, day/session/class/card-state filters, entered/verified/missing counts, keyboard 18-hole grid, Save and next, 44px cells. | None | `pnpm check` and `pnpm check:ui`, with a browser section for the flow |
