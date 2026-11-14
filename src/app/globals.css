@@ -7480,30 +7480,21 @@ html[data-textsize="large"] {
     letter-spacing: 0.05em;
   }
 
-  /* The flight tag is always in the header here, not repeated in a footer. */
+  /* The class is a label, not a badge: a rule and its colour say which flight the group belongs to,
+     with no dot and no bubble around it. Worth more than a chip that repeats what the border of the
+     card already says. */
   .public-pairings .p-flight-top {
     display: inline-flex;
     margin-left: auto;
     align-items: center;
-    gap: 6px;
     min-height: 22px;
-    padding: 0 9px;
-    border: 1px solid color-mix(in srgb, var(--p-tone, var(--forest)) 40%, transparent);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--p-tone, var(--forest)) 12%, transparent);
+    padding-left: 10px;
+    border-left: 2px solid var(--p-tone, var(--forest));
     color: var(--p-tone-ink, var(--fairway));
-    font: 700 10px / 1 var(--f-sans);
-    letter-spacing: 0.1em;
+    font: 700 11px / 1 var(--f-sans);
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     white-space: nowrap;
-  }
-
-  .public-pairings .p-flight-top::before {
-    content: "";
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: currentColor;
   }
 
   .public-pairings .p-own-chip {
