@@ -6978,29 +6978,34 @@ html[data-textsize="large"] {
     grid-column: 1;
     grid-row: 1;
   }
-  /* The way back is an arrow button, as in a phone app. Its words stay for screen readers. */
+  /* The way back keeps its words on a phone too: a bare arrow asks a member to know what it means,
+     and the older members on this page do not. Only under 360px does it drop to the icon alone. */
   .public-appbar > .public-back {
     display: inline-flex;
-    width: 44px;
-    height: 44px;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
     align-items: center;
     justify-content: center;
     justify-self: start;
+    gap: 6px;
+    padding: 0 12px;
     border: 1px solid color-mix(in srgb, var(--on-forest) 28%, transparent);
     border-radius: 999px;
+    font-size: 13px;
+    overflow: hidden;
+    white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
   }
-  .public-appbar > .public-back svg {
-    width: 20px;
-    height: 20px;
-  }
+
   .public-appbar > .public-back span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
     overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .public-appbar > .public-back svg {
+    width: 18px;
+    height: 18px;
+    flex: none;
   }
   .public-appbar .public-appbar-row {
     display: contents;
@@ -8875,13 +8880,21 @@ html[data-textsize="large"] {
     outline-offset: 2px;
   }
 
-  /* On a phone the masthead row holds four 44px controls, so the language pill goes globe-only the
-     same way the back link goes arrow-only; the full name appears as soon as there is room. */
+  /* On a phone the masthead row is tight, so the language pill goes globe-only. The back link keeps
+     its words: an arrow alone is a guess, and this page is read by people who do not guess. */
   @media (max-width: 639px) {
     .public-pairings .public-appbar > .public-back {
-      width: 44px;
-      height: 44px;
-      padding: 0;
+      width: fit-content;
+      max-width: 100%;
+      min-width: 0;
+      padding: 0 12px;
+      font-size: 13px;
+      overflow: hidden;
+    }
+
+    .public-pairings .public-appbar > .public-back span {
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .public-pairings .lang-menu-btn {
@@ -8893,6 +8906,25 @@ html[data-textsize="large"] {
     .public-pairings .lang-menu-btn > span,
     .public-pairings .lang-menu-btn > svg:last-child {
       display: none;
+    }
+  }
+
+  /* Below 360px the words no longer fit beside the three controls, so the arrow returns alone. */
+  @media (max-width: 359px) {
+    .public-pairings .public-appbar > .public-back,
+    .public-appbar > .public-back {
+      width: 44px;
+      min-height: 44px;
+      padding: 0;
+    }
+
+    .public-appbar > .public-back span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
 
@@ -9167,5 +9199,36 @@ html[data-textsize="large"] {
   .site-foot-nav span[aria-hidden="true"] {
     color: var(--ink-muted);
     font-size: 12px;
+  }
+}
+
+/* On a narrow phone the back control and the three masthead icons cannot share one row without
+   cutting the words off it, so on those screens the icons drop to their own right-aligned row and
+   the back label keeps its full size. The rule lives at the end so it wins over the phone layout
+   above, whatever order those blocks were written in. */
+@media (max-width: 419px) {
+  .public-pairings .public-head.public-appbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-pairings .public-head.public-appbar > .public-back {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .public-pairings .public-head.public-appbar > .public-appbar-controls {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .public-pairings .public-head.public-appbar .appbar-foot {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .public-pairings .public-appbar > .public-back {
+    padding: 0 14px;
+    font-size: 14px;
   }
 }

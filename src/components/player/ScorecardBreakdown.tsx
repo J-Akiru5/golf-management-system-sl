@@ -330,9 +330,13 @@ export function ScorecardBreakdown({
             { label: t("player.scorecard.grossPoints"), value: card.grossPoints },
             { label: t("player.scorecard.netPoints"), value: card.netPoints },
           ].map((fact) => (
-            <div key={fact.label} className="grid min-w-0 gap-0.5">
-              <dt className="small-h">{fact.label}</dt>
-              <dd className="m-0 font-semibold tnum">{numberText(fact.value)}</dd>
+            <div key={fact.label} className="grid min-w-0 gap-1">
+              <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-muted sm:text-[13px]">
+                {fact.label}
+              </dt>
+              <dd className="m-0 text-[20px] font-bold leading-tight tnum sm:text-[22px]">
+                {numberText(fact.value)}
+              </dd>
             </div>
           ))}
         </dl>

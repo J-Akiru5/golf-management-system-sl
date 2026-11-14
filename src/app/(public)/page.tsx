@@ -19,6 +19,7 @@ import {
   daysBetween,
   enteredLabel,
   type PublicEvent,
+  timeLabel,
   VENUE_LABEL,
 } from "@/lib/public/highlights";
 import {
@@ -46,6 +47,32 @@ import { APP_VERSION_LABEL } from "@/lib/version";
 function todayInManila(): string {
   // en-CA gives YYYY-MM-DD, which is the form the database and the helpers both use.
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
+}
+
+/**
+ * Where the event stands today: before its first day, inside its own dates, or after its last.
+ *
+ * ISO dates compare as strings, so this needs no clock and no timezone of its own: `today` is the
+ * Manila date the server already read once for the whole page.
+ */
+function eventPhase(event: PublicEvent, today: string): "upcoming" | "live" | "past" {
+  const first = event.dates[0];
+  const last = event.dates.at(-1);
+  if (!first || !last) return "upcoming";
+  if (today < first) return "upcoming";
+  return today > last ? "past" : "live";
+}
+
+/**
+ * Which playing day of the event today is, counting calendar days from the first tee. A rest day in
+ * the middle of the week still gets a number rather than a zero.
+ */
+function eventDayNumber(event: PublicEvent, today: string): number {
+  const index = event.dates.indexOf(today);
+  if (index >= 0) return index + 1;
+  const first = event.dates[0];
+  if (!first) return 1;
+  return Math.min(Math.max(daysBetween(first, today) + 1, 1), event.dates.length);
 }
 
 /**
@@ -190,6 +217,19 @@ export default async function HomePage() {
   // each other.
   const [events, teaser] = await Promise.all([openEvents(today), leaderboardTeaser()]);
   const featured = events[0] ?? null;
+  // The hero speaks about the event's own moment, not only about entries. A member opening the page
+  // on the second morning is looking for their tee time, not for a notice that entries have closed.
+  const phase = featured ? eventPhase(featured, today) : null;
+  const dayNumber = featured ? eventDayNumber(featured, today) : 0;
+  const eyebrow = !featured
+    ? "A calmer way to run tournament day"
+    : phase === "live"
+      ? `Live now · Day ${dayNumber} of ${featured.dates.length}`
+      : phase === "past"
+        ? "Final results"
+        : featured.entriesOpen
+          ? "Open for entry now"
+          : "Entries closed";
 
   // Formatted here, on the server, so the stat strip cannot differ between browsers.
   const cutOffShort = featured
@@ -273,12 +313,7 @@ export default async function HomePage() {
 
         <div className="hero-content">
           <p className="hero-eyebrow">
-            <span aria-hidden="true" />{" "}
-            {featured
-              ? featured.entriesOpen
-                ? "Open for entry now"
-                : "Entries closed"
-              : "A calmer way to run tournament day"}
+            <span aria-hidden="true" /> {eyebrow}
           </p>
           {featured ? (
             <>
@@ -288,8 +323,11 @@ export default async function HomePage() {
                 <em>{dateRange(featured.dates)}</em>
               </h1>
               <p className="hero-copy">
-                {VENUE_LABEL} · {cutOffLabel(daysBetween(today, featured.cutOffDate))} ·{" "}
-                {enteredLabel(featured.entered)}
+                {VENUE_LABEL}
+                {phase === "upcoming"
+                  ? ` · ${cutOffLabel(daysBetween(today, featured.cutOffDate))}`
+                  : ""}{" "}
+                · {enteredLabel(featured.entered)}
               </p>
             </>
           ) : (
@@ -305,16 +343,30 @@ export default async function HomePage() {
               </p>
             </>
           )}
+          {/* Two doors, in the order the moment asks for them: a live or upcoming event opens on
+              the player's own tee time, a finished one opens on the scores. The leaderboard has its
+              own section further down, so it does not need a third button here. */}
           <div className="hero-actions">
-            <Link className="button-light" href="/pairings">
-              View published pairings <ArrowRight aria-hidden="true" />
-            </Link>
-            <Link className="button-quiet" href="/results">
-              See all scores <ArrowRight aria-hidden="true" />
-            </Link>
-            <Link className="button-quiet" href="/leaderboard">
-              View the leaderboard <ArrowRight aria-hidden="true" />
-            </Link>
+            {phase === "past" ? (
+              <>
+                <Link className="button-light" href="/results">
+                  See all scores <ArrowRight aria-hidden="true" />
+                </Link>
+                <Link className="button-quiet" href="/pairings">
+                  View published pairings <ArrowRight aria-hidden="true" />
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link className="button-light" href="/pairings">
+                  {phase === "live" ? "Find my tee time" : "View published pairings"}{" "}
+                  <ArrowRight aria-hidden="true" />
+                </Link>
+                <Link className="button-quiet" href="/results">
+                  See all scores <ArrowRight aria-hidden="true" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -326,10 +378,19 @@ export default async function HomePage() {
               <dt>Entries</dt>
               <dd>{featured.entered}</dd>
             </div>
-            <div>
-              <dt>Cut-off</dt>
-              <dd>{cutOffShort}</dd>
-            </div>
+            {/* The cut-off is a fact about entering, so it only earns its place before the event.
+                Once play starts, the first tee is the number a visitor wants instead. */}
+            {phase === "upcoming" ? (
+              <div>
+                <dt>Cut-off</dt>
+                <dd>{cutOffShort}</dd>
+              </div>
+            ) : (
+              <div>
+                <dt>First tee</dt>
+                <dd>{timeLabel(featured.firstTeeTime)}</dd>
+              </div>
+            )}
             <div>
               <dt>Days</dt>
               <dd>{featured.dates.length}</dd>
@@ -477,7 +538,6 @@ export default async function HomePage() {
           <div className="footer-col">
             <h2>Club</h2>
             <p>Iloilo Golf and Country Club</p>
-            <p className="footer-placeholder">[Contact address to be confirmed by the club]</p>
           </div>
 
           <nav className="footer-col" aria-label="Legal">
