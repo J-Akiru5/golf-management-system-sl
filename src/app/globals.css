@@ -1257,6 +1257,11 @@
     outline-style: solid;
     background: var(--fairway-soft);
   }
+  /* A full group a drop landed on: its rows are where the swap is completed. */
+  .group.swap-ask {
+    outline: 2px dashed var(--gold);
+    outline-offset: 2px;
+  }
   .group.refuse {
     outline: 2px dashed var(--danger);
     outline-offset: 2px;
@@ -1312,6 +1317,11 @@
   }
   .slot.selected {
     background: var(--fairway-soft);
+  }
+  /* The row a drag is over: it is the swap partner if the organizer lets go here. */
+  .slot.over {
+    background: var(--fairway-soft);
+    box-shadow: inset 3px 0 0 var(--fairway);
   }
   .slot.hit {
     background: var(--gold-soft);
@@ -1389,6 +1399,11 @@
   .moving .btn {
     background: transparent;
     border-color: var(--on-forest-muted);
+    color: var(--on-forest);
+  }
+  /* A refused drop: the same bar, in the danger colour, so it cannot be mistaken for a change. */
+  .moving.bad {
+    background: var(--danger);
     color: var(--on-forest);
   }
 
