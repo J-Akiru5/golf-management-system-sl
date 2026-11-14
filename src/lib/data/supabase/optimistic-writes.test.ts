@@ -43,6 +43,7 @@ function connectedDesk(seed: DeskState, options: { canWrite?: () => boolean } = 
 
   const client = {
     from: (table: string) => ({
+      ...emptyRead(),
       update: (payload: unknown) => ({
         eq: () => ({ eq: () => answerLater("update", table, payload) }),
       }),
@@ -80,6 +81,35 @@ function connectedDesk(seed: DeskState, options: { canWrite?: () => boolean } = 
 interface Answer {
   data?: unknown;
   error: { message: string } | null;
+}
+
+/**
+ * A read the harness answers with no rows.
+ *
+ * An index edit now reads the event's rounds before it decides whether a played round has to be
+ * corrected. These tests are about the writes, and this player has no scored round, so every read
+ * comes back empty.
+ */
+interface ReadChain {
+  select: () => ReadChain;
+  eq: () => ReadChain;
+  in: () => ReadChain;
+  order: () => ReadChain;
+  then: (
+    resolve: (value: { data: never[]; error: null }) => unknown,
+    reject?: (reason: unknown) => unknown,
+  ) => Promise<unknown>;
+}
+
+function emptyRead(): ReadChain {
+  const chain: ReadChain = {
+    select: () => chain,
+    eq: () => chain,
+    in: () => chain,
+    order: () => chain,
+    then: (resolve, reject) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
+  };
+  return chain;
 }
 
 interface Pending {

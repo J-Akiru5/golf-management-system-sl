@@ -22,6 +22,7 @@ import {
 } from "@/lib/data/adapters";
 import { courseNumbersChanged, holesComplete, strokeIndexProblem } from "@/lib/data/course-data";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
+import { indexCorrectionNote, roundsToCorrect, todayInManila } from "@/lib/data/round-handicap";
 import { setupPayload } from "@/lib/data/setup-payload";
 import { starterSetup } from "@/lib/data/starter";
 import type {
@@ -42,6 +43,7 @@ import {
   type DeskState,
   tournamentTemplate,
 } from "@/lib/store/state";
+import type { Database as GeneratedDatabase } from "@/lib/supabase/generated-types";
 import type { Database, Json } from "@/lib/supabase/types";
 import { detachDroppedClassGroups } from "./classes";
 import { toPlayerInsert, toRegistrationAnswers } from "./domain";
@@ -209,6 +211,18 @@ function fail(context: string, error: { message: string } | null): never | void 
   if (error) throw new Error(`${context}: ${error.message}`);
 }
 
+/**
+ * The plain sentence for a refused handicap snapshot correction. A database that has not had the
+ * migration applied answers as if the function does not exist, which would read like a typo rather
+ * than a setup step, so that one case is said plainly.
+ */
+function correctionProblem(message: string): string {
+  if (/could not find the function|PGRST202|does not exist/i.test(message)) {
+    return "the handicap correction function is not installed in the database yet (apply migration 20261114000300_correct_handicap_snapshot.sql)";
+  }
+  return message;
+}
+
 /** A response from a function the generated types do not describe yet. */
 interface UnlistedRpcResult {
   data: unknown;
@@ -296,6 +310,135 @@ export function createSupabaseAdapters(
       }
     });
     return done;
+  }
+
+  /**
+   * Carries a corrected index into every played round this registration has a card in.
+   *
+   * The playing handicap for the player's own tee is what the event scores with, so an index saved on
+   * the registration is not enough: each round that is already being scored or has been published
+   * keeps its own frozen handicap snapshot, and the scores are worked out from that snapshot. The
+   * database function recomputes the snapshot from the index and the registration tee, so this has
+   * to run after the registration write in the same queued write. A round that has been published
+   * is published again, otherwise the public page keeps the old number.
+   *
+   * A round that refuses is not rolled back and does not undo the registration. It is named in the
+   * thrown message, so the desk reads which day needs attention and why, instead of nothing.
+   */
+  async function correctPlayedRounds(input: {
+    registrationId: string;
+    tournamentId: string;
+    playerName: string;
+    /** The corrected index, before the event maximum is applied. */
+    index: number;
+    /** The dialog's effective date; today in the club's time zone when it has none. */
+    effectiveDate: string | null;
+    reason: string;
+    /** The tee the registration was saved with, so the republished note names it. */
+    teeId: string | null;
+  }): Promise<void> {
+    // The scoring tables are typed by the generated schema, which the desk types predate. The same
+    // cast the scoring adapter uses is kept local to this function.
+    const db = client as unknown as SupabaseClient<GeneratedDatabase>;
+
+    const { data: roundRows, error: roundError } = await db
+      .from("competition_rounds")
+      .select("id, day_number, status")
+      .eq("tournament_id", input.tournamentId)
+      .order("day_number", { ascending: true });
+    if (roundError) {
+      throw new Error(
+        `The index was saved, but the played rounds could not be read: ${roundError.message}`,
+      );
+    }
+    const rounds = roundRows ?? [];
+    if (rounds.length === 0) return;
+
+    const roundIds = rounds.map((round) => round.id);
+    const [
+      { data: entryRows, error: entryError },
+      { data: publicationRows, error: publicationError },
+    ] = await Promise.all([
+      db
+        .from("round_entries")
+        .select("id, round_id, registration_id")
+        .eq("registration_id", input.registrationId)
+        .eq("status", "active")
+        .in("round_id", roundIds),
+      db.from("round_publications").select("round_id").in("round_id", roundIds),
+    ]);
+    if (entryError) {
+      throw new Error(
+        `The index was saved, but this player's rounds could not be read: ${entryError.message}`,
+      );
+    }
+    if (publicationError) {
+      throw new Error(
+        `The index was saved, but the published rounds could not be read: ${publicationError.message}`,
+      );
+    }
+
+    const publicationCounts: Record<string, number> = {};
+    for (const row of publicationRows ?? []) {
+      publicationCounts[row.round_id] = (publicationCounts[row.round_id] ?? 0) + 1;
+    }
+    const corrections = roundsToCorrect({
+      rounds,
+      roundEntries: (entryRows ?? []).map((row) => ({
+        id: row.id,
+        roundId: row.round_id,
+        registrationId: row.registration_id,
+      })),
+      registrationId: input.registrationId,
+      publicationCounts,
+    });
+    if (corrections.length === 0) return;
+
+    const dayOf = new Map(rounds.map((round) => [round.id, round.day_number]));
+    const teeName = latestState().tees.find((tee) => tee.id === input.teeId)?.name ?? "player's";
+    const effectiveDate = input.effectiveDate ?? todayInManila();
+    const failures: string[] = [];
+    let published = false;
+
+    for (const correction of corrections) {
+      const day = `Day ${dayOf.get(correction.roundId) ?? "?"}`;
+      const { error } = await callUnlisted(client, "correct_handicap_snapshot", {
+        p_round_entry: correction.roundEntryId,
+        p_index: input.index,
+        p_effective: effectiveDate,
+        p_reason: input.reason.trim(),
+      });
+      if (error) {
+        failures.push(`${day}: ${correctionProblem(error.message)}`);
+        continue;
+      }
+      if (!correction.publish) continue;
+      const { error: publishError } = await callUnlisted(client, "publish_round", {
+        p_round: correction.roundId,
+        p_note: indexCorrectionNote({
+          playerName: input.playerName,
+          index: input.index,
+          teeName,
+        }),
+      });
+      if (publishError) {
+        failures.push(
+          `${day}: the handicap was corrected, but the round could not be published: ${publishError.message}`,
+        );
+        continue;
+      }
+      published = true;
+    }
+
+    // One clear for the whole burst, after the rounds that were republished. The queue clears again
+    // when the write itself succeeds, which costs nothing: the clear is batched.
+    if (published) publicDataChanged();
+
+    if (failures.length > 0) {
+      throw new Error(
+        `The index was saved, but not every played round was corrected. ${failures.join("; ")}`,
+      );
+    }
   }
 
   /**
@@ -1189,6 +1332,25 @@ export function createSupabaseAdapters(
           });
         }
         dispatch({ type: "updateEntry", id: entryId, patch });
+        // The registration is saved, so the index the event uses is on file. Every round this player
+        // already has a card in is corrected from that index and the registration's own tee, and a
+        // round that was published is published again, so the public page shows the new number. A
+        // refused round is reported below and never undoes the registration.
+        if (input.index !== null) {
+          await correctPlayedRounds({
+            registrationId: entryId,
+            tournamentId: entry.tournamentId,
+            playerName:
+              latestState().players.find((player) => player.id === entry.playerId)?.name ??
+              entry.playerId,
+            index: input.index,
+            effectiveDate: input.effectiveDate,
+            reason: input.reason,
+            // The tee the registration now carries, whether the desk sent one or the row already had
+            // it. The database function reads the same column.
+            teeId: input.teeId ?? row.teeId ?? null,
+          });
+        }
       });
     },
     remove: (id) => {
