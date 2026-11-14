@@ -7588,6 +7588,20 @@ html[data-textsize="large"] {
     font-size: 11px;
   }
 
+  /* Compact keeps the class as the same rule-and-label it is on the full card. The density rules
+     above still draw the old bubble, so it is cleared here rather than shrinking it. */
+  .public-pairings .p-pairings.is-compact .p-flight-top {
+    min-height: 0;
+    padding: 0 0 0 8px;
+    border: 0;
+    border-left: 2px solid var(--p-tone, var(--forest));
+    border-radius: 0;
+    background: transparent;
+    color: var(--p-tone-ink, var(--fairway));
+    font: 700 11px / 1 var(--f-sans);
+    letter-spacing: 0.06em;
+  }
+
   .public-pairings .p-pairings.is-compact .p-players {
     display: block;
     padding: 5px 12px 7px;
