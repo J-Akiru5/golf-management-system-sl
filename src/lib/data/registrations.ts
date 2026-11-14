@@ -75,6 +75,35 @@ export function hasStoredRouting(entry: RegistrationEntry): boolean {
 }
 
 /**
+ * The tee an index edit is worked out on.
+ *
+ * The playing handicap for the player's own tee is what the event scores with (owner's rule, 14
+ * November 2026), so the tee stored on the registration wins. The tee the routing view holds for the
+ * entry is the same number for an entry that has not been corrected by hand. The category's tee is a
+ * fallback only, for a registration that carries no tee at all.
+ *
+ * A tee id that is not in the event's tees is never swapped for another tee: the answer is null, so
+ * the desk sees that the handicap cannot be worked out instead of reading a number from the wrong
+ * card.
+ */
+export function overrideTee(
+  ids: {
+    /** The tee stored on the registration, set from the paper cards. */
+    entryTeeId?: string | null;
+    /** The tee the desk's routing view holds for the entry. */
+    registrationTeeId?: string | null;
+    /** The tee set on the category the dialog has chosen. */
+    categoryTeeId?: string | null;
+  },
+  tees: Tee[],
+): Tee | null {
+  const own = ids.entryTeeId || ids.registrationTeeId || null;
+  const wanted = own ?? ids.categoryTeeId ?? null;
+  if (!wanted) return null;
+  return tees.find((tee) => tee.id === wanted) ?? null;
+}
+
+/**
  * The other entry of the player's pair, when the club paired them. A member-guest pair is classed on
  * both partners, so an index edit has to name the partner it changes with the player.
  */

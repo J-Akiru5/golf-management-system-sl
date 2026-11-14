@@ -10,6 +10,53 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **The tabulator page keeps a snapshot of the shared copy before a reset or a replace, and can undo either action in the page.** "Reset to first reading" now asks for the word RESET. Both it and "Replace all from export" write the current shared document to `snapshots/<slug>/` in the private bucket before changing it; if the snapshot cannot be kept, the action stops and the page says to export JSON first. The Undo button restores the page as it was until the page is reloaded, and the snapshot remains for recovery afterwards. No migration.
+- **The shared scorecard document records who saved it.** `updatedBy` is taken from the signed-in account, and the live label names the account that saved the copy. No migration.
+
+### Changed
+- **Two tabulator saves are now serialised around the merge.** The card-by-card merge already kept both people's cards, but two saves arriving in the same moment could both read the same shared copy and the second write would drop the first one's cards. A short lease (`_locks/<slug>.json`, ten seconds, taken over when its holder stops answering) makes the read, merge and write one step. A save that finds the lease held answers 423; the page keeps the edits and retries. No migration.
+
+### Fixed
+- **A reload no longer replaces this browser's unsaved cards with the shared copy.** The page applied the shared document over its local copy on load, so a save that failed, or a page closed before its first save, lost the work that was only in the browser. The page now keeps the local copy, sends it through the server's card-by-card merge, and shows the merged result; it says how many cards it kept. Each tab also has its own browser copy, with a one-time move of the old shared key.
+- **Two people saving different scores on the same card now see the disagreement on the card.** The newer save still wins the card, but the merge writes a note naming the hole, both scores and the account whose value lost, so the checker looks at the paper card instead of the difference disappearing.
+
+Verified on the branch: `pnpm check` passed (2780 tests, build) and `pnpm check:ui` passed (243 checks, 0 console errors), including a browser check that a card only in the browser survives a reload and is merged, and one that replace-all keeps a snapshot and can be undone. The lease and the snapshot were tested against a fake bucket, not the live Supabase project; the reset prompt itself was not exercised because the bundled page has no first reading.
+
+### Docs
+- **The final-day plan is in `docs/PLAN.md`**: the diagnosis after Day 3, the owner's decisions of 15 Nov,
+  the work in flight (#301 to #305) and the guardrails while production is live. 22 resolved issues and
+  4 stale pull requests were closed.
+- **`docs/PLAN.md` records the tabulator save-safety change:** the lease, the load merge, the snapshot and undo, and what was not exercised against the live bucket. No code change.
+
+## [0.54.0] - 2026-11-14
+
+### Added
+- **Editing a player's index now corrects their played rounds.** The Edit index dialog works the
+  playing handicap out from the registration's own tee (the category tee only when the registration
+  has none), shows which tee it used, and saves that tee back, so an edit no longer replaces the tee
+  taken from the paper cards. After the registration is saved, every round being scored or published
+  that the player has a card in is corrected through `correct_handicap_snapshot`, and a round that was
+  published is published again, so the public page shows the new number. A round that refuses is named
+  in the desk's error message; the registration save stays. Owner and organizer only, as the database
+  requires. No migration.
+
+### Changed
+- **Every published card of Days 1 to 3 now plays off the WHS playing handicap for the tee written on
+  the card** (owner, 14 Nov 2026). The number in the HDCP box no longer decides anything; a player with
+  no index on file is held at their published card until the admin checks the index. Published as Day 1
+  v11, Day 2 v6 and Day 3 v9; the frozen handicap snapshots were aligned by a SQL file the owner ran.
+  The one-off script is `scripts/normalize-published-handicaps.ts`. The system change that makes this
+  the rule for new cards is issue #296. No migration in this change.
+
+### Docs
+- **`docs/PLAN.md` records 0.52.1 and what followed it:** the live-sync release and its Vercel-blocked
+  first deploy, the rule that merges to `main` and `staging` are made as `J-Akiru5`, the owner's
+  decision to cap the playing handicap at the event maximum (not built), the stale
+  `fix/0.51.1-handicap-scan` branch, and the four tabulation accounts. No code change.
+
+## [0.53.0] - 2026-11-14
+
+### Added
 - **A clubhouse TV board at `/tv` rolls the scores.** It shows which day is on screen, who played the
   morning and who played the afternoon, and what each scored: net and gross Stableford points, holes
   counted, pair, flight and tee time. Every figure is the frozen published one, so the screen never
@@ -19,12 +66,6 @@ Supabase project, because the code and the database are released separately.
 - **A staging watcher for the owner's PC (`pnpm watch:staging`).** It listens to `staging`, builds the
   release candidate, runs the checks, opens the release pull request and waits for the owner's `ship`
   label before anything reaches `main`. Tooling only: no change to the app. See `docs/VERSIONING.md`.
-
-### Docs
-- **`docs/PLAN.md` records 0.52.1 and what followed it:** the live-sync release and its Vercel-blocked
-  first deploy, the rule that merges to `main` and `staging` are made as `J-Akiru5`, the owner's
-  decision to cap the playing handicap at the event maximum (not built), the stale
-  `fix/0.51.1-handicap-scan` branch, and the four tabulation accounts. No code change.
 
 ## [0.52.4] - 2026-11-14
 

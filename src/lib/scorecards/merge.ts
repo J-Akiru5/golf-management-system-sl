@@ -31,6 +31,12 @@ export interface MergeResult {
   changed: boolean;
 }
 
+/** Who saved each side, so a score clash can name the person whose value lost. */
+export interface MergeLabels {
+  storedBy?: string | null;
+  incomingBy?: string | null;
+}
+
 function isRecord(value: unknown): value is Json {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -77,6 +83,63 @@ function pickByRev(stored: Json[], incoming: Json[]): Json[] {
   return [...byId.values()];
 }
 
+function holesOf(card: Json): string[] {
+  return Array.isArray(card.holes)
+    ? card.holes.map((value) => (typeof value === "string" ? value : ""))
+    : [];
+}
+
+/**
+ * A card is merged as one value, so when two people typed different scores into the same card the
+ * newer save wins the whole card. That is still one person's hole silently disappearing, so the
+ * winner is marked with what the other save had. The checker then sees the disagreement on the card
+ * instead of having to find it later.
+ */
+function clashNote(winner: Json, loser: Json, loserBy: string | null | undefined): string {
+  const kept = holesOf(winner);
+  const other = holesOf(loser);
+  const clashes: { hole: number; kept: string; other: string }[] = [];
+  for (let index = 0; index < 18; index += 1) {
+    const a = kept[index] ?? "";
+    const b = other[index] ?? "";
+    if (a && b && a !== b) clashes.push({ hole: index + 1, kept: a, other: b });
+  }
+  if (clashes.length === 0) return "";
+  const who = loserBy && loserBy.trim() ? loserBy.trim() : "another tabulator";
+  const holes = clashes.map((clash) => clash.hole).join(", ");
+  const values = clashes.map((clash) => clash.other).join(", ");
+  const keptValues = clashes.map((clash) => clash.kept).join(", ");
+  const where = clashes.length === 1 ? `hole ${holes}` : `holes ${holes}`;
+  return `Two saves disagreed on ${where}: ${who} had ${values}; the newer score (${keptValues}) was kept. Check the paper card.`;
+}
+
+/** Two saves close together are a clash; a copy that is hours old is just an old copy. */
+const CLASH_WINDOW_MS = 2 * 60_000;
+
+function withClashNote(
+  winner: Json,
+  storedCards: Json[],
+  incomingCards: Json[],
+  labels: MergeLabels,
+): Json {
+  const id = typeof winner.id === "string" ? winner.id : "";
+  if (!id) return winner;
+  const storedCard = storedCards.find((card) => String(card.id) === id);
+  const incomingCard = incomingCards.find((card) => String(card.id) === id);
+  if (!storedCard || !incomingCard) return winner;
+  const storedRev = revOf(storedCard);
+  const incomingRev = revOf(incomingCard);
+  if (storedRev === incomingRev) return winner;
+  if (Math.abs(storedRev - incomingRev) > CLASH_WINDOW_MS) return winner;
+  const loser = storedRev > incomingRev ? incomingCard : storedCard;
+  const loserBy = storedRev > incomingRev ? labels.incomingBy : labels.storedBy;
+  const note = clashNote(winner, loser, loserBy);
+  if (!note) return winner;
+  const existing = typeof winner.note === "string" ? winner.note : "";
+  if (existing.includes(note)) return winner;
+  return { ...winner, note: [existing, note].filter(Boolean).join(" ") };
+}
+
 /**
  * What counts as "the same document" for the write check. Fields that change on every save without
  * meaning anything (the save time, the page's own view choice) and the order of the lists are left
@@ -100,6 +163,7 @@ export function mergeScorecardPayloads(
   stored: Json | null,
   incoming: Json,
   now: number,
+  labels: MergeLabels = {},
 ): MergeResult {
   if (!stored) {
     return {
@@ -111,7 +175,11 @@ export function mergeScorecardPayloads(
   const removedCards = tombstones(stored.removedCards, incoming.removedCards);
   const removedBatches = tombstones(stored.removedBatches, incoming.removedBatches);
 
-  const cards = pickByRev(list(stored.cards), list(incoming.cards))
+  const storedCards = list(stored.cards);
+  const incomingCards = list(incoming.cards);
+  const cards = pickByRev(storedCards, incomingCards)
+    // A card two people saved at once keeps the newer score and says what the other save had.
+    .map((card) => withClashNote(card, storedCards, incomingCards, labels))
     // A removal beats a card that was last changed before it, and loses to a later change.
     .filter((card) => (removedCards.get(String(card.id)) ?? -1) < revOf(card))
     .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));

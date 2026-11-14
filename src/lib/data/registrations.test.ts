@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CategoryRule, FlightRule, Tee } from "@/lib/routing";
-import { partnerOf, registrationFor } from "./registrations";
+import { overrideTee, partnerOf, registrationFor } from "./registrations";
 import type { PlayerRecord, RegistrationEntry, Tournament } from "./types";
 
 const tees: Tee[] = [{ id: "white", name: "White", courseRating: 71.5, slope: 128, par: 72 }];
@@ -261,5 +261,41 @@ describe("partnerOf", () => {
     const b = entry({ id: "b", teamNo: undefined, playerId: "player-2" });
 
     expect(partnerOf(a, [a, b])).toBeNull();
+  });
+});
+
+describe("overrideTee", () => {
+  const blue: Tee = { id: "blue", name: "Blue", courseRating: 70.1, slope: 124, par: 72 };
+  const eventTees = [blue, ...tees];
+
+  it("uses the registration's own tee rather than the category tee", () => {
+    const chosen = overrideTee(
+      { entryTeeId: "blue", registrationTeeId: "blue", categoryTeeId: "white" },
+      eventTees,
+    );
+
+    expect(chosen?.name).toBe("Blue");
+  });
+
+  it("uses the routing view's tee when the entry row carries none", () => {
+    expect(
+      overrideTee({ registrationTeeId: "white", categoryTeeId: "blue" }, eventTees)?.name,
+    ).toBe("White");
+  });
+
+  it("falls back to the category tee only when the registration has no tee", () => {
+    expect(overrideTee({ categoryTeeId: "blue" }, eventTees)?.name).toBe("Blue");
+    expect(
+      overrideTee({ entryTeeId: null, registrationTeeId: null, categoryTeeId: "white" }, eventTees)
+        ?.name,
+    ).toBe("White");
+  });
+
+  it("never swaps an unknown tee for a different one", () => {
+    expect(overrideTee({ entryTeeId: "ladies", categoryTeeId: "blue" }, eventTees)).toBeNull();
+  });
+
+  it("answers nothing when there is no tee at all", () => {
+    expect(overrideTee({}, eventTees)).toBeNull();
   });
 });
