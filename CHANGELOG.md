@@ -38,6 +38,27 @@ Supabase project, because the code and the database are released separately.
   `save_card_handicap_snapshot`, which stores the card's handicap in the round's snapshot. It
   changes no table, constraint, trigger or policy. Saving a card under the rules fails with a plain
   message until it is applied.
+- **The handicap a played round is scored from can be corrected by an owner or organizer (#204,
+  #270 point 2).** The Scores screen's handicap summary has **Correct handicap**; the sheet takes
+  the index, the effective date and a reason. The database records who made the change, why, and
+  the old and new values, recalculates that player's result, and the next publish carries it to the
+  public board. It refuses a final round and a change without a reason. The player's record history
+  and the event's frozen index stay separate.
+- **Migration written, not applied:** `20261114000300_correct_handicap_snapshot.sql` replaces the
+  `handicap_snapshot_guard()` body with a bypass that only the new
+  `correct_handicap_snapshot` function turns on for its own transaction, and adds that function. It
+  changes no table, column, policy or data. Until it is applied, the correction sheet fails with a
+  plain message and the build is unchanged.
+- **Manual score entry on `/scores` is keyboard-first (#259).** Find a card by any part of the
+  name, or filter by day, session, class and card state; the tiles count entered, verified and
+  still missing for the chosen session. The 18-hole grid takes digits or `X`, Tab or Enter moves
+  to the next hole, and **Save and next** opens the next card with the keyboard on its first field.
+  The cells are 44px on a tablet and the group or starting hole is shown beside the card.
+- **A verified card publishes itself (#260).** After a card is approved, the desk publishes the
+  round after a two-second pause, one publication for a run of cards, and clears the shared public
+  reads through the existing publish path. The choice is remembered in this browser for the event
+  and day, and the **Publish provisional** button remains the manual path. Not in this change: a
+  server-side per-round setting and one-step undo; both are recorded as follow-ups.
 - **The tabulation page starts from the players the desk assigned, not a blank page.** On a fresh day
   and session page (Day 3 AM, Day 3 PM and so on), the page lists every player with a group and tee
   time for that session, in start order, with their group, tee and system playing handicap. Only the
@@ -56,8 +77,6 @@ Supabase project, because the code and the database are released separately.
 - **The tabulator stops its save timer when the session ends, and the sign-in page shows the form
   instead of bouncing a stale session between `/login` and `/scorecard/`.** A stale tabulation
   session previously produced a refresh loop every couple of seconds.
-
-### Fixed
 - **Editing one partner's index classes the pair, and an index above the event maximum no longer
   bypasses the cap (#268).** The Edit index dialog cuts the class on the average of both partners'
   numbers, in the event's flight basis, with an index above `maxIndex` counted as the maximum, and
