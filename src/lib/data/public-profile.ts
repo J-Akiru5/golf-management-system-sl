@@ -16,6 +16,8 @@ export interface PublicProfilePlayer {
   id: string;
   name: string;
   index: number | null;
+  /** The playing handicap the system holds for this player's entry, whole strokes. */
+  playingHandicap: number | null;
   category: string | null;
   flight: string | null;
   pairNumber: number | null;
@@ -70,6 +72,7 @@ export function parsePublicPlayerProfile(value: unknown): PublicPlayerProfileDat
     id,
     name: displayName(name),
     index: numberOrNull(value.player.index),
+    playingHandicap: wholeOrNull(value.player.playingHandicap),
     category: text(value.player.category),
     flight: text(value.player.flight),
     pairNumber: wholeOrNull(value.player.pairNumber),
@@ -99,6 +102,18 @@ export function parsePublicPlayerProfile(value: unknown): PublicPlayerProfileDat
     partner,
     cards,
   };
+}
+
+/**
+ * The playing handicap the profile shows. A published card carries the handicap that round was scored
+ * from, so it wins when there is one and the page agrees with the card under it. A player with no
+ * published card shows the playing handicap the system holds for their entry, so every player has one.
+ * Null only when the system has none either (no index or no tee yet).
+ */
+export function profilePlayingHandicap(
+  data: Pick<PublicPlayerProfileData, "player" | "cards">,
+): number | null {
+  return data.cards[0]?.playingHandicap ?? data.player.playingHandicap ?? null;
 }
 
 function isMissingFunction(error: { code?: string; message?: string }): boolean {
