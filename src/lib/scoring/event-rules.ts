@@ -219,8 +219,9 @@ function indexText(index: number): string {
 
 /**
  * The note beside the WHS number when the card's HDCP box disagrees with it, for example
- * "card says 22, plays off 19 (index 16.4, White)". Null when the box is blank, unreadable, or
- * already the number the card plays off.
+ * "card says 22, plays off 19 (index 16.4, White)". A blank box has nothing to say. A box that is
+ * not a plain number is still shown as written, since the desk should see what the card says beside
+ * the number the card is scored with.
  */
 export function cardBoxNote(input: {
   box: CardBoxReading;
@@ -228,7 +229,8 @@ export function cardBoxNote(input: {
   index: number;
   teeName: string;
 }): string | null {
-  if (input.box.value === null || input.box.value === input.playingHandicap) return null;
+  if (input.box.text === "") return null;
+  if (input.box.value !== null && input.box.value === input.playingHandicap) return null;
   return `card says ${input.box.text}, plays off ${input.playingHandicap} (index ${indexText(
     input.index,
   )}, ${input.teeName})`;

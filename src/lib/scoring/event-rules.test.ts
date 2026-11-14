@@ -180,8 +180,19 @@ describe("the HDCP box as a note", () => {
     expect(note).toBe("card says 22, plays off 19 (index 16.4, White)");
   });
 
-  it("says nothing about a blank or unreadable box", () => {
-    for (const box of [readCardBox(""), readCardBox("+2.1")]) {
+  it("shows a box it cannot read as written, beside the WHS number", () => {
+    expect(
+      cardBoxNote({
+        box: readCardBox("+2.1"),
+        playingHandicap: 19,
+        index: 16.4,
+        teeName: "White",
+      }),
+    ).toBe("card says +2.1, plays off 19 (index 16.4, White)");
+  });
+
+  it("says nothing about a blank box", () => {
+    for (const box of [readCardBox(""), readCardBox("   ")]) {
       expect(cardBoxNote({ box, playingHandicap: 19, index: 16.4, teeName: "White" })).toBeNull();
     }
   });

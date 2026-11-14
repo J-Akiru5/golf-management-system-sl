@@ -38,6 +38,15 @@ export const PUBLISH_MODES: readonly PublishModeOption[] = [
 export const DEFAULT_PUBLISH_MODE: PublishMode = "every";
 
 /**
+ * Where this browser remembers the desk's choice. One control per event and playing day, so the
+ * desk sets the day's mode once and every card saved that day is treated the same way. The key is
+ * the one the old publish-on-verify checkbox used, so a browser that had it off keeps that meaning.
+ */
+export function publishModeKey(tournamentId: string, day: number | null | undefined): string {
+  return `teeline-auto-publish:${tournamentId}:${day ?? "all"}`;
+}
+
+/**
  * Reads the stored choice. A browser that stored the old on/off checkbox keeps its meaning: "1" was
  * checked cards only, "0" was manual. Anything unrecognised falls back to the default, so a
  * corrupted or missing value publishes rather than silently going quiet.

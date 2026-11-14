@@ -61,6 +61,7 @@ import {
   type PublishMode,
   publishDecision,
   publishModeFromStored,
+  publishModeKey,
 } from "@/lib/scoring/publish-mode";
 import { reviewScannedCard, type ScanReaderCell } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
@@ -76,10 +77,6 @@ import { playingDaysOfEvent } from "@/lib/store/state";
 const DEMO_NOTICE =
   "Sample scoring preview. Cards, approvals, resolutions and standings live in this browser only and are not written to the database. The scoring schema and RPCs are applied; this screen is not wired to them yet.";
 
-/** The browser's own choice for one event and day. The round still decides whether it can publish. */
-function autoPublishKey(tournamentId: string, day: number | null): string {
-  return `teeline-auto-publish:${tournamentId}:${day ?? "all"}`;
-}
 /** A manual card starts empty. A cell is only ever filled by a person or by the reader. */
 function blankStrokes(holes: readonly HoleDefinition[]): Record<number, string> {
   return Object.fromEntries(holes.map((hole) => [hole.number, ""]));
@@ -355,7 +352,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   useEffect(() => {
     try {
       setPublishMode(
-        publishModeFromStored(window.localStorage.getItem(autoPublishKey(tournamentId, day))),
+        publishModeFromStored(window.localStorage.getItem(publishModeKey(tournamentId, day))),
       );
     } catch {
       // Storage off: keep the default, which publishes every saved card.
@@ -571,7 +568,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setPublishMode(next);
     setPublishError(null);
     try {
-      window.localStorage.setItem(autoPublishKey(tournamentId, day), next);
+      window.localStorage.setItem(publishModeKey(tournamentId, day), next);
     } catch {
       // Storage off: the choice still applies until this screen closes.
     }
@@ -674,9 +671,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       ),
     );
     setWrittenOnCard(card.writtenTotal === null ? "" : String(card.writtenTotal));
-    // A card saved under the card rules already has its HDCP on file; show it for the correction.
-    const stored = players.find((player) => player.playerId === card.playerId)?.handicap;
-    setCardHandicap(stored?.rounding === "card" ? String(stored.index) : "");
+    // The HDCP box is a note about the paper card, and the snapshot no longer stores what was on
+    // the card, so a correction starts with an empty box and the desk types what the paper says.
+    setCardHandicap("");
     setScanImage(null);
     setScanExtraction(null);
     setScanCaptureKey("");
@@ -1666,6 +1663,10 @@ function CardRow({
 }) {
   const player = view.players.find((candidate) => candidate.playerId === card.playerId) ?? null;
   const playerName = player?.playerName ?? card.playerId;
+  const eventRules = eventRulesFor(view.rulesVersion);
+  /** No index on file, or an index of 0, plays off index 0 until the admin checks it against WHS. */
+  const frozenIndex = player?.frozenIndex ?? null;
+  const checkIndex = Boolean(eventRules && player) && (frozenIndex === 0 || frozenIndex === null);
   const scorerName =
     view.players.find((player) => player.playerId === card.scorerId)?.playerName ?? card.scorerId;
   const handicapCheck = checkHandicapSnapshot({
@@ -1706,6 +1707,16 @@ function CardRow({
           </span>
         ) : (
           <span className="hint block">No handicap snapshot</span>
+        )}
+        {checkIndex && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            <span
+              className="pill warn"
+              title="No index on file, or an index of 0. The card plays off index 0 until the admin checks it against WHS."
+            >
+              Check index
+            </span>
+          </span>
         )}
         {(handicapCheck.indexDiffers || handicapCheck.teeDiffers) && (
           <span className="mt-1 flex flex-wrap gap-1">

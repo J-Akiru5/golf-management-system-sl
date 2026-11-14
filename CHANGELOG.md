@@ -9,6 +9,31 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **A card saved on `/scores` is scored with the WHS playing handicap and can reach the public board
+  by itself** (issue #301). The handicap comes from the player's registration index, capped at the
+  event maximum, converted with the registration tee at the event allowance. The HDCP box on the card
+  is a note only: when it differs it is shown beside the WHS number ("card says 22, plays off 18
+  (index 16.4, White)") and written to the audit sentence, and nothing typed there can change a net
+  score. A player with no index on file, or an index of 0, plays off index 0 and is flagged on the
+  card and in the review list ("Check index") instead of being scored silently. Every card approved on
+  the desk is checked the same way, so a card that arrived by import or from the tabulator gets the
+  WHS snapshot before it is approved; a snapshot that already plays off the same number is left alone,
+  and a frozen snapshot that differs is refused with the fix named (Correct handicap). The Review tab
+  has one publishing control per event and day with three modes: publish every saved card (the
+  default, and what the event runs on), publish checked cards only, and manual. A run of saves is one
+  publication after about two seconds, and a sheet or tabulator import publishes once after the batch.
+  The old publish-on-verify checkbox keeps its meaning (checked only / manual) in a browser that had
+  it set. Migrations: `20261114000100_card_handicap_snapshot.sql` is required for the save path and is
+  **not applied**; `20261115000100_card_handicap_signed_handicap.sql` lets a card snapshot hold a
+  negative playing handicap, is needed only for a player who plays off a negative number, and is
+  **not applied**. Until the signed file is applied such a card is refused with a message naming it.
+
+### Changed
+- **The HDCP box on `/scores` no longer prefills for a correction.** It holds what the paper card
+  says, and the snapshot no longer stores that number, so the desk types it again instead of being
+  shown the WHS figure as if the card carried it.
+
 ## [0.54.0] - 2026-11-14
 
 ### Added

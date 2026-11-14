@@ -84,6 +84,100 @@ export type EventCardPlan =
 
 const ACTIVE = new Set<Scorecard["status"]>(["submitted", "in_review", "approved"]);
 
+export interface EventHandicapPlanInput {
+  rulesVersion: string | null;
+  roundStatus: "draft" | "open" | "scoring" | "provisional" | "final";
+  /** The round's tee, used when the caller did not load the player's own tee. */
+  tee: TeeRatings;
+  /** ISO date the handicap is valid from. Used for the in-memory snapshot. */
+  effectiveDate: string;
+  player: EventCardPlayer;
+}
+
+export type EventHandicapPlan =
+  | { ok: false; message: string }
+  | {
+      ok: true;
+      rules: EventScoringRules;
+      /** The WHS working: the index used, whether it was capped, and the handicaps it gives. */
+      handicap: Extract<EventHandicapResult, { ok: true }>;
+      /** The snapshot the engine will score net points from. */
+      snapshot: HandicapSnapshot;
+      /** False when the round already holds a snapshot with this playing handicap. */
+      needsSnapshotWrite: boolean;
+    };
+
+/**
+ * The handicap one player's card is scored with, worked out from the registration index and the
+ * registration tee.
+ *
+ * Both a card save and a card approval go through this, so a card that reached the desk by import,
+ * by the tabulator or by hand is scored on the same number. A snapshot that already plays off the
+ * WHS figure is left alone; one that differs can only be changed while the round is still draft or
+ * open, because the database freezes it after that. Nothing is guessed and nothing is silently kept.
+ */
+export function planEventHandicap(input: EventHandicapPlanInput): EventHandicapPlan {
+  const player = input.player;
+  const rules = eventRulesFor(input.rulesVersion);
+  if (!rules) {
+    return {
+      ok: false,
+      message: `This round is not on the event's card rules (its rules version is ${
+        input.rulesVersion ? `"${input.rulesVersion}"` : "not set"
+      }). Open the round with the rules version the event uses, or enter the card the ordinary way.`,
+    };
+  }
+  if (
+    input.roundStatus !== "open" &&
+    input.roundStatus !== "scoring" &&
+    input.roundStatus !== "provisional"
+  ) {
+    return {
+      ok: false,
+      message:
+        input.roundStatus === "draft"
+          ? "The round is not open yet. Open it from the published draw before saving or approving cards."
+          : "The round is final, so it no longer accepts cards.",
+    };
+  }
+
+  // A player with no tee cannot be worked out, so the save stops here with the fix named.
+  const tee = player.tee === undefined ? input.tee : player.tee;
+  if (!tee) {
+    return {
+      ok: false,
+      message: `${player.playerName}: no tee is recorded on the registration. Set the player's tee in the field list, then save the card.`,
+    };
+  }
+  const handicap = eventPlayingHandicap({
+    index: player.frozenIndex ?? null,
+    tee,
+    rule: rules.handicap,
+  });
+  if (!handicap.ok) return { ok: false, message: `${player.playerName}: ${handicap.message}` };
+
+  const needsSnapshotWrite = player.handicap?.playingHandicap !== handicap.playingHandicap;
+  if (needsSnapshotWrite && player.handicap !== null && input.roundStatus !== "open") {
+    return {
+      ok: false,
+      message: `${player.playerName} already has a handicap snapshot of ${player.handicap.playingHandicap}, and it is frozen once scoring starts, so it cannot change to the WHS figure of ${handicap.playingHandicap}. An owner or organizer can use Correct handicap on the Scores screen and then save the card.`,
+    };
+  }
+
+  return {
+    ok: true,
+    rules,
+    handicap,
+    snapshot: eventHandicapSnapshot({
+      handicap,
+      rules,
+      tee,
+      effectiveDate: input.effectiveDate,
+    }),
+    needsSnapshotWrite,
+  };
+}
+
 /**
  * The marker stored with a card the desk checked itself. The database needs a different player who
  * is active in the round, but this event does not publish markers.
@@ -171,29 +265,19 @@ export function planEventCardSave(input: EventCardPlanInput): EventCardPlan {
   }
 
   // The playing handicap is the WHS figure for the registration index on the registration tee.
-  // A player with no tee cannot be worked out, so the save stops here with the fix named.
+  const planned = planEventHandicap({
+    rulesVersion: input.rulesVersion,
+    roundStatus: input.roundStatus,
+    tee: input.tee,
+    effectiveDate: input.effectiveDate,
+    player,
+  });
+  if (!planned.ok) return { ok: false, message: planned.message };
+  const { handicap, snapshot, needsSnapshotWrite } = planned;
   const tee = player.tee === undefined ? input.tee : player.tee;
   if (!tee) {
-    return {
-      ok: false,
-      message: `${player.playerName}: no tee is recorded on the registration. Set the player's tee in the field list, then save the card.`,
-    };
-  }
-  const handicap = eventPlayingHandicap({
-    index: player.frozenIndex ?? null,
-    tee,
-    rule: rules.handicap,
-  });
-  if (!handicap.ok) {
-    return { ok: false, message: `${player.playerName}: ${handicap.message}` };
-  }
-
-  const needsSnapshotWrite = player.handicap?.playingHandicap !== handicap.playingHandicap;
-  if (needsSnapshotWrite && player.handicap !== null && input.roundStatus !== "open") {
-    return {
-      ok: false,
-      message: `${player.playerName} already has a handicap snapshot of ${player.handicap.playingHandicap}, and it is frozen once scoring starts, so it cannot change to the WHS figure of ${handicap.playingHandicap}. An owner has to decide how to correct it.`,
-    };
+    // planEventHandicap already refused a missing tee; this keeps the type honest.
+    return { ok: false, message: `${player.playerName}: no tee is recorded on the registration.` };
   }
 
   const cardBox = readCardBox(input.cardHandicap);
@@ -202,12 +286,6 @@ export function planEventCardSave(input: EventCardPlanInput): EventCardPlan {
     playingHandicap: handicap.playingHandicap,
     index: handicap.index,
     teeName: tee.name,
-  });
-  const snapshot = eventHandicapSnapshot({
-    handicap,
-    rules,
-    tee,
-    effectiveDate: input.effectiveDate,
   });
 
   const written = cardBox.text === "" ? "blank" : cardBox.text;

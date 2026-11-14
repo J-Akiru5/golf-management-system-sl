@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { makeSnapshotFor, TEST_TEE } from "./__tests__/fixtures";
-import { type EventCardPlanInput, pickDeskMarker, planEventCardSave } from "./event-card";
+import {
+  type EventCardPlanInput,
+  type EventHandicapPlanInput,
+  pickDeskMarker,
+  planEventCardSave,
+  planEventHandicap,
+} from "./event-card";
 
 const PLAYERS = [
   { playerId: "p3", playerName: "Charlie", handicap: null, frozenIndex: 9.2, tee: TEST_TEE },
@@ -54,7 +60,7 @@ describe("planning a card under the event rules", () => {
     expect(plan.marker).toEqual({ playerId: "p2", playerName: "Bravo", placeholder: true });
     expect(plan.auditReason).toContain("bamboo-tee-2026");
     expect(plan.auditReason).toContain("16.7");
-    expect(plan.auditReason).toContain("plays off 18");
+    expect(plan.auditReason).toContain("WHS playing handicap 18");
     expect(plan.auditReason).toContain("placeholder");
   });
 
@@ -174,6 +180,90 @@ describe("planning a card under the event rules", () => {
   it("needs a second player to stand as marker", () => {
     const alone = PLAYERS.filter((player) => player.playerId === "p1");
     expect(refusal({ players: alone })).toContain("second player");
+  });
+});
+
+describe("the handicap a card is scored with, for a save or an approval", () => {
+  function handicapInput(overrides: Partial<EventHandicapPlanInput> = {}): EventHandicapPlanInput {
+    return {
+      rulesVersion: "bamboo-tee-2026",
+      roundStatus: "scoring",
+      tee: TEST_TEE,
+      effectiveDate: "2026-11-15",
+      player: {
+        playerId: "p1",
+        playerName: "Alpha",
+        handicap: null,
+        frozenIndex: 16.4,
+        tee: TEST_TEE,
+      },
+      ...overrides,
+    };
+  }
+
+  it("plans the WHS snapshot for a player with no snapshot yet", () => {
+    const plan = planEventHandicap(handicapInput());
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.needsSnapshotWrite).toBe(true);
+    expect(plan.snapshot).toMatchObject({ index: 16.4, playingHandicap: 18, rounding: "whs" });
+  });
+
+  it("writes nothing when the round already plays off the same number", () => {
+    const plan = planEventHandicap(
+      handicapInput({
+        player: {
+          playerId: "p1",
+          playerName: "Alpha",
+          handicap: makeSnapshotFor(16),
+          frozenIndex: 16.4,
+        },
+      }),
+    );
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.needsSnapshotWrite).toBe(false);
+  });
+
+  it("names Correct handicap when a differing snapshot is frozen", () => {
+    const plan = planEventHandicap(
+      handicapInput({
+        player: {
+          playerId: "p1",
+          playerName: "Alpha",
+          handicap: makeSnapshotFor(30),
+          frozenIndex: 16.4,
+        },
+      }),
+    );
+    if (plan.ok) throw new Error("The frozen snapshot was expected to be refused.");
+    expect(plan.message).toContain("frozen once scoring starts");
+    expect(plan.message).toContain("WHS figure of 18");
+    expect(plan.message).toContain("Correct handicap");
+  });
+
+  it("flags an index of 0 instead of refusing the card", () => {
+    const plan = planEventHandicap(
+      handicapInput({
+        player: { playerId: "p2", playerName: "Bravo", handicap: null, frozenIndex: 0 },
+      }),
+    );
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.handicap.zeroIndex).toBe(true);
+    expect(plan.handicap.warning).toContain("check WHS");
+    expect(plan.snapshot.playingHandicap).toBe(0);
+  });
+
+  it("refuses a player with no tee and a round that is not on the event rules", () => {
+    const noTee = planEventHandicap(
+      handicapInput({
+        player: { playerId: "p1", playerName: "Alpha", handicap: null, tee: null },
+      }),
+    );
+    if (noTee.ok) throw new Error("A missing tee was expected to be refused.");
+    expect(noTee.message).toContain("no tee");
+
+    const ordinary = planEventHandicap(handicapInput({ rulesVersion: "demo-rules-v1" }));
+    if (ordinary.ok) throw new Error("An ordinary round was expected to be refused.");
+    expect(ordinary.message).toContain("not on the event's card rules");
   });
 });
 

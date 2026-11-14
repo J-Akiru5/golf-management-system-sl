@@ -275,7 +275,7 @@ describe("the connected repository saving a card under the event rules", () => {
     expect(calls[1]?.args).toMatchObject({ p_round_entry: "entry-p1", p_scorer_id: "p2" });
     // The approval carries the audit sentence.
     expect(calls[2]?.args.p_reason).toContain("bamboo-tee-2026");
-    expect(calls[2]?.args.p_reason).toContain("plays off 18");
+    expect(calls[2]?.args.p_reason).toContain("WHS playing handicap 18");
 
     const alpha = view.players.find((player) => player.playerId === "p1");
     expect(alpha?.handicap).toMatchObject({ rounding: "card", playingHandicap: 18 });
@@ -318,6 +318,61 @@ describe("the connected repository saving a card under the event rules", () => {
 
     await expect(repo.saveEventCard("t1", input(), 3)).rejects.toThrow("no tee");
     expect(calls).toEqual([]);
+  });
+
+  it("writes the WHS handicap for a card that came in without one, then approves it", async () => {
+    const { client, calls } = fakeDatabase();
+    const repo = createSupabaseScoringRepository({ client: client as never });
+    // Bravo's card arrived by import: it was submitted and never had a snapshot of its own.
+    const submitted = await repo.submitCard(
+      "t1",
+      {
+        playerId: "p2",
+        scorerId: "p1",
+        source: "manual",
+        entries: ENTRIES,
+        writtenTotal: null,
+        captureKey: "imported-1",
+      },
+      3,
+    );
+    expect(submitted.players.find((player) => player.playerId === "p2")?.handicap).toBeNull();
+    calls.length = 0;
+
+    const approved = await repo.approveCard("t1", "card-1", "Checked against the paper", 3);
+
+    // The snapshot comes first, so the approval recalculates the result with the WHS number.
+    expect(calls.map((call) => call.name)).toEqual([
+      "save_card_handicap_snapshot",
+      "approve_scorecard",
+    ]);
+    expect(calls[0]?.args).toEqual({ p_round_entry: "entry-p2", p_card_handicap: "18" });
+    const bravo = approved.players.find((player) => player.playerId === "p2");
+    expect(bravo?.handicap).toMatchObject({ playingHandicap: 18 });
+  });
+
+  it("approves without touching the handicap when the round is not on the event rules", async () => {
+    const { client, calls, state } = fakeDatabase();
+    const first = state.competition_rounds?.[0];
+    if (first) first.rules_version = "rules-v1";
+    const repo = createSupabaseScoringRepository({ client: client as never });
+    await repo.submitCard(
+      "t1",
+      {
+        playerId: "p2",
+        scorerId: "p1",
+        source: "manual",
+        entries: ENTRIES,
+        writtenTotal: null,
+        captureKey: "ordinary-1",
+      },
+      3,
+    );
+    calls.length = 0;
+
+    await repo.approveCard("t1", "card-1", "Checked against the paper", 3);
+
+    expect(calls.map((call) => call.name)).toEqual(["approve_scorecard"]);
   });
 
   it("does not write the same card twice", async () => {

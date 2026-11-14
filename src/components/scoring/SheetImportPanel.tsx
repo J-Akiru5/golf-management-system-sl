@@ -12,6 +12,12 @@ import {
   type SheetExport,
   type SheetImportPlan,
 } from "@/lib/scoring/import";
+import {
+  DEFAULT_PUBLISH_MODE,
+  publishDecision,
+  publishModeFromStored,
+  publishModeKey,
+} from "@/lib/scoring/publish-mode";
 import { useDesk } from "@/lib/store/desk-store";
 
 interface ImportFailure {
@@ -25,6 +31,8 @@ interface ImportResult {
   saved: number;
   alreadyIn: number;
   failed: ImportFailure[];
+  /** A plain sentence when the cards are saved but the automatic publish was refused. */
+  publishWarning?: string;
 }
 
 interface SheetImportPanelProps {
@@ -172,6 +180,7 @@ export function SheetImportPanel({
 
       setProgress({ done: 0, total: fresh.ready.length });
       let latest: ScoringRoundView | null = null;
+      let publishWarning = "";
       const tally: ImportResult = { approved: 0, saved: 0, alreadyIn: 0, failed: [] };
       for (const [index, card] of fresh.ready.entries()) {
         try {
@@ -210,8 +219,42 @@ export function SheetImportPanel({
         }
         setProgress({ done: index + 1, total: fresh.ready.length });
       }
+      // The day's mode covers a run of imported cards too: one publication after the batch, not one
+      // per card. A refusal is shown beside the result and the cards stay saved.
+      if (latest && tally.approved + tally.saved > 0) {
+        let mode = DEFAULT_PUBLISH_MODE;
+        try {
+          mode = publishModeFromStored(
+            window.localStorage.getItem(publishModeKey(tournament.id, view.dayNumber)),
+          );
+        } catch {
+          // Storage off: the default applies, which publishes every saved card.
+        }
+        const decision = publishDecision({
+          mode,
+          // In the checked-cards mode a batch publishes when at least one card in it was approved.
+          checked: tally.approved > 0,
+          provisionalPublication: latest.provisionalPublication,
+          roundStatus: latest.roundStatus,
+        });
+        if (decision.publish) {
+          try {
+            latest = await scoring.publishRound(
+              tournament.id,
+              `Automatic publish after importing ${tally.approved + tally.saved} ${
+                tally.approved + tally.saved === 1 ? "card" : "cards"
+              }`,
+              view.dayNumber,
+            );
+          } catch (reason) {
+            publishWarning = `The cards are saved, but the automatic publish was refused: ${
+              reason instanceof Error ? reason.message : String(reason)
+            } Use Publish provisional when the desk is ready.`;
+          }
+        }
+      }
       if (latest) onImported(latest);
-      setResult(tally);
+      setResult(publishWarning ? { ...tally, publishWarning } : tally);
       setParsedFile(null);
       setConfirmed(false);
     } finally {
@@ -442,6 +485,7 @@ export function SheetImportPanel({
           </b>{" "}
           {result.alreadyIn > 0 &&
             `${result.alreadyIn} ${result.alreadyIn === 1 ? "was" : "were"} already in. `}
+          {result.publishWarning && <p className="m-0 mt-2">{result.publishWarning}</p>}
           {result.failed.length > 0 && (
             <>
               {result.failed.length} failed:

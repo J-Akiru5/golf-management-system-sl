@@ -290,6 +290,27 @@ describe("saving a desk-checked card under the event rules", () => {
     );
   });
 
+  it("scores a card that reached the desk by import with the WHS handicap when it is approved", async () => {
+    const repo = repository();
+    // Bravo has no snapshot: the card arrived by an import that only submitted it.
+    const submitted = await repo.submitCard("tournament-1", {
+      playerId: "p2",
+      scorerId: "p1",
+      source: "manual",
+      entries: entriesFrom(HAND_CARD),
+      writtenTotal: null,
+      captureKey: "imported",
+    });
+    expect(submitted.players.find((player) => player.playerId === "p2")?.handicap).toBeNull();
+
+    const approved = await repo.approveCard("tournament-1", submitted.cards[0]?.id ?? "");
+    const bravo = approved.players.find((player) => player.playerId === "p2");
+    // No index on file: the WHS figure for index 0, not the card's number.
+    expect(bravo?.handicap).toMatchObject({ rounding: "whs", index: 0, playingHandicap: 0 });
+    const row = approved.standings.net.rows.find((candidate) => candidate.playerId === "p2");
+    expect(row?.netPoints).toBe(row?.grossPoints);
+  });
+
   it("leaves the ordinary submit path as it was", async () => {
     const repo = repository({ rulesVersion: "demo-rules-v1" });
     const submitted = await repo.submitCard("tournament-1", {

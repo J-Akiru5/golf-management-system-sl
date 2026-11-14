@@ -6,6 +6,7 @@ import {
   type PublishDecisionInput,
   publishDecision,
   publishModeFromStored,
+  publishModeKey,
   publishModeLabel,
 } from "./publish-mode";
 
@@ -48,6 +49,14 @@ describe("the publish mode", () => {
     for (const stored of [null, undefined, "", "true", "EVERY"]) {
       expect(publishModeFromStored(stored)).toBe(DEFAULT_PUBLISH_MODE);
     }
+  });
+
+  it("is remembered once per event and day, so the day's control is the one the desk sets", () => {
+    expect(publishModeKey("t1", 4)).toBe("teeline-auto-publish:t1:4");
+    expect(publishModeKey("t1", 4)).not.toBe(publishModeKey("t1", 3));
+    expect(publishModeKey("t1", 4)).not.toBe(publishModeKey("t2", 4));
+    // The key the old publish-on-verify checkbox used, so a stored "0" or "1" still means something.
+    expect(publishModeKey("t1", null)).toBe("teeline-auto-publish:t1:all");
   });
 });
 
