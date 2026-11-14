@@ -9,6 +9,29 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.57.1] - 2026-11-15
+
+### Added
+- **The public landing and the clubhouse TV carry Converge, the club's connectivity partner, at
+  sponsor size.** The landing footer adds the Converge mark under the platform line, and the TV
+  footer shows it beside the TeeLine lockup. The TV strip is set in ordinary sentence case at a size
+  that reads from a chair, with the board's plain-language description. No migration.
+
+### Fixed
+- **A card sent from the tabulator is scored with the desk's handicap, not the number written in
+  the HDCP box.** The desk's playing handicap (the registration index on the player's tee at the
+  event allowance) is the scoring number; the card's own figure is kept beside it and named when it
+  differs. A player with no desk handicap is refused with a plain sentence naming the desk, instead
+  of being scored from a card reading. No migration.
+- **A class corrected in the desk follows the player's live results.** Migration
+  `20261114000500_class_and_handicap_follow_desk.sql` adds a trigger that carries a registration's
+  class change into `round_results`, and a service-role `reset_handicap_from_desk` function for the
+  one-off backfill. It is **applied on the live project**; `reset_handicap_from_desk` is present and
+  the class change now reaches live results. The tabulator scoring change above works from the desk
+  number independently.
+- **One-off desk sync script:** `scripts/desk-sync-2026-11-14.sql` is included for the record. It is
+  not a migration and the app never runs it.
+
 ## [0.57.0] - 2026-11-15
 
 ### Added
