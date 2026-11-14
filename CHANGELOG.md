@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.51.0] - 2026-11-14
+
 ### Added
 - **`/scores` can save a card under the 24th Bamboo Tee rules (#258).** When a round's rules version
   is `bamboo-tee-2026`, the entry form asks for the HDCP written on the card instead of a marker,
