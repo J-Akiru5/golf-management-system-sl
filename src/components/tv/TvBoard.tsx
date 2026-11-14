@@ -201,6 +201,9 @@ export function TvBoardView({ board }: { board: TvBoard }) {
           <span className={styles.powered}>
             <span className={styles.poweredLabel}>Powered by</span>
             <TeeLineLogo variant="reverse" width={146} className={styles.poweredLogo} />
+            <span className={styles.poweredRule} aria-hidden="true" />
+            {/* The club's connectivity partner, drawn in the same white as the platform lockup. */}
+            <img src="/partners/converge-logo.svg" alt="Converge" className={styles.convergeLogo} />
           </span>
         </span>
       </footer>
@@ -402,6 +405,12 @@ export function TvIdle({ eventName, note }: { eventName?: string | null; note: s
         <div className={styles.idleBrand}>
           <span className={styles.poweredLabel}>Powered by</span>
           <TeeLineLogo variant="reverse" width={240} className={styles.idleLogo} />
+          <span className={styles.poweredRule} aria-hidden="true" />
+          <img
+            src="/partners/converge-logo.svg"
+            alt="Converge"
+            className={`${styles.convergeLogo} ${styles.convergeLogoIdle}`}
+          />
         </div>
       </div>
     </main>
