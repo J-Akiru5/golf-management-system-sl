@@ -109,13 +109,24 @@ Six independent lanes: Class A, Class B, Class C, Class D, Net overall, Gross ov
   still hold and release through the existing gate, but the public countdown cannot be read by a
   signed-out page, so the podium shows the "being confirmed" copy instead.
 
-### Migrations waiting on the owner
+### Migrations applied on 15 Nov, and how they were checked
 
-1. `20261115000100_card_handicap_signed_handicap.sql`: a card snapshot may hold a negative playing
-   handicap.
-2. `20261115000200_results_reveal.sql`: the per-lane reveal state above.
-3. `20261115000300_correct_handicap_no_rules_version.sql`, to run after
-   `20261114000300_correct_handicap_snapshot.sql`.
+All three were applied and then checked against the live project by probe, not by trust:
+
+| File | Check that passed |
+| --- | --- |
+| `20261115000100_card_handicap_signed_handicap.sql` | `save_card_handicap_snapshot` with `-25` answers "outside the range -20 to 54"; the old body answered "not a plain number" |
+| `20261115000200_results_reveal.sql` | `public_reveal_state()` exists and returns the six lanes as `{state, releaseAt}` |
+| `20261115000300_correct_handicap_no_rules_version.sql` | a correction on a round with no stored rules version reaches the reason check instead of a rules-version error |
+
+### Awarding state now
+
+- All six lanes are **held**. The lane default is `released` when nothing is stored, so the desk must
+  hold before opening the results gate; the six are held on the live event as of 15 Nov.
+- The `leaderboard` release key is **held**, so `/results`, `/results/all` and `/leaderboard` show no
+  player names and no points. The roster, pairings, tee times and rules stay open.
+- The preview carries `AWARDING_DEMO=1`, which serves fictional sample boards so the ceremony can be
+  rehearsed. It is refused in production.
 
 ### Guardrails while production is live
 
