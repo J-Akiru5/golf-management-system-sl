@@ -27,14 +27,11 @@ import type { PublicAdvisory } from "@/lib/public/advisory";
  * birthdate, gender, notes and photo paths are not part of the type, so this page cannot show them
  * even if a richer record exists on the server.
  *
- * An unpublished event or a failed read renders the privacy notice and an empty state only. The list
- * itself is never filled from a private table.
+ * An unpublished event or a failed read renders an empty state only. The list itself is never filled
+ * from a private table.
  */
 
 export type RosterUnavailable = "none" | "unpublished" | "held" | "failed";
-
-const PRIVACY_NOTICE =
-  "Name, home club, handicap index, category and flight only. Nothing else from the player record is shown.";
 
 export function RosterPage({
   players,
@@ -74,10 +71,6 @@ export function RosterPage({
       {advisory && <PublicAdvisoryBanner advisory={advisory} />}
 
       <PublicTournamentNav active="players" />
-
-      <p className="notice no-print" data-testid="roster-privacy">
-        {PRIVACY_NOTICE}
-      </p>
 
       {unavailable === "failed" ? (
         <div className="notice grid gap-3" role="status" data-testid="roster-failed">

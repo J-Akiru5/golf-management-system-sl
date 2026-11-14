@@ -1,5 +1,5 @@
 import { displayName } from "@/lib/format";
-import { matchesName } from "@/lib/name-match";
+import { matchesName, queryWords } from "@/lib/name-match";
 import type { CategoryRule, FlightRule } from "@/lib/routing";
 import { selectedDaysOf } from "./dates";
 import type {
@@ -277,17 +277,26 @@ export function rosterFlights(players: readonly PublicRosterPlayer[]): string[] 
  * The roster's name search and flight filter. The name match compares words, not the whole line, so
  * "charles matiling" finds "MATILING, CHARLES" (`matchesName`); an empty query or flight means
  * "all". A player without a flight appears under "all flights" only.
+ *
+ * A word that appears on no roster card is dropped before the match, because a member types the name
+ * they know and the stored record can be shorter than it: "RACHELLE CAPALUNGAN" against
+ * "CAPALUNGAN, RUTH", where the record never had RACHELLE. Every remaining word still has to match,
+ * so "charles santos" is not forgiven, and a query whose words all belong to nobody answers nothing
+ * rather than the whole field.
  */
 export function filterRoster(
   players: readonly PublicRosterPlayer[],
   { query = "", flight = "" }: { query?: string; flight?: string | null } = {},
 ): PublicRosterPlayer[] {
   const wantedFlight = flight?.trim() ?? "";
-  return players.filter(
-    (player) =>
-      matchesName(player.name, query) &&
-      (!wantedFlight || (player.flight?.trim() ?? "") === wantedFlight),
+  const inFlight = players.filter(
+    (player) => !wantedFlight || (player.flight?.trim() ?? "") === wantedFlight,
   );
+  const words = queryWords(query);
+  const known = words.filter((word) => inFlight.some((player) => matchesName(player.name, word)));
+  if (words.length > 0 && known.length === 0) return [];
+  const effective = known.length === words.length ? query : known.join(" ");
+  return inFlight.filter((player) => matchesName(player.name, effective));
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

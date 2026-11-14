@@ -29,10 +29,15 @@ function nameWords(value: string): string {
  * matches because a phone search is typed as you go. An empty or blank query matches everything.
  */
 export function matchesName(haystack: string, query: string): boolean {
-  const tokens = nameWords(query).split(" ").filter(Boolean);
+  const tokens = queryWords(query);
   if (tokens.length === 0) return true;
   const words = nameWords(haystack);
   return tokens.every((token) => words.includes(token));
+}
+
+/** The words a search compares, normalised the same way `matchesName` compares them. */
+export function queryWords(query: string): string[] {
+  return nameWords(query).split(" ").filter(Boolean);
 }
 
 /**

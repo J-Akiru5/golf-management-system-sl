@@ -62,9 +62,15 @@ describe("filterRoster with LAST, FIRST names", () => {
     expect(names("matiling")).toEqual(["MATILING, CHARLES"]);
   });
 
-  it("still requires every word, so one wrong word finds nobody", () => {
-    expect(names("charles santos")).toEqual([]);
-    expect(names("matiling jr")).toEqual([]);
+  it("forgives a word the roster carries nowhere, and only that", () => {
+    // A member types the name they know. Where the stored record is shorter, the word it never had
+    // must not hide the surname beside it: this is "CAPALUNGAN, RUTH" searched at the desk as
+    // "RACHELLE CAPALUNGAN".
+    expect(names("RACHELLE MATILING")).toEqual(["MATILING, CHARLES"]);
+    // A word that does belong to somebody is not forgiven, so a mistaken surname still finds nobody.
+    expect(names("charles peña")).toEqual([]);
+    // A query made only of words the field never carries answers nothing, not the whole roster.
+    expect(names("zzzz")).toEqual([]);
   });
 
   it("still treats a blank query as the whole field", () => {
