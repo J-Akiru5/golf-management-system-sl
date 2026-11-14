@@ -9,6 +9,31 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **The tabulation page can add a card for any player in the event, or for a name that is not in the
+  system.** "Add card for a player" searches the whole event, not just the day's draw, and says when
+  the player already has a card for that day and session, or is drawn in the other shotgun. A name the
+  event does not hold becomes a card marked "Not in the system: tell the admin", which the admin has
+  to add before the scored card can be sent. No migration.
+
+### Changed
+- **The tabulation page looks and works like TeeLine.** It carries the TeeLine mark, the app's colours
+  and 44 px controls; the search, day, session, batch picker, add button and counts sit in one bar
+  that stays on screen while the cards scroll, and `/` puts the cursor in the search box. Each card
+  says "Unsaved, saving shortly", "Saving", "Saved 14:02" or "Not saved: reason", and the same words
+  appear in the bar. A card added or jumped to is no longer left hidden by the find box, day or
+  session. No migration.
+- **A card plays off the WHS playing handicap for the tee written on it.** The page converts the
+  player's index with the course's own tee ratings from the field list (rating, slope and that tee's
+  par), falling back to the page's copy of the ratings if the deployment does not send them. The HDCP
+  box is labelled "Card says", is kept for the record and is never used to score. A player with no
+  index, or an index of 0, is named as a system problem for the admin and is not ranked. No migration.
+
+### Docs
+- **`src/lib/scorecards/page-tabulator.test.ts` pins the page's shape** (pinned bar, 44 px controls,
+  "Card says", both ways to add a card), and `merge.test.ts` holds that the shared document may only
+  gain fields, so a page opened before the deploy keeps working.
+
 ## [0.54.0] - 2026-11-14
 
 ### Added

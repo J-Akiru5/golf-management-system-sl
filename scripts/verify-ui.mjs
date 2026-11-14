@@ -2215,11 +2215,11 @@ await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 chec
 
 // The bar stays on screen while the cards scroll, so the search is always one keystroke away.
 await tabulatorPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-const searchBox = await tabulatorPage.locator("#q").boundingBox();
+const searchPos = await tabulatorPage.locator("#q").boundingBox();
 check(
   "the search box is still on screen after scrolling to the last card",
-  Boolean(searchBox && searchBox.y >= 0 && searchBox.y < 240),
-  searchBox ? `y ${Math.round(searchBox.y)}` : "missing",
+  Boolean(searchPos && searchPos.y >= 0 && searchPos.y < 240),
+  searchPos ? `y ${Math.round(searchPos.y)}` : "missing",
 );
 await tabulatorPage.evaluate(() => window.scrollTo(0, 0));
 
@@ -2264,11 +2264,14 @@ check("adding the same player again does not create a second card", true);
 
 // The second way in: a name that is not in the system at all.
 await tabulatorPage.click("#add-player");
-await expect(tabulatorPage.locator("#pp-name")).toBeVisible({ timeout: 10000 });
+await expect(tabulatorPage.locator("#pp-other summary")).toBeVisible({ timeout: 10000 });
+await tabulatorPage.click("#pp-other summary");
 await tabulatorPage.locator("#pp-name").fill("STRANGER, SAM");
 await tabulatorPage.click("#pp-addname");
 await expect(tabulatorPage.locator("#cards .card")).toHaveCount(5, { timeout: 10000 });
-const strangerCard = tabulatorPage.locator("#cards .card").filter({ hasText: "STRANGER, SAM" });
+const strangerCard = tabulatorPage
+  .locator("#cards .card")
+  .filter({ has: tabulatorPage.locator('input.name[value="STRANGER, SAM"]') });
 check(
   "a player not in the system is marked so on the card",
   (await strangerCard.locator(".no").first().textContent())?.includes(

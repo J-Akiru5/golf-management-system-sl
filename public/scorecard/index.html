@@ -87,6 +87,13 @@
   .field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-muted); }
   .field select { min-height: 44px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-raised); }
   .stat, .sync { color: var(--ink-muted); font-size: 12px; }
+  @media (max-width: 720px) {
+    .masthead { padding: 8px 10px; }
+    .toolbar { padding: 6px 10px; }
+    .toolrow { gap: 6px; }
+    .toolrow + .toolrow { margin-top: 6px; }
+    .stat, .sync { font-size: 11px; }
+  }
   #msg { min-height: 1.2em; color: var(--success); margin: 6px 0 0; font-size: 13px; }
   #msg.err { color: var(--danger); font-weight: 700; }
   /* One pill for the save state: Saved 14:02, Saving, Not saved: reason. */
@@ -125,6 +132,11 @@
   .card.done { border-color: var(--success); border-width: 2px; }
   .logo { display: block; width: 96px; height: auto; }
   .card .logo { position: absolute; top: 10px; right: 12px; }
+  /* The card's corner mark is the print artwork (forest ink on white), so it gets a white plate in
+     the dark theme instead of disappearing into the card. */
+  @media (prefers-color-scheme: dark) {
+    .card .logo { background: #fff; padding: 3px 5px; border-radius: 6px; }
+  }
   #sheet .logo { width: 110px; margin-bottom: 6px; }
   .card .name { font: 700 16px system-ui, "Segoe UI", sans-serif; width: min(100%, 420px); min-height: 40px; border: 1px solid transparent; border-radius: var(--r-sm); padding: 2px 6px; margin-left: -6px; color: var(--ink); background: transparent; }
   .card .name:hover, .card .name:focus { border-color: var(--line-strong); background: var(--surface-raised); }
@@ -145,6 +157,14 @@
   td.in { padding: 0; }
   td.in input { width: 100%; min-width: 34px; min-height: 38px; border: 0; background: transparent; text-align: center; font: 600 15px system-ui, "Segoe UI", sans-serif; color: inherit; }
   td.in input:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; background: var(--surface-raised); }
+  /* The tee select carries a letter and a name ("B · Blue"), so it needs more room than a group box.
+     Screen only: on paper the select is as wide as its text so three cards still fit a page. */
+  @media screen {
+    .meta select[data-f="tee"] { width: 96px; }
+    .meta select[data-f="day"] { width: 92px; }
+    .meta select[data-f="session"] { width: 84px; }
+    .meta select[data-f="cls"] { width: 76px; }
+  }
   .tot { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 8px; font-size: 13px; }
   .tot b { font-size: 15px; }
   .gap { height: 6px; }
@@ -230,12 +250,12 @@
     <span id="sync" class="sync" role="status" aria-live="polite" title="This page shares one copy of the day with everyone signed in. It checks for their changes every few seconds.">Connecting to the shared copy…</span>
     <span class="spacer"></span>
     <button id="add" class="noprint" title="Add one blank card and type the name and 18 scores in from the paper card">Blank card</button>
-    <button id="print">Print this view</button>
-    <button id="pdf">Save as PDF</button>
+    <button id="print" title="Print the cards or the scoresheet as they are shown">Print</button>
+    <button id="pdf" title="Open the print window to save the cards or the scoresheet as a PDF">Save as PDF</button>
     <button id="exp" title="Downloads this day's cards to this device as a JSON file">Export JSON</button>
     <button id="imp" title="Add the cards in a JSON file (an export from this page or a scorecard scan). Nothing is downloaded and no card is replaced.">Import JSON</button>
-    <button id="restore" class="danger" title="Replaces every card on this page with the cards in an exported file">Replace from export…</button>
-    <button id="reset" class="danger">Reset to first reading</button>
+    <button id="restore" class="danger" title="Replaces every card on this page with the cards in an exported file">Replace…</button>
+    <button id="reset" class="danger" title="Discard every edit and go back to the first reading">Reset</button>
   </div>
   <div id="msg" role="status" aria-live="polite"></div>
 </div>
@@ -788,6 +808,9 @@ function playsOffText(c) {
   const tee = String(c.tee || "").trim();
   if (ph === null) return { ph: null, warn: true, detail: `index ${fmtPh(index)}`, text: `No playing handicap on file: check with admin (index ${fmtPh(index)})` };
   if (!tee) return { ph, warn: true, detail: `index ${fmtPh(index)}, system tee ${teeName(f.tee) || "–"}`, text: `Plays off ${fmtPh(ph)} (index ${fmtPh(index)}, system tee ${teeName(f.tee) || "–"}) · choose the tee` };
+  // A tee the page has no rating for cannot be converted, so the stored figure is used and the card
+  // says which one it is. Guessing a rating would change every net score on that card.
+  if (!TEES[tee]) return { ph, warn: true, detail: `index ${fmtPh(index)}, stored figure`, text: `Plays off ${fmtPh(ph)} (index ${fmtPh(index)}, stored figure: no rating for tee ${tee})` };
   return { ph, warn: false, detail: `index ${fmtPh(index)}, ${teeName(tee)}`, text: `Plays off ${fmtPh(ph)} (index ${fmtPh(index)}, ${teeName(tee)})` };
 }
 function calc(c) {
@@ -955,6 +978,13 @@ function filter() {
   const narrowed = q || viewDay || viewSession;
   $("shown").textContent = narrowed ? `${n} of ${state.cards.length} cards shown` : "";
 }
+// The three find controls only hide cards. Clearing them is how a card that was just added or jumped
+// to is made visible again; nothing that is saved changes.
+function clearFind() {
+  viewDay = ""; viewSession = "";
+  $("dayFilter").value = ""; $("sessionFilter").value = ""; $("q").value = "";
+  filter();
+}
 $("dayFilter").addEventListener("change", e => { viewDay = e.target.value; filter(); });
 $("sessionFilter").addEventListener("change", e => { viewSession = e.target.value; filter(); });
 function show(v) {
@@ -994,7 +1024,7 @@ $("q").addEventListener("input", filter);
 // A card that was never scanned: add a blank one and type it in from the paper.
 $("add").onclick = () => {
   const c = { id: "manual-" + Date.now().toString(36), manual: true, name: "", group: "", tee: "", hdcp: "", written: "", cls: "", verified: false, holes: Array(18).fill("") };
-  state.cards.push(c); save(); $("q").value = ""; show("cards"); renderCards(); stats();
+  state.cards.push(c); save(); clearFind(); show("cards"); renderCards(); stats();
   const el = [...document.querySelectorAll("#cards .card")].find(x => x.dataset.id === c.id);
   el.scrollIntoView({ block: "center" }); el.querySelector(".name").focus();
   say("Blank card added. Type the name, tee, HDCP and the 18 scores from the paper card.");
@@ -1155,6 +1185,9 @@ window.__scorecard = {
   setState: (next) => {
     state = next;
     save();
+    // The pinned bar's day list follows the cards, so a card added for another playing day can be
+    // filtered to as soon as it is on the page.
+    fillDayFilter();
     renderCards();
     stats();
   },
@@ -1179,6 +1212,9 @@ window.__scorecard = {
     const card = state.cards.find((entry) => entry.id === id);
     return card ? playsOffText(card) : null;
   },
+  // The pinned bar's find box, day and session only hide cards. Clearing the three lets a card that
+  // was added or jumped to be shown; nothing that is saved changes.
+  clearFind,
   cardCheck: __scorecardCheck,
   checkField: () => {
     const checks = state.cards.map((card) => __scorecardCheck(card.id)).filter(Boolean);
@@ -1456,6 +1492,14 @@ window.__scorecard = {
     }
   }
 
+  // A card the desk jumped to or just added must not stay hidden by the pinned bar's find box, day or
+  // session. Clearing them is the only thing that changes: no card and no score is touched.
+  function clearFind() {
+    panelSearch.value = "";
+    db.clearFind();
+    apply();
+  }
+
   function gotoCard(id) {
     const card = current().cards.find((entry) => entry.id === id);
     if (!card) return;
@@ -1464,6 +1508,7 @@ window.__scorecard = {
       (candidate) => candidate.dataset.id === id,
     );
     if (!element) return;
+    if (element.hidden) clearFind();
     element.scrollIntoView({ behavior: "smooth", block: "center" });
     element.style.outline = "3px solid #b42318";
     window.setTimeout(() => {
@@ -2482,7 +2527,7 @@ window.__scorecard = {
         <button type="button" id="pp-add" class="primary">Add the selected player</button>
         <button type="button" id="pp-cancel">Cancel</button>
       </div>
-      <details style="border-top:1px solid var(--line);padding-top:10px">
+      <details id="pp-other" style="border-top:1px solid var(--line);padding-top:10px">
         <summary style="cursor:pointer;font-weight:600">Player not in the system</summary>
         <p style="margin:6px 0 8px;color:var(--ink-muted)">Type the name written on the paper card. The card is marked "Not in the system: tell the admin" and is never sent to the admin queue as a checked card until the admin adds the player.</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
@@ -2527,7 +2572,7 @@ window.__scorecard = {
         const key = entry.playerId || nameKey(entry.name);
         const where = whereIs(entry, day, session);
         const facts = [entry.frozenIndex != null ? `index ${entry.frozenIndex}` : "no index", entry.tee || "no tee", entry.cls ? `class ${entry.cls}` : ""].filter(Boolean).join(" · ");
-        return `<label style="display:block;margin:4px 0;min-height:34px"><input type="radio" name="pp-pick" value="${escapeHtml(key)}"${key === chosenKey ? " checked" : ""}> ${escapeHtml(entry.name)} <span style="color:var(--ink-muted)">· ${escapeHtml(facts)} · ${escapeHtml(where.text)}</span>${where.warn ? ' <span class="no">· check</span>' : ""}</label>`;
+        return `<label style="display:flex;align-items:center;gap:8px;margin:2px 0;min-height:44px"><input type="radio" name="pp-pick" value="${escapeHtml(key)}"${key === chosenKey ? " checked" : ""}> ${escapeHtml(entry.name)} <span style="color:var(--ink-muted)">· ${escapeHtml(facts)} · ${escapeHtml(where.text)}</span>${where.warn ? ' <span class="no">· check</span>' : ""}</label>`;
       }).join("") || '<span style="color:var(--ink-muted)">No player matches that name.</span>';
       const picked = rows.find((entry) => (entry.playerId || nameKey(entry.name)) === chosenKey) || null;
       if (!picked) q("#pp-note").textContent = `${list.length} player${list.length === 1 ? "" : "s"} found. Pick one.`;
@@ -2691,6 +2736,7 @@ window.__scorecard = {
       state.activeReviewBatchId = active;
     }
     db.save();
+    db.clearFind();
     searchBox.value = "";
     panelSearch.value = "";
     show("cards");
@@ -3121,9 +3167,11 @@ window.__scorecard = {
   // ---- Save card: an explicit save for one card, with a visible answer ----
   // Everything is also saved on its own every two seconds; this button is the confirmation. Each card
   // says "Saving" while its edit is on its way, "Saved 14:02" once the shared copy holds it, and
-  // "Not saved: reason" when the save failed.
+  // "Not saved: reason" when the save failed. An edit waiting for the next save says so plainly
+  // instead of pretending it is already on its way.
   const savedStamp = {};
   function refreshSaveBadges() {
+    let waiting = 0;
     for (const element of cardsRoot.querySelectorAll(".card")) {
       const badge = element.querySelector('[data-k="savestate"]');
       if (!badge) continue;
@@ -3136,7 +3184,8 @@ window.__scorecard = {
           badge.textContent = `Not saved: ${saveProblem}`;
           badge.className = "savestate noprint bad";
         } else {
-          badge.textContent = "Saving";
+          waiting += 1;
+          badge.textContent = "Unsaved, saving shortly";
           badge.className = "savestate noprint busy";
         }
       } else if (savedStamp[id]) {
@@ -3147,6 +3196,10 @@ window.__scorecard = {
         badge.className = "savestate noprint";
       }
     }
+    // The pill in the pinned bar follows the cards, so nobody reads "Saved" while an edit is only in
+    // this browser waiting for the next save. It is not the pill's job to name a failure; that is
+    // said when the save actually fails.
+    if (waiting > 0 && !saving && !saveProblem) showSaved("busy", "Unsaved, saving shortly");
   }
   cardsRoot.addEventListener("input", () => window.setTimeout(refreshSaveBadges, 0));
   cardsRoot.addEventListener("change", () => window.setTimeout(refreshSaveBadges, 0));

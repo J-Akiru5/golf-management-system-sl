@@ -18,11 +18,11 @@ const block = html.split("// <handicap-rules>")[1]?.split("// </handicap-rules>"
 const PAR = [4, 4, 4, 5, 3, 4, 4, 4, 4, 3, 4, 4, 3, 5, 4, 3, 4, 4];
 const SI = [5, 3, 7, 9, 17, 15, 11, 1, 13, 14, 6, 12, 16, 2, 4, 18, 8, 10];
 const PAR_TOTAL = PAR.reduce((a, b) => a + b, 0);
-const TEES = {
+const TEES: Record<string, { rating: number; slope: number; par?: number }> = {
   B: { rating: 69.6, slope: 130 },
   W: { rating: 67.9, slope: 127 },
   L: { rating: 72.1, slope: 126 },
-} as const;
+};
 
 interface FieldEntry {
   playingHandicap: number | null;

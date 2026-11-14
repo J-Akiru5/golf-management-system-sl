@@ -178,7 +178,9 @@ export async function loadField(
 
   let tournamentQuery = supabase
     .from("tournaments")
-    .select("id,club_id,course_id,name,play_date,first_tee_time,pm_first_tee_time,max_index,allowance")
+    .select(
+      "id,club_id,course_id,name,play_date,first_tee_time,pm_first_tee_time,max_index,allowance",
+    )
     .order("play_date", { ascending: false })
     .limit(8);
   if (eventName.trim()) {
@@ -406,4 +408,3 @@ export async function loadField(
     tees,
   };
 }
-
