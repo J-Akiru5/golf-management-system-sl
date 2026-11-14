@@ -75,8 +75,12 @@ export function HandicapSummary({
         <>
           <div className="tiles grid-cols-3">
             <div className="tile">
-              <b className="mono">{fmtIndex(handicap.index)}</b>
-              <span>NGAP index</span>
+              <b className="mono">
+                {handicap.rounding === "card"
+                  ? fmtIndex(check.frozenIndex)
+                  : fmtIndex(handicap.index)}
+              </b>
+              <span>{handicap.rounding === "card" ? "Registration index" : "NGAP index"}</span>
             </div>
             <div className="tile">
               <b className="mono">{fmtHcp(handicap.courseHandicap)}</b>
@@ -90,8 +94,8 @@ export function HandicapSummary({
 
           {handicap.rounding === "card" ? (
             <p className="hint mono">
-              HDCP on the card {fmtIndex(handicap.index)}, decimal dropped ={" "}
-              {fmtHcp(handicap.playingHandicap)}
+              Plays off {fmtHcp(handicap.playingHandicap)}. Saved with the card from the
+              registration index and the tee; the HDCP box on the card does not set it.
             </p>
           ) : (
             <p className="hint mono">
@@ -133,7 +137,7 @@ export function HandicapSummary({
                 {handicap.rounding === "whs"
                   ? "WHS two-step"
                   : handicap.rounding === "card"
-                    ? "card handicap"
+                    ? "saved with the card"
                     : "single step"}
               </dd>
             </div>

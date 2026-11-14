@@ -42,9 +42,9 @@ function sheetFile(cards: SheetCard[], overrides: Partial<SheetExport> = {}): Sh
 }
 
 const ROSTER = [
-  { playerId: "p3", playerName: "CHARLIE, CHUCK" },
-  { playerId: "p1", playerName: "ALPHA, ANN" },
-  { playerId: "p2", playerName: "BRAVO, BOB" },
+  { playerId: "p3", playerName: "CHARLIE, CHUCK", frozenIndex: 11.2, tee: TEST_COURSE.tee },
+  { playerId: "p1", playerName: "ALPHA, ANN", frozenIndex: 16.4, tee: TEST_COURSE.tee },
+  { playerId: "p2", playerName: "BRAVO, BOB", frozenIndex: 22.9, tee: TEST_COURSE.tee },
 ];
 
 function resolve(
@@ -60,6 +60,7 @@ function resolve(
     holes: TEST_COURSE.holes,
     players: ROSTER,
     cards: [],
+    tee: TEST_COURSE.tee,
     ...overrides,
   });
 }
@@ -171,7 +172,7 @@ describe("name keys", () => {
 });
 
 describe("planning the import", () => {
-  it("makes a verified card ready to save and approve, with the handicap rule applied", () => {
+  it("makes a verified card ready to save and approve, with the WHS handicap applied", () => {
     const plan = resolve([sheetCard()]);
     expect(plan.fileProblems).toEqual([]);
     expect(plan.ready).toHaveLength(1);
@@ -181,7 +182,9 @@ describe("planning the import", () => {
       playerId: "p1",
       playerName: "ALPHA, ANN",
       cardHandicap: "16.7",
-      playingHandicap: 16,
+      // Index 16.4 on the test tee plays off 18, not the 16 the box would drop to.
+      playingHandicap: 18,
+      cardNote: "card says 16.7, plays off 18 (index 16.4, White)",
       approve: true,
       pickups: 0,
       gross: 72,
@@ -215,19 +218,30 @@ describe("planning the import", () => {
     expect(card?.entries[0]?.strokes).toBe(4);
   });
 
-  it("counts a blank handicap as 0 and a typed one with the decimal dropped", () => {
+  it("takes the playing handicap from each player's index and tee, not from the HDCP box", () => {
     const plan = resolve([
       sheetCard({ id: "c1", hdcp: "" }),
       sheetCard({ id: "c2", name: "BRAVO, BOB", hdcp: "22.9" }),
     ]);
-    expect(plan.ready.map((card) => card.playingHandicap)).toEqual([0, 22]);
+    // Index 16.4 plays off 18 and index 22.9 off 25 on the test tee; neither box decides it.
+    expect(plan.ready.map((card) => card.playingHandicap)).toEqual([18, 25]);
+    expect(plan.ready.map((card) => card.cardHandicap)).toEqual(["", "22.9"]);
   });
 
-  it("blocks a handicap it cannot read, by name", () => {
+  it("keeps a box it cannot read as a note and still plans the card", () => {
     const plan = resolve([sheetCard({ hdcp: "+1.2" })]);
+    expect(plan.blocked).toEqual([]);
+    expect(plan.ready[0]?.playingHandicap).toBe(18);
+    expect(plan.ready[0]?.cardNote).toBe("card says +1.2, plays off 18 (index 16.4, White)");
+  });
+
+  it("blocks a card whose player has no tee, naming the fix", () => {
+    const plan = resolve([sheetCard()], {
+      players: ROSTER.map((player) => ({ ...player, tee: null })),
+    });
     expect(plan.ready).toEqual([]);
     expect(plan.blocked[0]?.playerName).toBe("ALPHA, ANN");
-    expect(plan.blocked[0]?.reasons.join(" ")).toContain("not a plain number");
+    expect(plan.blocked[0]?.reasons.join(" ")).toContain("no tee");
   });
 
   it("lists a name with no match as unmatched and never picks a near one", () => {
@@ -292,10 +306,10 @@ describe("planning the import", () => {
     expect(plan.blocked[0]?.reasons[0]).toContain("already has a card for ALPHA, ANN");
   });
 
-  it("refuses the whole file when it was worked out with the WHS setting", () => {
+  it("reads a file worked out with either handicap setting, since the import works the handicap out", () => {
     const plan = resolve([sheetCard()], {}, { mode: "whs" });
-    expect(plan.fileProblems[0]).toContain('"whs"');
-    expect(plan.ready).toEqual([]);
+    expect(plan.fileProblems).toEqual([]);
+    expect(plan.ready[0]?.playingHandicap).toBe(18);
   });
 
   it("refuses the whole file for a round that is not 18 holes", () => {

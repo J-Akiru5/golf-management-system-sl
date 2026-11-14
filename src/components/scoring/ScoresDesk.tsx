@@ -54,6 +54,15 @@ import {
 import { classLabel } from "@/lib/scoring/class-label";
 import { pickDeskMarker } from "@/lib/scoring/event-card";
 import { eventRulesFor } from "@/lib/scoring/event-rules";
+import {
+  DEFAULT_PUBLISH_MODE,
+  formatPublishTime,
+  PUBLISH_MODES,
+  type PublishMode,
+  publishDecision,
+  publishModeFromStored,
+  publishModeKey,
+} from "@/lib/scoring/publish-mode";
 import { reviewScannedCard, type ScanReaderCell } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import {
@@ -67,11 +76,6 @@ import { playingDaysOfEvent } from "@/lib/store/state";
 
 const DEMO_NOTICE =
   "Sample scoring preview. Cards, approvals, resolutions and standings live in this browser only and are not written to the database. The scoring schema and RPCs are applied; this screen is not wired to them yet.";
-
-/** The browser's own choice for one event and day. The round still decides whether it can publish. */
-function autoPublishKey(tournamentId: string, day: number | null): string {
-  return `teeline-auto-publish:${tournamentId}:${day ?? "all"}`;
-}
 
 /** A manual card starts empty. A cell is only ever filled by a person or by the reader. */
 function blankStrokes(holes: readonly HoleDefinition[]): Record<number, string> {
@@ -156,10 +160,12 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   /** The sheet that corrects the snapshot this played round is scored from. */
   const [correctingHandicap, setCorrectingHandicap] = useState(false);
   /**
-   * Publish a verified card without a second click. The choice is remembered per event and day in
-   * this browser; the round must still allow provisional publication.
+   * When a saved card reaches the public board. One mode, remembered per event and day in this
+   * browser; the round must still allow provisional publication.
    */
-  const [autoPublish, setAutoPublish] = useState(true);
+  const [publishMode, setPublishMode] = useState<PublishMode>(DEFAULT_PUBLISH_MODE);
+  /** The plain sentence shown when an automatic publish was refused. */
+  const [publishError, setPublishError] = useState<string | null>(null);
   const autoPublishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingVerified = useRef<string[]>([]);
   /** The control the desk gets back after a selection or a save. The token re-runs the same id. */
@@ -170,6 +176,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const holes = view?.course.holes ?? [];
   /** The round's card rules, when its rules version names a set. Otherwise the ordinary path. */
   const eventRules = view ? eventRulesFor(view.rulesVersion) : null;
+  /** The newest publication, so the desk can read the version and time it went public. */
+  const lastPublication = view?.publications.at(-1) ?? null;
   const canEdit =
     status === "demo" ||
     member?.role === "owner" ||
@@ -339,13 +347,16 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     }
   }, [focusRequest]);
 
-  // The auto-publish choice belongs to this browser, event and day. A stored "0" turns it off.
+  // The publish choice belongs to this browser, event and day. The old on/off checkbox keeps its
+  // meaning: "1" was checked cards only, "0" was manual.
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(autoPublishKey(tournamentId, day));
-      if (stored !== null) setAutoPublish(stored === "1");
+      setPublishMode(
+        publishModeFromStored(window.localStorage.getItem(publishModeKey(tournamentId, day))),
+      );
     } catch {
-      // Storage off: keep the default, which publishes after verification.
+      // Storage off: keep the default, which publishes every saved card.
+      setPublishMode(DEFAULT_PUBLISH_MODE);
     }
   }, [tournamentId, day]);
 
@@ -506,12 +517,17 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   }
 
   /**
-   * Collects the cards verified in a short burst and publishes once. The board's Live mode batches
-   * its edits the same way, so a run of approvals is one publication, not one per card.
+   * Collects the cards saved in a short burst and publishes once. The board's Live mode batches its
+   * edits the same way, so a run of saves is one publication, not one per card.
    */
-  function scheduleAutoPublish(players: string[]) {
-    if (!autoPublish) return;
-    if (!view?.provisionalPublication || view.roundStatus === "final") return;
+  function scheduleAutoPublish(players: string[], checked: boolean) {
+    const decision = publishDecision({
+      mode: publishMode,
+      checked,
+      provisionalPublication: Boolean(view?.provisionalPublication),
+      roundStatus: view?.roundStatus ?? "draft",
+    });
+    if (!decision.publish) return;
     pendingVerified.current.push(...players);
     if (autoPublishTimer.current) clearTimeout(autoPublishTimer.current);
     autoPublishTimer.current = setTimeout(() => {
@@ -525,23 +541,36 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     if (names.length === 0) return;
     setBusy(true);
     setError(null);
+    setPublishError(null);
     try {
       const next = await scoring.publishRound(
         tournamentId,
-        `Automatic publish after verification: ${names.join(", ")}`,
+        `Automatic publish after a save: ${names.join(", ")}`,
         day,
       );
       setView(next);
       setSavedNote(
-        `Published automatically after ${names.length} verified ${names.length === 1 ? "card" : "cards"}.`,
+        `Published automatically after ${names.length} saved ${
+          names.length === 1 ? "card" : "cards"
+        }.`,
       );
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : String(reason);
-      setError(
-        `The ${names.length === 1 ? "card is" : "cards are"} approved, but the automatic publish failed: ${message} Use Publish provisional.`,
+      setPublishError(
+        `The ${names.length === 1 ? "card was" : "cards were"} saved, but the automatic publish was refused: ${message}`,
       );
     } finally {
       setBusy(false);
+    }
+  }
+
+  function changePublishMode(next: PublishMode) {
+    setPublishMode(next);
+    setPublishError(null);
+    try {
+      window.localStorage.setItem(publishModeKey(tournamentId, day), next);
+    } catch {
+      // Storage off: the choice still applies until this screen closes.
     }
   }
 
@@ -555,7 +584,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       const card = next.cards.find((candidate) => candidate.id === cardId);
       const name =
         next.players.find((player) => player.playerId === card?.playerId)?.playerName ?? cardId;
-      scheduleAutoPublish([name]);
+      scheduleAutoPublish([name], true);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -642,9 +671,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       ),
     );
     setWrittenOnCard(card.writtenTotal === null ? "" : String(card.writtenTotal));
-    // A card saved under the card rules already has its HDCP on file; show it for the correction.
-    const stored = players.find((player) => player.playerId === card.playerId)?.handicap;
-    setCardHandicap(stored?.rounding === "card" ? String(stored.index) : "");
+    // The HDCP box is a note about the paper card, and the snapshot no longer stores what was on
+    // the card, so a correction starts with an empty box and the desk types what the paper says.
+    setCardHandicap("");
     setScanImage(null);
     setScanExtraction(null);
     setScanCaptureKey("");
@@ -885,10 +914,12 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
           next = saved.view;
           note =
             saved.outcome === "approved"
-              ? `Card saved and approved for ${playerName || "this player"}. It counts now.`
+              ? `Card saved and approved for ${playerName || "this player"}. It counts now.${
+                  saved.cardNote ? ` Note: ${saved.cardNote}.` : ""
+                }`
               : `The card for ${playerName || "this player"} was already in.`;
-          if (saved.outcome === "approved") {
-            scheduleAutoPublish([playerName || targetPlayerId]);
+          if (saved.outcome !== "already_in") {
+            scheduleAutoPublish([playerName || targetPlayerId], saved.outcome === "approved");
           }
         } else {
           next = await scoring.submitCard(
@@ -907,6 +938,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
             day,
           );
           note = `Card saved for ${playerName || "this player"} and sent for approval. It does not count until it is approved.`;
+          // A save under the ordinary rules is not a checked card; the mode decides whether that
+          // still reaches the public board.
+          scheduleAutoPublish([playerName || targetPlayerId], false);
         }
         // "Save and next" hands the desk the next card without the mouse. A correction, or the
         // plain save, stays put: the desk is on that player's card on purpose.
@@ -1250,30 +1284,40 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
               subtitle="Approve only after the card is checked. Low-confidence values need a person to confirm them."
               dataHelp="scores-cards"
             >
-              <label className="flex min-h-11 items-center gap-2 text-[13px]">
-                <input
-                  type="checkbox"
-                  checked={autoPublish}
-                  onChange={(event) => {
-                    const next = event.target.checked;
-                    setAutoPublish(next);
-                    try {
-                      window.localStorage.setItem(
-                        autoPublishKey(tournamentId, day),
-                        next ? "1" : "0",
-                      );
-                    } catch {
-                      // Storage off: the choice still applies until this screen closes.
-                    }
-                  }}
-                />
-                Publish verified cards automatically
-              </label>
-              <p className="hint">
-                A verified card reaches the public board after a short pause, in one publication for
-                a run of cards. The Publish provisional button still works, and this choice is
-                remembered in this browser for this event and day.
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="field min-w-[16rem]">
+                  <span>Publishing</span>
+                  <select
+                    value={publishMode}
+                    onChange={(event) => changePublishMode(event.target.value as PublishMode)}
+                    aria-describedby="publish-mode-hint"
+                  >
+                    {PUBLISH_MODES.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="hint m-0">
+                  {PUBLISH_MODES.find((option) => option.value === publishMode)?.hint}
+                </p>
+              </div>
+              <p className="hint" id="publish-mode-hint">
+                {lastPublication
+                  ? `Last publish v${lastPublication.version} (${lastPublication.state}) at ${formatPublishTime(
+                      lastPublication.publishedAt,
+                    )}.`
+                  : "Nothing has been published from this round yet."}{" "}
+                {view.provisionalPublication
+                  ? "The Publish provisional button still works, and this choice is remembered in this browser for this event and day."
+                  : "This round does not allow provisional publication, so nothing publishes by itself."}
               </p>
+              {publishError && (
+                <div className="notice bad" role="alert">
+                  {publishError}
+                </div>
+              )}
               {view.cards.length === 0 ? (
                 <p className="muted">No cards yet. Enter one above.</p>
               ) : (
@@ -1619,6 +1663,10 @@ function CardRow({
 }) {
   const player = view.players.find((candidate) => candidate.playerId === card.playerId) ?? null;
   const playerName = player?.playerName ?? card.playerId;
+  const eventRules = eventRulesFor(view.rulesVersion);
+  /** No index on file, or an index of 0, plays off index 0 until the admin checks it against WHS. */
+  const frozenIndex = player?.frozenIndex ?? null;
+  const checkIndex = Boolean(eventRules && player) && (frozenIndex === 0 || frozenIndex === null);
   const scorerName =
     view.players.find((player) => player.playerId === card.scorerId)?.playerName ?? card.scorerId;
   const handicapCheck = checkHandicapSnapshot({
@@ -1653,10 +1701,22 @@ function CardRow({
         <span className="hint block">Revision {card.revision}</span>
         {player?.handicap ? (
           <span className="hint block">
-            Index {fmtIndex(player.handicap.index)} -+ PH {fmtHcp(player.handicap.playingHandicap)}
+            {player.handicap.rounding === "card"
+              ? `Plays off ${fmtHcp(player.handicap.playingHandicap)}`
+              : `Index ${fmtIndex(player.handicap.index)} -+ PH ${fmtHcp(player.handicap.playingHandicap)}`}
           </span>
         ) : (
           <span className="hint block">No handicap snapshot</span>
+        )}
+        {checkIndex && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            <span
+              className="pill warn"
+              title="No index on file, or an index of 0. The card plays off index 0 until the admin checks it against WHS."
+            >
+              Check index
+            </span>
+          </span>
         )}
         {(handicapCheck.indexDiffers || handicapCheck.teeDiffers) && (
           <span className="mt-1 flex flex-wrap gap-1">

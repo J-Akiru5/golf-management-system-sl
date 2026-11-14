@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classFromAverage, normalizeClass, sessionFromTeeTime, teeCode } from "./field";
+import { classFromAverage, normalizeClass, sessionFromTeeTime, teeCode, teeRatings } from "./field";
 
 describe("classFromAverage", () => {
   it("uses the system bands", () => {
@@ -35,6 +35,41 @@ describe("teeCode", () => {
   it("keeps an unknown tee blank instead of guessing", () => {
     expect(teeCode("")).toBe("");
     expect(teeCode("Championship")).toBe("");
+  });
+});
+
+describe("teeRatings", () => {
+  it("keeps the tees a card can name, in card letters", () => {
+    expect(
+      teeRatings([
+        { name: "Blue", course_rating: 69.6, slope: 130, par: 70 },
+        { name: "White", course_rating: "67.9", slope: "127", par: "70" },
+        { name: "Championship", course_rating: 72, slope: 135, par: 70 },
+        { name: "Red", course_rating: 72.1, slope: 126, par: 70 },
+        { name: "Blue", course_rating: 70, slope: 120, par: 70 },
+      ]),
+    ).toEqual([
+      { code: "B", name: "Blue", courseRating: 69.6, slope: 130, par: 70 },
+      { code: "L", name: "Red", courseRating: 72.1, slope: 126, par: 70 },
+      { code: "W", name: "White", courseRating: 67.9, slope: 127, par: 70 },
+    ]);
+  });
+
+  it("skips a tee with no usable rating instead of guessing one", () => {
+    expect(
+      teeRatings([
+        { name: "Blue", course_rating: null, slope: 130, par: 70 },
+        { name: "White", course_rating: 67.9, slope: 0, par: 70 },
+        { name: "Red", course_rating: 72.1, slope: 126 },
+        { name: "Silver", course_rating: 68.4, slope: 121, par: 70 },
+      ]),
+    ).toEqual([{ code: "S", name: "Silver", courseRating: 68.4, slope: 121, par: 70 }]);
+  });
+
+  it("answers with an empty list when there is nothing to read", () => {
+    expect(teeRatings([])).toEqual([]);
+    expect(teeRatings(null)).toEqual([]);
+    expect(teeRatings([null, "Blue", 4])).toEqual([]);
   });
 });
 

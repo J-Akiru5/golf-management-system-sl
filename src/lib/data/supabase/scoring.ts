@@ -34,7 +34,8 @@ import {
   type TieBreakPolicy,
   type VerificationPolicy,
 } from "@/lib/scoring";
-import { CARD_HANDICAP_SOURCE } from "@/lib/scoring/event-rules";
+import { planEventHandicap } from "@/lib/scoring/event-card";
+import { CARD_HANDICAP_SOURCE, eventRulesFor } from "@/lib/scoring/event-rules";
 import { checkCardSubmission } from "@/lib/scoring/submission";
 import type { Database, Json } from "@/lib/supabase/generated-types";
 import type { Database as AppDatabase } from "@/lib/supabase/types";
@@ -209,6 +210,19 @@ export function createSupabaseScoringRepository(
 
     if (!holes?.length || !tees?.length) return null;
 
+    const teeById = new Map(
+      tees.map((tee) => [
+        tee.id,
+        {
+          id: tee.id,
+          name: tee.name,
+          courseRating: Number(tee.course_rating),
+          slope: tee.slope,
+          par: tee.par,
+        },
+      ]),
+    );
+
     const firstSnapshot = snapshotRows?.find((snapshot) =>
       entries?.some((entry) => entry.id === snapshot.round_entry_id),
     );
@@ -363,6 +377,10 @@ export function createSupabaseScoringRepository(
           // registration column is nullable; null means no index was frozen, not zero.
           frozenIndex:
             registration.frozen_index === null ? null : Number(registration.frozen_index),
+          // The tee on the registration, not the round's: the WHS playing handicap a card is saved
+          // with is worked out from the player's own tee. A registration with no tee reads as null,
+          // which stops a save rather than guessing the round's.
+          tee: registration.tee_id === null ? null : (teeById.get(registration.tee_id) ?? null),
           canonical: deriveCanonicalHoleScores({
             roundId: round.id,
             playerId: registration.player_id,
@@ -575,6 +593,64 @@ export function createSupabaseScoringRepository(
     return view;
   }
 
+  /**
+   * Stores the WHS playing handicap a card is scored with, through the one function the database has
+   * for a card snapshot (`save_card_handicap_snapshot`, migration 20261114000100).
+   *
+   * The number handed over is the playing handicap worked out from the registration index and tee.
+   * The function stores what it is handed as both the course and the playing handicap, and marks the
+   * row by its `index_source`, which is how the connected view reads it back as a card snapshot
+   * instead of recomputing it from the tee. Nothing here reads the card's HDCP box.
+   */
+  async function writeCardSnapshot(player: ScoringPlayer, playingHandicap: number): Promise<void> {
+    if (!player.roundEntryId) throw new Error("The player has no round entry.");
+    // The generated types predate this function, so the call is typed by hand.
+    const call = db.rpc as unknown as (
+      name: string,
+      args: Record<string, unknown>,
+    ) => PromiseLike<{ error: { message: string } | null }>;
+    const { error } = await call.call(db, "save_card_handicap_snapshot", {
+      p_round_entry: player.roundEntryId,
+      p_card_handicap: String(playingHandicap),
+    });
+    if (!error) return;
+    const missing = /could not find the function|PGRST202|does not exist/i.test(error.message);
+    if (missing) {
+      throw new Error(
+        "The card handicap function is not installed in the database yet. Apply migration 20261114000100_card_handicap_snapshot.sql first.",
+      );
+    }
+    // The installed function only accepts 0 and above. A plus player, or an index of 0 on a tee
+    // rated below par, plays off a negative number, which needs the signed handicap migration
+    // before it can be stored. The migration is not needed for any card that plays off 0 or more.
+    if (playingHandicap < 0 && /plain number|card handicap/i.test(error.message)) {
+      throw new Error(
+        `${player.playerName} plays off ${playingHandicap}, and the installed card handicap function only stores 0 or more. The owner has to apply migration 20261115000100_card_handicap_signed_handicap.sql before a negative playing handicap can be saved.`,
+      );
+    }
+    throw new Error(`Could not save the card handicap for ${player.playerName}: ${error.message}`);
+  }
+
+  /**
+   * Makes sure the round holds the WHS playing handicap this card is scored with, whatever screen
+   * sent the card. A card that reached the desk by import or from the tabulator has no snapshot of
+   * its own, and without one the round scores gross only, so the handicap is written here before the
+   * approval. A snapshot that already matches is left alone.
+   */
+  async function ensureCardHandicap(view: ScoringRoundView, player: ScoringPlayer): Promise<void> {
+    // A round that is not on the event's card rules keeps the ordinary path untouched.
+    if (!eventRulesFor(view.rulesVersion)) return;
+    const plan = planEventHandicap({
+      rulesVersion: view.rulesVersion,
+      roundStatus: view.roundStatus,
+      tee: view.course.tee,
+      effectiveDate: new Date().toISOString().slice(0, 10),
+      player,
+    });
+    if (!plan.ok) throw new Error(plan.message);
+    if (plan.needsSnapshotWrite) await writeCardSnapshot(player, plan.snapshot.playingHandicap);
+  }
+
   const repository: Omit<ScoringRepository, "saveEventCard"> = {
     loadRound,
     loadOpenRoundState,
@@ -667,6 +743,9 @@ export function createSupabaseScoringRepository(
       });
       const existing = view.players.find((candidate) => candidate.playerId === card.playerId);
       if (!existing) throw new Error("The card's player is not in this round.");
+      // Every approved card is scored with the WHS playing handicap, whichever screen sent it. A
+      // card that arrived by import has no snapshot, so this is where it gets one.
+      await ensureCardHandicap(view, existing);
       const player: ScoringPlayer = { ...existing, canonical };
 
       const { error } = await db.rpc("approve_scorecard", {
@@ -829,28 +908,10 @@ export function createSupabaseScoringRepository(
       return saveEventCardFlow(
         {
           load: () => refresh(tournamentId, dayNumber),
-          async writeSnapshot(plan, view, cardHandicap) {
+          async writeSnapshot(plan, view) {
             const player = view.players.find((candidate) => candidate.playerId === input.playerId);
-            if (!player?.roundEntryId) throw new Error("The player has no round entry.");
-            // The generated types predate this function, so the call is typed by hand.
-            const call = db.rpc as unknown as (
-              name: string,
-              args: Record<string, unknown>,
-            ) => PromiseLike<{ error: { message: string } | null }>;
-            const { error } = await call.call(db, "save_card_handicap_snapshot", {
-              p_round_entry: player.roundEntryId,
-              p_card_handicap: cardHandicap ?? "",
-            });
-            if (error) {
-              const missing = /could not find the function|PGRST202|does not exist/i.test(
-                error.message,
-              );
-              throw new Error(
-                missing
-                  ? "The card handicap function is not installed in the database yet. Apply migration 20261114000100_card_handicap_snapshot.sql first."
-                  : `Could not save the card handicap for ${player.playerName}: ${error.message}`,
-              );
-            }
+            if (!player) throw new Error("The player has no round entry.");
+            await writeCardSnapshot(player, plan.snapshot.playingHandicap);
           },
           submit: (card) => repository.submitCard(tournamentId, card, dayNumber),
           approve: (cardId, reason) =>

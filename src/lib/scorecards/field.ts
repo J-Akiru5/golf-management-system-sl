@@ -33,6 +33,17 @@ export interface FieldPlayer {
   teeCode: string;
 }
 
+/** One of the course's tees, in the letter a scorecard writes on the card. */
+export interface FieldTee {
+  /** The card's letter: B, W, L (Ladies/Red) or S. */
+  code: string;
+  name: string;
+  courseRating: number;
+  slope: number;
+  /** The tee's par, which the course rating is measured against. */
+  par: number;
+}
+
 export interface FieldLookup {
   event: string;
   tournamentId: string;
@@ -44,6 +55,11 @@ export interface FieldLookup {
   allowance: number | null;
   /** Every playing day the event has, so a card can be assigned to the day it was played. */
   days: { day: number; date: string }[];
+  /**
+   * The course's tee ratings, so the page converts an index with the event's own numbers instead
+   * of a copy baked into the page.
+   */
+  tees: FieldTee[];
   players: FieldPlayer[];
 }
 
@@ -106,6 +122,31 @@ export function teeCode(value: unknown): string {
   return "";
 }
 
+/**
+ * The course's tee ratings in the letters a card uses, so the page converts an index with the
+ * event's own rating and slope. A tee the card cannot name is left out rather than guessed at,
+ * because a wrong rating would change every net score played off that tee.
+ */
+export function teeRatings(rows: unknown): FieldTee[] {
+  const out: FieldTee[] = [];
+  const seen = new Set<string>();
+  for (const raw of Array.isArray(rows) ? rows : []) {
+    const row = record(raw);
+    if (!row) continue;
+    const name = text(row.name);
+    const code = teeCode(name);
+    const courseRating = numberOrNull(row.course_rating);
+    const slope = numberOrNull(row.slope);
+    const par = numberOrNull(row.par);
+    if (!code || seen.has(code)) continue;
+    if (courseRating === null || slope === null || slope <= 0) continue;
+    if (par === null || par <= 0) continue;
+    seen.add(code);
+    out.push({ code, name, courseRating, slope, par });
+  }
+  return out.sort((left, right) => left.code.localeCompare(right.code));
+}
+
 /** A day's draw runs a morning and an afternoon shotgun; the event stores the afternoon start. */
 export function sessionFromTeeTime(teeTime: unknown, pmFirst = "12:30"): "AM" | "PM" | "" {
   const time = text(teeTime).slice(0, 5);
@@ -137,7 +178,9 @@ export async function loadField(
 
   let tournamentQuery = supabase
     .from("tournaments")
-    .select("id,club_id,name,play_date,first_tee_time,pm_first_tee_time,max_index,allowance")
+    .select(
+      "id,club_id,course_id,name,play_date,first_tee_time,pm_first_tee_time,max_index,allowance",
+    )
     .order("play_date", { ascending: false })
     .limit(8);
   if (eventName.trim()) {
@@ -157,6 +200,22 @@ export async function loadField(
   const tournamentId = text(tournament.id);
   const clubId = text(tournament.club_id);
   const event = text(tournament.name);
+
+  // The event's own tee ratings, so an index is converted with the course's numbers instead of a
+  // copy of them in the page.
+  const courseId = text(tournament.course_id);
+  let tees: FieldTee[] = [];
+  if (courseId) {
+    const { data: teeRows, error: teeError } = await supabase
+      .from("tees")
+      .select("name,course_rating,slope,par")
+      .eq("course_id", courseId)
+      .eq("club_id", clubId);
+    if (teeError) {
+      throw new SupabaseFieldUnavailable(`Could not read the tee ratings: ${teeError.message}`);
+    }
+    tees = teeRatings(teeRows);
+  }
 
   const { data: registrationRows, error: registrationError } = await supabase
     .from("registrations")
@@ -346,5 +405,6 @@ export async function loadField(
       return day === null ? [] : [{ day, date: text(row.play_date) }];
     }),
     players,
+    tees,
   };
 }

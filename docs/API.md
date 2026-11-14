@@ -29,6 +29,7 @@ the places where this app deliberately differs.
 | `GET /api/v1/pairings/version` | public | L2 | Envelope, ETag, shared cache; the polling hot path |
 | `GET /api/pairings/version` | public, legacy | L1 | Same read, old body; removed 2027-01-31 |
 | `GET /api/player/board` | signed-in player | L1 | Player board, current body |
+| `GET /api/results/reveal` | public | L1 | Awarding lane state and the released boards; the countdown's polling hot path |
 | `POST /api/revalidate-pairings` | desk owner/organizer | L1 | Auth-gated cache refresh |
 | `POST /api/import/preview`, `/commit`, `/suggest-mapping` | desk | L1/L3 | File and AI work; not a first-render hot path |
 | `POST /api/scoring/scan/presign`, `/extract`, `/demo-object` | desk | L1/L3 | External scan service; keep out of the render path |

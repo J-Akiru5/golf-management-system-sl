@@ -527,13 +527,22 @@ await expect(queueRows).toHaveCount(4, { timeout: 15000 });
 await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
 const fastCards = page.locator('section[aria-labelledby="score-cards"]');
 await expect(fastCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
-const autoPublishBox = fastCards.getByRole("checkbox", {
-  name: "Publish verified cards automatically",
-});
-await expect(autoPublishBox).toBeChecked({ timeout: 15000 });
-check("a verified card is set to publish automatically", true);
+const publishMode = fastCards.getByLabel("Publishing");
+await expect(publishMode).toHaveValue("every", { timeout: 15000 });
+const publishModeLabels = (await publishMode.locator("option").allTextContents()).map((label) =>
+  label.trim(),
+);
+check(
+  "a saved card is set to publish automatically",
+  publishModeLabels.join(" | ") ===
+    "Publish every saved card | Publish checked cards only | Manual",
+  `(${publishModeLabels.join(" | ")})`,
+);
 await fastCards.getByRole("button", { name: "Approve" }).first().click();
 await expect(fastCards.locator("tbody tr .pill.ok")).toHaveCount(1, { timeout: 20000 });
+// The default mode publishes the approved card after its short pause, in one batch.
+await expect(fastCards.getByText(/Last publish v\d+/)).toBeVisible({ timeout: 20000 });
+check("an approved card is published without a second click", true);
 await scoresTab("Enter card", 'section[aria-labelledby="card-queue"]');
 await expect(queueTiles.nth(1)).toHaveText("1", { timeout: 20000 });
 check("an approved card counts as verified in the queue", true);
@@ -1511,8 +1520,8 @@ check(
 );
 
 // ------------------------------------------- All scores: the whole field, by day and session
-await phoneGo("/results");
-await noSideways("/results");
+await phoneGo("/results/all");
+await noSideways("/results/all");
 const scoreRows = phonePage.locator('[data-testid="scores-list"] .lb-team');
 const fieldSize = await scoreRows.count();
 check("All scores lists more than a top 10", fieldSize > 10, `(${fieldSize} rows)`);
@@ -2186,11 +2195,22 @@ check(
   listedNames.join(" / "),
 );
 check(
-  "the system playing handicap is shown",
+  "the playing handicap is the system's index on the tee on the card",
   (await tabulatorPage.locator('#cards .card [data-k="syshcp"]').first().textContent())?.includes(
-    "System PH 12",
+    "Plays off 11 (index 10.2, Blue)",
   ) === true,
 );
+const toolbarSticky = await tabulatorPage.evaluate(
+  () => getComputedStyle(document.getElementById("toolbar")).position,
+);
+check("the find and filter bar is pinned", toolbarSticky === "sticky", toolbarSticky);
+const barHoldsTools = await tabulatorPage.evaluate(() => {
+  const bar = document.getElementById("toolbar");
+  return ["q", "dayFilter", "sessionFilter", "batch-select", "add-player", "saved", "stat"].every(
+    (id) => bar.contains(document.getElementById(id)),
+  );
+});
+check("search, day, session, batch, save state and counts are in the pinned bar", barHoldsTools);
 const firstNameEditable = await tabulatorPage
   .locator("#cards .card input.name")
   .first()
@@ -2211,6 +2231,72 @@ check(
 await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 checked card", {
   timeout: 10000,
 });
+
+// The bar stays on screen while the cards scroll, so the search is always one keystroke away.
+await tabulatorPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+const searchPos = await tabulatorPage.locator("#q").boundingBox();
+check(
+  "the search box is still on screen after scrolling to the last card",
+  Boolean(searchPos && searchPos.y >= 0 && searchPos.y < 240),
+  searchPos ? `y ${Math.round(searchPos.y)}` : "missing",
+);
+await tabulatorPage.evaluate(() => window.scrollTo(0, 0));
+
+// A card for a player who is on the event's list but not in this day's draw.
+await tabulatorPage.click("#add-player");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]').first()).toBeVisible({
+  timeout: 10000,
+});
+await tabulatorPage.locator("#pp-q").fill("FIVE");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]')).toHaveCount(1, {
+  timeout: 10000,
+});
+const drawerNote = await tabulatorPage.locator("#pp-list").textContent();
+check(
+  "a player outside the day's draw is found and named as such",
+  drawerNote?.includes("UNASSIGNED, FIVE") === true && drawerNote?.includes("not drawn for Day 1") === true,
+  drawerNote ?? "",
+);
+await tabulatorPage.locator('#pp-list input[name="pp-pick"]').first().check();
+await tabulatorPage.click("#pp-add");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(4, { timeout: 10000 });
+check("a card is added for the player outside the draw", true);
+// The same player again must not become a second card; the existing card is opened instead.
+await tabulatorPage.click("#add-player");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]').first()).toBeVisible({
+  timeout: 10000,
+});
+await tabulatorPage.locator("#pp-q").fill("FIVE");
+await expect(tabulatorPage.locator('#pp-list input[name="pp-pick"]')).toHaveCount(1, {
+  timeout: 10000,
+});
+const alreadyNote = await tabulatorPage.locator("#pp-list").textContent();
+check(
+  "a player who already has a card for that day and session is flagged",
+  alreadyNote?.includes("already has a card for Day 1 AM") === true,
+  alreadyNote ?? "",
+);
+await tabulatorPage.locator('#pp-list input[name="pp-pick"]').first().check();
+await tabulatorPage.click("#pp-add");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(4, { timeout: 10000 });
+check("adding the same player again does not create a second card", true);
+
+// The second way in: a name that is not in the system at all.
+await tabulatorPage.click("#add-player");
+await expect(tabulatorPage.locator("#pp-other summary")).toBeVisible({ timeout: 10000 });
+await tabulatorPage.click("#pp-other summary");
+await tabulatorPage.locator("#pp-name").fill("STRANGER, SAM");
+await tabulatorPage.click("#pp-addname");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(5, { timeout: 10000 });
+const strangerCard = tabulatorPage
+  .locator("#cards .card")
+  .filter({ has: tabulatorPage.locator('input.name[value="STRANGER, SAM"]') });
+check(
+  "a player not in the system is marked so on the card",
+  (await strangerCard.locator(".no").first().textContent())?.includes(
+    "Not in the system: tell the admin",
+  ) === true,
+);
 
 // Phase 2: a card that is only in this browser must survive a reload and go out with the merge.
 const localCard = {
@@ -2283,6 +2369,323 @@ await expect(tabulatorPage.locator("#cards .card input.name").first()).toHaveVal
 await expect(tabulatorPage.locator("#undo")).toBeHidden({ timeout: 10000 });
 check("undo puts the browser copy back", true);
 await tabulatorContext.close();
+
+// ------------------------------------------------------- results blackout and reveal
+// The awarding: the desk holds the results and the player list, the public sees a holding screen
+// and a countdown, and no score is on the page in the meantime. The demo store is the same switch
+// the desk's own demo card writes, and the demo pages are the same components the live pages use.
+section("results blackout and reveal");
+
+const blackoutSeed = (revealInMs) => {
+  const revealAt = new Date(Date.now() + revealInMs).toISOString();
+  return { revealAt };
+};
+
+const blackoutText = async (p) => (await p.locator("body").innerText()).replace(/\s+/g, " ").trim();
+const carriesNoScore = (text) =>
+  !/\bpts\b/.test(text) && !text.includes("Antonio Alcantara") && !text.includes("Stableford");
+
+const blackoutContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const blackoutPage = await blackoutContext.newPage();
+watch(blackoutPage);
+const blackoutReveal = blackoutSeed(90_000);
+await blackoutContext.addInitScript(({ revealAt }) => {
+  try {
+    window.localStorage.setItem(
+      "teeline.demo.public-release.v1",
+      JSON.stringify({
+        "bamboo-tee-2026": {
+          leaderboard: false,
+          roster: false,
+          revealAt,
+          updatedAt: new Date().toISOString(),
+          updatedBy: "Demo organizer",
+        },
+      }),
+    );
+  } catch {
+    // Storage off: the holding-screen checks below report what they see.
+  }
+}, blackoutReveal);
+
+const blackoutGo = async (path) =>
+  blackoutPage.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+
+await blackoutGo("/leaderboard");
+await expect(blackoutPage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+const blackoutLeaderboard = await blackoutText(blackoutPage);
+check(
+  "the leaderboard shows the holding screen while the blackout is on",
+  (await blackoutPage.getByTestId("results-holding").count()) === 1,
+);
+check(
+  "the holding screen says the results will be shown at the awarding",
+  blackoutLeaderboard.includes("Results will be shown at the awarding"),
+);
+check(
+  "the leaderboard carries no score text while hidden",
+  carriesNoScore(blackoutLeaderboard) &&
+    (await blackoutPage.getByTestId("leaderboard-cards").count()) === 0,
+  `(${blackoutLeaderboard.slice(0, 90)})`,
+);
+const blackoutCountdown = blackoutPage.locator(
+  '[data-testid="reveal-countdown"] .reveal-countdown-value',
+);
+await expect(blackoutCountdown).toBeVisible({ timeout: 15000 });
+await expect
+  .poll(async () => (await blackoutCountdown.innerText()).trim(), { timeout: 15000 })
+  .toMatch(/^\d+:\d{2}$/);
+check(
+  "the holding screen counts down to the stored reveal time",
+  true,
+  `(${(await blackoutCountdown.innerText()).trim()})`,
+);
+await blackoutPage.screenshot({ path: `${SHOTS}/results-blackout-leaderboard.png` });
+
+await blackoutGo("/results/all");
+await expect(blackoutPage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+const blackoutScores = await blackoutText(blackoutPage);
+check(
+  "All scores shows the same holding screen and no scores",
+  blackoutScores.includes("Results will be shown at the awarding") &&
+    (await blackoutPage.getByTestId("scores-list").count()) === 0 &&
+    (await blackoutPage.getByTestId("scores-table").count()) === 0 &&
+    carriesNoScore(blackoutScores),
+);
+
+await blackoutGo("/roster");
+await expect(blackoutPage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+const blackoutRoster = await blackoutText(blackoutPage);
+check(
+  "the roster is held and lists no player",
+  blackoutRoster.includes("Results will be shown at the awarding") &&
+    (await blackoutPage.locator("a.player-card-link").count()) === 0 &&
+    !blackoutRoster.includes("ULYSSES ORDO"),
+);
+
+await blackoutGo("/pairings?tab=profile");
+await expect(blackoutPage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+check(
+  "a player profile deep link is held too",
+  (await blackoutPage.getByTestId("player-profile").count()) === 0 &&
+    (await blackoutPage.getByTestId("profile-tee-times").count()) === 0,
+);
+await blackoutPage.screenshot({ path: `${SHOTS}/results-blackout-profile.png` });
+await blackoutContext.close();
+
+// A reveal time that has already passed, with the surfaces still held: the public stays on the
+// holding screen. The database is the gate, so a fast or wrong device clock cannot reveal anything.
+const dueContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const duePage = await dueContext.newPage();
+watch(duePage);
+const dueReveal = blackoutSeed(-5_000);
+await dueContext.addInitScript(({ revealAt }) => {
+  window.localStorage.setItem(
+    "teeline.demo.public-release.v1",
+    JSON.stringify({
+      "bamboo-tee-2026": { leaderboard: false, roster: false, revealAt },
+    }),
+  );
+}, dueReveal);
+await duePage.goto(`${BASE}/leaderboard`, { waitUntil: "networkidle", timeout: 120000 });
+await expect(duePage.getByTestId("results-holding")).toBeVisible({ timeout: 20000 });
+const dueText = await blackoutText(duePage);
+check(
+  "a reveal time that has passed without a release keeps the results hidden",
+  /revealing the results/i.test(dueText) &&
+    (await duePage.getByTestId("leaderboard-cards").count()) === 0 &&
+    carriesNoScore(dueText),
+);
+await dueContext.close();
+
+// The controls are the desk card. In the demo it writes the same local store the pages read, so the
+// whole loop can be exercised without a database: hide, count down, then let it reveal by itself.
+const cardContext = await browser.newContext({ viewport: { width: 1280, height: 950 } });
+const cardPage = await cardContext.newPage();
+watch(cardPage);
+await cardPage.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+  } catch {}
+});
+await cardPage.goto(`${BASE}/admin`, { waitUntil: "networkidle", timeout: 120000 });
+const blackoutCard = cardPage.getByTestId("results-blackout");
+await expect(blackoutCard).toBeVisible({ timeout: 30000 });
+check("the control room carries the blackout controls", (await blackoutCard.count()) === 1);
+await blackoutCard.getByTestId("blackout-seconds").fill("3");
+cardPage.once("dialog", (dialog) => dialog.accept());
+await blackoutCard.getByTestId("blackout-reveal").click();
+await expect(blackoutCard.getByTestId("blackout-countdown")).toBeVisible({ timeout: 20000 });
+check("the reveal records a time and shows the countdown in the desk", true);
+await expect(
+  blackoutCard.getByTestId("blackout-keep-open"),
+).toContainText("Keep this page open");
+check(
+  "the desk says the page has to stay open to finish the reveal",
+  (await blackoutCard.getByTestId("blackout-keep-open").count()) === 1,
+);
+// Three seconds later the demo desk releases both keys by itself, and the card says so.
+await expect
+  .poll(async () => (await blackoutCard.innerText()).includes("Results and players public"), {
+    timeout: 20000,
+  })
+  .toBeTruthy();
+check("the desk finishes the reveal when the countdown reaches zero", true);
+await cardPage.goto(`${BASE}/leaderboard`, { waitUntil: "networkidle", timeout: 120000 });
+check(
+  "the leaderboard is back after the reveal",
+  (await cardPage.getByTestId("results-holding").count()) === 0 &&
+    (await cardPage.getByTestId("leaderboard-cards").count()) > 0,
+);
+await cardContext.close();
+
+// ------------------------------------------------------------- awarding podium (issue 302)
+// The demo build has no database and no demo flag, so the awarding page opens with every lane
+// held: six blank boards and not one name or score to read. The released boards and the cinema
+// countdown are checked by the unit tests on the lane model; the browser only proves the blank page.
+section("awarding podium");
+const podiumContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const podiumPage = await podiumContext.newPage();
+watch(podiumPage);
+await podiumPage.goto(`${BASE}/results`, { waitUntil: "networkidle", timeout: 120000 });
+await expect(podiumPage.getByTestId("awarding-podium")).toBeVisible({ timeout: 20000 });
+const podiumLanes = podiumPage.locator('[data-testid^="awarding-lane-"]');
+check("the awarding page shows the six lanes", (await podiumLanes.count()) === 6);
+check(
+  "every lane is held and prints no row",
+  (await podiumPage.locator('[data-testid="awarding-row"]').count()) === 0 &&
+    (await podiumPage.locator('[data-phase="hidden"]').count()) === 6,
+);
+const podiumText = (await podiumPage.locator("body").innerText()).replace(/\s+/g, " ").trim();
+check(
+  "the held page carries no score or sample name",
+  !/\bpts\b/.test(podiumText) &&
+    !podiumText.includes("Antonio Alcantara") &&
+    podiumText.includes("Results will be shown at the awarding"),
+);
+await podiumPage.screenshot({ path: `${SHOTS}/awarding-held.png` });
+await podiumContext.close();
+section("draw board: swapping two players by drag");
+await go("/draw");
+const makeDrawForDrag = page.getByRole("button", { name: "Make the draw" });
+if (await makeDrawForDrag.count()) await makeDrawForDrag.first().click();
+await page.waitForTimeout(2500);
+// The cards are the default layout, and each row's Move button carries the player's name.
+const dragGroups = page.locator(".group");
+const confirmNote = page.locator('[data-testid="drop-confirm"]');
+const rowOf = (group, i) => group.locator(".slot[data-drop-player]").nth(i);
+const nameOfRow = async (row) => {
+  // A real button carries "Move <name>"; the grip's label also starts with "Move", so this
+  // selector stays on the button.
+  const label = await row
+    .locator('button[aria-label^="Move "]')
+    .first()
+    .getAttribute("aria-label");
+  return (label ?? "").replace(/^Move /, "");
+};
+check("the demo board has two groups to drag between", (await dragGroups.count()) >= 2);
+const firstGroup = dragGroups.nth(0);
+const secondGroup = dragGroups.nth(1);
+const sourceRow = rowOf(firstGroup, 0);
+const targetRow = rowOf(secondGroup, 0);
+const sourceName = await nameOfRow(sourceRow);
+const targetName = await nameOfRow(targetRow);
+check(
+  "the two rows hold different players",
+  sourceName.length > 0 && targetName.length > 0 && sourceName !== targetName,
+  `(${sourceName} / ${targetName})`,
+);
+// One drag: the first player of one full group onto the first player of another full group.
+await sourceRow.locator(".grip").dragTo(targetRow);
+await expect(confirmNote).toBeVisible({ timeout: 15000 });
+const dropWords = (await confirmNote.innerText()).replace(/\s+/g, " ").trim();
+check(
+  "a drag between two full groups swaps the two players and says so",
+  dropWords.startsWith("Swapped ") &&
+    dropWords.includes(sourceName) &&
+    dropWords.includes(targetName),
+  `(${dropWords})`,
+);
+check(
+  "the confirmation line offers Undo",
+  (await confirmNote.getByRole("button", { name: "Undo" }).count()) === 1,
+);
+const firstAfter = await firstGroup.innerText();
+const secondAfter = await secondGroup.innerText();
+check(
+  "the two players really changed groups",
+  firstAfter.includes(targetName) && secondAfter.includes(sourceName),
+);
+await confirmNote.getByRole("button", { name: "Undo" }).click();
+await page.waitForTimeout(1000);
+const firstUndone = await firstGroup.innerText();
+const secondUndone = await secondGroup.innerText();
+check(
+  "Undo puts both players back where they were",
+  firstUndone.includes(sourceName) && secondUndone.includes(targetName),
+);
+await page.screenshot({ path: `${SHOTS}/draw-drag-swap.png` });
+
+section("draw table view: swapping two players by drag");
+await page.getByRole("button", { name: "Table", exact: true }).click();
+await page.waitForTimeout(600);
+const dragTableRows = page.locator("tr[data-drop-group]");
+check("the table view lists the groups", (await dragTableRows.count()) >= 4);
+const cellName = async (cell) =>
+  (await cell.innerText()).replace(/^⋮⋮\s*/, "").split("\n")[0].trim();
+if ((await dragTableRows.count()) >= 4) {
+  const cellA = dragTableRows.nth(2).locator("td[data-drop-player]").first();
+  const cellB = dragTableRows.nth(3).locator("td[data-drop-player]").first();
+  const nameInA = await cellName(cellA);
+  const nameInB = await cellName(cellB);
+  await cellA.locator("button").dragTo(cellB);
+  await expect(confirmNote).toBeVisible({ timeout: 15000 });
+  const tableWords = (await confirmNote.innerText()).replace(/\s+/g, " ").trim();
+  check(
+    "a drag in the table swaps the two players and says so",
+    tableWords.startsWith("Swapped ") &&
+      tableWords.includes(nameInA) &&
+      tableWords.includes(nameInB),
+    `(${tableWords})`,
+  );
+  check(
+    "the table shows the swapped name in its new row",
+    (await cellName(cellB)) === nameInA,
+    `(${await cellName(cellB)} / ${nameInA})`,
+  );
+}
+await page.getByRole("button", { name: "Cards", exact: true }).click();
+await page.waitForTimeout(400);
+
+section("draw board: a drop the rules forbid says why");
+// Nothing is set up: a player dropped back on their own group cannot be moved there, so the board
+// has to say why and leave the group alone. The card view is the layout again by now.
+if (await confirmNote.count()) await confirmNote.getByRole("button", { name: "Dismiss" }).click();
+await expect(confirmNote).toHaveCount(0, { timeout: 5000 });
+const refuseGroup = page.locator(".group").nth(0);
+const refuseRow = refuseGroup.locator(".slot[data-drop-player]").nth(0);
+const rowsBefore = await refuseGroup.locator(".slot[data-drop-player]").count();
+await refuseRow.locator(".grip").dragTo(refuseGroup.locator(".group-head").first());
+await expect(confirmNote).toBeVisible({ timeout: 15000 });
+const refuseWords = (await confirmNote.innerText()).replace(/\s+/g, " ").trim();
+check(
+  "dropping a player back on their own group is refused with a reason",
+  /in group \d+/i.test(refuseWords),
+  `(${refuseWords})`,
+);
+check(
+  "the refusal is drawn as a refusal, so it cannot be read as a change",
+  ((await confirmNote.getAttribute("class")) ?? "").includes("bad"),
+);
+check(
+  "a refused drop offers no Undo and leaves the group as it was",
+  (await confirmNote.getByRole("button", { name: "Undo" }).count()) === 0 &&
+    (await refuseGroup.locator(".slot[data-drop-player]").count()) === rowsBefore,
+);
+await page.screenshot({ path: `${SHOTS}/draw-drag-refused.png` });
 
 console.log(`\nconsole errors: ${errors.length}`);
 for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 1200));

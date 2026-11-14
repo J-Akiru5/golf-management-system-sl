@@ -141,6 +141,34 @@ describe("mergeScorecardPayloads", () => {
     expect(cardsOf(mergeScorecardPayloads(stored, legacy, NOW))[0]?.holes[0]).toBe("4");
   });
 
+  // A page opened before the deploy sends and receives the same card shape it always did, so the
+  // document may only gain fields. These two hold that: a new field travels with its card, and a
+  // card from an older page is not given a field it never had.
+  it("keeps a card field an older page does not know about", () => {
+    const stored = { cards: [{ id: "a", name: "ALPHA", rev: 10, holes: [] }] };
+    const incoming = {
+      cards: [{ id: "a", name: "ALPHA", rev: 20, holes: [], notInSystem: true }],
+    };
+    const merged = cardsOf(mergeScorecardPayloads(stored, incoming, NOW))[0] as Record<
+      string,
+      unknown
+    >;
+    expect(merged.notInSystem).toBe(true);
+  });
+
+  it("accepts a card from an older page without inventing the fields it lacks", () => {
+    const stored = {
+      cards: [{ id: "a", name: "ALPHA", rev: 10, holes: [], notInSystem: true }],
+    };
+    const olderPage = { cards: [{ id: "a", name: "ALPHA", rev: 20, holes: ["4"] }] };
+    const merged = cardsOf(mergeScorecardPayloads(stored, olderPage, NOW))[0] as Record<
+      string,
+      unknown
+    >;
+    expect(merged.holes).toEqual(["4"]);
+    expect(merged.notInSystem).toBeUndefined();
+  });
+
   it("says what the losing save had when two people scored the same card", () => {
     const stored = { cards: [card("a", "ALPHA", 30, ["6"])] };
     const incoming = { cards: [card("a", "ALPHA", 20, ["4"])] };

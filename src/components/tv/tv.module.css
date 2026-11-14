@@ -577,6 +577,18 @@
   color: var(--muted);
 }
 
+/* The countdown to the awarding. Large enough to read from the back of the room, tabular so the
+   digits do not shuffle the line as they change. */
+.idleCountdown {
+  margin: 0;
+  font-family: var(--f-serif);
+  font-size: calc(var(--u) * 7);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+}
+
 /* A laptop or a phone opened on the same URL: the columns stack rather than squeeze. */
 @media (max-width: 900px) {
   .columns[data-count="2"] {
