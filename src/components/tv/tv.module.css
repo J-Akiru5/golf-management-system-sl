@@ -427,29 +427,39 @@
   color: var(--muted);
 }
 
+/* The strip along the bottom is read at a glance from a chair, so it is set in ordinary sentence
+   case at a size that carries: no wide tracking, no capitals-only line. */
 .foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--u) * 2);
-  padding-top: calc(var(--u) * 1.1);
+  gap: calc(var(--u) * 1.2) calc(var(--u) * 2.4);
+  padding-top: calc(var(--u) * 1.4);
   border-top: 1px solid var(--hair);
-  font-size: calc(var(--u) * 1.02);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: calc(var(--u) * 1.6);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(247, 245, 238, 0.86);
+}
+
+.footWhat {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .modes {
   display: flex;
-  gap: calc(var(--u) * 1.8);
+  gap: calc(var(--u) * 2.2);
 }
 
 /* The product's own mark, small and on the right: the club's crest owns the header. */
 .footRight {
   display: flex;
   align-items: center;
-  gap: calc(var(--u) * 2);
+  gap: calc(var(--u) * 2.4);
+  flex: none;
 }
 
 .powered {
@@ -461,10 +471,10 @@
 }
 
 .poweredLabel {
-  font-size: calc(var(--u) * 0.95);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: calc(var(--u) * 1.25);
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(247, 245, 238, 0.7);
   white-space: nowrap;
 }
 
@@ -507,11 +517,12 @@
 
 .mode,
 .modeOn {
-  letter-spacing: 0.16em;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .mode {
-  color: var(--muted);
+  color: rgba(247, 245, 238, 0.55);
 }
 
 .modeOn {
