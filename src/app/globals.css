@@ -7413,19 +7413,25 @@ html[data-textsize="large"] {
       0 18px 36px -30px rgba(6, 40, 28, 0.65);
   }
 
-  .public-pairings .p-card[data-tone="0"] {
+  /* One palette for both lists: a flight keeps its colour whether it is on a pairing card or on a
+     player's card. */
+  .public-pairings .p-card[data-tone="0"],
+  .public-pairings .player-card[data-tone="0"] {
     --p-tone: light-dark(#3f7d58, #7cc99b);
     --p-tone-ink: light-dark(#245840, #a9e0bf);
   }
-  .public-pairings .p-card[data-tone="1"] {
+  .public-pairings .p-card[data-tone="1"],
+  .public-pairings .player-card[data-tone="1"] {
     --p-tone: light-dark(#a5823d, #d8b970);
     --p-tone-ink: light-dark(#6f5316, #f0d69c);
   }
-  .public-pairings .p-card[data-tone="2"] {
+  .public-pairings .p-card[data-tone="2"],
+  .public-pairings .player-card[data-tone="2"] {
     --p-tone: light-dark(#44688c, #8fb9dc);
     --p-tone-ink: light-dark(#2b5070, #bcdcf2);
   }
-  .public-pairings .p-card[data-tone="3"] {
+  .public-pairings .p-card[data-tone="3"],
+  .public-pairings .player-card[data-tone="3"] {
     --p-tone: light-dark(#9d5a41, #dfa288);
     --p-tone-ink: light-dark(#7a3f28, #f2c8b6);
   }
@@ -8380,13 +8386,16 @@ html[data-textsize="large"] {
     min-width: 0;
   }
 
+  /* Every player name on a public page takes the serif: the roster, the rules list and the profile
+     all show a name in the same face. */
   .public-pairings .player-card-name {
     flex: 1 1 auto;
     min-width: 0;
     color: var(--ink);
-    font-size: 18px;
-    font-weight: 650;
-    line-height: 1.25;
+    font-family: var(--f-serif);
+    font-size: 21px;
+    font-weight: 600;
+    line-height: 1.2;
     letter-spacing: 0.005em;
     overflow-wrap: anywhere;
   }
@@ -8483,12 +8492,14 @@ html[data-textsize="large"] {
    The profile header leads with the name at heading size. No initials circle, same as every other
    public list. Screen only, scoped to the public shell. */
 @media screen {
+  /* The name is set in the same bold grotesque the roster uses, so a player reads at the same weight
+     on the list and on their own page. */
   .public-pairings #profile-name {
-    font-family: var(--f-serif);
-    font-size: 26px;
-    font-weight: 600;
-    line-height: 1.15;
-    letter-spacing: -0.01em;
+    font-family: var(--f-display);
+    font-size: 25px;
+    font-weight: 700;
+    line-height: 1.18;
+    letter-spacing: -0.012em;
   }
 
   .public-pairings [data-testid="player-profile"] > .card:first-child {
@@ -8885,21 +8896,33 @@ html[data-textsize="large"] {
     outline-offset: 2px;
   }
 
-  /* On a phone the masthead row is tight, so the language pill goes globe-only. The back link keeps
-     its words: an arrow alone is a guess, and this page is read by people who do not guess. */
+  /* On a phone the masthead row is tight, so the language pill goes globe-only and the back link
+     becomes the arrow alone in a 44px round button beside the three controls. The words stay in the
+     document, clipped rather than removed, so the link is still announced as "Back to pairings". */
   @media (max-width: 639px) {
     .public-pairings .public-appbar > .public-back {
-      width: fit-content;
-      max-width: 100%;
-      min-width: 0;
-      padding: 0 12px;
-      font-size: 13px;
+      width: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      justify-content: center;
+      padding: 0;
+      gap: 0;
       overflow: hidden;
     }
 
-    .public-pairings .public-appbar > .public-back span {
+    .public-pairings .public-appbar > .public-back svg,
+    .public-appbar > .public-back svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .public-appbar > .public-back span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
       overflow: hidden;
-      text-overflow: ellipsis;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
 
     .public-pairings .lang-menu-btn {
@@ -8911,25 +8934,6 @@ html[data-textsize="large"] {
     .public-pairings .lang-menu-btn > span,
     .public-pairings .lang-menu-btn > svg:last-child {
       display: none;
-    }
-  }
-
-  /* Below 360px the words no longer fit beside the three controls, so the arrow returns alone. */
-  @media (max-width: 359px) {
-    .public-pairings .public-appbar > .public-back,
-    .public-appbar > .public-back {
-      width: 44px;
-      min-height: 44px;
-      padding: 0;
-    }
-
-    .public-appbar > .public-back span {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
     }
   }
 
@@ -9207,33 +9211,544 @@ html[data-textsize="large"] {
   }
 }
 
-/* On a narrow phone the back control and the three masthead icons cannot share one row without
-   cutting the words off it, so on those screens the icons drop to their own right-aligned row and
-   the back label keeps its full size. The rule lives at the end so it wins over the phone layout
-   above, whatever order those blocks were written in. */
-@media (max-width: 419px) {
+/* On a phone all four controls share one row: the arrow on the left, the theme, language and help
+   buttons on the right. The row sits at the top of the card, so the brand and the event headline
+   start higher and the masthead reads as one band rather than three stacked lines. */
+@media (max-width: 639px) {
   .public-pairings .public-head.public-appbar {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 12px;
+    padding: 6px 10px 12px !important;
   }
 
   .public-pairings .public-head.public-appbar > .public-back {
     grid-column: 1;
     grid-row: 1;
+    justify-self: start;
   }
 
   .public-pairings .public-head.public-appbar > .public-appbar-controls {
-    grid-column: 1;
-    grid-row: 2;
+    grid-column: 2;
+    grid-row: 1;
     justify-self: end;
   }
 
   .public-pairings .public-head.public-appbar .appbar-foot {
-    grid-column: 1;
-    grid-row: 3;
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* ---------- Pairings as a deck of tall cards ----------
+   Read on a wide screen, a group was a long strip with a lot of air on either side. The same group
+   now sits in a narrower column with more height, so the card reads the way a printed card does in
+   the hand: one group, held upright. The grid fills by width, so a phone keeps one column and a
+   name never has to squeeze. */
+@media screen {
+  .public-pairings .p-groups {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    align-items: start;
   }
 
-  .public-pairings .public-appbar > .public-back {
+  /* Two cards from a small tablet up: the point of the change is a narrower card, not a wider
+     column of unused space. The phone stays at one, where a name must not wrap three deep. */
+  @media (min-width: 480px) {
+    .public-pairings .p-groups {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 768px) {
+    .public-pairings .p-groups {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .public-pairings .p-groups {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .public-pairings .p-card {
+    border-radius: 18px;
+  }
+
+  .public-pairings .p-card-top {
+    padding: 22px 18px 16px;
+  }
+
+  .public-pairings .p-players {
+    padding: 8px 0 10px;
+  }
+
+  .public-pairings .p-row {
+    min-height: 66px;
+    padding: 17px 18px;
+    line-height: 28px;
+  }
+
+  /* A tall card, not a stretched one: the floor only applies where there is more than one column. */
+  @media (min-width: 480px) {
+    .public-pairings .p-pairings:not(.is-compact) .p-card {
+      min-height: 23rem;
+    }
+  }
+}
+
+/* ---------- Card head: hole, time, then flag and class ----------
+   The time sat against the hole and the class drifted to the right edge, so the head read across in
+   a line. Now the hole holds the left, the tee time holds the far right, and the flag and class sit
+   together on the left of a second line, where they can be read as one piece of information. */
+@media screen {
+  .public-pairings .p-card-top {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 8px;
+  }
+
+  .public-pairings .p-card-top .p-hole {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .public-pairings .p-card-top .p-time {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    margin-left: 0;
+  }
+
+  .public-pairings .p-card-meta {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .public-pairings .p-card-meta .p-golf-flag {
+    width: 26px;
+    height: 26px;
+    margin: 0;
+    opacity: 0.6;
+  }
+
+  .public-pairings .p-card-meta .p-flight-top,
+  .public-pairings .p-card-meta .p-own-chip {
+    margin: 0;
+  }
+}
+
+/* ---------- Roster card ----------
+   A member's card, not a decorated tile. White face, one hairline, generous margins, the name set in
+   the serif and the handicap as a plain tabular figure beside it. No tint, no watermark, no coloured
+   spine: the only colour on the card is the outline of the one thing that can be pressed. */
+@media screen {
+  .public-pairings .roster-cards {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  @media (min-width: 560px) {
+    .public-pairings .roster-cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 900px) {
+    .public-pairings .roster-cards {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1240px) {
+    .public-pairings .roster-cards {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .public-pairings .roster-cards > li {
+    display: flex;
+    min-width: 0;
+  }
+
+  .public-pairings .roster-cards .player-card {
+    --card-action: light-dark(#0a4a37, #2f8a66);
+    --card-action-hover: light-dark(#073d2e, #3aa079);
+    --card-action-ink: #f7f5ee;
+
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0;
+    padding: 20px 20px 18px;
+    border: 1px solid light-dark(#e3e7de, #2b3730);
+    border-radius: 14px;
+    background: var(--surface-raised);
+    box-shadow: 0 1px 2px rgba(6, 40, 28, 0.05);
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .public-pairings .roster-cards .player-card-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid light-dark(#eef1ea, #28332c);
+  }
+
+  /* The serif every other public page sets a player's name in, so a name looks the same here as on
+     the profile and the pairing card. */
+  .public-pairings .roster-cards .player-card-name {
+    grid-column: 1;
+    min-width: 0;
+    color: var(--ink);
+    font-family: var(--f-serif);
+    font-size: 23px;
+    font-weight: 600;
+    line-height: 1.14;
+    letter-spacing: -0.004em;
+    overflow-wrap: anywhere;
+  }
+
+  /* A figure, set the way a scorecard sets a handicap: tabular, bold, no label and no pill. */
+  .public-pairings .roster-cards .player-card-index {
+    grid-column: 2;
+    align-self: start;
+    color: var(--ink);
+    font: 700 18px / 1.1 var(--f-sans);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .public-pairings .roster-cards .player-card-class {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin-top: 8px;
+    color: var(--ink-muted);
+    font: 500 14px / 1.35 var(--f-sans);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .public-pairings .roster-cards .player-card-row {
+    display: flex;
+    min-height: 44px;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid light-dark(#eef1ea, #28332c);
+  }
+
+  .public-pairings .roster-cards .player-card-row-label {
+    flex: none;
+    color: var(--ink-muted);
+    font-size: 13.5px;
+    line-height: 1.4;
+  }
+
+  .public-pairings .roster-cards .player-card-row-value {
+    min-width: 0;
+    color: var(--ink);
+    font-size: 14.5px;
+    font-weight: 550;
+    line-height: 1.4;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  /* The one pressable thing: an outlined button, 46px, the label and an arrow on one line. On hover
+     the fill comes in from the outline, so the card itself never has to move. */
+  .public-pairings .roster-cards .player-card-foot {
+    display: flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 0;
     padding: 0 14px;
-    font-size: 14px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: var(--card-action);
+    color: var(--card-action-ink);
+    font: 600 14.5px / 1 var(--f-sans);
+    letter-spacing: 0.01em;
+    transition:
+      background 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+  }
+
+  /* Everything above the button holds its own height; the gap soaks up the rest of the card. */
+  .public-pairings .roster-cards .player-card-gap {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 18px;
+  }
+
+  .public-pairings .roster-cards .player-card-foot svg {
+    width: 17px;
+    height: 17px;
+    flex: none;
+    transition: translate 150ms ease;
+  }
+
+  @media (hover: hover) {
+    .public-pairings .roster-cards .player-card-link:hover {
+      border-color: light-dark(#c9cfc4, #3d4b42);
+      box-shadow: 0 6px 18px -12px rgba(6, 40, 28, 0.45);
+    }
+
+    .public-pairings .roster-cards .player-card-link:hover .player-card-foot {
+      background: var(--card-action-hover);
+      color: var(--card-action-ink);
+    }
+
+    .public-pairings .roster-cards .player-card-link:hover .player-card-foot svg {
+      translate: 3px 0;
+    }
+  }
+
+  .public-pairings .roster-cards .player-card-link:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  .public-pairings .roster-cards .player-card-link:focus-visible .player-card-foot {
+    background: var(--card-action-hover);
+    color: var(--card-action-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .public-pairings .roster-cards .player-card,
+    .public-pairings .roster-cards .player-card-foot,
+    .public-pairings .roster-cards .player-card-foot svg {
+      transition: none;
+    }
+
+    .public-pairings .roster-cards .player-card-link:hover .player-card-foot svg {
+      translate: none;
+    }
+  }
+}
+/* The empty scorecard state: one outline mark set on the same left edge as the words, no bubble and
+   no tint. It reads as a card that has not been filled in yet. */
+@media screen {
+  /* Centred, because the card is the full page width: an icon and two lines pinned to the left of a
+     very wide card read as a block that failed to fill. The measure stays short so it centres as a
+     notice rather than stretching across. */
+  .profile-empty {
+    display: grid;
+    justify-items: center;
+    gap: 0;
+    text-align: center;
+  }
+
+  .profile-empty > * {
+    max-width: 54ch;
+  }
+
+  .profile-empty-mark {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 14px;
+    grid-column: 1;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    color: var(--fairway);
+    opacity: 0.7;
+  }
+
+  .profile-empty-mark circle {
+    fill: currentColor;
+    stroke: none;
+  }
+}
+/* The board's scorecard panel: a picker, then the one card it points at. A team can carry four
+   published cards, and a dropdown keeps the row the height of a row instead of a stack of paper. */
+@media screen {
+  .public-pairings .lb-cards {
+    display: grid;
+    gap: 14px;
+    padding: 14px 12px 16px;
+  }
+
+  .public-pairings .lb-cards-pick {
+    display: grid;
+    gap: 6px;
+    justify-items: start;
+  }
+
+  /* The label takes the stage's own ink, so it reads on a leader's green face as well as on white. */
+  .public-pairings .lb-cards-pick > span {
+    color: inherit;
+    font: 600 12.5px / 1.2 var(--f-sans);
+    letter-spacing: 0.02em;
+    opacity: 0.65;
+  }
+
+  .public-pairings .lb-cards-pick .lb-select {
+    width: 100%;
+    max-width: 32rem;
+  }
+
+  .public-pairings .lb-cards-empty {
+    margin: 0;
+    padding: 14px 12px 16px;
+  }
+}
+/* ---------- Pairing card details ----------
+   The flag leaves the class line and takes its place at the foot of the card, where a printed card
+   carries its mark, so the head reads as two things only: the hole and the tee time. Behind the head
+   sits a dot grid, the paper a club card is printed on, fading out before it reaches the names. */
+@media screen {
+  .public-pairings .p-card-top {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .public-pairings .p-card-top::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      color-mix(in srgb, var(--p-tone, var(--forest)) 45%, transparent) 1.1px,
+      transparent 1.4px
+    );
+    background-size: 12px 12px;
+    background-position: 2px 2px;
+    mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 78%);
+    -webkit-mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 78%);
+    opacity: 0.8;
+    pointer-events: none;
+  }
+
+  /* The head's own words sit above the grid. */
+  .public-pairings .p-card-top > .p-hole,
+  .public-pairings .p-card-top > .p-time,
+  .public-pairings .p-card-top > .p-card-meta {
+    position: relative;
+    z-index: 1;
+  }
+
+  .public-pairings .p-pairings:not(.is-compact) .p-card-meta .p-golf-flag {
+    position: absolute;
+    right: 18px;
+    bottom: 16px;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    color: var(--p-tone, var(--forest));
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .public-pairings .p-pairings:not(.is-compact) .p-card-meta {
+    gap: 0;
+  }
+}
+
+@media screen {
+  /* The flag is a direct child of the card now, so it pins to the card's own corner rather than to
+     the class line. Compact is a dense list, so there it steps out of the way. */
+  .public-pairings .p-card > .p-golf-flag {
+    position: absolute;
+    right: 18px;
+    bottom: 16px;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    color: var(--p-tone, var(--forest));
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .public-pairings .p-pairings.is-compact .p-card > .p-golf-flag {
+    display: none;
+  }
+}
+
+/* ---------- Roster card: the display sans, a taller card and the flag ----------
+   Names go back to the bold grotesque the card was designed around, every card keeps a floor height
+   so a two-line name and a four-line name sit at the same size in a row, and the club's flag is set
+   into the card's face above the button. */
+@media screen {
+  .public-pairings .roster-cards .player-card-name {
+    font-family: var(--f-display);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.24;
+    letter-spacing: -0.006em;
+  }
+
+  .public-pairings .roster-cards .player-card {
+    position: relative;
+    min-height: 16.5rem;
+  }
+
+  .public-pairings .roster-cards .player-card-golf {
+    position: absolute;
+    right: 20px;
+    bottom: 80px;
+    width: 30px;
+    height: 30px;
+    color: var(--p-tone, var(--fairway));
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .public-pairings .roster-cards .player-card-golf path {
+    fill: currentColor;
+  }
+
+  .public-pairings .roster-cards .player-card-golf path:first-child {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+  }
+
+  .public-pairings .roster-cards .player-card-golf circle {
+    fill: currentColor;
+  }
+}
+
+/* The index carries its own label. A bare 19.9 asks the reader to know what the number is; "Index"
+   above it says so in one small word, and the figure stays the thing the eye lands on. */
+@media screen {
+  .public-pairings .roster-cards .player-card-index {
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+    text-align: right;
+  }
+
+  .public-pairings .roster-cards .player-card-index-label {
+    color: var(--ink-muted);
+    font: 700 10px / 1 var(--f-sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 }
