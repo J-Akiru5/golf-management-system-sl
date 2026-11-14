@@ -1,14 +1,13 @@
 /**
  * The public Rules page for the 24th IGCCI Bamboo Tee Invitational.
  *
- * The content is transcribed from the organizers' official "Conditions of Play" PDF (nine pages,
+ * The content is transcribed from the organizers' official "Conditions of Play" PDF (five pages,
  * 31 October 2026). It is a reading aid, not the governing document: the PDF is linked beside the
  * content, and the official copy controls if the two ever differ.
  *
- * The committee's later clarification sheet is part of the same PDF. Where it answers a question
- * that the opening pages left open, the answer is shown as a source note instead of being folded
- * silently into the original wording. Three places need that treatment: the handicap date, the
- * Sunday start time, and whether two guests may form a team.
+ * The meeting-agenda pages were removed from the public PDF on 14 November 2026. The confirmed
+ * answers that the committee recorded are still on this page, sourced as committee decisions when
+ * they are not printed in the PDF.
  *
  * To publish the next event's rules, replace this module and the PDF in `public/documents`.
  */
@@ -85,14 +84,14 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
   pdf: {
     href: "/documents/24th-bamboo-tee-conditions-of-play.pdf",
     fileName: "24th-bamboo-tee-conditions-of-play.pdf",
-    pageCount: 9,
+    pageCount: 5,
   },
   sections: [
     {
       id: "format",
       title: "Tournament format",
       summary: "Two-person teams, 36 holes, aggregate Stableford, amateur only.",
-      source: "Conditions of Play, pages 1-2 and 5-6",
+      source: "Conditions of Play, pages 1-2",
       defaultOpen: true,
       paragraphs: [
         "The tournament is a 36-hole Stableford competition among two-person teams. The team with the highest 36-hole aggregate score in each division wins.",
@@ -111,8 +110,8 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       callouts: [
         {
           tone: "note",
-          title: "Team composition clarification",
-          body: "The opening page describes a team as one member and one guest. The committee's clarification sheet adds that member + member is not allowed, while guest + guest is not prohibited. Ask the tournament desk before registering a team that does not fit the first description.",
+          title: "Team composition",
+          body: "The committee decided that a member may not partner another member, while a guest may partner another guest. The printed Conditions of Play describe a team as one member and one guest; ask the tournament desk before registering a team that does not fit that description.",
         },
       ],
     },
@@ -120,7 +119,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       id: "handicap",
       title: "Handicap and divisions",
       summary: "NGAP WHS index, capped at 30. Team average sets the division.",
-      source: "Conditions of Play, pages 1, 3 and 5-6",
+      source: "Conditions of Play, pages 1 and 3",
       paragraphs: [
         "Only an NGAP World Handicap System (WHS) certified handicap index is accepted. A foreign member-guest without a WHS index may use a USGA or R&A Golf Club of St Andrews accredited handicap provider.",
         "If a player holds more than one WHS handicap, the lowest index is used. The committee may adjust a registered handicap. A player with no WHS or verifiable handicap index is given a handicap of zero for the tournament.",
@@ -155,7 +154,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
         {
           tone: "note",
           title: "Source note: two handicap dates",
-          body: "The Conditions of Play use a player's WHS index for 30 September 2026. The committee's clarification sheet gives 1 October 2026. The committee's final ruling applies; ask the tournament desk if your index changed between those dates.",
+          body: "The printed Conditions of Play use a player's WHS index for 30 September 2026. The committee's recorded decision gives 1 October 2026. The committee's ruling applies; ask the tournament desk if your index changed between those dates.",
         },
       ],
     },
@@ -163,7 +162,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       id: "schedule",
       title: "Tee times and schedule",
       summary: "Shotgun starts, first paid first served, and the late-arrival rule.",
-      source: "Conditions of Play, pages 3, 6, 7 and 9",
+      source: "Conditions of Play, pages 3 and 5",
       paragraphs: [
         "Thursday to Saturday: 06:30 and 12:30 shotgun starts. Sunday: 06:30 and 11:30 PM shotgun starts, as printed in the official document.",
         "Tee times are first come, first paid, first served. Teams that have paid are prioritized. Members are paired with their guests on both playing dates where the schedule permits.",
@@ -244,7 +243,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       id: "pace",
       title: "Pace of play",
       summary: "40 seconds to play, keep pace with the group ahead, and respect the marshals.",
-      source: "Conditions of Play, pages 3 and 7",
+      source: "Conditions of Play, page 3, and a committee decision",
       paragraphs: [
         "All players must keep the proper pace of play. If a group falls behind and has an open hole in front of it, a rules official warns the group and asks it to speed up and keep pace with the group ahead.",
         "A player has 40 seconds to hit the ball once it is their turn.",
@@ -265,7 +264,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       id: "mulligans",
       title: "Mulligans and gimme",
       summary: "Joker rules, declaration, and the 24-inch gimme.",
-      source: "Conditions of Play, pages 3-4 and 6-7",
+      source: "Conditions of Play, pages 3-4, and a committee decision",
       paragraphs: [
         "One front and one back for two days costs PHP 1,000. A Joker mulligan for two days costs PHP 500.",
         "A Joker mulligan may be used once anywhere except on the putting green. A maximum of three mulligans may be used per day. A player who received a free Joker mulligan through the early registration promo may not buy another Joker mulligan.",
@@ -288,7 +287,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       id: "scorecards",
       title: "Scorecards and disputes",
       summary: "The other team marks, both players sign, and cards are due within 15 minutes.",
-      source: "Conditions of Play, pages 1-2 and 7",
+      source: "Conditions of Play, pages 1-2, and a committee decision",
       paragraphs: [
         "The other team on the flight acts as marker. If the other team withdraws or is disqualified, a marshal is assigned as marker for the remaining team.",
         "Both the player and the marker must sign the card. The card must be submitted within 15 minutes after the final hole is holed out. A late card is not counted.",
@@ -308,7 +307,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       id: "ties",
       title: "Tie-breaking",
       summary: "Countback on holes 16-18, then 13-15, then drawing of lots.",
-      source: "Conditions of Play, pages 2 and 6",
+      source: "Conditions of Play, page 2, and a committee decision",
       paragraphs: [
         "Ties are settled by matching the final round score cards and comparing the team's aggregate points over the holes below. The procedure applies to the overall winner and the category winners.",
       ],
@@ -322,7 +321,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       id: "weather",
       title: "Weather and suspension",
       summary: "The Tournament Director decides. One complete round can decide the result.",
-      source: "Conditions of Play, page 8",
+      source: "Committee decision",
       paragraphs: [
         "The Tournament Director has the discretion and authority to suspend or resume play for any reason.",
         "If play is cancelled, only completed rounds count toward the team's score. One complete round is the minimum needed to declare official results; the team with the highest points in that round wins.",
@@ -332,7 +331,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       id: "withdrawals",
       title: "Withdrawals and substitutions",
       summary: "What happens if a partner withdraws before or after tee-off, or is disqualified.",
-      source: "Conditions of Play, page 5 (committee clarifications)",
+      source: "Committee decision",
       groups: [
         {
           title: "Before tee-off",
@@ -356,7 +355,7 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
       id: "prizes",
       title: "Prizes, hole in one and raffle",
       summary: "Division prizes, the hole-in-one witness rule, and who may win a raffle prize.",
-      source: "Conditions of Play, pages 3-4 and 8",
+      source: "Conditions of Play, pages 3-4, and a committee decision",
       paragraphs: [
         "Each class awards a champion, first runner-up and second runner-up. The highest scoring team net and the over-all champion team gross are also recognized. The over-all gross champion must have no pick-up scores.",
       ],

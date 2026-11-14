@@ -9,6 +9,13 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- **The public Conditions of Play PDF no longer carries the committee's meeting agenda.** Pages 5-8
+  were the clarification questions from the committee meeting, not rules. The PDF now keeps the
+  printed conditions and the scheduling and pairing guidelines, five pages in all. The confirmed
+  answers remain on `/rules`, with a source line that says "committee decision" where the PDF no
+  longer prints them.
+
 ## [0.51.0] - 2026-11-14
 
 ### Added
