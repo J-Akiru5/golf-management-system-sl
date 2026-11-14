@@ -256,6 +256,7 @@
     <button id="imp" title="Add the cards in a JSON file (an export from this page or a scorecard scan). Nothing is downloaded and no card is replaced.">Import JSON</button>
     <button id="restore" class="danger" title="Replaces every card on this page with the cards in an exported file">Replace…</button>
     <button id="reset" class="danger" title="Discard every edit and go back to the first reading">Reset</button>
+    <button id="undo" hidden title="Undo the last reset or replace, in this browser">Undo</button>
   </div>
   <div id="msg" role="status" aria-live="polite"></div>
 </div>
@@ -268,7 +269,17 @@
 <script>
 const SRC = {"event":"24th Bamboo Tee","label":"Day 1 AM","slug":"day1am-r5","par":[4,4,4,5,3,4,4,4,4,3,4,4,3,5,4,3,4,4],"si":[5,3,7,9,17,15,11,1,13,14,6,12,16,2,4,18,8,10],"tees":{"B":{"rating":69.6,"slope":130},"W":{"rating":67.9,"slope":127},"L":{"rating":72.1,"slope":126}},"cards":[],"skipped":[],"edits":{},"mode":"written","field":[],"logo":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAuMCAwLjAgNjYyLjkgMTc3LjgiIHJvbGU9ImltZyIgYXJpYS1sYWJlbGxlZGJ5PSJ0aXRsZSI+DQogIDx0aXRsZSBpZD0idGl0bGUiPlRlZUxpbmUgR29sZjwvdGl0bGU+DQogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xOC4wOCAtMjM3LjA1KSI+DQogICAgPHBhdGggZmlsbD0iIzA3M0QyRSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNzguMDAgMzAwLjAwTDc4LjAwIDI1MS4wMEw0OC42MCAyNTEuMDBMMTkuMjAgMjUxLjAwTDE4LjQ5IDI0NC45MUMxOC4wOCAyNDEuNDAgMTguMTggMjM4LjQyIDE4LjcyIDIzNy44OEMxOS4zMCAyMzcuMzAgNDUuMzEgMjM3LjA1IDg1LjU4IDIzNy4yMkwxNTEuNTAgMjM3LjUwTDE1MS44MCAyNDQuMjRMMTUyLjA5IDI1MC45N0wxMjIuMzAgMjUxLjI0TDkyLjUwIDI1MS41MEw5Mi4yNCAzMDAuMjVMOTEuOTggMzQ5LjAwTDg0Ljk5IDM0OS4wMEw3OC4wMCAzNDkuMDBMNzguMDAgMzAwLjAwWk0xNjAuNjQgMzQ3LjQwQzE1My43OSAzNDUuMjUgMTQ2LjY1IDMzNy45NCAxNDQuNTggMzMwLjk0QzE0Mi4yOCAzMjMuMjIgMTQyLjM0IDI5My4yOCAxNDQuNjcgMjg2LjQ2QzE0Ny4wMiAyNzkuNTYgMTU0LjE4IDI3Mi42MiAxNjEuMDYgMjcwLjU4QzE2OC40OCAyNjguMzcgMjExLjI3IDI2OC4yOSAyMTguNTcgMjcwLjQ3QzIyNS4yNSAyNzIuNDcgMjMwLjMyIDI3Ni45MiAyMzMuNjUgMjgzLjcxQzIzNi4xMSAyODguNzUgMjM2LjQ3IDI5MC43NSAyMzYuODMgMzAxLjUzTDIzNy4yMyAzMTMuNjdMMjEyLjM3IDMxNC4zM0MxOTguNjkgMzE0LjcwIDE4MC42NCAzMTUuMDAgMTcyLjI1IDMxNS4wMEwxNTcuMDAgMzE1LjAwTDE1Ny4wMiAzMTkuMjVDMTU3LjA1IDMyNS4yNSAxNjAuMTQgMzMxLjQ5IDE2NC4xNyAzMzMuNjhDMTY3LjExIDMzNS4yOSAxNzAuMTYgMzM1LjUwIDE5MC41MCAzMzUuNTBDMjEyLjYxIDMzNS41MCAyMTMuNjQgMzM1LjQxIDIxNy4xMiAzMzMuMjVDMjE5Ljk5IDMzMS40NyAyMjIuMjEgMzMxLjAwIDIyNy44NyAzMzEuMDBDMjM2LjI2IDMzMS4wMCAyMzYuNTIgMzMxLjUyIDIzMS43NSAzMzguNjBDMjI5LjU3IDM0MS44MyAyMjYuODcgMzQ0LjI1IDIyMy41MyAzNDUuOTZDMjE4LjYxIDM0OC40NyAyMTguMjggMzQ4LjUwIDE5Mi4wMyAzNDguNzFDMTcwLjYyIDM0OC44OCAxNjQuNTYgMzQ4LjYzIDE2MC42NCAzNDcuNDBaTTI3Mi44OCAzNDcuNjJDMjU3Ljk2IDM0Mi4yOSAyNTMuMTkgMzMxLjA4IDI1NC4yNyAzMDMuODdDMjU0Ljg4IDI4OC4zMyAyNTYuNDkgMjgzLjE4IDI2Mi43NiAyNzYuNzRDMjY5LjUwIDI2OS44MiAyNzMuNjEgMjY5LjAwIDMwMS41MCAyNjkuMDBDMzMwLjEwIDI2OS4wMCAzMzMuNzkgMjY5Ljc5IDM0MC44NCAyNzcuNDRDMzQ2LjI4IDI4My4zNCAzNDguMDAgMjg5LjU0IDM0OC4wMCAzMDMuMThMMzQ4LjAwIDMxNC4wMEwzMzMuMjUgMzE0LjE0QzMyNS4xNCAzMTQuMjIgMzA3LjI1IDMxNC41NSAyOTMuNTAgMzE0Ljg5TDI2OC41MCAzMTUuNTBMMjY4Ljc2IDMyMC40MkMyNjkuMDggMzI2LjQ4IDI3MS40OCAzMzAuNzkgMjc2LjA0IDMzMy40NkMyNzkuMjQgMzM1LjM1IDI4MS4xNyAzMzUuNTAgMzAyLjAwIDMzNS41MEMzMjMuNTQgMzM1LjUwIDMyNC42NiAzMzUuNDAgMzI4LjMxIDMzMy4yNUMzMzMuMzUgMzMwLjI3IDM0Ni4wMCAzMjkuOTEgMzQ2LjAwIDMzMi43NUMzNDUuOTkgMzM3LjYwIDMzOC43MCAzNDQuNzggMzMxLjA2IDM0Ny40OEMzMjUuMzAgMzQ5LjUxIDI3OC40OSAzNDkuNjIgMjcyLjg4IDM0Ny42MlpNMzgzLjUwIDM0Ny4xMUMzNzguOTIgMzQ1LjAwIDM3NS41OSAzNDEuNjkgMzc0LjEyIDMzNy44M0MzNzMuNTMgMzM2LjI2IDM3Mi44MyAzMTUuMzQgMzcyLjQ0IDI4Ny4wOEwzNzEuNzYgMjM5LjAwTDM3OC44OCAyMzkuMDBMMzg2LjAwIDIzOS4wMEwzODYuMDAgMjg0LjU4TDM4Ni4wMCAzMzAuMTVMMzg4LjkyIDMzMy4wOEwzOTEuODUgMzM2LjAwTDQyMC45MiAzMzYuMDBMNDUwLjAwIDMzNi4wMEw0NTAuMDAgMzQyLjUwTDQ1MC4wMCAzNDkuMDBMNDE4Ljc1IDM0OC45OEMzOTAuNTEgMzQ4Ljk2IDM4Ny4xMiAzNDguNzggMzgzLjUwIDM0Ny4xMVpNNDY3LjAwIDMwOS41MEw0NjcuMDAgMjcwLjAwTDQ3My4wMCAyNzAuMDBMNDc5LjAwIDI3MC4wMEw0NzkuMDAgMzA5LjUwTDQ3OS4wMCAzNDkuMDBMNDczLjAwIDM0OS4wMEw0NjcuMDAgMzQ5LjAwTDQ2Ny4wMCAzMDkuNTBaTTQ5OC4wMCAzMjEuMTRDNDk4LjAwIDMwNS44MSA0OTguNDYgMjkwLjg1IDQ5OS4wMiAyODcuOTBDNTAwLjMwIDI4MS4xNSA1MDQuMDcgMjc2LjI3IDUxMC41NSAyNzMuMDBDNTE1LjIyIDI3MC42NCA1MTYuNTcgMjcwLjQ4IDUzNC4zMSAyNzAuMTdDNTUwLjk3IDI2OS44OCA1NTMuODkgMjcwLjA4IDU1OS44MyAyNzEuODhDNTY4LjI3IDI3NC40NCA1NzMuOTIgMjc5LjE0IDU3Ny4wOCAyODYuMjFDNTc5LjM2IDI5MS4zMCA1NzkuNDYgMjkyLjU5IDU3OS44MiAzMjAuMjVMNTgwLjE4IDM0OS4wMEw1NzQuMjIgMzQ5LjAwTDU2OC4yNSAzNDkuMDBMNTY3LjgxIDMyMi4yNUM1NjcuMzMgMjkzLjU0IDU2Ny4xMSAyOTIuMjIgNTYxLjc2IDI4Ny4yM0M1NTcuOTkgMjgzLjcxIDU1My43OCAyODMuMDAgNTM2LjcyIDI4My4wMEM1MTguMjUgMjgzLjAwIDUxNC43NyAyODMuOTIgNTEyLjQ2IDI4OS40M0M1MTEuMzAgMjkyLjIzIDUxMS4wMCAyOTguNjIgNTExLjAwIDMyMC45N0w1MTEuMDAgMzQ5LjAwTDUwNC41MCAzNDkuMDBMNDk4LjAwIDM0OS4wMEw0OTguMDAgMzIxLjE0Wk02MTMuMzkgMzQ3LjQyQzYwNy4zNiAzNDUuMjMgNjAxLjYyIDMzOS44NCA1OTguODkgMzMzLjc5QzU5Ni42NCAzMjguODEgNTk2LjUwIDMyNy40MCA1OTYuNTAgMzA5LjUwQzU5Ni41MCAyOTAuNjIgNTk2LjUyIDI5MC40NiA1OTkuMzYgMjg0LjY4QzYwMi43MiAyNzcuODQgNjA3Ljg0IDI3My42OCA2MTUuNzUgMjcxLjM5QzYyMC4wMyAyNzAuMTQgNjI1LjIwIDI2OS44OSA2NDEuMzEgMjcwLjE2TDY2MS41MCAyNzAuNTBMNjY3LjAwIDI3My42MEM2NzYuOTUgMjc5LjIyIDY4MC45NyAyODguMTIgNjgwLjk5IDMwNC42MEw2ODEuMDAgMzEzLjY5TDY2OC44NCAzMTQuMzVDNjYyLjE2IDMxNC43MSA2NDguOTkgMzE1LjAwIDYzOS41OSAzMTUuMDFDNjMwLjE5IDMxNS4wMSA2MTkuNDYgMzE1LjMwIDYxNS43NSAzMTUuNjVMNjA5LjAwIDMxNi4yOUw2MDkuMDAgMzIwLjM5QzYwOS4wMCAzMjUuNzkgNjExLjY3IDMzMC45MSA2MTUuOTggMzMzLjc4QzYxOS4zOCAzMzYuMDYgNjE5LjkxIDMzNi4xMCA2NDAuMTUgMzM1LjgwQzY2MC4wMiAzMzUuNTEgNjYwLjk0IDMzNS40MSA2NjMuMjQgMzMzLjI1QzY2NS4yMyAzMzEuMzggNjY2Ljc2IDMzMS4wMCA2NzIuMzEgMzMxLjAwQzY3Ny42OSAzMzEuMDAgNjc5LjAwIDMzMS4zMCA2NzkuMDAgMzMyLjU1QzY3OS4wMCAzMzYuNjkgNjczLjQ1IDM0My4yMCA2NjcuMDAgMzQ2LjY0QzY2My45MSAzNDguMjggNjYwLjc4IDM0OC41MiA2NDAuNTAgMzQ4LjcwQzYyMi4yMSAzNDguODcgNjE2LjY2IDM0OC42MCA2MTMuMzkgMzQ3LjQyWk02NjguMDAgMjk3Ljc1QzY2Ny45OSAyOTIuODUgNjY1LjM3IDI4Ny45NCA2NjEuMzQgMjg1LjMwQzY1OC45MiAyODMuNzIgNjU2LjE3IDI4My41MCA2MzguMzcgMjgzLjUwQzYxOS40OSAyODMuNTAgNjE3Ljk2IDI4My42NCA2MTUuMzIgMjg1LjU3QzYxMS42NCAyODguMjcgNjA5LjAwIDI5My41NiA2MDkuMDAgMjk4LjI1TDYwOS4wMCAzMDIuMDBMNjM4LjUwIDMwMi4wMEw2NjguMDAgMzAyLjAwTDY2OC4wMCAyOTcuNzVaTTIyMi45OCAyOTcuNzVDMjIyLjk0IDI5Mi42NiAyMTkuNjAgMjg2LjM3IDIxNS44MyAyODQuMzJDMjEyLjk3IDI4Mi43NiAyMDkuNTAgMjgyLjQ1IDE5MS4zMCAyODIuMThDMTcxLjk1IDI4MS44OSAxNjkuNzIgMjgyLjAzIDE2NS42NCAyODMuODRDMTYwLjE0IDI4Ni4yNyAxNTcuODQgMjg5LjYxIDE1Ny4yMiAyOTYuMDZMMTU2Ljc1IDMwMS4wMEwxODkuODcgMzAxLjAwTDIyMy4wMCAzMDEuMDBMMjIyLjk4IDI5Ny43NVpNMzM0LjAwIDI5Ny4yNUMzMzQuMDAgMjkyLjU2IDMzMS4zNiAyODcuMjggMzI3LjY4IDI4NC41N0MzMjUuMDggMjgyLjY2IDMyMy4yMyAyODIuNDcgMzA0LjI0IDI4Mi4xN0MyODEuNTQgMjgxLjgyIDI3Ni43NiAyODIuNTIgMjcyLjY4IDI4Ni44NkMyNzAuMzEgMjg5LjM3IDI2OC4wMiAyOTUuNDUgMjY4LjAxIDI5OS4yNUMyNjguMDAgMzAwLjg4IDI3MC4yNCAzMDEuMDAgMzAxLjAwIDMwMS4wMEwzMzQuMDAgMzAxLjAwTDMzNC4wMCAyOTcuMjVaTTQ2Ny42NSAyNTYuMTdDNDY1LjUyIDI1My44MSA0NjUuNDcgMjQ2LjY3IDQ2Ny41NyAyNDQuNTdDNDY5LjgxIDI0Mi4zNCA0NzUuNTcgMjQyLjU3IDQ3OC4wMCAyNDUuMDBDNDgwLjQxIDI0Ny40MSA0ODAuNjMgMjUyLjY2IDQ3OC40NCAyNTUuNzhDNDc2LjQ0IDI1OC42NCA0NzAuMTAgMjU4Ljg3IDQ2Ny42NSAyNTYuMTdaIi8+DQoNCiAgICA8cGF0aCBmaWxsPSIjQjg5NTUwIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zMjguNDcgNDE0LjQxQzMyNy45NCA0MTQuMjcgMzI1LjgzIDQxMy44OCAzMjMuNzggNDEzLjU0QzMxNy4wNiA0MTIuNDIgMzEwLjA3IDQwNC4wMSAzMTAuMDMgMzk3LjAwQzMwOS45MyAzODEuNTEgMzI2LjM4IDM3Mi42MiAzNDAuMjEgMzgwLjY5QzM1MS42MyAzODcuMzYgMzUxLjMxIDQwNS42MiAzMzkuNjYgNDExLjY5QzMzNi40NyA0MTMuMzUgMzMwLjI4IDQxNC44NiAzMjguNDcgNDE0LjQxWk0yNTAuNTAgNDEyLjU4QzI0Ni43NyA0MTAuOTIgMjQyLjQ3IDQwNi40MCAyNDEuMDYgNDAyLjY4QzIzOC4wNiAzOTQuNzMgMjQxLjU3IDM4NC4yNSAyNDguNTggMzgwLjI3QzI1My45MCAzNzcuMjMgMjY0Ljk5IDM3Ny4wOSAyNjkuNzUgMzc5Ljk5QzI3My4zNCAzODIuMTggMjczLjcwIDM4My4xNyAyNzEuNTcgMzg0Ljk0QzI3MC40NiAzODUuODYgMjY5LjQ4IDM4NS43OCAyNjcuMTIgMzg0LjU2QzI2NS40NiAzODMuNzAgMjYxLjgyIDM4My4wMCAyNTkuMDMgMzgzLjAwQzI1NC43MCAzODMuMDAgMjUzLjQ1IDM4My40OCAyNTAuMzkgMzg2LjI4QzI0MS40MCAzOTQuNTIgMjQ3LjAyIDQwOS4wMCAyNTkuMjAgNDA5LjAwQzI2Ni43NiA0MDkuMDAgMjY4LjAwIDQwNy45NCAyNjguMDAgNDAxLjQ2QzI2OC4wMCAzOTYuMDYgMjY4LjAzIDM5Ni4wMCAyNzEuMDAgMzk2LjAwTDI3NC4wMCAzOTYuMDBMMjc0LjAwIDQwMy4wNUwyNzQuMDAgNDEwLjEwTDI2OS43NSA0MTIuMDNDMjY0Ljc0IDQxNC4zMCAyNTQuOTggNDE0LjU4IDI1MC41MCA0MTIuNThaTTM4NS4wMCAzOTYuMDNMMzg1LjAwIDM3OC4wMEwzODguMDAgMzc4LjAwTDM5MS4wMCAzNzguMDBMMzkxLjAwIDM5My41MEwzOTEuMDAgNDA5LjAwTDQwMS4wNyA0MDkuMDBDNDEwLjk0IDQwOS4wMCA0MTEuMTMgNDA5LjA0IDQxMC44MiA0MTEuMjVDNDEwLjUxIDQxMy40MyA0MTAuMTEgNDEzLjUxIDM5Ny43NSA0MTMuNzhMMzg1LjAwIDQxNC4wNkwzODUuMDAgMzk2LjAzWk00NDUuNDQgNDEyLjcxQzQ0NS4xNyA0MTIuMDAgNDQ1LjA3IDQwNC4wMiA0NDUuMjIgMzk0Ljk2TDQ0NS41MCAzNzguNTBMNDU4LjI1IDM3OC4yMkw0NzEuMDAgMzc3Ljk0TDQ3MS4wMCAzODAuNDdMNDcxLjAwIDM4My4wMEw0NjAuOTUgMzgzLjAwTDQ1MC45MCAzODMuMDBMNDUxLjIwIDM4OC43NUw0NTEuNTAgMzk0LjUwTDQ2MC4yNSAzOTQuNzlDNDY4LjgwIDM5NS4wNyA0NjkuMDAgMzk1LjEzIDQ2OS4wMCAzOTcuNTRDNDY5LjAwIDM5OS45NyA0NjguOTAgNDAwLjAwIDQ2MC4wMCA0MDAuMDBMNDUxLjAwIDQwMC4wMEw0NTEuMDAgNDA3LjAwQzQ1MS4wMCA0MTMuODIgNDUwLjk0IDQxNC4wMCA0NDguNDcgNDE0LjAwQzQ0Ny4wOCA0MTQuMDAgNDQ1LjcxIDQxMy40MiA0NDUuNDQgNDEyLjcxWk0zMzYuNzMgNDA3LjM5QzM0MS44OCA0MDQuMTMgMzQzLjc3IDM5NS4zMiAzNDAuNjIgMzg5LjIzQzMzOC41MSAzODUuMTYgMzM0LjMzIDM4My4wMCAzMjguNTMgMzgzLjAwQzMyNC43MyAzODMuMDAgMzIzLjM1IDM4My41NyAzMjAuMjQgMzg2LjQyQzMxNi43MiAzODkuNjUgMzE2LjUwIDM5MC4xOSAzMTYuNTAgMzk1Ljg2QzMxNi41MCA0MDEuMTYgMzE2Ljg1IDQwMi4yMyAzMTkuNDYgNDA0Ljk2QzMyNC4yMyA0MDkuOTQgMzMxLjE3IDQxMC45MSAzMzYuNzMgNDA3LjM5Wk01MDQuMDAgMzk2LjE5QzUwNC4wMCAzOTUuMTIgNTE0LjUyIDM5NC45MSA1NjEuMDAgMzk1LjA4QzU5Mi4zNSAzOTUuMTkgNjE4LjAwIDM5NS42NiA2MTguMDAgMzk2LjEyQzYxOC4wMCAzOTYuNTkgNTkyLjM1IDM5Ny4wOSA1NjEuMDAgMzk3LjIzQzUxNC40OSAzOTcuNDUgNTA0LjAwIDM5Ny4yNiA1MDQuMDAgMzk2LjE5Wk05NC4wMCAzOTYuMDBDOTQuMDAgMzk1LjM1IDExMy41MCAzOTUuMDAgMTUwLjUwIDM5NS4wMEMxODcuNTAgMzk1LjAwIDIwNy4wMCAzOTUuMzUgMjA3LjAwIDM5Ni4wMEMyMDcuMDAgMzk2LjY1IDE4Ny41MCAzOTcuMDAgMTUwLjUwIDM5Ny4wMEMxMTMuNTAgMzk3LjAwIDk0LjAwIDM5Ni42NSA5NC4wMCAzOTYuMDBaIi8+DQogIDwvZz4NCjwvc3ZnPg0K"};
 const PAR = SRC.par, SI = SRC.si, TEES = SRC.tees;
-const KEY = "bamboo-scores-" + SRC.slug + "-v1";
+// Each tab keeps its own browser copy. Two tabs sharing one key would overwrite each other's local
+// copy, and a reload could then show the wrong one. The tab id survives a reload of that tab.
+const TAB_ID = (() => {
+  try {
+    let id = sessionStorage.getItem("bamboo-tab");
+    if (!id) { id = Math.random().toString(36).slice(2, 10); sessionStorage.setItem("bamboo-tab", id); }
+    return id;
+  } catch (e) { return "tab"; }
+})();
+const KEY = "bamboo-scores-" + SRC.slug + "-v1-" + TAB_ID;
+const LEGACY_KEY = "bamboo-scores-" + SRC.slug + "-v1";
 const ORIG = {};
 SRC.cards.forEach(c => { ORIG[c.id] = c; });
 const $ = id => document.getElementById(id);
@@ -406,6 +417,14 @@ function seeded() {
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+  if (!s || !Array.isArray(s.cards)) {
+    // One-time move of the copy older versions kept under one key for the whole browser. The old
+    // key stays in place as a backup and is never written again.
+    try { s = JSON.parse(localStorage.getItem(LEGACY_KEY) || "null"); } catch (e) { s = null; }
+    if (s && Array.isArray(s.cards)) {
+      try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* the old key still has it */ }
+    }
+  }
   if (!s || !Array.isArray(s.cards)) return seeded();
   loadedFromBrowser = true;
   const have = new Set(s.cards.map(c => c.id));
@@ -597,6 +616,18 @@ function applyRemote(remote) {
   // A card merged from two older copies is a change made here; saving stamps it and sends it on.
   if (out.legacy) save();
   return out;
+}
+// How much of this browser's copy the shared copy does not have yet. Used on load, before the first
+// merge, so the page can say that local cards are being kept instead of silently dropping them.
+function localAhead(remote) {
+  const shared = new Map((Array.isArray(remote && remote.cards) ? remote.cards : []).map(c => [c.id, c]));
+  let kept = 0, only = 0;
+  for (const card of state.cards) {
+    const other = shared.get(card.id);
+    if (!other) only += 1;
+    else if (cardDirty(card.id) || revOf(card) > revOf(other)) kept += 1;
+  }
+  return { kept, only };
 }
 // Redraws the cards after a change from elsewhere without taking the cursor away from whoever is typing.
 function renderKeepingFocus(highlightIds) {
@@ -1059,25 +1090,69 @@ $("imp").onclick = () => {
   const adder = document.getElementById("batch-add-file");
   if (adder) adder.click(); else $("file").click();
 };
+// The shared copy is copied aside before either destructive button changes it. If the copy cannot be
+// kept, the action stops: an exported file is then the only safe way forward.
+async function takeSnapshot(reason) {
+  try {
+    const response = await fetch(`/api/scorecards/${encodeURIComponent(SRC.slug)}/snapshot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      say(body.message || "The snapshot could not be kept, so nothing was changed. Export JSON first.", true);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    say("The snapshot could not be kept, so nothing was changed. Export JSON first.", true);
+    return false;
+  }
+}
+// The page as it was just before a reset or a replace, so the mistake can be undone without a reload.
+let undoState = null;
+function rememberUndo(label) {
+  undoState = { state: JSON.parse(JSON.stringify(state)), label };
+  const button = $("undo");
+  if (button) { button.hidden = false; button.textContent = "Undo " + label; }
+}
+$("undo").onclick = () => {
+  if (!undoState) return;
+  const back = undoState;
+  undoState = null;
+  $("undo").hidden = true;
+  state = back.state;
+  save(); renderCards(); stats(); if (view === "sheet") renderSheet();
+  say(`Restored the page as it was before ${back.label}. It saves to the shared copy in a moment.`);
+};
 $("restore").onclick = () => $("file").click();
 $("file").onchange = e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-  f.text().then(t => {
+  f.text().then(async t => {
     const j = JSON.parse(t);
     const imported = importCardsFrom(j);
     if (!imported) throw new Error("that file has no cards. Use a JSON file saved by Export JSON or by the scorecard scan.");
     if (imported.scanned) throw new Error("that is a scorecard scan file. Use Add cards from JSON, which keeps the cards already checked on this page.");
     if (j.slug && j.slug !== SRC.slug) throw new Error(`that file is for ${j.label || "another page"}, this page is ${SRC.label}`);
     const ok = imported.cards;
-    if (!confirm(`Replace the scores on this page with the ${ok.length} cards in that file?`)) return;
-    state = { cards: ok, mode: j.mode || state.mode, reviewBatches: Array.isArray(j.reviewBatches) ? j.reviewBatches : [], activeReviewBatchId: typeof j.activeReviewBatchId === "string" ? j.activeReviewBatchId : "all" }; save(); renderCards(); stats(); if (view === "sheet") renderSheet();
-    say(`Loaded ${ok.length} cards from the file.`);
+    if (!confirm(`Replace the scores on this page with the ${ok.length} cards in that file? A snapshot of the shared copy is kept first.`)) return;
+    if (!(await takeSnapshot("before replacing all cards from an export"))) return;
+    rememberUndo("the replace");
+    state = { cards: ok, mode: j.mode || state.mode, modeRev: state.modeRev, reviewBatches: Array.isArray(j.reviewBatches) ? j.reviewBatches : [], activeReviewBatchId: typeof j.activeReviewBatchId === "string" ? j.activeReviewBatchId : "all" };
+    save(); renderCards(); stats(); if (view === "sheet") renderSheet();
+    say(`Loaded ${ok.length} cards from the file. A snapshot of the previous shared copy is kept, and Undo is available until this page is reloaded.`);
   }).catch(err => say("Could not import: " + err.message, true));
 };
-$("reset").onclick = () => {
+$("reset").onclick = async () => {
   if (!SRC.cards.length) { say("The first reading is not bundled in this copy. Import the JSON file to restore it.", true); return; }
-  if (!confirm("Discard every edit and tick on this page and go back to the first reading? Cards you added by hand are removed too. Export JSON first if you want a copy.")) return;
-  state = { ...fresh(), mode: state.mode }; save(); renderCards(); stats(); if (view === "sheet") renderSheet(); say("Back to the first reading.");
+  const answer = prompt("Reset to the first reading? Every edit, tick and hand-added card on this page is discarded. A snapshot of the shared copy is kept first.\n\nType RESET to continue.");
+  if (String(answer || "").trim().toUpperCase() !== "RESET") { say("Reset cancelled."); return; }
+  if (!(await takeSnapshot("before reset to the first reading"))) return;
+  rememberUndo("the reset");
+  state = { ...fresh(), mode: state.mode, modeRev: state.modeRev };
+  save(); renderCards(); stats(); if (view === "sheet") renderSheet();
+  say("Back to the first reading. A snapshot of the previous shared copy is kept, and Undo is available until this page is reloaded.");
 };
 
 $("title").textContent = `${SRC.event} · ${SRC.label} · scores (editable draft)`;
@@ -1180,7 +1255,7 @@ window.__scorecard = {
   event: SRC.event,
   label: SRC.label,
   getState: () => state,
-  snapshotHashes, markSynced, applyRemote, setClockSkew, resyncHashes,
+  snapshotHashes, markSynced, applyRemote, setClockSkew, resyncHashes, localAhead,
   clientId: CLIENT_ID,
   setState: (next) => {
     state = next;
@@ -1306,7 +1381,7 @@ window.__scorecard = {
       <div id="batch-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       <button type="button" id="batch-clear" class="danger" title="Remove the batch labels where every card is already checked. The cards stay on the page." hidden>Remove reviewed batches</button>
     </div>
-    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add players from the system</b> brings a day's and session's players in as blank cards with their group, tee and class filled in, so no JSON file is needed. <b>Add card by hand</b> adds one blank card. <b>Start new review batch</b> makes a batch by hand: empty, from the cards shown, from one day and session, or from cards you pick. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. Saving keeps the team copy in the private Supabase bucket; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication.</p>
+    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add players from the system</b> brings a day's and session's players in as blank cards with their group, tee and class filled in, so no JSON file is needed. <b>Add card by hand</b> adds one blank card. <b>Start new review batch</b> makes a batch by hand: empty, from the cards shown, from one day and session, or from cards you pick. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. Saving keeps the team copy in the private Supabase bucket and merges it card by card with the other tabulators; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication. <b>Reset to first reading</b> asks you to type RESET, and both it and <b>Replace all from export</b> keep a snapshot of the shared copy first and can be undone until the page is reloaded.</p>
     <p class="legend" id="field-status" style="margin:8px 0 0">Supabase field: not checked yet.</p>
     <details id="check-details" open style="margin-top:8px">
       <summary id="check-summary" style="cursor:pointer;font-weight:600">System check: waiting for the field list.</summary>
@@ -2011,12 +2086,13 @@ window.__scorecard = {
       db.save();
       apply();
       const rejected = body.submission.unmatched.length;
-      summary.textContent = `Sent ${body.submission.cards.length} checked card${body.submission.cards.length === 1 ? "" : "s"} to the admin queue at ${new Date(body.submission.at).toLocaleTimeString()}.${body.submission.nameOnly.length ? ` ${body.submission.nameOnly.length} name-only card${body.submission.nameOnly.length === 1 ? "" : "s"} left for the admin.` : ""}${rejected ? ` ${rejected} card${rejected === 1 ? "" : "s"} not accepted: ${body.submission.unmatched.map((entry) => entry.name || entry.id).join(", ")}.` : ""}`;
+      const sentMessage = `Sent ${body.submission.cards.length} checked card${body.submission.cards.length === 1 ? "" : "s"} to the admin queue at ${new Date(body.submission.at).toLocaleTimeString()}.${body.submission.nameOnly.length ? ` ${body.submission.nameOnly.length} name-only card${body.submission.nameOnly.length === 1 ? "" : "s"} left for the admin.` : ""}${rejected ? ` ${rejected} card${rejected === 1 ? "" : "s"} not accepted: ${body.submission.unmatched.map((entry) => entry.name || entry.id).join(", ")}.` : ""}`;
       const saved = await persist(true);
-      if (!saved) {
-        summary.textContent =
-          "The cards were frozen, but the database save failed. They are not in the admin queue yet; the page will retry the save.";
-      }
+      // persist() redraws the panel, so the sent message is written after it. Writing it before
+      // let the ordinary "N cards shown" line replace it and the desk could not tell the send worked.
+      summary.textContent = saved
+        ? sentMessage
+        : "The cards were frozen, but the database save failed. They are not in the admin queue yet; the page will retry the save.";
     } catch (error) {
       summary.textContent = error instanceof Error ? error.message : String(error);
     } finally {
@@ -2852,6 +2928,10 @@ window.__scorecard = {
         } else if (response.status === 413) {
           saveProblem = "the day is too large for one save";
           status("The day is too large to save in one go. Export JSON and tell the admin.", true);
+        } else if (response.status === 423) {
+          // Another save holds the shared copy for a moment. The edits are local and safe.
+          saveProblem = "another tabulator is saving the shared copy; this page retries";
+          status("Another tabulator is saving the shared copy. Your edits are kept; trying again in a moment.");
         } else {
           saveProblem = body.message ? String(body.message) : `the save failed (HTTP ${response.status})`;
           status(
@@ -2865,6 +2945,10 @@ window.__scorecard = {
       const reply = await response.json().catch(() => ({}));
       db.setClockSkew(reply.serverTime);
       if (reply.updatedAt) lastUpdatedAt = reply.updatedAt;
+      if (typeof reply.updatedBy === "string" && reply.updatedBy) lastSavedBy = reply.updatedBy;
+      // From here the page and the shared copy have been through the merge once, so the poll may
+      // bring other people's cards in without risking this browser's unsaved ones.
+      mergedOnce = true;
       db.markSynced(sent);
       for (const id of unsavedBefore) if (SYNC.cards[id] === sent.cards[id]) savedStamp[id] = Date.now();
       last = text;
@@ -2873,7 +2957,8 @@ window.__scorecard = {
       if (reply.payload && Array.isArray(reply.payload.cards)) {
         const result = db.applyRemote(reply.payload);
         if (result.dirty === 0) last = JSON.stringify(db.getState());
-        showSync(remoteNote(result));
+        showSync(remoteNote(result) || keptNote);
+        keptNote = "";
         apply();
       }
       refreshSaveBadges();
@@ -2931,11 +3016,16 @@ window.__scorecard = {
         if (document && document.payload && Array.isArray(document.payload.cards)) {
           db.setClockSkew(document.serverTime);
           lastUpdatedAt = document.updatedAt;
-          // The shared copy wins for every card this page has not changed since it last saved. A card
-          // this page edited later than the shared copy stays, and the save that follows merges it in.
-          db.applyRemote(document.payload);
+          if (typeof document.updatedBy === "string" && document.updatedBy) lastSavedBy = document.updatedBy;
+          // Never replace this browser's cards with the shared copy here. A save that failed, or a
+          // page closed before its first save, would lose work that is only in this browser. The
+          // first save below sends this page's copy, the server merges it card by card, and the
+          // merged answer is what the page shows.
+          const ahead = db.localAhead(document.payload);
+          const kept = ahead.kept + ahead.only;
+          keptNote = kept ? `${kept} card${kept === 1 ? "" : "s"} kept from this browser` : "";
           status(
-            `Loaded the shared copy saved ${new Date(document.updatedAt).toLocaleString()}.`,
+            `Loaded the shared copy saved ${new Date(document.updatedAt).toLocaleString()}.${kept ? ` ${kept} card${kept === 1 ? "" : "s"} from this browser will be merged.` : ""}`,
           );
         }
       } else if (response.status === 401) {
@@ -2944,10 +3034,11 @@ window.__scorecard = {
         window.location.assign(loginUrl);
         return;
       } else if (response.status === 403) {
+        sessionEnded = true;
         status("This account is not on the tabulation team.", true);
         return;
       } else if (response.status === 404) {
-        await persist();
+        status("No shared copy yet. This page will create it.");
       }
     } catch {
       status("The database is not reachable. The embedded scorecard is still editable.", true);
@@ -2958,6 +3049,8 @@ window.__scorecard = {
       last = "";
       showSync("");
       apply();
+      // Send the merge now instead of waiting for the timer, so other people's cards appear at once.
+      void persist();
     }
   }
 
@@ -3234,6 +3327,10 @@ window.__scorecard = {
   // time of the copy already held, so when nothing changed the answer is a few bytes. A change is merged
   // in card by card, and a card being edited here is never overwritten.
   let lastUpdatedAt = "";
+  let lastSavedBy = "";
+  let keptNote = "";
+  // Until the first save has been merged, the page must not take the shared copy over its own cards.
+  let mergedOnce = false;
   const syncLabel = document.getElementById("sync");
   function remoteNote(result) {
     const bits = [];
@@ -3244,10 +3341,11 @@ window.__scorecard = {
   }
   function showSync(note) {
     if (!syncLabel) return;
-    syncLabel.textContent = `Live · synced ${new Date().toLocaleTimeString()}${note ? ` · ${note}` : ""}`;
+    const by = lastSavedBy ? ` · ${lastSavedBy}` : "";
+    syncLabel.textContent = `Live · synced ${new Date().toLocaleTimeString()}${by}${note ? ` · ${note}` : ""}`;
   }
   async function pollRemote() {
-    if (!ready || saving || sessionEnded || document.hidden) return;
+    if (!ready || !mergedOnce || saving || sessionEnded || document.hidden) return;
     try {
       const query = lastUpdatedAt ? `?since=${encodeURIComponent(lastUpdatedAt)}` : "";
       const response = await fetch(`/api/scorecards/${encodeURIComponent(slug)}${query}`, { cache: "no-store" });

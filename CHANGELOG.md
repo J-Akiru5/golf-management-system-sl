@@ -15,6 +15,8 @@ Supabase project, because the code and the database are released separately.
   the player already has a card for that day and session, or is drawn in the other shotgun. A name the
   event does not hold becomes a card marked "Not in the system: tell the admin", which the admin has
   to add before the scored card can be sent. No migration.
+- **The tabulator page keeps a snapshot of the shared copy before a reset or a replace, and can undo either action in the page.** "Reset to first reading" now asks for the word RESET. Both it and "Replace all from export" write the current shared document to `snapshots/<slug>/` in the private bucket before changing it; if the snapshot cannot be kept, the action stops and the page says to export JSON first. The Undo button restores the page as it was until the page is reloaded, and the snapshot remains for recovery afterwards. No migration.
+- **The shared scorecard document records who saved it.** `updatedBy` is taken from the signed-in account, and the live label names the account that saved the copy. No migration.
 
 ### Changed
 - **The tabulation page looks and works like TeeLine.** It carries the TeeLine mark, the app's colours
@@ -28,11 +30,22 @@ Supabase project, because the code and the database are released separately.
   par), falling back to the page's copy of the ratings if the deployment does not send them. The HDCP
   box is labelled "Card says", is kept for the record and is never used to score. A player with no
   index, or an index of 0, is named as a system problem for the admin and is not ranked. No migration.
+- **Two tabulator saves are now serialised around the merge.** The card-by-card merge already kept both people's cards, but two saves arriving in the same moment could both read the same shared copy and the second write would drop the first one's cards. A short lease (`_locks/<slug>.json`, ten seconds, taken over when its holder stops answering) makes the read, merge and write one step. A save that finds the lease held answers 423; the page keeps the edits and retries. No migration.
+
+### Fixed
+- **A reload no longer replaces this browser's unsaved cards with the shared copy.** The page applied the shared document over its local copy on load, so a save that failed, or a page closed before its first save, lost the work that was only in the browser. The page now keeps the local copy, sends it through the server's card-by-card merge, and shows the merged result; it says how many cards it kept. Each tab also has its own browser copy, with a one-time move of the old shared key.
+- **Two people saving different scores on the same card now see the disagreement on the card.** The newer save still wins the card, but the merge writes a note naming the hole, both scores and the account whose value lost, so the checker looks at the paper card instead of the difference disappearing.
+
+Verified on the branches: `pnpm check` and `pnpm check:ui` passed for the save-safety change (2780 tests, 243 browser checks, 0 console errors; the lease and the snapshot were tested against a fake bucket, not the live Supabase project, and the reset prompt was not exercised because the bundled page has no first reading). `pnpm typecheck`, `pnpm lint` and the focused scorecard tests passed for the tabulator change, with the build and the browser suite left to CI.
 
 ### Docs
 - **`src/lib/scorecards/page-tabulator.test.ts` pins the page's shape** (pinned bar, 44 px controls,
   "Card says", both ways to add a card), and `merge.test.ts` holds that the shared document may only
   gain fields, so a page opened before the deploy keeps working.
+- **The final-day plan is in `docs/PLAN.md`**: the diagnosis after Day 3, the owner's decisions of 15 Nov,
+  the work in flight (#301 to #305) and the guardrails while production is live. 22 resolved issues and
+  4 stale pull requests were closed.
+- **`docs/PLAN.md` records the tabulator save-safety change:** the lease, the load merge, the snapshot and undo, and what was not exercised against the live bucket. No code change.
 
 ## [0.54.0] - 2026-11-14
 

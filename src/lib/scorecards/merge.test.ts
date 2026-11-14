@@ -168,4 +168,60 @@ describe("mergeScorecardPayloads", () => {
     expect(merged.holes).toEqual(["4"]);
     expect(merged.notInSystem).toBeUndefined();
   });
+
+  it("says what the losing save had when two people scored the same card", () => {
+    const stored = { cards: [card("a", "ALPHA", 30, ["6"])] };
+    const incoming = { cards: [card("a", "ALPHA", 20, ["4"])] };
+    const result = mergeScorecardPayloads(stored, incoming, NOW, {
+      storedBy: "maria@example.com",
+      incomingBy: "juan@example.com",
+    });
+    const merged = cardsOf(result)[0] as { holes: string[]; note?: string };
+    expect(merged.holes[0]).toBe("6");
+    expect(merged.note).toContain("hole 1");
+    expect(merged.note).toContain("juan@example.com had 4");
+    expect(merged.note).toContain("newer score (6)");
+    expect(result.changed).toBe(true);
+  });
+
+  it("names the stored save when the incoming one is newer", () => {
+    const stored = { cards: [card("a", "ALPHA", 30, ["6"])] };
+    const incoming = { cards: [card("a", "ALPHA", 40, ["7"])] };
+    const merged = cardsOf(
+      mergeScorecardPayloads(stored, incoming, NOW, {
+        storedBy: "maria@example.com",
+        incomingBy: "juan@example.com",
+      }),
+    )[0] as { holes: string[]; note?: string };
+    expect(merged.holes[0]).toBe("7");
+    expect(merged.note).toContain("maria@example.com had 6");
+    expect(merged.note).toContain("newer score (7)");
+  });
+
+  it("does not call a blank a disagreement, because a blank is not a score", () => {
+    const stored = { cards: [card("a", "ALPHA", 30, ["6"])] };
+    const incoming = { cards: [card("a", "ALPHA", 20, [])] };
+    const merged = cardsOf(mergeScorecardPayloads(stored, incoming, NOW))[0] as { note?: string };
+    expect(merged.note).toBeUndefined();
+  });
+
+  it("does not note a clash when the losing copy is simply old", () => {
+    const stored = { cards: [card("a", "ALPHA", NOW, ["6"])] };
+    const stale = { cards: [card("a", "ALPHA", NOW - 60 * 60_000, ["4"])] };
+    const merged = cardsOf(
+      mergeScorecardPayloads(stored, stale, NOW, { incomingBy: "juan@example.com" }),
+    )[0] as { note?: string };
+    expect(merged.note).toBeUndefined();
+  });
+
+  it("adds the same clash note only once when a stale copy is sent again", () => {
+    const stored = { cards: [card("a", "ALPHA", 30, ["6"])] };
+    const incoming = { cards: [card("a", "ALPHA", 20, ["4"])] };
+    const first = mergeScorecardPayloads(stored, incoming, NOW, { incomingBy: "juan@example.com" });
+    const second = mergeScorecardPayloads(first.payload, incoming, NOW, {
+      incomingBy: "juan@example.com",
+    });
+    const note = (cardsOf(second)[0] as { note?: string }).note ?? "";
+    expect(note.split("Two saves disagreed").length - 1).toBe(1);
+  });
 });

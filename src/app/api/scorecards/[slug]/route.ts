@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { requireScorecardAccess } from "@/lib/scorecards/access";
 import { cleanLabel, normalizeSlug, validateScorecardPayload } from "@/lib/scorecards/document";
 import { mergeScorecardPayloads } from "@/lib/scorecards/merge";
-import { getScorecardStore, ScorecardStoreUnavailable } from "@/lib/scorecards/store";
+import {
+  getScorecardStore,
+  ScorecardStoreBusy,
+  ScorecardStoreUnavailable,
+} from "@/lib/scorecards/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +20,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function storeError(error: unknown): NextResponse | null {
+  if (error instanceof ScorecardStoreBusy) {
+    // Another save holds the lease. The page keeps the edits and retries in a moment.
+    return NextResponse.json({ ok: false, busy: true, message: error.message }, { status: 423 });
+  }
   if (error instanceof ScorecardStoreUnavailable) {
     return jsonError(503, error.message);
   }
@@ -78,32 +86,44 @@ export async function PUT(
     const store = await getScorecardStore();
     // The document is shared by everyone signed in to the scorecard, so a save is merged into what
     // is stored, card by card, instead of replacing it. Otherwise the last person to save would erase
-    // everyone else's cards, and nobody would see anyone else's work.
-    const stored = await store.get(slug);
-    const now = Date.now();
-    const merged = mergeScorecardPayloads(stored ? stored.payload : null, checked.payload, now);
-    const recheck = validateScorecardPayload(merged.payload);
-    if (!recheck.ok) return jsonError(400, recheck.message);
-    if (stored && !merged.changed) {
-      return NextResponse.json({
-        ok: true,
-        updatedAt: stored.updatedAt,
+    // everyone else's cards, and nobody would see anyone else's work. The lease makes the read, merge
+    // and write one step: without it two saves arriving together could both merge over the same copy
+    // and the second write would drop the first one's cards.
+    const outcome = await store.locked(slug, access.email ?? null, async () => {
+      const stored = await store.get(slug);
+      const now = Date.now();
+      const merged = mergeScorecardPayloads(stored?.payload ?? null, checked.payload, now, {
+        storedBy: stored?.updatedBy ?? null,
+        incomingBy: access.email ?? null,
+      });
+      const recheck = validateScorecardPayload(merged.payload);
+      if (!recheck.ok) return { ok: false as const, message: recheck.message };
+      if (stored && !merged.changed) {
+        return {
+          ok: true as const,
+          updatedAt: stored.updatedAt,
+          updatedBy: stored.updatedBy,
+          serverTime: now,
+          payload: recheck.payload,
+        };
+      }
+      const document = await store.put({
+        slug,
+        event: cleanLabel(body.event, stored?.event ?? "24th Bamboo Tee"),
+        label: cleanLabel(body.label, stored?.label ?? "Day 1 AM"),
+        payload: recheck.payload,
+        updatedBy: access.email ?? null,
+      });
+      return {
+        ok: true as const,
+        updatedAt: document.updatedAt,
+        updatedBy: document.updatedBy,
         serverTime: now,
         payload: recheck.payload,
-      });
-    }
-    const document = await store.put({
-      slug,
-      event: cleanLabel(body.event, stored?.event ?? "24th Bamboo Tee"),
-      label: cleanLabel(body.label, stored?.label ?? "Day 1 AM"),
-      payload: recheck.payload,
+      };
     });
-    return NextResponse.json({
-      ok: true,
-      updatedAt: document.updatedAt,
-      serverTime: now,
-      payload: recheck.payload,
-    });
+    if (!outcome.ok) return jsonError(400, outcome.message);
+    return NextResponse.json({ ...outcome });
   } catch (error) {
     return (
       storeError(error) ??
