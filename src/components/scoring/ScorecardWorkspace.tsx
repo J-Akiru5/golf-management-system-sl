@@ -65,6 +65,8 @@ export interface ScorecardWorkspaceProps {
   onEnter: (hole: number) => void;
   /** Enter in the card's HDCP box moves the desk into the grid: type the handicap, then the card. */
   onHandicapEnter?: () => void;
+  /** Owner or organizer only: corrects the snapshot this round is scored from. */
+  onCorrectHandicap?: () => void;
   scan: ScanCardReview;
   scanned: boolean;
   scanImage: ScorecardScanImage | null;
@@ -119,6 +121,7 @@ export function ScorecardWorkspace({
   onStrokeChange,
   onEnter,
   onHandicapEnter,
+  onCorrectHandicap,
   scan,
   scanned,
   scanImage,
@@ -634,6 +637,7 @@ export function ScorecardWorkspace({
             handicap={eventRules ? cardSnapshot : selectedPlayer.handicap}
             frozenIndex={selectedPlayer.frozenIndex}
             course={view.course}
+            onCorrect={onCorrectHandicap}
           />
         )}
       </div>

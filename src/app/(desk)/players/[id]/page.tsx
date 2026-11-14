@@ -38,7 +38,7 @@ import { selectIndexForCutOff } from "@/lib/data/frozen";
 import { fmtIso } from "@/lib/data/labels";
 import { partnerOf } from "@/lib/data/registrations";
 import { registeredDayBadges } from "@/lib/data/sessions";
-import { PAYMENT_LABEL, type HandicapRecord } from "@/lib/data/types";
+import { type HandicapRecord, PAYMENT_LABEL } from "@/lib/data/types";
 import { displayName, fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
 import { formatName } from "@/lib/names";
 import { nextPairNumber } from "@/lib/pairs/pairs";

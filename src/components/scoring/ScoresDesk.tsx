@@ -17,6 +17,7 @@ import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { CardQueuePanel } from "@/components/scoring/CardQueuePanel";
+import { CorrectHandicapDialog } from "@/components/scoring/CorrectHandicapDialog";
 import { OpenRoundPanel } from "@/components/scoring/OpenRoundPanel";
 import { PlayerLink } from "@/components/scoring/PlayerLink";
 import { ScorecardImportPanel } from "@/components/scoring/ScorecardImportPanel";
@@ -28,7 +29,7 @@ import type { ClubRole } from "@/lib/auth/member";
 import { isFinalPlayingDay } from "@/lib/data/dates";
 import { type OpenRoundSnapshot, openRoundErrorMessage } from "@/lib/data/open-round";
 import { canOpenPlayerProfile } from "@/lib/data/player-profile";
-import type { OpenRoundInput, ScoringRoundView } from "@/lib/data/scoring";
+import type { CorrectHandicapInput, OpenRoundInput, ScoringRoundView } from "@/lib/data/scoring";
 import { sessionForTimeIn, sessionsForDay } from "@/lib/data/sessions";
 import { fmtHcp, fmtIndex } from "@/lib/format";
 import {
@@ -145,6 +146,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     state: "all",
     query: "",
   });
+  /** The sheet that corrects the snapshot this played round is scored from. */
+  const [correctingHandicap, setCorrectingHandicap] = useState(false);
   /** The control the desk gets back after a selection or a save. The token re-runs the same id. */
   const [focusRequest, setFocusRequest] = useState<{ id: string; token: number } | null>(null);
   const focusToken = useRef(0);
@@ -158,6 +161,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     member?.role === "owner" ||
     member?.role === "organizer" ||
     member?.role === "desk";
+  /** A played round's snapshot correction is a committee action, not a desk edit. */
+  const canCorrectHandicap =
+    status === "demo" || member?.role === "owner" || member?.role === "organizer";
   // Demo has no auth at all (`member` is undefined); a signed-in account always has a role. The
   // profile link is only painted when the account may actually open a staff profile page.
   const profileRole = member === undefined ? undefined : (member?.role ?? null);
@@ -437,6 +443,30 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       if (next) setView(next);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Corrects the snapshot this round is scored from. The sheet stays open on a refusal, so the
+   * reason and the corrected numbers are not lost. The result is recalculated by the database; the
+   * public board waits for the next publish.
+   */
+  async function correctHandicap(input: CorrectHandicapInput) {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await scoring.correctHandicap(tournamentId, input, day);
+      setView(next);
+      setSavedNote(
+        "Handicap corrected and the player's result recalculated. Publish the round to update the public board.",
+      );
+      setCorrectingHandicap(false);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(message);
+      throw reason instanceof Error ? reason : new Error(message);
     } finally {
       setBusy(false);
     }
@@ -1075,6 +1105,13 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   }
                   onEnter={focusAfter}
                   onHandicapEnter={() => requestFocus(firstHoleId())}
+                  onCorrectHandicap={
+                    canCorrectHandicap &&
+                    selectedPlayer?.handicap &&
+                    selectedPlayer.handicap.rounding !== "card"
+                      ? () => setCorrectingHandicap(true)
+                      : undefined
+                  }
                   scan={scan}
                   scanned={scanned}
                   scanImage={scanImage}
@@ -1406,6 +1443,19 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
             </SectionCard>
           )}
         </>
+      )}
+      {correctingHandicap && selectedPlayer?.handicap && view && (
+        <CorrectHandicapDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setCorrectingHandicap(false);
+          }}
+          playerId={selectedPlayer.playerId}
+          playerName={selectedPlayer.playerName}
+          handicap={selectedPlayer.handicap}
+          roundStatus={view.roundStatus}
+          onSave={correctHandicap}
+        />
       )}
     </div>
   );

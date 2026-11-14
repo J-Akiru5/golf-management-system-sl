@@ -466,10 +466,13 @@ check(
   (await tileNumber(0)) === 0 && (await tileNumber(1)) === 0 && (await tileNumber(2)) === 4,
   `(${await tileNumber(0)} entered, ${await tileNumber(1)} verified, ${await tileNumber(2)} missing)`,
 );
+const hasQueueFilter = async (name) =>
+  (await queuePanel.getByRole("combobox", { name, exact: true }).count()) === 1;
 check(
   "the day, session and class filters are offered",
-  (await queuePanel.getByLabel("Session").count()) === 1 &&
-    (await queuePanel.getByLabel("Class").count()) === 1,
+  (await hasQueueFilter("Day")) &&
+    (await hasQueueFilter("Session")) &&
+    (await hasQueueFilter("Class")),
 );
 
 const queueSearch = queuePanel.getByLabel("Player search");
