@@ -9,6 +9,26 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.56.0] - 2026-11-15
+
+### Added
+- **The public sees nothing until the club releases each category, then the top three.** A new
+  `/results` podium holds six independent lanes: Class A to D, Net overall and Gross overall. A held
+  lane is blank. A counting lane shows the number only, cinema style, driven by the server clock so
+  every phone agrees. A released lane shows the top three with the tie mark the desk confirmed and a
+  one-shot flash. The desk page `/awarding` holds or releases one lane at a time and sets the seconds.
+  All scores moved to `/results/all`. A held lane returns nothing to a direct database call, not just
+  to the page.
+- **A demo flag rehearses the ceremony on staging.** `AWARDING_DEMO=1` serves fictional sample boards
+  on a loop and is refused in production.
+
+### Migrations shipping with this release
+
+- `20261115000200_results_reveal.sql`: **written, not applied.** Without it the blackout still works
+  through the existing release gate, but the per-lane countdown cannot be read by a signed-out page.
+
+
+
 ## [0.55.0] - 2026-11-15
 
 ### Added
