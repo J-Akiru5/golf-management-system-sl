@@ -26,6 +26,11 @@ Supabase project, because the code and the database are released separately.
   nine-hole tables with Hole, Par, SI, Gross, Hcp, Net, Gross pts and Net pts, OUT/IN totals, and
   the same pinned row labels and contained sideways scroll on a phone. The card sits directly under
   the player's identity, before the pair score. No migration.
+- **Day 3 afternoon reads 12:00 on the public pages.** The 24th Bamboo Tee PM sheet for 14 November
+  is a 12:00 shotgun. The public pairings and profile use that session time; Day 1 and Day 2 stay
+  12:30 and Day 4 stays 11:30. The published Day 3 PM pairings were corrected from the desk sheet:
+  the 12/15 foursomes, Gallaga to hole 2, Yap Corel on 18, and the three players not on the sheet
+  removed from the PM display. No migration.
 
 ### Fixed
 - **A public card never invents a score for a pick-up or a partial round.** A hole flagged
