@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.55.0] - 2026-11-15
+
 ### Added
 - **The tabulation page can add a card for any player in the event, or for a name that is not in the
   system.** "Add card for a player" searches the whole event, not just the day's draw, and says when
@@ -68,6 +70,13 @@ Verified on the branches: `pnpm check` and `pnpm check:ui` passed for the save-s
   the work in flight (#301 to #305) and the guardrails while production is live. 22 resolved issues and
   4 stale pull requests were closed.
 - **`docs/PLAN.md` records the tabulator save-safety change:** the lease, the load merge, the snapshot and undo, and what was not exercised against the live bucket. No code change.
+
+### Migrations shipping with this release
+
+- `20261115000100_card_handicap_signed_handicap.sql`: **written, not applied.** Needed only for a
+  card that plays off a negative number. Until it runs, such a card is refused with a message naming
+  the file; every card that plays off 0 or more saves normally.
+- `20261114000100_card_handicap_snapshot.sql`: **applied.** `save_card_handicap_snapshot` is live.
 
 ## [0.54.0] - 2026-11-14
 
