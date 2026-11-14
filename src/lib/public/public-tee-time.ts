@@ -9,7 +9,8 @@
  * The rule the club settled on:
  *   Day 1 and Day 2, morning   06:30
  *   Day 3 and Day 4, morning   06:00
- *   Day 1 to Day 3, afternoon  12:30
+ *   Day 1 and Day 2, afternoon 12:30
+ *   Day 3, afternoon           12:00
  *   Day 4, afternoon           11:30 (Sunday's earlier second session)
  *
  * This is presentation only. The stored draw, the published snapshot, the desk screens and every
@@ -24,7 +25,7 @@ export interface PublicTeeTimeInput {
 }
 
 /** The event's advertised first tee, kept for callers that need the fallback without a day. */
-export const PUBLIC_FIRST_TEE_TIME = "06:30";
+export const PUBLIC_FIRST_TEE_TIME = "06:00";
 
 /**
  * The session time to print, or null when the club's rule does not name this day.
@@ -35,6 +36,9 @@ export const PUBLIC_FIRST_TEE_TIME = "06:30";
  */
 export function publicTeeTime({ dayNumber, afternoon }: PublicTeeTimeInput): string | null {
   if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 4) return null;
-  if (afternoon) return dayNumber === 4 ? "11:30" : "12:30";
+  if (afternoon) {
+    if (dayNumber === 4) return "11:30";
+    return dayNumber === 3 ? "12:00" : "12:30";
+  }
   return dayNumber >= 3 ? "06:00" : "06:30";
 }
