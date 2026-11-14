@@ -527,6 +527,11 @@ await expect(queueRows).toHaveCount(4, { timeout: 15000 });
 await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
 const fastCards = page.locator('section[aria-labelledby="score-cards"]');
 await expect(fastCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
+const autoPublishBox = fastCards.getByRole("checkbox", {
+  name: "Publish verified cards automatically",
+});
+await expect(autoPublishBox).toBeChecked({ timeout: 15000 });
+check("a verified card is set to publish automatically", true);
 await fastCards.getByRole("button", { name: "Approve" }).first().click();
 await expect(fastCards.locator("tbody tr .pill.ok")).toHaveCount(1, { timeout: 20000 });
 await scoresTab("Enter card", 'section[aria-labelledby="card-queue"]');
@@ -542,6 +547,28 @@ check(
   `(${entryCell?.height}px)`,
 );
 await page.setViewportSize({ width: 1440, height: 950 });
+
+section("/scores handicap correction");
+await queueSearch.fill("sample player a");
+await expect(queueRows).toHaveCount(1, { timeout: 15000 });
+await queueSearch.press("Enter");
+const correctHandicapButton = page.getByRole("button", { name: "Correct handicap" }).first();
+await expect(correctHandicapButton).toBeVisible({ timeout: 15000 });
+await correctHandicapButton.click();
+const correctDialog = page.getByRole("dialog");
+await expect(correctDialog).toBeVisible({ timeout: 15000 });
+await correctDialog.getByLabel("Corrected handicap index").fill("10.1");
+await correctDialog.getByLabel("Corrected index effective date").fill("2026-11-01");
+await correctDialog.getByLabel("Reason for the correction").fill("Browser check correction");
+await correctDialog.getByRole("button", { name: "Correct handicap" }).click();
+await expect(
+  page.getByText(/Handicap corrected and the player's result recalculated/),
+).toBeVisible({ timeout: 20000 });
+const correctedSummary = page.locator('section[aria-label="Handicap for SAMPLE PLAYER A"]');
+await expect(correctedSummary.getByText("10", { exact: true }).first()).toBeVisible({
+  timeout: 15000,
+});
+check("the played round's handicap snapshot can be corrected with a reason", true);
 
 // ------------------------------------------------------------- staff sheet, 360px
 // The volunteer's phone: no sideways scroll, 44px targets, numeric entry, and the same scan review

@@ -68,6 +68,11 @@ import { playingDaysOfEvent } from "@/lib/store/state";
 const DEMO_NOTICE =
   "Sample scoring preview. Cards, approvals, resolutions and standings live in this browser only and are not written to the database. The scoring schema and RPCs are applied; this screen is not wired to them yet.";
 
+/** The browser's own choice for one event and day. The round still decides whether it can publish. */
+function autoPublishKey(tournamentId: string, day: number | null): string {
+  return `teeline-auto-publish:${tournamentId}:${day ?? "all"}`;
+}
+
 /** A manual card starts empty. A cell is only ever filled by a person or by the reader. */
 function blankStrokes(holes: readonly HoleDefinition[]): Record<number, string> {
   return Object.fromEntries(holes.map((hole) => [hole.number, ""]));
@@ -150,6 +155,13 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   });
   /** The sheet that corrects the snapshot this played round is scored from. */
   const [correctingHandicap, setCorrectingHandicap] = useState(false);
+  /**
+   * Publish a verified card without a second click. The choice is remembered per event and day in
+   * this browser; the round must still allow provisional publication.
+   */
+  const [autoPublish, setAutoPublish] = useState(true);
+  const autoPublishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingVerified = useRef<string[]>([]);
   /** The control the desk gets back after a selection or a save. The token re-runs the same id. */
   const [focusRequest, setFocusRequest] = useState<{ id: string; token: number } | null>(null);
   const focusToken = useRef(0);
@@ -327,6 +339,24 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     }
   }, [focusRequest]);
 
+  // The auto-publish choice belongs to this browser, event and day. A stored "0" turns it off.
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(autoPublishKey(tournamentId, day));
+      if (stored !== null) setAutoPublish(stored === "1");
+    } catch {
+      // Storage off: keep the default, which publishes after verification.
+    }
+  }, [tournamentId, day]);
+
+  // A queued publish dies with the screen; the next verification schedules a new one.
+  useEffect(
+    () => () => {
+      if (autoPublishTimer.current) clearTimeout(autoPublishTimer.current);
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!tournamentId) return;
     let cancelled = false;
@@ -470,6 +500,64 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       const message = reason instanceof Error ? reason.message : String(reason);
       setError(message);
       throw reason instanceof Error ? reason : new Error(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Collects the cards verified in a short burst and publishes once. The board's Live mode batches
+   * its edits the same way, so a run of approvals is one publication, not one per card.
+   */
+  function scheduleAutoPublish(players: string[]) {
+    if (!autoPublish) return;
+    if (!view?.provisionalPublication || view.roundStatus === "final") return;
+    pendingVerified.current.push(...players);
+    if (autoPublishTimer.current) clearTimeout(autoPublishTimer.current);
+    autoPublishTimer.current = setTimeout(() => {
+      void publishVerified();
+    }, 2000);
+  }
+
+  async function publishVerified() {
+    const names = pendingVerified.current;
+    pendingVerified.current = [];
+    if (names.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await scoring.publishRound(
+        tournamentId,
+        `Automatic publish after verification: ${names.join(", ")}`,
+        day,
+      );
+      setView(next);
+      setSavedNote(
+        `Published automatically after ${names.length} verified ${names.length === 1 ? "card" : "cards"}.`,
+      );
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(
+        `The ${names.length === 1 ? "card is" : "cards are"} approved, but the automatic publish failed: ${message} Use Publish provisional.`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Approves one card, then lets the debounced publish carry it to the public board. */
+  async function approveCard(cardId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await scoring.approveCard(tournamentId, cardId, "Desk approval", day);
+      setView(next);
+      const card = next.cards.find((candidate) => candidate.id === cardId);
+      const name =
+        next.players.find((player) => player.playerId === card?.playerId)?.playerName ?? cardId;
+      scheduleAutoPublish([name]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setBusy(false);
     }
@@ -799,6 +887,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
             saved.outcome === "approved"
               ? `Card saved and approved for ${playerName || "this player"}. It counts now.`
               : `The card for ${playerName || "this player"} was already in.`;
+          if (saved.outcome === "approved") {
+            scheduleAutoPublish([playerName || targetPlayerId]);
+          }
         } else {
           next = await scoring.submitCard(
             tournamentId,
@@ -1159,6 +1250,30 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
               subtitle="Approve only after the card is checked. Low-confidence values need a person to confirm them."
               dataHelp="scores-cards"
             >
+              <label className="flex min-h-11 items-center gap-2 text-[13px]">
+                <input
+                  type="checkbox"
+                  checked={autoPublish}
+                  onChange={(event) => {
+                    const next = event.target.checked;
+                    setAutoPublish(next);
+                    try {
+                      window.localStorage.setItem(
+                        autoPublishKey(tournamentId, day),
+                        next ? "1" : "0",
+                      );
+                    } catch {
+                      // Storage off: the choice still applies until this screen closes.
+                    }
+                  }}
+                />
+                Publish verified cards automatically
+              </label>
+              <p className="hint">
+                A verified card reaches the public board after a short pause, in one publication for
+                a run of cards. The Publish provisional button still works, and this choice is
+                remembered in this browser for this event and day.
+              </p>
               {view.cards.length === 0 ? (
                 <p className="muted">No cards yet. Enter one above.</p>
               ) : (
@@ -1185,11 +1300,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                           onRejectReason={(value) =>
                             setRejectReasons((current) => ({ ...current, [card.id]: value }))
                           }
-                          onApprove={() =>
-                            void run(() =>
-                              scoring.approveCard(tournamentId, card.id, "Desk approval", day),
-                            )
-                          }
+                          onApprove={() => void approveCard(card.id)}
                           onReject={() => {
                             const reason = (rejectReasons[card.id] ?? "").trim();
                             if (!reason) {
