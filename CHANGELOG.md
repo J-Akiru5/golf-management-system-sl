@@ -9,6 +9,23 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.52.4] - 2026-11-14
+
+### Fixed
+- **Every player's public profile shows their playing handicap.** The profile took the playing
+  handicap from the player's published scorecards, so a player with no published card showed a dash,
+  which was most of the field. It now also reads the playing handicap the system holds for the
+  player's entry, the same number the draw and the scorecard use, so every player with a confirmed
+  entry shows one. When a card is published its handicap still wins, so the profile always agrees
+  with the card under it. A player the system has no handicap for yet (no index or tee) still shows a
+  dash rather than a guess.
+- **Migration written, not applied:** `20261114000400_public_profile_playing_handicap.sql` replaces
+  `public_player_scorecard()` with the same function plus two lines, `r.playing_handicap` in the
+  player's row and `'playingHandicap'` in the player object. It keeps the release gate (the
+  tournament is published and its leaderboard is released) and the public grants, changes no table,
+  column or policy, and exposes no other field. Until it is run in the Supabase SQL editor the page
+  behaves as before: the card's handicap when a card is published, a dash otherwise.
+
 ## [0.52.3] - 2026-11-14
 
 ### Fixed
