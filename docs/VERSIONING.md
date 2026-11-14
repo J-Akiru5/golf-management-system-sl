@@ -85,6 +85,20 @@ git push origin vX.Y.Z
 Nothing else is delegated. Production database migrations still need their own decision. A tag is
 still never moved, deleted or reused, and a red commit is still never tagged.
 
+### Staging watcher
+
+`pnpm watch:staging` (`scripts/watch-staging.ts`) runs on the owner's PC and listens to `origin/staging`.
+When a batch lands that changes production, it builds a candidate (a branch from `main` with staging
+merged in), moves the CHANGELOG [Unreleased] notes under the next version, runs `pnpm check` and, for
+visible changes, `pnpm check:ui`, then opens the release PR to `main`. It never edits code to make a check
+pass. It stops and asks the owner when the merge conflicts, the batch has a database migration or changes
+`vercel.json` or the CI workflows, or [Unreleased] has no notes. Nothing reaches `main` until the owner adds
+the `ship` label to the PR (only the owner's label counts) or runs `pnpm watch:staging -- ship <PR>`. It
+then merges under the owner's identity (Vercel blocks deploys from anyone not on the team), tags the merge
+commit, merges `main` back into `develop` and reports whether Vercel deployed it. State and logs are in
+`.watch-staging/` (git-ignored). `pnpm watch:staging -- status` shows what it is doing and
+`-- resume` retries after a stop.
+
 ## Tags for the versions already built
 
 The history below was reconstructed from the merge log on 18 Oct 2026. The tags are published; follow

@@ -9,6 +9,23 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **A clubhouse TV board at `/tv` rolls the scores.** It shows which day is on screen, who played the
+  morning and who played the afternoon, and what each scored: net and gross Stableford points, holes
+  counted, pair, flight and tee time. Every figure is the frozen published one, so the screen never
+  shows a card the desk has not released. Each column rolls its list up the screen, one pass at a time,
+  and the board moves to the next list when every column has finished. The screen refreshes itself
+  once a minute. The roster, pairings and team rows now share one card layout. No migration.
+- **A staging watcher for the owner's PC (`pnpm watch:staging`).** It listens to `staging`, builds the
+  release candidate, runs the checks, opens the release pull request and waits for the owner's `ship`
+  label before anything reaches `main`. Tooling only: no change to the app. See `docs/VERSIONING.md`.
+
+### Docs
+- **`docs/PLAN.md` records 0.52.1 and what followed it:** the live-sync release and its Vercel-blocked
+  first deploy, the rule that merges to `main` and `staging` are made as `J-Akiru5`, the owner's
+  decision to cap the playing handicap at the event maximum (not built), the stale
+  `fix/0.51.1-handicap-scan` branch, and the four tabulation accounts. No code change.
+
 ## [0.52.4] - 2026-11-14
 
 ### Fixed
