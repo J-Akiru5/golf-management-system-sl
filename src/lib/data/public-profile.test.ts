@@ -4,6 +4,7 @@ import type { Database } from "@/lib/supabase/types";
 import {
   loadPublicPlayerProfile,
   parsePublicPlayerProfile,
+  profilePlayingHandicap,
   profileTeeTimes,
   searchProfilePlayers,
 } from "./public-profile";
@@ -71,6 +72,7 @@ describe("parsePublicPlayerProfile", () => {
       id: "p1",
       name: "ANA REYES",
       index: 11.2,
+      playingHandicap: null,
       category: "Ladies",
       flight: "Class A",
       pairNumber: 4,
@@ -238,5 +240,40 @@ describe("searchProfilePlayers", () => {
 
   it("stops at the limit so a phone does not render the whole field", () => {
     expect(searchProfilePlayers(players, "a", 1)).toHaveLength(1);
+  });
+});
+
+describe("the playing handicap on a public profile", () => {
+  const profile = (player: Record<string, unknown>, cards: unknown[] = []) =>
+    parsePublicPlayerProfile({
+      player: { id: "p1", name: "Ana Reyes", ...player },
+      cards,
+    });
+
+  it("reads the playing handicap the system holds for the player, as whole strokes", () => {
+    expect(profile({ playingHandicap: 14 })?.player.playingHandicap).toBe(14);
+    expect(profile({ playingHandicap: 14.6 })?.player.playingHandicap).toBe(14);
+    expect(profile({ playingHandicap: -2 })?.player.playingHandicap).toBe(-2);
+  });
+
+  it("treats a missing or non-numeric value as none, never as 0", () => {
+    expect(profile({})?.player.playingHandicap).toBeNull();
+    expect(profile({ playingHandicap: null })?.player.playingHandicap).toBeNull();
+    expect(profile({ playingHandicap: "14" })?.player.playingHandicap).toBeNull();
+  });
+
+  it("shows the system's handicap to a player who has no published card", () => {
+    const data = profile({ playingHandicap: 14 });
+    expect(data && profilePlayingHandicap(data)).toBe(14);
+  });
+
+  it("prefers the handicap on a published card, so the page agrees with the card under it", () => {
+    const data = profile({ playingHandicap: 14 }, [card]);
+    expect(data && profilePlayingHandicap(data)).toBe(12);
+  });
+
+  it("is none only when neither the card nor the system has one", () => {
+    const data = profile({});
+    expect(data && profilePlayingHandicap(data)).toBeNull();
   });
 });
