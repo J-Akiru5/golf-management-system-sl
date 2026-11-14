@@ -274,7 +274,7 @@ export const tl: Dictionary = {
     footer:
       "Pangalan, home club, handicap, kategorya, flight, hole at oras lamang. Walang contact details o litrato.",
     home: "TEELINE GOLF HOME",
-    backHome: "Bumalik sa pangunahing pahina",
+    backHome: "Bumalik sa home",
     backToPairings: "Bumalik sa pairings",
     checkAgain: "Tingnan muli",
     demoFooter:

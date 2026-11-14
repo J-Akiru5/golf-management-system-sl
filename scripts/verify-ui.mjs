@@ -1467,6 +1467,21 @@ check(
 await phonePage.locator('[data-testid="scores-session"]').selectOption("");
 await phonePage.locator('[data-testid="scores-view-cards"]').click();
 await phonePage.waitForTimeout(250);
+// The search is the first control, above the day, session and class dropdowns.
+const scoresSearchBox = await phonePage.locator('[data-testid="scores-search"]').boundingBox();
+const scoresDayBox = await phonePage.locator('[data-testid="scores-day"]').boundingBox();
+check(
+  "the name search sits above the filters",
+  scoresSearchBox !== null && scoresDayBox !== null && scoresSearchBox.y < scoresDayBox.y,
+  `(search ${Math.round(scoresSearchBox?.y ?? -1)}, day ${Math.round(scoresDayBox?.y ?? -1)})`,
+);
+// A member who does not read small links still has to see that the top ten teams are a tap away.
+const scoresTeamsBox = await phonePage.locator('[data-testid="scores-teams-button"]').boundingBox();
+check(
+  "the top-teams link is a full-size button",
+  scoresTeamsBox !== null && scoresTeamsBox.height >= 44,
+  `(${Math.round(scoresTeamsBox?.height ?? 0)}px)`,
+);
 await phonePage.locator('[data-testid="scores-search"]').fill("antonio");
 await phonePage.waitForTimeout(250);
 const foundRows = await scoreRows.count();
