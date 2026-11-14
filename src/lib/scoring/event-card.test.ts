@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { makeSnapshotFor, TEST_TEE } from "./__tests__/fixtures";
-import { type EventCardPlanInput, pickDeskMarker, planEventCardSave } from "./event-card";
+import {
+  type EventCardPlanInput,
+  type EventHandicapPlanInput,
+  pickDeskMarker,
+  planEventCardSave,
+  planEventHandicap,
+} from "./event-card";
 
 const PLAYERS = [
-  { playerId: "p3", playerName: "Charlie", handicap: null },
-  { playerId: "p1", playerName: "Alpha", handicap: null },
-  { playerId: "p2", playerName: "Bravo", handicap: null },
+  { playerId: "p3", playerName: "Charlie", handicap: null, frozenIndex: 9.2, tee: TEST_TEE },
+  { playerId: "p1", playerName: "Alpha", handicap: null, frozenIndex: 16.4, tee: TEST_TEE },
+  { playerId: "p2", playerName: "Bravo", handicap: null, frozenIndex: null, tee: TEST_TEE },
 ];
 
 function input(overrides: Partial<EventCardPlanInput> = {}): EventCardPlanInput {
@@ -29,26 +35,47 @@ function refusal(overrides: Partial<EventCardPlanInput>): string {
   return plan.message;
 }
 
+function withPlayer(
+  playerId: string,
+  changes: Partial<{ handicap: ReturnType<typeof makeSnapshotFor> | null }>,
+): Partial<EventCardPlanInput> {
+  return {
+    players: PLAYERS.map((player) =>
+      player.playerId === playerId ? { ...player, ...changes } : player,
+    ),
+  };
+}
+
 describe("planning a card under the event rules", () => {
-  it("plans the handicap, the marker and the audit sentence", () => {
+  it("plans the WHS handicap, the marker and the audit sentence", () => {
     const plan = planEventCardSave(input());
     expect(plan.ok).toBe(true);
     if (!plan.ok) return;
-    expect(plan.reading.playingHandicap).toBe(16);
-    expect(plan.snapshot.playingHandicap).toBe(16);
+    // Index 16.4 on the test tee is 18, whatever the box says.
+    expect(plan.handicap.playingHandicap).toBe(18);
+    expect(plan.handicap.index).toBe(16.4);
+    expect(plan.snapshot.playingHandicap).toBe(18);
     expect(plan.needsSnapshotWrite).toBe(true);
+    expect(plan.cardNote).toBe("card says 16.7, plays off 18 (index 16.4, White)");
     expect(plan.marker).toEqual({ playerId: "p2", playerName: "Bravo", placeholder: true });
     expect(plan.auditReason).toContain("bamboo-tee-2026");
     expect(plan.auditReason).toContain("16.7");
-    expect(plan.auditReason).toContain("plays off 16");
+    expect(plan.auditReason).toContain("WHS playing handicap 18");
     expect(plan.auditReason).toContain("placeholder");
   });
 
   it("writes blank in the audit sentence when the box is blank", () => {
     const plan = planEventCardSave(input({ cardHandicap: "  " }));
     if (!plan.ok) throw new Error(plan.message);
-    expect(plan.reading.playingHandicap).toBe(0);
-    expect(plan.auditReason).toContain("HDCP on card blank, plays off 0");
+    expect(plan.handicap.playingHandicap).toBe(18);
+    expect(plan.cardNote).toBeNull();
+    expect(plan.auditReason).toContain("HDCP on card blank");
+  });
+
+  it("says nothing when the box already reads the WHS number", () => {
+    const plan = planEventCardSave(input({ cardHandicap: "18" }));
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.cardNote).toBeNull();
   });
 
   it("does not write a snapshot that already plays off the same number", () => {
@@ -57,12 +84,33 @@ describe("planning a card under the event rules", () => {
         players: PLAYERS.map((player) =>
           player.playerId === "p1" ? { ...player, handicap: makeSnapshotFor(16) } : player,
         ),
-        // Index 16 on the test tee plays off 17 under WHS, so use the number it really gives.
-        cardHandicap: String(makeSnapshotFor(16).playingHandicap),
       }),
     );
     if (!plan.ok) throw new Error(plan.message);
+    // A snapshot for index 16 on this tee already plays off 18.
     expect(plan.needsSnapshotWrite).toBe(false);
+  });
+
+  it("caps the index at the event maximum", () => {
+    const plan = planEventCardSave(
+      input({
+        players: PLAYERS.map((player) =>
+          player.playerId === "p1" ? { ...player, frozenIndex: 34.2 } : player,
+        ),
+      }),
+    );
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.handicap.index).toBe(30);
+    expect(plan.handicap.capped).toBe(true);
+    expect(plan.handicap.playingHandicap).toBe(33);
+  });
+
+  it("flags a player with no index on file", () => {
+    const plan = planEventCardSave(input({ playerId: "p2", cardHandicap: "" }));
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.handicap.zeroIndex).toBe(true);
+    expect(plan.handicap.playingHandicap).toBe(0);
+    expect(plan.auditReason).toContain("index 0 on file, check WHS");
   });
 
   it("names the marker the desk chose and does not call it a placeholder", () => {
@@ -87,18 +135,28 @@ describe("planning a card under the event rules", () => {
     expect(refusal({ requiredCards: null })).toContain("unset number");
   });
 
-  it("refuses a handicap it cannot read instead of guessing one", () => {
-    expect(refusal({ cardHandicap: "+2.1" })).toContain("Alpha");
-    expect(refusal({ cardHandicap: "+2.1" })).toContain("not a plain number");
+  it("keeps an HDCP box it cannot read as a note instead of guessing from it", () => {
+    const plan = planEventCardSave(input({ cardHandicap: "+2.1" }));
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.handicap.playingHandicap).toBe(18);
+    expect(plan.cardNote).toBe("card says +2.1, plays off 18 (index 16.4, White)");
   });
 
-  it("refuses to change a frozen snapshot that differs from the card", () => {
+  it("refuses a player with no tee and says what to fix", () => {
     const message = refusal({
       players: PLAYERS.map((player) =>
-        player.playerId === "p1" ? { ...player, handicap: makeSnapshotFor(30) } : player,
+        player.playerId === "p1" ? { ...player, tee: null } : player,
       ),
     });
+    expect(message).toContain("Alpha");
+    expect(message).toContain("no tee");
+    expect(message).toContain("field list");
+  });
+
+  it("refuses to change a frozen snapshot that differs from the WHS figure", () => {
+    const message = refusal(withPlayer("p1", { handicap: makeSnapshotFor(30) }));
     expect(message).toContain("frozen once scoring starts");
+    expect(message).toContain("WHS figure of 18");
   });
 
   it("may change a differing snapshot while the round is still open", () => {
@@ -122,6 +180,90 @@ describe("planning a card under the event rules", () => {
   it("needs a second player to stand as marker", () => {
     const alone = PLAYERS.filter((player) => player.playerId === "p1");
     expect(refusal({ players: alone })).toContain("second player");
+  });
+});
+
+describe("the handicap a card is scored with, for a save or an approval", () => {
+  function handicapInput(overrides: Partial<EventHandicapPlanInput> = {}): EventHandicapPlanInput {
+    return {
+      rulesVersion: "bamboo-tee-2026",
+      roundStatus: "scoring",
+      tee: TEST_TEE,
+      effectiveDate: "2026-11-15",
+      player: {
+        playerId: "p1",
+        playerName: "Alpha",
+        handicap: null,
+        frozenIndex: 16.4,
+        tee: TEST_TEE,
+      },
+      ...overrides,
+    };
+  }
+
+  it("plans the WHS snapshot for a player with no snapshot yet", () => {
+    const plan = planEventHandicap(handicapInput());
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.needsSnapshotWrite).toBe(true);
+    expect(plan.snapshot).toMatchObject({ index: 16.4, playingHandicap: 18, rounding: "whs" });
+  });
+
+  it("writes nothing when the round already plays off the same number", () => {
+    const plan = planEventHandicap(
+      handicapInput({
+        player: {
+          playerId: "p1",
+          playerName: "Alpha",
+          handicap: makeSnapshotFor(16),
+          frozenIndex: 16.4,
+        },
+      }),
+    );
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.needsSnapshotWrite).toBe(false);
+  });
+
+  it("names Correct handicap when a differing snapshot is frozen", () => {
+    const plan = planEventHandicap(
+      handicapInput({
+        player: {
+          playerId: "p1",
+          playerName: "Alpha",
+          handicap: makeSnapshotFor(30),
+          frozenIndex: 16.4,
+        },
+      }),
+    );
+    if (plan.ok) throw new Error("The frozen snapshot was expected to be refused.");
+    expect(plan.message).toContain("frozen once scoring starts");
+    expect(plan.message).toContain("WHS figure of 18");
+    expect(plan.message).toContain("Correct handicap");
+  });
+
+  it("flags an index of 0 instead of refusing the card", () => {
+    const plan = planEventHandicap(
+      handicapInput({
+        player: { playerId: "p2", playerName: "Bravo", handicap: null, frozenIndex: 0 },
+      }),
+    );
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.handicap.zeroIndex).toBe(true);
+    expect(plan.handicap.warning).toContain("check WHS");
+    expect(plan.snapshot.playingHandicap).toBe(0);
+  });
+
+  it("refuses a player with no tee and a round that is not on the event rules", () => {
+    const noTee = planEventHandicap(
+      handicapInput({
+        player: { playerId: "p1", playerName: "Alpha", handicap: null, tee: null },
+      }),
+    );
+    if (noTee.ok) throw new Error("A missing tee was expected to be refused.");
+    expect(noTee.message).toContain("no tee");
+
+    const ordinary = planEventHandicap(handicapInput({ rulesVersion: "demo-rules-v1" }));
+    if (ordinary.ok) throw new Error("An ordinary round was expected to be refused.");
+    expect(ordinary.message).toContain("not on the event's card rules");
   });
 });
 
