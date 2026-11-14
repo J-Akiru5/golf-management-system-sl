@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-11-14
+
 ### Added
 - **A player's handicap record can be added or corrected from their page (#204).** Handicap history
   has **Add index** for an owner or organizer, and **Edit** on every record. Saving a date that
