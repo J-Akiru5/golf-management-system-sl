@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.54.0] - 2026-11-14
+
 ### Added
 - **Editing a player's index now corrects their played rounds.** The Edit index dialog works the
   playing handicap out from the registration's own tee (the category tee only when the registration
