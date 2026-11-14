@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { HeldNotice } from "@/components/public/HeldNotice";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
+import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { ScoresView } from "@/components/public/ScoresView";
 import { applyLiveClasses, liveClassesFromProgramme } from "@/lib/data/public-team-leaderboard";
 import {
@@ -9,10 +9,12 @@ import {
   readPublicPairings,
   readPublicProgramme,
   readPublicReleaseState,
+  readPublicRevealState,
   readPublicTeamLeaderboard,
 } from "@/lib/data/supabase/public-cache";
 import { getI18n } from "@/lib/i18n/server";
 import { advisoryForToday } from "@/lib/public/advisory";
+import { blackoutFlags } from "@/lib/public/results-reveal";
 import { buildScoreSessions } from "@/lib/public/score-sessions";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { DemoResults } from "./DemoResults";
@@ -36,29 +38,43 @@ export default async function ResultsPage() {
     return <DemoResults />;
   }
 
-  // Every read is independent and cached, so they start together.
-  const [leaderboardResult, releaseResult, pairingsResult, programmeResult, advisoryResult] =
-    await Promise.allSettled([
-      readPublicTeamLeaderboard(),
-      readPublicReleaseState(),
-      readPublicPairings(),
-      readPublicProgramme(),
-      readPublicAdvisory(),
-    ]);
-
-  const data = leaderboardResult.status === "fulfilled" ? leaderboardResult.value : null;
-  const failure =
-    leaderboardResult.status === "rejected"
-      ? leaderboardResult.reason instanceof Error
-        ? leaderboardResult.reason.message
-        : t("programme.leaderboardFailed")
-      : "";
+  // The release state and the programme come first, on their own. A held results surface means
+  // this page asks for no score at all; the holding screen is rendered from the release alone.
+  const [releaseResult, programmeResult, advisoryResult] = await Promise.allSettled([
+    readPublicReleaseState(),
+    readPublicProgramme(),
+    readPublicAdvisory(),
+  ]);
   const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
-  const pairings = pairingsResult.status === "fulfilled" ? pairingsResult.value : null;
   const programme = programmeResult.status === "fulfilled" ? programmeResult.value : null;
   const advisory = advisoryForToday(
     advisoryResult.status === "fulfilled" ? advisoryResult.value : null,
   );
+
+  if (release?.leaderboard === false && programme) {
+    const reveal = await readPublicRevealState().catch(() => null);
+    return (
+      <LeaderboardShell active="scores" advisory={advisory}>
+        <ResultsHolding
+          revealAt={reveal?.revealAt ?? null}
+          serverNow={new Date().toISOString()}
+          held={blackoutFlags(release)}
+        />
+      </LeaderboardShell>
+    );
+  }
+
+  // The pairings give the morning/afternoon split, not a score, so they are read on their own.
+  const pairingsResult = await Promise.allSettled([readPublicPairings()]);
+  const pairings = pairingsResult[0].status === "fulfilled" ? pairingsResult[0].value : null;
+
+  let data: Awaited<ReturnType<typeof readPublicTeamLeaderboard>> = null;
+  let failure = "";
+  try {
+    data = await readPublicTeamLeaderboard();
+  } catch (error) {
+    failure = error instanceof Error ? error.message : t("programme.leaderboardFailed");
+  }
 
   if (!data && !failure) {
     if (!programme) {
@@ -68,13 +84,6 @@ export default async function ResultsPage() {
             <h2>{t("pairings.notOutTitle")}</h2>
             <p>{t("pairings.notOutBody")}</p>
           </section>
-        </LeaderboardShell>
-      );
-    }
-    if (release?.leaderboard === false) {
-      return (
-        <LeaderboardShell active="scores" advisory={advisory}>
-          <HeldNotice testId="scores-held" />
         </LeaderboardShell>
       );
     }

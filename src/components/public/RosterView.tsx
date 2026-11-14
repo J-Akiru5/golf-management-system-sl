@@ -2,7 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PublicBottomBar } from "@/components/MobileTabBar";
@@ -40,10 +40,13 @@ export function RosterPage({
   players,
   unavailable = "none",
   advisory = null,
+  holding = null,
 }: {
   players: PublicRosterPlayer[];
   unavailable?: RosterUnavailable;
   advisory?: PublicAdvisory | null;
+  /** What to show while the desk is holding the player list. Defaults to the held notice. */
+  holding?: ReactNode;
 }) {
   const { t } = useI18n();
   return (
@@ -75,9 +78,11 @@ export function RosterPage({
 
       <PublicTournamentNav active="players" />
 
-      <p className="notice no-print" data-testid="roster-privacy">
-        {PRIVACY_NOTICE}
-      </p>
+      {unavailable !== "held" && (
+        <p className="notice no-print" data-testid="roster-privacy">
+          {PRIVACY_NOTICE}
+        </p>
+      )}
 
       {unavailable === "failed" ? (
         <div className="notice grid gap-3" role="status" data-testid="roster-failed">
@@ -89,7 +94,7 @@ export function RosterPage({
           </a>
         </div>
       ) : unavailable === "held" ? (
-        <HeldNotice testId="roster-held" />
+        holding ?? <HeldNotice testId="roster-held" />
       ) : unavailable === "unpublished" ? (
         <section className="pairings-empty" role="status" data-testid="roster-empty">
           <h2>{t("pairings.notOutTitle")}</h2>

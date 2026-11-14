@@ -15,6 +15,7 @@ import { RulesOfPlay } from "@/components/public/ProgrammeView";
 import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
+import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
@@ -32,6 +33,7 @@ import {
   readPublicPairings,
   readPublicProgramme,
   readPublicReleaseState,
+  readPublicRevealState,
   readPublicTeamLeaderboard,
 } from "@/lib/data/supabase/public-cache";
 import { fmtTime } from "@/lib/format";
@@ -41,6 +43,7 @@ import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
 import { pairingsSignature } from "@/lib/public/pairings-live";
 import { pairingsBackLink } from "@/lib/public/pairings-nav";
 import { publicProfileTeeTimes } from "@/lib/public/public-profile-tee-times";
+import { blackoutFlags } from "@/lib/public/results-reveal";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { hasSupabaseAuthCookie } from "@/lib/supabase/cookies";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -142,7 +145,11 @@ export default async function PublicPairingsPage({
   let profile: PublicPlayerProfileData | null = null;
   let team: PublicTeamStanding | null = null;
   let profileFailed = false;
-  if (tab === "profile" && playerId) {
+  // The profile is a player's frozen card. While the desk holds the results or the player list, the
+  // page asks for nothing: `public_player_scorecard()` would answer with nothing anyway, and a held
+  // page must not make the request at all.
+  const blackout = release?.roster === false || release?.leaderboard === false;
+  if (tab === "profile" && playerId && !blackout) {
     try {
       profile = await loadPublicPlayerProfile(client, playerId);
     } catch {
@@ -173,6 +180,7 @@ export default async function PublicPairingsPage({
   const rulesHeld = release?.rules === false;
   const rosterHeld = release?.roster === false;
   const leaderboardHeld = release?.leaderboard === false;
+  const reveal = blackout ? await readPublicRevealState().catch(() => null) : null;
   const dates = programme?.days.length
     ? programme.days.map((day) => day.playDate)
     : data
@@ -274,8 +282,10 @@ export default async function PublicPairingsPage({
 
           {tab === "profile" ? (
             rosterHeld || leaderboardHeld ? (
-              <HeldNotice
-                testId={rosterHeld ? "profile-roster-held" : "profile-leaderboard-held"}
+              <ResultsHolding
+                revealAt={reveal?.revealAt ?? null}
+                serverNow={new Date().toISOString()}
+                held={blackoutFlags(release)}
               />
             ) : (
               <>

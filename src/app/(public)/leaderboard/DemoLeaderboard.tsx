@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { HeldNotice } from "@/components/public/HeldNotice";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
+import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { TeamLeaderboard } from "@/components/public/TeamLeaderboard";
 import {
   buildTeamLeaderboard,
@@ -14,11 +14,12 @@ import {
 import { sampleTeamLeaderboardData } from "@/lib/demo/public-leaderboard";
 import { useDemoReleaseState } from "@/lib/demo/public-release";
 import { useI18n } from "@/lib/i18n/context";
+import { blackoutFlags } from "@/lib/public/results-reveal";
 
 const dateLabel = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-PH", { dateStyle: "long" });
 
-/** The sample leaderboard in the no-database preview, including the leaderboard hold. */
+/** The sample leaderboard in the no-database preview, including the results blackout. */
 export function DemoLeaderboard({ filters }: { filters: { category: string; flight: string } }) {
   const { t } = useI18n();
   const release = useDemoReleaseState("bamboo-tee-2026");
@@ -29,7 +30,11 @@ export function DemoLeaderboard({ filters }: { filters: { category: string; flig
   return (
     <LeaderboardShell eventName={data.eventName} dateText={dateText}>
       {release.leaderboard === false ? (
-        <HeldNotice testId="demo-leaderboard-held" />
+        <ResultsHolding
+          revealAt={release.revealAt}
+          serverNow={null}
+          held={blackoutFlags(release)}
+        />
       ) : (
         <>
           <TeamLeaderboard

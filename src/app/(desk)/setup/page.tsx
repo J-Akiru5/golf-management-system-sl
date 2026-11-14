@@ -21,6 +21,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CourseCardEditor } from "@/components/course/CourseCardEditor";
 import { CourseHandicapConverter } from "@/components/course/CourseHandicapConverter";
 import { PublicReleaseCard } from "@/components/desk/PublicReleaseCard";
+import { ResultsBlackoutCard } from "@/components/desk/ResultsBlackoutCard";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
@@ -104,12 +105,19 @@ export default function SetupPage() {
       fieldSize={entries.length}
       hasDraw={Boolean(state.boards[tournament.id]?.draw)}
       releaseCard={
-        <PublicReleaseCard
-          tournamentId={tournament.id}
-          tournamentName={tournament.name}
-          canEdit={canEdit}
-          demo={status === "demo"}
-        />
+        <>
+          <ResultsBlackoutCard
+            tournamentId={tournament.id}
+            canEdit={canEdit}
+            demo={status === "demo"}
+          />
+          <PublicReleaseCard
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            canEdit={canEdit}
+            demo={status === "demo"}
+          />
+        </>
       }
       save={async (input) => adapters.setup.save(input)}
       confirmCourse={(confirmed) => adapters.setup.confirmCourse(tournament.id, confirmed)}

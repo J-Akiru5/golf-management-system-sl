@@ -821,6 +821,13 @@ export const tl: Dictionary = {
   release: {
     heldTitle: "Hawak muna ng organizer ang seksyong ito.",
     heldBody: "Hindi pa ito inilalabas ng organizer. Pakitingnan muli mamaya.",
+    // English draft, 15 Nov 2026. Marked in docs/i18n-review.md for the Tagalog pass.
+    blackoutTitle: "Results will be shown at the awarding.",
+    blackoutBody:
+      "Scores and the player list are paused while the club prepares the awarding. Pairings and tee times stay open.",
+    countdownLabel: "Results in",
+    revealing: "Revealing the results…",
+    countdownNote: "This page updates by itself.",
   },
   // Pampublikong feedback (issue 208). Ito ang mga salitang nakikita ng bisita.
   feedback: {

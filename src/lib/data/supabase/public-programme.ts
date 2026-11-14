@@ -6,6 +6,7 @@ import {
   parsePublicReleaseState,
 } from "@/lib/data/public";
 import type { PublicProgramme } from "@/lib/data/types";
+import { parseRevealAt } from "@/lib/public/results-reveal";
 import type { Database } from "@/lib/supabase/types";
 
 /**
@@ -51,6 +52,44 @@ export async function loadPublicReleaseState(
     throw new Error(`Could not load the public release state: ${error.message}`);
   }
   return parsePublicReleaseState(data);
+}
+
+/**
+ * The reveal time of a results blackout, or null.
+ *
+ * `public_reveal_state()` is the one public read of the time the organizer set. It returns the
+ * event id and the reveal time and nothing else: no player, score, tee or photo data, and no other
+ * key of the stored `publish_views` object. A database without the function answers PGRST202 and
+ * the page shows the holding screen with no countdown, which is the documented degradation.
+ */
+export interface PublicRevealState {
+  tournamentId: string | null;
+  revealAt: string | null;
+}
+
+export function parsePublicRevealState(value: unknown): PublicRevealState | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const tournamentId =
+    typeof record.tournamentId === "string" && record.tournamentId.trim() !== ""
+      ? record.tournamentId
+      : null;
+  if (!tournamentId) return null;
+  return { tournamentId, revealAt: parseRevealAt(record.revealAt) };
+}
+
+export async function loadPublicRevealState(
+  client: SupabaseClient<Database>,
+  tournamentId?: string | null,
+): Promise<PublicRevealState | null> {
+  const { data, error } = await client.rpc("public_reveal_state", {
+    p_tournament: tournamentId ?? null,
+  });
+  if (error) {
+    if (isMissingFunction(error)) return null;
+    throw new Error(`Could not load the reveal time: ${error.message}`);
+  }
+  return parsePublicRevealState(data);
 }
 
 /**

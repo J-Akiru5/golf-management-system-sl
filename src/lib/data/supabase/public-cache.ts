@@ -9,7 +9,7 @@ import type { PublicAdvisory } from "@/lib/public/advisory";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { loadPublicAdvisory } from "./public-advisory";
 import { loadPublicPairings } from "./public-pairings";
-import { loadPublicProgramme, loadPublicReleaseState } from "./public-programme";
+import { loadPublicProgramme, loadPublicReleaseState, loadPublicRevealState } from "./public-programme";
 
 /**
  * The public pages read the same frozen publication for every visitor, and the only thing that
@@ -69,6 +69,18 @@ export function readPublicReleaseState(
 ): Promise<PublicReleaseState | null> {
   return cachedPublicRead(publicCacheKey("public-release", [tournamentKey(tournamentId)]), () =>
     loadPublicReleaseState(createSupabasePublicClient(), tournamentId),
+  );
+}
+
+/**
+ * The reveal time of a results blackout, or null. Read only while the results are held, so an
+ * ordinary visit never pays for it; a database without the function answers null.
+ */
+export function readPublicRevealState(
+  tournamentId?: string | null,
+): Promise<Awaited<ReturnType<typeof loadPublicRevealState>>> {
+  return cachedPublicRead(publicCacheKey("public-reveal", [tournamentKey(tournamentId)]), () =>
+    loadPublicRevealState(createSupabasePublicClient(), tournamentId),
   );
 }
 

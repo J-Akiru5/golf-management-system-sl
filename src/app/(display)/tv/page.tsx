@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { TvBoardView, TvIdle } from "@/components/tv/TvBoard";
+import { TvHoldingView } from "@/components/tv/TvHolding";
 import { applyLiveClasses, liveClassesFromProgramme } from "@/lib/data/public-team-leaderboard";
 import {
   readPublicPairings,
   readPublicProgramme,
   readPublicReleaseState,
+  readPublicRevealState,
   readPublicTeamLeaderboard,
 } from "@/lib/data/supabase/public-cache";
 import { buildScoreSessions, buildScoreStarts } from "@/lib/public/score-sessions";
+import { blackoutFlags } from "@/lib/public/results-reveal";
 import { buildTvBoard, manilaDateIso } from "@/lib/public/tv-board";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { DemoTv } from "./DemoTv";
@@ -25,24 +28,43 @@ export const dynamic = "force-dynamic";
  * the wall: today's morning and afternoon fields, ranked, with gross and net Stableford points. It
  * adds no database read of its own; the morning and afternoon split comes from the published
  * pairings by the same rule the pairings page prints.
+ *
+ * While the desk is holding the results, the board reads the release state first and shows the
+ * holding screen with the countdown: no score is fetched and nothing is on the wall to be seen from
+ * the bar.
  */
 export default async function TvPage() {
   if (!isSupabaseConfigured()) {
     return <DemoTv />;
   }
 
-  const [leaderboardResult, pairingsResult, programmeResult, releaseResult] =
-    await Promise.allSettled([
-      readPublicTeamLeaderboard(),
-      readPublicPairings(),
-      readPublicProgramme(),
-      readPublicReleaseState(),
-    ]);
+  const [releaseResult, revealResult] = await Promise.allSettled([
+    readPublicReleaseState(),
+    readPublicRevealState(),
+  ]);
+  const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
+
+  if (release?.leaderboard === false || release?.roster === false) {
+    const reveal = revealResult.status === "fulfilled" ? revealResult.value : null;
+    return (
+      <TvHoldingView
+        eventName={null}
+        revealAt={reveal?.revealAt ?? null}
+        serverNow={new Date().toISOString()}
+        held={blackoutFlags(release)}
+      />
+    );
+  }
+
+  const [leaderboardResult, pairingsResult, programmeResult] = await Promise.allSettled([
+    readPublicTeamLeaderboard(),
+    readPublicPairings(),
+    readPublicProgramme(),
+  ]);
 
   const data = leaderboardResult.status === "fulfilled" ? leaderboardResult.value : null;
   const pairings = pairingsResult.status === "fulfilled" ? pairingsResult.value : null;
   const programme = programmeResult.status === "fulfilled" ? programmeResult.value : null;
-  const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
 
   if (leaderboardResult.status === "rejected") {
     return (
@@ -53,15 +75,6 @@ export default async function TvPage() {
   if (!programme) {
     return (
       <TvIdle eventName={data?.eventName ?? null} note="This event has not been published yet." />
-    );
-  }
-
-  if (release?.leaderboard === false) {
-    return (
-      <TvIdle
-        eventName={data?.eventName ?? null}
-        note="The desk is preparing the board. Scores appear here once they are released."
-      />
     );
   }
 

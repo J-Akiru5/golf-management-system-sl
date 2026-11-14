@@ -1,10 +1,11 @@
 "use client";
 
-import { HeldNotice } from "@/components/public/HeldNotice";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
+import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { ScoresView } from "@/components/public/ScoresView";
 import { sampleTeamLeaderboardData } from "@/lib/demo/public-leaderboard";
 import { useDemoReleaseState } from "@/lib/demo/public-release";
+import { blackoutFlags } from "@/lib/public/results-reveal";
 import type { ScoreSession } from "@/lib/public/public-scores";
 
 const dateLabel = (date: string) =>
@@ -27,7 +28,11 @@ export function DemoResults() {
   return (
     <LeaderboardShell active="scores" eventName={data.eventName} dateText={dateText}>
       {release.leaderboard === false ? (
-        <HeldNotice testId="demo-scores-held" />
+        <ResultsHolding
+          revealAt={release.revealAt}
+          serverNow={null}
+          held={blackoutFlags(release)}
+        />
       ) : (
         <ScoresView data={data} sessions={sessions} />
       )}

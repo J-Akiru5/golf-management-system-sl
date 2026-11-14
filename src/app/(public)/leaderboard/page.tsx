@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { HeldNotice } from "@/components/public/HeldNotice";
 import { ResultTable } from "@/components/public/LeaderboardResults";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
+import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { TeamLeaderboard } from "@/components/public/TeamLeaderboard";
 import {
   loadPublicPhotos,
@@ -23,11 +23,13 @@ import {
   readPublicAdvisory,
   readPublicProgramme,
   readPublicReleaseState,
+  readPublicRevealState,
   readPublicTeamCards,
   readPublicTeamLeaderboard,
 } from "@/lib/data/supabase/public-cache";
 import { getI18n } from "@/lib/i18n/server";
 import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
+import { blackoutFlags } from "@/lib/public/results-reveal";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { DemoLeaderboard } from "./DemoLeaderboard";
@@ -61,27 +63,41 @@ export default async function LeaderboardPage({
     return <DemoLeaderboard filters={filters} />;
   }
 
-  // Independent reads start together. Waiting for the leaderboard before asking for the release
-  // state and the programme made the page pay the sum of both waits instead of the slower one.
-  const [leaderboardResult, releaseResult, programmeResult, advisoryResult] =
-    await Promise.allSettled([
-      readPublicTeamLeaderboard(),
-      readPublicReleaseState(),
-      readPublicProgramme(),
-      readPublicAdvisory(),
-    ]);
-  const data = leaderboardResult.status === "fulfilled" ? leaderboardResult.value : null;
-  const failure =
-    leaderboardResult.status === "rejected"
-      ? leaderboardResult.reason instanceof Error
-        ? leaderboardResult.reason.message
-        : "Could not load the leaderboard."
-      : "";
+  // The release state and the event's presence are read first and on their own. While the desk is
+  // holding the results, this page must not fetch a score at all, not even one the database would
+  // answer with nothing: the holding screen shows no numbers because none were asked for.
+  const [releaseResult, programmeResult, advisoryResult] = await Promise.allSettled([
+    readPublicReleaseState(),
+    readPublicProgramme(),
+    readPublicAdvisory(),
+  ]);
   const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
   const programme = programmeResult.status === "fulfilled" ? programmeResult.value : null;
   const advisory = advisoryForToday(
     advisoryResult.status === "fulfilled" ? advisoryResult.value : null,
   );
+
+  if (release?.leaderboard === false && programme) {
+    const reveal = await readPublicRevealState().catch(() => null);
+    const revealAt = reveal?.revealAt ?? null;
+    return (
+      <LeaderboardShell advisory={advisory}>
+        <ResultsHolding
+          revealAt={revealAt}
+          serverNow={new Date().toISOString()}
+          held={blackoutFlags(release)}
+        />
+      </LeaderboardShell>
+    );
+  }
+
+  let data: Awaited<ReturnType<typeof readPublicTeamLeaderboard>> = null;
+  let failure = "";
+  try {
+    data = await readPublicTeamLeaderboard();
+  } catch (error) {
+    failure = error instanceof Error ? error.message : "Could not load the leaderboard.";
+  }
 
   if (!data && !failure) {
     if (!programme) {
@@ -91,13 +107,6 @@ export default async function LeaderboardPage({
             <h2>{t("pairings.notOutTitle")}</h2>
             <p>{t("pairings.notOutBody")}</p>
           </section>
-        </LeaderboardShell>
-      );
-    }
-    if (release?.leaderboard === false) {
-      return (
-        <LeaderboardShell advisory={advisory}>
-          <HeldNotice testId="leaderboard-held" />
         </LeaderboardShell>
       );
     }

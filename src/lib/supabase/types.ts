@@ -809,6 +809,11 @@ export interface Database {
           flight_basis?: TournamentRow["flight_basis"];
           published?: boolean;
           published_snapshot?: Json | null;
+          /** Added by 20261110000000. The stored public release policy, including the reveal time. */
+          publish_views?: Json;
+          /** Added by 20261110000100. Audit only; never exposed by a public read. */
+          publish_views_updated_at?: string | null;
+          publish_views_updated_by?: string | null;
           created_at?: string;
           dates?: string[] | null;
           state?: TournamentRow["state"];
@@ -1122,6 +1127,15 @@ export interface Database {
       };
       /** Booleans only: which public surfaces the desk is holding for one event. */
       public_release_state: {
+        Args: { p_tournament?: string | null };
+        Returns: Json;
+      };
+      /**
+       * The reveal time of a results blackout, or null. Added by 20261115000100 (NOT applied yet);
+       * an older database answers PGRST202 and the public shows the holding screen without a
+       * countdown.
+       */
+      public_reveal_state: {
         Args: { p_tournament?: string | null };
         Returns: Json;
       };
