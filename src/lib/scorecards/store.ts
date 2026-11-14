@@ -10,6 +10,11 @@ export interface StoredScorecardDocument {
 
 export interface ScorecardStore {
   get(slug: string): Promise<StoredScorecardDocument | null>;
+  /**
+   * Every saved day document. Used by the admin's tabulator submission queue; the bucket is small
+   * (one document per day and session), so reading them together is cheaper than a second index.
+   */
+  list(): Promise<StoredScorecardDocument[]>;
   put(input: {
     slug: string;
     event: string;
@@ -108,6 +113,42 @@ export function createSupabaseScorecardStore(
         throw new ScorecardStoreUnavailable("The stored scorecard document is incomplete.");
       }
       return document as unknown as StoredScorecardDocument;
+    },
+    async list() {
+      await ensureBucket();
+      const { data, error } = await guarded("Could not list the scorecard documents", () =>
+        bucket.list("", { limit: 200 }),
+      );
+      if (error) {
+        throw new ScorecardStoreUnavailable(
+          `Could not list the scorecard documents: ${error.message}`,
+        );
+      }
+      const documents: StoredScorecardDocument[] = [];
+      for (const entry of data ?? []) {
+        if (!entry.name.endsWith(".json")) continue;
+        try {
+          const { data: file, error: downloadError } = await bucket.download(entry.name);
+          if (downloadError || !file) continue;
+          const parsed = JSON.parse(await file.text()) as unknown;
+          if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) continue;
+          const document = parsed as Record<string, unknown>;
+          if (
+            typeof document.slug !== "string" ||
+            typeof document.event !== "string" ||
+            typeof document.label !== "string" ||
+            typeof document.updatedAt !== "string" ||
+            typeof document.payload !== "object" ||
+            document.payload === null
+          ) {
+            continue;
+          }
+          documents.push(document as unknown as StoredScorecardDocument);
+        } catch {
+          // A half-written object is skipped; the rest of the queue still loads.
+        }
+      }
+      return documents;
     },
     async put(input) {
       await ensureBucket();

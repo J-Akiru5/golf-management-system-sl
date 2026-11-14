@@ -32,6 +32,8 @@ interface SheetImportPanelProps {
   busy: boolean;
   onImported: (view: ScoringRoundView) => void;
   onImportingChange?: (importing: boolean) => void;
+  /** A submission selected in the tabulator queue, read as soon as it changes. */
+  initialFile?: { name: string; text: string } | null;
 }
 
 /** What importing the file into this round would do, or null when the round is not on card rules. */
@@ -65,6 +67,7 @@ export function SheetImportPanel({
   busy,
   onImported,
   onImportingChange,
+  initialFile,
 }: SheetImportPanelProps) {
   const { tournament, scoring } = useDesk();
   const rules = eventRulesFor(view.rulesVersion);
@@ -96,6 +99,13 @@ export function SheetImportPanel({
     setConfirmed(false);
     setResult(null);
   }, [view.roundId, tournament?.id]);
+
+  // A submission picked in the tabulator queue is read at once, so the desk sees the same preview
+  // an uploaded file would show before anything is written.
+  useEffect(() => {
+    if (!initialFile) return;
+    void readFile(new File([initialFile.text], initialFile.name, { type: "application/json" }));
+  }, [initialFile]);
 
   // If a card is added while the preview is open, the tick no longer covers what is ready.
   useEffect(() => {
