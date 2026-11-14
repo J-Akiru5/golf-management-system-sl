@@ -6,6 +6,7 @@ import {
   type PublicReleaseState,
   type PublicReleaseSurface,
 } from "@/lib/data/public";
+import { parseRevealAt } from "@/lib/public/results-reveal";
 
 /**
  * The local demo release state.
@@ -27,11 +28,14 @@ const DEMO_HELD: Record<string, PublicReleaseSurface[]> = {};
 export type DemoReleaseState = PublicReleaseState & {
   updatedAt: string | null;
   updatedBy: string | null;
+  /** The reveal time of a demo results blackout; the live event stores it in publish_views. */
+  revealAt: string | null;
 };
 
 type StoredValue = Partial<Record<PublicReleaseSurface, boolean>> & {
   updatedAt?: string | null;
   updatedBy?: string | null;
+  revealAt?: string | null;
 };
 
 type Stored = Record<string, StoredValue>;
@@ -60,6 +64,7 @@ function defaultState(tournamentId: string): DemoReleaseState {
   for (const surface of DEMO_HELD[tournamentId] ?? []) state[surface] = false;
   state.updatedAt = null;
   state.updatedBy = null;
+  state.revealAt = null;
   return state;
 }
 
@@ -72,6 +77,7 @@ function buildState(tournamentId: string): DemoReleaseState {
   }
   state.updatedAt = stored.updatedAt ?? null;
   state.updatedBy = stored.updatedBy ?? null;
+  state.revealAt = parseRevealAt(stored.revealAt);
   return state;
 }
 
@@ -95,6 +101,32 @@ export function setDemoRelease(
   stored[tournamentId] = {
     ...previous,
     [surface]: released,
+    updatedAt: new Date().toISOString(),
+    updatedBy: "Demo organizer",
+  };
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+  } catch {
+    // Storage off: the in-memory cache still gives this tab a working preview.
+  }
+  cache.delete(tournamentId);
+  const next = demoReleaseSnapshot(tournamentId);
+  for (const listener of listeners) listener();
+  return next;
+}
+
+/**
+ * Sets or clears the demo reveal time. The live desk writes the same key inside
+ * `tournaments.publish_views`; here it is one localStorage field so the countdown can be previewed
+ * without a database.
+ */
+export function setDemoReveal(tournamentId: string, revealAt: string | null): DemoReleaseState {
+  const stored = readStored();
+  const previous = stored[tournamentId] ?? {};
+  const parsed = parseRevealAt(revealAt);
+  stored[tournamentId] = {
+    ...previous,
+    revealAt: parsed,
     updatedAt: new Date().toISOString(),
     updatedBy: "Demo organizer",
   };

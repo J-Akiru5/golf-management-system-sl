@@ -1,7 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import type { Database } from "@/lib/supabase/types";
-import { loadPublicProgramme, loadPublicReleaseState, setPublicRelease } from "./public-programme";
+import {
+  loadPublicProgramme,
+  loadPublicReleaseState,
+  loadPublicRevealState,
+  setPublicRelease,
+} from "./public-programme";
 
 type RpcCall = { fn: string; args: unknown };
 type RpcResult = { data: unknown; error: { code?: string; message?: string } | null };
@@ -74,6 +79,70 @@ describe("loadPublicReleaseState", () => {
     await expect(
       loadPublicReleaseState(
         fakeClient([], { data: null, error: { code: "42501", message: "permission denied" } }),
+      ),
+    ).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe("loadPublicRevealState", () => {
+  it("reads the six lanes and the stopgap reveal time without asking for anything else", async () => {
+    const calls: RpcCall[] = [];
+    const client = fakeClient(calls, {
+      data: {
+        tournamentId: "t1",
+        revealAt: "2026-11-15T14:00:15Z",
+        lanes: {
+          classA: { state: "held", releaseAt: "2026-11-15T14:00:15Z" },
+          classB: { state: "released" },
+        },
+      },
+      error: null,
+    });
+
+    const state = await loadPublicRevealState(client, "t1");
+    expect(state?.revealAt).toBe("2026-11-15T14:00:15.000Z");
+    expect(state?.lanes.classA).toEqual({
+      state: "held",
+      releaseAt: "2026-11-15T14:00:15.000Z",
+      board: [],
+    });
+    expect(state?.lanes.classB).toEqual({ state: "released", releaseAt: null, board: [] });
+    // The database sends no lane this build does not list, and a lane it omits is released.
+    expect(state?.lanes.grossOverall).toEqual({ state: "released", releaseAt: null, board: [] });
+    expect(calls).toEqual([{ fn: "public_reveal_state", args: { p_tournament: "t1" } }]);
+  });
+
+  it("reads an older database's answer as no countdown", async () => {
+    // Before the lanes existed the function answered the event and the time only.
+    const state = await loadPublicRevealState(
+      fakeClient([], { data: { tournamentId: "t1", revealAt: null }, error: null }),
+      "t1",
+    );
+    expect(state?.revealAt).toBeNull();
+    expect(Object.keys(state?.lanes ?? {}).sort()).toEqual([
+      "classA",
+      "classB",
+      "classC",
+      "classD",
+      "grossOverall",
+      "netOverall",
+    ]);
+  });
+
+  it("returns null when the function is not applied and surfaces a real error", async () => {
+    await expect(
+      loadPublicRevealState(
+        fakeClient([], {
+          data: null,
+          error: { code: "PGRST202", message: "Could not find the function" },
+        }),
+        "t1",
+      ),
+    ).resolves.toBeNull();
+    await expect(
+      loadPublicRevealState(
+        fakeClient([], { data: null, error: { code: "42501", message: "permission denied" } }),
+        "t1",
       ),
     ).rejects.toThrow(/permission denied/);
   });

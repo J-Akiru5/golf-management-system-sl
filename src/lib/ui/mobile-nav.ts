@@ -171,7 +171,7 @@ export const PUBLIC_MOBILE_ITEMS: readonly MobileNavItem[] = [
   },
   {
     kind: "link",
-    href: "/results",
+    href: "/results/all",
     label: "Board",
     labelKey: "player.tab.board",
     icon: "trophy",

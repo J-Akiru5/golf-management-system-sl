@@ -12,6 +12,7 @@ import { PlayerProfileView } from "@/components/public/PlayerProfileView";
 import { RulesOfPlay } from "@/components/public/ProgrammeView";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
+import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { addIsoDays } from "@/lib/data/dates";
@@ -36,6 +37,7 @@ import { manilaToday } from "@/lib/player/dashboard";
 import { SAMPLE_PLAYER } from "@/lib/player/demo-identity";
 import { pairingsBackLink } from "@/lib/public/pairings-nav";
 import { publicProfileTeeTimes } from "@/lib/public/public-profile-tee-times";
+import { blackoutFlags } from "@/lib/public/results-reveal";
 import { useDesk } from "@/lib/store/desk-store";
 
 /** Ten morning start times and eight afternoon start times, a normal shotgun day at the club. */
@@ -404,8 +406,10 @@ export function DemoPairings({
 
       {tab === "profile" ? (
         rosterHeld || leaderboardHeld ? (
-          <HeldNotice
-            testId={rosterHeld ? "demo-profile-roster-held" : "demo-profile-leaderboard-held"}
+          <ResultsHolding
+            revealAt={release.revealAt}
+            serverNow={null}
+            held={blackoutFlags(release)}
           />
         ) : (
           <>

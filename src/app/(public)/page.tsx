@@ -103,14 +103,13 @@ async function leaderboardTeaser(): Promise<LeaderboardTeaserData | null> {
   if (!isSupabaseConfigured()) return null;
   try {
     const client = createSupabasePublicClient();
-    const [boardResult, releaseResult] = await Promise.allSettled([
-      loadPublicTeamLeaderboard(client),
-      loadPublicReleaseState(client),
-    ]);
-    if (boardResult.status !== "fulfilled" || !boardResult.value) return null;
-    const release = releaseResult.status === "fulfilled" ? releaseResult.value : null;
+    // The release state is asked first: while the desk is holding the results, the landing page
+    // does not read a score at all.
+    const release = await loadPublicReleaseState(client).catch(() => null);
     if (release?.leaderboard === false) return null;
-    return buildLeaderboardTeaser(boardResult.value);
+    const board = await loadPublicTeamLeaderboard(client);
+    if (!board) return null;
+    return buildLeaderboardTeaser(board);
   } catch {
     return null;
   }
@@ -349,7 +348,7 @@ export default async function HomePage() {
           <div className="hero-actions">
             {phase === "past" ? (
               <>
-                <Link className="button-light" href="/results">
+                <Link className="button-light" href="/results/all">
                   See all scores <ArrowRight aria-hidden="true" />
                 </Link>
                 <Link className="button-quiet" href="/pairings">
@@ -362,7 +361,7 @@ export default async function HomePage() {
                   {phase === "live" ? "Find my tee time" : "View published pairings"}{" "}
                   <ArrowRight aria-hidden="true" />
                 </Link>
-                <Link className="button-quiet" href="/results">
+                <Link className="button-quiet" href="/results/all">
                   See all scores <ArrowRight aria-hidden="true" />
                 </Link>
               </>

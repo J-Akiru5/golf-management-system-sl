@@ -1,9 +1,11 @@
 "use client";
 
 import { NeedsTournament } from "@/components/NeedsTournament";
+import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { RosterPage } from "@/components/public/RosterView";
 import { toPublicProgramme, toPublicRoster } from "@/lib/data/public";
 import { useDemoReleaseState } from "@/lib/demo/public-release";
+import { blackoutFlags } from "@/lib/public/results-reveal";
 import { useDesk } from "@/lib/store/desk-store";
 import { sampleProgramme } from "../pairings/DemoPairings";
 
@@ -18,6 +20,22 @@ export function DemoRoster() {
 
   if (!tournament) return <NeedsTournament what="The player roster" />;
 
+  if (release.roster === false) {
+    return (
+      <RosterPage
+        players={[]}
+        unavailable="held"
+        holding={
+          <ResultsHolding
+            revealAt={release.revealAt}
+            serverNow={null}
+            held={blackoutFlags(release)}
+          />
+        }
+      />
+    );
+  }
+
   const programme = published
     ? toPublicProgramme({
         days,
@@ -30,10 +48,5 @@ export function DemoRoster() {
       })
     : sampleProgramme();
 
-  return (
-    <RosterPage
-      players={toPublicRoster(programme).players}
-      unavailable={release.roster ? "none" : "held"}
-    />
-  );
+  return <RosterPage players={toPublicRoster(programme).players} />;
 }
