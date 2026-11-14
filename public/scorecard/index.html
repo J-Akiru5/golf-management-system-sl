@@ -905,7 +905,8 @@ function renderCards() {
     <span class="savestate noprint" data-k="savestate" role="status" aria-live="polite"></span>
     <label class="chk verify"><input type="checkbox" data-f="verified"${c.verified ? " checked" : ""}> Checked against the paper card</label>
     ${c.notInSystem ? `<span class="no">Not in the system: tell the admin</span>` : ""}
-    ${c.manual || c.notInSystem ? `<button type="button" class="danger noprint" data-del title="Remove this card and its scores">Remove card</button>` : ""}</div>
+    <button type="button" class="primary noprint" data-send title="Send this card to the admin scoring queue now. The admin imports, approves and publishes it. Tick Checked against the paper card first.">Send to admin</button>
+    <button type="button" class="danger noprint" data-del title="Remove this card and its scores from the shared copy">Remove card</button></div>
   ${c.note ? `<div class="note">Note: ${esc(c.note)}</div>` : ""}
   ${half(c, 0, "OUT")}<div class="gap"></div>${half(c, 9, "IN")}
   <div class="tot" data-k="tot"></div>
@@ -1063,9 +1064,11 @@ $("add").onclick = () => {
 $("cards").addEventListener("click", e => {
   if (!e.target.matches("[data-del]")) return;
   const el = e.target.closest(".card"), c = byId(el.dataset.id);
-  if (!c || !(c.manual || c.notInSystem)) return;
-  if (!confirm(`Remove the card${c.name ? " for " + c.name : ""}? Its scores are deleted.`)) return;
-  state.cards.splice(state.cards.indexOf(c), 1); save(); renderCards(); stats(); say("Card removed.");
+  if (!c) return;
+  const label = c.name ? ` for ${c.name}` : "";
+  if (!confirm(`Remove the card${label}? Its scores are removed from the shared copy. If it was already sent, the admin still has that copy. Refresh list from system can add the player back.`)) return;
+  rememberUndo(`removing ${c.name || "a card"}`);
+  state.cards.splice(state.cards.indexOf(c), 1); save(); renderCards(); stats(); say("Card removed. Undo is available until this page is reloaded.");
 });
 // "/" puts the cursor in the search box from anywhere, so nobody has to scroll up to the pinned bar.
 document.addEventListener("keydown", e => {
@@ -1372,7 +1375,7 @@ window.__scorecard = {
       <button type="button" id="batch-start">Start new review batch</button>
       <button type="button" id="batch-save">Save to database</button>
       <button type="button" id="batch-save-download" title="Saves to the database, then downloads a copy of the day to this device">Save, then download a copy</button>
-      <button type="button" id="batch-send" class="primary" title="Send the cards you have checked to the admin scoring queue. The admin imports, approves and publishes them.">Send checked cards to admin</button>
+      <button type="button" id="batch-send" class="primary" title="Send the checked cards that the player filter and batch show to the admin scoring queue. The admin imports, approves and publishes them.">Send checked cards to admin</button>
       <input id="batch-add-file" type="file" accept=".json,application/json" hidden>
       <input id="scan-file" type="file" accept="image/jpeg,image/png,image/webp,image/*" multiple hidden>
       <input id="scan-camera" type="file" accept="image/*" capture="environment" hidden>
@@ -1381,7 +1384,7 @@ window.__scorecard = {
       <div id="batch-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       <button type="button" id="batch-clear" class="danger" title="Remove the batch labels where every card is already checked. The cards stay on the page." hidden>Remove reviewed batches</button>
     </div>
-    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add players from the system</b> brings a day's and session's players in as blank cards with their group, tee and class filled in, so no JSON file is needed. <b>Add card by hand</b> adds one blank card. <b>Start new review batch</b> makes a batch by hand: empty, from the cards shown, from one day and session, or from cards you pick. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. Saving keeps the team copy in the private Supabase bucket and merges it card by card with the other tabulators; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication. <b>Reset to first reading</b> asks you to type RESET, and both it and <b>Replace all from export</b> keep a snapshot of the shared copy first and can be undone until the page is reloaded.</p>
+    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add players from the system</b> brings a day's and session's players in as blank cards with their group, tee and class filled in, so no JSON file is needed. <b>Add card by hand</b> adds one blank card. <b>Start new review batch</b> makes a batch by hand: empty, from the cards shown, from one day and session, or from cards you pick. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. The player filter and the batch buttons choose which checked cards <b>Send checked cards to admin</b> sends. Every card also has <b>Send to admin</b> for that one card and <b>Remove card</b>; a removal can be undone until the page is reloaded. Saving keeps the team copy in the private Supabase bucket and merges it card by card with the other tabulators; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication. <b>Reset to first reading</b> asks you to type RESET, and both it and <b>Replace all from export</b> keep a snapshot of the shared copy first and can be undone until the page is reloaded.</p>
     <p class="legend" id="field-status" style="margin:8px 0 0">Supabase field: not checked yet.</p>
     <details id="check-details" open style="margin-top:8px">
       <summary id="check-summary" style="cursor:pointer;font-weight:600">System check: waiting for the field list.</summary>
@@ -1471,6 +1474,16 @@ window.__scorecard = {
     if (active === "daydiff") return Boolean(checkFor(card)?.dayDiff);
     const batch = batches().find((entry) => entry.id === active);
     return Boolean(batch && batch.cardIds.includes(card.id));
+  }
+
+  // The cards the page is showing: the batch or status button plus the player-name filter. Sending
+  // uses this same set, so a tabulator can filter one player and send only that player's card.
+  function shownCards() {
+    const needle = (document.getElementById("q")?.value || "").trim().toLowerCase();
+    return current().cards.filter(
+      (card) =>
+        matches(card) && (!needle || String(card.name || "").toLowerCase().includes(needle)),
+    );
   }
 
   function apply() {
@@ -1610,11 +1623,12 @@ window.__scorecard = {
     const active = activeId();
     const done = cards.filter((card) => card.verified).length;
     const needs = cards.length - done;
-    const waitingToSend = cards.filter((card) => card.verified && !card.sentAt).length;
+    const shown = shownCards();
+    const waitingToSend = shown.filter((card) => card.verified && !card.sentAt).length;
     sendButton.textContent = waitingToSend
       ? `Send checked cards to admin (${waitingToSend})`
       : "Send checked cards to admin";
-    const visible = cards.filter(matches).length;
+    const visible = shown.length;
     const shownBatch = batches().find((entry) => entry.id === active);
     const batchLine = shownBatch
       ? ` · ${shownBatch.name}: ${batchCount(shownBatch).done} checked of ${batchCount(shownBatch).total} players, ${batchCount(shownBatch).total - batchCount(shownBatch).done} still to check`
@@ -2004,37 +2018,51 @@ window.__scorecard = {
   }
 
   // Send the cards the tabulator has checked to the admin's scoring queue. Nothing is approved
-  // here: the admin imports the frozen cards with a staff session and publishes them.
-  async function sendCheckedCards() {
+  // here: the admin imports the frozen cards with a staff session and publishes them. `cards` is the
+  // exact set to consider: the filtered page for the batch send, or one card for the per-card Send
+  // to admin button. `scope` names the set in the messages. `ask` is false for the direct per-card
+  // send, where the button itself is the confirmation.
+  let sendBusy = false;
+  async function sendCards(cards, scope, ask) {
+    if (sendBusy) {
+      summary.textContent = "A send is already on its way. Wait for it to finish.";
+      return;
+    }
     const state = current();
     // Only cards not sent yet (a card that was edited after it was sent counts as unsent again), so
     // two tabulators using the same account never send the same cards twice.
-    const alreadySent = state.cards.filter((card) => card.verified && card.sentAt).length;
-    const checked = state.cards.filter((card) => card.verified && !card.sentAt);
+    const alreadySent = cards.filter((card) => card.verified && card.sentAt).length;
+    const checked = cards.filter((card) => card.verified && !card.sentAt);
     // A card typed in as "not in the system" is never sent as a checked card: the admin has to add
     // the player first, so it is handed over as a name for matching, not as a scored card.
     const listed = checked.filter((card) => card.playerId && !card.notInSystem);
     const nameOnly = checked.filter((card) => !card.playerId || card.notInSystem);
     if (listed.length === 0 && nameOnly.length === 0) {
       summary.textContent = alreadySent
-        ? `Nothing new to send: ${alreadySent} checked card${alreadySent === 1 ? " is" : "s are"} already with the admin.`
-        : "No checked cards to send. Tick the cards you have checked against the paper.";
+        ? `Nothing new to send${scope}: ${alreadySent} checked card${alreadySent === 1 ? " is" : "s are"} already with the admin.`
+        : scope
+          ? `No checked cards${scope}. Tick the card you checked against the paper.`
+          : "No checked cards to send. Tick the cards you have checked against the paper.";
       return;
     }
     if (listed.length === 0) {
-      summary.textContent =
-        "The checked cards are not in the system. The admin must add those players before their cards can be sent.";
+      summary.textContent = `The checked cards${scope} are not in the system. The admin must add those players before their cards can be sent.`;
       return;
     }
-    const missing = listed.filter((card) => !String(card.hdcp ?? "").trim() && playingHcp(card) === null);
-    if (missing.length > 0) {
-      summary.textContent = `${missing.length} checked card${missing.length === 1 ? "" : "s"} have no playing handicap from the system (no index on file). Ask the admin to fix the player record, or untick those cards.`;
-      return;
-    }
-    const confirmed = window.confirm(
-      `Send ${listed.length} checked card${listed.length === 1 ? "" : "s"} to the admin?${nameOnly.length ? ` ${nameOnly.length} name-only card${nameOnly.length === 1 ? "" : "s"} will be left for the admin to match.` : ""}`,
+    const missing = listed.filter(
+      (card) => !String(card.hdcp ?? "").trim() && playingHcp(card) === null,
     );
-    if (!confirmed) return;
+    if (missing.length > 0) {
+      summary.textContent = `${missing.length} checked card${missing.length === 1 ? "" : "s"}${scope} have no playing handicap from the system (no index on file). Ask the admin to fix the player record, or untick those cards.`;
+      return;
+    }
+    if (ask !== false) {
+      const confirmed = window.confirm(
+        `Send ${listed.length} checked card${listed.length === 1 ? "" : "s"}${scope} to the admin?${nameOnly.length ? ` ${nameOnly.length} name-only card${nameOnly.length === 1 ? "" : "s"} will be left for the admin to match.` : ""}`,
+      );
+      if (!confirmed) return;
+    }
+    sendBusy = true;
     sendButton.disabled = true;
     summary.textContent = "Sending the checked cards to the admin queue…";
     try {
@@ -2086,7 +2114,7 @@ window.__scorecard = {
       db.save();
       apply();
       const rejected = body.submission.unmatched.length;
-      const sentMessage = `Sent ${body.submission.cards.length} checked card${body.submission.cards.length === 1 ? "" : "s"} to the admin queue at ${new Date(body.submission.at).toLocaleTimeString()}.${body.submission.nameOnly.length ? ` ${body.submission.nameOnly.length} name-only card${body.submission.nameOnly.length === 1 ? "" : "s"} left for the admin.` : ""}${rejected ? ` ${rejected} card${rejected === 1 ? "" : "s"} not accepted: ${body.submission.unmatched.map((entry) => entry.name || entry.id).join(", ")}.` : ""}`;
+      const sentMessage = `Sent ${body.submission.cards.length} checked card${body.submission.cards.length === 1 ? "" : "s"}${scope} to the admin queue at ${new Date(body.submission.at).toLocaleTimeString()}.${body.submission.nameOnly.length ? ` ${body.submission.nameOnly.length} name-only card${body.submission.nameOnly.length === 1 ? "" : "s"} left for the admin.` : ""}${rejected ? ` ${rejected} card${rejected === 1 ? "" : "s"} not accepted: ${body.submission.unmatched.map((entry) => entry.name || entry.id).join(", ")}.` : ""}`;
       const saved = await persist(true);
       // persist() redraws the panel, so the sent message is written after it. Writing it before
       // let the ordinary "N cards shown" line replace it and the desk could not tell the send worked.
@@ -2096,8 +2124,43 @@ window.__scorecard = {
     } catch (error) {
       summary.textContent = error instanceof Error ? error.message : String(error);
     } finally {
+      sendBusy = false;
       sendButton.disabled = false;
     }
+  }
+
+  async function sendCheckedCards() {
+    const rawNeedle = (document.getElementById("q")?.value || "").trim();
+    const scope = rawNeedle ? ` for "${rawNeedle}"` : "";
+    await sendCards(shownCards(), scope, true);
+  }
+
+  // The Send to admin button on one card. It goes through the same function as the batch send, with
+  // the one card as the set, so the payload, the checks and the sent marker cannot drift apart.
+  async function sendOneCard(id) {
+    const card = current().cards.find((entry) => entry.id === id);
+    if (!card) return;
+    const element = [...cardsRoot.querySelectorAll(".card")].find(
+      (entry) => entry.dataset.id === id,
+    );
+    const badge = element ? element.querySelector('[data-k="savestate"]') : null;
+    if (!card.verified) {
+      summary.textContent = `Tick "Checked against the paper card" before sending ${card.name || "this card"}.`;
+      if (badge) {
+        badge.textContent = "Tick Checked against the paper card first";
+        badge.className = "savestate noprint bad";
+      }
+      return;
+    }
+    if (card.sentAt) {
+      summary.textContent = `${card.name || "This card"} is already with the admin. Edit it to send it again.`;
+      if (badge) {
+        badge.textContent = "Already with the admin";
+        badge.className = "savestate noprint";
+      }
+      return;
+    }
+    await sendCards([card], card.name ? ` for ${card.name}` : "", false);
   }
 
   // ---- Scan a card, or take a photo of it ----
@@ -3269,6 +3332,7 @@ window.__scorecard = {
       const badge = element.querySelector('[data-k="savestate"]');
       if (!badge) continue;
       const id = element.dataset.id;
+      const card = findCard(id);
       if (cardDirty(id)) {
         if (saving) {
           badge.textContent = "Saving";
@@ -3281,6 +3345,9 @@ window.__scorecard = {
           badge.textContent = "Unsaved, saving shortly";
           badge.className = "savestate noprint busy";
         }
+      } else if (card?.sentAt) {
+        badge.textContent = `Sent to admin ${new Date(card.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+        badge.className = "savestate noprint ok";
       } else if (savedStamp[id]) {
         badge.textContent = `Saved ${new Date(savedStamp[id]).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
         badge.className = "savestate noprint ok";
@@ -3320,6 +3387,13 @@ window.__scorecard = {
         label.className = "savestate noprint bad";
       }
     }
+  });
+
+  cardsRoot.addEventListener("click", (event) => {
+    const button = event.target && event.target.closest ? event.target.closest("[data-send]") : null;
+    if (!button) return;
+    const element = button.closest(".card");
+    if (element) void sendOneCard(element.dataset.id);
   });
 
   // ---- Live sync: pick up what the other tabulators did ----
