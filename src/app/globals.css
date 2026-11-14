@@ -9752,3 +9752,26 @@ html[data-textsize="large"] {
     text-transform: uppercase;
   }
 }
+
+/* The club's connectivity partner sits under the platform blurb, in the footer's own quiet type,
+   as a line of credit rather than a second brand. */
+.footer-powered {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.footer-powered span {
+  color: rgb(197 211 202 / 72%);
+  font: 700 10px / 1 var(--f-sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.footer-powered img {
+  width: auto;
+  height: 17px;
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}

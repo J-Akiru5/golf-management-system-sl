@@ -1,6 +1,6 @@
 -- One-off: bring the 24th Bamboo Tee's published results back in line with the desk (14 Nov 2026).
 --
--- Run in the Supabase SQL editor after 20261114000400_class_and_handicap_follow_desk.sql is
+-- Run in the Supabase SQL editor after 20261114000500_class_and_handicap_follow_desk.sql is
 -- applied. Nothing else is needed: the class sync for future edits is a trigger, and the handicap
 -- function stays available for a single player.
 --

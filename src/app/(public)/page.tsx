@@ -525,6 +525,10 @@ export default async function HomePage() {
               The tournament desk for Iloilo Golf and Country Club. Entries, the draw and the
               published pairings, in one place.
             </p>
+            <p className="footer-powered">
+              <span>Powered by</span>
+              <img src="/partners/converge-logo.svg" alt="Converge" />
+            </p>
           </div>
 
           <nav className="footer-col" aria-label="Product">
