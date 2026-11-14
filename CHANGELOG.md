@@ -9,6 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.52.2] - 2026-11-14
+
+### Fixed
+- **The 0.52.1 tabulator fix reaches production.** Vercel refused to deploy the 0.52.1 merge because
+  its author is not a member of the Vercel team, so production kept running 0.52.0. This release
+  changes no code: it is the same code as 0.52.1, merged under a team member's identity so Vercel
+  deploys it. No migration.
+
 ## [0.52.1] - 2026-11-14
 
 ### Fixed
