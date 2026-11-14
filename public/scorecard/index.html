@@ -1617,6 +1617,18 @@ window.__scorecard = {
     await load();
   }
 
+  // One path for everything that arrives as cards (a photo, a scan file, an export): choose the day, the
+  // session and the batch, see who is new and who is already on the page, then add. A player who already
+  // has a card is updated, never given a second one.
+  async function reviewIncoming(cards, notes, opts) {
+    const pick = await chooseWhatNext(cards, notes, false, opts);
+    if (pick.choice === "discard") {
+      summary.textContent = "Nothing was added.";
+      return;
+    }
+    await addScannedCards(cards, pick.choice, pick.target, pick.day, pick.session);
+  }
+
   async function addCards(file) {
     if (!file) return;
     try {
@@ -1627,48 +1639,19 @@ window.__scorecard = {
           "that file has no cards. Use a JSON file saved by Export JSON or by the scorecard scan.",
         );
       }
-      // Adding never replaces a card the desk already has, even when two scans share an id.
-      const seen = new Set(current().cards.map((card) => card.id));
-      const valid = imported.cards
-        .filter((card) => {
-          if (seen.has(card.id)) return false;
-          seen.add(card.id);
-          return true;
-        })
-        .map((card) => ({ ...card, verified: false }));
-      if (valid.length === 0) {
-        summary.textContent =
-          imported.cards.length === 0
-            ? "No cards in that file. Nothing was added."
-            : "No new cards in that file. Every card in it is already on this page.";
+      // Cards are matched to the ones already on the page by player name. A player who already has a
+      // card is updated: blank holes take the file's scores, scores already there are kept, and a score
+      // that disagrees stays and is written in the card's note. A player with no card gets one, linked to
+      // the system's player record.
+      if (imported.cards.length === 0) {
+        summary.textContent = "No cards in that file. Nothing was added.";
         return;
       }
-      const state = current();
-      const active = activeId();
-      const activeBatch = batches().find((entry) => entry.id === active) || null;
-      const batch = activeBatch || {
-        id: `batch-${Date.now().toString(36)}`,
-        name: `Batch ${batches().length + 1}`,
-        createdAt: new Date().toISOString(),
-        cardIds: [],
-      };
-      if (activeBatch) {
-        // Adding imported cards while a batch is selected keeps them in that batch.
-        activeBatch.cardIds = [...new Set([...activeBatch.cardIds, ...valid.map((card) => card.id)])];
-      } else {
-        batch.cardIds = valid.map((card) => card.id);
-        state.reviewBatches = [...batches(), batch];
-      }
-      state.cards = [...state.cards, ...valid];
-      state.activeReviewBatchId = batch.id;
-      db.setState(state);
-      apply();
-      const flagged = valid.filter((card) => /Left blank, check the paper card/.test(card.note || "")).length;
-      summary.textContent = activeBatch
-        ? `Added ${valid.length} card(s) to ${batch.name}.${flagged ? ` ${flagged} had a cell that could not be read; it is blank and noted on the card.` : ""}`
-        : `Added ${valid.length} card(s) as ${batch.name}.${flagged ? ` ${flagged} had a cell that could not be read; it is blank and noted on the card.` : ""}`;
-      // Save now instead of waiting for the next timer tick, so a failure shows up beside the import.
-      void persist(true);
+      const flagged = imported.cards.filter((card) => /Left blank, check the paper card/.test(card.note || "")).length;
+      const notes = flagged
+        ? [`${flagged} card${flagged === 1 ? " has" : "s have"} a cell that could not be read; it is blank and noted on the card.`]
+        : [];
+      await reviewIncoming(imported.cards, notes, { preferAll: true });
     } catch (error) {
       summary.textContent =
         error instanceof SyntaxError
@@ -1921,7 +1904,7 @@ window.__scorecard = {
   // `blank` is the fallback when the reader gave nothing for a photo: the desk can still add an empty
   // card per photo and type the scores in from the paper card, instead of starting over by hand.
   // Resolves { choice, target }: choice is now, later or discard; target is new, all or a batch id.
-  function chooseWhatNext(cards, notes, blank) {
+  function chooseWhatNext(cards, notes, blank, opts) {
     return new Promise((resolve) => {
       const title = blank
         ? `${cards.length} photo${cards.length === 1 ? "" : "s"} could not be read`
@@ -1972,7 +1955,9 @@ window.__scorecard = {
         }
       }
       if (select) {
-        const preset = likelyBatch(cards);
+        // A file import looks for the player on the whole page first, so nobody gets a second card
+        // just because the first one sits in a different batch.
+        const preset = opts && opts.preferAll ? "all" : likelyBatch(cards);
         select.value = options.some(([value]) => value === preset) ? preset : "new";
         select.addEventListener("change", render);
       }
@@ -1995,13 +1980,40 @@ window.__scorecard = {
   // The day and session last chosen for scanned cards, so a run of photos does not ask again each time.
   let lastScanDay = DOC_DAY, lastScanSession = DOC_SESSION;
 
-  function addScannedCards(cards, when, target, day, session) {
+  // Links a card to the system's player for its day: the player and registration ids (so Send checked
+  // cards to admin knows who it is), and the group and tee when the card has none. Returns false when the
+  // system's field list for that day has no player by that name.
+  function linkToSystem(card, dayKey) {
+    const entry = (FIELDS[dayKey] || {})[nameKey(card.name)];
+    if (!entry) return false;
+    if (!card.playerId && entry.playerId) {
+      card.playerId = entry.playerId;
+      card.registrationId = entry.registrationId || "";
+      card.partnerPlayerId = entry.partnerPlayerId || "";
+    }
+    if (!card.group && entry.group != null) card.group = String(entry.group);
+    if (!card.tee && entry.teeCode) card.tee = entry.teeCode;
+    return true;
+  }
+
+  async function addScannedCards(cards, when, target, day, session) {
     const state = current();
+    const dayKey = String(day || DOC_DAY);
+    // The system's list for the day has to be here before names can be matched to players.
+    await loadFieldDay(dayKey);
     const { merges, fresh } = planScan(cards, target || "new");
     const have = new Set(state.cards.map((card) => card.id));
     const added = fresh
       .filter((card) => !have.has(card.id))
-      .map((card) => ({ ...card, verified: false, day: day || card.day || "", session: session || card.session || "" }));
+      .map((card) => ({ ...card, verified: false, day: card.day || day || "", session: card.session || session || "" }));
+    for (const card of added) {
+      if (!linkToSystem(card, String(card.day || dayKey))) {
+        card.note = [card.note, `Not on the system's Day ${card.day || dayKey} field list; the admin has to match this name.`].filter(Boolean).join(" ");
+      }
+    }
+    for (const merge of merges) {
+      if (!merge.existing.playerId) linkToSystem(merge.existing, dayOf(merge.existing));
+    }
     const touched = merges.map((merge) => merge.existing);
     let scoresAdded = 0, differing = 0;
     for (const merge of merges) {
