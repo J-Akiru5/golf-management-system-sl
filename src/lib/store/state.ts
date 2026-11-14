@@ -167,6 +167,11 @@ export type Action =
   | { type: "addPlayer"; player: PlayerRecord }
   | { type: "updatePlayer"; id: string; patch: Partial<PlayerRecord> }
   | { type: "removePlayer"; id: string }
+  /**
+   * Adds a handicap record, or replaces the one on the same effective date. The date is the key,
+   * the same rule the table keeps: one record per player per date.
+   */
+  | { type: "upsertRecord"; record: HandicapRecord }
   | { type: "addEntry"; entry: RegistrationEntry }
   | { type: "updateEntry"; id: string; patch: Partial<RegistrationEntry> }
   | { type: "removeEntry"; id: string }
@@ -1036,6 +1041,23 @@ export function reducer(state: DeskState, a: Action): DeskState {
         ),
         boards,
       };
+    }
+
+    case "upsertRecord": {
+      // One record per player per date. Correcting a date keeps the row id the screen already
+      // knows, so the frozen-record marker and the history list stay in step.
+      let replaced = false;
+      const records = state.records.map((record) => {
+        if (
+          record.playerId !== a.record.playerId ||
+          record.effectiveDate !== a.record.effectiveDate
+        ) {
+          return record;
+        }
+        replaced = true;
+        return { ...a.record, id: record.id };
+      });
+      return { ...state, records: replaced ? records : [...state.records, a.record] };
     }
 
     case "addCaddie":

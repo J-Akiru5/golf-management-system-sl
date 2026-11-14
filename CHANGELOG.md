@@ -10,6 +10,16 @@ Supabase project, because the code and the database are released separately.
 ## [Unreleased]
 
 ### Added
+- **A player's handicap record can be added or corrected from their page (#204).** Handicap history
+  has **Add index** for an owner or organizer, and **Edit** on every record. Saving a date that
+  already has a record updates it; a new date adds one. The sheet changes the player's record
+  history only, not the index the current event uses, and says so next to a pointer to the existing
+  **Edit index** button. The write is audited with the actor, the time, the old and new index, the
+  date and the reason, and the database refuses a desk account. Demo mode works from memory.
+- **Migration written, not applied:** `20261114000200_save_handicap_record.sql` adds one function,
+  `save_handicap_record`, which performs the role check, the range and reason checks, the upsert on
+  `(player_id, effective_date)` and the audit row. It changes no table, constraint, trigger or
+  policy. Saving a record in connected mode fails with a plain message until it is applied.
 - **`/scores` can save a card under the 24th Bamboo Tee rules (#258).** When a round's rules version
   is `bamboo-tee-2026`, the entry form asks for the HDCP written on the card instead of a marker,
   and **Save and approve card** stores the handicap, the card and its approval in one step, each

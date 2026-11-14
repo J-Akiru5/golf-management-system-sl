@@ -4,6 +4,28 @@ import type { Database, TableRow } from "@/lib/supabase/types";
 
 type HandicapRecordRow = TableRow<"handicap_records">;
 
+/**
+ * The sentence the desk sees when a manual handicap record is refused.
+ *
+ * A database without migration 20261114000200 answers an unknown function, which must read as a
+ * missing migration rather than a fault. The role refusal comes back as SQLSTATE 42501 with a
+ * plain sentence of its own, so it is passed through as written.
+ */
+export function handicapRecordSaveError(error: { message: string; code?: string }): Error {
+  if (
+    error.code === "PGRST202" ||
+    /could not find the function|function .* does not exist|schema cache/i.test(error.message)
+  ) {
+    return new Error(
+      "Saving a handicap record needs migration 20261114000200, which is not applied yet. Nothing was changed.",
+    );
+  }
+  if (error.code === "42501") {
+    return new Error("Only an owner or organizer can change a player's handicap record.");
+  }
+  return new Error(`Could not save the handicap record: ${error.message}`);
+}
+
 export interface EffectiveHandicap {
   index: number | null;
   effectiveDate: string;

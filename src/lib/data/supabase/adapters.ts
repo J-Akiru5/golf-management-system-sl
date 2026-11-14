@@ -48,6 +48,7 @@ import { toPlayerInsert, toRegistrationAnswers } from "./domain";
 import { refreshPublicPage } from "./draw-sync";
 import { createSupabaseEmailRepository } from "./email";
 import { deleteEventLogo, saveEventLogo } from "./event-logo";
+import { handicapRecordSaveError } from "./handicap-records";
 import {
   isPhotoDataUrl,
   removeStoredPhoto,
@@ -347,6 +348,33 @@ export function createSupabaseAdapters(
         .filter((r) => r.playerId === playerId)
         .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
       return list[0] ?? null;
+    },
+    saveHandicapRecord: (playerId, input) => {
+      return queuedWrite(async () => {
+        // One function does the role check, the range check and the audit row. It is not in the
+        // generated types until the migration is applied, so it goes through the unlisted call.
+        const { data, error } = await callUnlisted(client, "save_handicap_record", {
+          p_player: playerId,
+          p_index: input.index,
+          p_effective: input.effectiveDate,
+          p_reason: input.reason,
+        });
+        if (error) throw handicapRecordSaveError(error);
+        const record: HandicapRecord = {
+          id:
+            typeof data === "string" && data.length > 0
+              ? data
+              : `rec-manual-${playerId}-${input.effectiveDate}`,
+          clubId,
+          playerId,
+          index: input.index,
+          effectiveDate: input.effectiveDate,
+          source: "manual_fix",
+          uploadRef: null,
+          recordedAt: new Date().toISOString(),
+        };
+        dispatch({ type: "upsertRecord", record });
+      });
     },
     add: (input: NewPlayerInput) => {
       if (input.photo && !input.photoConsent) {
