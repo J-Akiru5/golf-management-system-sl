@@ -292,7 +292,6 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
         "The other team on the flight acts as marker. If the other team withdraws or is disqualified, a marshal is assigned as marker for the remaining team.",
         "Both the player and the marker must sign the card. The card must be submitted within 15 minutes after the final hole is holed out. A late card is not counted.",
         "Incorrect, incomplete or unsigned cards are assessed by the tournament committee and receive the corresponding penalties under the Rules of Golf.",
-        "The Tournament Director's decision in all matters affecting play is final. The Director may change the format, rules or prizes, and may accept, reject or adjust a player's handicap in the interest of fair play. The competition is closed once the prizes have been presented.",
         "Taking liberties with the rules results in disqualification. The committee has sole discretion and the decision is not subject to appeal.",
       ],
       callouts: [
@@ -363,6 +362,18 @@ export const BAMBOO_TEE_2026_RULES: TournamentRulesDocument = {
         "A hole-in-one prize is split equally among the players who make one, unless the sponsor's conditions say otherwise. At least three players or witnesses from the same flight, including the player who made the hole in one, must be present.",
         "All official registrants are eligible for the hole-in-one prize. The sponsor and Tournament Director sign a written contract setting out the prize and its conditions.",
         "Raffle winners must be present at the welcome and awards dinners, except for the mulligan raffle. Board members, committee members and staff who are playing registrants may win.",
+      ],
+    },
+    {
+      id: "director",
+      title: "Tournament Director's authority",
+      summary:
+        "The Director's decision is final, and the competition closes when the prizes are presented.",
+      source: "Conditions of Play, page 4",
+      paragraphs: [
+        "Decisions by the Tournament Director in all matters affecting play shall be final.",
+        "The Tournament Director reserves the right to change the format, rules, prizes, right to accept, reject or adjust handicap of any player in the interest of fair play and other conditions as it sees fit.",
+        "The competition shall be deemed to have closed when the prizes have been presented.",
       ],
     },
   ],

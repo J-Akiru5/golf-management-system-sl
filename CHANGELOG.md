@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **The Tournament Director's authority has its own section on `/rules`.** The exact wording from
+  page 4 of the Conditions of Play says the Director's decision is final, the Director may change the
+  format, rules, prizes and handicaps in the interest of fair play, and the competition closes when
+  the prizes are presented.
+
 ### Changed
 - **The public Conditions of Play PDF no longer carries the committee's meeting agenda.** Pages 5-8
   were the clarification questions from the committee meeting, not rules. The PDF now keeps the

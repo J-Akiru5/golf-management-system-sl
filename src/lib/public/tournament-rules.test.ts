@@ -17,6 +17,7 @@ describe("public tournament rules", () => {
       "ties",
       "weather",
       "prizes",
+      "director",
     ]) {
       expect(ids).toContain(required);
     }
