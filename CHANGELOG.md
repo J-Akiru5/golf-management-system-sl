@@ -9,6 +9,45 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.52.2] - 2026-11-14
+
+### Fixed
+- **The 0.52.1 tabulator fix reaches production.** Vercel refused to deploy the 0.52.1 merge because
+  its author is not a member of the Vercel team, so production kept running 0.52.0. This release
+  changes no code: it is the same code as 0.52.1, merged under a team member's identity so Vercel
+  deploys it. No migration.
+
+## [0.52.1] - 2026-11-14
+
+### Fixed
+- **Several tabulators can work in one account at once, and they see each other's work.** The shared
+  document was loaded once when the page opened and every save replaced it whole, so what user 1
+  saved never reached users 2 and 3, and the last person to save erased everyone else's cards. Now
+  every card and batch carries a revision, the server merges each save card by card instead of
+  replacing the document, and every page checks for other people's changes every three seconds (a
+  few bytes when nothing changed). A card someone else changed or added appears on its own and is
+  outlined for a few seconds; a card being typed in is never overwritten and the cursor stays where it
+  was; the **Checked against the paper card** tick and a removed card reach everyone. Two people
+  adding the same player from the system get one card, not two. A status line beside the save note
+  shows when the page last synced and what came from others. The database is unchanged: the
+  document is still one file in the same private Supabase bucket.
+- **Sending to the admin no longer sends the same cards twice.** **Send checked cards to admin** sends
+  only the checked cards not yet sent, shows how many are waiting, and a card edited after it was sent
+  goes back to unsent on its own. Before, any edit anywhere cleared the sent marker on every card.
+- **Every card has a Save card button.** It saves that card to the shared copy at once and answers on the
+  card: "Saving…", then "Saved at 3:41:12 PM · everyone can see it", or "Unsaved changes" while the card
+  holds edits the shared copy does not. Saving does not tick **Checked against the paper card**; the two
+  are separate. Everything is still saved on its own every two seconds.
+- **Each batch says how many players are checked out of how many.** The batch button reads
+  "Batch 3 · 24 checked of 132" instead of "(24/132)", the batch picker says the same, and the line
+  under the buttons names the open batch's checked, total and still-to-check numbers.
+- **A device that worked offline, or on the older page, loses nothing when it first syncs.** Its cards
+  are merged into the shared copy: a blank hole takes the other side's score, a hole where both typed
+  something keeps the shared score and the card note records this device's, a checked tick is kept, and
+  cards that exist only on that device are added.
+- **Known limit:** two people editing the same card within the same few seconds is settled card by
+  card; the later save wins for that card.
+
 ## [0.52.0] - 2026-11-14
 
 ### Added
