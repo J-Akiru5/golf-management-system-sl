@@ -441,6 +441,105 @@ await expect(dupCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
 check("the reviewed card is submitted once", (await dupCards.locator("tbody tr").count()) === 1);
 await page.setViewportSize({ width: 1440, height: 950 });
 
+// ----------------------------------------------- fast manual entry (issue #259)
+// A card has to be found, typed and saved without the mouse. This walks the whole path on the demo
+// round: a name search, the first match, 18 scores with Tab between them, Save and next, and the
+// next card's first cell already focused. The demo has no day, session or class data, so those
+// filters are checked for being there; the counts and the card-state filter carry the assertions.
+section("/scores fast entry");
+await go("/scores");
+const queuePanel = page.locator('section[aria-labelledby="card-queue"]');
+await expect(queuePanel).toBeVisible({ timeout: 30000 });
+const queueRows = queuePanel.locator("button[data-card-row]");
+await expect(queueRows).toHaveCount(4, { timeout: 15000 });
+check(
+  "the card queue lists the round's players",
+  (await queueRows.count()) === 4,
+  `(${await queueRows.count()})`,
+);
+
+const queueTiles = queuePanel.locator(".tiles .tile b");
+const tileNumber = async (index) =>
+  Number.parseInt((await queueTiles.nth(index).textContent()) ?? "", 10);
+check(
+  "the queue counts entered, verified and still missing",
+  (await tileNumber(0)) === 0 && (await tileNumber(1)) === 0 && (await tileNumber(2)) === 4,
+  `(${await tileNumber(0)} entered, ${await tileNumber(1)} verified, ${await tileNumber(2)} missing)`,
+);
+check(
+  "the day, session and class filters are offered",
+  (await queuePanel.getByLabel("Session").count()) === 1 &&
+    (await queuePanel.getByLabel("Class").count()) === 1,
+);
+
+const queueSearch = queuePanel.getByLabel("Player search");
+await queueSearch.fill("player c");
+await expect(queueRows).toHaveCount(1, { timeout: 15000 });
+check("the name search finds one card", (await queueRows.count()) === 1);
+await queueSearch.press("Enter");
+await expect(dupEntry.getByRole("combobox").first()).toHaveValue("SAMPLE PLAYER C", {
+  timeout: 15000,
+});
+check("Enter in the search selects that player", true, "(SAMPLE PLAYER C)");
+await expect(dupEntry.locator("#hole-1")).toBeFocused({ timeout: 15000 });
+check("the keyboard lands on the first hole", true);
+
+// The whole card from the keyboard: 18 fours, Tab between them, then Save and next.
+await page.keyboard.type("4");
+for (let hole = 2; hole <= 18; hole += 1) {
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("4");
+}
+await expect(dupEntry.locator("#hole-18")).toBeFocused({ timeout: 15000 });
+await expect(dupEntry.locator("#score-submit-next")).toBeEnabled({ timeout: 15000 });
+await page.keyboard.press("Tab");
+await expect(dupEntry.locator("#score-submit-next")).toBeFocused({ timeout: 15000 });
+check("Tab on the last hole hands the desk to Save and next", true);
+await page.keyboard.press("Enter");
+await expect(page.getByText(/Card saved for/)).toBeVisible({ timeout: 20000 });
+check("the card is saved from the keyboard", true);
+await expect(dupEntry.getByRole("combobox").first()).toHaveValue("SAMPLE PLAYER D", {
+  timeout: 20000,
+});
+await expect(dupEntry.locator("#hole-1")).toBeFocused({ timeout: 15000 });
+check("Save and next opens the next card on the first hole", true);
+check(
+  "the saved card is counted and the list moves on",
+  (await tileNumber(0)) === 1 && (await tileNumber(2)) === 3,
+  `(${await tileNumber(0)} entered, ${await tileNumber(2)} missing)`,
+);
+
+await queueSearch.fill("");
+await expect(queueRows).toHaveCount(4, { timeout: 15000 });
+const stateFilter = queuePanel.getByLabel("Card state");
+await stateFilter.selectOption("none");
+await expect(queueRows).toHaveCount(3, { timeout: 15000 });
+check("the card-state filter keeps the cards still to type", (await queueRows.count()) === 3);
+await stateFilter.selectOption("entered");
+await expect(queueRows).toHaveCount(1, { timeout: 15000 });
+check("the card-state filter finds the entered card", (await queueRows.count()) === 1);
+await stateFilter.selectOption("all");
+await expect(queueRows).toHaveCount(4, { timeout: 15000 });
+
+await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
+const fastCards = page.locator('section[aria-labelledby="score-cards"]');
+await expect(fastCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
+await fastCards.getByRole("button", { name: "Approve" }).first().click();
+await expect(fastCards.locator("tbody tr .pill.ok")).toHaveCount(1, { timeout: 20000 });
+await scoresTab("Enter card", 'section[aria-labelledby="card-queue"]');
+await expect(queueTiles.nth(1)).toHaveText("1", { timeout: 20000 });
+check("an approved card counts as verified in the queue", true);
+
+await page.setViewportSize({ width: 1024, height: 768 });
+await expect(queuePanel).toBeVisible({ timeout: 15000 });
+const entryCell = await dupEntry.locator("#hole-1").boundingBox();
+check(
+  "a score cell is a 44px target on a tablet",
+  (entryCell?.height ?? 0) >= 44,
+  `(${entryCell?.height}px)`,
+);
+await page.setViewportSize({ width: 1440, height: 950 });
+
 // ------------------------------------------------------------- staff sheet, 360px
 // The volunteer's phone: no sideways scroll, 44px targets, numeric entry, and the same scan review
 // with the photo, every cell and the OUT/IN/TOTAL the desk reads.

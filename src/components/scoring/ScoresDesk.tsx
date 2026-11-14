@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
+import { CardQueuePanel } from "@/components/scoring/CardQueuePanel";
 import { OpenRoundPanel } from "@/components/scoring/OpenRoundPanel";
 import { PlayerLink } from "@/components/scoring/PlayerLink";
 import { ScorecardImportPanel } from "@/components/scoring/ScorecardImportPanel";
@@ -24,9 +25,11 @@ import { ScoresSubnav, type ScoresTab } from "@/components/scoring/ScoresSubnav"
 import { SheetImportPanel } from "@/components/scoring/SheetImportPanel";
 import { Button } from "@/components/ui/button";
 import type { ClubRole } from "@/lib/auth/member";
+import { isFinalPlayingDay } from "@/lib/data/dates";
 import { type OpenRoundSnapshot, openRoundErrorMessage } from "@/lib/data/open-round";
 import { canOpenPlayerProfile } from "@/lib/data/player-profile";
 import type { OpenRoundInput, ScoringRoundView } from "@/lib/data/scoring";
+import { sessionForTimeIn, sessionsForDay } from "@/lib/data/sessions";
 import { fmtHcp, fmtIndex } from "@/lib/format";
 import {
   type CardIssue,
@@ -38,6 +41,14 @@ import {
   type StandingsRow,
   validateScorecard,
 } from "@/lib/scoring";
+import {
+  buildCardQueue,
+  type CardQueueFilters,
+  type CardQueuePlacement,
+  cardQueueCounts,
+  filterCardQueue,
+  nextCardInQueue,
+} from "@/lib/scoring/card-queue";
 import { classLabel } from "@/lib/scoring/class-label";
 import { pickDeskMarker } from "@/lib/scoring/event-card";
 import { eventRulesFor } from "@/lib/scoring/event-rules";
@@ -50,6 +61,7 @@ import {
   readCardValues,
 } from "@/lib/scoring/submission";
 import { useDesk } from "@/lib/store/desk-store";
+import { playingDaysOfEvent } from "@/lib/store/state";
 
 const DEMO_NOTICE =
   "Sample scoring preview. Cards, approvals, resolutions and standings live in this browser only and are not written to the database. The scoring schema and RPCs are applied; this screen is not wired to them yet.";
@@ -70,7 +82,8 @@ function issueLabel(issues: CardIssue[]): string {
 }
 
 export function ScoresDesk({ tab }: { tab: ScoresTab }) {
-  const { member, tournament, scoring, status, drawDay } = useDesk();
+  const { member, tournament, scoring, status, drawDay, setDrawDay, days, draw, entryByPlayer } =
+    useDesk();
   const router = useRouter();
   const tournamentId = tournament?.id ?? "";
   /** Every read and write names the playing day, so day 3 is never day 1. */
@@ -122,6 +135,19 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const submitGate = useRef(createSubmitGate());
   /** The Review page hands a card back through ?card=…; apply it once when the round loads. */
   const queryApplied = useRef(false);
+  /**
+   * The card queue's filters. The day switches the round itself, the same day every desk screen
+   * uses; session, class, state and search only narrow the players already loaded.
+   */
+  const [queueFilters, setQueueFilters] = useState<CardQueueFilters>({
+    session: "all",
+    classKey: null,
+    state: "all",
+    query: "",
+  });
+  /** The control the desk gets back after a selection or a save. The token re-runs the same id. */
+  const [focusRequest, setFocusRequest] = useState<{ id: string; token: number } | null>(null);
+  const focusToken = useRef(0);
 
   const players = view?.players ?? [];
   const holes = view?.course.holes ?? [];
@@ -146,6 +172,152 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const courseKey = view
     ? `${view.roundId}:${holes.map((hole) => `${hole.number}:${hole.par}:${hole.strokeIndex}`).join("|")}`
     : "";
+
+  /** The day's morning and afternoon, from the day's own stored times and the event's. */
+  const sessions = useMemo(() => {
+    const dayRow = days.find((candidate) => candidate.dayNumber === day) ?? null;
+    return sessionsForDay(
+      {
+        startTime: dayRow?.startTime ?? tournament?.config.firstTeeTime,
+        pmStartTime: dayRow?.pmStartTime,
+      },
+      {
+        eventPmStart: tournament?.config.pmFirstTeeTime,
+        finalDay: dayRow ? isFinalPlayingDay(dayRow, days) : false,
+      },
+    );
+  }, [days, day, tournament]);
+
+  /**
+   * Where each player is in the day's field: the live board first, then what the entry recorded.
+   * Both are already loaded, so the queue never asks the database for this.
+   */
+  const placements = useMemo(() => {
+    const map = new Map<string, CardQueuePlacement>();
+    const forPlayer = (playerId: string) => {
+      const existing = map.get(playerId);
+      if (existing) return existing;
+      const created: CardQueuePlacement = {};
+      map.set(playerId, created);
+      return created;
+    };
+
+    for (const group of draw ?? []) {
+      const session = sessionForTimeIn(sessions, group.time)?.key ?? null;
+      for (const playerId of group.playerIds) {
+        map.set(playerId, {
+          groupNumber: group.number,
+          startHole: group.startHole,
+          teeTime: group.time,
+          session,
+        });
+      }
+    }
+
+    for (const [playerId, entry] of entryByPlayer) {
+      const placement = forPlayer(playerId);
+      const chosen = day === null ? null : (entry.daySessions?.[day] ?? null);
+      const assigned = day === null ? null : (entry.dayTee?.[day] ?? null);
+      if (placement.session === undefined || placement.session === null) {
+        placement.session = chosen;
+      }
+      if (placement.startHole === undefined || placement.startHole === null) {
+        placement.startHole = assigned?.startHole ?? null;
+      }
+      if (placement.teeTime === undefined || placement.teeTime === null) {
+        placement.teeTime = assigned?.teeTime ?? null;
+      }
+      if ((placement.session === undefined || placement.session === null) && placement.teeTime) {
+        placement.session = sessionForTimeIn(sessions, placement.teeTime)?.key ?? null;
+      }
+    }
+    return map;
+  }, [draw, entryByPlayer, sessions, day]);
+
+  const queuePlayers = useMemo(
+    () =>
+      players.map((player) => ({
+        playerId: player.playerId,
+        playerName: player.playerName,
+        className: player.flightName ?? null,
+        classKey: player.flightId,
+      })),
+    [players],
+  );
+
+  const cardQueue = useMemo(
+    () => buildCardQueue(queuePlayers, view?.cards ?? [], placements),
+    [queuePlayers, view?.cards, placements],
+  );
+
+  /** The day, session and class scope: the counts describe this, not the search box. */
+  const scopedQueue = useMemo(
+    () =>
+      filterCardQueue(cardQueue, {
+        session: queueFilters.session,
+        classKey: queueFilters.classKey,
+        state: "all",
+        query: "",
+      }),
+    [cardQueue, queueFilters.session, queueFilters.classKey],
+  );
+  const visibleQueue = useMemo(
+    () => filterCardQueue(cardQueue, queueFilters),
+    [cardQueue, queueFilters],
+  );
+  const queueCounts = useMemo(() => cardQueueCounts(scopedQueue), [scopedQueue]);
+
+  const classOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const entry of cardQueue) {
+      if (entry.classKey !== null && entry.className !== null && !seen.has(entry.classKey)) {
+        seen.set(entry.classKey, entry.className);
+      }
+    }
+    return [...seen]
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [cardQueue]);
+
+  const dayOptions = useMemo(
+    () =>
+      playingDaysOfEvent(days).map((dayRow) => ({
+        value: dayRow.dayNumber,
+        label: dayRow.label?.trim() || `Day ${dayRow.dayNumber}`,
+      })),
+    [days],
+  );
+
+  const queueScopeLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (day !== null) parts.push(`Day ${day}`);
+    if (queueFilters.session !== "all") parts.push(`${queueFilters.session} session`);
+    const chosenClass = classOptions.find((option) => option.value === queueFilters.classKey);
+    if (chosenClass) parts.push(chosenClass.label);
+    return parts.length > 0 ? `in ${parts.join(" · ")}` : "in this round";
+  }, [day, queueFilters.session, queueFilters.classKey, classOptions]);
+
+  /** The group and hole the selected player starts on, shown beside the card. */
+  const selectedGroupLabel = useMemo(() => {
+    if (!playerId) return undefined;
+    const placement = placements.get(playerId);
+    if (!placement || placement.groupNumber === null || placement.groupNumber === undefined) {
+      return undefined;
+    }
+    return placement.startHole === null || placement.startHole === undefined
+      ? String(placement.groupNumber)
+      : `${placement.groupNumber} · hole ${placement.startHole}`;
+  }, [placements, playerId]);
+
+  // Puts the keyboard back on the next field that needs typing, after a pick or a save.
+  useEffect(() => {
+    if (!focusRequest) return;
+    const element = document.getElementById(focusRequest.id);
+    if (element instanceof HTMLInputElement) {
+      element.focus();
+      element.select();
+    }
+  }, [focusRequest]);
 
   useEffect(() => {
     if (!tournamentId) return;
@@ -387,7 +559,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
 
   /**
    * The player picker is the correction picker too: an existing current card opens for a new
-   * revision, and a player with no card starts a fresh entry.
+   * revision, and a player with no card starts a fresh entry. A new entry puts the keyboard on the
+   * first field that still needs typing, so a card is picked and typed without the mouse.
    */
   function changePlayer(next: string) {
     const existing = [...(view?.cards ?? [])]
@@ -412,6 +585,49 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
           "",
       );
     }
+    requestFocus(eventRules ? "card-handicap" : firstHoleId());
+  }
+
+  function requestFocus(id: string) {
+    focusToken.current += 1;
+    setFocusRequest({ id, token: focusToken.current });
+  }
+
+  /** The id of the round's first score cell, where a fresh card starts typing. */
+  function firstHoleId(): string {
+    const first = holes[0];
+    return first ? `hole-${first.number}` : "score-submit";
+  }
+
+  /**
+   * Starts a blank card for the next player after a save. It is the same reset a fresh entry gets,
+   * but the saved note stays on screen and the keyboard lands on the card's first field.
+   */
+  function beginCardFor(nextPlayerId: string) {
+    setEditingCard(null);
+    setCorrectionReason("");
+    setEditCaptureKey("");
+    setScanImage(null);
+    setScanExtraction(null);
+    setScanCaptureKey("");
+    setScanReader({});
+    setScanConfirmed(false);
+    setSubmitNote("");
+    setPendingSubmit(null);
+    setError(null);
+    setPlayerId(nextPlayerId);
+    setStrokes(blankStrokes(holes));
+    setWrittenOnCard("");
+    setCardHandicap("");
+    if (nextPlayerId === scorerId) {
+      const rotation = reciprocalRotation(players.map((player) => player.playerId));
+      setScorerId(
+        rotation.find((assignment) => assignment.playerId === nextPlayerId)?.scorerId ??
+          players.find((player) => player.playerId !== nextPlayerId)?.playerId ??
+          "",
+      );
+    }
+    requestFocus(eventRules ? "card-handicap" : firstHoleId());
   }
 
   /** Enter moves to the next hole in order, so a desk can type a whole card without the mouse. */
@@ -422,11 +638,15 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
       target.focus();
       target.select();
     } else {
-      document.getElementById("score-submit")?.focus();
+      // The last hole hands the desk to the save that opens the next card, so a card is typed and
+      // saved in one run. A correction has no next-card action; it gets the plain save.
+      const saveNext = document.getElementById("score-submit-next");
+      const save = document.getElementById("score-submit");
+      (saveNext ?? save)?.focus();
     }
   }
 
-  async function submitCard() {
+  async function submitCard(advanceToNextCard = false) {
     const gate = submitGate.current;
     // A second tap, a double click or a key repeat never reaches the repository.
     if (!gate.tryEnter()) return;
@@ -508,6 +728,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         ? editCaptureKey || globalThis.crypto.randomUUID()
         : scanCaptureKey || retryKey || globalThis.crypto.randomUUID();
       if (!editingCard) setPendingSubmit({ key: captureKey, signature });
+      // The next card to open once this one is saved, chosen from the view the save returns.
+      const advance = { playerId: "" };
       await run(async () => {
         const image = scanImage
           ? {
@@ -562,6 +784,17 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
           );
           note = `Card saved for ${playerName || "this player"} and sent for approval. It does not count until it is approved.`;
         }
+        // "Save and next" hands the desk the next card without the mouse. A correction, or the
+        // plain save, stays put: the desk is on that player's card on purpose.
+        if (advanceToNextCard && !editingCard) {
+          const savedQueue = filterCardQueue(buildCardQueue(queuePlayers, next.cards, placements), {
+            session: queueFilters.session,
+            classKey: queueFilters.classKey,
+            state: "all",
+            query: "",
+          });
+          advance.playerId = nextCardInQueue(savedQueue, targetPlayerId)?.playerId ?? "";
+        }
         setEditingCard(null);
         setCorrectionReason("");
         setEditCaptureKey("");
@@ -571,6 +804,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         setSavedNote(note);
         return next;
       });
+      if (advance.playerId) beginCardFor(advance.playerId);
     } finally {
       setSubmitting(false);
       gate.leave();
@@ -788,6 +1022,19 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
               mode="disable"
               disabledReason="Only club staff can enter or correct cards."
             >
+              <CardQueuePanel
+                entries={visibleQueue}
+                counts={queueCounts}
+                scopeLabel={queueScopeLabel}
+                dayNumber={day}
+                dayOptions={dayOptions}
+                classOptions={classOptions}
+                filters={queueFilters}
+                currentPlayerId={playerId}
+                onFiltersChange={setQueueFilters}
+                onDayChange={setDrawDay}
+                onSelect={changePlayer}
+              />
               <section
                 id="score-entry-card"
                 aria-labelledby="score-entry"
@@ -806,7 +1053,10 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   scorerId={scorerId}
                   selectedPlayer={selectedPlayer}
                   selectedScorer={selectedScorer}
-                  context={{ className: selectedPlayer?.flightName }}
+                  context={{
+                    className: selectedPlayer?.flightName,
+                    groupLabel: selectedGroupLabel,
+                  }}
                   editingCard={editingCard}
                   editingPlayerName={editingPlayerName}
                   profileRole={profileRole}
@@ -824,6 +1074,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                     setStrokes((current) => ({ ...current, [hole]: value }))
                   }
                   onEnter={focusAfter}
+                  onHandicapEnter={() => requestFocus(firstHoleId())}
                   scan={scan}
                   scanned={scanned}
                   scanImage={scanImage}
@@ -833,7 +1084,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   submitNote={submitNote}
                   savedNote={savedNote}
                   onApplyScan={applyScan}
-                  onSubmit={() => void submitCard()}
+                  onSubmit={() => void submitCard(false)}
+                  onSubmitNext={() => void submitCard(true)}
                   onStartAnother={startAnother}
                   onFillPar={() => setStrokes(strokesFor(holes))}
                   eventRules={eventRules}
