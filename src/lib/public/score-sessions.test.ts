@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildScoreSessions, type ScorePairingGroup, scoreSessionKey } from "./score-sessions";
+import {
+  buildScoreSessions,
+  buildScoreStarts,
+  type ScorePairingGroup,
+  scoreSessionKey,
+} from "./score-sessions";
 
 const group = (
   dayNumber: number | null,
@@ -54,5 +59,31 @@ describe("score sessions", () => {
   it("treats a group on a snapshot without days as the first day", () => {
     const sessions = buildScoreSessions([group(null, null, "06:30", ["p1"])]);
     expect(Object.keys(sessions)).toHaveLength(0);
+  });
+});
+
+describe("score starts", () => {
+  it("keeps each player's tee time and starting hole for the day", () => {
+    const starts = buildScoreStarts([
+      { ...group(2, "2026-11-14", "06:30", ["p1", "p2"]), startHole: 7 },
+      { ...group(2, "2026-11-14", "12:40", ["p3"]), startHole: 12 },
+    ]);
+
+    expect(starts[scoreSessionKey("p1", "2026-11-14")]).toEqual({ time: "06:30", hole: 7 });
+    expect(starts[scoreSessionKey("p3", "2026-11-14")]).toEqual({ time: "12:40", hole: 12 });
+  });
+
+  it("trims a stored seconds field and leaves a missing hole null", () => {
+    const starts = buildScoreStarts([group(1, "2026-11-13", "06:30:00", ["p1"])]);
+
+    expect(starts[scoreSessionKey("p1", "2026-11-13")]).toEqual({ time: "06:30", hole: null });
+  });
+
+  it("skips a group without a time, and a snapshot with no dated day", () => {
+    const noTime = buildScoreStarts([group(1, "2026-11-13", "", ["p1"])]);
+    expect(Object.keys(noTime)).toHaveLength(0);
+
+    const noDate = buildScoreStarts([group(null, null, "06:30", ["p2"])]);
+    expect(Object.keys(noDate)).toHaveLength(0);
   });
 });

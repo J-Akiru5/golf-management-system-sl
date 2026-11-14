@@ -1,0 +1,582 @@
+/* The clubhouse TV board: fixed forest and gold, never the theme. Every size is derived from the
+   screen height so one stylesheet reads correctly on a 1080p panel and on the preview at 900px. */
+
+.stage {
+  --u: calc(100dvh / 100);
+  --ink: #f7f5ee;
+  --muted: #b7c6bd;
+  --gold: #d7b568;
+  --hair: rgba(247, 245, 238, 0.14);
+  --row-hair: rgba(247, 245, 238, 0.07);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  padding: calc(var(--u) * 2.6) calc(var(--u) * 3.2) calc(var(--u) * 2);
+  gap: calc(var(--u) * 1.6);
+  color: var(--ink);
+  font-family: var(--f-display);
+  background:
+    radial-gradient(120% 85% at 12% -12%, rgba(43, 99, 76, 0.68), rgba(7, 26, 20, 0) 62%),
+    radial-gradient(70% 60% at 100% 0%, rgba(215, 181, 104, 0.13), rgba(7, 26, 20, 0) 72%),
+    linear-gradient(180deg, #0a2a21 0%, #071a14 64%, #05120e 100%);
+}
+
+/* A faint fairway arc behind the columns, so the ground is lit rather than flat. */
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+    ellipse 60% 40% at 50% 112%,
+    rgba(215, 181, 104, 0.1),
+    rgba(7, 26, 20, 0) 70%
+  );
+  pointer-events: none;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  padding-bottom: calc(var(--u) * 1.5);
+  border-bottom: 1px solid var(--hair);
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.3);
+  min-width: 0;
+}
+
+.crest {
+  flex: none;
+  width: auto;
+  height: calc(var(--u) * 6.6);
+}
+
+.club {
+  margin: 0;
+  font-size: calc(var(--u) * 1.4);
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.est {
+  margin: 0.25em 0 0;
+  font-size: calc(var(--u) * 1.02);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.event {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.eventKicker {
+  display: block;
+  font-size: calc(var(--u) * 1.02);
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.eventName {
+  display: block;
+  overflow: hidden;
+  font-family: var(--f-serif);
+  font-size: calc(var(--u) * 2.9);
+  font-weight: 600;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.when {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+
+.dayBlock {
+  text-align: right;
+}
+
+.dayNumber {
+  display: block;
+  font-family: var(--f-condensed);
+  font-size: calc(var(--u) * 3.1);
+  line-height: 0.92;
+  letter-spacing: 0.05em;
+  color: var(--gold);
+}
+
+.dayDate {
+  display: block;
+  margin-top: 0.3em;
+  font-size: calc(var(--u) * 1.15);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dayNote {
+  display: block;
+  margin-top: 0.2em;
+  font-size: calc(var(--u) * 0.92);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.clock {
+  min-width: calc(var(--u) * 8.6);
+  padding-left: calc(var(--u) * 2);
+  border-left: 1px solid var(--hair);
+  font-family: var(--f-condensed);
+  font-size: calc(var(--u) * 4.2);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-align: right;
+}
+
+.columns {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: calc(var(--u) * 3);
+}
+
+.columns[data-count="2"] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.columns[data-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.fade {
+  animation: fade-in 620ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * 0.8));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.column + .column {
+  padding-left: calc(var(--u) * 3);
+  border-left: 1px solid var(--hair);
+}
+
+.colHead {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 1.1);
+  padding-bottom: calc(var(--u) * 0.9);
+}
+
+.chip {
+  padding: 0.16em 0.55em;
+  border: 1px solid rgba(215, 181, 104, 0.55);
+  border-radius: 999px;
+  font-family: var(--f-condensed);
+  font-size: calc(var(--u) * 1.45);
+  line-height: 1.1;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+}
+
+.colTitle {
+  margin: 0;
+  font-family: var(--f-condensed);
+  font-size: calc(var(--u) * 3.3);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.05em;
+}
+
+.colCount {
+  margin-left: auto;
+  font-size: calc(var(--u) * 1.05);
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.labels {
+  display: grid;
+  grid-template-columns:
+    calc(var(--u) * 3.4) minmax(0, 1fr) calc(var(--u) * 6.4)
+    calc(var(--u) * 6.4);
+  gap: calc(var(--u) * 1);
+  padding-bottom: calc(var(--u) * 0.75);
+  border-bottom: 1px solid var(--hair);
+  font-size: calc(var(--u) * 0.98);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.labels[data-pair="true"] {
+  grid-template-columns:
+    calc(var(--u) * 6.4) minmax(0, 1fr) calc(var(--u) * 6.4)
+    calc(var(--u) * 6.4);
+}
+
+.num {
+  text-align: right;
+}
+
+.viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 calc(var(--u) * 1.2),
+    #000 calc(100% - var(--u) * 2.2),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 calc(var(--u) * 1.2),
+    #000 calc(100% - var(--u) * 2.2),
+    transparent 100%
+  );
+}
+
+.track {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 2);
+  will-change: transform;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: grid;
+  grid-template-columns:
+    calc(var(--u) * 3.4) minmax(0, 1fr) calc(var(--u) * 6.4)
+    calc(var(--u) * 6.4);
+  gap: calc(var(--u) * 1);
+  align-items: center;
+  padding: calc(var(--u) * 1.15) 0;
+  border-bottom: 1px solid var(--row-hair);
+}
+
+.row[data-pair="true"] {
+  grid-template-columns:
+    calc(var(--u) * 6.4) minmax(0, 1fr) calc(var(--u) * 6.4)
+    calc(var(--u) * 6.4);
+  padding: calc(var(--u) * 1.35) 0;
+}
+
+.rank {
+  font-family: var(--f-condensed);
+  font-size: calc(var(--u) * 2.15);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.row[data-rank="1"] .rank,
+.row[data-rank="2"] .rank,
+.row[data-rank="3"] .rank {
+  color: var(--gold);
+}
+
+.nameCell {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.15);
+  min-width: 0;
+}
+
+.nameWrap {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 0.9);
+  min-width: 0;
+}
+
+/* The tee line under the name: when they went out, and from which hole. */
+.tee {
+  overflow: hidden;
+  font-size: calc(var(--u) * 1.02);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name {
+  overflow: hidden;
+  font-size: calc(var(--u) * 2.3);
+  font-weight: 700;
+  letter-spacing: 0.008em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thru {
+  font-size: calc(var(--u) * 0.98);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.gross {
+  font-family: var(--f-condensed);
+  font-size: calc(var(--u) * 2.7);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: right;
+  color: var(--muted);
+}
+
+.net {
+  font-family: var(--f-condensed);
+  font-size: calc(var(--u) * 3.45);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: right;
+}
+
+.row[data-rank="1"] .net {
+  color: var(--gold);
+}
+
+.pairCell {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.15);
+}
+
+.pairLabel {
+  font-size: calc(var(--u) * 0.92);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pairNo {
+  font-family: var(--f-condensed);
+  font-size: calc(var(--u) * 2.9);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--gold);
+}
+
+.pairNames {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.22);
+  min-width: 0;
+}
+
+.pairName {
+  overflow: hidden;
+  font-size: calc(var(--u) * 1.72);
+  font-weight: 650;
+  letter-spacing: 0.008em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  margin: calc(var(--u) * 2) 0 0;
+  font-size: calc(var(--u) * 1.25);
+  color: var(--muted);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 2);
+  padding-top: calc(var(--u) * 1.1);
+  border-top: 1px solid var(--hair);
+  font-size: calc(var(--u) * 1.02);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.modes {
+  display: flex;
+  gap: calc(var(--u) * 1.8);
+}
+
+/* The product's own mark, small and on the right: the club's crest owns the header. */
+.footRight {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+
+.powered {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.9);
+  padding-left: calc(var(--u) * 2);
+  border-left: 1px solid var(--hair);
+}
+
+.poweredLabel {
+  font-size: calc(var(--u) * 0.95);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.poweredLogo {
+  width: calc(var(--u) * 13);
+  height: auto;
+}
+
+.idleBrand {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.2);
+  margin-top: calc(var(--u) * 3);
+}
+
+.idleLogo {
+  width: calc(var(--u) * 22);
+  height: auto;
+}
+
+.mode,
+.modeOn {
+  letter-spacing: 0.16em;
+}
+
+.mode {
+  color: var(--muted);
+}
+
+.modeOn {
+  color: var(--gold);
+}
+
+.modeOn::before {
+  content: "";
+  display: inline-block;
+  width: 0.52em;
+  height: 0.52em;
+  margin-right: 0.55em;
+  border-radius: 999px;
+  background: currentColor;
+  vertical-align: middle;
+}
+
+/* Idle screens: nothing published, or the desk is holding the board. */
+.idle {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: calc(var(--u) * 1.6);
+  padding: calc(var(--u) * 6);
+  text-align: center;
+}
+
+.idleClub {
+  margin: 0;
+  font-size: calc(var(--u) * 1.4);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.idleEvent {
+  margin: 0;
+  font-family: var(--f-serif);
+  font-size: calc(var(--u) * 4.4);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.idleNote {
+  margin: 0;
+  max-width: 34ch;
+  font-size: calc(var(--u) * 1.5);
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* A laptop or a phone opened on the same URL: the columns stack rather than squeeze. */
+@media (max-width: 900px) {
+  .columns[data-count="2"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .column + .column {
+    padding-top: calc(var(--u) * 1);
+    padding-left: 0;
+    border-top: 1px solid var(--hair);
+    border-left: 0;
+  }
+
+  .top {
+    flex-wrap: wrap;
+    row-gap: calc(var(--u) * 1.2);
+  }
+
+  .event {
+    order: 3;
+    flex-basis: 100%;
+    text-align: left;
+  }
+
+  .when {
+    margin-left: auto;
+  }
+
+  .foot {
+    flex-wrap: wrap;
+    row-gap: calc(var(--u) * 0.8);
+  }
+}
