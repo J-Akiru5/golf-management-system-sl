@@ -9,6 +9,8 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.51.1] - 2026-11-14
+
 ### Added
 - **The Tournament Director's authority has its own section on `/rules`.** The exact wording says
   the Director's decision is final, the Director may change the format, rules, prizes and handicaps
