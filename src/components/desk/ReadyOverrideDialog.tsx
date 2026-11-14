@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { OverrideReadyInput } from "@/lib/data/adapters";
+import { overrideTee } from "@/lib/data/registrations";
 import type {
   DeskRegistration,
   PlayerRecord,
@@ -97,7 +98,17 @@ export function ReadyOverrideDialog({
     indexValue === null || !indexValid ? null : Math.min(indexValue, tournament.config.maxIndex);
   const age = birthdate ? ageOn(birthdate, tournament.config.date) : null;
   const category = tournament.categories.find((item) => item.id === categoryId) ?? null;
-  const tee = category ? (tees.find((item) => item.id === category.teeId) ?? null) : null;
+  // The tee the category carries is only the fallback. The registration's own tee, set from the
+  // paper cards, is the one the event scores with, so it wins here and it is what the save sends.
+  const tee = overrideTee(
+    {
+      entryTeeId: entry.teeId,
+      registrationTeeId: registration.teeId,
+      categoryTeeId: category?.teeId,
+    },
+    tees,
+  );
+  const teeFromRegistration = Boolean(entry.teeId || registration.teeId);
   const playing =
     cappedIndex !== null && tee
       ? playingHandicap(cappedIndex, tee, tournament.config.allowance)
@@ -178,7 +189,9 @@ export function ReadyOverrideDialog({
       effectiveDate,
       birthdate: birthdate === "" ? null : birthdate,
       categoryId: category?.id ?? null,
-      teeId: tee?.id ?? null,
+      // The same tee the playing handicap above was worked out on. Sending the category's tee here
+      // would put it back over the tee the registration was corrected to from the paper cards.
+      teeId: tee?.id ?? registration.teeId ?? null,
       flightId: flight?.id ?? null,
       playingHandicap: adjusted,
       // A pair is stored on both rows, so neither partner is left in an old class after a reload
@@ -299,10 +312,14 @@ export function ReadyOverrideDialog({
             </select>
             <span className="hint">
               {tee
-                ? `Tee: ${tee.name}`
+                ? teeFromRegistration
+                  ? `This entry plays the ${tee.name} tee, so the playing handicap uses it.`
+                  : `No tee on the registration, so the category tee (${tee.name}) is used.`
                 : categoryId === ""
                   ? "Leave it blank when the class is not known yet."
-                  : "This category has no tee set up in Settings."}
+                  : teeFromRegistration
+                    ? "The tee on this registration is not one of this event's tees, so the playing handicap cannot be worked out."
+                    : "This category has no tee set up in Settings."}
             </span>
           </label>
 
@@ -343,6 +360,11 @@ export function ReadyOverrideDialog({
             <div>
               <span className="overline !text-[10px]">Playing handicap</span>
               <b className="block font-display text-xl">{adjusted ?? "—"}</b>
+              {tee ? (
+                <span className="hint block">on the {tee.name} tee</span>
+              ) : (
+                <span className="hint block">No tee set for this entry yet.</span>
+              )}
               {adjusted !== null && adjustmentValue !== 0 && (
                 <span className="hint block">
                   Computed {playing}, adjusted by {adjustmentValue > 0 ? "+" : ""}
