@@ -51,18 +51,19 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 
 ## Final day of the 24th Bamboo Tee (plan of 15 Nov 2026)
 
-Production is `v0.54.0`. Day 4 is the last playing day: every score and every handicap has to be final
+Production is `v0.57.0`. Day 4 is the last playing day: every score and every handicap has to be final
 by the awarding. The owner is on the floor; the orchestrator builds, reviews and releases.
+All four builds (#301 to #304) shipped on 15 Nov through three releases: 0.55.0, 0.56.0, 0.57.0.
 
 ### Diagnosis after Day 3
 
 | Area | What happened | State on 15 Nov |
 | --- | --- | --- |
-| Handicap | Cards were scored with whatever was typed in the HDCP box, so the public showed handicaps the admin never set | **Rule settled 14 Nov:** the WHS playing handicap for the player's tee is the only source. Days 1 to 3 normalized and published. An index edit corrects and republishes played rounds (v0.54.0). Still open: the card save on `/scores` and the tabulator page use the box (#301, #303, #296) |
-| Publishing | Scores reached the public through one-off scripts and manual publishes | Publish on save becomes a setting per day (#301). Provisional publication is on for all four days |
-| Tabulator | Search scrolls away, no branding, a card for a player not on the list is hard to add | #303 |
-| Schedule changes | Swap exists (v0.46.0) but is not obvious | Drag and drop on the board and table view (#304) |
-| Awarding | No way to hide results or reveal them together | Blackout and timed reveal (#302) |
+| Handicap | Cards were scored with whatever was typed in the HDCP box, so the public showed handicaps the admin never set | **Rule settled 14 Nov:** the WHS playing handicap for the player's tee is the only source. Days 1 to 3 normalized and published. An index edit corrects and republishes played rounds (v0.54.0). **Shipped in 0.55.0:** the card save on `/scores` and every approval use the WHS figure, and the tabulator does too (#301, #303) |
+| Publishing | Scores reached the public through one-off scripts and manual publishes | **Shipped in 0.55.0:** publish on save is a setting per day with three modes, defaulting to every save (#301) |
+| Tabulator | Search scrolls away, no branding, a card for a player not on the list is hard to add | **Shipped in 0.55.0:** TeeLine branding, the pinned bar, the system handicap and add-a-card (#303) |
+| Schedule changes | Swap exists (v0.46.0) but is not obvious | **Shipped in 0.57.0:** drag and drop on the board and table view (#304) |
+| Awarding | No way to hide results or reveal them together | **Shipped in 0.56.0:** per-category blackout, the `/awarding` desk control and the `/results` top-3 podium (#302) |
 | Data still unchecked | 59 published cards belong to players with index 0 or none on file; snapshot alignment SQL 4 not run | #305 checklist |
 | Issues | 43 open, many already shipped | 22 closed with evidence on 15 Nov; 4 stale pull requests closed |
 
@@ -76,17 +77,45 @@ by the awarding. The owner is on the floor; the orchestrator builds, reviews and
 - **Migrations are allowed, the owner runs them.** Features must work without them where possible.
 - **The orchestrator's builders build all of today's work.** Karl and Lou review and support the floor.
 
-### Work in flight
+### What shipped on 15 Nov
 
-| Issue | What | Branch | Reviewer |
-| --- | --- | --- | --- |
-| [#301](https://github.com/J-Akiru5/golf-management-system-sl/issues/301) | WHS handicap on save, publish-on-save setting | `agent/fd-scores` | Karl |
-| [#302](https://github.com/J-Akiru5/golf-management-system-sl/issues/302) | Results blackout and timed reveal | `agent/fd-blackout` | Lou |
-| [#303](https://github.com/J-Akiru5/golf-management-system-sl/issues/303) | Tabulator: branding, sticky search, system handicap, add a card | `agent/fd-tabulator` | Karl |
-| [#304](https://github.com/J-Akiru5/golf-management-system-sl/issues/304) | Drag and drop on the draw board | `agent/fd-dragdrop` | Lou |
-| [#305](https://github.com/J-Akiru5/golf-management-system-sl/issues/305) | Guardrails and the day's checklist | none | Jeff |
+| Issue | What | Released in |
+| --- | --- | --- |
+| [#301](https://github.com/J-Akiru5/golf-management-system-sl/issues/301) | WHS handicap on save and approval, publish per day | 0.55.0 |
+| [#303](https://github.com/J-Akiru5/golf-management-system-sl/issues/303) | Tabulator: branding, pinned bar, system handicap, add a card | 0.55.0 |
+| [#302](https://github.com/J-Akiru5/golf-management-system-sl/issues/302) | Per-category blackout, `/awarding` desk control, `/results` top-3 podium | 0.56.0 |
+| [#304](https://github.com/J-Akiru5/golf-management-system-sl/issues/304) | Drag and drop on the draw board | 0.57.0 |
+| [#305](https://github.com/J-Akiru5/golf-management-system-sl/issues/305) | Guardrails and the day's checklist | n/a |
 
-Release order: #301 and #303 first (scoring and handicap), then #302 before 2 p.m., then #304.
+Release order used: #301 and #303 first, then #302, then #304.
+
+### How the awarding works
+
+Six independent lanes: Class A, Class B, Class C, Class D, Net overall, Gross overall.
+
+- **Desk:** `/awarding` has one row per lane with Held or Released, Release now, Release in N seconds,
+  the scheduled time, and the top three it would publish. Releasing one lane writes only that lane.
+- **Public:** `/results` is the podium. A held lane is blank (the "being confirmed" copy), a counting
+  lane shows the number only in a cinema countdown driven by the server clock so every phone agrees,
+  and a released lane shows the top three with the tie mark the desk confirmed and a one-shot flash.
+- **Ties** are marked `T` and the desk validates them before releasing; the display never decides one.
+- **Routing:** `/results` is the podium and All scores moved to `/results/all`. The scores tab, the
+  phone bar and the leaderboard "see all" point there.
+- **Gate:** a held lane returns nothing to a direct database call (`public_reveal_state()` withholds
+  the board), not just to the page. The rest of the blackout keeps using the existing release keys.
+- **Demo:** `AWARDING_DEMO=1` serves fictional sample boards on a loop on a preview. It is refused in
+  production.
+- **Migration:** `20261115000200_results_reveal.sql` stores the per-lane state. Without it the desk can
+  still hold and release through the existing gate, but the public countdown cannot be read by a
+  signed-out page, so the podium shows the "being confirmed" copy instead.
+
+### Migrations waiting on the owner
+
+1. `20261115000100_card_handicap_signed_handicap.sql`: a card snapshot may hold a negative playing
+   handicap.
+2. `20261115000200_results_reveal.sql`: the per-lane reveal state above.
+3. `20261115000300_correct_handicap_no_rules_version.sql`, to run after
+   `20261114000300_correct_handicap_snapshot.sql`.
 
 ### Guardrails while production is live
 
