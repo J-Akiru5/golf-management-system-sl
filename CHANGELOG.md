@@ -9,6 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- **Every published card of Days 1 to 3 now plays off the WHS playing handicap for the tee written on
+  the card** (owner, 14 Nov 2026). The number in the HDCP box no longer decides anything; a player with
+  no index on file is held at their published card until the admin checks the index. Published as Day 1
+  v11, Day 2 v6 and Day 3 v9; the frozen handicap snapshots were aligned by a SQL file the owner ran.
+  The one-off script is `scripts/normalize-published-handicaps.ts`. The system change that makes this
+  the rule for new cards is issue #296. No migration in this change.
+
 ### Docs
 - **`docs/PLAN.md` records 0.52.1 and what followed it:** the live-sync release and its Vercel-blocked
   first deploy, the rule that merges to `main` and `staging` are made as `J-Akiru5`, the owner's
