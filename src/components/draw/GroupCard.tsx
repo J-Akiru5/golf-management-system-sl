@@ -1,9 +1,10 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, type PointerEvent as ReactPointerEvent } from "react";
 import { Avatar } from "@/components/bits";
 import type { DeskRegistration, PlayerRecord } from "@/lib/data/types";
-import type { DrawGroup, DropCheck, Issue } from "@/lib/draw/validate";
+import { acceptsDrop, type DropIntent, type DropTarget } from "@/lib/draw/drop-intent";
+import type { DrawGroup, Issue } from "@/lib/draw/validate";
 import { fmtHcp, fmtIndex, fmtTime, photoOf } from "@/lib/format";
 
 export interface GroupCardProps {
@@ -33,8 +34,19 @@ export interface GroupCardProps {
   issues: Issue[];
   /** Player picked with the Move button, or being dragged. At most one is active. */
   active: { id: string; via: "pick" | "drag" } | null;
-  /** What would happen if the active player went into this group. */
-  drop: DropCheck | null;
+  /** The place the drag or pick is over right now, so the card can say what a drop would do. */
+  hover: DropTarget | null;
+  /**
+   * What releasing the player in hand would do over one place. Asked of the page, so the wording and
+   * the decision are the same on a card and in the table.
+   */
+  intentFor: (target: DropTarget) => DropIntent | null;
+  /** Records the place the pointer is over, so the highlight follows the drag. */
+  onHoverTarget: (target: DropTarget | null) => void;
+  /** Releases the player in hand on one place: the page decides and dispatches. */
+  onDropTarget: (target: DropTarget) => void;
+  /** Starts a finger drag from the grip. Mouse drags use the browser's own drag events. */
+  onPointerDragStart?: (id: string, event: ReactPointerEvent<HTMLElement>) => void;
   selectedPlayer: string | null;
   selected: boolean;
   flash: boolean;
@@ -47,9 +59,6 @@ export interface GroupCardProps {
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   onMoveHere: (n: number) => void;
-  /** Drag-and-drop asks the page directly, so it never depends on a re-render having happened. */
-  allowDrop: (n: number) => boolean;
-  dropOn: (n: number) => void;
   /** Players ticked for a set move or a set swap, in the order they were ticked. */
   checkedIds?: ReadonlySet<string>;
   /** Ticks or unticks one player for a set move or a set swap. */
@@ -58,6 +67,8 @@ export interface GroupCardProps {
   swapFrom?: string | null;
   /** The name of that player, shortened for the "Swap with" button. */
   swapFromName?: string | null;
+  /** True when this group was the full one a drop landed on, so its rows are marked for the swap. */
+  swapAsk?: boolean;
   /** Picks this player as the swap partner: the first when none is waiting, the second after. */
   onSwapWith?: (id: string) => void;
   /** The other players in this player's registered pair who are on the board. */
@@ -67,8 +78,7 @@ export interface GroupCardProps {
 }
 
 function GroupCardImpl(p: GroupCardProps) {
-  const { g, active, drop } = p;
-  const [over, setOver] = useState(false);
+  const { g, active, hover } = p;
   const n = g.playerIds.length;
   const allProvisional = n > 0 && g.playerIds.every((id) => p.regs.get(id)?.provisional === true);
   // What the player records are actually short of. The entry's own index is on file, so the note
@@ -77,15 +87,46 @@ function GroupCardImpl(p: GroupCardProps) {
   const own = active ? g.playerIds.includes(active.id) : false;
   const blocking = p.issues.some((i) => i.severity === "blocking");
   const warning = p.issues.some((i) => i.severity === "warning");
-  const canDrop = Boolean(active && drop?.ok && !own);
+  // What the group itself would do with the player in hand: a move, a pair move, an offer to swap
+  // when the group is full, or a refusal with the reason from the same check the action runs.
+  const groupIntent = active && !own ? p.intentFor({ kind: "group", group: g.number }) : null;
+  const hoverPlayer =
+    hover?.kind === "player" && g.playerIds.includes(hover.playerId) ? hover.playerId : null;
+  /**
+   * Where a release on one row lands. A swap needs both players on the board. A row that cannot
+   * swap still lets the player join this group when the group has room, which is what a drop on the
+   * card did before rows were drop targets, so pointing at a person is never worse than the card.
+   */
+  const targetForRow = (id: string): DropTarget => {
+    if (acceptsDrop(p.intentFor({ kind: "player", playerId: id }))) {
+      return { kind: "player", playerId: id };
+    }
+    if (acceptsDrop(p.intentFor({ kind: "group", group: g.number }))) {
+      return { kind: "group", group: g.number };
+    }
+    return { kind: "player", playerId: id };
+  };
+  // The decision for the place the drop will really land, after that fallback, so the line never
+  // says "can't drop here" for a release that moves the player.
+  const rowTarget = hoverPlayer ? targetForRow(hoverPlayer) : null;
+  const rowIntent = rowTarget ? p.intentFor(rowTarget) : null;
+  const hoveringGroup = hover?.kind === "group" && hover.group === g.number;
+  const hoveringHere = hoveringGroup || hoverPlayer !== null;
+  // The line under the rows says what will happen if the organizer lets go: hovering one row wins,
+  // because that is the more specific place.
+  const rawShown = rowIntent ?? groupIntent;
+  const shown = rawShown && rawShown.kind !== "none" ? rawShown : null;
+  const canDrop = acceptsDrop(shown);
+  const over = canDrop && hoveringHere;
 
   const cls = [
     "group",
     g.locked && "locked",
     p.selected && "selected",
     p.flash && "flash",
-    active && !own && (drop?.ok ? "target" : "refuse"),
-    over && canDrop && "over",
+    p.swapAsk && "swap-ask",
+    active && !own && (acceptsDrop(groupIntent) ? "target" : "refuse"),
+    over && "over",
   ]
     .filter(Boolean)
     .join(" ");
@@ -94,21 +135,25 @@ function GroupCardImpl(p: GroupCardProps) {
     <article
       id={`group-${g.number}`}
       className={cls}
+      data-drop-group={g.number}
       aria-label={`Group ${g.number}, ${p.shotgun ? `hole ${p.slot ?? g.startHole}` : `tee ${g.startHole}`}, ${fmtTime(g.time)}`}
       onDragOver={(e) => {
-        if (p.allowDrop(g.number)) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-        }
+        // A row inside this group has already answered for itself. The intent is read from the
+        // page's drag ref, so the first dragover of a drag already knows the answer.
+        if (!p.intentFor({ kind: "group", group: g.number })) return;
+        // A refused place still accepts the release, so the answer can be said out loud instead of
+        // the drop being silently swallowed. Nothing is written when it is refused.
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
       }}
-      onDragEnter={() => setOver(true)}
+      onDragEnter={() => p.onHoverTarget({ kind: "group", group: g.number })}
       onDragLeave={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) p.onHoverTarget(null);
       }}
       onDrop={(e) => {
         e.preventDefault();
-        setOver(false);
-        p.dropOn(g.number);
+        p.onHoverTarget(null);
+        p.onDropTarget({ kind: "group", group: g.number });
       }}
     >
       <div className="group-head">
@@ -170,6 +215,7 @@ function GroupCardImpl(p: GroupCardProps) {
         const r = p.regs.get(id);
         if (!pl || !r) return null;
         const picked = active?.id === id;
+        const rowOver = hoverPlayer === id;
         const checked = p.checkedIds?.has(id) ?? false;
         const partners = p.pairOf?.(id) ?? [];
         const isSwapFrom = p.swapFrom === id;
@@ -191,7 +237,26 @@ function GroupCardImpl(p: GroupCardProps) {
         return (
           <div
             key={id}
-            className={`slot${picked ? " picked" : ""}${p.selectedPlayer === id ? " selected" : ""}${checked ? " selected" : ""}`}
+            data-drop-player={id}
+            className={`slot${picked ? " picked" : ""}${p.selectedPlayer === id ? " selected" : ""}${checked ? " selected" : ""}${rowOver ? " over" : ""}`}
+            onDragOver={(e) => {
+              // The row answers for itself, so the group behind it never accepts a move instead of
+              // the swap the organizer is pointing at.
+              e.stopPropagation();
+              if (!p.intentFor({ kind: "player", playerId: id })) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+            }}
+            onDragEnter={(e) => {
+              e.stopPropagation();
+              p.onHoverTarget(targetForRow(id));
+            }}
+            onDrop={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              p.onHoverTarget(null);
+              p.onDropTarget(targetForRow(id));
+            }}
           >
             <label
               className="inline-flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center lg:min-h-8 lg:min-w-8"
@@ -208,9 +273,11 @@ function GroupCardImpl(p: GroupCardProps) {
             {!g.locked && (
               <span
                 className="grip"
-                aria-hidden="true"
+                role="button"
+                tabIndex={0}
                 draggable
-                title="Drag to another group"
+                title="Drag to another group, or press Enter to pick this player up"
+                aria-label={`Move or swap ${pl.name}: press Enter to pick up, then choose a target`}
                 onDragStart={(e) => {
                   const row = e.currentTarget.parentElement;
                   if (row) e.dataTransfer.setDragImage(row, 16, 16);
@@ -219,6 +286,14 @@ function GroupCardImpl(p: GroupCardProps) {
                   p.onDragStart(id);
                 }}
                 onDragEnd={p.onDragEnd}
+                onPointerDown={(e) => p.onPointerDragStart?.(id, e)}
+                onKeyDown={(e) => {
+                  // The keyboard path: pick the player up here, then the other rows offer "Swap
+                  // with …" and every group with room offers "Move here". Escape puts them down.
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  p.onPick(picked && active?.via === "pick" ? null : id);
+                }}
               >
                 ⋮⋮
               </span>
@@ -316,28 +391,33 @@ function GroupCardImpl(p: GroupCardProps) {
 
       {/* Always present, so the board never shifts under the cursor when a move starts. */}
       <div
-        className={`slot foot${active && !own && drop ? (drop.ok ? " drop ok" : " drop no") : ""}`}
+        className={`slot foot${shown ? (acceptsDrop(shown) ? " drop ok" : " drop no") : ""}`}
         aria-live="polite"
+        data-drop-note={shown ? shown.kind : undefined}
       >
-        {active && !own && drop ? (
-          drop.ok ? (
+        {shown ? (
+          shown.kind === "refused" ? (
+            <span>
+              <b>Can’t drop here.</b> {shown.reason}
+            </span>
+          ) : (
             <>
               <span>
-                {drop.notes.length > 0 ? `${drop.notes.join(" ")} ` : ""}
-                {active.via === "drag" ? "Drop here." : "Room for one more."}
+                {shown.label}
+                {shown.kind === "move" && shown.note ? ` ${shown.note}` : ""}
               </span>
-              {active.via === "pick" && (
+              {active?.via === "pick" && acceptsDrop(shown) && (
                 <button type="button" className="btn small" onClick={() => p.onMoveHere(g.number)}>
                   Move here
                 </button>
               )}
             </>
-          ) : (
-            <span>
-              <b>Can’t move here.</b> {drop.reason}
-              {n >= p.groupSize && " Swap a player instead."}
-            </span>
           )
+        ) : p.swapAsk && p.swapFrom ? (
+          <span>
+            <b>Group {g.number} is full.</b> Choose a player’s Swap button to swap them with{" "}
+            {p.swapFromName ?? "the player in hand"}.
+          </span>
         ) : (
           <span className="muted">
             <span className="cap" role="img" aria-label={`${n} of ${p.groupSize} players`}>

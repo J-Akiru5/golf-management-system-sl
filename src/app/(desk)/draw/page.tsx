@@ -1,9 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { RoleGate } from "@/components/desk";
 import { BoardCommandBar } from "@/components/draw/BoardCommandBar";
+import { dropTargetAt, sameTarget, TOUCH_DRAG_THRESHOLD } from "@/components/draw/board-drag";
 import { DrawTable } from "@/components/draw/DrawTable";
 import { FlightQueuePanel } from "@/components/draw/FlightQueuePanel";
 import { GroupCard } from "@/components/draw/GroupCard";
@@ -19,6 +27,7 @@ import { fmtIso } from "@/lib/data/labels";
 import { partnerOf } from "@/lib/data/registrations";
 import { classMismatches, classMismatchIssues } from "@/lib/draw/class-mismatch";
 import { sessionFinderFor } from "@/lib/draw/day-sessions";
+import { type DropIntent, type DropTarget, dropIntent } from "@/lib/draw/drop-intent";
 import { buildFlightQueue } from "@/lib/draw/flight-queue";
 import {
   buildPairingSections,
@@ -26,7 +35,7 @@ import {
   type PairingFlight,
 } from "@/lib/draw/pairing-sections";
 import { buildDrawTable } from "@/lib/draw/table-model";
-import { type DrawGroup, dropCheck, type Issue, validateDraw } from "@/lib/draw/validate";
+import { type DrawGroup, type Issue, validateDraw } from "@/lib/draw/validate";
 import { fmtTime } from "@/lib/format";
 import type { PairingCandidate } from "@/lib/import/pairing-sheet";
 import { UNCLASSIFIED_LABEL } from "@/lib/routing";
@@ -64,6 +73,8 @@ export default function DrawPage() {
     days,
     drawDay,
     setDrawDay,
+    canUndo,
+    undoLastChange,
   } = desk;
   const draw = desk.draw;
   const config = tournament?.config ?? null;
@@ -89,6 +100,21 @@ export default function DrawPage() {
   // Cards edit; the table is the printed pairing layout, for reading a class at a glance.
   const [layout, setLayout] = useState<"cards" | "table">("cards");
   const [flash, setFlash] = useState<number | null>(null);
+  // The place a drag is over, so the board can say what letting go would do.
+  const [hover, setHover] = useState<DropTarget | null>(null);
+  // A drop that could take the player alone or with their registered pair, waiting for the choice.
+  const [pairAsk, setPairAsk] = useState<{
+    playerId: string;
+    partnerId: string;
+    toGroup: number;
+  } | null>(null);
+  // The short line after a drop, with Undo. It clears itself so the board is not left with stale news.
+  const [dropNote, setDropNote] = useState<{
+    tone: "ok" | "bad" | "info";
+    text: string;
+  } | null>(null);
+  // The group a dropped player was offered for swapping, so its rows are marked.
+  const [swapAsk, setSwapAsk] = useState<number | null>(null);
   const [pubOpen, setPubOpen] = useState(false);
   const [confirm, setConfirm] = useState<"startOver" | "unpublish" | null>(null);
   const [reason, setReason] = useState(REASONS[0] as string);
@@ -251,22 +277,26 @@ export default function DrawPage() {
 
   // Escape drops whatever is picked up, including a swap waiting for its second player.
   useEffect(() => {
-    if (!active && !swapFirst && !swapSel) return;
+    if (!active && !swapFirst && !swapSel && !pairAsk) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       setActive(null);
       setSwapFirst(null);
       setSwapSel(null);
+      setSwapAsk(null);
+      setPairAsk(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, swapFirst, swapSel]);
+  }, [active, swapFirst, swapSel, pairAsk]);
 
   // Another playing day is another board, so a selection made on the last one cannot stay.
   useEffect(() => {
     setChecked([]);
     setSwapSel(null);
     setSwapFirst(null);
+    setSwapAsk(null);
+    setPairAsk(null);
     setMoveTarget("");
   }, [day]);
 
@@ -324,34 +354,26 @@ export default function DrawPage() {
   // The dragged player lives in a ref as well as state: drop targets must answer "may I?" during
   // the very first dragover, before React has re-rendered.
   const dragId = useRef<string | null>(null);
+  // The player in hand as the last render saw it, for the drop handlers that run between renders.
+  const activeIdRef = useRef<string | null>(null);
   const onDragStart = useCallback((id: string) => {
     dragId.current = id;
-    // Changing the page inside dragstart can cancel the drag in Chrome, so wait a tick.
-    setTimeout(() => setActive({ id, via: "drag" }), 0);
+    setPairAsk(null);
+    setDropNote(null);
+    // Changing the page inside dragstart can cancel the drag in Chrome, so wait a tick. The drag
+    // may be over by the time the tick lands, so the pick is only shown while it is still in hand.
+    setTimeout(() => {
+      if (dragId.current === id) setActive({ id, via: "drag" });
+    }, 0);
   }, []);
   const onDragEnd = useCallback(() => {
     dragId.current = null;
     setActive(null);
+    setHover(null);
   }, []);
-  const allowDrop = useCallback(
-    (n: number) => {
-      const id = dragId.current;
-      if (!id || !draw || !config) return false;
-      return dropCheck(draw, config, regById, id, n, names).ok;
-    },
-    [draw, config, regById, names],
-  );
-  const dropOn = useCallback(
-    (n: number) => {
-      const id = dragId.current;
-      if (!id || !allowDrop(n)) return;
-      dispatch({ type: "move", playerId: id, toGroup: n, reason });
-      setSelection({ kind: "player", id });
-      dragId.current = null;
-      setActive(null);
-    },
-    [allowDrop, dispatch, reason],
-  );
+  const onHoverTarget = useCallback((target: DropTarget | null) => {
+    setHover((current) => (sameTarget(current, target) ? current : target));
+  }, []);
   const onLock = useCallback(
     (n: number, locked: boolean) => dispatch({ type: "setGroupLocked", group: n, locked, reason }),
     [dispatch, reason],
@@ -442,6 +464,7 @@ export default function DrawPage() {
     (a: string, b: string) => {
       dispatch({ type: "swapPlayers", a, b, reason });
       setSwapFirst(null);
+      setSwapAsk(null);
       setActive(null);
       setSelection({ kind: "player", id: b });
     },
@@ -450,6 +473,7 @@ export default function DrawPage() {
 
   const onSwapWith = useCallback(
     (id: string) => {
+      setSwapAsk(null);
       if (!swapFrom) {
         setSwapFirst(id);
         setActive(null);
@@ -522,6 +546,187 @@ export default function DrawPage() {
     return map;
   }, [draw, regById]);
   const pairOf = useCallback((id: string) => pairPartners.get(id) ?? [], [pairPartners]);
+
+  // ---- Drag and drop: a new way to start the same swaps and moves ----
+  const noteTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  /** The one line after a drop. It clears itself so the board is not left with stale news. */
+  const showDropNote = useCallback((tone: "ok" | "bad" | "info", text: string) => {
+    setDropNote({ tone, text });
+    clearTimeout(noteTimer.current);
+    noteTimer.current = setTimeout(() => setDropNote(null), 12000);
+  }, []);
+  // The line goes with the page: a timer left behind would set state on a board that is gone.
+  useEffect(() => () => clearTimeout(noteTimer.current), []);
+
+  /**
+   * What releasing the player in hand over one place would do. Cards and the table both ask this.
+   * It reads the drag ref as well as the state, so the very first dragover already knows the
+   * answer, before React has re-rendered with the dragged player.
+   */
+  const intentFor = useCallback(
+    (target: DropTarget): DropIntent | null => {
+      const playerId = dragId.current ?? activeIdRef.current;
+      if (!playerId || !draw || !config) return null;
+      return dropIntent({
+        draw,
+        config,
+        regs: regById,
+        names,
+        playerId,
+        target,
+        pairOf,
+        nameOf,
+      });
+    },
+    [draw, config, regById, names, pairOf, nameOf],
+  );
+
+  /**
+   * Carries out one drop. Every branch dispatches an action the buttons already dispatch, so a drop
+   * writes exactly what a button writes and the rules stay in one place.
+   */
+  const resolveDrop = useCallback(
+    (playerId: string, target: DropTarget) => {
+      if (!draw || !config) return;
+      const intent = dropIntent({
+        draw,
+        config,
+        regs: regById,
+        names,
+        playerId,
+        target,
+        pairOf,
+        nameOf,
+      });
+      switch (intent.kind) {
+        case "none":
+          return;
+        case "refused":
+          showDropNote("bad", intent.reason);
+          return;
+        case "swap":
+          dispatch({ type: "swapPlayers", a: intent.a, b: intent.b, reason });
+          setSwapFirst(null);
+          setSwapAsk(null);
+          setSelection({ kind: "player", id: intent.b });
+          showDropNote("ok", `Swapped ${nameOf(intent.a)} with ${nameOf(intent.b)}.`);
+          return;
+        case "move":
+          dispatch({ type: "move", playerId: intent.playerId, toGroup: intent.toGroup, reason });
+          setSelection({ kind: "player", id: intent.playerId });
+          showDropNote("ok", `Moved ${nameOf(intent.playerId)} to group ${intent.toGroup}.`);
+          return;
+        case "moveOrPair":
+          // Nothing is written until the desk says whether the pair comes too.
+          setPairAsk({
+            playerId: intent.playerId,
+            partnerId: intent.partnerId,
+            toGroup: intent.toGroup,
+          });
+          return;
+        case "pickSwap":
+          // The same offer the Swap button makes: the desk picks the row next.
+          setSwapFirst(intent.playerId);
+          setSwapAsk(intent.group);
+          setActive(null);
+          setSelection({ kind: "group", n: intent.group });
+          showDropNote("info", intent.label);
+          return;
+      }
+    },
+    [draw, config, regById, names, pairOf, nameOf, dispatch, reason, showDropNote],
+  );
+
+  const resolveRef = useRef(resolveDrop);
+  resolveRef.current = resolveDrop;
+  activeIdRef.current = active?.id ?? null;
+
+  /** Releases the player in hand on one place. Shared by the mouse drop and the finger drop. */
+  const onDropTarget = useCallback((target: DropTarget | null) => {
+    const id = dragId.current ?? activeIdRef.current;
+    dragId.current = null;
+    setHover(null);
+    setActive(null);
+    if (!id || !target) return;
+    resolveRef.current(id, target);
+  }, []);
+
+  /** The pair choice a drop can raise: this player alone, or the pair. */
+  const takePairChoice = useCallback(
+    (take: "one" | "both") => {
+      if (!pairAsk) return;
+      const { playerId, partnerId, toGroup } = pairAsk;
+      if (take === "both") {
+        dispatch({ type: "moveSet", playerIds: [playerId, partnerId], toGroup, reason });
+        showDropNote(
+          "ok",
+          `Moved ${nameOf(playerId)} and ${nameOf(partnerId)} to group ${toGroup}.`,
+        );
+      } else {
+        dispatch({ type: "move", playerId, toGroup, reason });
+        showDropNote("ok", `Moved ${nameOf(playerId)} to group ${toGroup}.`);
+      }
+      setSelection({ kind: "player", id: playerId });
+      setPairAsk(null);
+    },
+    [pairAsk, dispatch, reason, nameOf, showDropNote],
+  );
+
+  // Touch has no HTML5 drag, so a finger on the grip starts the same drag through pointer events.
+  // The place under the finger is read back from the board's own drop markers.
+  const pointerDrag = useRef<{
+    id: string;
+    x: number;
+    y: number;
+    pointerId: number;
+    moving: boolean;
+  } | null>(null);
+  const onPointerDragStart = useCallback((id: string, e: ReactPointerEvent<HTMLElement>) => {
+    if (e.pointerType === "mouse") return; // a mouse uses the browser's own drag events
+    pointerDrag.current = { id, x: e.clientX, y: e.clientY, pointerId: e.pointerId, moving: false };
+  }, []);
+
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const drag = pointerDrag.current;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      if (!drag.moving) {
+        if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < TOUCH_DRAG_THRESHOLD) return;
+        drag.moving = true;
+        dragId.current = drag.id;
+        setPairAsk(null);
+        setDropNote(null);
+        setActive({ id: drag.id, via: "drag" });
+      }
+      e.preventDefault();
+      const target = dropTargetAt(e.clientX, e.clientY);
+      setHover((current) => (sameTarget(current, target) ? current : target));
+    };
+    const finish = (e: PointerEvent, cancelled: boolean) => {
+      const drag = pointerDrag.current;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      pointerDrag.current = null;
+      // A tap, not a drag: the ordinary click on the row still happens.
+      if (!drag.moving) return;
+      if (cancelled) {
+        dragId.current = null;
+        setHover(null);
+        setActive(null);
+        return;
+      }
+      onDropTarget(dropTargetAt(e.clientX, e.clientY));
+    };
+    const up = (e: PointerEvent) => finish(e, false);
+    const cancel = (e: PointerEvent) => finish(e, true);
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+    };
+  }, [onDropTarget]);
 
   const moveChecked = useCallback(
     (toGroup: number) => {
@@ -1114,6 +1319,57 @@ export default function DrawPage() {
 
       {draw && view === "board" && (
         <>
+          {/* What the last drop did, in one line, with the undo that already exists. */}
+          {dropNote && (
+            <div
+              className={`moving${dropNote.tone === "bad" ? " bad" : ""}`}
+              role="status"
+              data-testid="drop-confirm"
+            >
+              <span>{dropNote.text}</span>
+              <span className="row">
+                {dropNote.tone === "ok" && canUndo && (
+                  <button
+                    type="button"
+                    className="btn small"
+                    onClick={() => {
+                      undoLastChange();
+                      setDropNote(null);
+                    }}
+                  >
+                    Undo
+                  </button>
+                )}
+                <button type="button" className="btn small" onClick={() => setDropNote(null)}>
+                  Dismiss
+                </button>
+              </span>
+            </div>
+          )}
+
+          {/* A drop that could take the registered pair as well, waiting for one small choice. */}
+          {pairAsk && (
+            <div
+              className="card flex flex-wrap items-center gap-x-4 gap-y-2 !py-3"
+              role="status"
+              data-testid="pair-choice"
+            >
+              <span className="text-[13px]">
+                <b>{nameOf(pairAsk.playerId)}</b> and <b>{nameOf(pairAsk.partnerId)}</b> are a pair,
+                and group {pairAsk.toGroup} has room for both.
+              </span>
+              <button type="button" className="btn" onClick={() => takePairChoice("one")}>
+                Just {nameOf(pairAsk.playerId).split(",")[0]}
+              </button>
+              <button type="button" className="btn gold" onClick={() => takePairChoice("both")}>
+                Move the pair
+              </button>
+              <button type="button" className="btn ghost" onClick={() => setPairAsk(null)}>
+                Cancel
+              </button>
+            </div>
+          )}
+
           <BoardCommandBar
             players={commandPlayers}
             groups={commandGroups}
@@ -1199,6 +1455,15 @@ export default function DrawPage() {
       )}
 
       {draw && view === "board" && (
+        <p className="hint" data-help="draw-drag">
+          Drag a player onto another player to swap them, even between two full groups, or onto a
+          group with room to move them there. Dropping on a full group offers a swap you finish on a
+          row. A locked group explains why it cannot take a move. On a phone, drag from the ⋮⋮
+          handle. The Swap and Move buttons and the command box do the same things.
+        </p>
+      )}
+
+      {draw && view === "board" && (
         <div className="draw-layout">
           <div className="board stack">
             {layout === "table" ? (
@@ -1218,6 +1483,17 @@ export default function DrawPage() {
                 manualOverrideIds={manualOverrideIds as ReadonlySet<string>}
                 onSelectPlayer={selectPlayer}
                 onSelectGroup={selectGroup}
+                active={active}
+                hover={hover}
+                intentFor={intentFor}
+                onHoverTarget={onHoverTarget}
+                onDropTarget={onDropTarget}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onPointerDragStart={onPointerDragStart}
+                swapFrom={swapFrom}
+                swapFromName={swapFromName}
+                onSwapWith={onSwapWith}
               />
             ) : (
               sections.map(({ key, heading, groups }) => (
@@ -1261,11 +1537,12 @@ export default function DrawPage() {
                         manualOverrideIds={manualOverrideIds}
                         issues={issuesByGroup.get(g.number) ?? none}
                         active={active}
-                        drop={
-                          active
-                            ? dropCheck(draw, config, regById, active.id, g.number, names)
-                            : null
-                        }
+                        hover={hover}
+                        intentFor={intentFor}
+                        onHoverTarget={onHoverTarget}
+                        onDropTarget={onDropTarget}
+                        onPointerDragStart={onPointerDragStart}
+                        swapAsk={swapAsk === g.number}
                         selectedPlayer={
                           selection?.kind === "player" && g.playerIds.includes(selection.id)
                             ? selection.id
@@ -1289,8 +1566,6 @@ export default function DrawPage() {
                         onDragStart={onDragStart}
                         onDragEnd={onDragEnd}
                         onMoveHere={moveActiveTo}
-                        allowDrop={allowDrop}
-                        dropOn={dropOn}
                         checkedIds={checkedIds}
                         onToggleCheck={toggleCheck}
                         swapFrom={swapFrom}

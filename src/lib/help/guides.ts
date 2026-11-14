@@ -208,6 +208,12 @@ export const DESK_GUIDES: HelpGuide[] = [
       },
       {
         text: literal(
+          "Drag a player onto another player to swap the two, or onto a group with room to move them there. A full group offers a swap you finish on a row; a locked group explains why it cannot take a move. The Swap and Move buttons do the same things without a mouse.",
+        ),
+        anchor: "draw-drag",
+      },
+      {
+        text: literal(
           "The issues panel lists what blocks publishing and what only warns. A blocking issue stops the publish.",
         ),
         anchor: "draw-issues",
