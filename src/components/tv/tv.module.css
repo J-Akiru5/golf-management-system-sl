@@ -482,15 +482,15 @@
 /* The Converge mark ships in its own teal; on the forest board it prints white, like the platform
    lockup beside it, and the shapes carry the recognition rather than the colour. */
 .convergeLogo {
-  height: calc(var(--u) * 2.5);
+  height: calc(var(--u) * 4.2);
   width: auto;
   filter: brightness(0) invert(1);
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .convergeLogoIdle {
-  height: calc(var(--u) * 3.4);
-  opacity: 0.85;
+  height: calc(var(--u) * 6);
+  opacity: 0.9;
 }
 
 .idleBrand {
