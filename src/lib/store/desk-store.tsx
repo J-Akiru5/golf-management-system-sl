@@ -1090,7 +1090,16 @@ export function DeskProvider({ children }: { children: ReactNode }) {
   }, [state, connected, client, dispatch, onEventCreated, revisionStore]);
 
   const scoring = useMemo<ScoringRepository>(() => {
-    if (!connected || !client) return createDemoScoringRepository(buildDemoScoringSeed());
+    if (!connected || !client) {
+      // The demo takes the event's own maximum, so a corrected index is capped the way the
+      // connected function caps it. The ref keeps the repository stable across desk actions: a new
+      // repository would throw away the cards entered in this browser.
+      const event = activeTournament(latest.current);
+      return createDemoScoringRepository({
+        ...buildDemoScoringSeed(),
+        maxIndex: event?.config.maxIndex ?? null,
+      });
+    }
     return createSupabaseScoringRepository({ client });
   }, [connected, client]);
 

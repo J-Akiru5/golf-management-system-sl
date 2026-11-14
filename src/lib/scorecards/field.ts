@@ -1,6 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
 export interface FieldPlayer {
+  /** The player row id. The scoring round, the card and the admin handoff are keyed by this. */
+  playerId: string;
+  /** The registration row id for this event. */
+  registrationId: string;
+  /** The pair partner's player id, used as the card marker. Empty when there is no pair. */
+  partnerPlayerId: string;
+  /** The pair partner's registration row id. Empty when there is no pair. */
+  partnerRegistrationId: string;
   name: string;
   partner: string;
   team: number | null;
@@ -262,6 +270,7 @@ export async function loadField(
   const byId = new Map<
     string,
     {
+      playerId: string;
       name: string;
       index: number | null;
       flightClass: string;
@@ -280,6 +289,7 @@ export async function loadField(
     const registrationTee = record(row.tees);
     const categoryTee = record(record(row.categories)?.tees);
     byId.set(id, {
+      playerId: text(row.player_id),
       name,
       index: numberOrNull(row.frozen_index),
       flightClass: normalizeClass(flight?.name),
@@ -298,7 +308,12 @@ export async function loadField(
         ? classFromAverage(entry.index, partnerIndex)
         : "";
     const group = groupByRegistration.get(id) ?? null;
+    const partnerEntry = pair ? byId.get(pair.partnerRegistrationId) : undefined;
     players.push({
+      playerId: entry.playerId,
+      registrationId: id,
+      partnerPlayerId: partnerEntry?.playerId ?? "",
+      partnerRegistrationId: pair?.partnerRegistrationId ?? "",
       name: entry.name,
       partner,
       team: pair ? pair.number : null,

@@ -539,7 +539,7 @@ export const tl: Dictionary = {
       },
       pairings: {
         title: "Hanapin ang grupo mo",
-        summary: "Paano basahin ang pairings page, at paano i-print ito.",
+        summary: "Paano basahin ang pairings page.",
         find: "I-type ang bahagi ng pangalan mo para mahanap ang grupo mo.",
         flight: "Pinapaliit ng flight filter ang mahabang listahan.",
         read: "Nakasaad sa card mo ang hole o tee, ang wave at ang oras.",

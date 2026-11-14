@@ -441,6 +441,136 @@ await expect(dupCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
 check("the reviewed card is submitted once", (await dupCards.locator("tbody tr").count()) === 1);
 await page.setViewportSize({ width: 1440, height: 950 });
 
+// ----------------------------------------------- fast manual entry (issue #259)
+// A card has to be found, typed and saved without the mouse. This walks the whole path on the demo
+// round: a name search, the first match, 18 scores with Tab between them, Save and next, and the
+// next card's first cell already focused. The demo has no day, session or class data, so those
+// filters are checked for being there; the counts and the card-state filter carry the assertions.
+section("/scores fast entry");
+await go("/scores");
+const queuePanel = page.locator('section[aria-labelledby="card-queue"]');
+await expect(queuePanel).toBeVisible({ timeout: 30000 });
+const queueRows = queuePanel.locator("button[data-card-row]");
+await expect(queueRows).toHaveCount(4, { timeout: 15000 });
+check(
+  "the card queue lists the round's players",
+  (await queueRows.count()) === 4,
+  `(${await queueRows.count()})`,
+);
+
+const queueTiles = queuePanel.locator(".tiles .tile b");
+const tileNumber = async (index) =>
+  Number.parseInt((await queueTiles.nth(index).textContent()) ?? "", 10);
+check(
+  "the queue counts entered, verified and still missing",
+  (await tileNumber(0)) === 0 && (await tileNumber(1)) === 0 && (await tileNumber(2)) === 4,
+  `(${await tileNumber(0)} entered, ${await tileNumber(1)} verified, ${await tileNumber(2)} missing)`,
+);
+const hasQueueFilter = async (name) =>
+  (await queuePanel.getByRole("combobox", { name, exact: true }).count()) === 1;
+check(
+  "the day, session and class filters are offered",
+  (await hasQueueFilter("Day")) &&
+    (await hasQueueFilter("Session")) &&
+    (await hasQueueFilter("Class")),
+);
+
+const queueSearch = queuePanel.getByLabel("Player search");
+await queueSearch.fill("player c");
+await expect(queueRows).toHaveCount(1, { timeout: 15000 });
+check("the name search finds one card", (await queueRows.count()) === 1);
+await queueSearch.press("Enter");
+await expect(dupEntry.getByRole("combobox").first()).toHaveValue("SAMPLE PLAYER C", {
+  timeout: 15000,
+});
+check("Enter in the search selects that player", true, "(SAMPLE PLAYER C)");
+await expect(dupEntry.locator("#hole-1")).toBeFocused({ timeout: 15000 });
+check("the keyboard lands on the first hole", true);
+
+// The whole card from the keyboard: 18 fours, Tab between them, then Save and next.
+await page.keyboard.type("4");
+for (let hole = 2; hole <= 18; hole += 1) {
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("4");
+}
+await expect(dupEntry.locator("#hole-18")).toBeFocused({ timeout: 15000 });
+await expect(dupEntry.locator("#score-submit-next")).toBeEnabled({ timeout: 15000 });
+await page.keyboard.press("Tab");
+await expect(dupEntry.locator("#score-submit-next")).toBeFocused({ timeout: 15000 });
+check("Tab on the last hole hands the desk to Save and next", true);
+await page.keyboard.press("Enter");
+await expect(page.getByText(/Card saved for/)).toBeVisible({ timeout: 20000 });
+check("the card is saved from the keyboard", true);
+await expect(dupEntry.getByRole("combobox").first()).toHaveValue("SAMPLE PLAYER D", {
+  timeout: 20000,
+});
+await expect(dupEntry.locator("#hole-1")).toBeFocused({ timeout: 15000 });
+check("Save and next opens the next card on the first hole", true);
+check(
+  "the saved card is counted and the list moves on",
+  (await tileNumber(0)) === 1 && (await tileNumber(2)) === 3,
+  `(${await tileNumber(0)} entered, ${await tileNumber(2)} missing)`,
+);
+
+await queueSearch.fill("");
+await expect(queueRows).toHaveCount(4, { timeout: 15000 });
+const stateFilter = queuePanel.getByLabel("Card state");
+await stateFilter.selectOption("none");
+await expect(queueRows).toHaveCount(3, { timeout: 15000 });
+check("the card-state filter keeps the cards still to type", (await queueRows.count()) === 3);
+await stateFilter.selectOption("entered");
+await expect(queueRows).toHaveCount(1, { timeout: 15000 });
+check("the card-state filter finds the entered card", (await queueRows.count()) === 1);
+await stateFilter.selectOption("all");
+await expect(queueRows).toHaveCount(4, { timeout: 15000 });
+
+await scoresTab("Review", 'section[aria-labelledby="score-cards"]');
+const fastCards = page.locator('section[aria-labelledby="score-cards"]');
+await expect(fastCards.locator("tbody tr")).toHaveCount(1, { timeout: 20000 });
+const autoPublishBox = fastCards.getByRole("checkbox", {
+  name: "Publish verified cards automatically",
+});
+await expect(autoPublishBox).toBeChecked({ timeout: 15000 });
+check("a verified card is set to publish automatically", true);
+await fastCards.getByRole("button", { name: "Approve" }).first().click();
+await expect(fastCards.locator("tbody tr .pill.ok")).toHaveCount(1, { timeout: 20000 });
+await scoresTab("Enter card", 'section[aria-labelledby="card-queue"]');
+await expect(queueTiles.nth(1)).toHaveText("1", { timeout: 20000 });
+check("an approved card counts as verified in the queue", true);
+
+await page.setViewportSize({ width: 1024, height: 768 });
+await expect(queuePanel).toBeVisible({ timeout: 15000 });
+const entryCell = await dupEntry.locator("#hole-1").boundingBox();
+check(
+  "a score cell is a 44px target on a tablet",
+  (entryCell?.height ?? 0) >= 44,
+  `(${entryCell?.height}px)`,
+);
+await page.setViewportSize({ width: 1440, height: 950 });
+
+section("/scores handicap correction");
+await queuePanel.getByRole("button", { name: /SAMPLE PLAYER A/ }).first().click();
+await expect(dupEntry.getByRole("combobox").first()).toHaveValue("SAMPLE PLAYER A", {
+  timeout: 15000,
+});
+const correctHandicapButton = page.getByRole("button", { name: "Correct handicap" }).first();
+await expect(correctHandicapButton).toBeVisible({ timeout: 15000 });
+await correctHandicapButton.click();
+const correctDialog = page.getByRole("dialog");
+await expect(correctDialog).toBeVisible({ timeout: 15000 });
+await correctDialog.getByLabel("Corrected handicap index").fill("10.1");
+await correctDialog.getByLabel("Corrected index effective date").fill("2026-11-01");
+await correctDialog.getByLabel("Reason for the correction").fill("Browser check correction");
+await correctDialog.getByRole("button", { name: "Correct handicap" }).click();
+await expect(
+  page.getByText(/Handicap corrected and the player's result recalculated/),
+).toBeVisible({ timeout: 20000 });
+const correctedSummary = page.locator('section[aria-label="Handicap for SAMPLE PLAYER A"]');
+await expect(correctedSummary.getByText("10", { exact: true }).first()).toBeVisible({
+  timeout: 15000,
+});
+check("the played round's handicap snapshot can be corrected with a reason", true);
+
 // ------------------------------------------------------------- staff sheet, 360px
 // The volunteer's phone: no sideways scroll, 44px targets, numeric entry, and the same scan review
 // with the photo, every cell and the OUT/IN/TOTAL the desk reads.
@@ -1467,6 +1597,21 @@ check(
 await phonePage.locator('[data-testid="scores-session"]').selectOption("");
 await phonePage.locator('[data-testid="scores-view-cards"]').click();
 await phonePage.waitForTimeout(250);
+// The search is the first control, above the day, session and class dropdowns.
+const scoresSearchBox = await phonePage.locator('[data-testid="scores-search"]').boundingBox();
+const scoresDayBox = await phonePage.locator('[data-testid="scores-day"]').boundingBox();
+check(
+  "the name search sits above the filters",
+  scoresSearchBox !== null && scoresDayBox !== null && scoresSearchBox.y < scoresDayBox.y,
+  `(search ${Math.round(scoresSearchBox?.y ?? -1)}, day ${Math.round(scoresDayBox?.y ?? -1)})`,
+);
+// A member who does not read small links still has to see that the top ten teams are a tap away.
+const scoresTeamsBox = await phonePage.locator('[data-testid="scores-teams-button"]').boundingBox();
+check(
+  "the top-teams link is a full-size button",
+  scoresTeamsBox !== null && scoresTeamsBox.height >= 44,
+  `(${Math.round(scoresTeamsBox?.height ?? 0)}px)`,
+);
 await phonePage.locator('[data-testid="scores-search"]').fill("antonio");
 await phonePage.waitForTimeout(250);
 const foundRows = await scoreRows.count();
@@ -1849,6 +1994,214 @@ await calendarPage.setViewportSize({ width: 1440, height: 950 });
 await setCalendarTheme("light");
 
 await calendarContext.close();
+
+// ---------------------------------------------------------------- tabulator assigned list
+section("tabulator assigned list and send");
+const tabulatorContext = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+const tabulatorPage = await tabulatorContext.newPage();
+const tabulatorField = {
+  ok: true,
+  event: "24th Bamboo Tee",
+  tournamentId: "tournament-test",
+  dayNumber: 1,
+  playDate: "2026-11-12",
+  maxIndex: 30,
+  allowance: 1,
+  days: [{ day: 1, date: "2026-11-12" }],
+  players: [
+    {
+      playerId: "player-1",
+      registrationId: "registration-1",
+      partnerPlayerId: "player-2",
+      partnerRegistrationId: "registration-2",
+      name: "ALPHA, ONE",
+      partner: "BETA, TWO",
+      team: 1,
+      group: 2,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "06:30",
+      session: "AM",
+      startHole: 1,
+      wave: "A",
+      flight: "A",
+      cls: "A",
+      formulaClass: "A",
+      frozenIndex: 10.2,
+      playingHandicap: 12,
+      tee: "Blue",
+      teeCode: "B",
+    },
+    {
+      playerId: "player-2",
+      registrationId: "registration-2",
+      partnerPlayerId: "player-1",
+      partnerRegistrationId: "registration-1",
+      name: "BETA, TWO",
+      partner: "ALPHA, ONE",
+      team: 1,
+      group: 2,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "06:30",
+      session: "AM",
+      startHole: 1,
+      wave: "A",
+      flight: "A",
+      cls: "A",
+      formulaClass: "A",
+      frozenIndex: 14.1,
+      playingHandicap: 16,
+      tee: "Blue",
+      teeCode: "B",
+    },
+    {
+      playerId: "player-3",
+      registrationId: "registration-3",
+      partnerPlayerId: "player-4",
+      partnerRegistrationId: "registration-4",
+      name: "GAMMA, THREE",
+      partner: "DELTA, FOUR",
+      team: 2,
+      group: 5,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "06:40",
+      session: "AM",
+      startHole: 2,
+      wave: "A",
+      flight: "A",
+      cls: "B",
+      formulaClass: "B",
+      frozenIndex: 18.4,
+      playingHandicap: 20,
+      tee: "White",
+      teeCode: "W",
+    },
+    {
+      playerId: "player-4",
+      registrationId: "registration-4",
+      partnerPlayerId: "player-3",
+      partnerRegistrationId: "registration-3",
+      name: "DELTA, FOUR",
+      partner: "GAMMA, THREE",
+      team: 2,
+      group: 9,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "12:30",
+      session: "PM",
+      startHole: 1,
+      wave: "P",
+      flight: "A",
+      cls: "B",
+      formulaClass: "B",
+      frozenIndex: 20.1,
+      playingHandicap: 22,
+      tee: "Blue",
+      teeCode: "B",
+    },
+    {
+      playerId: "player-5",
+      registrationId: "registration-5",
+      partnerPlayerId: "",
+      partnerRegistrationId: "",
+      name: "UNASSIGNED, FIVE",
+      partner: "",
+      team: null,
+      group: null,
+      dayNumber: 1,
+      playDate: "2026-11-12",
+      teeTime: "",
+      session: "",
+      startHole: null,
+      wave: "",
+      flight: "",
+      cls: "C",
+      formulaClass: "C",
+      frozenIndex: 24.1,
+      playingHandicap: 26,
+      tee: "Blue",
+      teeCode: "B",
+    },
+  ],
+};
+await tabulatorPage.route("**/api/scorecards/field**", (route) =>
+  route.fulfill({ json: tabulatorField }),
+);
+await tabulatorPage.route("**/api/scorecards/session", (route) =>
+  route.fulfill({ json: { email: "tabulator@example.com", role: "tabulation" } }),
+);
+await tabulatorPage.route("**/api/scorecards/day1am-r5", (route) => {
+  if (route.request().method() === "PUT") {
+    return route.fulfill({ json: { ok: true } });
+  }
+  return route.fulfill({
+    json: {
+      payload: { cards: [], reviewBatches: [], activeReviewBatchId: "all" },
+      updatedAt: "2026-11-14T00:00:00.000Z",
+    },
+  });
+});
+let submitBody = null;
+await tabulatorPage.route("**/api/scorecards/submit", (route) => {
+  submitBody = route.request().postDataJSON();
+  return route.fulfill({
+    json: {
+      ok: true,
+      submission: {
+        at: new Date().toISOString(),
+        by: "tabulator@example.com",
+        label: "Day 1 AM",
+        slug: "day1am-r5",
+        cards: (submitBody?.cards ?? []).map((card) => ({ ...card, hdcp: card.hdcp || "12" })),
+        nameOnly: submitBody?.nameOnly ?? [],
+        unmatched: [],
+      },
+    },
+  });
+});
+await tabulatorPage.goto(`${BASE}/scorecard/index.html`, {
+  waitUntil: "networkidle",
+  timeout: 120000,
+});
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(3, { timeout: 15000 });
+check("the assigned AM players are listed on their own", true);
+const listedNames = await tabulatorPage
+  .locator("#cards .card input.name")
+  .evaluateAll((inputs) => inputs.map((input) => input.value));
+check(
+  "the list is in group and start order",
+  listedNames.join(",") === "ALPHA, ONE,BETA, TWO,GAMMA, THREE",
+  listedNames.join(" / "),
+);
+check(
+  "the system playing handicap is shown",
+  (await tabulatorPage.locator('#cards .card [data-k="syshcp"]').first().textContent())?.includes(
+    "System PH 12",
+  ) === true,
+);
+const firstNameEditable = await tabulatorPage
+  .locator("#cards .card input.name")
+  .first()
+  .isEditable();
+check("a listed player's name is read-only", !firstNameEditable);
+await tabulatorPage.locator("#cards .card").first().locator('input[data-h="0"]').fill("4");
+await tabulatorPage.locator("#cards .card").first().locator('input[data-f="verified"]').check();
+tabulatorPage.once("dialog", (dialog) => dialog.accept());
+await tabulatorPage.click("#batch-send");
+await expect
+  .poll(() => submitBody, { timeout: 10000 })
+  .not.toBeNull();
+check("the send names the system player", submitBody?.cards?.[0]?.playerId === "player-1");
+check(
+  "the send leaves a blank card HDCP for the API to resolve",
+  submitBody?.cards?.[0]?.hdcp === "",
+);
+await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 checked card", {
+  timeout: 10000,
+});
+await tabulatorContext.close();
 
 console.log(`\nconsole errors: ${errors.length}`);
 for (const e of errors.slice(0, 8)) console.log("  !", e.slice(0, 1200));

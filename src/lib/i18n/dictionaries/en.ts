@@ -540,7 +540,7 @@ export const en = {
       },
       pairings: {
         title: "Find your group",
-        summary: "How to read the pairings page, and how to print it.",
+        summary: "How to read the pairings page.",
         find: "Type part of your name to jump to your group.",
         flight: "The flight filter narrows a long list.",
         read: "Your card shows your hole or tee, the wave and the time.",

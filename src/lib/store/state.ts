@@ -1,12 +1,7 @@
 import { daysOfTournament, isFinalPlayingDay, selectedDaysOf } from "@/lib/data/dates";
 import { freezeIndex, selectIndexForCutOff } from "@/lib/data/frozen";
 import { isPlayerRemoved } from "@/lib/data/player-state";
-import {
-  hasStoredRouting,
-  missingFactsFor,
-  playsUnclassified,
-  registrationFor,
-} from "@/lib/data/registrations";
+import { missingFactsFor, playsUnclassified, registrationFor } from "@/lib/data/registrations";
 import { sessionsForDay } from "@/lib/data/sessions";
 import type {
   Caddie,
@@ -172,6 +167,11 @@ export type Action =
   | { type: "addPlayer"; player: PlayerRecord }
   | { type: "updatePlayer"; id: string; patch: Partial<PlayerRecord> }
   | { type: "removePlayer"; id: string }
+  /**
+   * Adds a handicap record, or replaces the one on the same effective date. The date is the key,
+   * the same rule the table keeps: one record per player per date.
+   */
+  | { type: "upsertRecord"; record: HandicapRecord }
   | { type: "addEntry"; entry: RegistrationEntry }
   | { type: "updateEntry"; id: string; patch: Partial<RegistrationEntry> }
   | { type: "removeEntry"; id: string }
@@ -398,19 +398,19 @@ export function buildRegistrations(s: DeskState): DeskRegistration[] {
       entry,
       records: recordsFor(s, player.id),
     });
-    // A pair is classed together, so the team number rides along. An organizer override keeps the
-    // class the organizer chose and is left out of the team class.
+    // A pair is classed together, so the team number rides along even when the desk stored the
+    // class by hand: applyTeamClasses then gives both partners that one stored class.
     out.push({
       ...reg,
       reasons: [...reg.reasons],
-      teamKey: entry.teamNo != null && !hasStoredRouting(entry) ? `team-${entry.teamNo}` : null,
+      teamKey: entry.teamNo == null ? null : `team-${entry.teamNo}`,
       pairKey: entry.teamNo == null ? null : `team-${entry.teamNo}`,
     });
   }
   // The class of a member-guest pair is the average of both indexes, the same rule the engine
   // draws by. Without it each partner is judged on their own index and the draw checks report a
   // pair as "from another flight" although the engine grouped it correctly.
-  applyTeamClasses(out, t.flights, t.config.maxIndex);
+  applyTeamClasses(out, t.flights, t.config.maxIndex, t.config.flightBasis);
   return out;
 }
 
@@ -1041,6 +1041,23 @@ export function reducer(state: DeskState, a: Action): DeskState {
         ),
         boards,
       };
+    }
+
+    case "upsertRecord": {
+      // One record per player per date. Correcting a date keeps the row id the screen already
+      // knows, so the frozen-record marker and the history list stay in step.
+      let replaced = false;
+      const records = state.records.map((record) => {
+        if (
+          record.playerId !== a.record.playerId ||
+          record.effectiveDate !== a.record.effectiveDate
+        ) {
+          return record;
+        }
+        replaced = true;
+        return { ...a.record, id: record.id };
+      });
+      return { ...state, records: replaced ? records : [...state.records, a.record] };
     }
 
     case "addCaddie":

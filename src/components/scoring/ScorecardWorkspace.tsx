@@ -15,6 +15,11 @@ import { playerProfileHref } from "@/lib/data/player-profile";
 import type { ScoringPlayer, ScoringRoundView } from "@/lib/data/scoring";
 import type { HoleDefinition, Scorecard } from "@/lib/scoring";
 import { buildCardContext } from "@/lib/scoring/card-context";
+import {
+  cardHandicapSnapshot,
+  type EventScoringRules,
+  readCardHandicap,
+} from "@/lib/scoring/event-rules";
 import type { ScanCardReview } from "@/lib/scoring/scan/review";
 import type { ScorecardScanApply, ScorecardScanImage } from "@/lib/scoring/scan/types";
 import {
@@ -58,6 +63,10 @@ export interface ScorecardWorkspaceProps {
   onScorerChange: (playerId: string) => void;
   onStrokeChange: (hole: number, value: string) => void;
   onEnter: (hole: number) => void;
+  /** Enter in the card's HDCP box moves the desk into the grid: type the handicap, then the card. */
+  onHandicapEnter?: () => void;
+  /** Owner or organizer only: corrects the snapshot this round is scored from. */
+  onCorrectHandicap?: () => void;
   scan: ScanCardReview;
   scanned: boolean;
   scanImage: ScorecardScanImage | null;
@@ -67,9 +76,19 @@ export interface ScorecardWorkspaceProps {
   submitNote: string;
   savedNote: string;
   onApplyScan: (apply: ScorecardScanApply) => void;
+  /** Saves the card and stays on it, for a correction or a card that may need a second look. */
   onSubmit: () => void;
+  /** Saves the card and opens the next card in the queue, from the keyboard. */
+  onSubmitNext: () => void;
   onStartAnother: () => void;
   onFillPar: () => void;
+  /**
+   * The event's card rules, when the round is on them. Then the form asks for the HDCP on the card
+   * instead of a marker, and Submit saves and approves the card.
+   */
+  eventRules?: EventScoringRules | null;
+  cardHandicap?: string;
+  onCardHandicapChange?: (value: string) => void;
 }
 
 function Pill({ tone, children }: { tone: "ok" | "warn" | "info"; children: ReactNode }) {
@@ -101,6 +120,8 @@ export function ScorecardWorkspace({
   onScorerChange,
   onStrokeChange,
   onEnter,
+  onHandicapEnter,
+  onCorrectHandicap,
   scan,
   scanned,
   scanImage,
@@ -111,10 +132,27 @@ export function ScorecardWorkspace({
   savedNote,
   onApplyScan,
   onSubmit,
+  onSubmitNext,
   onStartAnother,
   onFillPar,
+  eventRules = null,
+  cardHandicap = "",
+  onCardHandicapChange,
 }: ScorecardWorkspaceProps) {
   const written = writtenOnCard.trim() === "" ? null : Number(writtenOnCard);
+  // Under the card rules the playing handicap is the HDCP box, not the round's WHS snapshot.
+  const handicapReading = eventRules ? readCardHandicap(cardHandicap, eventRules.handicap) : null;
+  const cardSnapshot =
+    eventRules && handicapReading?.ok
+      ? cardHandicapSnapshot({
+          reading: handicapReading,
+          rules: eventRules,
+          tee: view.course.tee,
+          effectiveDate: new Date().toISOString().slice(0, 10),
+        })
+      : null;
+  const handicapProblem = handicapReading && !handicapReading.ok ? handicapReading.message : null;
+  const shownHandicap = eventRules ? cardSnapshot : (selectedPlayer?.handicap ?? null);
   const reviews: Record<number, ScorecardReviewState> = {};
   if (scanned) {
     for (const hole of holes) {
@@ -125,14 +163,17 @@ export function ScorecardWorkspace({
   }
   const readiness = scorecardReadiness({
     playerId,
-    scorerId,
+    // The event does not record markers, so the form does not ask for one.
+    scorerId: eventRules ? (editingCard?.scorerId ?? "") : scorerId,
     holes,
     strokes,
     reviews: scanned ? reviews : undefined,
     correction: Boolean(editingCard),
     correctionReason,
+    markerRequired: !eventRules,
   });
   const blockers = [...readiness.blockers];
+  if (handicapProblem) blockers.push(handicapProblem);
   if (scanBlocked && blockers.length === 0) blockers.push("Finish the scan checks");
   if (players.length < 2) blockers.unshift("At least two players are needed");
   const ready = readiness.ready && players.length >= 2 && blockers.length === 0;
@@ -140,14 +181,17 @@ export function ScorecardWorkspace({
     ? "Ready to submit"
     : players.length < 2
       ? "At least two players are needed"
-      : readiness.label;
+      : readiness.ready && handicapProblem
+        ? "Fix the HDCP"
+        : readiness.label;
 
   const summary = summariseScorecard({
     course: view.course,
     strokes,
-    handicap: selectedPlayer?.handicap ?? null,
+    handicap: shownHandicap,
     writtenTotal: written,
   });
+  const playingHandicapShown = shownHandicap?.playingHandicap ?? null;
   const gross = summary.gross;
   const out = summary.out;
   const inn = summary.in;
@@ -174,9 +218,10 @@ export function ScorecardWorkspace({
 
   const contextParts = buildCardContext({
     dayNumber: view.dayNumber,
-    markerName: selectedScorer?.playerName ?? null,
-    playingHandicap: selectedPlayer?.handicap?.playingHandicap ?? null,
-    cardHandicap: context?.cardHandicap,
+    markerName: eventRules ? null : (selectedScorer?.playerName ?? null),
+    playingHandicap: playingHandicapShown,
+    cardHandicap:
+      eventRules && handicapReading?.ok ? handicapReading.cardValue : context?.cardHandicap,
     className: context?.className,
     partnerName: context?.partnerName,
     teamHandicap: context?.teamHandicap,
@@ -203,17 +248,57 @@ export function ScorecardWorkspace({
               placeholder="Type a player's name"
               disabled={busy || players.length < 2 || Boolean(editingCard)}
             />
-            <Combobox
-              label="Marked by"
-              value={scorerId}
-              options={players
-                .filter((player) => player.playerId !== playerId)
-                .map((player) => ({ id: player.playerId, label: player.playerName }))}
-              onChange={onScorerChange}
-              placeholder="Type the marker's name"
-              disabled={busy || players.length < 2 || Boolean(editingCard)}
-            />
+            {eventRules ? (
+              <label className="field">
+                <span>HDCP on card</span>
+                <input
+                  id="card-handicap"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={cardHandicap}
+                  onChange={(event) => onCardHandicapChange?.(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    onHandicapEnter?.();
+                  }}
+                  placeholder="As written, e.g. 16.7"
+                  aria-invalid={handicapProblem ? true : undefined}
+                  aria-describedby="card-handicap-hint"
+                  disabled={busy}
+                />
+              </label>
+            ) : (
+              <Combobox
+                label="Marked by"
+                value={scorerId}
+                options={players
+                  .filter((player) => player.playerId !== playerId)
+                  .map((player) => ({ id: player.playerId, label: player.playerName }))}
+                onChange={onScorerChange}
+                placeholder="Type the marker's name"
+                disabled={busy || players.length < 2 || Boolean(editingCard)}
+              />
+            )}
           </div>
+          {eventRules && (
+            <p
+              id="card-handicap-hint"
+              className={`hint m-0 lg:col-span-3 ${handicapProblem ? "text-danger" : ""}`}
+              role="status"
+            >
+              {handicapProblem ??
+                (handicapReading?.ok && handicapReading.blank
+                  ? "Blank counts as 0: this card plays off 0."
+                  : handicapReading?.ok
+                    ? `Plays off ${handicapReading.playingHandicap} (the decimal is dropped).`
+                    : "")}
+              {selectedPlayer?.frozenIndex !== undefined && selectedPlayer.frozenIndex !== null
+                ? ` Registration index: ${selectedPlayer.frozenIndex}.`
+                : ""}
+            </p>
+          )}
           {!ready && blockers.length > 1 && (
             <p className="hint m-0 lg:col-span-3" role="status">
               {blockers.slice(1, 4).join(" · ")}
@@ -221,7 +306,7 @@ export function ScorecardWorkspace({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-3 text-[12px] text-ink-muted lg:col-span-3">
-            {selectedPlayer && (
+            {selectedPlayer && !eventRules && (
               <span>
                 {selectedPlayer.playerName} · index {selectedPlayer.handicap?.index ?? "—"} · PH{" "}
                 {selectedPlayer.handicap?.playingHandicap ?? "—"}
@@ -235,12 +320,12 @@ export function ScorecardWorkspace({
                 Open profile
               </Link>
             )}
-            {selectedScorer && <span>Marker: {selectedScorer.playerName}</span>}
+            {selectedScorer && !eventRules && <span>Marker: {selectedScorer.playerName}</span>}
           </div>
         </div>
         {/*
           The phone's stuck bar. It comes after the comboboxes in the DOM so Tab still goes
-          Player, Marker, Submit; `order-first` puts it at the top of the page below `lg`, and from
+          Player, Marker, Save; `order-first` puts it at the top of the page below `lg`, and from
           `lg` up it is the third column of the sticky card. `bg-surface-raised` is solid so the
           card scrolling underneath never shows through.
         */}
@@ -250,21 +335,50 @@ export function ScorecardWorkspace({
           </span>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <Pill tone={ready ? "ok" : "warn"}>{statusLabel}</Pill>
+            {!editingCard && (
+              <Button
+                id="score-submit-next"
+                variant="primary"
+                size="sm"
+                className="min-h-11"
+                onClick={onSubmitNext}
+                disabled={!ready || busy || submitting}
+                title="Saves this card and opens the next card in the queue."
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    Saving card…
+                  </>
+                ) : eventRules ? (
+                  "Save, approve and next"
+                ) : (
+                  "Save and next card"
+                )}
+              </Button>
+            )}
             <Button
               id="score-submit"
-              variant="primary"
+              variant={editingCard ? "primary" : "secondary"}
               size="sm"
+              className="min-h-11"
               onClick={onSubmit}
               disabled={!ready || busy || submitting}
               data-help="scores-submit"
             >
-              {submitting ? (
+              {submitting && editingCard ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Saving card…
                 </>
               ) : editingCard ? (
-                "Submit correction"
+                eventRules ? (
+                  "Save correction"
+                ) : (
+                  "Submit correction"
+                )
+              ) : eventRules ? (
+                "Save and approve card"
               ) : (
                 "Submit card"
               )}
@@ -416,8 +530,7 @@ export function ScorecardWorkspace({
           {netStatus === "calculated" ? (
             <>
               <span>
-                Playing handicap{" "}
-                <b className="mono text-ink">{selectedPlayer?.handicap?.playingHandicap ?? "—"}</b>
+                Playing handicap <b className="mono text-ink">{playingHandicapShown ?? "—"}</b>
               </span>
               <span>
                 Net Stableford <b className="mono text-ink">{netPoints}</b>
@@ -521,9 +634,10 @@ export function ScorecardWorkspace({
             playerId={selectedPlayer.playerId}
             playerName={selectedPlayer.playerName}
             role={profileRole}
-            handicap={selectedPlayer.handicap}
+            handicap={eventRules ? cardSnapshot : selectedPlayer.handicap}
             frozenIndex={selectedPlayer.frozenIndex}
             course={view.course}
+            onCorrect={onCorrectHandicap}
           />
         )}
       </div>

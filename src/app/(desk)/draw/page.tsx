@@ -16,6 +16,7 @@ import { PublishDialog } from "@/components/draw/PublishDialog";
 import { type Selection, SidePanel, type Tab } from "@/components/draw/SidePanel";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { fmtIso } from "@/lib/data/labels";
+import { partnerOf } from "@/lib/data/registrations";
 import { classMismatches, classMismatchIssues } from "@/lib/draw/class-mismatch";
 import { sessionFinderFor } from "@/lib/draw/day-sessions";
 import { buildFlightQueue } from "@/lib/draw/flight-queue";
@@ -606,6 +607,11 @@ export default function DrawPage() {
   const indexRegistration = indexPlayer ? (regById.get(indexPlayer) ?? null) : null;
   const indexEntry = indexPlayer ? (entryByPlayer.get(indexPlayer) ?? null) : null;
   const indexRecords = indexPlayer ? adapters.players.recordsFor(indexPlayer) : [];
+  // The other half of the pair, so an index edit classes both partners together.
+  const indexPartnerEntry = indexEntry ? partnerOf(indexEntry, entries) : null;
+  const indexPartnerReg = indexPartnerEntry
+    ? (regById.get(indexPartnerEntry.playerId) ?? null)
+    : null;
   const openSpots =
     visibleDraw?.reduce((n, g) => n + Math.max(groupSize - g.playerIds.length, 0), 0) ?? 0;
   const lockedCount = visibleDraw?.filter((g) => g.locked).length ?? 0;
@@ -1404,6 +1410,8 @@ export default function DrawPage() {
           tournament={tournament}
           tees={tees}
           records={indexRecords}
+          partnerEntry={indexPartnerEntry}
+          partnerRegistration={indexPartnerReg}
           onSave={(input) => {
             // The adapter writes the entry, and the board reads the registrations again, so the row
             // and its class badge follow. The draw is not touched: the player stays in this group.

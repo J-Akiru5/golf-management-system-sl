@@ -137,6 +137,27 @@ const overrideInput = (state: DeskState): OverrideReadyInput => {
 const entryById = (state: DeskState, id: string) => state.entries.find((e) => e.id === id);
 const tournamentById = (state: DeskState, id: string) => state.tournaments.find((t) => t.id === id);
 
+/**
+ * The demo seed with two of its entries made a pair: one on a low index, one on a high index. Their
+ * average is Class B, so a stored Class D can only come from the pair's saved class.
+ */
+function pairedSeed() {
+  const seed = initialState();
+  const [member, partner] = seed.entries.filter((e) => !e.overridden);
+  if (!member || !partner) throw new Error("the demo has two entries");
+  const state: DeskState = {
+    ...seed,
+    entries: seed.entries.map((e) =>
+      e.id === member.id
+        ? { ...e, teamNo: 4, frozen: { ...e.frozen, index: 2 } }
+        : e.id === partner.id
+          ? { ...e, teamNo: 4, frozen: { ...e.frozen, index: 27 } }
+          : e,
+    ),
+  };
+  return { state, member, partner };
+}
+
 describe("a registration edit while connected", () => {
   it("shows the change at once and keeps it when the database accepts it", async () => {
     const seed = initialState();
@@ -361,6 +382,76 @@ describe("a manual override while connected", () => {
       "1980-05-04",
     );
     expect(entryById(h.state(), entry.id)?.status).not.toBe("ok");
+  });
+});
+
+describe("the pair's class when one partner's index is edited", () => {
+  const pairInput = (partnerEntryId: string) => ({
+    index: 2.4,
+    effectiveDate: "2026-11-01",
+    birthdate: null,
+    categoryId: null,
+    teeId: null,
+    flightId: "d",
+    playingHandicap: 3,
+    partnerEntryId,
+    pairFlightId: "d",
+    reason: "Index corrected from the printed card.",
+    pending: [],
+  });
+
+  it("writes the partner's class in the same queued save and only then shows it", async () => {
+    const { state, member, partner } = pairedSeed();
+    const h = connectedDesk(state);
+
+    const write = h.adapters.registrations.overrideReady(member.id, pairInput(partner.id));
+    await h.settle();
+    // The partner's row goes first, then the edited row: one queued write, so the desk never shows
+    // half a pair.
+    expect(h.pending).toHaveLength(1);
+    expect(h.pending[0]?.target).toBe("registrations");
+    expect(h.pending[0]?.payload).toEqual({ flight_id: "d" });
+
+    h.pending[0]?.answer();
+    await h.settle();
+    expect(h.pending).toHaveLength(2);
+    expect(entryById(h.state(), partner.id)?.flightId).not.toBe("d");
+
+    h.pending[1]?.answer();
+    await write;
+    await h.settle();
+
+    expect(entryById(h.state(), member.id)?.flightId).toBe("d");
+    expect(entryById(h.state(), partner.id)?.flightId).toBe("d");
+    // The partner keeps its own status: it is not an override of its own.
+    expect(entryById(h.state(), partner.id)?.overridden).toBeUndefined();
+    expect(h.errors).toEqual([]);
+  });
+
+  it("shows nothing when the partner's row is refused", async () => {
+    const { state, member, partner } = pairedSeed();
+    const h = connectedDesk(state);
+
+    const write = h.adapters.registrations.overrideReady(member.id, pairInput(partner.id));
+    await h.settle();
+    h.pending[0]?.answer("new row violates row-level security policy");
+    await expect(write).rejects.toThrow(/pair's class/);
+    await h.settle();
+
+    expect(h.actions.some((a) => a.type === "updateEntry")).toBe(false);
+    expect(entryById(h.state(), partner.id)?.flightId).not.toBe("d");
+    expect(entryById(h.state(), member.id)?.status).not.toBe("ok");
+  });
+
+  it("keeps the pair's class in demo mode", () => {
+    const { state, member, partner } = pairedSeed();
+    const h = demoDesk(state);
+
+    h.adapters.registrations.overrideReady(member.id, pairInput(partner.id));
+
+    expect(entryById(h.state(), member.id)?.flightId).toBe("d");
+    expect(entryById(h.state(), partner.id)?.flightId).toBe("d");
+    expect(entryById(h.state(), partner.id)?.overridden).toBeUndefined();
   });
 });
 

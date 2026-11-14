@@ -33,6 +33,8 @@ export function PlayerIndexDialog({
   tournament,
   tees,
   records,
+  partnerEntry = null,
+  partnerRegistration = null,
   onSave,
 }: {
   open: boolean;
@@ -44,6 +46,9 @@ export function PlayerIndexDialog({
   tees: Tee[];
   /** The player's handicap records, so the dialog can name the cut-off index. */
   records: HandicapRecord[];
+  /** The other half of the pair, when there is one: the class is cut on both partners. */
+  partnerEntry?: RegistrationEntry | null;
+  partnerRegistration?: DeskRegistration | null;
   onSave: (input: OverrideReadyInput) => void;
 }) {
   const cutOff = selectIndexForCutOff(records, tournament.cutOffDate ?? "");
@@ -60,6 +65,8 @@ export function PlayerIndexDialog({
       cutOffIndex={cutOff.index}
       cutOffIndexDate={cutOff.record?.effectiveDate ?? null}
       newerIndexDate={cutOff.newer?.effectiveDate ?? null}
+      partnerEntry={partnerEntry}
+      partnerRegistration={partnerRegistration}
       onSave={onSave}
     />
   );
