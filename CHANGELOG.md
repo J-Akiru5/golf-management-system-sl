@@ -36,6 +36,11 @@ Supabase project, because the code and the database are released separately.
   choice so a run of photos does not ask again for every card.
 
 ### Fixed
+- **A card added while a batch is selected joins that batch and stays in view.** Add card by hand
+  used to switch the page back to All cards so the blank card was visible. It now adds the card to
+  the selected batch and keeps that batch selected; only a filter that would hide a blank card
+  (Done, Issues, a difference) falls back to All cards. Add players from the system starts on the
+  selected batch, and Import JSON adds its cards to it instead of making a second batch.
 - **Migration `20261111000100_public_photo_token.sql` runs on the live project.** The first version
   deleted rows from `storage.objects` in SQL, which Supabase now refuses ("Direct deletion from
   storage tables is not allowed"), so the run failed and rolled back. The revised file never touches
