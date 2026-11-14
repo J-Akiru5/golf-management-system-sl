@@ -9,6 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.50.1] - 2026-11-14
+
+### Fixed
+- **A card added while a batch is selected joins that batch and the view stays on it.** Add card by
+  hand used to switch the page back to All cards so the blank card was visible. It now adds the card
+  to the selected batch and keeps that batch selected; only a filter that would hide a blank card
+  (Done, Issues, a difference) falls back to All cards. Add players from the system starts on the
+  selected batch, and Import JSON adds its cards to it instead of making a second batch.
+
 ## [0.50.0] - 2026-11-14
 
 ### Added
