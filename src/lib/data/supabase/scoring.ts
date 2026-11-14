@@ -5,15 +5,17 @@ import {
   type OpenRoundSnapshot,
   openRoundErrorMessage,
 } from "@/lib/data/open-round";
-import type {
-  OpenRoundInput,
-  ResolveHoleInput,
-  ScoringPlayer,
-  ScoringPublication,
-  ScoringRepository,
-  ScoringRoundStatus,
-  ScoringRoundView,
-  SubmitCardInput,
+import {
+  type CorrectHandicapInput,
+  handicapCorrectionProblem,
+  type OpenRoundInput,
+  type ResolveHoleInput,
+  type ScoringPlayer,
+  type ScoringPublication,
+  type ScoringRepository,
+  type ScoringRoundStatus,
+  type ScoringRoundView,
+  type SubmitCardInput,
 } from "@/lib/data/scoring";
 import { refreshPublicPage } from "@/lib/data/supabase/draw-sync";
 import { displayName } from "@/lib/format";
@@ -758,6 +760,40 @@ export function createSupabaseScoringRepository(
         p_canonical: proposalRows({ ...player, canonical }) as unknown as Json,
       });
       if (error) throw new Error(`Could not resolve the hole: ${error.message}`);
+      return refresh(tournamentId, dayNumber);
+    },
+
+    async correctHandicap(tournamentId, input: CorrectHandicapInput, dayNumber) {
+      const view = await refresh(tournamentId, dayNumber);
+      const problem = handicapCorrectionProblem(input, view.roundStatus);
+      if (problem) throw new Error(problem);
+
+      const player = view.players.find((candidate) => candidate.playerId === input.playerId);
+      if (!player) throw new Error("Player not found in this round.");
+      if (!player.roundEntryId) throw new Error("The player has no round entry.");
+
+      // The generated types predate this function, so the call is typed by hand, as the card
+      // handicap write is above.
+      const call = db.rpc as unknown as (
+        name: string,
+        args: Record<string, unknown>,
+      ) => PromiseLike<{ error: { message: string } | null }>;
+      const { error } = await call.call(db, "correct_handicap_snapshot", {
+        p_round_entry: player.roundEntryId,
+        p_index: input.index,
+        p_effective: input.effectiveDate,
+        p_reason: input.reason.trim(),
+      });
+      if (error) {
+        const missing = /could not find the function|PGRST202|does not exist/i.test(error.message);
+        throw new Error(
+          missing
+            ? "The handicap correction function is not installed in the database yet. Apply migration 20261114000300_correct_handicap_snapshot.sql first."
+            : `Could not correct the handicap for ${player.playerName}: ${error.message}`,
+        );
+      }
+      // The function recalculates that player's result. Publishing the new result is the caller's
+      // decision, so nothing here clears the public cache.
       return refresh(tournamentId, dayNumber);
     },
 
