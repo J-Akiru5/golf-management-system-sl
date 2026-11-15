@@ -1,4 +1,4 @@
-import { courseHandicap } from "../routing/handicap";
+import { capPlayingHandicap, courseHandicap } from "../routing/handicap";
 import type { HandicapSnapshot, TeeRatings } from "./types";
 import { HANDICAP_INDEX_LIMITS, teeProblems } from "./validation";
 
@@ -30,7 +30,10 @@ export interface WhsCardHandicapRule {
    * the card does not decide it.
    */
   source: "whs";
-  /** The event's maximum handicap index. A higher index plays off this cap. */
+  /**
+   * The event's maximum handicap. A higher index plays off this cap, and so does a higher playing
+   * handicap: nobody plays off more than it (owner's decision, 14 Nov 2026).
+   */
   maxIndex: number;
   /** The competition allowance as a fraction: 1 is 100%. */
   allowance: number;
@@ -101,7 +104,12 @@ export type EventHandicapResult =
       /** {@link ZERO_INDEX_WARNING} for a zero index, otherwise null. */
       warning: string | null;
       courseHandicap: number;
+      /** The playing handicap the card is scored with, held to the event maximum. */
       playingHandicap: number;
+      /** What the tee formula gave before the maximum was applied. Equal when nothing was cut. */
+      uncappedPlayingHandicap: number;
+      /** True when the event maximum lowered the playing handicap. */
+      playingCapped: boolean;
     }
   | {
       ok: false;
@@ -121,8 +129,9 @@ export interface EventHandicapInput {
  * The WHS playing handicap a save is scored with.
  *
  * Index (capped at the event maximum) x slope / 113 + course rating - par, rounded half up, then
- * the event allowance applied and rounded again. At the 100% allowance the two steps agree with the
- * single figure the club's Course Handicap Tables carry. The rounding is the same as the database's
+ * the event allowance applied and rounded again, then held to the event maximum. At the 100%
+ * allowance the first two steps agree with the single figure the club's Course Handicap Tables
+ * carry; the maximum is why an index of 30 on the Blue tee plays off 30, not the table's 34. The rounding is the same as the database's
  * `save_handicap_snapshot`, so a snapshot written here and one written there hold the same number.
  *
  * Nothing is guessed: a missing tee or an index outside the WHS range is a refusal with the fix in
@@ -176,7 +185,8 @@ export function eventPlayingHandicap(input: EventHandicapInput): EventHandicapRe
   const course = courseHandicap(index, tee);
   const allowed = Math.round(course * rule.allowance);
   // Math.round can produce -0; a handicap is never printed as "-0".
-  const playingHandicap = allowed === 0 ? 0 : allowed;
+  const uncapped = allowed === 0 ? 0 : allowed;
+  const playingHandicap = capPlayingHandicap(uncapped, rule.maxIndex);
   const zeroIndex = onFile === 0;
 
   return {
@@ -188,6 +198,8 @@ export function eventPlayingHandicap(input: EventHandicapInput): EventHandicapRe
     warning: zeroIndex ? ZERO_INDEX_WARNING : null,
     courseHandicap: course,
     playingHandicap,
+    uncappedPlayingHandicap: uncapped,
+    playingCapped: playingHandicap < uncapped,
   };
 }
 
@@ -262,6 +274,7 @@ export function eventHandicapSnapshot(input: EventHandicapSnapshotInput): Handic
     rounding: "whs",
     courseHandicap: handicap.courseHandicap,
     playingHandicap: handicap.playingHandicap,
+    playingCap: rules.handicap.maxIndex,
     rulesVersion: rules.id,
   };
 }

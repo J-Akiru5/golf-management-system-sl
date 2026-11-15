@@ -184,8 +184,97 @@ describe("tabulator submission route", () => {
     const body = await response.json();
 
     expect(body.submission.nameOnly).toEqual([
-      { id: "manual-1", name: "NOT, LISTED", day: 1, session: "AM" },
+      {
+        id: "manual-1",
+        name: "NOT, LISTED",
+        day: 1,
+        session: "AM",
+        holes: Array.from({ length: 18 }, () => ""),
+        written: "",
+        note: "",
+      },
     ]);
+  });
+
+  it("refuses a card when the desk has no playing handicap for the player", async () => {
+    field.mockResolvedValue({
+      ...fieldLookup,
+      players: [{ ...player, playingHandicap: null }],
+    });
+    const response = await POST(
+      request({
+        event: "24th Bamboo Tee",
+        label: "Day 1 AM",
+        slug: "day1am-r5",
+        cards: [card],
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.message).toContain("no handicap");
+  });
+
+  it("accepts a name-only card with no scored card, so the admin can add the player", async () => {
+    const response = await POST(
+      request({
+        event: "24th Bamboo Tee",
+        label: "Day 1 AM",
+        slug: "day1am-r5",
+        nameOnly: [{ id: "manual-1", name: "NOT, LISTED", day: 1, session: "AM" }],
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.submission.cards).toEqual([]);
+    expect(body.submission.nameOnly).toEqual([
+      {
+        id: "manual-1",
+        name: "NOT, LISTED",
+        day: 1,
+        session: "AM",
+        holes: Array.from({ length: 18 }, () => ""),
+        written: "",
+        note: "",
+      },
+    ]);
+  });
+
+  it("refuses a submission with neither a scored card nor a name", async () => {
+    const response = await POST(
+      request({ event: "24th Bamboo Tee", label: "Day 1 AM", slug: "day1am-r5" }),
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("keeps the scores on a name-only card so the admin can add the player", async () => {
+    const response = await POST(
+      request({
+        event: "24th Bamboo Tee",
+        label: "Day 1 AM",
+        slug: "day1am-r5",
+        nameOnly: [
+          {
+            id: "manual-1",
+            name: "NOT, LISTED",
+            day: 1,
+            session: "AM",
+            holes: Array(18).fill("4"),
+            written: "72",
+            note: "Typed from the paper card.",
+          },
+        ],
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.submission.nameOnly[0]).toMatchObject({
+      holes: Array(18).fill("4"),
+      written: "72",
+      note: "Typed from the paper card.",
+    });
   });
 
   it("refuses a tabulation account that is not allowed to use the page", async () => {

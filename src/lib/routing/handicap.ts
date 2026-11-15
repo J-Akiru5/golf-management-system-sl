@@ -20,9 +20,25 @@ export function courseHandicap(index: number, tee: Tee): number {
  * Playing handicap: the course handicap with the allowance applied, rounded once at the end. At the
  * 100% allowance these events use, it equals the course handicap.
  * Math.round sends .5 up toward positive infinity, which matches the WHS rounding rule.
+ *
+ * `cap` is the event's maximum handicap (owner's decision, 14 Nov 2026): nobody plays off more than
+ * it, even when the tee formula gives more. An index of 30 on a tee with slope 130 works out to 34,
+ * and plays off 30. Leave it out for the plain WHS figure, as a calculator that is not tied to an
+ * event does. A plus handicap is never raised by the cap.
  */
-export function playingHandicap(index: number, tee: Tee, allowance: number): number {
-  return roundStrokes(rawCourseHandicap(index, tee) * allowance);
+export function playingHandicap(
+  index: number,
+  tee: Tee,
+  allowance: number,
+  cap?: number | null,
+): number {
+  return capPlayingHandicap(roundStrokes(rawCourseHandicap(index, tee) * allowance), cap);
+}
+
+/** A playing handicap held to the event maximum. No cap, or a handicap under it, is unchanged. */
+export function capPlayingHandicap(value: number, cap?: number | null): number {
+  if (cap === null || cap === undefined || !Number.isFinite(cap)) return value;
+  return value > cap ? cap : value;
 }
 
 /**
