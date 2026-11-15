@@ -825,8 +825,24 @@ export function createSupabaseAdapters(
             : `Could not save the membership: ${error.message}`,
         );
       }
-      const result = data as unknown as { ok?: boolean; message?: string } | null;
+      const result = data as unknown as {
+        ok?: boolean;
+        message?: string;
+        removedFromPair?: number;
+      } | null;
       if (!result?.ok) throw new Error(result?.message ?? "The membership was refused.");
+      // The database also moved the player's event registrations to the new role (and out of a
+      // pair whose side was taken), so the desk lists follow without a reload.
+      for (const entry of state.entries.filter((e) => e.playerId === id)) {
+        dispatch({
+          type: "updateEntry",
+          id: entry.id,
+          patch: {
+            role: type,
+            ...(result.removedFromPair && entry.role !== type ? { teamNo: null } : {}),
+          },
+        });
+      }
       publicDataChanged();
       dispatch({
         type: "updatePlayer",

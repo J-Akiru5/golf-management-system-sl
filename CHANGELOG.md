@@ -9,6 +9,12 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.58.4] - 2026-11-15
+
+### Fixed
+- **A Member/Guest change now reaches the event registration, the pair and the public pages.** `set_player_membership` only changed the player's membership row; the registration, which the lists, pairs and public profile read, kept the old role. It now updates the player's registrations, moves the pair seat (or takes the player out of the pair if the partner holds that side), and the desk lists refresh without a reload. Migration `20261115000800_membership_follows_registration.sql`.
+- **Players with no recorded role can be searched and paired.** 14 registrations (for example ASENCIO, JOHN MARK) had no member/guest role, so the pair dialog never listed them. Migration `20261115000900_registration_role_backfill.sql` fills the empty roles (active membership = member, none = guest) and defaults new registrations the same way. `20261115000800` is applied on the live project (15 Nov 2026); `20261115000900` is to be run in the SQL editor.
+
 ## [0.58.3] - 2026-11-15
 
 ### Fixed
