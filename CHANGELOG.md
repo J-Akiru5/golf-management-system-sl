@@ -16,6 +16,10 @@ Supabase project, because the code and the database are released separately.
 ### Changed
 - **The batch send follows the player filter and the batch.** It used to send every checked card on the page. It now sends only the checked cards the page is showing, so a tabulator can filter one player (or pick a batch) and send just that set. The button count is the number of shown checked cards waiting, and the confirmation names the filter. No migration.
 
+### Fixed
+- **A hand-added card can be sent to the admin with its scores.** A hand-added card whose name matches a player on the day's list is linked to that player before sending, so it travels as a scored card. A card for a player not in the system is sent as a name-only entry that carries its 18 scores, and the admin queue shows it so the admin can add the player without re-keying the card. The batch send now sends the cards that have a desk handicap and holds only the ones that do not, naming them, instead of refusing the whole batch. No migration.
+- **The admin queue opens by default and shows its count.** The Tabulator submissions section on `/scores/review` no longer starts collapsed, and its heading shows how many day submissions are waiting. No migration.
+
 ## [0.57.0] - 2026-11-15
 
 ### Added

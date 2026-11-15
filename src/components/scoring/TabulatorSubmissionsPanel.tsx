@@ -31,6 +31,15 @@ interface SubmissionCard {
 interface SubmissionDetail {
   label?: string;
   cards?: SubmissionCard[];
+  nameOnly?: {
+    id?: string;
+    name?: string;
+    day?: number;
+    session?: string;
+    holes?: string[];
+    written?: string;
+    note?: string;
+  }[];
 }
 
 interface SubmissionResponse {
@@ -103,32 +112,48 @@ export function TabulatorSubmissionsPanel({
       }
       const submission = body.submission;
       const cards = Array.isArray(submission.cards) ? submission.cards : [];
+      const nameOnly = Array.isArray(submission.nameOnly) ? submission.nameOnly : [];
       const exportFile = {
         format: "bamboo-scores-edit",
         version: 1,
         slug,
         label: body.document?.label || submission.label || slug,
         mode: "written",
-        cards: cards.map((card) => ({
-          id: card.id,
-          name: card.name,
-          group: card.group,
-          tee: card.tee,
-          hdcp: card.hdcp,
-          written: card.written,
-          cls: "",
-          verified: true,
-          manual: false,
-          note: [
-            card.note,
-            card.handicapSource === "system"
-              ? `HDCP box blank; system playing handicap ${card.hdcp} used.`
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" "),
-          holes: card.holes,
-        })),
+        cards: [
+          ...cards.map((card) => ({
+            id: card.id,
+            name: card.name,
+            group: card.group,
+            tee: card.tee,
+            hdcp: card.hdcp,
+            written: card.written,
+            cls: "",
+            verified: true,
+            manual: false,
+            note: [
+              card.note,
+              card.handicapSource === "system"
+                ? `HDCP box blank; system playing handicap ${card.hdcp} used.`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" "),
+            holes: card.holes,
+          })),
+          ...nameOnly.map((entry, index) => ({
+            id: entry.id || `name-only-${index + 1}`,
+            name: entry.name || "",
+            group: "",
+            tee: "",
+            hdcp: "",
+            written: entry.written || "",
+            cls: "",
+            verified: false,
+            manual: true,
+            note: entry.note || "Sent as a name only; the player is not on the field list.",
+            holes: entry.holes ?? Array(18).fill(""),
+          })),
+        ],
       };
       onReview({
         name: `${slug}-submitted.json`,
@@ -144,10 +169,12 @@ export function TabulatorSubmissionsPanel({
   }
 
   return (
-    <details className="card group" id="tabulator-submissions">
+    <details className="card group" id="tabulator-submissions" open>
       <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-2">
         <FileJson className="size-4 text-fairway" aria-hidden="true" />
-        <span className="font-semibold">Tabulator submissions</span>
+        <span className="font-semibold">
+          Tabulator submissions{rows.length ? ` (${rows.length})` : ""}
+        </span>
         <span className="hint">
           Cards checked on the tabulation page. Review one, then import and publish it below.
         </span>

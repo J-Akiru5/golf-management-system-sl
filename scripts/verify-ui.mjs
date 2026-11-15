@@ -2336,6 +2336,21 @@ check(
   ) === true,
 );
 
+// A name-only card can go to the admin on its own; the admin adds the player.
+await strangerCard.locator('input[data-f="verified"]').check();
+await strangerCard.locator("[data-send]").click();
+await expect
+  .poll(() => submitBody?.nameOnly?.[0]?.name, { timeout: 10000 })
+  .toBe("STRANGER, SAM");
+check(
+  "a name-only card is sent to the admin on its own",
+  submitBody?.cards?.length === 0 && submitBody?.nameOnly?.length === 1,
+);
+await expect(strangerCard.locator('[data-k="savestate"]')).toContainText("Sent to admin", {
+  timeout: 10000,
+});
+check("the name-only card says it was sent", true);
+
 // Phase 2: a card that is only in this browser must survive a reload and go out with the merge.
 const localCard = {
   id: "local-1",
