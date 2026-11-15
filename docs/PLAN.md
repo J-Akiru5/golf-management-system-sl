@@ -219,6 +219,11 @@ A second write from the owner's account landed 18 seconds after the first and pu
 Blue with 9. It was applied again and held. Whoever has that entry open in the desk should not save it
 again with the old tee selected.
 
+A second Senior entry was then found still on Blue even though its category was Senior, so it had
+missed the earlier batch. It was moved to White (index 15.6 gives 15, not 18), its Day 3 snapshot was
+corrected and the round republished, and its Day 4 card was reworked (version 110), where its class
+label also changed from the stale Class B to Class C. All 29 Senior entries now carry White.
+
 **Open:** 7 entries have no tee and 1 has no index. Four of the seven have an index and a stored
 figure that matches Blue exactly, but the tee was never set. One of them has a Day 4 card (plays off
 30). The owner needs to name the tees for those entries.
