@@ -6,7 +6,7 @@ import {
   matchFlights,
 } from "./classify";
 import { chunk, groupSizes, packUnits } from "./groups";
-import { ageOn, playingHandicap } from "./handicap";
+import { ageOn, capPlayingHandicap, playingHandicap } from "./handicap";
 import {
   planShotgunFrom,
   planTwoTeeFrom,
@@ -30,7 +30,13 @@ import type {
 } from "./types";
 
 export { averageIndex, classValueOf, defaultCategoryFor, teamClassValue } from "./classify";
-export { ageOn, courseHandicap, playingHandicap, rawCourseHandicap } from "./handicap";
+export {
+  ageOn,
+  capPlayingHandicap,
+  courseHandicap,
+  playingHandicap,
+  rawCourseHandicap,
+} from "./handicap";
 export { addMinutes } from "./schedule";
 export * from "./types";
 
@@ -159,11 +165,19 @@ export function classifyPlayer(player: Player, input: RoutingInput): Registratio
   const tee = tees.find((t) => t.id === category.teeId);
   if (!tee) return review(`Tee ${category.teeId} for ${category.name} is not set up.`);
   reg.teeId = tee.id;
-  if (player.cardHandicap != null) {
-    // The card HDCP is already the playing handicap. Never convert it through the WHS formula.
-    reg.playingHandicap = Math.trunc(player.cardHandicap);
-  } else {
-    reg.playingHandicap = playingHandicap(index, tee, config.allowance);
+  // The owner's rule (14 Nov 2026): nobody plays off more than the event maximum, so the playing
+  // handicap is capped as well as the index. An index of 30 on a tee that works out to 34 plays
+  // off 30. The reason names both numbers so the desk can see why.
+  const uncapped =
+    player.cardHandicap != null
+      ? // The card HDCP is already the playing handicap. Never convert it through the WHS formula.
+        Math.trunc(player.cardHandicap)
+      : playingHandicap(index, tee, config.allowance);
+  reg.playingHandicap = capPlayingHandicap(uncapped, config.maxIndex);
+  if (reg.playingHandicap < uncapped) {
+    reg.reasons.push(
+      `Playing handicap ${uncapped} is above the maximum of ${config.maxIndex}; ${reg.playingHandicap} is used.`,
+    );
   }
 
   // The desk's stored card class is the authority. The index cut is only the fallback when no

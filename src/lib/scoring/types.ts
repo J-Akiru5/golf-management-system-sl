@@ -60,6 +60,11 @@ export interface HandicapInput {
    * At a 100% allowance both modes produce the same Playing Handicap.
    */
   rounding: HandicapRounding;
+  /**
+   * The event's maximum handicap. The Playing Handicap never goes above it, even when the tee
+   * formula gives more (owner's decision, 14 Nov 2026). Null or missing means no cap.
+   */
+  playingCap?: number | null;
   /** Identifies the confirmed rule set stored with the snapshot. */
   rulesVersion: string;
 }
@@ -76,6 +81,12 @@ export interface HandicapSnapshot {
   rounding: SnapshotRounding;
   courseHandicap: number;
   playingHandicap: number;
+  /**
+   * The event maximum the Playing Handicap was held to. It is not a column in the database: the
+   * mapper fills it from the tournament's maximum when a snapshot is read, so the snapshot check
+   * recomputes with the same cap. Missing means no cap.
+   */
+  playingCap?: number | null;
   rulesVersion: string;
 }
 

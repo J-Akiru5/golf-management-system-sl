@@ -7,6 +7,7 @@ import {
   handicapStrokesForHole,
 } from "../handicap";
 import type { HandicapInput, TeeRatings } from "../types";
+import { handicapSnapshotProblems } from "../validation";
 import { makeSnapshotFor, TEST_HOLES, TEST_TEE } from "./fixtures";
 
 const baseInput: HandicapInput = {
@@ -264,5 +265,62 @@ describe("handicap stroke allocation", () => {
     expect(() => handicapStrokesForHole(1.5, 1, 18)).toThrow();
     expect(() => handicapStrokesForHole(1, 0, 18)).toThrow();
     expect(() => handicapStrokesForHole(1, 19, 18)).toThrow();
+  });
+});
+
+describe("the playing handicap cap (owner's decision, 14 Nov 2026)", () => {
+  // 30 x (130 / 113) + (69.6 - 70) = 34.1, so the club's table reads 34 on this tee.
+  const blueTee: TeeRatings = {
+    id: "blue",
+    name: "Blue",
+    courseRating: 69.6,
+    slope: 130,
+    par: 70,
+  };
+  const capInput: HandicapInput = { ...baseInput, index: 30, tee: blueTee };
+
+  it("holds the playing handicap to the event maximum and records the cap", () => {
+    const uncapped = calculateHandicap(capInput);
+    if (!uncapped.ok) throw new Error("expected a snapshot");
+    expect(uncapped.snapshot.courseHandicap).toBe(34);
+    expect(uncapped.snapshot.playingHandicap).toBe(34);
+
+    const capped = calculateHandicap({ ...capInput, playingCap: 30 });
+    if (!capped.ok) throw new Error("expected a snapshot");
+    expect(capped.snapshot.courseHandicap).toBe(34);
+    expect(capped.snapshot.playingHandicap).toBe(30);
+    expect(capped.snapshot.playingCap).toBe(30);
+  });
+
+  it("leaves a lower handicap and a plus handicap alone", () => {
+    const lower = calculateHandicap({ ...capInput, index: 14.2, playingCap: 30 });
+    const plain = calculateHandicap({ ...capInput, index: 14.2 });
+    if (!lower.ok || !plain.ok) throw new Error("expected snapshots");
+    expect(lower.snapshot.playingHandicap).toBe(plain.snapshot.playingHandicap);
+
+    const plus = calculateHandicap({ ...capInput, index: -2, playingCap: 30 });
+    if (!plus.ok) throw new Error("expected a snapshot");
+    expect(plus.snapshot.playingHandicap).toBeLessThan(0);
+  });
+
+  it("accepts a capped snapshot, and flags the same one when the cap is not known", () => {
+    const capped = calculateHandicap({ ...capInput, playingCap: 30 });
+    if (!capped.ok) throw new Error("expected a snapshot");
+    expect(handicapSnapshotProblems(capped.snapshot)).toEqual([]);
+
+    // The database does not store the cap: a mapper that forgets to fill it would make every capped
+    // player's net score unavailable. That is why the mapper sets it, and why this is checked.
+    const { playingCap: _dropped, ...withoutCap } = capped.snapshot;
+    expect(handicapSnapshotProblems(withoutCap)).toContain(
+      "The snapshot Playing Handicap does not match its inputs.",
+    );
+  });
+
+  it("still refuses a playing handicap that is wrong for its inputs", () => {
+    const capped = calculateHandicap({ ...capInput, playingCap: 30 });
+    if (!capped.ok) throw new Error("expected a snapshot");
+    expect(handicapSnapshotProblems({ ...capped.snapshot, playingHandicap: 31 })).toContain(
+      "The snapshot Playing Handicap does not match its inputs.",
+    );
   });
 });

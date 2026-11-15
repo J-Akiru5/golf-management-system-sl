@@ -680,6 +680,8 @@ export function createDemoScoringRepository(
         },
         allowance: existing.allowance,
         rounding: existing.rounding === "card" ? "single" : existing.rounding,
+        // The playing handicap is held to the event maximum as well as the index.
+        playingCap: seed.maxIndex ?? null,
         rulesVersion: existing.rulesVersion,
       });
       if (!calculation.ok) {
