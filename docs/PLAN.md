@@ -171,6 +171,14 @@ out below zero and plays off -1, which the scoring tables already handle as a pl
   published pairings are unchanged.
 - The playing-handicap cap (`20261115000400`) is live. The audit log shows the same correction path
   writing 35 at 02:30 and 30 from 02:59 on, and no snapshot in the event is above 30.
+- Day 4's public board is fed by a tabulator sync that inserts a publication per batch, not by
+  `publish_round`. Its last sync (version 106) predated this change, so the eight Seniors with a Day 4
+  card still carried their Blue figure. The board was rebuilt as version 107 with those eight cards
+  reworked: CELINO 8 to 6 and net 38 to 36, AGREDA 24 to 22, BROCAL 16 to 14, FUENTESFINA 26 to 23,
+  JABILLES 23 to 21, OMAYAN 23 to 21, PORO 22 to 20, TY 27 to 25. No other card was touched.
+- **Open, and it is not from this change:** on version 107, 61 of the 196 Day 4 cards carry a playing
+  handicap that differs from the registration, and 69 carry a different class. The Day 4 board needs a
+  sync from the registrations before the awarding, or a decision on which figure Day 4 scores with.
 
 ### Guardrails while production is live
 
