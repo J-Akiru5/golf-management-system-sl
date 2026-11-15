@@ -9,6 +9,11 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.58.1] - 2026-11-15
+
+### Changed
+- **A handicap record now drives the registration, the round snapshots and the public pages.** Saving or editing a record on the player page re-applies the player's latest index to their registrations and recalculates the playing handicap on every open round, so no Re-freeze step is needed. The playing-handicap cap applies. Rounds opened without a rules version record 'unconfirmed'. Final rounds are never touched. Migrations: `20261115000600_handicap_follows_records.sql` and `20261115000700_handicap_follow_unconfirmed_rules.sql`, applied to the live project on 15 Nov 2026 (as 000400 and 000500).
+
 ## [0.58.0] - 2026-11-15
 
 ### Changed
