@@ -1,16 +1,13 @@
-﻿# Changelog
-
-All notable changes to TeeLine Golf. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Versioning rules are in [`docs/VERSIONING.md`](docs/VERSIONING.md). Versions before 1.0.0 are
-pre-release: usable for testing, not yet signed off by the club.
-
-Each entry lists the database migrations that ship with it and whether they are applied to the live
-Supabase project, because the code and the database are released separately.
-
 ## [Unreleased]
 
 ### Changed
 - **Nobody plays off more than the event maximum (30).** The owner's decision of 14 Nov 2026: the playing handicap is capped as well as the index, so an index of 30 on the Blue tee, which the tee formula turns into 34 strokes, plays off 30. The cap is applied everywhere a playing handicap is worked out: the draw (`playingHandicap` in `src/lib/routing/handicap.ts` takes a cap, and a card handicap above it is held too), the registration index dialog, the card save under the event rules (`eventPlayingHandicap` reports both the uncapped figure and whether the cap cut it), the snapshot calculation and the snapshot check (a capped snapshot carries `playingCap`, read from `tournaments.max_index` when a snapshot is loaded, so it is not read as a mismatch and does not lose its net score), and the tabulator page. A plus handicap is never raised. The draw's reason line names both numbers ("Playing handicap 33 is above the maximum of 30; 30 is used."). Nine existing tests that encoded the uncapped figure were updated to the new rule, and new tests cover the cap in the draw, the engine, the snapshot check, the tabulator page and the migration text. Migration: `20261115000400_cap_playing_handicap.sql` is **written, not applied**. Apply it before this change goes live, then correct each player whose snapshot is above 30 with Correct handicap (the list query is at the end of the migration). Nothing already stored changes until that is done.
+
+### Fixed
+- **A hand-added card can be sent to the admin with its scores.** A hand-added card whose name matches a player on the day's list is linked to that player before sending, so it travels as a scored card. A card for a player not in the system is sent as a name-only entry that carries its 18 scores, and the admin queue shows it so the admin can add the player without re-keying the card. The batch send now sends the cards that have a desk handicap and holds only the ones that do not, naming them, instead of refusing the whole batch. No migration.
+- **The admin queue opens by default and shows its count.** The Tabulator submissions section on `/scores/review` no longer starts collapsed, and its heading shows how many day submissions are waiting. No migration.
+
+## [0.57.2] - 2026-11-15
 
 ### Added
 - **Every tabulator card has a Send to admin button.** It sends only that card through the same `/api/scorecards/submit` path as the batch send, refuses a card that is not ticked as checked with that reason, marks the card sent, and the card says "Sent to admin HH:MM" until it is edited. The admin still imports, approves and publishes it; the button does not publish anything itself. No migration.
@@ -20,9 +17,29 @@ Supabase project, because the code and the database are released separately.
 ### Changed
 - **The batch send follows the player filter and the batch.** It used to send every checked card on the page. It now sends only the checked cards the page is showing, so a tabulator can filter one player (or pick a batch) and send just that set. The button count is the number of shown checked cards waiting, and the confirmation names the filter. No migration.
 
+## [0.57.1] - 2026-11-15
+
+### Added
+- **The public landing and the clubhouse TV carry Converge, the club's connectivity partner, at
+  sponsor size.** The landing footer adds the Converge mark under the platform line, and the TV
+  footer shows it beside the TeeLine lockup. The TV strip is set in ordinary sentence case at a size
+  that reads from a chair, with the board's plain-language description. No migration.
+
 ### Fixed
-- **A hand-added card can be sent to the admin with its scores.** A hand-added card whose name matches a player on the day's list is linked to that player before sending, so it travels as a scored card. A card for a player not in the system is sent as a name-only entry that carries its 18 scores, and the admin queue shows it so the admin can add the player without re-keying the card. The batch send now sends the cards that have a desk handicap and holds only the ones that do not, naming them, instead of refusing the whole batch. No migration.
-- **The admin queue opens by default and shows its count.** The Tabulator submissions section on `/scores/review` no longer starts collapsed, and its heading shows how many day submissions are waiting. No migration.
+- **A card sent from the tabulator is scored with the desk's handicap, not the number written in
+  the HDCP box.** The desk's playing handicap (the registration index on the player's tee at the
+  event allowance) is the scoring number; the card's own figure is kept beside it and named when it
+  differs. A player with no desk handicap is refused with a plain sentence naming the desk, instead
+  of being scored from a card reading. No migration.
+- **A class corrected in the desk follows the player's live results.** Migration
+  `20261114000500_class_and_handicap_follow_desk.sql` adds a trigger that carries a registration's
+  class change into `round_results`, and a service-role `reset_handicap_from_desk` function for the
+  one-off backfill. It is **applied on the live project**; `reset_handicap_from_desk` is present and
+  the class change now reaches live results. The tabulator scoring change above works from the desk
+  number independently.
+- **One-off desk sync script:** `scripts/desk-sync-2026-11-14.sql` is included for the record. It is
+  not a migration and the app never runs it.
+
 
 ## [0.57.0] - 2026-11-15
 
