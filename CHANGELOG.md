@@ -9,6 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.57.2] - 2026-11-15
+
+### Added
+- **Every tabulator card has a Send to admin button.** It sends only that card through the same `/api/scorecards/submit` path as the batch send, refuses a card that is not ticked as checked with that reason, marks the card sent, and the card says "Sent to admin HH:MM" until it is edited. The admin still imports, approves and publishes it; the button does not publish anything itself. No migration.
+- **Remove card is on every card, including the players the system added.** It was only on cards added by hand or marked not in the system. It now confirms, removes the card from the shared copy through the merge's removal marker, and offers Undo until the page is reloaded. A card that was already sent keeps its copy in the admin queue, and Refresh list from system can add a removed player back. No migration.
+
+### Changed
+- **The batch send follows the player filter and the batch.** It used to send every checked card on the page. It now sends only the checked cards the page is showing, so a tabulator can filter one player (or pick a batch) and send just that set. The button count is the number of shown checked cards waiting, and the confirmation names the filter. No migration.
+
 ## [0.57.1] - 2026-11-15
 
 ### Added

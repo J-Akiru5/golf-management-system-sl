@@ -2232,6 +2232,44 @@ await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 chec
   timeout: 10000,
 });
 
+// A player filter narrows the send: BETA and GAMMA are checked, but only BETA is shown and sent.
+await tabulatorPage.locator("#cards .card").nth(1).locator('input[data-f="verified"]').check();
+await tabulatorPage.locator("#cards .card").nth(2).locator('input[data-f="verified"]').check();
+await tabulatorPage.locator("#q").fill("BETA");
+await expect(tabulatorPage.locator("#batch-send")).toContainText("(1)", { timeout: 10000 });
+tabulatorPage.once("dialog", (dialog) => dialog.accept());
+await tabulatorPage.click("#batch-send");
+await expect
+  .poll(() => submitBody?.cards?.[0]?.name, { timeout: 10000 })
+  .toBe("BETA, TWO");
+check("the player filter sends only the matching checked card", submitBody?.cards?.length === 1);
+await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 checked card", {
+  timeout: 10000,
+});
+await tabulatorPage.locator("#q").fill("");
+
+// The per-card Send button sends just that card, and the card says it went.
+await tabulatorPage.locator("#cards .card").nth(2).locator("[data-send]").click();
+await expect
+  .poll(() => submitBody?.cards?.[0]?.name, { timeout: 10000 })
+  .toBe("GAMMA, THREE");
+check("the per-card Send button sends only that card", submitBody?.cards?.length === 1);
+await expect(
+  tabulatorPage.locator("#cards .card").nth(2).locator('[data-k="savestate"]'),
+).toContainText("Sent to admin", { timeout: 10000 });
+check("the card says it was sent to the admin", true);
+
+// Remove is on every card, including a system card, and Undo brings it back.
+await expect(tabulatorPage.locator("#cards .card").nth(0).locator("[data-del]")).toBeVisible();
+tabulatorPage.once("dialog", (dialog) => dialog.accept());
+await tabulatorPage.locator("#cards .card").nth(0).locator("[data-del]").click();
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(2, { timeout: 10000 });
+await expect(tabulatorPage.locator("#undo")).toBeVisible({ timeout: 10000 });
+check("a system card can be removed and Undo is offered", true);
+await tabulatorPage.click("#undo");
+await expect(tabulatorPage.locator("#cards .card")).toHaveCount(3, { timeout: 10000 });
+check("Undo brings the removed system card back", true);
+
 // The bar stays on screen while the cards scroll, so the search is always one keystroke away.
 await tabulatorPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 const searchPos = await tabulatorPage.locator("#q").boundingBox();
