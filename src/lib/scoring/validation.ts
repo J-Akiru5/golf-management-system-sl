@@ -1,3 +1,4 @@
+import { capPlayingHandicap } from "../routing/handicap";
 import type {
   HandicapSnapshot,
   PolicyProblem,
@@ -310,10 +311,14 @@ export function handicapSnapshotProblems(snapshot: HandicapSnapshot): string[] {
   const raw =
     snapshot.index * (snapshot.slope / 113) + (snapshot.courseRating - snapshot.coursePar);
   const expectedCourse = Math.round(raw);
-  const expectedPlaying =
+  // A capped snapshot holds the event maximum, not the tee formula's figure, so the check works out
+  // the same capped number or it would read a correct snapshot as a mismatch and drop its net score.
+  const expectedPlaying = capPlayingHandicap(
     snapshot.rounding === "whs"
       ? Math.round(expectedCourse * snapshot.allowance)
-      : Math.round(raw * snapshot.allowance);
+      : Math.round(raw * snapshot.allowance),
+    snapshot.playingCap,
+  );
 
   if (expectedCourse !== snapshot.courseHandicap) {
     problems.push("The snapshot Course Handicap does not match its inputs.");

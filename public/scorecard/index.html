@@ -742,7 +742,9 @@ const valid = v => v === "" || v === "X" || isNum(v);
 // <handicap-rules>
 // The playing handicap is the system's WHS figure for the player's index on the tee written on the
 // card, and nothing else decides it (owner's rule, 14 Nov 2026):
-//   round( min(index, 30) x Slope / 113 + (Rating - Par) ) x allowance
+//   min( round( min(index, 30) x Slope / 113 + (Rating - Par) ) x allowance, 30 )
+// The playing handicap is held to the event maximum too (owner's decision, 14 Nov 2026): nobody plays
+// off more than 30, so an index of 30 on a tee that works out to 34 plays off 30.
 // It is the same rule as the draw (src/lib/routing/handicap.ts and src/lib/scoring/handicap.ts);
 // src/lib/scorecards/page-handicap.test.ts holds this block equal to that engine over an index grid.
 // The HDCP written on the card is kept as "Card says" and is never used to score anything. A plus
@@ -754,6 +756,8 @@ function setHandicapLimits(maxIndex, allowance) {
   if (Number.isFinite(allowance) && allowance > 0 && allowance <= 1) ALLOWANCE = allowance;
 }
 const wholeStrokes = n => { const r = Math.round(n); return r === 0 ? 0 : r; };
+// A playing handicap held to the event maximum. A plus handicap is never raised by it.
+const capPlaying = n => n > MAX_INDEX ? MAX_INDEX : n;
 // The par the tee is rated against, taken from the tee table when the field list supplies it.
 const teePar = tee => (tee && Number.isFinite(Number(tee.par)) && Number(tee.par) > 0) ? Number(tee.par) : sum(PAR);
 // What the card's own HDCP box says, as a whole number: 16.7 is 16, "+2" is a plus handicap (-2).
@@ -773,7 +777,7 @@ function whsHcp(index, code) {
   const value = Number(index);
   if (!Number.isFinite(value)) return null;
   const capped = Math.min(value, MAX_INDEX);
-  return wholeStrokes((capped * tee.slope / 113 + (tee.rating - teePar(tee))) * ALLOWANCE);
+  return capPlaying(wholeStrokes((capped * tee.slope / 113 + (tee.rating - teePar(tee))) * ALLOWANCE));
 }
 // The playing handicap this page scores with, from the field list: the player's index on the tee
 // written on the card. An index of 0, or none on file, is a missing value rather than a scratch
@@ -789,7 +793,7 @@ function playingHcp(c) {
   if (fromIndex !== null) return fromIndex;
   const stored = (f.playingHandicap === null || f.playingHandicap === undefined) ? null : Number(f.playingHandicap);
   if (stored === null || !Number.isFinite(stored) || stored === 0) return null;
-  return stored;
+  return capPlaying(stored);
 }
 // Strokes received on a hole: one per hole for every full 18, then one more on the hardest holes. A
 // plus handicap gives strokes back on the easiest holes (the highest stroke indexes).
@@ -979,7 +983,7 @@ function renderSheet() {
 <div class="warn"><b>Draft. Not an official result.</b><ul>
 <li>${checked} of ${rows.length} cards are ticked as checked against the paper. Shaded cells are doubtful first readings that were not changed.</li>
 <li><b>X</b> is a red X on the card (no number). It is counted as 0 points. That meaning is not confirmed by the organizer.</li>
-<li><b>Net</b> is net Stableford: each card plays off the system's figure, the player's index capped at ${MAX_INDEX} and converted on the tee written on the card (round(min(index, 30) x slope / 113 + rating - par), allowance ${Math.round(ALLOWANCE * 100)}%), with strokes given in the order of the card's HANDICAP row. <b>PH</b> is the playing handicap used; a plus handicap shows as +n and gives strokes back. The <b>HDCP</b> column is what the paper card says and does not decide anything. A card whose player has no index on file, or an index of 0, is listed last and not ranked.</li>
+<li><b>Net</b> is net Stableford: each card plays off the system's figure, the player's index capped at ${MAX_INDEX} and converted on the tee written on the card (round(min(index, 30) x slope / 113 + rating - par), allowance ${Math.round(ALLOWANCE * 100)}%, then held to ${MAX_INDEX}), with strokes given in the order of the card's HANDICAP row. <b>PH</b> is the playing handicap used; a plus handicap shows as +n and gives strokes back. The <b>HDCP</b> column is what the paper card says and does not decide anything. A card whose player has no index on file, or an index of 0, is listed last and not ranked.</li>
 <li><b>Class</b> is the team's class from the field list: both partners' indexes, each capped at 30, averaged and rounded (A 0 to 12, B 13 to 18, C 19 to 23, D 24 and above). It does not change any score.</li>
 <li>Strokes marked * add only the holes that have a number, so they are not a gross total. Mulligan and Joker stamps are not applied.</li>
 </ul></div>

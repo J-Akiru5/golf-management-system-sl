@@ -34,7 +34,32 @@ describe("the event handicap rule", () => {
     // 16.4 x (128 / 113) + (71.5 - 72) = 18.08, rounded half up to 18.
     expect(playing(16.4)).toBe(18);
     expect(playing(8.4)).toBe(9);
-    expect(playing(30)).toBe(33);
+    // 30 x (128 / 113) + (71.5 - 72) = 33.5 is 33 on this tee, but the event maximum holds the
+    // playing handicap at 30: nobody plays off more than it (owner's decision, 14 Nov 2026).
+    expect(playing(30)).toBe(30);
+  });
+
+  it("holds the playing handicap to the event maximum, and says when it did", () => {
+    const atCap = eventPlayingHandicap({ index: 30, tee: TEST_TEE, rule });
+    if (!atCap.ok) throw new Error(atCap.message);
+    expect(atCap.uncappedPlayingHandicap).toBe(33);
+    expect(atCap.playingHandicap).toBe(30);
+    expect(atCap.playingCapped).toBe(true);
+    // The index itself was not cut, so the two caps are reported separately.
+    expect(atCap.capped).toBe(false);
+
+    const under = eventPlayingHandicap({ index: 16.4, tee: TEST_TEE, rule });
+    if (!under.ok) throw new Error(under.message);
+    expect(under.playingHandicap).toBe(18);
+    expect(under.uncappedPlayingHandicap).toBe(18);
+    expect(under.playingCapped).toBe(false);
+  });
+
+  it("never raises a plus handicap", () => {
+    const plus = eventPlayingHandicap({ index: -2.4, tee: TEST_TEE, rule });
+    if (!plus.ok) throw new Error(plus.message);
+    expect(plus.playingHandicap).toBeLessThan(0);
+    expect(plus.playingCapped).toBe(false);
   });
 
   it("is a whole number, rounded once at the end", () => {

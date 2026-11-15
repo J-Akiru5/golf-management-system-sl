@@ -1,4 +1,4 @@
-import { rawCourseHandicap } from "../routing/handicap";
+import { capPlayingHandicap, rawCourseHandicap } from "../routing/handicap";
 import type {
   HandicapCalculation,
   HandicapInput,
@@ -90,8 +90,11 @@ export function calculateHandicap(input: HandicapInput): HandicapCalculation {
 
   const raw = rawCourseHandicap(index, tee);
   const courseHandicap = Math.round(raw);
-  const playingHandicap =
-    input.rounding === "whs" ? Math.round(courseHandicap * allowance) : Math.round(raw * allowance);
+  // The playing handicap is held to the event maximum: nobody plays off more than it.
+  const playingHandicap = capPlayingHandicap(
+    input.rounding === "whs" ? Math.round(courseHandicap * allowance) : Math.round(raw * allowance),
+    input.playingCap,
+  );
 
   const snapshot: HandicapSnapshot = {
     index,
@@ -105,6 +108,7 @@ export function calculateHandicap(input: HandicapInput): HandicapCalculation {
     rounding: input.rounding,
     courseHandicap,
     playingHandicap,
+    playingCap: input.playingCap ?? null,
     rulesVersion: input.rulesVersion,
   };
 

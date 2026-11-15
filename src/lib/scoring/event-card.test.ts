@@ -102,7 +102,12 @@ describe("planning a card under the event rules", () => {
     if (!plan.ok) throw new Error(plan.message);
     expect(plan.handicap.index).toBe(30);
     expect(plan.handicap.capped).toBe(true);
-    expect(plan.handicap.playingHandicap).toBe(33);
+    // 30 on this tee works out to 33, and nobody plays off more than the maximum.
+    expect(plan.handicap.uncappedPlayingHandicap).toBe(33);
+    expect(plan.handicap.playingHandicap).toBe(30);
+    expect(plan.handicap.playingCapped).toBe(true);
+    expect(plan.snapshot.playingHandicap).toBe(30);
+    expect(plan.snapshot.playingCap).toBe(30);
   });
 
   it("flags a player with no index on file", () => {
