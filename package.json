@@ -1,6 +1,6 @@
 {
   "name": "golf-management-system-sl",
-  "version": "0.58.3",
+  "version": "0.58.4",
   "private": true,
   "description": "TeeLine Golf tournament management by Syntaxure Labs.",
   "scripts": {
