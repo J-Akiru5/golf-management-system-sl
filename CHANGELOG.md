@@ -9,6 +9,11 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.58.1] - 2026-11-15
+
+### Fixed
+- **Production now runs the playing-handicap cap.** Vercel blocked the production deployment of 0.58.0 (`218ee04`) because that merge was made by an account that is not on the Vercel team, so the site kept serving 0.57.2. 0.58.1 carries exactly the same code as 0.58.0 and is merged by the owner so that it deploys. There is no code change and no migration; `20261115000400_cap_playing_handicap.sql` is already applied. The `v0.58.0` tag stays where it is.
+
 ## [0.58.0] - 2026-11-15
 
 ### Changed
