@@ -9,6 +9,11 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.58.5] - 2026-11-15
+
+### Added
+- **The scores leaderboard prints on the TeeLine sheet.** The Print Center has a **Scores leaderboard** link and a print page with the TeeLine mark, the event name and an **As of** date and time. The table is built from the pairings in leaderboard order: **Pair · Class · Course HCP · Day 1 · Day 2 · Day 3 · Day 4 · Total**, with a Member row and a Guest row for each pair. Each day cell is that player's net Stableford points with the recorded **AM/PM** session underneath; the pair's combined total sits under the pair number. The footer has **Prepared by** and **Verified by** signature lines. It reads the desk's latest scoring views for every playing day; the public pages stay the frozen publication. No migration.
+
 ## [0.58.4] - 2026-11-15
 
 ### Fixed
