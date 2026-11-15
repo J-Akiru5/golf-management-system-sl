@@ -130,6 +130,30 @@ All three were applied and then checked against the live project by probe, not b
 - The preview carries `AWARDING_DEMO=1`, which serves fictional sample boards so the ceremony can be
   rehearsed. It is refused in production.
 
+### Pair 372 recorded, no schedule touched
+
+The club's admin record lists one member and one guest as a pair, but their registrations share no
+playing day: the member plays Days 1 and 2, the guest Days 3 and 4 PM. The owner's instruction on
+15 Nov was to record the pair and leave every day, session, group and tee time exactly as it is, so
+that is all that was done.
+
+- The write was `save_pair()` with pair number 372. That function writes `registration_pairs`,
+  `registration_pair_members` and one audit row; it never reads or writes `registration_days`,
+  `groups` or `group_members`.
+- Both registrations' day rows, group rows, tee times and start holes were read before the call and
+  again after it, and are identical. The member is still Days 1 and 2 with no session, the guest is
+  still Days 3 and 4 PM, and both keep the groups and times they already had.
+- The desk shows the pair on `/register` and `/pairs/372`. The published snapshot stores no pair
+  numbers, so the public pairings are unchanged and did not need republishing.
+- This is the same shape as pair 371, which the club already records as one pair across different
+  playing days, so the record is consistent with what the club keeps.
+
+### Two blank membership types corrected
+
+Two registrations carried no `membership_type`, which is exactly what makes `save_pair()` answer
+"is not a member entry". Their `player_memberships` rows already said member, so the registration
+rows were set to `member` and nothing else was changed. The desk stops prompting on those two.
+
 ### Guardrails while production is live
 
 1. **One release train.** Work goes to `develop`, then one release pull request to `main` with both
