@@ -113,10 +113,16 @@ describe("classification", () => {
     const r = classifyPlayer(player({ index: 30.1 }), input([]));
     expect(r.status).toBe("ok");
     expect(r.flightId).toBe("c");
-    expect(r.playingHandicap).toBe(playingHandicap(30, tees[0] as Tee, 1));
-    // The index on file is not rewritten, and the reason says which number was used.
+    // Index 30 works out to 33 strokes on this tee, and nobody plays off more than the maximum.
+    expect(playingHandicap(30, tees[0] as Tee, 1)).toBe(33);
+    expect(r.playingHandicap).toBe(playingHandicap(30, tees[0] as Tee, 1, 30));
+    expect(r.playingHandicap).toBe(30);
+    // The index on file is not rewritten, and the reasons say which numbers were used.
     expect(r.index).toBe(30.1);
     expect(r.reasons.join(" ")).toContain("Index 30.1 is above the maximum of 30; 30 is used.");
+    expect(r.reasons.join(" ")).toContain(
+      "Playing handicap 33 is above the maximum of 30; 30 is used.",
+    );
   });
 
   it("gives an index far above the cap the same class and playing handicap as 30", () => {
@@ -130,7 +136,9 @@ describe("classification", () => {
   it("reads the cap from the tournament setting, not a fixed 30", () => {
     const r = classifyPlayer(player({ index: 26 }), input([], { maxIndex: 24 }));
     expect(r.status).toBe("ok");
-    expect(r.playingHandicap).toBe(playingHandicap(24, tees[0] as Tee, 1));
+    // 24 on this tee is 27 strokes; the maximum holds the playing handicap at 24.
+    expect(r.playingHandicap).toBe(playingHandicap(24, tees[0] as Tee, 1, 24));
+    expect(r.playingHandicap).toBe(24);
     expect(r.reasons.join(" ")).toContain("24 is used");
   });
 
@@ -185,8 +193,9 @@ describe("classification", () => {
     const p = player({ birthdate: "1990-01-01", index: 40 });
     const capped = classifyPlayer(p, input([], { flightBasis: "courseHandicap", maxIndex: 24 }));
     // 24 is the capped index, so the course handicap is computed from 24 (27 strokes), not 40 (45),
-    // and 27 is Class C. Without the cap no class would cover the number.
-    expect(capped.playingHandicap).toBe(27);
+    // and the playing handicap is held to the maximum as well, so the player is classed on 24.
+    // Without the cap no class would cover the number.
+    expect(capped.playingHandicap).toBe(24);
     expect(capped.flightId).toBe("c");
     // The index on file is left as it is.
     expect(capped.index).toBe(40);
