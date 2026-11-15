@@ -2026,13 +2026,21 @@ window.__scorecard = {
   async function sendCards(cards, scope, ask) {
     if (sendBusy) {
       summary.textContent = "A send is already on its way. Wait for it to finish.";
-      return;
+      return false;
     }
     const state = current();
     // Only cards not sent yet (a card that was edited after it was sent counts as unsent again), so
     // two tabulators using the same account never send the same cards twice.
     const alreadySent = cards.filter((card) => card.verified && card.sentAt).length;
     const checked = cards.filter((card) => card.verified && !card.sentAt);
+    // A card added by hand for a player who is already on the day's list is linked to that player
+    // before the send, so its scores travel as a scored card instead of a name only.
+    for (const card of checked) {
+      if (!card.playerId && !card.notInSystem) {
+        const field = fieldFor(card);
+        if (field?.playerId) card.playerId = field.playerId;
+      }
+    }
     // A card typed in as "not in the system" is never sent as a checked card: the admin has to add
     // the player first, so it is handed over as a name for matching, not as a scored card.
     const listed = checked.filter((card) => card.playerId && !card.notInSystem);
@@ -2043,24 +2051,31 @@ window.__scorecard = {
         : scope
           ? `No checked cards${scope}. Tick the card you checked against the paper.`
           : "No checked cards to send. Tick the cards you have checked against the paper.";
-      return;
+      return false;
     }
-    if (listed.length === 0) {
-      summary.textContent = `The checked cards${scope} are not in the system. The admin must add those players before their cards can be sent.`;
-      return;
-    }
-    const missing = listed.filter(
-      (card) => !String(card.hdcp ?? "").trim() && playingHcp(card) === null,
-    );
-    if (missing.length > 0) {
-      summary.textContent = `${missing.length} checked card${missing.length === 1 ? "" : "s"}${scope} have no playing handicap from the system (no index on file). Ask the admin to fix the player record, or untick those cards.`;
-      return;
+    const blocked = listed.filter((card) => {
+      const field = fieldFor(card);
+      return !field || field.playingHandicap == null;
+    });
+    const sendable = listed.filter((card) => !blocked.includes(card));
+    const blockedNames = blocked.map((card) => card.name || "a card").join(", ");
+    if (sendable.length === 0 && nameOnly.length === 0) {
+      summary.textContent = `The desk has no playing handicap for ${blockedNames}. Set the index in the desk, then send again.`;
+      return false;
     }
     if (ask !== false) {
-      const confirmed = window.confirm(
-        `Send ${listed.length} checked card${listed.length === 1 ? "" : "s"}${scope} to the admin?${nameOnly.length ? ` ${nameOnly.length} name-only card${nameOnly.length === 1 ? "" : "s"} will be left for the admin to match.` : ""}`,
-      );
-      if (!confirmed) return;
+      const what = sendable.length
+        ? `${sendable.length} checked card${sendable.length === 1 ? "" : "s"}`
+        : `${nameOnly.length} name-only card${nameOnly.length === 1 ? "" : "s"}`;
+      const left =
+        sendable.length > 0 && nameOnly.length
+          ? ` ${nameOnly.length} name-only card${nameOnly.length === 1 ? "" : "s"} will be left for the admin to match.`
+          : "";
+      const held = blocked.length
+        ? ` ${blocked.length} card${blocked.length === 1 ? "" : "s"} will not be sent: no desk handicap for ${blockedNames}.`
+        : "";
+      const confirmed = window.confirm(`Send ${what}${scope} to the admin?${left}${held}`);
+      if (!confirmed) return false;
     }
     sendBusy = true;
     sendButton.disabled = true;
@@ -2074,7 +2089,7 @@ window.__scorecard = {
           label: db.label,
           slug,
           submittedBy: sessionEmail,
-          cards: listed.map((card) => {
+          cards: sendable.map((card) => {
             const field = fieldFor(card);
             return {
               id: card.id,
@@ -2102,6 +2117,9 @@ window.__scorecard = {
             name: card.name,
             day: Number(dayOf(card)),
             session: sessionOf(card),
+            holes: card.holes,
+            written: card.written,
+            note: card.note || "",
           })),
         }),
       });
@@ -2110,19 +2128,35 @@ window.__scorecard = {
         throw new Error(body.message || "The admin queue did not accept the cards.");
       }
       state.submission = body.submission;
-      for (const card of listed) card.sentAt = body.submission.at;
+      const acceptedCards = new Set(body.submission.cards.map((entry) => entry.id));
+      const acceptedNames = new Set(body.submission.nameOnly.map((entry) => entry.id));
+      for (const card of [...sendable, ...nameOnly]) {
+        if (acceptedCards.has(card.id) || acceptedNames.has(card.id)) {
+          card.sentAt = body.submission.at;
+        }
+      }
       db.save();
       apply();
       const rejected = body.submission.unmatched.length;
-      const sentMessage = `Sent ${body.submission.cards.length} checked card${body.submission.cards.length === 1 ? "" : "s"}${scope} to the admin queue at ${new Date(body.submission.at).toLocaleTimeString()}.${body.submission.nameOnly.length ? ` ${body.submission.nameOnly.length} name-only card${body.submission.nameOnly.length === 1 ? "" : "s"} left for the admin.` : ""}${rejected ? ` ${rejected} card${rejected === 1 ? "" : "s"} not accepted: ${body.submission.unmatched.map((entry) => entry.name || entry.id).join(", ")}.` : ""}`;
+      const sentCards = body.submission.cards.length;
+      const sentNames = body.submission.nameOnly.length;
+      const parts = [];
+      if (sentCards) parts.push(`${sentCards} checked card${sentCards === 1 ? "" : "s"}`);
+      if (sentNames) parts.push(`${sentNames} name-only card${sentNames === 1 ? "" : "s"}`);
+      const heldMessage = blocked.length
+        ? ` ${blocked.length} card${blocked.length === 1 ? "" : "s"} not sent: no desk handicap for ${blockedNames}.`
+        : "";
+      const sentMessage = `Sent ${parts.join(" and ") || "the cards"}${scope} to the admin queue at ${new Date(body.submission.at).toLocaleTimeString()}.${heldMessage} The admin opens /scores/review and the Tabulator submissions section.${rejected ? ` ${rejected} card${rejected === 1 ? "" : "s"} not accepted: ${body.submission.unmatched.map((entry) => entry.name || entry.id).join(", ")}.` : ""}`;
       const saved = await persist(true);
       // persist() redraws the panel, so the sent message is written after it. Writing it before
       // let the ordinary "N cards shown" line replace it and the desk could not tell the send worked.
       summary.textContent = saved
         ? sentMessage
         : "The cards were frozen, but the database save failed. They are not in the admin queue yet; the page will retry the save.";
+      return saved;
     } catch (error) {
       summary.textContent = error instanceof Error ? error.message : String(error);
+      return false;
     } finally {
       sendBusy = false;
       sendButton.disabled = false;
@@ -2160,7 +2194,20 @@ window.__scorecard = {
       }
       return;
     }
-    await sendCards([card], card.name ? ` for ${card.name}` : "", false);
+    const field = fieldFor(card);
+    if (card.playerId && !card.notInSystem && (!field || field.playingHandicap == null)) {
+      summary.textContent = `The desk has no playing handicap for ${card.name || "this card"}. Set the index in the desk, then send again.`;
+      if (badge) {
+        badge.textContent = "No desk handicap: set the index first";
+        badge.className = "savestate noprint bad";
+      }
+      return;
+    }
+    const ok = await sendCards([card], card.name ? ` for ${card.name}` : "", false);
+    if (!ok && badge) {
+      badge.textContent = summary.textContent || "The card was not sent.";
+      badge.className = "savestate noprint bad";
+    }
   }
 
   // ---- Scan a card, or take a photo of it ----
