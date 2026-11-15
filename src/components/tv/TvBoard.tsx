@@ -4,24 +4,30 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Crest } from "@/components/Crest";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
-import type { TvBoard, TvColumn, TvPairLine, TvPlayerLine } from "@/lib/public/tv-board";
+import type {
+  TvBoard,
+  TvColumn,
+  TvOverallLine,
+  TvPairLine,
+  TvPlayerLine,
+} from "@/lib/public/tv-board";
 import { scrollPass } from "./scroll";
 import styles from "./tv.module.css";
 
 /**
  * The clubhouse TV board.
  *
- * A 16:9 screen for the clubhouse wall: today's field split into the morning and the afternoon,
- * each ranked by net points with the gross points beside it, and a pair view that adds the two
- * partners together. Both columns scroll themselves, so the whole field passes the room instead of
- * stopping at the first twenty names.
+ * A 16:9 screen for the clubhouse wall with three lists: every published day added together per
+ * player, today's field split into the morning and the afternoon, and the same day by two-man pair.
+ * Each list scrolls itself, so the whole field passes the room instead of stopping at the first
+ * twenty names.
  *
  * Every figure comes from the frozen published card. The screen refreshes itself once a minute,
- * swaps between the player and pair views every twenty-four seconds, and holds still for anybody
- * who asked their device for reduced motion.
+ * moves to the next list when one has finished, and holds still for anybody who asked their device
+ * for reduced motion.
  */
 
-type Mode = "players" | "pairs";
+type Mode = "overall" | "players" | "pairs";
 
 const REFRESH_MS = 60_000;
 /** How long the finished list is held before the board changes to the next one. */
@@ -74,7 +80,11 @@ function teeLabel(line: { teeTime: string | null; teeHole: number | null }): str
 
 export function TvBoardView({ board }: { board: TvBoard }) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("players");
+  // On the last day the event total is what the room is arguing about, so the board opens there when
+  // there is more than one day to add up. A single-day event opens on the day itself.
+  const [mode, setMode] = useState<Mode>(() =>
+    board.overall.some((line) => line.rounds.length > 1) ? "overall" : "players",
+  );
   const [pass, setPass] = useState(0);
   const [clock, setClock] = useState("");
   const [still, setStill] = useState(false);
@@ -109,19 +119,40 @@ export function TvBoardView({ board }: { board: TvBoard }) {
   }, [router]);
 
   const offersPairs = board.columns.some((column) => column.pairs.length > 0);
+  const offersOverall = board.overall.some((line) => line.rounds.length > 1);
+  // How many lists this view is made of: the all-days view is one list, a day is one column per
+  // session that has a published start.
+  const listCount = mode === "overall" ? 1 : board.columns.length;
+  const nextMode = (current: Mode): Mode => {
+    if (current === "overall") return "players";
+    if (current === "players") return offersPairs ? "pairs" : offersOverall ? "overall" : "players";
+    return offersOverall ? "overall" : "players";
+  };
   const finishedColumns = useRef(new Set<string>());
   const switchTimer = useRef<number | null>(null);
+
+  // A person at the screen can take over: clicking a view switches to it at once and starts that
+  // list from its first name, instead of waiting for the board to reach it on its own.
+  const chooseMode = (next: Mode) => {
+    if (switchTimer.current !== null) {
+      window.clearTimeout(switchTimer.current);
+      switchTimer.current = null;
+    }
+    finishedColumns.current.clear();
+    setMode(next);
+    setPass((value) => value + 1);
+  };
 
   // A pass ends when every column has shown its last name at the top. Only then does the board
   // change to the next list, which starts empty in turn.
   const finishColumn = (key: string) => {
     if (still) return;
     finishedColumns.current.add(key);
-    if (finishedColumns.current.size < board.columns.length || switchTimer.current !== null) return;
+    if (finishedColumns.current.size < listCount || switchTimer.current !== null) return;
     switchTimer.current = window.setTimeout(() => {
       switchTimer.current = null;
       finishedColumns.current.clear();
-      if (offersPairs) setMode((current) => (current === "players" ? "pairs" : "players"));
+      setMode(nextMode);
       setPass((value) => value + 1);
     }, END_HOLD_MS);
   };
@@ -160,9 +191,22 @@ export function TvBoardView({ board }: { board: TvBoard }) {
 
         <div className={styles.when}>
           <div className={styles.dayBlock}>
-            <span className={styles.dayNumber}>Day {board.day.dayNumber}</span>
-            <span className={styles.dayDate}>{longDate(board.day.playDate)}</span>
-            {board.isToday ? null : <span className={styles.dayNote}>Latest published day</span>}
+            {mode === "overall" ? (
+              <>
+                <span className={styles.dayNumber}>All days</span>
+                <span className={styles.dayDate}>
+                  Day 1 to Day {board.days} · {board.overall.length} players
+                </span>
+              </>
+            ) : (
+              <>
+                <span className={styles.dayNumber}>Day {board.day.dayNumber}</span>
+                <span className={styles.dayDate}>{longDate(board.day.playDate)}</span>
+                {board.isToday ? null : (
+                  <span className={styles.dayNote}>Latest published day</span>
+                )}
+              </>
+            )}
           </div>
           <span className={styles.clock} aria-label="Philippine time">
             {clock}
@@ -170,30 +214,67 @@ export function TvBoardView({ board }: { board: TvBoard }) {
         </div>
       </header>
 
-      <div className={styles.columns} data-count={board.columns.length}>
-        {board.columns.map((column) => {
-          const key = column.session ?? "all";
-          return (
-            <BoardColumn
-              key={`${key}-${pass}`}
-              column={column}
-              mode={mode}
-              onFinished={() => finishColumn(key)}
-            />
-          );
-        })}
+      <div className={styles.columns} data-count={listCount}>
+        {mode === "overall" ? (
+          <OverallColumn
+            key={`overall-${pass}`}
+            lines={board.overall}
+            days={board.days}
+            onFinished={() => finishColumn("overall")}
+          />
+        ) : (
+          board.columns.map((column) => {
+            const key = column.session ?? "all";
+            return (
+              <BoardColumn
+                key={`${key}-${pass}`}
+                column={column}
+                mode={mode}
+                onFinished={() => finishColumn(key)}
+              />
+            );
+          })
+        )}
       </div>
 
       <footer className={styles.foot}>
         <span className={styles.footWhat} data-testid="tv-what">
-          {mode === "players"
-            ? "Every player with a published card, ranked by net points"
-            : "Two-man pairs, both partners' points added together"}
+          {mode === "overall"
+            ? "Every day added together, ranked by net points"
+            : mode === "players"
+              ? "Every player with a published card, ranked by net points"
+              : "Two-man pairs, both partners' points added together"}
         </span>
         <span className={styles.footRight}>
           <span className={styles.modes}>
-            <span className={mode === "players" ? styles.modeOn : styles.mode}>By player</span>
-            <span className={mode === "pairs" ? styles.modeOn : styles.mode}>By pair</span>
+            {offersOverall ? (
+              <button
+                type="button"
+                className={mode === "overall" ? styles.modeOn : styles.mode}
+                aria-pressed={mode === "overall"}
+                onClick={() => chooseMode("overall")}
+              >
+                All days
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={mode === "players" ? styles.modeOn : styles.mode}
+              aria-pressed={mode === "players"}
+              onClick={() => chooseMode("players")}
+            >
+              By player
+            </button>
+            {offersPairs ? (
+              <button
+                type="button"
+                className={mode === "pairs" ? styles.modeOn : styles.mode}
+                aria-pressed={mode === "pairs"}
+                onClick={() => chooseMode("pairs")}
+              >
+                By pair
+              </button>
+            ) : null}
           </span>
           <span className={styles.powered}>
             <span className={styles.poweredLabel}>Powered by</span>
@@ -208,13 +289,87 @@ export function TvBoardView({ board }: { board: TvBoard }) {
   );
 }
 
+/**
+ * Every published day in one list.
+ *
+ * The total is the ranking figure, set large at the right. Under it sits the round it was made of,
+ * day by day with the half the member played, so a player who hears their name can see where their
+ * points came from.
+ */
+function OverallColumn({
+  lines,
+  days,
+  onFinished,
+}: {
+  lines: TvOverallLine[];
+  days: number;
+  onFinished: () => void;
+}) {
+  return (
+    <section className={`${styles.column} ${styles.fade}`} aria-label="All days">
+      <div className={styles.colHead}>
+        <h2 className={styles.colTitle}>All days</h2>
+        <span className={styles.colCount}>
+          {days} {days === 1 ? "day" : "days"} · {lines.length} players
+        </span>
+      </div>
+
+      <div className={styles.labels} data-overall="true" aria-hidden="true">
+        <span>Pos</span>
+        <span>Player</span>
+        <span className={styles.num}>Gross</span>
+        <span className={styles.num}>Net total</span>
+      </div>
+
+      {lines.length === 0 ? (
+        <p className={styles.empty}>No published card yet.</p>
+      ) : (
+        <AutoScroll onFinished={onFinished}>
+          {lines.map((line) => (
+            <OverallRow key={line.playerId} line={line} />
+          ))}
+        </AutoScroll>
+      )}
+    </section>
+  );
+}
+
+function OverallRow({ line }: { line: TvOverallLine }) {
+  return (
+    <div
+      className={styles.row}
+      data-rank={line.rank}
+      data-overall="true"
+      data-testid="tv-overall-row"
+    >
+      <span className={styles.rank}>{line.tied ? `T${line.rank}` : line.rank}</span>
+      <span className={styles.nameCell}>
+        <span className={styles.name}>{line.name}</span>
+        <span className={styles.rounds}>
+          {line.rounds.map((round) => (
+            <span key={round.dayNumber} className={styles.round}>
+              <span className={styles.roundDay}>
+                Day {round.dayNumber}
+                {round.session ? ` ${round.session}` : ""}
+              </span>
+              <span className={styles.roundPoints}>{round.netPoints ?? "—"}</span>
+            </span>
+          ))}
+        </span>
+      </span>
+      <span className={styles.gross}>{line.grossPoints ?? "—"}</span>
+      <span className={styles.net}>{line.netPoints ?? "—"}</span>
+    </div>
+  );
+}
+
 function BoardColumn({
   column,
   mode,
   onFinished,
 }: {
   column: TvColumn;
-  mode: Mode;
+  mode: "players" | "pairs";
   onFinished: () => void;
 }) {
   const label =
