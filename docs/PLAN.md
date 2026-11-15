@@ -123,8 +123,10 @@ All three were applied and then checked against the live project by probe, not b
 
 - All six lanes are **held**. The lane default is `released` when nothing is stored, so the desk must
   hold before opening the results gate; the six are held on the live event as of 15 Nov.
-- The `leaderboard` release key is **held**, so `/results`, `/results/all` and `/leaderboard` show no
-  player names and no points. The roster, pairings, tee times and rules stay open.
+- The `leaderboard` release key is **released**, so `/leaderboard`, `/results/all` and the scorecards
+  keep showing every result the club has already released. Only the six awarding lanes are held, so
+  `/results` (the podium) stays on "Results will be shown at the awarding" until the desk releases a
+  lane. The roster, pairings, tee times and rules stay open.
 - The preview carries `AWARDING_DEMO=1`, which serves fictional sample boards so the ceremony can be
   rehearsed. It is refused in production.
 
