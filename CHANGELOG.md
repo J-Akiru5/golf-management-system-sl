@@ -11,6 +11,7 @@ Supabase project, because the code and the database are released separately.
 
 ### Added
 - **Every tabulator card has a Send to admin button.** It sends only that card through the same `/api/scorecards/submit` path as the batch send, refuses a card that is not ticked as checked with that reason, marks the card sent, and the card says "Sent to admin HH:MM" until it is edited. The admin still imports, approves and publishes it; the button does not publish anything itself. No migration.
+- **Send all scored in this batch sends a whole batch without ticking every card.** It sends every card in the shown batch that has at least one hole score, including cards not ticked as checked, and leaves out cards with no scores. A card the desk has no handicap for is still held and named. The admin review marks a card that was not ticked as checked, so the paper can be checked. No migration.
 - **Remove card is on every card, including the players the system added.** It was only on cards added by hand or marked not in the system. It now confirms, removes the card from the shared copy through the merge's removal marker, and offers Undo until the page is reloaded. A card that was already sent keeps its copy in the admin queue, and Refresh list from system can add a removed player back. No migration.
 
 ### Changed
