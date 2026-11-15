@@ -26,6 +26,7 @@ interface SubmissionCard {
   holes?: string[];
   note?: string;
   handicapSource?: string;
+  checked?: boolean;
 }
 
 interface SubmissionDetail {
@@ -132,6 +133,9 @@ export function TabulatorSubmissionsPanel({
             manual: false,
             note: [
               card.note,
+              card.checked === false
+                ? "Not ticked as checked by the tabulator; check the paper card."
+                : "",
               card.handicapSource === "system"
                 ? `HDCP box blank; system playing handicap ${card.hdcp} used.`
                 : "",

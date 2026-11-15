@@ -17,6 +17,7 @@ interface CardInput {
   holes?: unknown;
   note?: unknown;
   markerPlayerId?: unknown;
+  checked?: unknown;
 }
 
 interface NameOnlyInput {
@@ -179,6 +180,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       playerId,
       registrationId: player.registrationId,
       name: player.name,
+      checked: input.checked === true,
       day,
       session: text(input.session) || player.session,
       group: text(input.group) || (player.group !== null ? String(player.group) : ""),
