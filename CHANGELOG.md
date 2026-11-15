@@ -9,6 +9,14 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.58.3] - 2026-11-15
+
+### Fixed
+- **A hand-added card can be sent to the admin with its scores.** A hand-added card whose name matches a player on the day's list is linked to that player before sending, so it travels as a scored card. A card for a player not in the system is sent as a name-only entry that carries its 18 scores, and the admin queue shows it so the admin can add the player without re-keying the card. The batch send now sends the cards that have a desk handicap and holds only the ones that do not, naming them, instead of refusing the whole batch. No migration.
+- **The admin queue opens by default and shows its count.** The Tabulator submissions section on `/scores/review` no longer starts collapsed, and its heading shows how many day submissions are waiting. No migration.
+
+Also carries #317: a tabulation document may hold more than 500 cards. No migration.
+
 ## [0.58.2] - 2026-11-15
 
 ### Changed
