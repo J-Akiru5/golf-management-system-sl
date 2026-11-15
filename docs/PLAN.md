@@ -207,6 +207,18 @@ conversion (19 instead of 15, 0 instead of 30, 23 instead of 22); the board was 
 from before a tee change. They were aligned to the conversion. That column feeds the desk list and
 the printed handicap column; it does not score anything, and no snapshot changed.
 
+### One Senior entry re-classed by hand (15 Nov 2026)
+
+An entry was filed under the Ladies category on the Blue tee, which played off 9. The owner named him
+a Senior, so the entry was moved to the Senior category on White, which gives 7 from his index of 8.2.
+His Day 3 snapshot was corrected and the round republished (version 94), and his Day 4 card was
+reworked on the sync board (version 109). Day 3 net moved from 36 to 34 and Day 4 from 43 to 41. His
+pair stays in Class A.
+
+A second write from the owner's account landed 18 seconds after the first and put the entry back on
+Blue with 9. It was applied again and held. Whoever has that entry open in the desk should not save it
+again with the old tee selected.
+
 **Open:** 7 entries have no tee and 1 has no index. Four of the seven have an index and a stored
 figure that matches Blue exactly, but the tee was never set. One of them has a Day 4 card (plays off
 30). The owner needs to name the tees for those entries.
