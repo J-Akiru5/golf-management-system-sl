@@ -9,6 +9,25 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.58.0] - 2026-11-15
+
+### Changed
+- **Nobody plays off more than the event maximum (30).** The owner's decision of 14 Nov 2026: the playing handicap is capped as well as the index, so an index of 30 on the Blue tee, which the tee formula turns into 34 strokes, plays off 30. The cap is applied everywhere a playing handicap is worked out: the draw (`playingHandicap` in `src/lib/routing/handicap.ts` takes a cap, and a card handicap above it is held too), the registration index dialog, the card save under the event rules (`eventPlayingHandicap` reports both the uncapped figure and whether the cap cut it), the snapshot calculation and the snapshot check (a capped snapshot carries `playingCap`, read from `tournaments.max_index` when a snapshot is loaded, so it is not read as a mismatch and does not lose its net score), and the tabulator page. A plus handicap is never raised. The draw's reason line names both numbers ("Playing handicap 33 is above the maximum of 30; 30 is used."). Nine existing tests that encoded the uncapped figure were updated to the new rule, and new tests cover the cap in the draw, the engine, the snapshot check, the tabulator page and the migration text. Migration: `20261115000400_cap_playing_handicap.sql`, applied before this release (see below).
+
+### Added
+- **Send all scored in this batch sends a whole batch without ticking every card.** It sends every card in the shown batch that has at least one hole score, including cards not ticked as checked, and leaves out cards with no scores. A card the desk has no handicap for is still held and named. The admin review marks a card that was not ticked as checked, so the paper can be checked. No migration.
+
+### Fixed
+- **A hand-added card can be sent to the admin with its scores.** A hand-added card whose name matches a player on the day's list is linked to that player before sending, so it travels as a scored card. A card for a player not in the system is sent as a name-only entry that carries its 18 scores, and the admin queue shows it so the admin can add the player without re-keying the card. The batch send now sends the cards that have a desk handicap and holds only the ones that do not, naming them, instead of refusing the whole batch. No migration.
+- **The admin queue opens by default and shows its count.** The Tabulator submissions section on `/scores/review` no longer starts collapsed, and its heading shows how many day submissions are waiting. No migration.
+
+### Migrations shipping with this release
+
+- `20261115000400_cap_playing_handicap.sql`: **applied on the live project (15 Nov 2026).** It holds
+  `save_handicap_snapshot` and `correct_handicap_snapshot` to the event maximum. The 38 stored
+  snapshots that were above 30 were corrected the same day with a one-off SQL block (not a migration;
+  it is not in the repo), with an audit row each and the players' results recalculated.
+
 ## [0.57.2] - 2026-11-15
 
 ### Added

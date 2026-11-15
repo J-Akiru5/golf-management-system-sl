@@ -97,7 +97,7 @@ describe("tabulation page handicap rules", () => {
         const tee = engineTee(code);
         for (let tenths = -50; tenths <= 600; tenths += 1) {
           const index = tenths / 10;
-          const expected = playingHandicap(Math.min(index, 30), tee, allowance);
+          const expected = playingHandicap(Math.min(index, 30), tee, allowance, 30);
           expect(page.whsHcp(index, code), `${code} index ${index} at ${allowance}`).toBe(expected);
         }
       }
@@ -129,7 +129,7 @@ describe("tabulation page handicap rules", () => {
     page.setHandicapLimits(30, 1);
     for (const index of [0, 4.2, 12.4, 18, 30]) {
       expect(page.whsHcp(index, "B"), `index ${index}`).toBe(
-        playingHandicap(index, engineTee("B", tees), 1),
+        playingHandicap(index, engineTee("B", tees), 1, 30),
       );
     }
     // Without the par the block falls back to the hole pars, which is the bundled page's copy.
@@ -157,6 +157,25 @@ describe("tabulation page handicap rules", () => {
     const page = load();
     page.setHandicapLimits(Number.NaN, 0);
     page.setHandicapLimits(0, 1.5);
-    expect(page.whsHcp(45, "B")).toBe(playingHandicap(30, engineTee("B"), 1));
+    expect(page.whsHcp(45, "B")).toBe(playingHandicap(30, engineTee("B"), 1, 30));
+  });
+
+  it("holds the playing handicap to the maximum: an index of 30 on Blue plays off 30, not 34", () => {
+    const page = load({ playingHandicap: 34, frozenIndex: 30 });
+    page.setHandicapLimits(30, 1);
+    expect(playingHandicap(30, engineTee("B"), 1)).toBe(34);
+    expect(page.whsHcp(30, "B")).toBe(30);
+    expect(page.playingHcp({ hdcp: "", tee: "B", name: "A" })).toBe(30);
+    // A stored figure above the maximum, used when the card has no tee letter, is held too.
+    expect(page.playingHcp({ hdcp: "", tee: "", name: "A" })).toBe(30);
+    // Under the maximum nothing changes, and a plus handicap is not raised.
+    expect(page.whsHcp(12.4, "B")).toBe(playingHandicap(12.4, engineTee("B"), 1));
+    expect(page.whsHcp(-2, "B")).toBe(playingHandicap(-2, engineTee("B"), 1));
+  });
+
+  it("follows the event's maximum, not a fixed 30", () => {
+    const page = load();
+    page.setHandicapLimits(24, 1);
+    expect(page.whsHcp(30, "B")).toBe(24);
   });
 });

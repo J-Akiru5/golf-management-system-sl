@@ -2233,6 +2233,7 @@ await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 chec
 });
 
 // A player filter narrows the send: BETA and GAMMA are checked, but only BETA is shown and sent.
+await tabulatorPage.locator("#cards .card").nth(1).locator('input[data-h="0"]').fill("5");
 await tabulatorPage.locator("#cards .card").nth(1).locator('input[data-f="verified"]').check();
 await tabulatorPage.locator("#cards .card").nth(2).locator('input[data-f="verified"]').check();
 await tabulatorPage.locator("#q").fill("BETA");
@@ -2249,6 +2250,7 @@ await expect(tabulatorPage.locator("#batch-summary")).toContainText("Sent 1 chec
 await tabulatorPage.locator("#q").fill("");
 
 // The per-card Send button sends just that card, and the card says it went.
+await tabulatorPage.locator("#cards .card").nth(2).locator('input[data-h="0"]').fill("6");
 await tabulatorPage.locator("#cards .card").nth(2).locator("[data-send]").click();
 await expect
   .poll(() => submitBody?.cards?.[0]?.name, { timeout: 10000 })
@@ -2334,6 +2336,53 @@ check(
   (await strangerCard.locator(".no").first().textContent())?.includes(
     "Not in the system: tell the admin",
   ) === true,
+);
+
+// A name-only card can go to the admin on its own; the admin adds the player.
+await strangerCard.locator('input[data-h="0"]').fill("4");
+await strangerCard.locator('input[data-f="verified"]').check();
+await strangerCard.locator("[data-send]").click();
+await expect
+  .poll(() => submitBody?.nameOnly?.[0]?.name, { timeout: 10000 })
+  .toBe("STRANGER, SAM");
+check(
+  "a name-only card is sent to the admin on its own",
+  submitBody?.cards?.length === 0 && submitBody?.nameOnly?.length === 1,
+);
+await expect(strangerCard.locator('[data-k="savestate"]')).toContainText("Sent to admin", {
+  timeout: 10000,
+});
+check("the name-only card says it was sent", true);
+
+// Send all scored includes an unchecked card that has a score, and leaves a blank card out.
+await tabulatorPage.evaluate(() => {
+  const state = window.__scorecard.getState();
+  const gamma = state.cards.find((card) => card.name === "GAMMA, THREE");
+  if (gamma) {
+    delete gamma.sentAt;
+    gamma.verified = false;
+  }
+  window.__scorecard.save();
+});
+await tabulatorPage.locator("#q").fill("");
+await expect(tabulatorPage.locator("#batch-send-scored")).toContainText("(1)", {
+  timeout: 10000,
+});
+tabulatorPage.once("dialog", (dialog) => dialog.accept());
+await tabulatorPage.click("#batch-send-scored");
+await expect
+  .poll(
+    () => submitBody?.cards?.some((card) => card.name === "GAMMA, THREE") === true,
+    { timeout: 10000 },
+  )
+  .toBe(true);
+check(
+  "send all scored includes an unchecked card that has a score",
+  submitBody?.cards?.some((card) => card.name === "GAMMA, THREE") === true,
+);
+check(
+  "the unchecked card is marked as not checked",
+  submitBody?.cards?.find((card) => card.name === "GAMMA, THREE")?.checked === false,
 );
 
 // Phase 2: a card that is only in this browser must survive a reload and go out with the merge.

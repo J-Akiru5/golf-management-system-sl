@@ -17,6 +17,7 @@ interface CardInput {
   holes?: unknown;
   note?: unknown;
   markerPlayerId?: unknown;
+  checked?: unknown;
 }
 
 interface NameOnlyInput {
@@ -24,6 +25,9 @@ interface NameOnlyInput {
   name?: unknown;
   day?: unknown;
   session?: unknown;
+  holes?: unknown;
+  written?: unknown;
+  note?: unknown;
 }
 
 const HOLE_VALUE = /^(?:|[0-9]{1,2}|X)$/;
@@ -101,9 +105,13 @@ export async function POST(request: Request): Promise<NextResponse> {
   const submittedBy = text(body.submittedBy) || access.email || "";
   const inputs = Array.isArray(body.cards) ? (body.cards as CardInput[]) : [];
   const nameOnlyInputs = Array.isArray(body.nameOnly) ? (body.nameOnly as NameOnlyInput[]) : [];
-  if (!slug || inputs.length === 0) {
+  if (!slug || (inputs.length === 0 && nameOnlyInputs.length === 0)) {
     return NextResponse.json(
-      { ok: false, message: "A submission needs the day document and at least one checked card." },
+      {
+        ok: false,
+        message:
+          "A submission needs the day document and at least one checked card or name-only card.",
+      },
       { status: 400 },
     );
   }
@@ -172,6 +180,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       playerId,
       registrationId: player.registrationId,
       name: player.name,
+      checked: input.checked === true,
       day,
       session: text(input.session) || player.session,
       group: text(input.group) || (player.group !== null ? String(player.group) : ""),
@@ -201,16 +210,19 @@ export async function POST(request: Request): Promise<NextResponse> {
       name: text(entry.name),
       day: dayNumber(entry.day),
       session: text(entry.session),
+      holes: holesOf(entry.holes) ?? Array.from({ length: 18 }, () => ""),
+      written: text(entry.written),
+      note: text(entry.note),
     }))
     .filter((entry) => entry.name || entry.id);
 
-  if (cards.length === 0) {
+  if (cards.length === 0 && nameOnly.length === 0) {
     return NextResponse.json(
       {
         ok: false,
         message:
           unmatched.length === 0
-            ? "No checked card could be read."
+            ? "No checked card or name-only card could be read."
             : unmatched.map((entry) => entry.message).join(" "),
       },
       { status: 400 },

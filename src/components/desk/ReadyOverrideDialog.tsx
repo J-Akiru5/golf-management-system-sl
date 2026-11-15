@@ -111,7 +111,7 @@ export function ReadyOverrideDialog({
   const teeFromRegistration = Boolean(entry.teeId || registration.teeId);
   const playing =
     cappedIndex !== null && tee
-      ? playingHandicap(cappedIndex, tee, tournament.config.allowance)
+      ? playingHandicap(cappedIndex, tee, tournament.config.allowance, tournament.config.maxIndex)
       : null;
   // The conditions of play let the committee adjust a course handicap. The adjustment is strokes on
   // the computed number, and it is stored with the reason below.

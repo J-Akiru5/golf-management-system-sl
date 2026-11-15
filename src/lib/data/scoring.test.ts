@@ -488,10 +488,12 @@ describe("demo scoring repository correcting a handicap snapshot", () => {
       reason: "The sheet writes 20.0; the event caps at 12.",
     });
 
-    // 12 x (128 / 113) + (71.5 - 72) = 13.1, so the snapshot holds the capped index and 13.
+    // 12 x (128 / 113) + (71.5 - 72) = 13.1 would be 13, but nobody plays off more than the event
+    // maximum (owner's decision, 14 Nov 2026), so the snapshot holds the capped index and 12.
     expect(corrected.players[0]?.handicap).toMatchObject({
       index: 12,
-      playingHandicap: 13,
+      playingHandicap: 12,
+      playingCap: 12,
     });
   });
 

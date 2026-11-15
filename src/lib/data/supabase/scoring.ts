@@ -357,6 +357,12 @@ export function createSupabaseScoringRepository(
                 : (snapshot.rounding as HandicapRounding),
             courseHandicap: snapshot.course_handicap,
             playingHandicap: snapshot.playing_handicap,
+            // Not a stored column: the event maximum the playing handicap is held to, so the
+            // snapshot check works out the same capped number instead of the tee formula's.
+            playingCap:
+              tournament.max_index === null || tournament.max_index === undefined
+                ? null
+                : Number(tournament.max_index),
             rulesVersion: snapshot.rules_version,
           }
         : null;
