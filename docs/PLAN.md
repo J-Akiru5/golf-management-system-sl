@@ -180,6 +180,37 @@ out below zero and plays off -1, which the scoring tables already handle as a pl
   handicap that differs from the registration, and 69 carry a different class. The Day 4 board needs a
   sync from the registrations before the awarding, or a decision on which figure Day 4 scores with.
 
+### Tee conversion verified before the announcement (15 Nov 2026)
+
+The tee values match the spec: Blue 69.6 / 130 / par 70, White 67.9 / 127 / par 70, Ladies Red
+72.1 / 126 / par 70. Silver repeats White's numbers and is used by nobody. The conversion is index
+capped at 30, then index x slope / 113 + (rating - par), rounded half up, the playing handicap capped
+at 30, at 100% allowance.
+
+Every surface now agrees with that, checked card by card:
+
+| Surface | Cards checked | Wrong |
+| --- | --- | --- |
+| Snapshots | 409 | 0 |
+| Day 1 public (v42) | 85 | 0 |
+| Day 2 public (v54) | 113 | 0 |
+| Day 3 public (v89) | 209 | 0 |
+| Day 4 public (v108) | 196 | 0 |
+
+Two faults were found and fixed. A Ladies entry's Day 2 and Day 3 snapshots were built on the Blue
+tee while her registration is Red, so she was scoring 22 instead of 24; both were corrected on the
+registration tee and both days republished. On the Day 4 board, three cards did not match the
+conversion (19 instead of 15, 0 instead of 30, 23 instead of 22); the board was rebuilt as version
+108 with only those cards reworked.
+
+89 registration rows carried a stale playing handicap, 23 of them the old uncapped 34 and the rest
+from before a tee change. They were aligned to the conversion. That column feeds the desk list and
+the printed handicap column; it does not score anything, and no snapshot changed.
+
+**Open:** 7 entries have no tee and 1 has no index. Four of the seven have an index and a stored
+figure that matches Blue exactly, but the tee was never set. One of them has a Day 4 card (plays off
+30). The owner needs to name the tees for those entries.
+
 ### Guardrails while production is live
 
 1. **One release train.** Work goes to `develop`, then one release pull request to `main` with both
