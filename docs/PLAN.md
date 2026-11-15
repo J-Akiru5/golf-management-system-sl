@@ -154,6 +154,24 @@ Two registrations carried no `membership_type`, which is exactly what makes `sav
 "is not a member entry". Their `player_memberships` rows already said member, so the registration
 rows were set to `member` and nothing else was changed. The desk stops prompting on those two.
 
+### Senior category moved to the White tee (15 Nov 2026)
+
+The owner's instruction: the Senior category plays the White tee. Eighteen Senior entries were on
+Blue because the entry tee is set per player and wins over the category's tee. All eighteen were
+moved to White, and the playing handicap was recomputed from the index on White's 67.9 / 127 / par 70,
+so each dropped by one to three strokes. All 27 Senior entries now carry White. One of them works
+out below zero and plays off -1, which the scoring tables already handle as a plus handicap.
+
+- 27 played-round snapshots corrected across Days 1 to 3 (all provisional), each through
+  `correct_handicap_snapshot`, so every result was recalculated.
+- Days 1, 2 and 3 republished as versions 42, 52 and 87 so the public board follows.
+- Three pair classes moved with the numbers, written on both partners as the desk does: pair 44
+  Class D to C, pair 121 Class B to A, pair 56 Class C to B.
+- No playing day, session, group, tee time or start hole was touched. The draw, the groups and the
+  published pairings are unchanged.
+- The playing-handicap cap (`20261115000400`) is live. The audit log shows the same correction path
+  writing 35 at 02:30 and 30 from 02:59 on, and no snapshot in the event is above 30.
+
 ### Guardrails while production is live
 
 1. **One release train.** Work goes to `develop`, then one release pull request to `main` with both
