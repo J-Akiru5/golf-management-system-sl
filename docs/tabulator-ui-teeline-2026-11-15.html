@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabulation page redesign · TeeLine · 15 Nov 2026</title>
+<style>
+  :root {
+    color-scheme: light;
+    --forest: #073d2e;
+    --forest-deep: #05291f;
+    --ivory: #f7f5ee;
+    --paper: #ffffff;
+    --line: #dfe2d8;
+    --ink: #202522;
+    --muted: #5d665f;
+    --gold: #b89550;
+    --gold-soft: #f2e9d4;
+    --gold-ink: #755719;
+    --good: #1e6b43;
+    --good-soft: #e0efe5;
+    --bad: #b42318;
+    --bad-soft: #fbe4e1;
+    --measure: 72ch;
+    font-family: system-ui, "Segoe UI", sans-serif;
+    background: var(--ivory);
+    color: var(--ink);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; line-height: 1.6; }
+  a { color: var(--forest); text-underline-offset: 3px; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .92em; background: #eef0e8; padding: .08em .3em; border-radius: 4px; }
+  h1, h2, h3, p { margin-top: 0; }
+  h1 { font: 700 clamp(2rem, 5vw, 3.6rem)/1.05 Georgia, "Times New Roman", serif; letter-spacing: -.02em; margin-bottom: .6rem; }
+  h2 { font: 700 clamp(1.35rem, 2.6vw, 1.9rem)/1.2 Georgia, "Times New Roman", serif; margin: 2.8rem 0 .7rem; }
+  h3 { font-size: 1rem; margin: 1.4rem 0 .4rem; }
+  p, li { max-width: var(--measure); }
+  p { color: var(--muted); }
+  ul, ol { padding-left: 1.2rem; }
+  li + li { margin-top: .35rem; }
+  .hero { background: var(--forest); color: var(--ivory); padding: clamp(2.2rem, 6vw, 4.8rem) clamp(1.2rem, 5vw, 4rem) 2.2rem; }
+  .hero-inner, .content { width: min(1180px, 100%); margin: 0 auto; }
+  .eyebrow { color: #d7b568; font-size: .74rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+  .hero h1 { color: var(--ivory); max-width: 20ch; }
+  .hero p { color: #cfd9d2; font-size: 1.05rem; max-width: 65ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.3rem; }
+  .meta span { border: 1px solid rgba(247, 245, 238, .3); border-radius: 999px; padding: .28rem .7rem; font-size: .78rem; color: #e8eee9; }
+  .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .7rem; margin-top: 1.8rem; max-width: 900px; }
+  .numbers div { border: 1px solid rgba(247, 245, 238, .2); border-radius: 12px; padding: .8rem 1rem; background: rgba(5, 26, 19, .28); }
+  .numbers strong { display: block; color: #fff; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+  .numbers span { display: block; color: #cfd9d2; font-size: .78rem; }
+  nav { position: sticky; top: 0; z-index: 5; background: rgba(247, 245, 238, .96); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
+  nav .inner { display: flex; gap: .3rem; overflow-x: auto; padding: .5rem clamp(1rem, 4vw, 2rem); width: min(1180px, 100%); margin: 0 auto; }
+  nav a { flex: 0 0 auto; min-height: 40px; display: inline-flex; align-items: center; padding: .3rem .65rem; border-radius: 999px; font-size: .82rem; text-decoration: none; }
+  nav a:hover { background: var(--gold-soft); }
+  .content { padding: 1rem clamp(1.1rem, 4vw, 2rem) 4rem; }
+  .lede { font-size: 1.1rem; color: var(--ink); max-width: 70ch; }
+  .callout { border-left: 4px solid var(--gold); background: var(--gold-soft); padding: .9rem 1rem; border-radius: 0 10px 10px 0; margin: 1.2rem 0; }
+  .callout p { color: var(--gold-ink); margin: 0; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1.2rem 0; }
+  .box { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; }
+  .box h3 { margin-top: 0; }
+  .box p, .box li { font-size: .9rem; }
+  .tag { display: inline-block; border-radius: 999px; padding: .08rem .5rem; font-size: .72rem; font-weight: 700; }
+  .tag.good { background: var(--good-soft); color: var(--good); }
+  .tag.bad { background: var(--bad-soft); color: var(--bad); }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0 1.5rem; font-size: .88rem; background: var(--paper); }
+  caption { text-align: left; color: var(--muted); font-size: .8rem; padding-bottom: .4rem; }
+  th, td { border: 1px solid var(--line); padding: .55rem .65rem; text-align: left; vertical-align: top; }
+  th { background: var(--forest); color: var(--ivory); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .shot { margin: 1.4rem 0 2.2rem; }
+  .shot h3 { margin-bottom: .2rem; }
+  .shot .caption { color: var(--muted); font-size: .84rem; margin: .3rem 0 .7rem; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: .9rem; align-items: start; }
+  figure { margin: 0; }
+  figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: 0 2px 10px rgba(7, 61, 46, .08); }
+  figure.wide img { max-width: 100%; }
+  figcaption { color: var(--muted); font-size: .78rem; margin-top: .35rem; }
+  .shot.phone figure img { max-width: 390px; }
+  .files li { font-size: .9rem; }
+  .checklist { list-style: none; padding-left: 0; }
+  .checklist li { padding-left: 1.55rem; position: relative; }
+  .checklist li::before { content: "✓"; position: absolute; left: 0; color: var(--good); font-weight: 800; }
+  .open li::before { content: "→"; color: var(--gold-ink); }
+  footer { border-top: 1px solid var(--line); margin-top: 3rem; padding-top: 1rem; color: var(--muted); font-size: .82rem; }
+  @media (max-width: 620px) {
+    .pair { grid-template-columns: 1fr; }
+    .shot.phone figure img { max-width: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">TeeLine Golf · build report · 15 November 2026</div>
+    <h1>A tabulation page a volunteer can run</h1>
+    <p>The <code>/scorecard/</code> page was rebuilt around the next action for the 24th Bamboo Tee: find a card, type the holes, check it, send it. Scoring, storage, the day document and the admin boundary are unchanged.</p>
+    <div class="meta">
+      <span>Branch <code>agent/tabulator-teeline-ui</code></span>
+      <span>Off <code>develop</code> at <code>34e35b6</code></span>
+      <span>Unmerged</span>
+      <span>No migration</span>
+    </div>
+    <div class="numbers">
+      <div><strong>236 px</strong><span>first card on a 1440 laptop (was 1,065)</span></div>
+      <div><strong>418 px</strong><span>first card on a 390 phone (was 2,150)</span></div>
+      <div><strong>0 px</strong><span>page overflow at 390 and 360 (was 445)</span></div>
+      <div><strong>294</strong><span>browser checks passed</span></div>
+    </div>
+  </div>
+</header>
+
+<nav aria-label="Sections">
+  <div class="inner">
+    <a href="#direction">Direction</a>
+    <a href="#before-after">Before and after</a>
+    <a href="#screens">Screens</a>
+    <a href="#rules">Rules kept</a>
+    <a href="#files">Files</a>
+    <a href="#verified">Verification</a>
+    <a href="#open">Open items</a>
+  </div>
+</nav>
+
+<main class="content">
+  <p class="lede">This is a UI and brand pass, not a new backend. The volunteer still works against the same day document, with the same lease, merge, snapshot and send behaviour, and the tabulator still cannot approve or publish.</p>
+
+  <h2 id="direction">Design direction</h2>
+  <div class="grid2">
+    <div class="box">
+      <h3>One job at a time</h3>
+      <p>The common path is one screen. A forest masthead names the event, the playing day and session and the account. A strip under it answers the volunteer's first question: how many are checked, how many look wrong, how many are still missing, and is the work saved.</p>
+    </div>
+    <div class="box">
+      <h3>Three zones, one column</h3>
+      <p>On a tablet or laptop: add, scan, import and print at the left; the cards in the middle; review and the one send action at the right. On a phone the same parts become one column with two bottom drawers and one action bar.</p>
+    </div>
+    <div class="box">
+      <h3>Progressive disclosure</h3>
+      <p>Search, filters and counts stay pinned. The day and tee fields fold behind a one-line summary on a phone so the score grid is visible before them. Batches, the system check and the field status are open only when asked for.</p>
+    </div>
+    <div class="box">
+      <h3>TeeLine, not a second language</h3>
+      <p>Forest masthead, ivory page, gold for attention and the selected state. The existing reverse mark from <code>public/brand</code> is the only logo. Type is the page's system stack: 20 px title, 17 px player name, 13 px body, tabular figures in the tables.</p>
+    </div>
+  </div>
+
+  <div class="callout"><p><strong>One primary action per state.</strong> Empty: Add cards. Cards waiting: Send N to admin. Save failed: Retry save. On a phone that action is the wide button in the bottom bar; on a laptop it is the filled button in the review zone.</p></div>
+
+  <h2 id="before-after">What the friction was, and what changed</h2>
+  <table>
+    <caption>Measured with a fixture day at 390 x 844 and 1440 x 900 before and after the change.</caption>
+    <thead><tr><th>Problem in the old page</th><th>Before</th><th>After</th></tr></thead>
+    <tbody>
+      <tr><td>The first card was pushed below branding, a bank of add/scan buttons and a tall toolbar</td><td class="num">2,150 px at 390<br>1,065 px at 1440</td><td class="num">418 px at 390<br>236 px at 1440</td></tr>
+      <tr><td>The page itself scrolled sideways on a phone</td><td class="num">445 px overflow</td><td class="num">0 px at 390 and 360</td></tr>
+      <tr><td>The control bar took a large share of the phone screen</td><td class="num">279 px</td><td class="num">161 px phone<br>61 px laptop</td></tr>
+      <tr><td>Add, scan and import competed with the cards for attention</td><td>Above the list</td><td>Left rail on a laptop, Add drawer on a phone</td></tr>
+      <tr><td>The event, day, session and account were not in one place</td><td>Scattered</td><td>One forest masthead</td></tr>
+      <tr><td>There was no answer to "how much of today is done?"</td><td>Counts only in the toolbar</td><td>Checked, issues, missing and save state above the fold</td></tr>
+      <tr><td>A failed save was a line of text that could scroll away</td><td>Status line</td><td>Persistent banner, <strong>Not saved: reason</strong>, typed score kept, Retry</td></tr>
+      <tr><td>On a phone, 8 metadata fields came before the score grid</td><td>Grid below the fold</td><td>One-line details summary, grid first</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What changed in the page</h3>
+  <ul>
+    <li><strong>Masthead.</strong> TeeLine reverse mark, "TABULATION · LIVE SHEET", the event, "Day 1 AM", the account and Sign out. A staff account keeps its link back to the desk.</li>
+    <li><strong>Today strip.</strong> Checked, issues and missing tiles, plus a save tile that says <em>Unsaved</em>, <em>Saving</em>, <em>Saved 14:02</em>, <em>Not saved: reason</em> or <em>Sent to admin</em>. The live line names who saved the shared copy and what arrived from another tabulator.</li>
+    <li><strong>Pinned bar.</strong> Search (with the <code>/</code> shortcut), Cards / Scoresheet, day, session, group, filters and counts. Two compact rows on a phone, one row on a laptop.</li>
+    <li><strong>Left rail.</strong> Add card for a player, add players from the system, Take photo, Scan card, Import JSON, Blank card, How this page works, Print, Save as PDF, Export JSON, Refresh list, and the Reset / Replace / Undo group.</li>
+    <li><strong>Card.</strong> Name, sent badge, checked pill, a details fold for day/session/class/group/tee/Card says/Total, the system line ("Plays off 10, index 9, Blue"), the note, two nine-hole tables in their own scrollers, totals and the card match line.</li>
+    <li><strong>Review zone.</strong> Send box with the approval boundary stated, Save now, Save and download, New batch, compact All / To check / Checked / Issues chips, and collapsed System check and Review batches.</li>
+    <li><strong>Phone.</strong> One column, Add and Review drawers with a scrim and Escape, a 48 px action bar, and a details fold that keeps the score grid in the first screen. A loading line while the day's field is read, then a designed empty state.</li>
+    <li><strong>States.</strong> A failed save keeps the score and shows Retry; 423 says another tabulator is saving and keeps the edits; offline says the edits stay on the device; a name-only card says "Not in the system: tell the admin"; an already-sent card is labelled.</li>
+  </ul>
+
+  <h3>What did not change</h3>
+  <ul>
+    <li>Scoring, WHS calculation, the card HDCP rule and the stored day/session document shape.</li>
+    <li>Save, merge, lease, 423 retry, snapshot, Undo and local-versus-shared behaviour.</li>
+    <li>The API routes under <code>src/app/api/scorecards/</code>, SQL and the private bucket.</li>
+    <li>The tabulator cannot approve or publish. The admin still imports, approves and publishes on <code>/scores</code>.</li>
+    <li><strong>Card says</strong> remains a note. The WHS playing handicap is the system's and typing in the box never changes it. A blank box no longer counts as an issue; a written value that differs does.</li>
+  </ul>
+
+  <h2 id="screens">Screenshots</h2>
+  <p>Captured with Playwright against the fixture day, with every API call mocked. No live day document was read, saved, reset or replaced. All ten size/theme shots and the drawer shots reported zero console errors and zero page errors.</p>
+
+  <section class="shot phone">
+    <h3>390 x 844, light</h3>
+    <p class="caption">Masthead, today strip, pinned search, first card with the score grid, and the Send action.</p>
+    <div class="pair">
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-390-light.png" alt="Tabulation page at 390 by 844 in light theme"><figcaption>390 x 844, light</figcaption></figure>
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-390-dark.png" alt="Tabulation page at 390 by 844 in dark theme"><figcaption>390 x 844, dark</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="shot phone">
+    <h3>360 x 740, light and dark</h3>
+    <p class="caption">The narrowest supported phone. No horizontal page overflow; each nine-hole table scrolls inside the card.</p>
+    <div class="pair">
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-360-light.png" alt="Tabulation page at 360 by 740 in light theme"><figcaption>360 x 740, light</figcaption></figure>
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-360-dark.png" alt="Tabulation page at 360 by 740 in dark theme"><figcaption>360 x 740, dark</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="shot phone">
+    <h3>430 x 932, light and dark</h3>
+    <div class="pair">
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-430-light.png" alt="Tabulation page at 430 by 932 in light theme"><figcaption>430 x 932, light</figcaption></figure>
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-430-dark.png" alt="Tabulation page at 430 by 932 in dark theme"><figcaption>430 x 932, dark</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="shot">
+    <h3>1024 x 768, light and dark</h3>
+    <p class="caption">The three zones at the smallest laptop/tablet width. The rail and review are narrower, and the card keeps its own scrollers.</p>
+    <div class="pair">
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-1024-light.png" alt="Tabulation page at 1024 by 768 in light theme"><figcaption>1024 x 768, light</figcaption></figure>
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-1024-dark.png" alt="Tabulation page at 1024 by 768 in dark theme"><figcaption>1024 x 768, dark</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="shot">
+    <h3>1440 x 900, light and dark</h3>
+    <p class="caption">The laptop the desk uses. The add rail, the card and the review/send zone are all on the first screen.</p>
+    <div class="pair">
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-1440-light.png" alt="Tabulation page at 1440 by 900 in light theme"><figcaption>1440 x 900, light</figcaption></figure>
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-1440-dark.png" alt="Tabulation page at 1440 by 900 in dark theme"><figcaption>1440 x 900, dark</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="shot phone">
+    <h3>Phone drawers</h3>
+    <div class="pair">
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-390-light-review.png" alt="Review and send drawer on a phone"><figcaption>Review and send opens with the one send action and the approval boundary.</figcaption></figure>
+      <figure><img src="screenshots/tabulator-2026-11-15/tabulator-390-light-add.png" alt="Add cards drawer on a phone"><figcaption>Add cards holds add, scan, import, blank card, print and export.</figcaption></figure>
+    </div>
+  </section>
+
+  <h2 id="rules">Brand and usability rules</h2>
+  <ul class="checklist">
+    <li>The tokens at the top of the page remain the single palette. No new hard-coded brand colours were added; the few inline colours that remained were moved onto tokens.</li>
+    <li>The TeeLine mark comes from <code>public/brand</code>. No external font or script is loaded.</li>
+    <li>Every control is at least 44 px high; the phone primary action is 48 px. Every input uses a 16 px text size.</li>
+    <li>No horizontal page overflow at 360 px. A nine-hole table scrolls inside <code>.tablewrap</code>, and the labels stay pinned.</li>
+    <li>Light and dark both use the TeeLine token sets, with text at 4.5:1 or better. Focus is a 3 px ring, and the forest header uses a gold ring.</li>
+    <li><code>prefers-reduced-motion</code> turns off transitions. Drawers still open and close.</li>
+    <li><code>/</code> focuses the search box. A keyboard-only user can tab to a card, open it, check it, and reach Send. The score tables are focusable scrollers.</li>
+    <li>The empty, loading, save-failed and offline states are written in plain language. A failed save keeps the typed holes and offers Retry.</li>
+    <li>Reset and Replace all keep their confirmation, their snapshot before the change, and Undo.</li>
+  </ul>
+
+  <h2 id="files">Files</h2>
+  <ul class="files">
+    <li><code>public/scorecard/index.html</code>: the page, its styles and the UI glue. Persistence, merge and scoring functions are untouched.</li>
+    <li><code>src/lib/scorecards/page-tabulator.test.ts</code>: 13 page-shape tests updated to the masthead, today strip, zones, details fold, action bar, HDCP note and reduced motion.</li>
+    <li><code>scripts/verify-ui.mjs</code>: the tabulator section now checks the pinned bar, three zones, first-card position, phone drawers, the details fold, 360 px overflow and the 48 px action.</li>
+    <li><code>docs/PLAN.md</code>: one row in the built-and-verified table.</li>
+    <li><code>CHANGELOG.md</code>: one Unreleased entry.</li>
+    <li><code>docs/tabulator-ui-teeline-2026-11-15.html</code>: this report.</li>
+    <li><code>docs/screenshots/tabulator-2026-11-15/tabulator-*.png</code>: the ten size/theme shots and the two drawer shots.</li>
+  </ul>
+  <p>Not changed: <code>src/lib/scorecards/store.ts</code>, <code>merge.ts</code>, <code>field.ts</code>, the API routes under <code>src/app/api/scorecards/</code>, any SQL, or the <code>/scores</code> screens.</p>
+
+  <h2 id="verified">Verification</h2>
+  <table>
+    <caption>Run on the branch worktree at <code>.worktrees/fd-tabulator</code>.</caption>
+    <thead><tr><th>Check</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td><code>pnpm check</code> (typecheck, lint, test, build)</td><td><span class="tag good">pass</span> 2946 tests, build complete</td></tr>
+      <tr><td><code>pnpm check:ui</code></td><td><span class="tag good">pass</span> 294 browser checks, 0 failed, 0 console errors</td></tr>
+      <tr><td>Focused page tests</td><td><span class="tag good">pass</span> 23 tests: 13 page shape, 10 handicap</td></tr>
+      <tr><td>Layout audit at 5 sizes, light and dark</td><td><span class="tag good">pass</span> 10 captures, 0 page overflow, 0 console/page errors</td></tr>
+      <tr><td>Fixture flow: search, check, send, drawer, failed save and retry</td><td><span class="tag good">pass</span> send named the player; typed hole kept on failure; retry cleared the banner</td></tr>
+      <tr><td>Tap targets</td><td><span class="tag good">pass</span> 44 px controls, 48 px phone action</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Not verified</h3>
+  <ul class="unverified">
+    <li>A real phone, tablet or Safari. The browser checks ran in Chromium at the five widths.</li>
+    <li>A real tabulation sign-in and the live API. Every request in the review was mocked; no live day document was touched.</li>
+    <li>The card reader and a real camera. Scan and Take photo were not driven with a paper card.</li>
+    <li>A screen reader, 200% zoom and Windows high contrast. The markup and focus order were checked, not announced.</li>
+    <li>The lease, merge and snapshot paths against the live Supabase bucket. They were not changed, and the existing tests cover them.</li>
+  </ul>
+
+  <h2 id="open">Open items for the orchestrator</h2>
+  <ul class="unverified">
+    <li>Review the branch and merge it into <code>develop</code> when the batch is ready. It is not pushed, merged, opened as a PR or deployed.</li>
+    <li>Check the page once on a real phone at the club, including a failed save over the club Wi-Fi.</li>
+    <li>Follow-up outside this task: the admin <code>/scores</code> screens still show their own save and HDCP states, so they do not yet speak the same visual language as the tabulator page.</li>
+    <li>Follow-up: if the desk wants the same details fold on a tablet, it is one breakpoint change; it was left open on laptop widths because the fields are edited often there.</li>
+  </ul>
+
+  <footer>
+    <p>TeeLine Golf · IGCC Tournament Desk · build report for the 24th Bamboo Tee tabulation page. No live data was changed. Fonts and images are local; the screenshots are the PNG files in this folder.</p>
+  </footer>
+</main>
+</body>
+</html>

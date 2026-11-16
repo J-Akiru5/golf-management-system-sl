@@ -2206,11 +2206,28 @@ const toolbarSticky = await tabulatorPage.evaluate(
 check("the find and filter bar is pinned", toolbarSticky === "sticky", toolbarSticky);
 const barHoldsTools = await tabulatorPage.evaluate(() => {
   const bar = document.getElementById("toolbar");
-  return ["q", "dayFilter", "sessionFilter", "batch-select", "add-player", "saved", "stat"].every(
+  return ["q", "dayFilter", "sessionFilter", "groupFilter", "batch-select"].every(
     (id) => bar.contains(document.getElementById(id)),
   );
 });
-check("search, day, session, batch, save state and counts are in the pinned bar", barHoldsTools);
+check("search, day, session, group and batch are in the pinned bar", barHoldsTools);
+const layoutZones = await tabulatorPage.evaluate(() => {
+  const ids = ["title", "eventname", "who", "today-done", "today-issues", "today-missing", "saved", "add-rail", "cards", "review-zone"];
+  return {
+    present: ids.every((id) => document.getElementById(id)),
+    firstCard: Math.round(document.querySelector("#cards .card").getBoundingClientRect().top),
+    sendInReview: document.getElementById("review-zone")?.contains(document.getElementById("batch-send")),
+  };
+});
+check(
+  "the header, today strip and the add, cards and review zones are all present",
+  layoutZones.present && layoutZones.sendInReview,
+);
+check(
+  "the first card is on the first screen at a laptop size",
+  layoutZones.firstCard < 520,
+  `y ${layoutZones.firstCard}`,
+);
 const firstNameEditable = await tabulatorPage
   .locator("#cards .card input.name")
   .first()
@@ -2368,6 +2385,68 @@ await expect(tabulatorPage.locator("#cards .card input.name").first()).toHaveVal
 });
 await expect(tabulatorPage.locator("#undo")).toBeHidden({ timeout: 10000 });
 check("undo puts the browser copy back", true);
+
+// The phone layout: one column, no sideways page overflow, and one action bar with the primary action.
+await tabulatorPage.setViewportSize({ width: 390, height: 844 });
+await tabulatorPage.waitForTimeout(350);
+await tabulatorPage.evaluate(() => window.scrollTo(0, 0));
+const phoneLayout = await tabulatorPage.evaluate(() => ({
+  overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  actionbar: getComputedStyle(document.querySelector(".actionbar")).display,
+  primary: document.getElementById("action-primary")?.textContent,
+  searchTop: Math.round(document.getElementById("q").getBoundingClientRect().top),
+  firstCard: Math.round(document.querySelector("#cards .card").getBoundingClientRect().top),
+}));
+check("the phone page does not scroll sideways", phoneLayout.overflow <= 0, `overflow ${phoneLayout.overflow}`);
+check(
+  "the phone shows one action bar with a named primary action",
+  phoneLayout.actionbar !== "none" && Boolean(phoneLayout.primary),
+  `${phoneLayout.actionbar} · ${phoneLayout.primary}`,
+);
+check(
+  "the search and the first card are within the first phone screen",
+  phoneLayout.searchTop < 260 && phoneLayout.firstCard < 760,
+  `search ${phoneLayout.searchTop}, card ${phoneLayout.firstCard}`,
+);
+check(
+  "the phone card opens its score grid before its details",
+  !(await tabulatorPage.locator("#cards .card details.cardmeta-details").first().getAttribute("open")) &&
+    (await tabulatorPage.locator("#cards .card .cardmeta").first().isVisible()) === false,
+);
+// The review drawer is the only way to send on a phone; it must open, hold the send, and close.
+check("the review panel is off screen until it is asked for", !(await tabulatorPage.locator("#review-zone").isVisible()));
+await tabulatorPage.click("#action-review");
+await expect(tabulatorPage.locator("#review-zone")).toBeVisible({ timeout: 10000 });
+check(
+  "the phone review drawer holds the one send action",
+  await tabulatorPage.locator("#review-zone #batch-send").isVisible(),
+);
+await tabulatorPage.keyboard.press("Escape");
+await expect(tabulatorPage.locator("#review-zone")).toBeHidden({ timeout: 10000 });
+check("Escape closes the review drawer", true);
+await tabulatorPage.click("#action-add");
+await expect(tabulatorPage.locator("#add-rail")).toBeVisible({ timeout: 10000 });
+check("the phone add drawer opens the add and scan actions", await tabulatorPage.locator("#add-player").isVisible());
+await tabulatorPage.keyboard.press("Escape");
+await expect(tabulatorPage.locator("#add-rail")).toBeHidden({ timeout: 10000 });
+
+// The 360 px phone is the narrowest supported screen: no page overflow, and the table scrolls itself.
+await tabulatorPage.setViewportSize({ width: 360, height: 740 });
+await tabulatorPage.evaluate(() => window.scrollTo(0, 0));
+const narrow = await tabulatorPage.evaluate(() => {
+  const table = document.querySelector("#cards .card .tablewrap");
+  return {
+    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    firstCard: Math.round(document.querySelector("#cards .card").getBoundingClientRect().top),
+    tableScrolls: Boolean(table && table.scrollWidth > table.clientWidth),
+    actionHeight: Math.round(document.getElementById("action-primary").getBoundingClientRect().height),
+  };
+});
+check("the 360 px page does not scroll sideways", narrow.overflow <= 0, `overflow ${narrow.overflow}`);
+check("the 360 px first card is in the first screen", narrow.firstCard < 760, `y ${narrow.firstCard}`);
+check("the nine hole table scrolls inside the card at 360 px", narrow.tableScrolls);
+check("the phone primary action is a full tap target", narrow.actionHeight >= 44, `${narrow.actionHeight}px`);
+await tabulatorPage.setViewportSize({ width: 1440, height: 950 });
 await tabulatorContext.close();
 
 // ------------------------------------------------------- results blackout and reveal

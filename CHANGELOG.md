@@ -9,6 +9,20 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Changed
+- **The tabulation page now reads as TeeLine, and the next action is obvious under time pressure.**
+  `/scorecard/` opens with a forest masthead naming the event, the playing day and session and the
+  signed-in account, then a strip with the day's checked, issue, missing and save counts. On a laptop
+  the work is three zones: add, scan, import and print at the left; cards in the middle; review and the
+  one Send checked cards to admin at the right. A phone gets one column, a details fold that puts the
+  score grid before the day and tee fields, two bottom drawers and one action bar whose primary action
+  follows the state. Search and filters stay pinned, failed saves keep the typed score and offer Retry,
+  and offline and a held lease are named in plain words. Scoring, storage, the document shape, the
+  lease/merge/snapshot behaviour and the admin boundary are unchanged; a blank **Card says** box no
+  longer counts as an HDCP issue. Reset and Replace keep their confirmation and snapshot. The page is
+  built on `agent/tabulator-teeline-ui`; no migration, and no live day document was touched. The
+  evidence and the screenshots are in `docs/tabulator-ui-teeline-2026-11-15.html`.
+
 ## [0.57.0] - 2026-11-15
 
 ### Added

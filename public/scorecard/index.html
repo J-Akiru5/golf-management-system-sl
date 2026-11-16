@@ -13,7 +13,7 @@
   :root {
     --surface: #f7f5ee; --surface-raised: #ffffff; --surface-sunken: #efeee7;
     --line: #e2e4dc; --line-strong: #747d75; --ink: #202522; --ink-muted: #626b64;
-    --forest: #073d2e; --on-forest: #f7f5ee;
+    --forest: #073d2e; --on-forest: #f7f5ee; --on-forest-muted: #cfd9d2; --gold-on-forest: #d7b568;
     --fairway: #285d47; --fairway-soft: #e3ebe3;
     --gold: #b89550; --gold-ink: #755719; --gold-soft: #f2e9d4;
     --info: #285a8c; --info-soft: #e3ecf6;
@@ -25,13 +25,14 @@
     --r-sm: 8px; --r-md: 12px; --r-lg: 18px;
     --shadow-card: 0 1px 2px rgba(24, 63, 48, .06), 0 1px 3px rgba(24, 63, 48, .06);
     --shadow-lift: 0 8px 24px rgba(24, 63, 48, .16), 0 2px 6px rgba(24, 63, 48, .10);
+    --rail: 258px; --review: 316px; --sticky-top: 76px;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --surface: #171c19; --surface-raised: #202823; --surface-sunken: #111713;
       --line: #303a34; --line-strong: #87948b; --ink: #eef1ec; --ink-muted: #b1bbb3;
-      --forest: #0b2b23; --on-forest: #f7f5ee;
+      --forest: #0b2b23; --on-forest: #f7f5ee; --on-forest-muted: #cfd9d2; --gold-on-forest: #d7b568;
       --fairway: #82c69b; --fairway-soft: #1d3428;
       --gold: #d7b568; --gold-ink: #e4c77c; --gold-soft: #392f1d;
       --info: #8dbff0; --info-soft: #172a3b;
@@ -43,37 +44,72 @@
       color-scheme: dark;
     }
   }
-  html { scroll-padding-top: 150px; }
-  body { margin: 0; font: 13px/1.4 system-ui, "Segoe UI", sans-serif; color: var(--ink); background: var(--surface); }
-  h1 { font-size: 18px; line-height: 1.25; margin: 0; letter-spacing: -.01em; }
-  .sub { color: var(--ink-muted); margin: 2px 0 0; font-size: 12px; max-width: 78ch; }
+  html { scroll-padding-top: 150px; -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font: 13px/1.45 system-ui, "Segoe UI", sans-serif; color: var(--ink); background: var(--surface); }
+  h1, h2, p { margin: 0; }
+  h1 { font-size: 20px; line-height: 1.2; letter-spacing: -.01em; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  /* Brand row: the TeeLine mark, the event, and the account. It scrolls away with the page. */
-  .masthead { background: var(--surface-raised); border-bottom: 1px solid var(--line); padding: 10px 16px; }
-  .brandrow { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
-  .brand { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
-  .logo-brand { width: clamp(140px, 20vw, 190px); height: auto; display: block; }
-  .logo-brand.dark { display: none; }
-  @media (prefers-color-scheme: dark) {
-    .logo-brand.light { display: none; }
-    .logo-brand.dark { display: block; }
-  }
-  .eventblock { min-width: 0; flex: 1 1 260px; }
-  .accountbox { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .who { color: var(--ink-muted); font-size: 12px; max-width: 32ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .skip { position: absolute; left: 8px; top: -60px; z-index: 99; background: var(--surface-raised); color: var(--ink); padding: 12px 16px; border-radius: var(--r-sm); }
+  .skip:focus { top: 8px; }
+
+  /* Header: one forest band. The reverse mark is the only logo used here, in both themes. */
+  .masthead { background: var(--forest); color: var(--on-forest); padding: 10px 16px; }
+  .mastrow { display: flex; align-items: center; gap: 18px; max-width: 1500px; margin: 0 auto; }
+  .brand { display: inline-flex; align-items: center; text-decoration: none; color: inherit; flex: 0 0 auto; }
+  .logo-brand { width: 150px; height: auto; display: block; }
+  .eventblock { min-width: 0; flex: 1 1 240px; }
+  .kicker { color: var(--gold-on-forest); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .kicker .dot { display: inline-block; width: 6px; height: 6px; margin: 0 4px 1px; border-radius: 50%; background: var(--gold-on-forest); vertical-align: middle; }
+  #title { color: var(--on-forest); }
+  .eventname { color: var(--on-forest-muted); font-size: 12px; margin-top: 1px; }
+  .accountbox { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+  .who { color: var(--on-forest-muted); font-size: 12px; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .signout { margin: 0; }
-  /* The find/filter bar is pinned while the card list scrolls, on a laptop and a tablet alike. It
-     wraps instead of scrolling sideways and never covers more than a third of the window. */
-  .toolbar { position: sticky; top: 0; z-index: 20; background: var(--surface-raised); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-card); padding: 8px 16px; max-height: 33vh; overflow: auto; }
-  .toolrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .toolrow + .toolrow { margin-top: 8px; }
-  .spacer { flex: 1 1 auto; }
-  .segmented { display: inline-flex; }
-  .seg { border-radius: 0; }
-  .seg:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); }
-  .seg:last-child { border-radius: 0 var(--r-sm) var(--r-sm) 0; border-left: 0; }
-  .seg.on { background: var(--forest); border-color: var(--forest); color: var(--on-forest); }
-  button, .btn { font: inherit; min-height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--ink); border-radius: var(--r-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+  .masthead .btn, .masthead button { border-color: rgba(247, 245, 238, .42); background: transparent; color: var(--on-forest); }
+  .masthead .btn:hover, .masthead button:hover { background: rgba(247, 245, 238, .12); }
+  .masthead :focus-visible { outline-color: var(--gold-on-forest); }
+
+  /* Today's work: three counts and the save state, always above the fold. */
+  .today { background: var(--surface-raised); border-bottom: 1px solid var(--line); }
+  .today-inner { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(230px, 1.5fr); gap: 1px; background: var(--line); max-width: 1500px; margin: 0 auto; }
+  .tile { background: var(--surface-raised); padding: 7px 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+  .tile-label { color: var(--ink-muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; width: 100%; }
+  .tile b { font-size: 21px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tile-sub { color: var(--ink-muted); font-size: 11px; }
+  .tile.attention b { color: var(--warning); }
+  .tile-save { align-items: center; align-content: center; }
+  .tile-save .tile-label { width: auto; }
+  #saved { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 10px; border-radius: 999px; font-weight: 600; font-size: 12px; border: 1px solid var(--line-strong); color: var(--ink-muted); background: var(--surface-raised); }
+  #saved { white-space: nowrap; }
+  #saved::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); flex: 0 0 auto; }
+  #saved.ok { color: var(--success); border-color: var(--success); background: var(--success-soft); }
+  #saved.ok::before { background: var(--success); }
+  #saved.busy { color: var(--gold-ink); border-color: var(--gold); background: var(--gold-soft); }
+  #saved.busy::before { background: var(--gold); }
+  #saved.bad { color: var(--on-danger); border-color: var(--danger); background: var(--danger); }
+  #saved.bad::before { background: var(--on-danger); }
+  #sync { color: var(--ink-muted); font-size: 11px; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  #sync.offline { color: var(--warning); font-weight: 600; }
+
+  .banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 16px; background: var(--danger-soft); color: var(--danger); border-bottom: 1px solid var(--danger); font-weight: 600; }
+  .banner[hidden] { display: none; }
+  .banner button { color: var(--danger); border-color: var(--danger); background: var(--surface-raised); }
+  .msgbar { padding: 6px 16px; color: var(--success); font-size: 12px; background: var(--surface-raised); border-bottom: 1px solid var(--line); }
+  .msgbar:empty { display: none; }
+  .msgbar.err { color: var(--danger); font-weight: 700; }
+
+  /* Search and filters stay on screen. Two compact rows, never an internal scroll box. */
+  .posbar { position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-card); padding: 8px 16px; }
+  .posrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 1500px; margin: 0 auto; }
+  .posrow + .posrow { margin-top: 8px; }
+  @media (min-width: 1024px) {
+    .posbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; max-width: 1500px; margin: 0 auto; }
+    .posrow { display: contents; }
+    .posrow + .posrow { margin-top: 0; }
+  }
+  .searchwrap { flex: 1 1 260px; min-width: 0; }
+  #q { width: 100%; min-height: 44px; padding: 0 12px; font-size: 16px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--ink); }
+  button, .btn { font: inherit; font-size: 14px; min-height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--ink); border-radius: var(--r-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
   button:hover, .btn:hover { background: var(--surface-sunken); }
   button.primary, .btn.primary, button.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
   button.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
@@ -81,95 +117,235 @@
   button.danger:hover { background: var(--danger-soft); }
   button:disabled { opacity: .55; cursor: default; }
   :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-  input, select { font: inherit; color: var(--ink); }
-  #q, #panel-q, .search { min-height: 44px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-raised); }
-  #q { flex: 1 1 220px; min-width: 160px; }
-  .field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-muted); }
-  .field select { min-height: 44px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-raised); }
-  .stat, .sync { color: var(--ink-muted); font-size: 12px; }
-  @media (max-width: 720px) {
-    .masthead { padding: 8px 10px; }
-    .toolbar { padding: 6px 10px; }
-    .toolrow { gap: 6px; }
-    .toolrow + .toolrow { margin-top: 6px; }
-    .stat, .sync { font-size: 11px; }
+  input, select { font: inherit; font-size: 16px; color: var(--ink); }
+  /* The dialog controls carry their own inline font shorthand for the 44 px layout; keep the
+     text at 16 px so a phone does not zoom when one is focused. */
+  #pp-q, #pp-name, #pp-day, #pp-session, #nb-name, #nb-q, #nb-day, #nb-session,
+  #fp-q, #fp-day, #fp-session, #fp-group, #fp-batch, #scan-day, #scan-session, #scan-target {
+    font-size: 16px !important;
   }
-  #msg { min-height: 1.2em; color: var(--success); margin: 6px 0 0; font-size: 13px; }
-  #msg.err { color: var(--danger); font-weight: 700; }
-  /* One pill for the save state: Saved 14:02, Saving, Not saved: reason. */
-  #saved { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 12px; border-radius: 999px; font-weight: 600; font-size: 12px; border: 1px solid var(--line-strong); color: var(--ink-muted); background: var(--surface-raised); }
-  #saved::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); }
-  #saved.ok { color: var(--success); border-color: var(--success); background: var(--success-soft); }
-  #saved.ok::before { background: var(--success); }
-  #saved.busy { color: var(--gold-ink); border-color: var(--gold); background: var(--gold-soft); }
-  #saved.busy::before { background: var(--gold); }
-  #saved.bad { color: var(--on-danger); border-color: var(--danger); background: var(--danger); }
-  #saved.bad::before { background: var(--on-danger); }
-  .card.remote { outline: 3px solid var(--gold); outline-offset: 2px; }
-  .savestate { font-size: 12px; color: var(--ink-muted); }
+  select { min-height: 44px; max-width: 160px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-raised); }
+  .field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-muted); }
+  .stat { color: var(--ink-muted); font-size: 12px; min-width: 0; }
+  .segmented { display: inline-flex; }
+  .seg { border-radius: 0; }
+  .seg:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); }
+  .seg:last-child { border-radius: 0 var(--r-sm) var(--r-sm) 0; border-left: 0; }
+  .seg.on { background: var(--forest); border-color: var(--forest); color: var(--on-forest); }
+  .spacer { flex: 1 1 auto; }
+  details.filters { display: inline-block; }
+  details.filters > summary { list-style: none; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-raised); font-size: 13px; }
+  details.filters > summary::-webkit-details-marker { display: none; }
+  details.filters[open] > summary { background: var(--surface-sunken); }
+  .filterbody { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0 0; }
+  .count { display: inline-flex; min-width: 20px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 999px; background: var(--gold-soft); color: var(--gold-ink); font-size: 11px; font-weight: 700; }
+  .count[hidden] { display: none; }
+
+  /* Three zones: add, cards, review. Phone and small tablet use one column and two drawers. */
+  .board { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr) var(--review); gap: 16px; align-items: start; max-width: 1500px; margin: 0 auto; padding: 16px; }
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    :root { --rail: 216px; --review: 278px; }
+    .board { gap: 12px; padding: 12px; }
+  }
+  .rail, .reviewzone { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .panel { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: var(--shadow-card); min-width: 0; }
+  .panel h2 { font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-muted); margin: 0 0 8px; }
+  .panel .close { display: none; }
+  .addlist { display: flex; flex-direction: column; gap: 6px; }
+  .addlist button { width: 100%; justify-content: flex-start; text-align: left; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .split button { justify-content: center; text-align: center; padding: 0 8px; }
+  .fine { color: var(--ink-muted); font-size: 11px; line-height: 1.4; }
+  .help, details.panel { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-raised); }
+  .help { margin-top: 10px; padding: 0 10px; }
+  details.panel { padding: 0; overflow: hidden; }
+  .help > summary, details.panel > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 12px; font-weight: 600; color: var(--ink-muted); }
+  details.panel > summary { padding: 0 12px; }
+  .help > div, details.panel > .panelbody { padding: 0 2px 10px; }
+  .help p, .help li { color: var(--ink-muted); font-size: 12px; line-height: 1.45; }
+  .help ul { margin: 6px 0; padding-left: 18px; }
+  .dangerzone { border-color: var(--line); }
+  details.panel > .panelbody { padding: 0 12px 12px; }
+
+  #cards { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .listhint { display: none; }
+  #sheet { min-width: 0; }
+  .empty { background: var(--surface-raised); border: 1px dashed var(--line-strong); border-radius: 14px; padding: 26px 18px; text-align: center; color: var(--ink-muted); }
+  .empty b { display: block; color: var(--ink); font-size: 16px; margin-bottom: 4px; }
+  [data-daystate="loading"] .empty-ready, [data-daystate="loading"] .empty-actions { display: none; }
+  [data-daystate="ready"] .empty-loading { display: none; }
+  .empty-actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+  .card { position: relative; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin: 0; break-inside: avoid; box-shadow: var(--shadow-card); min-width: 0; }
+  .card.done { border-color: var(--success); }
+  .logo { display: block; width: 76px; height: auto; opacity: .9; }
+  .card > .logo { position: absolute; top: 10px; right: 12px; }
+  @media (prefers-color-scheme: dark) { .card > .logo { background: #fff; padding: 2px 4px; border-radius: 5px; } }
+  #sheet .logo { width: 110px; margin-bottom: 6px; }
+  .cardtop { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-right: 82px; }
+  .card .name { flex: 1 1 220px; min-width: 0; font: 700 17px/1.2 system-ui, "Segoe UI", sans-serif; min-height: 44px; border: 1px solid transparent; border-radius: var(--r-sm); padding: 4px 8px; margin-left: -8px; color: var(--ink); background: transparent; }
+  .card .name:hover, .card .name:focus { border-color: var(--line-strong); background: var(--surface-raised); }
+  .card .name[readonly] { cursor: default; }
+  .sent { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 999px; background: var(--info-soft); color: var(--info); font-size: 11px; font-weight: 700; }
+  .verify { min-height: 44px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface-raised); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; }
+  .verify input { width: 20px; height: 20px; accent-color: var(--success); }
+  .card.done .verify { border-color: var(--success); background: var(--success-soft); color: var(--success); }
+  .cardmeta { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 6px 10px; margin-top: 8px; }
+  @media (min-width: 1400px) {
+    .cardmeta { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  }
+  .cardmeta-details > summary { display: none; }
+  .mini { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--ink-muted); min-width: 0; }
+  .mini select, .mini input { width: 100%; min-height: 44px; padding: 0 7px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--ink); }
+  .mini select { max-width: none; }
+  .mini input[data-f="hdcp"].diff { border-color: var(--gold); background: var(--gold-soft); font-weight: 700; }
+  .meta-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; grid-column: 1 / -1; }
+     .meta-actions button { min-height: 44px; font-size: 12px; }
+  .savestate { font-size: 12px; color: var(--ink-muted); align-self: center; }
   .savestate.ok { color: var(--success); font-weight: 600; }
   .savestate.busy { color: var(--gold-ink); font-weight: 600; }
   .savestate.bad { color: var(--danger); font-weight: 700; }
-  main { padding: 14px 16px 40px; max-width: 1280px; margin: 0 auto; }
-  .legend { color: var(--ink-muted); margin: 0 0 10px; font-size: 12px; }
-  .legend b { color: var(--ink); }
-  .chip { display: inline-block; width: 12px; height: 12px; border: 1px solid var(--gold); background: var(--gold-soft); vertical-align: -2px; }
-  .chip.e { background: var(--info-soft); border-color: var(--info); }
-  .warn { border: 1px solid var(--warning); background: var(--warning-soft); color: var(--warning); padding: 8px 12px; border-radius: var(--r-sm); margin: 0 0 10px; }
-  .warn ul { margin: 4px 0 0; padding-left: 18px; }
-  .wrap { overflow-x: auto; background: var(--surface-raised); }
-  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; background: var(--surface-raised); }
-  th, td { border: 1px solid var(--line); padding: 3px 4px; text-align: center; white-space: nowrap; }
-  th { background: var(--forest); color: var(--on-forest); font-weight: 600; }
+  .sysline { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 8px 0 0; font-size: 11px; color: var(--ink-muted); }
+  .sysline:empty { display: none; }
+  .hcpinfo { color: var(--ink-muted); font-size: 11px; }
+  .hcpinfo.warn { color: var(--warning); background: var(--warning-soft); border: 1px solid var(--warning); border-radius: 999px; padding: 1px 8px; font-weight: 600; }
+  .no { color: var(--gold-ink); font-weight: 700; }
+  .assignnote { color: var(--gold-ink); }
+  .note { color: var(--gold-ink); font-size: 12px; margin: 8px 0 0; border-left: 3px solid var(--gold); padding-left: 8px; }
+  .tablewrap { overflow-x: auto; overscroll-behavior-x: contain; margin-top: 8px; border: 1px solid var(--line); border-radius: var(--r-sm); max-width: 100%; }
+  .tablewrap:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  table { border-collapse: collapse; width: max-content; min-width: 100%; font-variant-numeric: tabular-nums; background: var(--surface-raised); }
+  th, td { border: 1px solid var(--line); padding: 2px 3px; text-align: center; white-space: nowrap; }
+  th { background: var(--forest); color: var(--on-forest); font-weight: 600; font-size: 12px; }
   .l { text-align: left; }
-  .par td { background: var(--surface-sunken); font-weight: 600; }
+  th.l, td.l { min-width: 58px; width: 58px; position: sticky; left: 0; z-index: 1; background: var(--surface-raised); }
+  th.l { background: var(--forest); z-index: 2; }
+  .card .par td { background: var(--surface-sunken); font-weight: 600; }
+  .card .par td.l { background: var(--surface-sunken); }
   td.s, th.s { font-weight: 700; } td.s { background: var(--surface-sunken); }
   td.x { color: var(--danger); font-weight: 700; }
   td.d { background: var(--gold-soft); } td.e { background: var(--info-soft); }
   td.bad { outline: 2px solid var(--danger); outline-offset: -2px; }
-  .inc { color: var(--gold-ink); } .ok { color: var(--success); font-weight: 700; } .no { color: var(--gold-ink); font-weight: 700; }
-  .card { position: relative; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; margin: 0 0 12px; break-inside: avoid; box-shadow: var(--shadow-card); }
-  .card.done { border-color: var(--success); border-width: 2px; }
-  .logo { display: block; width: 96px; height: auto; }
-  .card .logo { position: absolute; top: 10px; right: 12px; }
-  /* The card's corner mark is the print artwork (forest ink on white), so it gets a white plate in
-     the dark theme instead of disappearing into the card. */
-  @media (prefers-color-scheme: dark) {
-    .card .logo { background: #fff; padding: 3px 5px; border-radius: 6px; }
-  }
-  #sheet .logo { width: 110px; margin-bottom: 6px; }
-  .card .name { font: 700 16px system-ui, "Segoe UI", sans-serif; width: min(100%, 420px); min-height: 40px; border: 1px solid transparent; border-radius: var(--r-sm); padding: 2px 6px; margin-left: -6px; color: var(--ink); background: transparent; }
-  .card .name:hover, .card .name:focus { border-color: var(--line-strong); background: var(--surface-raised); }
-  .card .note { color: var(--gold-ink); font-size: 12px; margin: 6px 0 0; }
-  .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; color: var(--ink-muted); margin: 2px 0 8px; font-size: 12px; }
-  .meta input[type=text], .meta select { font: inherit; min-height: 36px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); width: 64px; background: var(--surface-raised); color: var(--ink); }
-  .meta label { display: inline-flex; gap: 6px; align-items: center; }
-  .meta .chk { color: var(--ink); font-weight: 600; }
-  /* The card's own HDCP box is kept as "Card says" and marked when it differs from the system figure. */
-  .meta input[data-f="hdcp"].diff { border-color: var(--gold); background: var(--gold-soft); font-weight: 700; }
-  .hcpinfo { font-size: 12px; color: var(--ink-muted); }
-  .hcpinfo.warn { color: var(--warning); background: var(--warning-soft); border: 1px solid var(--warning); border-radius: 999px; padding: 2px 10px; font-weight: 600; }
-  /* The checked tick is a 44px pill, not a small checkbox lost among the fields. */
-  .verify { min-height: 44px; padding: 0 14px 0 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface-raised); cursor: pointer; }
-  .verify input { width: 22px; height: 22px; accent-color: var(--success); }
-  .card.done .verify { border-color: var(--success); background: var(--success-soft); color: var(--success); }
-  .card th.l, .card td.l { width: 64px; }
+  .inc { color: var(--gold-ink); } .ok { color: var(--success); font-weight: 700; }
   td.in { padding: 0; }
-  td.in input { width: 100%; min-width: 34px; min-height: 38px; border: 0; background: transparent; text-align: center; font: 600 15px system-ui, "Segoe UI", sans-serif; color: inherit; }
+  td.in input { width: 44px; min-height: 44px; border: 0; background: transparent; text-align: center; font: 600 16px system-ui, "Segoe UI", sans-serif; color: inherit; }
   td.in input:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; background: var(--surface-raised); }
-  /* The tee select carries a letter and a name ("B · Blue"), so it needs more room than a group box.
-     Screen only: on paper the select is as wide as its text so three cards still fit a page. */
-  @media screen {
-    .meta select[data-f="tee"] { width: 96px; }
-    .meta select[data-f="day"] { width: 92px; }
-    .meta select[data-f="session"] { width: 84px; }
-    .meta select[data-f="cls"] { width: 76px; }
+  .tot { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; font-size: 12px; }
+  .tot b { font-size: 15px; font-variant-numeric: tabular-nums; }
+  .tot small { color: var(--ink-muted); }
+  .cardfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; }
+  .cardfoot .tot { flex: 1 1 320px; }
+     .cardfoot button { min-height: 44px; font-size: 12px; }
+
+  /* Review zone */
+  .review .summary { font-size: 12px; color: var(--ink-muted); margin: 0 0 10px; }
+  .sendbox { background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin: 0 0 10px; }
+  .sendbox .wide { width: 100%; }
+  .sendbox .fine { margin-top: 6px; }
+  .sentstate { margin: 8px 0 0; font-size: 12px; font-weight: 700; color: var(--success); }
+  .sentstate[hidden] { display: none; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+     .btnrow button { flex: 1 1 120px; font-size: 12px; min-height: 44px; }
+  .disclosure { border-top: 1px solid var(--line); padding: 2px 0 0; margin-top: 4px; }
+  .disclosure > summary { list-style: none; cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; }
+  .disclosure > summary::-webkit-details-marker { display: none; }
+  .disclosure > summary::before { content: "›"; display: inline-block; transition: transform .15s ease; color: var(--ink-muted); }
+  .disclosure[open] > summary::before { transform: rotate(90deg); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; }
+     .chips button { min-height: 44px; font-size: 11px; padding: 0 10px; }
+  .chips button.on { background: var(--forest); border-color: var(--forest); color: var(--on-forest); }
+  .chips button:disabled { opacity: .5; }
+  #check-table { max-height: 320px; overflow: auto; margin: 0 0 6px; }
+  #check-table table { min-width: 560px; font-size: 11px; }
+  #check-table th, #check-table td { padding: 3px 4px; }
+  #field-status { margin: 0; color: var(--ink-muted); font-size: 11px; }
+  #batch-list { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 6px; }
+  #batch-list .batchrow { display: flex; gap: 4px; }
+     #batch-list .batchrow button:first-child { flex: 1 1 auto; justify-content: flex-start; min-height: 44px; font-size: 12px; }
+   #batch-list .batchrow button:last-child { flex: 0 0 44px; padding: 0; font-size: 16px; }
+   #batch-clear { width: 100%; font-size: 12px; min-height: 44px; }
+  .undo { width: 100%; border-color: var(--gold); background: var(--gold-soft); color: var(--gold-ink); font-weight: 700; }
+
+  /* Phone: one column, two drawers, one action bar. */
+  .scrim { display: none; }
+  .actionbar { display: none; }
+  @media (max-width: 1023px) {
+    body { font-size: 14px; padding-bottom: 76px; }
+    .masthead { padding: 9px 12px; }
+    .mastrow { gap: 8px 10px; }
+    .logo-brand { width: 118px; }
+    .eventblock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+    .kicker { display: none; }
+    #title { font-size: 19px; }
+    .eventname { font-size: 12px; }
+    .accountbox { gap: 4px; }
+    .who { max-width: 20ch; font-size: 11px; }
+    .signout .btn, .signout button { padding: 0 10px; }
+    .today-inner { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .tile { padding: 6px 10px; }
+    .tile b { font-size: 19px; }
+    .tile-save { grid-column: 1 / -1; border-top: 1px solid var(--line); flex-wrap: nowrap; gap: 8px; }
+    .tile-save .tile-label { width: auto; }
+    #sync { -webkit-line-clamp: 1; }
+    .posbar { padding: 7px 10px; }
+    .posrow { gap: 6px; }
+    .searchwrap { flex: 1 1 100%; }
+    .segmented .seg { padding: 0 12px; font-size: 13px; }
+    .field { font-size: 11px; }
+    .field select { max-width: 116px; }
+    #shown, #stat { display: none; }
+    .board { display: block; padding: 10px; }
+    .listhint { display: block; margin: 0 2px 8px; color: var(--ink-muted); font-size: 11px; }
+    .rail, .reviewzone { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; max-height: 88dvh; overflow: auto; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -12px 40px rgba(7, 19, 14, .35); visibility: hidden; transform: translateY(105%); transition: transform .22s ease, visibility .22s; }
+    .rail.open, .reviewzone.open { visibility: visible; transform: none; }
+    .rail .panel, .reviewzone .panel { box-shadow: none; }
+         .panel .close { display: inline-flex; position: absolute; top: 8px; right: 8px; min-height: 44px; padding: 0 10px; font-size: 12px; }
+    .panel { position: relative; }
+    .scrim { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(7, 19, 14, .5); }
+    .scrim[hidden] { display: none; }
+    .actionbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; gap: 6px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--surface-raised); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(24, 63, 48, .12); }
+    .actionbar button { min-height: 48px; padding: 0 12px; }
+    #action-primary { flex: 1 1 auto; font-weight: 700; }
+    #action-add, #action-review { flex: 0 0 auto; }
+         .cardmeta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+     .cardmeta-details { margin-top: 8px; }
+     .cardmeta-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-sunken); font-size: 12px; font-weight: 600; cursor: pointer; }
+     .cardmeta-details > summary > span { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+     .cardmeta-details > summary::-webkit-details-marker { display: none; }
+     .cardmeta-details > summary::after { content: "Details"; color: var(--gold-ink); font-size: 11px; }
+     .cardmeta-details[open] > summary::after { content: "Hide"; }
+     .cardmeta-details[open] > .cardmeta { margin-top: 8px; }
+     .cardtop { padding-right: 0; }
+    .card > .logo { position: static; width: 64px; margin-left: auto; order: 3; }
+    .cardtop .verify { order: 2; }
+    .cardfoot .tot { flex-basis: 100%; }
+    .cardfoot button { width: 100%; }
+    .tot { font-size: 12px; }
   }
-  .tot { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 8px; font-size: 13px; }
-  .tot b { font-size: 15px; }
+  @media (max-width: 420px) {
+    .mastrow { display: grid; grid-template-columns: 1fr auto; }
+    .eventblock { grid-column: 1 / -1; grid-row: 2; }
+    .accountbox { grid-column: 2; grid-row: 1; }
+         .who { max-width: 18ch; font-size: 10px; }
+    .tile-label { font-size: 10px; }
+    .tile b { font-size: 18px; }
+    .split { grid-template-columns: 1fr; }
+    #action-review { padding: 0 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+
+  .legend, .sub { color: var(--ink-muted); font-size: 12px; }
+  .sub { margin: 8px 0; }
+  .warn { border: 1px solid var(--warning); background: var(--warning-soft); color: var(--warning); padding: 8px 12px; border-radius: var(--r-sm); margin: 0 0 10px; }
+  .warn ul { margin: 4px 0 0; padding-left: 18px; }
+  .warn b, .warn li { color: var(--warning); }
   .gap { height: 6px; }
-  h2 { font-size: 15px; margin: 16px 0 6px; }
-  ul { margin: 0; padding-left: 20px; }
+  #sheet { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  #sheet h2 { font-size: 16px; margin: 4px 0 8px; }
+  .wrap { overflow-x: auto; background: var(--surface-raised); }
   [hidden] { display: none !important; }
   @media print {
     /* Paper is always the light set, whatever theme the screen is in. */
@@ -181,44 +357,52 @@
       --danger: #b42318; --shadow-card: none;
     }
     /* Three cards to a page. Each card is a fixed 85mm so three fit on A4, Letter and long paper. */
-    body { background: #fff; font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .masthead, .toolbar, .noprint { display: none !important; }
-    main { padding: 0; max-width: none; }
+    body { background: #fff; font-size: 10px; padding-bottom: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .masthead, .toolbar, .posbar, .today, .banner, .msgbar, .rail, .reviewzone, .actionbar, .scrim, .noprint { display: none !important; }
+    .board { display: block; padding: 0; max-width: none; }
     .wrap { overflow: visible; }
+    .tablewrap { overflow: visible; border: 0; border-radius: 0; }
+    table { width: 100%; }
     tr { break-inside: avoid; }
     /* Dark text on a light band: the hole numbers stay readable even when the printer drops backgrounds. */
     th { background: #dfe7e2 !important; color: #000 !important; font-weight: 800; border-color: #000; }
+    th.l { position: static; }
     #sheet th, #sheet td { padding: 2px 2px; }
     .card { height: 85mm; margin: 0 0 2mm; padding: 2.5mm 4mm; border: 1px solid #000; border-radius: 0; overflow: hidden; break-inside: avoid; font-size: 10px; }
     .card.done { border-width: 1px; border-color: #000; }
     .card.brk { break-after: page; }
-    .card .logo { top: 2.5mm; right: 4mm; width: 25mm; }
+    .card > .logo { top: 2.5mm; right: 4mm; width: 25mm; }
     #sheet .logo { width: 30mm; }
-    .card .name { font-size: 14px; padding: 0; margin: 0; width: 100%; }
-    .meta { gap: 1px 10px; margin: 0 0 3px; font-size: 10px; }
-    .meta input[type=text], .meta select { border: 0; padding: 0; width: auto; max-width: 6em; field-sizing: content; appearance: none; font-weight: 700; color: #000; min-height: 0; }
-    .hcpinfo, .hcpinfo.warn, .verify { border: 0; background: transparent; padding: 0; min-height: 0; border-radius: 0; color: #000; font-size: 10px; }
+    .cardtop { padding-right: 28mm; }
+    .card .name { font-size: 14px; padding: 0; margin: 0; width: 100%; min-height: 0; }
+    .cardmeta { display: flex; flex-wrap: wrap; gap: 1px 10px; margin: 0 0 3px; }
+    .mini { display: inline-flex; flex-direction: row; gap: 4px; font-size: 10px; }
+    .mini select, .mini input { border: 0; padding: 0; width: auto; max-width: 6em; min-height: 0; font-size: 10px; font-weight: 700; color: #000; appearance: none; }
+    .meta-actions, .savestate, .sent, .verify, .hcpinfo.warn, .cardfoot button { display: none !important; }
+    .hcpinfo { border: 0; background: transparent; padding: 0; color: #000; font-size: 10px; }
+    .sysline { margin: 0 0 3px; font-size: 10px; color: #000; }
+    .tablewrap { margin-top: 2px; }
     .card th, .card td { padding: 1px 2px; font-size: 12px; border-color: #555; }
     .card th { font-size: 14px; }
     .card table { line-height: 1.15; }
-    .tot, .meta { line-height: 1.2; }
-    td.in input { font-size: 14px; padding: 1px 0; min-height: 0; }
-    .card .gap { height: 3px; }
+    td.in input { width: 28px; font-size: 14px; padding: 1px 0; min-height: 0; }
     .tot { margin-top: 3px; font-size: 11px; gap: 2px 14px; }
+    .cardfoot { display: block; }
     td.e { background: transparent; }
   }
 </style>
 </head>
-<body>
+<body data-daystate="loading">
+<a class="skip" href="#cards">Skip to the cards</a>
 <header class="masthead">
-  <div class="brandrow">
-    <a class="brand" href="/scorecard/" title="TeeLine Golf scorecard">
-      <img class="logo-brand light" id="logo" src="/brand/teeline-horizontal-primary.svg" alt="TeeLine Golf" width="190" height="51">
-      <img class="logo-brand dark" src="/brand/teeline-horizontal-reverse.svg" alt="" aria-hidden="true" width="190" height="51">
+  <div class="mastrow">
+    <a class="brand" href="/scorecard/" title="TeeLine Golf tabulation">
+      <img class="logo-brand" id="logo" src="/brand/teeline-horizontal-reverse.svg" alt="TeeLine Golf" width="150" height="40">
     </a>
     <div class="eventblock">
+      <p class="kicker"><span class="dot" aria-hidden="true"></span>Tabulation · live sheet</p>
       <h1 id="title"></h1>
-      <p class="sub">Type over any score. Totals and points update as you type and save in this browser. Use <b>X</b> for a red X, leave a cell empty when nothing was written.</p>
+      <p class="eventname" id="eventname"></p>
     </div>
     <div class="accountbox">
       <span id="who" class="who"></span>
@@ -227,45 +411,136 @@
     </div>
   </div>
 </header>
-<div class="toolbar" id="toolbar" role="region" aria-label="Find, filter and save">
-  <div class="toolrow" id="cardtools">
-    <input id="q" type="search" placeholder="Find a player (press /)" autocomplete="off" aria-label="Find a player">
+
+<section class="today" aria-label="Today's work">
+  <div class="today-inner">
+    <div class="tile">
+      <span class="tile-label">Done</span>
+      <b id="today-done">0</b><span class="tile-sub">checked</span>
+    </div>
+    <div class="tile attention">
+      <span class="tile-label">Issues</span>
+      <b id="today-issues">0</b><span class="tile-sub">to look at</span>
+    </div>
+    <div class="tile">
+      <span class="tile-label">Missing</span>
+      <b id="today-missing">0</b><span class="tile-sub">no scores yet</span>
+    </div>
+    <div class="tile tile-save">
+      <span class="tile-label">Save</span>
+      <span id="saved" role="status" aria-live="polite">Nothing saved yet</span>
+      <span id="sync" role="status" aria-live="polite" title="This page shares one copy of the day with everyone signed in. It checks for their changes every few seconds.">Connecting to the shared copy…</span>
+    </div>
+  </div>
+</section>
+
+<div id="savebanner" class="banner" role="alert" hidden>
+  <span id="savebanner-text"></span>
+  <button type="button" id="retry-save">Retry save</button>
+</div>
+
+<div class="posbar" id="toolbar" role="region" aria-label="Find, filter and view">
+  <div class="posrow">
+    <label class="searchwrap">
+      <span class="sr">Find a player</span>
+      <input id="q" type="search" placeholder="Find a player (press /)" autocomplete="off">
+    </label>
+    <span class="segmented" role="group" aria-label="View">
+      <button type="button" id="tabCards" class="seg on" aria-pressed="true">Cards</button>
+      <button type="button" id="tabSheet" class="seg" aria-pressed="false">Scoresheet</button>
+    </span>
+  </div>
+  <div class="posrow" id="cardtools">
     <label class="field">Day
       <select id="dayFilter" aria-label="Show one playing day"><option value="">All days</option></select></label>
     <label class="field">Session
       <select id="sessionFilter" aria-label="Show one AM or PM shotgun">
         <option value="">Both</option><option value="AM">AM</option><option value="PM">PM</option>
       </select></label>
-    <label class="field">Batch <select id="batch-select" aria-label="Show one review batch"><option value="all">All cards</option></select></label>
-    <button type="button" id="add-player" class="primary" title="Search every player in the event, even one who is not in this day's draw, and start a card for the paper card in front of you">Add card for a player</button>
+    <details class="filters" id="filters">
+      <summary>More filters</summary>
+      <div class="filterbody">
+        <label class="field">Group
+          <select id="groupFilter" aria-label="Show one group"><option value="">All groups</option></select></label>
+        <label class="field">Batch
+          <select id="batch-select" aria-label="Show one review batch"><option value="all">All cards</option></select></label>
+      </div>
+    </details>
     <span id="shown" class="stat"></span>
-    <span id="stat" class="stat"></span>
+    <span id="stat" class="sr" role="status" aria-live="polite"></span>
   </div>
-  <div class="toolrow">
-    <span class="segmented">
-      <button id="tabCards" class="seg on" aria-pressed="true">Player cards</button>
-      <button id="tabSheet" class="seg" aria-pressed="false">Scoresheet</button>
-    </span>
-    <span id="saved" role="status" aria-live="polite">Nothing saved yet</span>
-    <span id="sync" class="sync" role="status" aria-live="polite" title="This page shares one copy of the day with everyone signed in. It checks for their changes every few seconds.">Connecting to the shared copy…</span>
-    <span class="spacer"></span>
-    <button id="add" class="noprint" title="Add one blank card and type the name and 18 scores in from the paper card">Blank card</button>
-    <button id="print" title="Print the cards or the scoresheet as they are shown">Print</button>
-    <button id="pdf" title="Open the print window to save the cards or the scoresheet as a PDF">Save as PDF</button>
-    <button id="exp" title="Downloads this day's cards to this device as a JSON file">Export JSON</button>
-    <button id="imp" title="Add the cards in a JSON file (an export from this page or a scorecard scan). Nothing is downloaded and no card is replaced.">Import JSON</button>
-    <button id="restore" class="danger" title="Replaces every card on this page with the cards in an exported file">Replace…</button>
-    <button id="reset" class="danger" title="Discard every edit and go back to the first reading">Reset</button>
-    <button id="undo" hidden title="Undo the last reset or replace, in this browser">Undo</button>
-  </div>
-  <div id="msg" role="status" aria-live="polite"></div>
 </div>
-<main>
-  <p class="legend noprint"><b>Draft, not an official result.</b> <b style="color:var(--danger)">X</b> = red X on the card, counted as 0 points. <i class="chip"></i> doubtful first reading · <i class="chip e"></i> changed from the first reading. Points are net Stableford: each card plays off <b>Plays off N</b>, the system's index converted on the tee written on the card, and the handicap gives strokes on the holes in the card's HANDICAP row order. The HDCP box is kept as <b>Card says</b> and is never used to score. A card with no index on file shows gross points and is not ranked.</p>
-  <div id="cards"></div>
-  <div id="sheet" hidden></div>
+<div id="msg" class="msgbar" role="status" aria-live="polite"></div>
+
+<main class="board">
+  <aside class="rail" id="add-rail" aria-label="Add cards and print">
+    <section class="panel">
+      <button type="button" class="close" data-close aria-label="Close the add panel">Close</button>
+      <h2>Add cards</h2>
+      <div class="addlist">
+        <button type="button" id="add-player" class="primary" title="Search every player in the event, even one who is not in this day's draw, and start a card for the paper card in front of you">Add card for a player</button>
+        <button type="button" id="panel-field" title="Pick a day, session and group and the players arrive as blank cards with group, tee and class filled in.">Add players from the system</button>
+        <div class="split">
+          <button type="button" id="scan-camera-open" title="Open the camera and photograph a card">Take photo</button>
+          <button type="button" id="scan-pick" title="Choose one or more photos of scorecards that are already saved on this device">Scan card</button>
+        </div>
+        <button type="button" id="imp" title="Add the cards in a JSON file. Nothing is downloaded and no card is replaced.">Import JSON</button>
+        <button type="button" id="add" title="Add one blank card and type the name and 18 scores in from the paper card">Blank card</button>
+      </div>
+      <details class="help">
+        <summary>How this page works</summary>
+        <div>
+          <p>Type over any score. Use <b>X</b> for a red X and leave a cell empty when nothing was written. Totals and points update as you type.</p>
+          <p>The card plays off <b>Plays off N</b>, the system's index converted on the tee written on the card. The <b>Card says</b> box is kept for the record and never used to score.</p>
+          <p><b>Take photo</b> and <b>Scan card</b> read a paper card into a draft. <b>Add players from the system</b> brings a day's players in as blank cards. <b>Start new review batch</b> groups cards without changing a score.</p>
+          <p>Saving keeps the team copy in the private bucket and merges it card by card with the other tabulators. <b>Reset</b> and <b>Replace</b> keep a snapshot of the shared copy first and can be undone until this page reloads.</p>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel">
+      <h2>Print & export</h2>
+      <div class="addlist">
+        <button type="button" id="print" title="Print the cards or the scoresheet as they are shown">Print</button>
+        <button type="button" id="pdf" title="Open the print window to save the cards or the scoresheet as a PDF">Save as PDF</button>
+        <button type="button" id="exp" title="Downloads this day's cards to this device as a JSON file">Export JSON</button>
+        <button type="button" id="panel-refresh" title="Add any assigned player who is missing from this day and session, without touching the cards already on the page">Refresh list from system</button>
+      </div>
+    </section>
+
+    <details class="panel dangerzone">
+      <summary>Reset, replace or undo</summary>
+      <div class="panelbody">
+        <p class="fine">A snapshot of the shared copy is kept before either action. Undo lasts until this page reloads.</p>
+        <div class="addlist">
+          <button type="button" id="restore" class="danger" title="Replaces every card on this page with the cards in an exported file">Replace all from export…</button>
+          <button type="button" id="reset" class="danger" title="Discard every edit and go back to the first reading">Reset to first reading</button>
+        </div>
+      </div>
+    </details>
+    <button type="button" id="undo" class="undo" hidden title="Undo the last reset or replace, in this browser">Undo</button>
+  </aside>
+
+  <section class="listzone" aria-label="Cards">
+    <p class="listhint noprint">Swipe each nine sideways on a phone to reach holes 7 to 9 and 16 to 18. All 18 holes are there.</p>
+    <div id="cards"></div>
+    <div id="sheet" hidden></div>
+  </section>
+
+  <div id="review-zone" class="reviewzone" aria-label="Review and send"></div>
 </main>
+
+<div class="scrim" id="scrim" hidden></div>
+<nav class="actionbar" aria-label="Card actions">
+  <button type="button" id="action-primary" class="primary">Add cards</button>
+  <button type="button" id="action-add">Add</button>
+  <button type="button" id="action-review">Review</button>
+</nav>
+
 <input type="file" id="file" accept="application/json" hidden>
+<input id="batch-add-file" type="file" accept=".json,application/json" hidden>
+<input id="scan-file" type="file" accept="image/jpeg,image/png,image/webp,image/*" multiple hidden>
+<input id="scan-camera" type="file" accept="image/*" capture="environment" hidden>
 <script>
 const SRC = {"event":"24th Bamboo Tee","label":"Day 1 AM","slug":"day1am-r5","par":[4,4,4,5,3,4,4,4,4,3,4,4,3,5,4,3,4,4],"si":[5,3,7,9,17,15,11,1,13,14,6,12,16,2,4,18,8,10],"tees":{"B":{"rating":69.6,"slope":130},"W":{"rating":67.9,"slope":127},"L":{"rating":72.1,"slope":126}},"cards":[],"skipped":[],"edits":{},"mode":"written","field":[],"logo":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAuMCAwLjAgNjYyLjkgMTc3LjgiIHJvbGU9ImltZyIgYXJpYS1sYWJlbGxlZGJ5PSJ0aXRsZSI+DQogIDx0aXRsZSBpZD0idGl0bGUiPlRlZUxpbmUgR29sZjwvdGl0bGU+DQogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xOC4wOCAtMjM3LjA1KSI+DQogICAgPHBhdGggZmlsbD0iIzA3M0QyRSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNzguMDAgMzAwLjAwTDc4LjAwIDI1MS4wMEw0OC42MCAyNTEuMDBMMTkuMjAgMjUxLjAwTDE4LjQ5IDI0NC45MUMxOC4wOCAyNDEuNDAgMTguMTggMjM4LjQyIDE4LjcyIDIzNy44OEMxOS4zMCAyMzcuMzAgNDUuMzEgMjM3LjA1IDg1LjU4IDIzNy4yMkwxNTEuNTAgMjM3LjUwTDE1MS44MCAyNDQuMjRMMTUyLjA5IDI1MC45N0wxMjIuMzAgMjUxLjI0TDkyLjUwIDI1MS41MEw5Mi4yNCAzMDAuMjVMOTEuOTggMzQ5LjAwTDg0Ljk5IDM0OS4wMEw3OC4wMCAzNDkuMDBMNzguMDAgMzAwLjAwWk0xNjAuNjQgMzQ3LjQwQzE1My43OSAzNDUuMjUgMTQ2LjY1IDMzNy45NCAxNDQuNTggMzMwLjk0QzE0Mi4yOCAzMjMuMjIgMTQyLjM0IDI5My4yOCAxNDQuNjcgMjg2LjQ2QzE0Ny4wMiAyNzkuNTYgMTU0LjE4IDI3Mi42MiAxNjEuMDYgMjcwLjU4QzE2OC40OCAyNjguMzcgMjExLjI3IDI2OC4yOSAyMTguNTcgMjcwLjQ3QzIyNS4yNSAyNzIuNDcgMjMwLjMyIDI3Ni45MiAyMzMuNjUgMjgzLjcxQzIzNi4xMSAyODguNzUgMjM2LjQ3IDI5MC43NSAyMzYuODMgMzAxLjUzTDIzNy4yMyAzMTMuNjdMMjEyLjM3IDMxNC4zM0MxOTguNjkgMzE0LjcwIDE4MC42NCAzMTUuMDAgMTcyLjI1IDMxNS4wMEwxNTcuMDAgMzE1LjAwTDE1Ny4wMiAzMTkuMjVDMTU3LjA1IDMyNS4yNSAxNjAuMTQgMzMxLjQ5IDE2NC4xNyAzMzMuNjhDMTY3LjExIDMzNS4yOSAxNzAuMTYgMzM1LjUwIDE5MC41MCAzMzUuNTBDMjEyLjYxIDMzNS41MCAyMTMuNjQgMzM1LjQxIDIxNy4xMiAzMzMuMjVDMjE5Ljk5IDMzMS40NyAyMjIuMjEgMzMxLjAwIDIyNy44NyAzMzEuMDBDMjM2LjI2IDMzMS4wMCAyMzYuNTIgMzMxLjUyIDIzMS43NSAzMzguNjBDMjI5LjU3IDM0MS44MyAyMjYuODcgMzQ0LjI1IDIyMy41MyAzNDUuOTZDMjE4LjYxIDM0OC40NyAyMTguMjggMzQ4LjUwIDE5Mi4wMyAzNDguNzFDMTcwLjYyIDM0OC44OCAxNjQuNTYgMzQ4LjYzIDE2MC42NCAzNDcuNDBaTTI3Mi44OCAzNDcuNjJDMjU3Ljk2IDM0Mi4yOSAyNTMuMTkgMzMxLjA4IDI1NC4yNyAzMDMuODdDMjU0Ljg4IDI4OC4zMyAyNTYuNDkgMjgzLjE4IDI2Mi43NiAyNzYuNzRDMjY5LjUwIDI2OS44MiAyNzMuNjEgMjY5LjAwIDMwMS41MCAyNjkuMDBDMzMwLjEwIDI2OS4wMCAzMzMuNzkgMjY5Ljc5IDM0MC44NCAyNzcuNDRDMzQ2LjI4IDI4My4zNCAzNDguMDAgMjg5LjU0IDM0OC4wMCAzMDMuMThMMzQ4LjAwIDMxNC4wMEwzMzMuMjUgMzE0LjE0QzMyNS4xNCAzMTQuMjIgMzA3LjI1IDMxNC41NSAyOTMuNTAgMzE0Ljg5TDI2OC41MCAzMTUuNTBMMjY4Ljc2IDMyMC40MkMyNjkuMDggMzI2LjQ4IDI3MS40OCAzMzAuNzkgMjc2LjA0IDMzMy40NkMyNzkuMjQgMzM1LjM1IDI4MS4xNyAzMzUuNTAgMzAyLjAwIDMzNS41MEMzMjMuNTQgMzM1LjUwIDMyNC42NiAzMzUuNDAgMzI4LjMxIDMzMy4yNUMzMzMuMzUgMzMwLjI3IDM0Ni4wMCAzMjkuOTEgMzQ2LjAwIDMzMi43NUMzNDUuOTkgMzM3LjYwIDMzOC43MCAzNDQuNzggMzMxLjA2IDM0Ny40OEMzMjUuMzAgMzQ5LjUxIDI3OC40OSAzNDkuNjIgMjcyLjg4IDM0Ny42MlpNMzgzLjUwIDM0Ny4xMUMzNzguOTIgMzQ1LjAwIDM3NS41OSAzNDEuNjkgMzc0LjEyIDMzNy44M0MzNzMuNTMgMzM2LjI2IDM3Mi44MyAzMTUuMzQgMzcyLjQ0IDI4Ny4wOEwzNzEuNzYgMjM5LjAwTDM3OC44OCAyMzkuMDBMMzg2LjAwIDIzOS4wMEwzODYuMDAgMjg0LjU4TDM4Ni4wMCAzMzAuMTVMMzg4LjkyIDMzMy4wOEwzOTEuODUgMzM2LjAwTDQyMC45MiAzMzYuMDBMNDUwLjAwIDMzNi4wMEw0NTAuMDAgMzQyLjUwTDQ1MC4wMCAzNDkuMDBMNDE4Ljc1IDM0OC45OEMzOTAuNTEgMzQ4Ljk2IDM4Ny4xMiAzNDguNzggMzgzLjUwIDM0Ny4xMVpNNDY3LjAwIDMwOS41MEw0NjcuMDAgMjcwLjAwTDQ3My4wMCAyNzAuMDBMNDc5LjAwIDI3MC4wMEw0NzkuMDAgMzA5LjUwTDQ3OS4wMCAzNDkuMDBMNDczLjAwIDM0OS4wMEw0NjcuMDAgMzQ5LjAwTDQ2Ny4wMCAzMDkuNTBaTTQ5OC4wMCAzMjEuMTRDNDk4LjAwIDMwNS44MSA0OTguNDYgMjkwLjg1IDQ5OS4wMiAyODcuOTBDNTAwLjMwIDI4MS4xNSA1MDQuMDcgMjc2LjI3IDUxMC41NSAyNzMuMDBDNTE1LjIyIDI3MC42NCA1MTYuNTcgMjcwLjQ4IDUzNC4zMSAyNzAuMTdDNTUwLjk3IDI2OS44OCA1NTMuODkgMjcwLjA4IDU1OS44MyAyNzEuODhDNTY4LjI3IDI3NC40NCA1NzMuOTIgMjc5LjE0IDU3Ny4wOCAyODYuMjFDNTc5LjM2IDI5MS4zMCA1NzkuNDYgMjkyLjU5IDU3OS44MiAzMjAuMjVMNTgwLjE4IDM0OS4wMEw1NzQuMjIgMzQ5LjAwTDU2OC4yNSAzNDkuMDBMNTY3LjgxIDMyMi4yNUM1NjcuMzMgMjkzLjU0IDU2Ny4xMSAyOTIuMjIgNTYxLjc2IDI4Ny4yM0M1NTcuOTkgMjgzLjcxIDU1My43OCAyODMuMDAgNTM2LjcyIDI4My4wMEM1MTguMjUgMjgzLjAwIDUxNC43NyAyODMuOTIgNTEyLjQ2IDI4OS40M0M1MTEuMzAgMjkyLjIzIDUxMS4wMCAyOTguNjIgNTExLjAwIDMyMC45N0w1MTEuMDAgMzQ5LjAwTDUwNC41MCAzNDkuMDBMNDk4LjAwIDM0OS4wMEw0OTguMDAgMzIxLjE0Wk02MTMuMzkgMzQ3LjQyQzYwNy4zNiAzNDUuMjMgNjAxLjYyIDMzOS44NCA1OTguODkgMzMzLjc5QzU5Ni42NCAzMjguODEgNTk2LjUwIDMyNy40MCA1OTYuNTAgMzA5LjUwQzU5Ni41MCAyOTAuNjIgNTk2LjUyIDI5MC40NiA1OTkuMzYgMjg0LjY4QzYwMi43MiAyNzcuODQgNjA3Ljg0IDI3My42OCA2MTUuNzUgMjcxLjM5QzYyMC4wMyAyNzAuMTQgNjI1LjIwIDI2OS44OSA2NDEuMzEgMjcwLjE2TDY2MS41MCAyNzAuNTBMNjY3LjAwIDI3My42MEM2NzYuOTUgMjc5LjIyIDY4MC45NyAyODguMTIgNjgwLjk5IDMwNC42MEw2ODEuMDAgMzEzLjY5TDY2OC44NCAzMTQuMzVDNjYyLjE2IDMxNC43MSA2NDguOTkgMzE1LjAwIDYzOS41OSAzMTUuMDFDNjMwLjE5IDMxNS4wMSA2MTkuNDYgMzE1LjMwIDYxNS43NSAzMTUuNjVMNjA5LjAwIDMxNi4yOUw2MDkuMDAgMzIwLjM5QzYwOS4wMCAzMjUuNzkgNjExLjY3IDMzMC45MSA2MTUuOTggMzMzLjc4QzYxOS4zOCAzMzYuMDYgNjE5LjkxIDMzNi4xMCA2NDAuMTUgMzM1LjgwQzY2MC4wMiAzMzUuNTEgNjYwLjk0IDMzNS40MSA2NjMuMjQgMzMzLjI1QzY2NS4yMyAzMzEuMzggNjY2Ljc2IDMzMS4wMCA2NzIuMzEgMzMxLjAwQzY3Ny42OSAzMzEuMDAgNjc5LjAwIDMzMS4zMCA2NzkuMDAgMzMyLjU1QzY3OS4wMCAzMzYuNjkgNjczLjQ1IDM0My4yMCA2NjcuMDAgMzQ2LjY0QzY2My45MSAzNDguMjggNjYwLjc4IDM0OC41MiA2NDAuNTAgMzQ4LjcwQzYyMi4yMSAzNDguODcgNjE2LjY2IDM0OC42MCA2MTMuMzkgMzQ3LjQyWk02NjguMDAgMjk3Ljc1QzY2Ny45OSAyOTIuODUgNjY1LjM3IDI4Ny45NCA2NjEuMzQgMjg1LjMwQzY1OC45MiAyODMuNzIgNjU2LjE3IDI4My41MCA2MzguMzcgMjgzLjUwQzYxOS40OSAyODMuNTAgNjE3Ljk2IDI4My42NCA2MTUuMzIgMjg1LjU3QzYxMS42NCAyODguMjcgNjA5LjAwIDI5My41NiA2MDkuMDAgMjk4LjI1TDYwOS4wMCAzMDIuMDBMNjM4LjUwIDMwMi4wMEw2NjguMDAgMzAyLjAwTDY2OC4wMCAyOTcuNzVaTTIyMi45OCAyOTcuNzVDMjIyLjk0IDI5Mi42NiAyMTkuNjAgMjg2LjM3IDIxNS44MyAyODQuMzJDMjEyLjk3IDI4Mi43NiAyMDkuNTAgMjgyLjQ1IDE5MS4zMCAyODIuMThDMTcxLjk1IDI4MS44OSAxNjkuNzIgMjgyLjAzIDE2NS42NCAyODMuODRDMTYwLjE0IDI4Ni4yNyAxNTcuODQgMjg5LjYxIDE1Ny4yMiAyOTYuMDZMMTU2Ljc1IDMwMS4wMEwxODkuODcgMzAxLjAwTDIyMy4wMCAzMDEuMDBMMjIyLjk4IDI5Ny43NVpNMzM0LjAwIDI5Ny4yNUMzMzQuMDAgMjkyLjU2IDMzMS4zNiAyODcuMjggMzI3LjY4IDI4NC41N0MzMjUuMDggMjgyLjY2IDMyMy4yMyAyODIuNDcgMzA0LjI0IDI4Mi4xN0MyODEuNTQgMjgxLjgyIDI3Ni43NiAyODIuNTIgMjcyLjY4IDI4Ni44NkMyNzAuMzEgMjg5LjM3IDI2OC4wMiAyOTUuNDUgMjY4LjAxIDI5OS4yNUMyNjguMDAgMzAwLjg4IDI3MC4yNCAzMDEuMDAgMzAxLjAwIDMwMS4wMEwzMzQuMDAgMzAxLjAwTDMzNC4wMCAyOTcuMjVaTTQ2Ny42NSAyNTYuMTdDNDY1LjUyIDI1My44MSA0NjUuNDcgMjQ2LjY3IDQ2Ny41NyAyNDQuNTdDNDY5LjgxIDI0Mi4zNCA0NzUuNTcgMjQyLjU3IDQ3OC4wMCAyNDUuMDBDNDgwLjQxIDI0Ny40MSA0ODAuNjMgMjUyLjY2IDQ3OC40NCAyNTUuNzhDNDc2LjQ0IDI1OC42NCA0NzAuMTAgMjU4Ljg3IDQ2Ny42NSAyNTYuMTdaIi8+DQoNCiAgICA8cGF0aCBmaWxsPSIjQjg5NTUwIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zMjguNDcgNDE0LjQxQzMyNy45NCA0MTQuMjcgMzI1LjgzIDQxMy44OCAzMjMuNzggNDEzLjU0QzMxNy4wNiA0MTIuNDIgMzEwLjA3IDQwNC4wMSAzMTAuMDMgMzk3LjAwQzMwOS45MyAzODEuNTEgMzI2LjM4IDM3Mi42MiAzNDAuMjEgMzgwLjY5QzM1MS42MyAzODcuMzYgMzUxLjMxIDQwNS42MiAzMzkuNjYgNDExLjY5QzMzNi40NyA0MTMuMzUgMzMwLjI4IDQxNC44NiAzMjguNDcgNDE0LjQxWk0yNTAuNTAgNDEyLjU4QzI0Ni43NyA0MTAuOTIgMjQyLjQ3IDQwNi40MCAyNDEuMDYgNDAyLjY4QzIzOC4wNiAzOTQuNzMgMjQxLjU3IDM4NC4yNSAyNDguNTggMzgwLjI3QzI1My45MCAzNzcuMjMgMjY0Ljk5IDM3Ny4wOSAyNjkuNzUgMzc5Ljk5QzI3My4zNCAzODIuMTggMjczLjcwIDM4My4xNyAyNzEuNTcgMzg0Ljk0QzI3MC40NiAzODUuODYgMjY5LjQ4IDM4NS43OCAyNjcuMTIgMzg0LjU2QzI2NS40NiAzODMuNzAgMjYxLjgyIDM4My4wMCAyNTkuMDMgMzgzLjAwQzI1NC43MCAzODMuMDAgMjUzLjQ1IDM4My40OCAyNTAuMzkgMzg2LjI4QzI0MS40MCAzOTQuNTIgMjQ3LjAyIDQwOS4wMCAyNTkuMjAgNDA5LjAwQzI2Ni43NiA0MDkuMDAgMjY4LjAwIDQwNy45NCAyNjguMDAgNDAxLjQ2QzI2OC4wMCAzOTYuMDYgMjY4LjAzIDM5Ni4wMCAyNzEuMDAgMzk2LjAwTDI3NC4wMCAzOTYuMDBMMjc0LjAwIDQwMy4wNUwyNzQuMDAgNDEwLjEwTDI2OS43NSA0MTIuMDNDMjY0Ljc0IDQxNC4zMCAyNTQuOTggNDE0LjU4IDI1MC41MCA0MTIuNThaTTM4NS4wMCAzOTYuMDNMMzg1LjAwIDM3OC4wMEwzODguMDAgMzc4LjAwTDM5MS4wMCAzNzguMDBMMzkxLjAwIDM5My41MEwzOTEuMDAgNDA5LjAwTDQwMS4wNyA0MDkuMDBDNDEwLjk0IDQwOS4wMCA0MTEuMTMgNDA5LjA0IDQxMC44MiA0MTEuMjVDNDEwLjUxIDQxMy40MyA0MTAuMTEgNDEzLjUxIDM5Ny43NSA0MTMuNzhMMzg1LjAwIDQxNC4wNkwzODUuMDAgMzk2LjAzWk00NDUuNDQgNDEyLjcxQzQ0NS4xNyA0MTIuMDAgNDQ1LjA3IDQwNC4wMiA0NDUuMjIgMzk0Ljk2TDQ0NS41MCAzNzguNTBMNDU4LjI1IDM3OC4yMkw0NzEuMDAgMzc3Ljk0TDQ3MS4wMCAzODAuNDdMNDcxLjAwIDM4My4wMEw0NjAuOTUgMzgzLjAwTDQ1MC45MCAzODMuMDBMNDUxLjIwIDM4OC43NUw0NTEuNTAgMzk0LjUwTDQ2MC4yNSAzOTQuNzlDNDY4LjgwIDM5NS4wNyA0NjkuMDAgMzk1LjEzIDQ2OS4wMCAzOTcuNTRDNDY5LjAwIDM5OS45NyA0NjguOTAgNDAwLjAwIDQ2MC4wMCA0MDAuMDBMNDUxLjAwIDQwMC4wMEw0NTEuMDAgNDA3LjAwQzQ1MS4wMCA0MTMuODIgNDUwLjk0IDQxNC4wMCA0NDguNDcgNDE0LjAwQzQ0Ny4wOCA0MTQuMDAgNDQ1LjcxIDQxMy40MiA0NDUuNDQgNDEyLjcxWk0zMzYuNzMgNDA3LjM5QzM0MS44OCA0MDQuMTMgMzQzLjc3IDM5NS4zMiAzNDAuNjIgMzg5LjIzQzMzOC41MSAzODUuMTYgMzM0LjMzIDM4My4wMCAzMjguNTMgMzgzLjAwQzMyNC43MyAzODMuMDAgMzIzLjM1IDM4My41NyAzMjAuMjQgMzg2LjQyQzMxNi43MiAzODkuNjUgMzE2LjUwIDM5MC4xOSAzMTYuNTAgMzk1Ljg2QzMxNi41MCA0MDEuMTYgMzE2Ljg1IDQwMi4yMyAzMTkuNDYgNDA0Ljk2QzMyNC4yMyA0MDkuOTQgMzMxLjE3IDQxMC45MSAzMzYuNzMgNDA3LjM5Wk01MDQuMDAgMzk2LjE5QzUwNC4wMCAzOTUuMTIgNTE0LjUyIDM5NC45MSA1NjEuMDAgMzk1LjA4QzU5Mi4zNSAzOTUuMTkgNjE4LjAwIDM5NS42NiA2MTguMDAgMzk2LjEyQzYxOC4wMCAzOTYuNTkgNTkyLjM1IDM5Ny4wOSA1NjEuMDAgMzk3LjIzQzUxNC40OSAzOTcuNDUgNTA0LjAwIDM5Ny4yNiA1MDQuMDAgMzk2LjE5Wk05NC4wMCAzOTYuMDBDOTQuMDAgMzk1LjM1IDExMy41MCAzOTUuMDAgMTUwLjUwIDM5NS4wMEMxODcuNTAgMzk1LjAwIDIwNy4wMCAzOTUuMzUgMjA3LjAwIDM5Ni4wMEMyMDcuMDAgMzk2LjY1IDE4Ny41MCAzOTcuMDAgMTUwLjUwIDM5Ny4wMEMxMTMuNTAgMzk3LjAwIDk0LjAwIDM5Ni42NSA5NC4wMCAzOTYuMDBaIi8+DQogIDwvZz4NCjwvc3ZnPg0K"};
 const PAR = SRC.par, SI = SRC.si, TEES = SRC.tees;
@@ -658,6 +933,13 @@ function showSaved(kind, text) {
   const el = $("saved"); if (!el) return;
   el.className = kind === "ok" ? "ok" : kind === "busy" ? "busy" : kind === "bad" ? "bad" : "";
   el.textContent = text;
+  // A failed save keeps the typed work and offers Retry in a banner; a good save clears it.
+  const banner = $("savebanner"), note = $("savebanner-text");
+  if (banner && note) {
+    if (kind === "bad") { note.textContent = text; banner.hidden = false; }
+    else banner.hidden = true;
+  }
+  document.dispatchEvent(new CustomEvent("scorecard:saved", { detail: { kind, text } }));
 }
 // Every change is written to this browser and read back, so a save that reports success is really
 // there. The pill reports the shared copy, which the second script owns; only a local failure is
@@ -716,6 +998,20 @@ function fillDayFilter() {
     .map(d => `<option value="${d}">Day ${d}</option>`).join("");
   el.value = days.has(keep) ? keep : "";
   viewDay = el.value;
+  fillGroupFilter();
+}
+// The group filter is the third way to narrow the list, beside day and session. It only hides cards.
+let viewGroup = "";
+function fillGroupFilter() {
+  const el = $("groupFilter"); if (!el) return;
+  const groups = new Set();
+  state.cards.forEach(c => { const g = String(c.group ?? "").trim(); if (g) groups.add(g); });
+  const keep = el.value;
+  el.innerHTML = '<option value="">All groups</option>' + [...groups]
+    .sort((a, b) => Number(a) - Number(b) || a.localeCompare(b))
+    .map(g => `<option value="${esc(g)}">Group ${esc(g)}</option>`).join("");
+  el.value = groups.has(keep) ? keep : "";
+  viewGroup = el.value;
 }
 const classOf = c => c.cls || (fieldFor(c) ? fieldFor(c).cls : "");
 function classNote(c) {
@@ -887,28 +1183,44 @@ function renderCards() {
     String(sessionOf(a)).localeCompare(String(sessionOf(b))) ||
     groupRank(a) - groupRank(b) ||
     a.name.localeCompare(b.name));
+  if (sorted.length === 0) {
+    $("cards").innerHTML = `<div class="empty"><b class="empty-loading">Reading the day's list…</b><b class="empty-ready">No cards on this page yet.</b><span class="empty-ready">Add a card for a player, add the day's players from the system, or scan a paper card.</span><div class="empty-actions"><button type="button" data-open-add>Add cards</button></div></div>`;
+    return;
+  }
   $("cards").innerHTML = sorted.map(c => `
 <section class="card${c.verified ? " done" : ""}" data-id="${esc(c.id)}">${LOGO}
-  <input class="name" data-f="name" value="${esc(c.name)}" aria-label="Player name" placeholder="Player name (LAST, FIRST)"${c.playerId ? " readonly" : ""}>
-  <div class="meta">
-    <label>Day <select data-f="day" aria-label="Playing day">${dayOptions(dayOf(c))}</select></label>
-    <label>Session <select data-f="session" aria-label="AM or PM shotgun">${["AM", "PM"].map(s => `<option value="${s}"${sessionOf(c) === s ? " selected" : ""}>${s}</option>`).join("")}</select></label>
-    <label class="chk">Class <select data-f="cls"${c.playerId ? " disabled" : ""}>${["", "A", "B", "C", "D"].map(k => `<option value="${k}"${classOf(c) === k ? " selected" : ""}>${k || "–"}</option>`).join("")}</select></label>
-    <span data-k="clsnote" style="font-size:11px"></span>
-    <span data-k="assignnote" style="font-size:11px;color:var(--danger)"></span>
-    <label>Group <input type="text" data-f="group" value="${esc(c.group)}"></label>
-    <label>Tee <select data-f="tee">${["", "B", "W", "L"].map(t => `<option value="${t}"${c.tee === t ? " selected" : ""}>${t ? `${t} · ${esc(teeName(t))}` : "–"}</option>`).join("")}</select></label>
-    <label>Card says <input type="text" data-f="hdcp" value="${esc(c.hdcp)}" aria-label="HDCP written on the paper card" title="What the paper card says. It is kept for the record and never used to score."></label>
+  <div class="cardtop">
+    <input class="name" data-f="name" value="${esc(c.name)}" aria-label="Player name" placeholder="Player name (LAST, FIRST)"${c.playerId ? " readonly" : ""}>
+    <span class="sent" data-k="sent"${c.sentAt ? "" : " hidden"}>Sent to admin</span>
+    <label class="verify"><input type="checkbox" data-f="verified"${c.verified ? " checked" : ""}> Checked against the paper card</label>
+  </div>
+  <details class="cardmeta-details">
+  <summary><span data-k="metasummary"></span></summary>
+  <div class="cardmeta">
+    <label class="mini">Day <select data-f="day" aria-label="Playing day">${dayOptions(dayOf(c))}</select></label>
+    <label class="mini">Session <select data-f="session" aria-label="AM or PM shotgun">${["AM", "PM"].map(s => `<option value="${s}"${sessionOf(c) === s ? " selected" : ""}>${s}</option>`).join("")}</select></label>
+    <label class="mini">Class <select data-f="cls"${c.playerId ? " disabled" : ""}>${["", "A", "B", "C", "D"].map(k => `<option value="${k}"${classOf(c) === k ? " selected" : ""}>${k || "–"}</option>`).join("")}</select></label>
+    <label class="mini">Group <input type="text" data-f="group" value="${esc(c.group)}" inputmode="numeric"></label>
+    <label class="mini">Tee <select data-f="tee">${["", "B", "W", "L"].map(t => `<option value="${t}"${c.tee === t ? " selected" : ""}>${t ? `${t} · ${esc(teeName(t))}` : "–"}</option>`).join("")}</select></label>
+    <label class="mini">Card says <input type="text" data-f="hdcp" value="${esc(c.hdcp)}" inputmode="decimal" aria-label="HDCP written on the paper card" title="What the paper card says. It is kept for the record and never used to score."></label>
+    <label class="mini">Total on card <input type="text" data-f="written" value="${esc(c.written)}" inputmode="numeric"></label>
+    <div class="meta-actions">
+      <button type="button" class="noprint" data-save title="Save this card to the shared copy now, so everyone signed in can see it. Saving does not mark it checked.">Save card</button>
+      <span class="savestate noprint" data-k="savestate" role="status" aria-live="polite"></span>
+      ${c.manual || c.notInSystem ? `<button type="button" class="danger noprint" data-del title="Remove this card and its scores">Remove</button>` : ""}
+    </div>
+  </div>
+  </details>
+  <p class="sysline">
     <span class="hcpinfo" data-k="syshcp"></span>
-    <label>Total on card <input type="text" data-f="written" value="${esc(c.written)}"></label>
-    <button type="button" class="noprint" data-save title="Save this card to the shared copy now, so everyone signed in can see it. Saving does not mark it checked.">Save card</button>
-    <span class="savestate noprint" data-k="savestate" role="status" aria-live="polite"></span>
-    <label class="chk verify"><input type="checkbox" data-f="verified"${c.verified ? " checked" : ""}> Checked against the paper card</label>
+    <span data-k="clsnote"></span>
+    <span class="assignnote" data-k="assignnote"></span>
     ${c.notInSystem ? `<span class="no">Not in the system: tell the admin</span>` : ""}
-    ${c.manual || c.notInSystem ? `<button type="button" class="danger noprint" data-del title="Remove this card and its scores">Remove card</button>` : ""}</div>
+  </p>
   ${c.note ? `<div class="note">Note: ${esc(c.note)}</div>` : ""}
-  ${half(c, 0, "OUT")}<div class="gap"></div>${half(c, 9, "IN")}
-  <div class="tot" data-k="tot"></div>
+  <div class="tablewrap" tabindex="0" role="group" aria-label="Front nine scores">${half(c, 0, "OUT")}</div>
+  <div class="tablewrap" tabindex="0" role="group" aria-label="Back nine scores">${half(c, 9, "IN")}</div>
+  <div class="cardfoot"><div class="tot" data-k="tot"></div></div>
 </section>`).join("");
   document.querySelectorAll("#cards .card").forEach(el => paint(el, byId(el.dataset.id)));
   filter();
@@ -932,6 +1244,12 @@ function paint(el, c) {
     : differs ? `The card says ${fmtPh(says)}; the system says ${fmtPh(info.ph)}. The system figure is used.`
     : "Matches the playing handicap from the system.";
   el.querySelector('[data-k="assignnote"]').textContent = assignmentNote(c);
+  const metaDetails = el.querySelector("details.cardmeta-details");
+  if (metaDetails && window.matchMedia("(min-width: 1024px)").matches) metaDetails.open = true;
+  const metaSummary = el.querySelector('[data-k="metasummary"]');
+  if (metaSummary) {
+    metaSummary.textContent = `Day ${dayOf(c)} ${sessionOf(c)} · G${c.group || "–"} · ${c.tee ? teeName(c.tee) : "no tee"} · ${classOf(c) ? `${classOf(c)} · ` : ""}Card ${c.hdcp || "–"}`;
+  }
   const sel = el.querySelector('[data-f="cls"]'); if (document.activeElement !== sel) sel.value = classOf(c);
   const shown = r.net || r.pts;
   shown.forEach((p, i) => { el.querySelector(`[data-p="${i}"]`).textContent = isNum(c.holes[i]) || c.holes[i] === "X" ? p : ""; });
@@ -992,6 +1310,8 @@ function stats() {
   state.cards.forEach(c => { const o = ORIG[c.id]; if (o) c.holes.forEach((v, i) => { if (v !== (o.holes[i].v === "" ? "" : String(o.holes[i].v))) edited++; }); });
   const checked = state.cards.filter(c => c.verified).length;
   $("stat").textContent = `${state.cards.length} cards · ${checked} checked of ${state.cards.length} · ${state.cards.filter(c => c.manual || c.notInSystem).length} added by hand · ${edited} scores changed`;
+  // The today strip and the review panel listen for this, so a typed score moves the counts at once.
+  document.dispatchEvent(new CustomEvent("scorecard:stats"));
 }
 // The pinned bar narrows the list: a name, a playing day and one shotgun. Each only ever hides cards
 // from the view; nothing is changed, and clearing the box shows everything again.
@@ -1002,22 +1322,25 @@ function filter() {
     const c = byId(el.dataset.id);
     const show = (!q || el.querySelector(".name").value.toLowerCase().includes(q)) &&
       (!viewDay || !c || dayOf(c) === viewDay) &&
-      (!viewSession || !c || sessionOf(c) === viewSession);
+      (!viewSession || !c || sessionOf(c) === viewSession) &&
+      (!viewGroup || !c || String(c.group ?? "").trim() === viewGroup);
     el.hidden = !show; el.classList.remove("brk");
     if (show && ++n % 3 === 0) el.classList.add("brk");
   });
-  const narrowed = q || viewDay || viewSession;
+  const narrowed = q || viewDay || viewSession || viewGroup;
   $("shown").textContent = narrowed ? `${n} of ${state.cards.length} cards shown` : "";
 }
 // The three find controls only hide cards. Clearing them is how a card that was just added or jumped
 // to is made visible again; nothing that is saved changes.
 function clearFind() {
-  viewDay = ""; viewSession = "";
+  viewDay = ""; viewSession = ""; viewGroup = "";
   $("dayFilter").value = ""; $("sessionFilter").value = ""; $("q").value = "";
+  if ($("groupFilter")) $("groupFilter").value = "";
   filter();
 }
 $("dayFilter").addEventListener("change", e => { viewDay = e.target.value; filter(); });
 $("sessionFilter").addEventListener("change", e => { viewSession = e.target.value; filter(); });
+document.getElementById("groupFilter")?.addEventListener("change", e => { viewGroup = e.target.value; filter(); });
 function show(v) {
   view = v;
   $("cards").hidden = v !== "cards"; $("sheet").hidden = v !== "sheet";
@@ -1155,8 +1478,9 @@ $("reset").onclick = async () => {
   say("Back to the first reading. A snapshot of the previous shared copy is kept, and Undo is available until this page is reloaded.");
 };
 
-$("title").textContent = `${SRC.event} · ${SRC.label} · scores (editable draft)`;
-document.title = `${SRC.label} scores (editable draft)`;
+$("title").textContent = SRC.label;
+$("eventname").textContent = SRC.event;
+document.title = `${SRC.label} · ${SRC.event} · TeeLine tabulation`;
 fillDayFilter();
 renderCards(); stats();
 if (loadedFromBrowser) showSaved("ok", state.savedAt ? "Loaded this browser's copy, last saved " + shortClock() : "Loaded this browser's copy");
@@ -1211,7 +1535,9 @@ function __scorecardCheck(id) {
   const classDiff = Boolean(systemClass && cardClass && systemClass !== cardClass);
   const groupDiff = Boolean((cardGroup || systemGroup) && cardGroup !== systemGroup);
   const teeDiff = Boolean(systemTee && cardTee !== systemTee);
-  const hdcpDiff = systemHdcp !== "" && (cardPh == null || cardPh !== Number(systemHdcp));
+  // A blank "Card says" box is not a disagreement: that card plays off the system figure. Only a
+  // number written on the paper that differs is worth the volunteer's attention.
+  const hdcpDiff = systemHdcp !== "" && cardPh != null && cardPh !== Number(systemHdcp);
   const dayDiff = Boolean(systemSession && documentSession && systemSession !== documentSession);
   return {
     id: card.id,
@@ -1290,6 +1616,7 @@ window.__scorecard = {
   // The pinned bar's find box, day and session only hide cards. Clearing the three lets a card that
   // was added or jumped to be shown; nothing that is saved changes.
   clearFind,
+  stats,
   cardCheck: __scorecardCheck,
   checkField: () => {
     const checks = state.cards.map((card) => __scorecardCheck(card.id)).filter(Boolean);
@@ -1318,8 +1645,8 @@ window.__scorecard = {
   const slug = db.slug;
   const loginUrl = `/login?next=${encodeURIComponent("/scorecard/")}&error=sign_in_required`;
   const cardsRoot = document.getElementById("cards");
-  const main = document.querySelector("main");
-  if (!cardsRoot || !main) return;
+  const reviewZone = document.getElementById("review-zone");
+  if (!cardsRoot || !reviewZone) return;
 
   let ready = false;
   let sessionEnded = false;
@@ -1341,54 +1668,48 @@ window.__scorecard = {
     })[character]);
 
   const panel = document.createElement("section");
-  panel.className = "card";
+  panel.className = "panel review";
   panel.id = "review-batches";
-  panel.style.marginBottom = "12px";
   panel.innerHTML = `
-    <h2 style="margin:0 0 2px;font-size:15px">Review batches and system check</h2>
-    <p class="legend" id="batch-summary" style="margin:0 0 8px"></p>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 8px">
-      <input id="panel-q" type="search" placeholder="Filter by player name" aria-label="Filter cards by player name" style="font:inherit;min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--r-sm);min-width:220px">
-      <button type="button" id="panel-field" class="primary" title="Pick a day, session and group and the players arrive as blank cards with group, tee and class filled in. No JSON file needed.">Add players from the system</button>
-      <button type="button" id="panel-refresh" title="Add any assigned player who is missing from this day and session, without touching the cards already on the page">Refresh list from system</button>
-      <button type="button" id="panel-add" title="Add one blank card and type the name and 18 scores in from the paper card">Add card by hand</button>
+    <button type="button" class="close" data-close aria-label="Close the review panel">Close</button>
+    <h2>Review &amp; send</h2>
+    <p class="summary" id="batch-summary">Reading the day…</p>
+    <div class="sendbox">
+      <button type="button" id="batch-send" class="primary wide" title="Send the cards you have checked to the admin scoring queue. The admin imports, approves and publishes them.">Send checked cards to admin</button>
+      <p class="fine">The admin imports, approves and publishes. This page cannot approve or publish.</p>
+      <p class="sentstate" id="send-state" hidden></p>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      <button type="button" id="batch-all">All cards</button>
-      <button type="button" id="batch-needs">Needs review</button>
-      <button type="button" id="batch-done">Reviewed</button>
-      <button type="button" id="batch-issues">Differences</button>
-      <button type="button" id="batch-noclass">No class</button>
-      <button type="button" id="batch-unmatched">Name not found</button>
-      <button type="button" id="batch-group">Group differs</button>
-      <button type="button" id="batch-tee">Tee differs</button>
-      <button type="button" id="batch-hdcp">HDCP differs</button>
-      <button type="button" id="batch-day">Day/tee differs</button>
+    <div class="btnrow">
+      <button type="button" id="batch-save">Save now</button>
+      <button type="button" id="batch-save-download" title="Saves to the database, then downloads a copy of the day to this device">Save &amp; download</button>
+      <button type="button" id="batch-start">New batch</button>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-      <button type="button" id="scan-pick" title="Choose one or more photos of scorecards that are already saved on this device">Scan card (from photos)</button>
-      <button type="button" id="scan-camera-open" class="primary" title="Open the camera and photograph a card">Take photo</button>
-      <button type="button" id="batch-add" title="Add cards from a JSON file. Nothing is downloaded.">Import JSON (add cards)</button>
-      <button type="button" id="batch-start">Start new review batch</button>
-      <button type="button" id="batch-save">Save to database</button>
-      <button type="button" id="batch-save-download" title="Saves to the database, then downloads a copy of the day to this device">Save, then download a copy</button>
-      <button type="button" id="batch-send" class="primary" title="Send the cards you have checked to the admin scoring queue. The admin imports, approves and publishes them.">Send checked cards to admin</button>
-      <input id="batch-add-file" type="file" accept=".json,application/json" hidden>
-      <input id="scan-file" type="file" accept="image/jpeg,image/png,image/webp,image/*" multiple hidden>
-      <input id="scan-camera" type="file" accept="image/*" capture="environment" hidden>
+    <div class="chips" role="group" aria-label="Which cards to show">
+      <button type="button" id="batch-all">All</button>
+      <button type="button" id="batch-needs">To check</button>
+      <button type="button" id="batch-done">Checked</button>
+      <button type="button" id="batch-issues">Issues</button>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px">
-      <div id="batch-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    <details class="disclosure" id="issues-details">
+      <summary id="check-summary">Issues and system check <span id="issues-count" class="count">0</span></summary>
+      <div class="chips" role="group" aria-label="Other card filters">
+        <button type="button" id="batch-noclass">No class</button>
+        <button type="button" id="batch-unmatched">Name not found</button>
+        <button type="button" id="batch-group">Group differs</button>
+        <button type="button" id="batch-tee">Tee differs</button>
+        <button type="button" id="batch-hdcp">HDCP differs</button>
+        <button type="button" id="batch-day">Day/tee differs</button>
+      </div>
+      <div id="check-table"></div>
+      <p id="field-status">System: not checked yet.</p>
+    </details>
+    <details class="disclosure" id="batches-details">
+      <summary>Review batches</summary>
+      <div id="batch-list"></div>
       <button type="button" id="batch-clear" class="danger" title="Remove the batch labels where every card is already checked. The cards stay on the page." hidden>Remove reviewed batches</button>
-    </div>
-    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add players from the system</b> brings a day's and session's players in as blank cards with their group, tee and class filled in, so no JSON file is needed. <b>Add card by hand</b> adds one blank card. <b>Start new review batch</b> makes a batch by hand: empty, from the cards shown, from one day and session, or from cards you pick. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. Saving keeps the team copy in the private Supabase bucket and merges it card by card with the other tabulators; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication. <b>Reset to first reading</b> asks you to type RESET, and both it and <b>Replace all from export</b> keep a snapshot of the shared copy first and can be undone until the page is reloaded.</p>
-    <p class="legend" id="field-status" style="margin:8px 0 0">Supabase field: not checked yet.</p>
-    <details id="check-details" open style="margin-top:8px">
-      <summary id="check-summary" style="cursor:pointer;font-weight:600">System check: waiting for the field list.</summary>
-      <div id="check-table" style="max-height:300px;overflow:auto;margin-top:6px"></div>
     </details>
   `;
-  main.insertBefore(panel, cardsRoot);
+  reviewZone.appendChild(panel);
 
   const summary = panel.querySelector("#batch-summary");
   const fieldStatus = panel.querySelector("#field-status");
@@ -1403,21 +1724,21 @@ window.__scorecard = {
   const hdcpButton = panel.querySelector("#batch-hdcp");
   const dayButton = panel.querySelector("#batch-day");
   const startButton = panel.querySelector("#batch-start");
-  const addButton = panel.querySelector("#batch-add");
   const saveButton = panel.querySelector("#batch-save");
   const saveDownloadButton = panel.querySelector("#batch-save-download");
   const sendButton = panel.querySelector("#batch-send");
-  const addInput = panel.querySelector("#batch-add-file");
+  const sendState = panel.querySelector("#send-state");
+  const addInput = document.getElementById("batch-add-file");
   const batchList = panel.querySelector("#batch-list");
   // The batch picker lives in the pinned bar, so it is reachable while the cards scroll.
   const batchSelect = document.getElementById("batch-select");
   const clearButton = panel.querySelector("#batch-clear");
-  const panelSearch = panel.querySelector("#panel-q");
-  const panelAdd = panel.querySelector("#panel-add");
-  const panelField = panel.querySelector("#panel-field");
-  const panelRefresh = panel.querySelector("#panel-refresh");
+  const panelField = document.getElementById("panel-field");
+  const panelRefresh = document.getElementById("panel-refresh");
   const checkSummary = panel.querySelector("#check-summary");
   const checkTable = panel.querySelector("#check-table");
+  const issuesCount = panel.querySelector("#issues-count");
+  const actionPrimary = document.getElementById("action-primary");
 
   const current = () => db.getState();
   const batches = () => {
@@ -1479,9 +1800,12 @@ window.__scorecard = {
     for (const element of cardsRoot.querySelectorAll(".card")) {
       const card = current().cards.find((entry) => entry.id === element.dataset.id);
       if (card && !matches(card)) element.hidden = true;
+      const sent = element.querySelector('[data-k="sent"]');
+      if (sent) sent.hidden = !card.sentAt;
     }
     updatePanel();
     refreshSaveBadges();
+    if (typeof db.stats === "function") db.stats();
   }
 
   function setActive(next) {
@@ -1492,29 +1816,29 @@ window.__scorecard = {
   }
 
   function cell(cardValue, systemValue, diff) {
-    const style = diff ? "color:#b42318;font-weight:600" : "";
-    return `<td style="padding:4px;vertical-align:top;${style}">${escapeHtml(cardValue || "—")} <span style="color:#667085;font-weight:400">/ ${escapeHtml(systemValue || "—")}</span></td>`;
+    const style = diff ? "color:var(--danger);font-weight:600" : "";
+    return `<td style="padding:4px;vertical-align:top;${style}">${escapeHtml(cardValue || "—")} <span style="color:var(--ink-muted);font-weight:400">/ ${escapeHtml(systemValue || "—")}</span></td>`;
   }
 
   function renderCheckTable() {
     const data = checkData();
     if (!data) {
-      checkSummary.textContent = "System check: waiting for the field list.";
-      checkTable.innerHTML = `<p class="legend" style="margin:0">The cards can still be reviewed while the field list loads.</p>`;
+      checkSummary.textContent = "Issues and system check";
+      checkTable.innerHTML = `<p class="legend" style="margin:0">Waiting for the field list. Cards can still be reviewed meanwhile.</p>`;
       return;
     }
     const issues = data.issues;
     if (issues.length === 0) {
-      checkSummary.textContent = "System check: every card matches the system on name, class, group, tee, HDCP and day/tee off.";
+      checkSummary.textContent = "No system issues";
       checkTable.innerHTML = "";
       return;
     }
-    checkSummary.textContent = `System check: ${data.missing} name(s) not found · ${data.noClass} no class · ${data.classDiff} class differs · ${data.groupDiff} group differs · ${data.teeDiff} tee differs · ${data.hdcpDiff} HDCP differs · ${data.dayDiff} day/tee differs. Card value / system value.`;
+    checkSummary.textContent = `System check: ${issues.length} issue${issues.length === 1 ? "" : "s"}`;
     const rows = issues
       .map((check) => {
         const name = check.matched
-          ? `<button type="button" data-goto="${escapeHtml(check.id)}" style="border:0;background:none;padding:0;font:inherit;color:#073c4e;cursor:pointer;text-align:left;text-decoration:underline">${escapeHtml(check.name)}</button>${check.systemName && check.systemName !== check.name ? `<div class="legend">system: ${escapeHtml(check.systemName)}</div>` : ""}`
-          : `<button type="button" data-goto="${escapeHtml(check.id)}" style="border:0;background:none;padding:0;font:inherit;color:#073c4e;cursor:pointer;text-align:left;text-decoration:underline">${escapeHtml(check.name)}</button><div class="legend">not on the field list</div>`;
+          ? `<button type="button" data-goto="${escapeHtml(check.id)}" style="border:0;background:none;padding:0;font:inherit;color:var(--forest);cursor:pointer;text-align:left;text-decoration:underline">${escapeHtml(check.name)}</button>${check.systemName && check.systemName !== check.name ? `<div class="legend">system: ${escapeHtml(check.systemName)}</div>` : ""}`
+          : `<button type="button" data-goto="${escapeHtml(check.id)}" style="border:0;background:none;padding:0;font:inherit;color:var(--forest);cursor:pointer;text-align:left;text-decoration:underline">${escapeHtml(check.name)}</button><div class="legend">not on the field list</div>`;
         const systemTee = check.systemTeeName
           ? `${check.systemTeeName}${check.systemTee ? ` (${check.systemTee})` : ""}`
           : check.systemTee;
@@ -1540,12 +1864,12 @@ window.__scorecard = {
           ${cell(check.cardGroup, check.systemGroup, check.groupDiff)}
           ${cell(check.cardTee, systemTee, check.teeDiff)}
           ${cell(cardHdcp, systemHdcp, check.hdcpDiff)}
-          <td style="padding:4px;vertical-align:top;${pairingDiff ? "color:#b42318;font-weight:600" : ""}">${pairing}</td>
+          <td style="padding:4px;vertical-align:top;${pairingDiff ? "color:var(--danger);font-weight:600" : ""}">${pairing}</td>
           <td style="padding:4px">${canApply ? `<button type="button" data-apply="${escapeHtml(check.id)}" title="Copy the system class, group, tee and HDCP onto this card">Use system</button>` : ""}</td>
         </tr>`;
       })
       .join("");
-    checkTable.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    checkTable.innerHTML = `<table style="width:100%;border-collapse:collapse">
       <thead>
         <tr>
           <th style="text-align:left;padding:4px">Card / system name</th>
@@ -1570,7 +1894,6 @@ window.__scorecard = {
   // A card the desk jumped to or just added must not stay hidden by the pinned bar's find box, day or
   // session. Clearing them is the only thing that changes: no card and no score is touched.
   function clearFind() {
-    panelSearch.value = "";
     db.clearFind();
     apply();
   }
@@ -1585,7 +1908,7 @@ window.__scorecard = {
     if (!element) return;
     if (element.hidden) clearFind();
     element.scrollIntoView({ behavior: "smooth", block: "center" });
-    element.style.outline = "3px solid #b42318";
+    element.style.outline = "3px solid var(--danger)";
     window.setTimeout(() => {
       element.style.outline = "";
     }, 2000);
@@ -1611,27 +1934,37 @@ window.__scorecard = {
     const done = cards.filter((card) => card.verified).length;
     const needs = cards.length - done;
     const waitingToSend = cards.filter((card) => card.verified && !card.sentAt).length;
+    const alreadySent = cards.filter((card) => card.verified && card.sentAt).length;
     sendButton.textContent = waitingToSend
-      ? `Send checked cards to admin (${waitingToSend})`
-      : "Send checked cards to admin";
+      ? `Send ${waitingToSend} checked to admin`
+      : alreadySent
+        ? "All checked cards sent"
+        : "Send checked cards to admin";
+    if (sendState) {
+      sendState.hidden = alreadySent === 0;
+      sendState.textContent = alreadySent
+        ? `${alreadySent} checked card${alreadySent === 1 ? " is" : "s are"} with the admin`
+        : "";
+    }
     const visible = cards.filter(matches).length;
     const shownBatch = batches().find((entry) => entry.id === active);
     const batchLine = shownBatch
       ? ` · ${shownBatch.name}: ${batchCount(shownBatch).done} checked of ${batchCount(shownBatch).total} players, ${batchCount(shownBatch).total - batchCount(shownBatch).done} still to check`
       : "";
     summary.textContent = `${visible} of ${cards.length} cards shown · ${done} checked · ${needs} waiting${batchLine}`;
-    allButton.textContent = `All cards (${cards.length})`;
-    needsButton.textContent = `Needs review (${needs})`;
-    doneButton.textContent = `Reviewed (${done})`;
+    allButton.textContent = `All (${cards.length})`;
+    needsButton.textContent = `To check (${needs})`;
+    doneButton.textContent = `Checked (${done})`;
     const data = checkData();
     const counts = data || { issues: [], noClass: 0, missing: 0, groupDiff: 0, teeDiff: 0, hdcpDiff: 0, dayDiff: 0 };
-    issuesButton.textContent = `Differences (${counts.issues.length})`;
+    issuesButton.textContent = `Issues (${counts.issues.length})`;
     noclassButton.textContent = `No class (${counts.noClass})`;
     unmatchedButton.textContent = `Name not found (${counts.missing})`;
     groupButton.textContent = `Group differs (${counts.groupDiff})`;
     teeButton.textContent = `Tee differs (${counts.teeDiff})`;
     hdcpButton.textContent = `HDCP differs (${counts.hdcpDiff})`;
     dayButton.textContent = `Day/tee differs (${counts.dayDiff})`;
+    if (issuesCount) issuesCount.textContent = String(counts.issues.length);
     for (const [key, button] of [
       ["all", allButton],
       ["needs", needsButton],
@@ -1657,7 +1990,7 @@ window.__scorecard = {
         const count = batchCount(batch);
         const selected = active === batch.id;
         const name = escapeHtml(batch.name);
-        return `<span style="display:inline-flex;gap:2px"><button type="button" data-batch="${escapeHtml(batch.id)}" class="${selected ? "on" : ""}" aria-pressed="${selected ? "true" : "false"}" title="${count.done} of ${count.total} players checked against the paper card">${name} · <b>${count.done}</b> checked of <b>${count.total}</b></button><button type="button" data-batch-del="${escapeHtml(batch.id)}" title="Remove this batch. Its cards stay on the page." aria-label="Remove batch ${name}">×</button></span>`;
+        return `<div class="batchrow"><button type="button" data-batch="${escapeHtml(batch.id)}" class="${selected ? "on" : ""}" aria-pressed="${selected ? "true" : "false"}" title="${count.done} of ${count.total} players checked against the paper card">${name} · ${count.done}/${count.total} checked</button><button type="button" data-batch-del="${escapeHtml(batch.id)}" title="Remove this batch. Its cards stay on the page." aria-label="Remove batch ${name}">×</button></div>`;
       })
       .join("");
     for (const button of batchList.querySelectorAll("button[data-batch]")) {
@@ -1681,7 +2014,35 @@ window.__scorecard = {
     clearButton.hidden = reviewed.length === 0;
     clearButton.textContent = `Remove reviewed batches (${reviewed.length})`;
     renderCheckTable();
+    updateToday();
+    if (actionPrimary) {
+      if (saveProblem) {
+        actionPrimary.textContent = "Retry save";
+        actionPrimary.dataset.action = "retry";
+      } else if (waitingToSend) {
+        actionPrimary.textContent = `Send ${waitingToSend} to admin`;
+        actionPrimary.dataset.action = "send";
+      } else {
+        actionPrimary.textContent = "Add cards";
+        actionPrimary.dataset.action = "add";
+      }
+    }
   }
+
+  /** The three counts in the today strip. Issues need the field list; missing means no score yet. */
+  function updateToday() {
+    const cards = current().cards;
+    const done = cards.filter((card) => card.verified).length;
+    const missing = cards.filter((card) => !card.holes.some((hole) => hole !== "" && hole !== undefined)).length;
+    const data = checkData();
+    const doneTile = document.getElementById("today-done");
+    const issuesTile = document.getElementById("today-issues");
+    const missingTile = document.getElementById("today-missing");
+    if (doneTile) doneTile.textContent = String(done);
+    if (issuesTile) issuesTile.textContent = data ? String(data.issues.length) : "–";
+    if (missingTile) missingTile.textContent = String(missing);
+  }
+  document.addEventListener("scorecard:stats", updateToday);
 
   // A batch is reviewed when it has cards and every one of them is checked against the paper.
   function isReviewed(batch) {
@@ -1721,20 +2082,20 @@ window.__scorecard = {
     const dialog = scanDialog(`
       <h2 style="margin:0 0 6px;font-size:18px">Start a review batch</h2>
       <label style="display:flex;flex-direction:column;gap:4px;margin:0 0 10px">Batch name
-        <input id="nb-name" value="${escapeHtml(`Batch ${batches().length + 1}`)}" style="font:inherit;padding:7px 8px;border:1px solid #b9c4bd;border-radius:6px"></label>
-      <fieldset style="border:1px solid #d5ddd8;border-radius:8px;padding:8px 10px;margin:0 0 10px">
+        <input id="nb-name" value="${escapeHtml(`Batch ${batches().length + 1}`)}" style="font:inherit;padding:7px 8px;border:1px solid var(--line-strong);border-radius:6px"></label>
+      <fieldset style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:0 0 10px">
         <legend style="padding:0 4px">Which cards go in it?</legend>
         <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="empty" checked> An empty batch, to scan, import or add players into later</label>
-        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="shown"> The cards shown now <span id="nb-n-shown" style="color:#4d5c54"></span></label>
-        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="unbatched"> Cards in no batch yet that are not checked <span id="nb-n-unbatched" style="color:#4d5c54"></span></label>
-        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="daysession"> All the cards for one day and session <span id="nb-n-daysession" style="color:#4d5c54"></span></label>
+        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="shown"> The cards shown now <span id="nb-n-shown" style="color:var(--ink-muted)"></span></label>
+        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="unbatched"> Cards in no batch yet that are not checked <span id="nb-n-unbatched" style="color:var(--ink-muted)"></span></label>
+        <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="daysession"> All the cards for one day and session <span id="nb-n-daysession" style="color:var(--ink-muted)"></span></label>
         <div id="nb-ds" hidden style="margin:2px 0 6px 22px;display:none;gap:8px">
-          <select id="nb-day" aria-label="Day" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px">${dayOptions(DOC_DAY)}</select>
-          <select id="nb-session" aria-label="Session" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px"><option>AM</option><option>PM</option></select></div>
+          <select id="nb-day" aria-label="Day" style="font:inherit;padding:5px 6px;border:1px solid var(--line-strong);border-radius:6px">${dayOptions(DOC_DAY)}</select>
+          <select id="nb-session" aria-label="Session" style="font:inherit;padding:5px 6px;border:1px solid var(--line-strong);border-radius:6px"><option>AM</option><option>PM</option></select></div>
         <label style="display:block;margin:4px 0"><input type="radio" name="nb-src" value="pick"> Cards I pick by name</label>
         <div id="nb-pick" hidden style="display:none;margin:2px 0 4px 22px">
-          <input id="nb-q" type="search" placeholder="Find a player" aria-label="Find a player" style="font:inherit;padding:5px 7px;border:1px solid #b9c4bd;border-radius:6px;width:100%;box-sizing:border-box;margin-bottom:4px">
-          <div id="nb-list" style="max-height:200px;overflow:auto;border:1px solid #d5ddd8;border-radius:6px;padding:4px 8px"></div></div>
+          <input id="nb-q" type="search" placeholder="Find a player" aria-label="Find a player" style="font:inherit;padding:5px 7px;border:1px solid var(--line-strong);border-radius:6px;width:100%;box-sizing:border-box;margin-bottom:4px">
+          <div id="nb-list" style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:4px 8px"></div></div>
       </fieldset>
       <p id="nb-count" role="status" style="margin:0 0 10px;font-weight:600"></p>
       <div style="display:flex;flex-wrap:wrap;gap:8px">
@@ -1756,7 +2117,7 @@ window.__scorecard = {
     function renderPick() {
       const needle = q("#nb-q").value.trim().toLowerCase();
       const rows = everyCard().filter((card) => !needle || card.name.toLowerCase().includes(needle)).sort((a, b) => a.name.localeCompare(b.name));
-      q("#nb-list").innerHTML = rows.slice(0, 300).map((card) => `<label style="display:block;margin:2px 0"><input type="checkbox" data-pick="${escapeHtml(card.id)}"${picked.has(card.id) ? " checked" : ""}> ${escapeHtml(card.name || "(no name)")} <span style="color:#4d5c54">· Day ${escapeHtml(dayOf(card))} ${escapeHtml(sessionOf(card))}</span></label>`).join("") || '<span style="color:#4d5c54">No card matches.</span>';
+      q("#nb-list").innerHTML = rows.slice(0, 300).map((card) => `<label style="display:block;margin:2px 0"><input type="checkbox" data-pick="${escapeHtml(card.id)}"${picked.has(card.id) ? " checked" : ""}> ${escapeHtml(card.name || "(no name)")} <span style="color:var(--ink-muted)">· Day ${escapeHtml(dayOf(card))} ${escapeHtml(sessionOf(card))}</span></label>`).join("") || '<span style="color:var(--ink-muted)">No card matches.</span>';
     }
     function refresh() {
       const kind = source();
@@ -1820,17 +2181,17 @@ window.__scorecard = {
   async function openFieldPicker() {
     const dialog = scanDialog(`
       <h2 style="margin:0 0 6px;font-size:18px">Add players from the system</h2>
-      <p style="margin:0 0 8px;color:#4d5c54">Pick the day and session. Each player comes in as a blank card with the group, tee and class from the system. A player already on the page for that day and session is not added twice.</p>
+      <p style="margin:0 0 8px;color:var(--ink-muted)">Pick the day and session. Each player comes in as a blank card with the group, tee and class from the system. A player already on the page for that day and session is not added twice.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px">
-        <label>Day <select id="fp-day" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px">${dayOptions(DOC_DAY)}</select></label>
-        <label>Session <select id="fp-session" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px"><option${DOC_SESSION === "AM" ? " selected" : ""}>AM</option><option${DOC_SESSION === "PM" ? " selected" : ""}>PM</option></select></label>
-        <label>Group <select id="fp-group" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px"><option value="">All groups</option></select></label>
-        <input id="fp-q" type="search" placeholder="Find a player" aria-label="Find a player" style="font:inherit;padding:5px 7px;border:1px solid #b9c4bd;border-radius:6px;flex:1;min-width:140px">
+        <label>Day <select id="fp-day" style="font:inherit;padding:5px 6px;border:1px solid var(--line-strong);border-radius:6px">${dayOptions(DOC_DAY)}</select></label>
+        <label>Session <select id="fp-session" style="font:inherit;padding:5px 6px;border:1px solid var(--line-strong);border-radius:6px"><option${DOC_SESSION === "AM" ? " selected" : ""}>AM</option><option${DOC_SESSION === "PM" ? " selected" : ""}>PM</option></select></label>
+        <label>Group <select id="fp-group" style="font:inherit;padding:5px 6px;border:1px solid var(--line-strong);border-radius:6px"><option value="">All groups</option></select></label>
+        <input id="fp-q" type="search" placeholder="Find a player" aria-label="Find a player" style="font:inherit;padding:5px 7px;border:1px solid var(--line-strong);border-radius:6px;flex:1;min-width:140px">
       </div>
-      <div id="fp-list" style="max-height:260px;overflow:auto;border:1px solid #d5ddd8;border-radius:6px;padding:4px 8px;margin:0 0 8px"></div>
+      <div id="fp-list" style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:4px 8px;margin:0 0 8px"></div>
       <p id="fp-count" role="status" style="margin:0 0 8px;font-weight:600"></p>
       <label style="display:flex;flex-direction:column;gap:4px;margin:0 0 10px">Put them in
-        <select id="fp-batch" style="font:inherit;padding:6px 8px;border:1px solid #b9c4bd;border-radius:6px"></select></label>
+        <select id="fp-batch" style="font:inherit;padding:6px 8px;border:1px solid var(--line-strong);border-radius:6px"></select></label>
       <div style="display:flex;flex-wrap:wrap;gap:8px">
         <button type="button" id="fp-add" class="primary">Add the selected players</button>
         <button type="button" id="fp-all">Select all shown</button>
@@ -1885,8 +2246,8 @@ window.__scorecard = {
         const already = onPage(entry);
         const key = nameKey(entry.name);
         const where = [entry.group != null ? `Group ${entry.group}` : "", entry.teeTime || "", entry.startHole != null ? `hole ${entry.startHole}` : ""].filter(Boolean).join(" · ");
-        return `<label style="display:block;margin:2px 0${already ? ";color:#4d5c54" : ""}"><input type="checkbox" data-fp="${escapeHtml(key)}"${already ? " disabled" : chosen.has(key) ? " checked" : ""}> ${escapeHtml(entry.name)} <span style="color:#4d5c54">· ${escapeHtml(where || "no group yet")}${entry.cls ? ` · class ${escapeHtml(entry.cls)}` : ""}${already ? " · already on the page" : ""}</span></label>`;
-      }).join("") || '<span style="color:#4d5c54">No player matches.</span>';
+        return `<label style="display:block;margin:2px 0${already ? ";color:var(--ink-muted)" : ""}"><input type="checkbox" data-fp="${escapeHtml(key)}"${already ? " disabled" : chosen.has(key) ? " checked" : ""}> ${escapeHtml(entry.name)} <span style="color:var(--ink-muted)">· ${escapeHtml(where || "no group yet")}${entry.cls ? ` · class ${escapeHtml(entry.cls)}` : ""}${already ? " · already on the page" : ""}</span></label>`;
+      }).join("") || '<span style="color:var(--ink-muted)">No player matches.</span>';
       const picked = rows.filter((entry) => chosen.has(nameKey(entry.name)) && !onPage(entry)).length;
       q("#fp-count").textContent = `${list.length} player${list.length === 1 ? "" : "s"} shown · ${picked} selected to add`;
     }
@@ -2104,10 +2465,10 @@ window.__scorecard = {
   // The photo is shrunk here (a request body is capped near 4 MB), read by the card reader on the
   // server, and turned into draft cards. The desk then chooses: review them now, or leave them in
   // a batch to review later. Nothing from a photo is marked checked.
-  const scanPick = panel.querySelector("#scan-pick");
-  const scanCameraOpen = panel.querySelector("#scan-camera-open");
-  const scanFile = panel.querySelector("#scan-file");
-  const scanCamera = panel.querySelector("#scan-camera");
+  const scanPick = document.getElementById("scan-pick");
+  const scanCameraOpen = document.getElementById("scan-camera-open");
+  const scanFile = document.getElementById("scan-file");
+  const scanCamera = document.getElementById("scan-camera");
   let scanBusy = false;
   let pendingScanBatchId = "";
 
@@ -2266,17 +2627,17 @@ window.__scorecard = {
       ];
       const dialog = scanDialog(`
         <h2 style="margin:0 0 6px;font-size:18px">${title}</h2>
-        <p style="margin:0 0 8px;color:#4d5c54">${lead}</p>
+        <p style="margin:0 0 8px;color:var(--ink-muted)">${lead}</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px">
-          <label>Day <select id="scan-day" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px">${dayOptions(lastScanDay)}</select></label>
-          <label>Session <select id="scan-session" style="font:inherit;padding:5px 6px;border:1px solid #b9c4bd;border-radius:6px"><option${lastScanSession === "AM" ? " selected" : ""}>AM</option><option${lastScanSession === "PM" ? " selected" : ""}>PM</option></select></label>
-          <span style="color:#4d5c54;align-self:center">for the new cards</span>
+          <label>Day <select id="scan-day" style="font:inherit;padding:5px 6px;border:1px solid var(--line-strong);border-radius:6px">${dayOptions(lastScanDay)}</select></label>
+          <label>Session <select id="scan-session" style="font:inherit;padding:5px 6px;border:1px solid var(--line-strong);border-radius:6px"><option${lastScanSession === "AM" ? " selected" : ""}>AM</option><option${lastScanSession === "PM" ? " selected" : ""}>PM</option></select></label>
+          <span style="color:var(--ink-muted);align-self:center">for the new cards</span>
         </div>
         ${blank ? "" : `<label style="display:flex;flex-direction:column;gap:4px;margin:0 0 8px">Which batch?
-          <select id="scan-target" style="font:inherit;padding:7px 8px;border:1px solid #b9c4bd;border-radius:6px">${options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}</select></label>
+          <select id="scan-target" style="font:inherit;padding:7px 8px;border:1px solid var(--line-strong);border-radius:6px">${options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}</select></label>
         <p id="scan-plan" role="status" style="margin:0 0 6px;font-weight:600"></p>`}
         <ul id="scan-list" style="margin:0 0 10px;padding-left:18px;max-height:200px;overflow:auto"></ul>
-        ${notes.length ? `<p style="margin:0 0 10px;color:#b42318">${notes.map(escapeHtml).join("<br>")}</p>` : ""}
+        ${notes.length ? `<p style="margin:0 0 10px;color:var(--danger)">${notes.map(escapeHtml).join("<br>")}</p>` : ""}
         <div style="display:flex;flex-direction:column;gap:8px">
           <button type="button" data-choice="now" class="primary">${labels[0]}</button>
           <button type="button" data-choice="later">${labels[1]}</button>
@@ -2289,8 +2650,8 @@ window.__scorecard = {
       function render() {
         const { merges, fresh } = blank ? { merges: [], fresh: cards } : planScan(cards, targetNow());
         const rows = [
-          ...merges.map((merge) => `<li>${escapeHtml(merge.existing.name)} <span style="color:#073d2e">· already there: ${merge.add.length ? `adds ${merge.add.length} score${merge.add.length === 1 ? "" : "s"}` : "no new scores"}</span>${merge.differs.length ? ` <span style="color:#b42318">· ${merge.differs.length} differ${merge.differs.length === 1 ? "s" : ""}, card kept</span>` : ""}</li>`),
-          ...fresh.map((card) => `<li>${escapeHtml(card.name || "Blank card to type in")} <span style="color:#4d5c54">· new</span>${/Reader unsure|Left blank/.test(card.note || "") ? ' <span style="color:#b42318">· check some holes</span>' : ""}</li>`),
+          ...merges.map((merge) => `<li>${escapeHtml(merge.existing.name)} <span style="color:var(--forest)">· already there: ${merge.add.length ? `adds ${merge.add.length} score${merge.add.length === 1 ? "" : "s"}` : "no new scores"}</span>${merge.differs.length ? ` <span style="color:var(--danger)">· ${merge.differs.length} differ${merge.differs.length === 1 ? "s" : ""}, card kept</span>` : ""}</li>`),
+          ...fresh.map((card) => `<li>${escapeHtml(card.name || "Blank card to type in")} <span style="color:var(--ink-muted)">· new</span>${/Reader unsure|Left blank/.test(card.note || "") ? ' <span style="color:var(--danger)">· check some holes</span>' : ""}</li>`),
         ];
         list.innerHTML = rows.slice(0, 14).join("") + (rows.length > 14 ? `<li>…and ${rows.length - 14} more</li>` : "");
         if (planLine) {
@@ -2489,7 +2850,7 @@ window.__scorecard = {
     status(message, true);
     const dialog = scanDialog(`
       <h2 style="margin:0 0 6px;font-size:18px">The camera did not open</h2>
-      <p style="margin:0 0 10px;color:#4d5c54">${escapeHtml(message)}</p>
+      <p style="margin:0 0 10px;color:var(--ink-muted)">${escapeHtml(message)}</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button type="button" data-act="pick" class="primary">Use the camera app or choose a photo</button>
         <button type="button" data-act="close">Close</button>
@@ -2531,9 +2892,9 @@ window.__scorecard = {
     const shots = [];
     const dialog = scanDialog(`
       <h2 style="margin:0 0 6px;font-size:18px">Take photo</h2>
-      <p style="margin:0 0 8px;color:#4d5c54">Fill the frame with one scorecard, then press Capture. Take as many cards as you like, then press Read.</p>
+      <p style="margin:0 0 8px;color:var(--ink-muted)">Fill the frame with one scorecard, then press Capture. Take as many cards as you like, then press Read.</p>
       <video id="cam-video" playsinline muted autoplay style="width:100%;max-height:60vh;background:#000;border-radius:8px"></video>
-      <p id="cam-count" role="status" style="margin:8px 0;color:#4d5c54">No photo taken yet.</p>
+      <p id="cam-count" role="status" style="margin:8px 0;color:var(--ink-muted)">No photo taken yet.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px">
         <button type="button" id="cam-shot" class="primary">Capture</button>
         <button type="button" id="cam-done" disabled>Read the photos</button>
@@ -2771,15 +3132,8 @@ window.__scorecard = {
 
   // ---- Filter by name and batch, add a card by hand, remove batches ----
   const searchBox = document.getElementById("q");
-  panelSearch.addEventListener("input", () => {
-    searchBox.value = panelSearch.value;
-    searchBox.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  // The toolbar's own search ignored the batch filter and un-hid cards outside it; keep both in step.
-  searchBox.addEventListener("input", () => {
-    panelSearch.value = searchBox.value;
-    apply();
-  });
+  // The toolbar's own search also runs the panel's filters, so a card outside the batch stays hidden.
+  searchBox.addEventListener("input", apply);
   batchSelect.addEventListener("change", () => setActive(batchSelect.value));
   clearButton.addEventListener("click", () => removeBatches(batches().filter(isReviewed).map((batch) => batch.id)));
   // Add card by hand. When a batch is selected, the blank card joins that batch and the view stays
@@ -2814,7 +3168,6 @@ window.__scorecard = {
     db.save();
     db.clearFind();
     searchBox.value = "";
-    panelSearch.value = "";
     show("cards");
     renderCards();
     apply();
@@ -2832,7 +3185,6 @@ window.__scorecard = {
   }
   // Replace the page's simple handler so the batch membership is saved with the card.
   addButtonToolbar.onclick = addBlankCard;
-  panelAdd.addEventListener("click", addBlankCard);
   panelField.addEventListener("click", () => { void openFieldPicker(); });
   panelRefresh.addEventListener("click", () => { void refreshAssignedList(); });
   for (const input of [scanFile, scanCamera]) {
@@ -2855,7 +3207,6 @@ window.__scorecard = {
   hdcpButton.addEventListener("click", () => setActive("hdcpdiff"));
   dayButton.addEventListener("click", () => setActive("daydiff"));
   startButton.addEventListener("click", startBatch);
-  addButton.addEventListener("click", () => addInput.click());
   saveButton.addEventListener("click", () => {
     void persist(true);
   });
@@ -3071,7 +3422,7 @@ window.__scorecard = {
       .sort((a, b) => Number(a[0]) - Number(b[0]))
       .map(([day, info]) => `Day ${day}${info.date ? ` (${info.date})` : ""} ${info.players} players`)
       .join(" · ");
-    fieldStatus.textContent = `Supabase field: ${loaded || "nothing loaded"} · ${check.missing} name(s) not found · ${check.noClass} no class · ${check.classDiff} class differs · ${check.groupDiff} group differs · ${check.teeDiff} tee differs · ${check.hdcpDiff} HDCP differs · ${check.dayDiff} AM/PM differs.`;
+    fieldStatus.textContent = `System field: ${loaded || "nothing loaded"} · ${check.missing} name(s) not found · ${check.noClass} no class · ${check.classDiff} class differs · ${check.groupDiff} group differs · ${check.teeDiff} tee differs · ${check.hdcpDiff} HDCP differs · ${check.dayDiff} AM/PM differs.`;
   }
 
   async function loadFieldDay(dayValue, force = false) {
@@ -3087,15 +3438,15 @@ window.__scorecard = {
         fieldReady = fieldDays.size > 0;
         fieldStatus.textContent =
           response.status === 503
-            ? "Supabase field: not configured in this deployment."
-            : `Supabase field: Day ${day} is not available.`;
+            ? "System field: not configured in this deployment."
+            : `System field: Day ${day} is not available.`;
         apply();
         return false;
       }
       const body = await response.json();
       if (!body.ok || !Array.isArray(body.players)) {
         fieldReady = fieldDays.size > 0;
-        fieldStatus.textContent = "Supabase field: no player list returned.";
+        fieldStatus.textContent = "System field: no player list returned.";
         apply();
         return false;
       }
@@ -3111,7 +3462,7 @@ window.__scorecard = {
       }
       if (String(body.dayNumber) !== day) {
         // The server fell back to another day because this one does not exist; keep it empty.
-        fieldStatus.textContent = `Supabase field: the event has no Day ${day}.`;
+        fieldStatus.textContent = `System field: the event has no Day ${day}.`;
         apply();
         return false;
       }
@@ -3124,7 +3475,7 @@ window.__scorecard = {
       return true;
     } catch {
       fieldReady = fieldDays.size > 0;
-      fieldStatus.textContent = "Supabase field: not reachable.";
+      fieldStatus.textContent = "System field: not reachable.";
       apply();
       return false;
     }
@@ -3141,6 +3492,7 @@ window.__scorecard = {
       (card) => dayOf(card) === DOC_DAY && sessionOf(card) === DOC_SESSION,
     );
     if (!hasPageCards) autoListAssignedPlayers();
+    document.body.dataset.daystate = "ready";
   }
 
   // The first list on a day and session page is the field the desk assigned, not a blank page.
@@ -3240,7 +3592,8 @@ window.__scorecard = {
       if (body.email) sessionEmail = String(body.email);
       const who = document.getElementById("who");
       if (who && body.email) {
-        who.textContent = `${body.role === "staff" ? "Staff" : "Tabulator"}: ${body.email}`;
+        who.textContent = body.email;
+        who.title = `${body.role === "staff" ? "Staff" : "Tabulator"}: ${body.email}`;
       }
       const link = document.getElementById("deskLink");
       if (link && typeof body.desk === "string" && body.desk.startsWith("/")) {
@@ -3380,7 +3733,65 @@ window.__scorecard = {
   }
   window.setInterval(() => { void pollRemote(); }, 3000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void pollRemote(); });
-  window.addEventListener("online", () => { void persist(true).then(() => pollRemote()); });
+  window.addEventListener("online", () => {
+    if (syncLabel) syncLabel.classList.remove("offline");
+    void persist(true).then(() => pollRemote());
+  });
+  window.addEventListener("offline", () => {
+    if (!syncLabel) return;
+    syncLabel.textContent = "Offline · edits stay on this device";
+    syncLabel.classList.add("offline");
+  });
+
+  // ---- Retry, the two phone drawers, and the one action bar ----
+  document.getElementById("retry-save")?.addEventListener("click", () => { void persist(true); });
+  const addRail = document.getElementById("add-rail");
+  const reviewDrawer = document.getElementById("review-zone");
+  const scrim = document.getElementById("scrim");
+  function closeDrawers() {
+    addRail?.classList.remove("open");
+    reviewDrawer?.classList.remove("open");
+    if (scrim) scrim.hidden = true;
+  }
+  function openDrawer(drawer) {
+    if (!drawer || window.matchMedia("(min-width: 1024px)").matches) return;
+    addRail?.classList.remove("open");
+    reviewDrawer?.classList.remove("open");
+    drawer.classList.add("open");
+    if (scrim) scrim.hidden = false;
+    const first = drawer.querySelector("input, select, button:not(.close)");
+    if (first) window.setTimeout(() => first.focus(), 60);
+  }
+  document.addEventListener("click", (event) => {
+    if (!event.target?.closest?.("[data-open-add]")) return;
+    if (window.matchMedia("(min-width: 1024px)").matches) document.getElementById("add-player")?.click();
+    else openDrawer(addRail);
+  });
+  document.getElementById("action-add")?.addEventListener("click", () => openDrawer(addRail));
+  document.getElementById("action-review")?.addEventListener("click", () => openDrawer(reviewDrawer));
+  for (const button of document.querySelectorAll("[data-close]")) button.addEventListener("click", closeDrawers);
+  scrim?.addEventListener("click", closeDrawers);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDrawers(); });
+  document.getElementById("action-primary")?.addEventListener("click", () => {
+    const action = actionPrimary?.dataset.action || "add";
+    if (action === "send") sendButton.click();
+    else if (action === "retry") void persist(true);
+    else openDrawer(addRail);
+  });
+  const wideMeta = window.matchMedia("(min-width: 1024px)");
+  wideMeta.addEventListener("change", (event) => {
+    for (const details of document.querySelectorAll("details.cardmeta-details")) details.open = event.matches;
+  });
+  document.addEventListener("scorecard:saved", (event) => {
+    if (!actionPrimary) return;
+    if (event.detail?.kind === "bad") {
+      actionPrimary.textContent = "Retry save";
+      actionPrimary.dataset.action = "retry";
+    } else if (event.detail?.kind === "ok") {
+      actionPrimary.dataset.action = "add";
+      actionPrimary.textContent = "Add cards";
+    }
+  });
 
   apply();
   void loadSession();
