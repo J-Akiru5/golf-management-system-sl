@@ -105,6 +105,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const [submitNote, setSubmitNote] = useState("");
   /** What happened after the last save, kept in place so the form does not jump. */
   const [savedNote, setSavedNote] = useState("");
+  /** The card is saved but the approval that was ticked did not go through. Shown as a warning. */
+  const [savedWarning, setSavedWarning] = useState("");
   /** A scanned card needs a person to tick that every flag was compared with the photo. */
   const [scanConfirmed, setScanConfirmed] = useState(false);
   /**
@@ -204,6 +206,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setApproveOnSubmit(false);
     setSubmitNote("");
     setSavedNote("");
+    setSavedWarning("");
     const first = view.players[0]?.playerId ?? "";
     const rotation = reciprocalRotation(view.players.map((player) => player.playerId));
     setPlayerId(first);
@@ -330,6 +333,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setApproveOnSubmit(false);
     setSubmitNote("");
     setSavedNote("");
+    setSavedWarning("");
     setError(null);
   }
 
@@ -357,6 +361,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setApproveOnSubmit(false);
     setSubmitNote("");
     setSavedNote("");
+    setSavedWarning("");
     setError(null);
     document.getElementById("score-entry-card")?.scrollIntoView({
       behavior: "smooth",
@@ -376,6 +381,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setApproveOnSubmit(false);
     setSubmitNote("");
     setSavedNote("");
+    setSavedWarning("");
     setPendingSubmit(null);
     setError(null);
     if (!view) return;
@@ -430,6 +436,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     if (!gate.tryEnter()) return;
     setSubmitNote("");
     setSavedNote("");
+    setSavedWarning("");
     try {
       const targetPlayerId = editingCard?.playerId ?? playerId;
       const targetScorerId = editingCard?.scorerId ?? scorerId;
@@ -547,9 +554,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
           knownIds,
         });
         if (!savedCard) {
-          setSavedNote(
-            "Saved, but not approved: the new card was not in the list. It is on the Review tab.",
-          );
+          setSavedNote("");
+          setSavedWarning("The new card was not in the list. It is on the Review tab.");
           return next;
         }
 
@@ -568,9 +574,8 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
           // The card is saved. The approval is not rolled back: the card waits on the Review tab,
           // where the desk can approve it once whatever refused the approval is settled.
           const message = reason instanceof Error ? reason.message : String(reason);
-          setSavedNote(
-            `Saved, but not approved: ${message.replace(/\.$/, "")}. It is on the Review tab.`,
-          );
+          setSavedNote("");
+          setSavedWarning(`${message.replace(/\.$/, "")}. It is on the Review tab.`);
           return next;
         }
       });
@@ -809,6 +814,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                   onApproveOnSubmitChange={setApproveOnSubmit}
                   submitNote={submitNote}
                   savedNote={savedNote}
+                  savedWarning={savedWarning}
                   onApplyScan={applyScan}
                   onSubmit={() => void submitCard()}
                   onStartAnother={startAnother}

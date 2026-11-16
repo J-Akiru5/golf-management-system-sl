@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Loader2, Printer, ScanLine } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { CardContextLine } from "@/components/scoring/CardContextLine";
 import { HandicapSummary } from "@/components/scoring/HandicapSummary";
 import { PlayerLink } from "@/components/scoring/PlayerLink";
@@ -69,6 +69,8 @@ export interface ScorecardWorkspaceProps {
   onApproveOnSubmitChange: (value: boolean) => void;
   submitNote: string;
   savedNote: string;
+  /** Set when the card was saved but the approval that was asked for did not go through. */
+  savedWarning: string;
   onApplyScan: (apply: ScorecardScanApply) => void;
   onSubmit: () => void;
   onStartAnother: () => void;
@@ -114,6 +116,7 @@ export function ScorecardWorkspace({
   onApproveOnSubmitChange,
   submitNote,
   savedNote,
+  savedWarning,
   onApplyScan,
   onSubmit,
   onStartAnother,
@@ -327,6 +330,12 @@ export function ScorecardWorkspace({
         <div className="notice ok" role="status">
           <b>Saved. </b>
           {savedNote}
+        </div>
+      )}
+      {savedWarning && (
+        <div className="notice warn" role="status">
+          <b>Saved, but not approved. </b>
+          {savedWarning}
         </div>
       )}
       {scanned && (
