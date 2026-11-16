@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PairingsView } from "@/components/PairingsView";
+import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { fmtDateLabel } from "@/lib/data/labels";
 import { toPublicPairings } from "@/lib/data/public";
 import { fmtTime } from "@/lib/format";
@@ -34,9 +34,7 @@ export default function PublicPairings() {
         <div className="flex flex-wrap items-center gap-3">
           <TeeLineLogo variant="reverse" width={172} />
           <span className="leading-tight">
-            <b className="block font-display text-[13px] font-semibold">
-              Club tournament pairings
-            </b>
+            <b className="block font-display text-[13px] font-semibold">Club tournament pairings</b>
             <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
           </span>
         </div>
