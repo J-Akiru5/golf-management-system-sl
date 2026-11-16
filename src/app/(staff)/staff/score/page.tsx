@@ -3,8 +3,8 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { DayPills } from "@/components/staff/DayPills";
 import { useStaffDay } from "@/components/staff/day-context";
+import { StaffDaySelect } from "@/components/staff/StaffDaySelect";
 import styles from "@/components/staff/staff.module.css";
 import { useStaffRows } from "@/components/staff/use-rows";
 import { fmtTime } from "@/lib/format";
@@ -56,7 +56,7 @@ export default function StaffScorePage() {
       <h1 className={styles.h1}>Score</h1>
       <p className={styles.sub}>Pick the group you are walking with.</p>
 
-      <DayPills days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
+      <StaffDaySelect days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
       {notice && <p className={styles.muted}>{notice}</p>}
 
       {failed && (

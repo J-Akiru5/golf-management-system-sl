@@ -87,7 +87,10 @@ export function EntryCard({
 
       <p className="hint">
         {entry.published ? t("player.published.yes") : t("player.published.no")}{" "}
-        <Link href="/pairings">{t("player.seeFullList")}</Link>.
+        <Link href="/pairings" className="inline-flex min-h-11 items-center font-semibold underline">
+          {t("player.seeFullList")}
+        </Link>
+        .
       </p>
     </article>
   );

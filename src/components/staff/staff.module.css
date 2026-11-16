@@ -115,41 +115,8 @@
 }
 
 .barItem[aria-current="page"] {
-  color: var(--s-forest);
+  color: var(--primary);
   border-top-color: var(--s-gold);
-}
-
-.dayPills {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: none;
-}
-
-.dayPills::-webkit-scrollbar {
-  display: none;
-}
-
-.dayPill {
-  flex: 0 0 auto;
-  min-height: 48px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--s-line);
-  background: var(--s-card);
-  color: var(--s-ink);
-  font-size: 15px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dayPill[aria-pressed="true"] {
-  background: var(--s-forest);
-  border-color: var(--s-forest);
-  color: #ffffff;
 }
 
 .notice {
@@ -293,7 +260,6 @@
 .button:focus-visible,
 .actionCard:focus-visible,
 .barItem:focus-visible,
-.dayPill:focus-visible,
 .rowAction:focus-visible,
 .stepperButton:focus-visible {
   outline: 3px solid #2f6fed;
@@ -585,7 +551,7 @@
 
 .progressBar {
   height: 100%;
-  background: var(--s-forest);
+  background: var(--primary);
 }
 
 .primary,
@@ -615,8 +581,9 @@
 }
 
 .primary {
-  background: var(--s-forest);
-  color: #ffffff;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
 }
 
 .secondary {
@@ -1263,7 +1230,7 @@
 .sessionChip[aria-pressed="true"] {
   background: var(--s-card);
   border-color: var(--s-line);
-  color: var(--s-forest);
+  color: var(--primary);
   box-shadow: 0 1px 2px rgba(16, 20, 15, 0.08);
 }
 
@@ -1384,8 +1351,8 @@
 }
 
 .groupCardNext {
-  border-color: var(--s-forest);
-  box-shadow: 0 0 0 1px var(--s-forest);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
 .nextUpBadge {
@@ -1443,7 +1410,7 @@
   border: 1px solid var(--s-line);
   border-radius: 10px;
   background: var(--s-card);
-  color: var(--s-forest);
+  color: var(--primary);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -1457,8 +1424,8 @@
 }
 
 .playerChip[data-match="true"] {
-  border-color: var(--s-forest);
-  box-shadow: 0 0 0 1px var(--s-forest);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
   color: var(--s-ink);
   font-weight: 800;
 }
@@ -1656,7 +1623,7 @@
 
 .bigAction svg,
 .bigAction .bigActionIcon {
-  color: var(--s-forest);
+  color: var(--primary);
 }
 
 .bigAction:focus-visible {
@@ -1803,7 +1770,7 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--s-forest);
+  color: var(--primary);
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;

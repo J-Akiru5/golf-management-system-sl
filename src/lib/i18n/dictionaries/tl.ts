@@ -194,6 +194,7 @@ export const tl: Dictionary = {
       groupCountOne: "1 manlalaro",
       days: "Mga araw ng laro",
       day: "Araw {day}",
+      today: "Ngayon",
       sessionAm: "AM session",
       sessionPm: "PM session",
       addCalendar: "Idagdag sa calendar",

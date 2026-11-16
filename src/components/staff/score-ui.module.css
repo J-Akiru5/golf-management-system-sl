@@ -99,7 +99,7 @@
 .progressBar {
   height: 100%;
   border-radius: 999px;
-  background: var(--s-forest);
+  background: var(--primary);
   transition: width 180ms ease;
 }
 

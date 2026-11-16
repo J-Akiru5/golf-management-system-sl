@@ -1,7 +1,7 @@
 "use client";
 
-import { DayPills } from "./DayPills";
 import { useStaffDay } from "./day-context";
+import { StaffDaySelect } from "./StaffDaySelect";
 import styles from "./staff.module.css";
 import { SESSION_FILTERS, type SessionCounts } from "@/lib/staff/schedule";
 
@@ -14,7 +14,7 @@ export function DayBar({ counts }: { counts?: SessionCounts }) {
 
   return (
     <div className={styles.dayBar}>
-      <DayPills days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
+      <StaffDaySelect days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
       <div className={styles.sessionBar} role="group" aria-label="Session">
         {SESSION_FILTERS.map((item) => {
           const count =

@@ -3,7 +3,7 @@
 import { ArrowLeft, Lock, Printer, Unlock, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { DayPills } from "@/components/staff/DayPills";
+import { StaffDaySelect } from "@/components/staff/StaffDaySelect";
 import { useStaffDay } from "@/components/staff/day-context";
 import { StaffLoading } from "@/components/staff/StaffLoading";
 import { useStaffToast } from "@/components/staff/StaffToast";
@@ -205,7 +205,7 @@ export default function StaffPairingsPage() {
         </Link>
       </div>
 
-      <DayPills days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
+      <StaffDaySelect days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
       {notice && <p className={styles.notice}>{notice}</p>}
 
       {!draw ? (

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArriveButton } from "@/components/staff/ArriveButton";
 import { BottomSheet } from "@/components/staff/BottomSheet";
-import { DayPills } from "@/components/staff/DayPills";
+import { StaffDaySelect } from "@/components/staff/StaffDaySelect";
 import { useStaffDay } from "@/components/staff/day-context";
 import playerStyles from "@/components/staff/players.module.css";
 import { useStaffToast } from "@/components/staff/StaffToast";
@@ -320,7 +320,7 @@ function StaffPlayers() {
         {counts.needsReview > 0 ? ` · ${counts.needsReview} need review` : ""}
       </p>
 
-      <DayPills days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
+      <StaffDaySelect days={days} selected={day?.number ?? null} onSelect={setDayNumber} />
       {notice && <p className={styles.notice}>{notice}</p>}
 
       {undoWithdraw && (

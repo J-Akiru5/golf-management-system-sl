@@ -1,0 +1,572 @@
+▲ Next.js 16.4.2 (webpack)
+- Local:         http://localhost:3012
+- Network:       http://192.168.68.117:3012
+✓ Ready in 6.8s
+✓ Running next.config.ts took 223ms
+
+○ Compiling proxy ...
+○ Compiling /(staff)/staff/page ...
+ GET /staff 200 in 80s (next.js: 74s, proxy.ts: 1618ms, application-code: 4.0s)
+ GET /staff 200 in 6.2s (next.js: 149ms, proxy.ts: 5.2s, application-code: 789ms)
+○ Compiling /(staff)/staff/schedule/page ...
+ GET /staff/schedule 200 in 31.2s (next.js: 26.4s, proxy.ts: 445ms, application-code: 4.4s)
+ GET /staff/schedule 200 in 428ms (next.js: 27ms, proxy.ts: 20ms, application-code: 381ms)
+ GET /staff 200 in 594ms (next.js: 122ms, proxy.ts: 24ms, application-code: 448ms)
+ GET /staff/schedule 200 in 468ms (next.js: 40ms, proxy.ts: 23ms, application-code: 405ms)
+○ Compiling /(staff)/staff/score/page ...
+ GET /staff/score 200 in 6.0s (next.js: 4.8s, proxy.ts: 21ms, application-code: 1206ms)
+○ Compiling /(staff)/staff/players/page ...
+ GET /staff/players 200 in 16.4s (next.js: 15.7s, proxy.ts: 20ms, application-code: 685ms)
+○ Compiling /(staff)/staff/pairings/page ...
+ GET /staff/pairings 200 in 6.1s (next.js: 5.3s, proxy.ts: 20ms, application-code: 829ms)
+○ Compiling /(staff)/staff/print/page ...
+ GET /staff/print 200 in 5.5s (next.js: 4.6s, proxy.ts: 16ms, application-code: 951ms)
+○ Compiling /(player)/my/page ...
+ GET /my 200 in 12.4s (next.js: 10.7s, proxy.ts: 27ms, application-code: 1596ms)
+○ Compiling /(player)/my/profile/page ...
+ GET /my/profile 200 in 7.2s (next.js: 5.9s, proxy.ts: 22ms, application-code: 1315ms)
+○ Compiling /(player)/my/card/page ...
+ GET /my/card 200 in 9.4s (next.js: 7.9s, proxy.ts: 16ms, application-code: 1555ms)
+○ Compiling /(player)/my/board/page ...
+ GET /my/board 200 in 10.7s (next.js: 9.9s, proxy.ts: 40ms, application-code: 710ms)
+ GET /staff 200 in 1239ms (next.js: 328ms, proxy.ts: 51ms, application-code: 859ms)
+○ Compiling /(staff)/staff/schedule/page ...
+ GET /staff/schedule 200 in 7.2s (next.js: 6.3s, proxy.ts: 98ms, application-code: 821ms)
+○ Compiling /(staff)/staff/score/page ...
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /staff/score 200 in 5.6s (next.js: 4.6s, proxy.ts: 80ms, application-code: 896ms)
+○ Compiling /(staff)/staff/players/page ...
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /staff/players 200 in 4.4s (next.js: 3.5s, proxy.ts: 35ms, application-code: 768ms)
+○ Compiling /(staff)/staff/pairings/page ...
+ GET /staff/pairings 200 in 4.5s (next.js: 3.6s, proxy.ts: 20ms, application-code: 925ms)
+○ Compiling /(staff)/staff/print/page ...
+ GET /staff/print 200 in 4.9s (next.js: 4.2s, proxy.ts: 238ms, application-code: 529ms)
+○ Compiling /(player)/my/page ...
+ GET /my 200 in 5.2s (next.js: 3.7s, proxy.ts: 61ms, application-code: 1506ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <ScrollHandler renderTree={{...}}>
+      <InnerScrollHandler scrollRef={{scrollRef:null, ...}} renderTree={{...}}>
+        <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+          <LoadingBoundary name="my/" loading={[...]}>
+            <Suspense name="my/" fallback={<Fragment>}>
+              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+                <RedirectBoundary>
+                  <RedirectErrorBoundary router={{...}}>
+                    <InnerLayoutRouter url="/my" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+                      <SegmentViewNode type="page" pagePath="(player)/m...">
+                        <SegmentTrieNode>
+                        <MyGolfPage>
+                          <DemoHome>
+                            <div className="player-pag...">
+                              <header
+                                className="grid gap-1"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                              <PlayerHomeHero entry={{...}} today="2026-11-08" groupMates={[...]} demo={true}>
+                                <section className="grid gap-3" aria-labelledby="tee-time-h" data-onboard="tee-time-hero">
+                                  <p
+                                    className="notice"
+                                    role="note"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
++                                   {"Demo view: sample data, not the club's live draw."}
+                                  <div
+                                    className="hero-card"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    className="next-step"
+                                    data-testid="next-step"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    ref={{current:null}}
+                                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                                    data-testid="hero-actions"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  ...
+                              <AppTiles>
+                                <nav
+                                  aria-label="Your screens"
+                                  className="app-tiles"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <PortalEntries>
+                                <div
+                                  className="grid gap-4"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <p
+                                className="notice"
+                                role="status"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                      ...
+                    ...
+        ...
+ 
+○ Compiling /(player)/my/profile/page ...
+ GET /my 200 in 307ms (proxy.ts: 196ms)
+ GET /my/profile 200 in 5.7s (next.js: 4.4s, proxy.ts: 27ms, application-code: 1273ms)
+○ Compiling /(player)/my/card/page ...
+ GET /my/profile 200 in 533ms (next.js: 74ms, proxy.ts: 328ms, application-code: 130ms)
+⨯ Error: The destination stream errored while writing data.
+    at ignore-listed frames {
+  digest: '3521977218'
+}
+ GET /my/card 200 in 6.2s (next.js: 3.8s, proxy.ts: 59ms, application-code: 2.4s)
+○ Compiling /(player)/my/board/page ...
+ GET /my/board 200 in 6.1s (next.js: 4.6s, proxy.ts: 86ms, application-code: 1430ms)
+ GET /staff 200 in 2.1s (next.js: 507ms, proxy.ts: 296ms, application-code: 1294ms)
+ GET /staff 200 in 940ms (next.js: 19ms, proxy.ts: 61ms, application-code: 861ms)
+ GET /staff 200 in 1218ms (next.js: 66ms, proxy.ts: 31ms, application-code: 1121ms)
+ GET /my 200 in 6.0s (next.js: 1696ms, proxy.ts: 485ms, application-code: 3.8s)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <ScrollHandler renderTree={{...}}>
+      <InnerScrollHandler scrollRef={{scrollRef:null, ...}} renderTree={{...}}>
+        <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+          <LoadingBoundary name="my/" loading={[...]}>
+            <Suspense name="my/" fallback={<Fragment>}>
+              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+                <RedirectBoundary>
+                  <RedirectErrorBoundary router={{...}}>
+                    <InnerLayoutRouter url="/my" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+                      <SegmentViewNode type="page" pagePath="(player)/m...">
+                        <SegmentTrieNode>
+                        <MyGolfPage>
+                          <DemoHome>
+                            <div className="player-pag...">
+                              <header
+                                className="grid gap-1"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                              <PlayerHomeHero entry={{...}} today="2026-11-08" groupMates={[...]} demo={true}>
+                                <section className="grid gap-3" aria-labelledby="tee-time-h" data-onboard="tee-time-hero">
+                                  <p
+                                    className="notice"
+                                    role="note"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
++                                   {"Demo view: sample data, not the club's live draw."}
+                                  <div
+                                    className="hero-card"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    className="next-step"
+                                    data-testid="next-step"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    ref={{current:null}}
+                                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                                    data-testid="hero-actions"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  ...
+                              <AppTiles>
+                                <nav
+                                  aria-label="Your screens"
+                                  className="app-tiles"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <PortalEntries>
+                                <div
+                                  className="grid gap-4"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <p
+                                className="notice"
+                                role="status"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                      ...
+                    ...
+        ...
+ 
+ GET /staff 200 in 542ms (next.js: 9ms, proxy.ts: 15ms, application-code: 518ms)
+ GET /my 200 in 3.2s (next.js: 207ms, proxy.ts: 171ms, application-code: 2.8s)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <ScrollHandler renderTree={{...}}>
+      <InnerScrollHandler scrollRef={{scrollRef:null, ...}} renderTree={{...}}>
+        <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+          <LoadingBoundary name="my/" loading={[...]}>
+            <Suspense name="my/" fallback={<Fragment>}>
+              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+                <RedirectBoundary>
+                  <RedirectErrorBoundary router={{...}}>
+                    <InnerLayoutRouter url="/my" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+                      <SegmentViewNode type="page" pagePath="(player)/m...">
+                        <SegmentTrieNode>
+                        <MyGolfPage>
+                          <DemoHome>
+                            <div className="player-pag...">
+                              <header
+                                className="grid gap-1"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                              <PlayerHomeHero entry={{...}} today="2026-11-08" groupMates={[...]} demo={true}>
+                                <section className="grid gap-3" aria-labelledby="tee-time-h" data-onboard="tee-time-hero">
+                                  <p
+                                    className="notice"
+                                    role="note"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
++                                   {"Demo view: sample data, not the club's live draw."}
+                                  <div
+                                    className="hero-card"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    className="next-step"
+                                    data-testid="next-step"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    ref={{current:null}}
+                                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                                    data-testid="hero-actions"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  ...
+                              <AppTiles>
+                                <nav
+                                  aria-label="Your screens"
+                                  className="app-tiles"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <PortalEntries>
+                                <div
+                                  className="grid gap-4"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <p
+                                className="notice"
+                                role="status"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                      ...
+                    ...
+        ...
+ 
+ GET /staff 200 in 568ms (next.js: 30ms, proxy.ts: 51ms, application-code: 487ms)
+ GET /my 200 in 1354ms (next.js: 27ms, proxy.ts: 57ms, application-code: 1270ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <ScrollHandler renderTree={{...}}>
+      <InnerScrollHandler scrollRef={{scrollRef:null, ...}} renderTree={{...}}>
+        <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+          <LoadingBoundary name="my/" loading={[...]}>
+            <Suspense name="my/" fallback={<Fragment>}>
+              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+                <RedirectBoundary>
+                  <RedirectErrorBoundary router={{...}}>
+                    <InnerLayoutRouter url="/my" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+                      <SegmentViewNode type="page" pagePath="(player)/m...">
+                        <SegmentTrieNode>
+                        <MyGolfPage>
+                          <DemoHome>
+                            <div className="player-pag...">
+                              <header
+                                className="grid gap-1"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                              <PlayerHomeHero entry={{...}} today="2026-11-08" groupMates={[...]} demo={true}>
+                                <section className="grid gap-3" aria-labelledby="tee-time-h" data-onboard="tee-time-hero">
+                                  <p
+                                    className="notice"
+                                    role="note"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
++                                   {"Demo view: sample data, not the club's live draw."}
+                                  <div
+                                    className="hero-card"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    className="next-step"
+                                    data-testid="next-step"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    ref={{current:null}}
+                                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                                    data-testid="hero-actions"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  ...
+                              <AppTiles>
+                                <nav
+                                  aria-label="Your screens"
+                                  className="app-tiles"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <PortalEntries>
+                                <div
+                                  className="grid gap-4"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <p
+                                className="notice"
+                                role="status"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                      ...
+                    ...
+        ...
+ 
+ GET /staff 200 in 244ms (next.js: 7ms, proxy.ts: 16ms, application-code: 221ms)
+ GET /my 200 in 1079ms (next.js: 34ms, proxy.ts: 78ms, application-code: 966ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <ScrollHandler renderTree={{...}}>
+      <InnerScrollHandler scrollRef={{scrollRef:null, ...}} renderTree={{...}}>
+        <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+          <LoadingBoundary name="my/" loading={[...]}>
+            <Suspense name="my/" fallback={<Fragment>}>
+              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+                <RedirectBoundary>
+                  <RedirectErrorBoundary router={{...}}>
+                    <InnerLayoutRouter url="/my" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+                      <SegmentViewNode type="page" pagePath="(player)/m...">
+                        <SegmentTrieNode>
+                        <MyGolfPage>
+                          <DemoHome>
+                            <div className="player-pag...">
+                              <header
+                                className="grid gap-1"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                              <PlayerHomeHero entry={{...}} today="2026-11-08" groupMates={[...]} demo={true}>
+                                <section className="grid gap-3" aria-labelledby="tee-time-h" data-onboard="tee-time-hero">
+                                  <p
+                                    className="notice"
+                                    role="note"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
++                                   {"Demo view: sample data, not the club's live draw."}
+                                  <div
+                                    className="hero-card"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    className="next-step"
+                                    data-testid="next-step"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    ref={{current:null}}
+                                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                                    data-testid="hero-actions"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  ...
+                              <AppTiles>
+                                <nav
+                                  aria-label="Your screens"
+                                  className="app-tiles"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <PortalEntries>
+                                <div
+                                  className="grid gap-4"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <p
+                                className="notice"
+                                role="status"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                      ...
+                    ...
+        ...
+ 
+ GET /staff 200 in 569ms (next.js: 14ms, proxy.ts: 42ms, application-code: 513ms)
+ GET /my 200 in 1213ms (next.js: 28ms, proxy.ts: 52ms, application-code: 1134ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <ScrollHandler renderTree={{...}}>
+      <InnerScrollHandler scrollRef={{scrollRef:null, ...}} renderTree={{...}}>
+        <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+          <LoadingBoundary name="my/" loading={[...]}>
+            <Suspense name="my/" fallback={<Fragment>}>
+              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+                <RedirectBoundary>
+                  <RedirectErrorBoundary router={{...}}>
+                    <InnerLayoutRouter url="/my" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+                      <SegmentViewNode type="page" pagePath="(player)/m...">
+                        <SegmentTrieNode>
+                        <MyGolfPage>
+                          <DemoHome>
+                            <div className="player-pag...">
+                              <header
+                                className="grid gap-1"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                              <PlayerHomeHero entry={{...}} today="2026-11-08" groupMates={[...]} demo={true}>
+                                <section className="grid gap-3" aria-labelledby="tee-time-h" data-onboard="tee-time-hero">
+                                  <p
+                                    className="notice"
+                                    role="note"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
++                                   {"Demo view: sample data, not the club's live draw."}
+                                  <div
+                                    className="hero-card"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    className="next-step"
+                                    data-testid="next-step"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  <div
+                                    ref={{current:null}}
+                                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                                    data-testid="hero-actions"
+-                                   data-aria-hidden="true"
+-                                   aria-hidden="true"
+                                  >
+                                  ...
+                              <AppTiles>
+                                <nav
+                                  aria-label="Your screens"
+                                  className="app-tiles"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <PortalEntries>
+                                <div
+                                  className="grid gap-4"
+-                                 data-aria-hidden="true"
+-                                 aria-hidden="true"
+                                >
+                              <p
+                                className="notice"
+                                role="status"
+-                               data-aria-hidden="true"
+-                               aria-hidden="true"
+                              >
+                      ...
+                    ...
+        ...
+ 
+ GET /staff 200 in 225ms (next.js: 6ms, proxy.ts: 16ms, application-code: 204ms)
+ GET /staff 200 in 2.1s (next.js: 65ms, proxy.ts: 194ms, application-code: 1817ms)
+ GET /staff 200 in 322ms (next.js: 8ms, proxy.ts: 28ms, application-code: 286ms)
+ GET /staff 200 in 262ms (next.js: 8ms, proxy.ts: 18ms, application-code: 236ms)

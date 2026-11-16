@@ -195,6 +195,7 @@ export const hil: Dictionary = {
       groupCountOne: "1 manug hampang",
       days: "Mga adlaw sang hampang",
       day: "Adlaw {day}",
+      today: "Subong",
       sessionAm: "AM session",
       sessionPm: "PM session",
       addCalendar: "Idugang sa calendar",

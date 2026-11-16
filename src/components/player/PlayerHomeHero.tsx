@@ -3,6 +3,7 @@
 import { CalendarPlus, Check, ClipboardList, MapPin, Share2, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { DaySelect } from "@/components/ui/DaySelect";
 import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { buildCalendarFile, calendarDataUrl, calendarFileName } from "@/lib/player/calendar";
@@ -217,29 +218,23 @@ export function PlayerHomeHero({
         </h2>
 
         {days.length > 1 && (
-          <div
-            className="day-chips no-print"
-            role="tablist"
-            aria-label={t("player.home.days")}
-            data-onboard="day-chips"
-          >
-            {days.map((day) => {
-              const on = day.date === active?.date;
-              return (
-                <button
-                  key={day.date}
-                  type="button"
-                  role="tab"
-                  aria-selected={on}
-                  aria-pressed={on}
-                  className="day-chip"
-                  onClick={() => chooseDay(day.date)}
-                >
-                  <b>{t("player.home.day", { day: day.dayNumber })}</b>
-                  <span>{day.label}</span>
-                </button>
-              );
-            })}
+          <div className="no-print" data-onboard="day-chips">
+            <DaySelect
+              label={t("player.home.days")}
+              days={days.map((day) => ({
+                value: day.date,
+                label: `${t("player.home.day", { day: day.dayNumber })} · ${day.label}`,
+                hint: day.isToday
+                  ? t("player.home.today")
+                  : day.session === "AM"
+                    ? t("player.home.sessionAm")
+                    : day.session === "PM"
+                      ? t("player.home.sessionPm")
+                      : undefined,
+              }))}
+              value={active?.date ?? days[0]?.date ?? ""}
+              onChange={(value) => chooseDay(String(value))}
+            />
           </div>
         )}
 

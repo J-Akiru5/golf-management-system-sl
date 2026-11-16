@@ -21,10 +21,6 @@
   background: #fff;
 }
 
-:global(nextjs-portal) {
-  display: none !important;
-}
-
 .previewToolbar {
   display: flex;
   align-items: center;

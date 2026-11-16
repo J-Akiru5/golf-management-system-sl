@@ -40,7 +40,10 @@ export default async function PlayerBoardPage({
         </h1>
         <p className="notice" role="status">
           {t("player.demo.body")}{" "}
-          <Link href="/pairings" className="font-semibold underline">
+          <Link
+            href="/pairings"
+            className="inline-flex min-h-11 items-center font-semibold underline"
+          >
             {t("player.demo.link")}
           </Link>
           .

@@ -196,6 +196,7 @@ export const en = {
       groupCountOne: "1 player",
       days: "Playing days",
       day: "Day {day}",
+      today: "Today",
       sessionAm: "AM session",
       sessionPm: "PM session",
       addCalendar: "Add to calendar",
