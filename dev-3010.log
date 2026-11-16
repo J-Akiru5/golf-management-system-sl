@@ -1,0 +1,1470 @@
+▲ Next.js 16.4.2 (Turbopack)
+- Local:         http://localhost:3010
+- Network:       http://192.168.68.117:3010
+- Environments: .env.local
+✓ Ready in 691ms
+✓ Running next.config.ts took 57ms
+
+ GET /admin 200 in 5.1s (next.js: 1557ms, proxy.ts: 2.3s, application-code: 1254ms)
+ GET /pairings 200 in 665ms (next.js: 46ms, application-code: 620ms)
+✓ Compiled in 426ms
+ GET /admin 200 in 1209ms (next.js: 172ms, proxy.ts: 945ms, application-code: 93ms)
+ GET /admin 200 in 408ms (next.js: 8ms, proxy.ts: 333ms, application-code: 67ms)
+ GET /login?next=%2Fmy&error=sign_in_required 200 in 345ms (next.js: 109ms, proxy.ts: 6ms, application-code: 229ms)
+ GET /login?next=%2Fstaff%3Fonboarding%3D1&error=sign_in_required 200 in 184ms (next.js: 6ms, proxy.ts: 7ms, application-code: 171ms)
+ GET /join 200 in 321ms (next.js: 14ms, application-code: 306ms)
+ GET /tournaments 200 in 3.8s (next.js: 2.6s, proxy.ts: 1176ms, application-code: 59ms)
+ GET /admin 200 in 2.3s (next.js: 51ms, proxy.ts: 2.2s, application-code: 44ms)
+✓ Compiled in 1543ms
+⚠ Fast Refresh had to perform a full reload when ./src/lib/data/dates.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /admin 200 in 2.2s (next.js: 348ms, proxy.ts: 1525ms, application-code: 339ms)
+ GET /admin 200 in 2.2s (next.js: 427ms, proxy.ts: 1712ms, application-code: 72ms)
+✓ Compiled in 1099ms
+⚠ Fast Refresh had to perform a full reload when ./src/lib/data/supabase/mappers.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /admin 200 in 3.4s (next.js: 1218ms, proxy.ts: 955ms, application-code: 1252ms)
+ GET /admin 200 in 3.3s (next.js: 796ms, proxy.ts: 856ms, application-code: 1694ms)
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794091997771-1jjaeqz37q8").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (1.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794091998784-tyh3yrgptq").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (3.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\26a575279fdb34acd806c44da5914fcc5166814b").
+ GET /login 200 in 244ms (next.js: 83ms, proxy.ts: 10ms, application-code: 151ms)
+ GET /join 200 in 163ms (next.js: 4ms, application-code: 159ms)
+ GET /pairings 200 in 655ms (next.js: 5ms, application-code: 650ms)
+✓ Compiled in 1203ms
+[browser] ./src/lib/i18n/dictionaries/en.ts:542:1
+Error: Merge conflict marker encountered.
+  540 |       tourHint: "Shows the short tour again the next time My golf opens.",
+  541 |       demo: "Sign out needs a real account. This build runs on demo data.",
+> 542 | >>>>>>> focus/s5-player-desktop
+      | ^^^^^^^
+  543 |     },
+  544 |   },
+  545 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/en.ts [Client Component Browser]
+    ./src/lib/i18n/t.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/help/HelpButton.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/en.ts [Client Component SSR]
+    ./src/lib/i18n/t.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/help/HelpButton.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/hil.ts:545:1
+Error: Merge conflict marker encountered.
+  543 |       tourHint: "Ipakita liwat ang malip-ot nga tour sa masunod nga pagbukas sang My golf.",
+  544 |       demo: "Kinahanglan sang matuod nga account agod maka-sign out. Demo data ang build ...
+> 545 | >>>>>>> focus/s5-player-desktop
+      | ^^^^^^^
+  546 |     },
+  547 |   },
+  548 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component Browser]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/help/HelpButton.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component SSR]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/help/HelpButton.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/tl.ts:545:1
+Error: Merge conflict marker encountered.
+  543 |       tourHint: "Ipapakita muli ang maikling tour sa susunod na buksan ang My golf.",
+  544 |       demo: "Kailangan ng totoong account para makapag-sign out. Demo data ang build na i...
+> 545 | >>>>>>> focus/s5-player-desktop
+      | ^^^^^^^
+  546 |     },
+  547 |   },
+  548 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/tl.ts [Client Component Browser]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/help/HelpButton.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/tl.ts [Client Component SSR]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/help/HelpButton.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/en.ts:542:1
+Error: Merge conflict marker encountered.
+  540 |       tourHint: "Shows the short tour again the next time My golf opens.",
+  541 |       demo: "Sign out needs a real account. This build runs on demo data.",
+> 542 | >>>>>>> focus/s5-player-desktop
+      | ^^^^^^^
+  543 |     },
+  544 |   },
+  545 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/en.ts [Client Component Browser]
+    ./src/lib/i18n/t.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/help/HelpButton.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/en.ts [Client Component SSR]
+    ./src/lib/i18n/t.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/help/HelpButton.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/hil.ts:545:1
+Error: Merge conflict marker encountered.
+  543 |       tourHint: "Ipakita liwat ang malip-ot nga tour sa masunod nga pagbukas sang My golf.",
+  544 |       demo: "Kinahanglan sang matuod nga account agod maka-sign out. Demo data ang build ...
+> 545 | >>>>>>> focus/s5-player-desktop
+      | ^^^^^^^
+  546 |     },
+  547 |   },
+  548 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component Browser]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/help/HelpButton.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component SSR]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/help/HelpButton.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/tl.ts:545:1
+Error: Merge conflict marker encountered.
+  543 |       tourHint: "Ipapakita muli ang maikling tour sa susunod na buksan ang My golf.",
+  544 |       demo: "Kailangan ng totoong account para makapag-sign out. Demo data ang build na i...
+> 545 | >>>>>>> focus/s5-player-desktop
+      | ^^^^^^^
+  546 |     },
+  547 |   },
+  548 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/tl.ts [Client Component Browser]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/help/HelpButton.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/tl.ts [Client Component SSR]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/help/HelpButton.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+✓ Compiled in 205ms
+✓ Compiled in 141ms
+⚠ Fast Refresh had to perform a full reload when ./src/lib/format.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+✓ Compiled in 128ms
+ GET /admin 200 in 886ms (next.js: 123ms, proxy.ts: 517ms, application-code: 246ms)
+ GET /admin 200 in 718ms (next.js: 264ms, proxy.ts: 352ms, application-code: 103ms)
+ GET /draw 200 in 781ms (next.js: 260ms, proxy.ts: 479ms, application-code: 42ms)
+✓ Compiled in 332ms
+✓ Compiled in 315ms
+✓ Compiled in 122ms
+✓ Compiled in 2.7s
+✓ Compiled in 57ms
+✓ Compiled in 18ms
+✓ Compiled in 16ms
+✓ Compiled in 1075ms
+✓ Compiled in 380ms
+ GET /draw 200 in 2.0s (next.js: 524ms, proxy.ts: 1453ms, application-code: 48ms)
+✓ Compiled in 176ms
+✓ Compiled in 232ms
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\072db6f279695d7ee4a9a4291c74937b215f1003").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\3cac30affdaf9b525e9979a891c2c54efe2bb850").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794093326480-r949k160dwn").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (1.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\2e02cc42e1b35163674f0a10ff5d87f7959f009b").
+ GET /pairings 200 in 1414ms (next.js: 12ms, application-code: 1402ms)
+ GET /login 200 in 372ms (next.js: 153ms, proxy.ts: 13ms, application-code: 205ms)
+ GET /join 200 in 123ms (next.js: 3ms, application-code: 120ms)
+ GET /pairings 200 in 490ms (next.js: 1.5ms, application-code: 489ms)
+ GET /login 200 in 173ms (next.js: 4ms, proxy.ts: 6ms, application-code: 163ms)
+ GET /join 200 in 104ms (next.js: 0.8ms, application-code: 103ms)
+ GET /login 200 in 250ms (next.js: 61ms, proxy.ts: 11ms, application-code: 179ms)
+[browser] ./src/app/globals.css
+Error: Error evaluating Node.js code
+CssSyntaxError: S:\Dev\golf-management-system-sl\focus\src\app\globals.css:5092:1: Unknown word >>>>>>>
+    [at Input.error (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/input.js:135:16)]
+    [at Parser.unknownWord (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:610:22)]
+    [at Parser.other (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:447:12)]
+    [at Parser.parse (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:482:16)]
+    [at parser (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parse.js:11:12)]
+    [at new LazyResult (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/lazy-result.js:171:16)]
+    [at Processor.process (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/processor.js:53:14)]
+    [at transform (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:70:51)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:89:29)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:112:11)]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:239:4
+Error: Expression expected
+  237 |         </div>
+  238 |       )}
+> 239 | <<<<<<< HEAD
+      |    ^^
+  240 |       {daySections ? (
+  241 |         <div className="grid gap-5" data-help="pairings-groups">
+  242 |           {daySections.map((day) => (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:173:1
+Error: Merge conflict marker encountered.
+  171 |
+  172 |   const timeClass = "m-0 font-display text-[24px] leading-7 font-bold tabular-nums";
+> 173 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  174 |
+  175 |   return (
+  176 |     <>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/en.ts:642:1
+Error: Merge conflict marker encountered.
+  640 |       resetSent: "If that address has an account, we sent a reset link.",
+  641 |       passwordUpdated: "Your password was updated. Sign in with the new one.",
+> 642 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  643 |     },
+  644 |   },
+  645 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/en.ts [Client Component Browser]
+    ./src/lib/i18n/t.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/MobileTabBar.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/en.ts [Client Component SSR]
+    ./src/lib/i18n/t.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/MobileTabBar.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/hil.ts:647:1
+Error: Merge conflict marker encountered.
+  645 |       resetSent: "Kon may account ang amo nga email, nagpadala kami sang reset link.",
+  646 |       passwordUpdated: "Na-update ang password mo. Mag-sign in gamit ang bag-o.",
+> 647 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  648 |     },
+  649 |   },
+  650 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component Browser]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/MobileTabBar.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component SSR]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/MobileTabBar.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/tl.ts:645:1
+Error: Merge conflict marker encountered.
+  643 |       resetSent: "Kung may account ang email na iyon, nagpadala kami ng reset link.",
+  644 |       passwordUpdated: "Na-update ang password mo. Mag-sign in gamit ang bago.",
+> 645 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  646 |     },
+  647 |   },
+  648 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/tl.ts [Client Component Browser]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/MobileTabBar.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/tl.ts [Client Component SSR]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/MobileTabBar.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css
+Error: Error evaluating Node.js code
+CssSyntaxError: S:\Dev\golf-management-system-sl\focus\src\app\globals.css:5092:1: Unknown word >>>>>>>
+    [at Input.error (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/input.js:135:16)]
+    [at Parser.unknownWord (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:610:22)]
+    [at Parser.other (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:447:12)]
+    [at Parser.parse (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:482:16)]
+    [at parser (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parse.js:11:12)]
+    [at new LazyResult (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/lazy-result.js:171:16)]
+    [at Processor.process (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/processor.js:53:14)]
+    [at transform (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:70:51)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:89:29)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:112:11)]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:239:4
+Error: Expression expected
+  237 |         </div>
+  238 |       )}
+> 239 | <<<<<<< HEAD
+      |    ^^
+  240 |       {daySections ? (
+  241 |         <div className="grid gap-5" data-help="pairings-groups">
+  242 |           {daySections.map((day) => (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:173:1
+Error: Merge conflict marker encountered.
+  171 |
+  172 |   const timeClass = "m-0 font-display text-[24px] leading-7 font-bold tabular-nums";
+> 173 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  174 |
+  175 |   return (
+  176 |     <>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/hil.ts:647:1
+Error: Merge conflict marker encountered.
+  645 |       resetSent: "Kon may account ang amo nga email, nagpadala kami sang reset link.",
+  646 |       passwordUpdated: "Na-update ang password mo. Mag-sign in gamit ang bag-o.",
+> 647 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  648 |     },
+  649 |   },
+  650 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component Browser]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/MobileTabBar.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component SSR]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/MobileTabBar.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/tl.ts:645:1
+Error: Merge conflict marker encountered.
+  643 |       resetSent: "Kung may account ang email na iyon, nagpadala kami ng reset link.",
+  644 |       passwordUpdated: "Na-update ang password mo. Mag-sign in gamit ang bago.",
+> 645 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  646 |     },
+  647 |   },
+  648 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/tl.ts [Client Component Browser]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/MobileTabBar.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/tl.ts [Client Component SSR]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/MobileTabBar.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css
+Error: Error evaluating Node.js code
+CssSyntaxError: S:\Dev\golf-management-system-sl\focus\src\app\globals.css:5092:1: Unknown word >>>>>>>
+    [at Input.error (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/input.js:135:16)]
+    [at Parser.unknownWord (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:610:22)]
+    [at Parser.other (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:447:12)]
+    [at Parser.parse (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:482:16)]
+    [at parser (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parse.js:11:12)]
+    [at new LazyResult (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/lazy-result.js:171:16)]
+    [at Processor.process (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/processor.js:53:14)]
+    [at transform (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:70:51)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:89:29)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:112:11)]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:239:4
+Error: Expression expected
+  237 |         </div>
+  238 |       )}
+> 239 | <<<<<<< HEAD
+      |    ^^
+  240 |       {daySections ? (
+  241 |         <div className="grid gap-5" data-help="pairings-groups">
+  242 |           {daySections.map((day) => (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:173:1
+Error: Merge conflict marker encountered.
+  171 |
+  172 |   const timeClass = "m-0 font-display text-[24px] leading-7 font-bold tabular-nums";
+> 173 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  174 |
+  175 |   return (
+  176 |     <>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+[browser] ./src/lib/i18n/dictionaries/hil.ts:647:1
+Error: Merge conflict marker encountered.
+  645 |       resetSent: "Kon may account ang amo nga email, nagpadala kami sang reset link.",
+  646 |       passwordUpdated: "Na-update ang password mo. Mag-sign in gamit ang bag-o.",
+> 647 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  648 |     },
+  649 |   },
+  650 | };
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component Browser]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component Browser]
+    ./src/lib/i18n/context.tsx [Client Component Browser]
+    ./src/components/MobileTabBar.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Client Component Browser]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/i18n/dictionaries/hil.ts [Client Component SSR]
+    ./src/lib/i18n/dictionaries/index.ts [Client Component SSR]
+    ./src/lib/i18n/context.tsx [Client Component SSR]
+    ./src/components/MobileTabBar.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Client Component SSR]
+    ./src/components/AppShell.tsx [Server Component]
+    ./src/app/(desk)/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css
+Error: Error evaluating Node.js code
+CssSyntaxError: S:\Dev\golf-management-system-sl\focus\src\app\globals.css:5092:1: Unknown word >>>>>>>
+    [at Input.error (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/input.js:135:16)]
+    [at Parser.unknownWord (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:610:22)]
+    [at Parser.other (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:447:12)]
+    [at Parser.parse (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parser.js:482:16)]
+    [at parser (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/parse.js:11:12)]
+    [at new LazyResult (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/lazy-result.js:171:16)]
+    [at Processor.process (turbopack:///[project]/node_modules/.pnpm/postcss@8.5.30/node_modules/postcss/lib/processor.js:53:14)]
+    [at transform (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:70:51)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:89:29)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:112:11)]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:239:4
+Error: Expression expected
+  237 |         </div>
+  238 |       )}
+> 239 | <<<<<<< HEAD
+      |    ^^
+  240 |       {daySections ? (
+  241 |         <div className="grid gap-5" data-help="pairings-groups">
+  242 |           {daySections.map((day) => (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:173:1
+Error: Merge conflict marker encountered.
+  171 |
+  172 |   const timeClass = "m-0 font-display text-[24px] leading-7 font-bold tabular-nums";
+> 173 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  174 |
+  175 |   return (
+  176 |     <>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:239:4
+Error: Expression expected
+  237 |         </div>
+  238 |       )}
+> 239 | <<<<<<< HEAD
+      |    ^^
+  240 |       {daySections ? (
+  241 |         <div className="grid gap-5" data-help="pairings-groups">
+  242 |           {daySections.map((day) => (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+[browser] ./src/components/PairingsView.tsx:173:1
+Error: Merge conflict marker encountered.
+  171 |
+  172 |   const timeClass = "m-0 font-display text-[24px] leading-7 font-bold tabular-nums";
+> 173 | >>>>>>> focus/s2-player
+      | ^^^^^^^
+  174 |
+  175 |   return (
+  176 |     <>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/PairingsView.tsx [Client Component Browser]
+    ./src/components/draw/PublishDialog.tsx [Client Component Browser]
+    ./src/components/control-room/panels.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Client Component Browser]
+    ./src/app/(desk)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/PairingsView.tsx [Client Component SSR]
+    ./src/components/draw/PublishDialog.tsx [Client Component SSR]
+    ./src/components/control-room/panels.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Client Component SSR]
+    ./src/app/(desk)/admin/page.tsx [Server Component] 
+ GET /draw 200 in 728ms (next.js: 55ms, proxy.ts: 517ms, application-code: 156ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/draw" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="layout" pagePath="(desk)/lay...">
+          <SegmentTrieNode>
+          <script>
+          <script>
+          <DeskLayout>
+            <ActivityProvider>
+              <AppShell>
+                <TooltipProvider delayDuration={150}>
+                  <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={150} ...>
+                    <div className="min-h-dvh">
+                      <a>
+                      <header>
+                      <nav>
+                      <main id="main" className="mobile-bar...">
+                        <DeskStatusStrip>
+                          <div className="mb-4 grid ...">
+-                           <p className="notice warn flex items-start gap-2.5" role="status">
+                        ...
+                      ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at DeskStatusStrip (src/components/DeskStatusStrip.tsx:77:5)
+    at DeskLayout (src\app\(desk)\layout.tsx:17:9)
+  75 |
+  76 |   return (
+> 77 |     <div className="mb-4 grid gap-2">
+     |     ^
+  78 |       {banner}
+  79 |       {saved}
+  80 |       {/* While the desk is loading or failed to load, the banner is the truth: a session bar
+ GET /manifest.webmanifest 200 in 92ms (next.js: 69ms, application-code: 23ms)
+ GET /draw 200 in 913ms (next.js: 11ms, proxy.ts: 727ms, application-code: 175ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/draw" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="layout" pagePath="(desk)/lay...">
+          <SegmentTrieNode>
+          <script>
+          <script>
+          <DeskLayout>
+            <ActivityProvider>
+              <AppShell>
+                <TooltipProvider delayDuration={150}>
+                  <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={150} ...>
+                    <div className="min-h-dvh">
+                      <a>
+                      <header>
+                      <nav>
+                      <main id="main" className="mobile-bar...">
+                        <DeskStatusStrip>
+                          <div className="mb-4 grid ...">
+-                           <p className="notice warn flex items-start gap-2.5" role="status">
+                        ...
+                      ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at DeskStatusStrip (src/components/DeskStatusStrip.tsx:77:5)
+    at DeskLayout (src\app\(desk)\layout.tsx:17:9)
+  75 |
+  76 |   return (
+> 77 |     <div className="mb-4 grid gap-2">
+     |     ^
+  78 |       {banner}
+  79 |       {saved}
+  80 |       {/* While the desk is loading or failed to load, the banner is the truth: a session bar
+✓ Compiled in 501ms
+⚠ Fast Refresh had to perform a full reload when ./src/lib/store/state.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /draw 200 in 681ms (next.js: 86ms, proxy.ts: 455ms, application-code: 140ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/draw" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="layout" pagePath="(desk)/lay...">
+          <SegmentTrieNode>
+          <script>
+          <script>
+          <DeskLayout>
+            <ActivityProvider>
+              <AppShell>
+                <TooltipProvider delayDuration={150}>
+                  <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={150} ...>
+                    <div className="min-h-dvh">
+                      <a>
+                      <header>
+                      <nav>
+                      <main id="main" className="mobile-bar...">
+                        <DeskStatusStrip>
+                          <div className="mb-4 grid ...">
+-                           <p className="notice warn flex items-start gap-2.5" role="status">
+                        ...
+                      ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at DeskStatusStrip (src/components/DeskStatusStrip.tsx:77:5)
+    at DeskLayout (src\app\(desk)\layout.tsx:17:9)
+  75 |
+  76 |   return (
+> 77 |     <div className="mb-4 grid gap-2">
+     |     ^
+  78 |       {banner}
+  79 |       {saved}
+  80 |       {/* While the desk is loading or failed to load, the banner is the truth: a session bar
+⚠ Fast Refresh had to perform a full reload when ./src/lib/store/state.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+✓ Compiled in 222ms
+ GET /draw 200 in 642ms (next.js: 84ms, proxy.ts: 459ms, application-code: 98ms)
+ GET /draw 200 in 590ms (next.js: 5ms, proxy.ts: 485ms, application-code: 101ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/draw" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="layout" pagePath="(desk)/lay...">
+          <SegmentTrieNode>
+          <script>
+          <script>
+          <DeskLayout>
+            <ActivityProvider>
+              <AppShell>
+                <TooltipProvider delayDuration={150}>
+                  <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={150} ...>
+                    <div className="min-h-dvh">
+                      <a>
+                      <header>
+                      <nav>
+                      <main id="main" className="mobile-bar...">
+                        <DeskStatusStrip>
+                          <div className="mb-4 grid ...">
+-                           <p className="notice warn flex items-start gap-2.5" role="status">
+                        ...
+                      ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at DeskStatusStrip (src/components/DeskStatusStrip.tsx:77:5)
+    at DeskLayout (src\app\(desk)\layout.tsx:17:9)
+  75 |
+  76 |   return (
+> 77 |     <div className="mb-4 grid gap-2">
+     |     ^
+  78 |       {banner}
+  79 |       {saved}
+  80 |       {/* While the desk is loading or failed to load, the banner is the truth: a session bar
+✓ Compiled in 172ms
+✓ Finished filesystem cache database compaction in 15.6s
+ GET /draw 200 in 832ms (next.js: 118ms, proxy.ts: 452ms, application-code: 261ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/draw" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="layout" pagePath="(desk)/lay...">
+          <SegmentTrieNode>
+          <script>
+          <script>
+          <DeskLayout>
+            <ActivityProvider>
+              <AppShell>
+                <TooltipProvider delayDuration={150}>
+                  <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={150} ...>
+                    <div className="min-h-dvh">
+                      <a>
+                      <header>
+                      <nav>
+                      <main id="main" className="mobile-bar...">
+                        <DeskStatusStrip>
+                          <div className="mb-4 grid ...">
+-                           <p className="notice warn flex items-start gap-2.5" role="status">
+                        ...
+                      ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at DeskStatusStrip (src/components/DeskStatusStrip.tsx:77:5)
+    at DeskLayout (src\app\(desk)\layout.tsx:17:9)
+  75 |
+  76 |   return (
+> 77 |     <div className="mb-4 grid gap-2">
+     |     ^
+  78 |       {banner}
+  79 |       {saved}
+  80 |       {/* While the desk is loading or failed to load, the banner is the truth: a session bar
+✓ Compiled in 480ms
+ GET /draw 200 in 561ms (next.js: 73ms, proxy.ts: 423ms, application-code: 65ms)
+ GET /draw 200 in 544ms (next.js: 16ms, proxy.ts: 338ms, application-code: 190ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/draw" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="layout" pagePath="(desk)/lay...">
+          <SegmentTrieNode>
+          <script>
+          <script>
+          <DeskLayout>
+            <ActivityProvider>
+              <AppShell>
+                <TooltipProvider delayDuration={150}>
+                  <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={150} ...>
+                    <div className="min-h-dvh">
+                      <a>
+                      <header>
+                      <nav>
+                      <main id="main" className="mobile-bar...">
+                        <DeskStatusStrip>
+                          <div className="mb-4 grid ...">
+-                           <p className="notice warn flex items-start gap-2.5" role="status">
+                        ...
+                      ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at DeskStatusStrip (src/components/DeskStatusStrip.tsx:77:5)
+    at DeskLayout (src\app\(desk)\layout.tsx:17:9)
+  75 |
+  76 |   return (
+> 77 |     <div className="mb-4 grid gap-2">
+     |     ^
+  78 |       {banner}
+  79 |       {saved}
+  80 |       {/* While the desk is loading or failed to load, the banner is the truth: a session bar
+✓ Compiled in 2.8s
+⚠ Fast Refresh had to perform a full reload when ./src/lib/draw/validate.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /draw 200 in 51s (next.js: 45s, proxy.ts: 3.1s, application-code: 2.7s)
+ GET /draw 200 in 6.4s (next.js: 4.5s, proxy.ts: 1563ms, application-code: 377ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/draw" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="layout" pagePath="(desk)/lay...">
+          <SegmentTrieNode>
+          <script>
+          <script>
+          <DeskLayout>
+            <ActivityProvider>
+              <AppShell>
+                <TooltipProvider delayDuration={150}>
+                  <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={150} ...>
+                    <div className="min-h-dvh">
+                      <a>
+                      <header>
+                      <nav>
+                      <main id="main" className="mobile-bar...">
+                        <DeskStatusStrip>
+                          <div className="mb-4 grid ...">
+-                           <p className="notice warn flex items-start gap-2.5" role="status">
+                        ...
+                      ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at DeskStatusStrip (src/components/DeskStatusStrip.tsx:77:5)
+    at DeskLayout (src\app\(desk)\layout.tsx:17:9)
+  75 |
+  76 |   return (
+> 77 |     <div className="mb-4 grid gap-2">
+     |     ^
+  78 |       {banner}
+  79 |       {saved}
+  80 |       {/* While the desk is loading or failed to load, the banner is the truth: a session bar
+ GET /login?next=/staff 200 in 1304ms (next.js: 1001ms, proxy.ts: 9ms, application-code: 294ms)
+ GET /staff 200 in 2.5s (next.js: 1940ms, proxy.ts: 348ms, application-code: 178ms)
+ POST /login?next=/staff 200 in 4.0s (next.js: 78ms, proxy.ts: 11ms, application-code: 3.9s)
+  └─ ƒ signInWithPassword({}) in 1393ms src/lib/auth/actions.ts
+✓ Compiled in 255ms
+ GET /draw 200 in 1081ms (next.js: 39ms, proxy.ts: 834ms, application-code: 208ms)
+ GET /staff 200 in 613ms (next.js: 114ms, proxy.ts: 360ms, application-code: 139ms)
+✓ Compiled in 609ms
+ GET /draw 200 in 1382ms (next.js: 139ms, proxy.ts: 649ms, application-code: 594ms)
+ GET /staff 200 in 1384ms (next.js: 289ms, proxy.ts: 651ms, application-code: 445ms)
+✓ Compiled in 602ms
+ GET /staff/players 200 in 3.2s (next.js: 1820ms, proxy.ts: 1277ms, application-code: 111ms)
+ GET /staff/score 200 in 3.0s (next.js: 1894ms, proxy.ts: 849ms, application-code: 258ms)
+✓ Compiled in 951ms
+ GET /staff/groups/g-1-3/score 200 in 8.5s (next.js: 6.7s, proxy.ts: 1641ms, application-code: 158ms)
+✓ Compiled in 1102ms
+✓ Compiled in 1433ms
+ GET /draw 200 in 1793ms (next.js: 337ms, proxy.ts: 650ms, application-code: 806ms)
+ GET /staff/groups/g-1-3/score 200 in 1793ms (next.js: 864ms, proxy.ts: 674ms, application-code: 254ms)
+✓ Finished filesystem cache database compaction in 16.5s
+✓ Compiled in 3s
+✓ Compiled in 692ms
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794095533327-xwvoefzc2o").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (1.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\fee99f8f780a592074d2fde4ff28ca980969d900").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (3.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794095536327-c5w20tko10f").
+✓ Compiled in 2.2s
+ GET /draw 200 in 2.7s (next.js: 563ms, proxy.ts: 1444ms, application-code: 695ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/draw" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="layout" pagePath="(desk)/lay...">
+          <SegmentTrieNode>
+          <script>
+          <script>
+          <DeskLayout>
+            <ActivityProvider>
+              <AppShell>
+                <TooltipProvider delayDuration={150}>
+                  <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={150} ...>
+                    <div className="min-h-dvh">
+                      <a>
+                      <header>
+                      <nav>
+                      <main id="main" className="mobile-bar...">
+                        <DeskStatusStrip>
+                          <div className="mb-4 grid ...">
+-                           <p className="notice warn flex items-start gap-2.5" role="status">
+                        ...
+                      ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at DeskStatusStrip (src/components/DeskStatusStrip.tsx:77:5)
+    at DeskLayout (src\app\(desk)\layout.tsx:17:9)
+  75 |
+  76 |   return (
+> 77 |     <div className="mb-4 grid gap-2">
+     |     ^
+  78 |       {banner}
+  79 |       {saved}
+  80 |       {/* While the desk is loading or failed to load, the banner is the truth: a session bar
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.pnpm\\globalthis@1.0.4\\node_modules\\gopd").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (1.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.pnpm\\object-keys@1.1.1\\node_modules\\object-keys_tmp_36532_1\\.travis.yml").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.pnpm-workspace-state-v1.json").
+✓ Compiled in 1331ms
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+✓ Compiled in 4.5s
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET / 200 in 1099ms (next.js: 103ms, application-code: 995ms)
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /staff/schedule/g-1-3 200 in 4.4s (next.js: 3.2s, proxy.ts: 605ms, application-code: 662ms)
+○ Compiling /staff ...
+ GET /staff 200 in 4.8s (next.js: 3.4s, proxy.ts: 948ms, application-code: 364ms)
+ GET /staff/score 200 in 5.4s (next.js: 4.7s, proxy.ts: 278ms, application-code: 517ms)
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794096614363-i0vny3vb6ym").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\23003d2be80c34e230fe5086d95ca48fc37b87b2").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\8351d9288a9e7b3276d6e1de02d46c2357e374fd").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794096619431-sq3tv73sso").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (1.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\63dde3f626494806f696a78d1f291e5b3b3e4320").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (3.6s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\da1b176bf418e522aa6502832340db02fbad67ee").
+⚠ Fast Refresh had to perform a full reload when ./src/lib/i18n/dictionaries/en.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./src/lib/i18n/dictionaries/en.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+✓ Compiled in 7.1s
+ GET /staff/score 200 in 5.5s (next.js: 1846ms, proxy.ts: 1689ms, application-code: 1960ms)
+ GET /staff/score 200 in 5.4s (next.js: 3.6s, proxy.ts: 1594ms, application-code: 256ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HTTPAccessFallbackErrorBoundary pathname="/staff/score" notFound={{...}} forbidden={undefined} ...>
+      <RedirectBoundary>
+        <RedirectErrorBoundary router={{...}}>
+          <InnerLayoutRouter url="/staff/score" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+            <SegmentViewNode type="layout" pagePath="(staff)/la...">
+              <SegmentTrieNode>
+              <link>
+              <script>
+              <script>
+              <StaffLayout>
+                <StaffShell>
+                  <StaffDayProvider>
+                    <StaffToastProvider>
+                      <div className="staff-modu...">
+                        <AppTopBar>
++                       <main id="main" className="staff-module__gy_1gG__main">
+-                       <div className="staff-module__gy_1gG__offlineBanner" role="status">
+                        ...
+                      ...
+                      ...
+          ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at main (<anonymous>)
+    at StaffShell (src/components/staff/StaffShell.tsx:105:11)
+    at StaffLayout (src\app\(staff)\layout.tsx:16:5)
+  103 |           )}
+  104 |
+> 105 |           <main id="main" className={styles.main}>
+      |           ^
+  106 |             {children}
+  107 |           </main>
+  108 |
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.pnpm\\next@16.4.2_@playwright+tes_315c139d93b08b135de5edfe147620b0\\node_modules\\next\\types.d.ts").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.pnpm\\next@16.4.2_@playwright+tes_315c139d93b08b135de5edfe147620b0\\node_modules\\next\\dist\\lib\\bundler.d.ts").
+ GET /draw 200 in 3.4s (next.js: 205ms, proxy.ts: 2.8s, application-code: 419ms)
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.pnpm\\next@16.4.2_@playwright+tes_315c139d93b08b135de5edfe147620b0\\node_modules\\next\\dist\\server\\image-optimizer.d.ts").
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.pnpm\\next@16.4.2_@playwright+tes_315c139d93b08b135de5edfe147620b0\\node_modules\\next\\dist\\lib\\metadata\\resolve-metadata.d.ts").
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+✓ Compiled in 639ms
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+✓ Compiled in 443ms
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+    at Set.forEach (<anonymous>) (<anonymous>)
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+✓ Compiled in 593ms
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+    at Set.forEach (<anonymous>) (<anonymous>)
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+✓ Compiled in 457ms
+✓ Compiled in 552ms
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+    at Set.forEach (<anonymous>) (<anonymous>)
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+✓ Compiled in 1098ms
+✓ Compiled in 987ms
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+    at Set.forEach (<anonymous>) (<anonymous>)
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+    at Set.forEach (<anonymous>) (<anonymous>)
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\0d97dbf618d7f978a6a8911f6f6b3a5943e44ef8").
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `ov-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+○ Compiling /print ...
+ GET /print 200 in 5.9s (next.js: 5.0s, proxy.ts: 393ms, application-code: 507ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/print" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="layout" pagePath="(desk)/lay...">
+          <SegmentTrieNode>
+          <script>
+          <script>
+          <DeskLayout>
+            <ActivityProvider>
+              <AppShell>
+                <TooltipProvider delayDuration={150}>
+                  <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={150} ...>
+                    <div className="min-h-dvh">
+                      <a>
+                      <header>
+                      <nav>
+                      <main id="main" className="mobile-bar...">
+                        <DeskStatusStrip>
+                          <div className="mb-4 grid ...">
+-                           <p className="notice warn flex items-start gap-2.5" role="status">
+                        ...
+                      ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at DeskStatusStrip (src/components/DeskStatusStrip.tsx:77:5)
+    at DeskLayout (src\app\(desk)\layout.tsx:17:9)
+  75 |
+  76 |   return (
+> 77 |     <div className="mb-4 grid gap-2">
+     |     ^
+  78 |       {banner}
+  79 |       {saved}
+  80 |       {/* While the desk is loading or failed to load, the banner is the truth: a session bar
+✓ Compiled in 522ms
+ GET /draw 200 in 5.3s (next.js: 2.4s, proxy.ts: 2.2s, application-code: 678ms)
+○ Compiling /staff/schedule ...
+ GET /staff/schedule 200 in 11.4s (next.js: 8.7s, proxy.ts: 2.2s, application-code: 482ms)
+✓ Finished filesystem cache database compaction in 11.3s
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794098360435-bapfbtpcdxh").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (1.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794098361423-nd4mur0gky").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794098367669-olxghddqj").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.6s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\135211b8925b114726f0cb1714a620b8d62a7e93").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.6s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\df3ff6c00260b969a406a16d303eba19858daccf").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\78b4d4119e43caea70b6840ed57ce01db775abad").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.6s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794098383782-qs10mlsx2n").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.6s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794098384992-r4o5tkjft4").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794098385971-d4p3rvu91f5").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\628e584e6d6addd44355ef0f9e12a7c0e0c99aca").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\de23f24a8966df7b1f5e9ff307aa15de64eac20e").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\b4cbbf5784de1b324a2bba086350356c603e1398").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\e4f9a46c187015a6798751d0ed858b98437fd4c6").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\0d0bc7fc2e3f878c4cdaf0abc340ea59faec379e").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.6s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794098404519-7zv498zd9r4").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (1.6s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\.tmp-1794098405566-wsxs48zdpj").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\24fe277a964599744b07348a67b7998c07f917e7").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.6s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\602d1fc4b7ce14b189d44200fea6a41917a76c7d").
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\S:\\Dev\\golf-management-system-sl\\focus\\node_modules\\.vitest-cache\\3f55811a05177599c446f0d97656e139fdb1c714").
+ GET /print 200 in 12.4s (next.js: 8.5s, proxy.ts: 928ms, application-code: 3.1s)
+✓ Compiled in 3.4s
+✓ Compiled in 1062ms
+○ Compiling /staff/players ...
+ GET /staff/players 200 in 17.8s (next.js: 14.4s, proxy.ts: 3.0s, application-code: 420ms)
+ GET /login?next=%2Fstaff%2Fplayers&error=sign_in_required 200 in 2.6s (next.js: 1557ms, proxy.ts: 27ms, application-code: 975ms)
+ GET /manifest.webmanifest 200 in 88ms (next.js: 11ms, application-code: 77ms)
+ GET /manifest.webmanifest 200 in 22ms (next.js: 6ms, application-code: 16ms)
+ GET /staff/players 200 in 1429ms (next.js: 210ms, proxy.ts: 821ms, application-code: 398ms)
+ POST /login?next=%2Fstaff%2Fplayers&error=sign_in_required 200 in 7.2s (next.js: 334ms, proxy.ts: 63ms, application-code: 6.8s)
+  └─ ƒ signInWithPassword({}) in 5310ms src/lib/auth/actions.ts
+ GET /manifest.webmanifest 200 in 16ms (next.js: 2ms, application-code: 14ms)
+ GET /staff/schedule 200 in 1804ms (next.js: 781ms, proxy.ts: 902ms, application-code: 120ms)
+ GET /manifest.webmanifest 200 in 37ms (next.js: 5ms, application-code: 32ms)
+ GET /staff/schedule 200 in 1801ms (next.js: 924ms, proxy.ts: 474ms, application-code: 403ms)
+ GET /manifest.webmanifest 200 in 31ms (next.js: 2ms, application-code: 28ms)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HTTPAccessFallbackErrorBoundary pathname="/staff/sch..." notFound={{...}} forbidden={undefined} ...>
+      <RedirectBoundary>
+        <RedirectErrorBoundary router={{...}}>
+          <InnerLayoutRouter url="/staff/sch..." tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>
+            <SegmentViewNode type="layout" pagePath="(staff)/la...">
+              <SegmentTrieNode>
+              <link>
+              <script>
+              <script>
+              <StaffLayout>
+                <StaffShell>
+                  <StaffDayProvider>
+                    <StaffToastProvider>
+                      <div className="staff-modu...">
+                        <AppTopBar>
++                       <main id="main" className="staff-module__gy_1gG__main">
+-                       <div className="staff-module__gy_1gG__offlineBanner" role="status">
+                        ...
+                      ...
+                      ...
+          ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at main (<anonymous>)
+    at StaffShell (src/components/staff/StaffShell.tsx:105:11)
+    at StaffLayout (src\app\(staff)\layout.tsx:16:5)
+  103 |           )}
+  104 |
+> 105 |           <main id="main" className={styles.main}>
+      |           ^
+  106 |             {children}
+  107 |           </main>
+  108 |
+ GET /manifest.webmanifest 200 in 31ms (next.js: 15ms, application-code: 16ms)
+[?25h
