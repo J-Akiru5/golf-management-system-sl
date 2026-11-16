@@ -2,7 +2,7 @@
 
 import { Check, X } from "lucide-react";
 import { Dialog } from "radix-ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { welcomeFor } from "@/lib/help/guides";
 import { loadHelpSeen, markHelpSeen, welcomeId } from "@/lib/help/seen";
@@ -35,6 +35,7 @@ export function FirstRunWelcome({
   const { t } = useI18n();
   const panel = welcomeFor(audience);
   const id = welcomeId(audience);
+  const dismissed = useRef(false);
   const [show, setShow] = useState(force);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export function FirstRunWelcome({
     const client = isSupabaseConfigured() ? createSupabaseBrowserClient() : null;
     void (async () => {
       const seen = await loadHelpSeen(client);
-      if (alive) setShow(!seen.has(id));
+      if (alive && !dismissed.current) setShow(!seen.has(id));
     })();
     return () => {
       alive = false;
@@ -51,6 +52,7 @@ export function FirstRunWelcome({
   }, [id, force]);
 
   const done = () => {
+    dismissed.current = true;
     setShow(false);
     const client = isSupabaseConfigured() ? createSupabaseBrowserClient() : null;
     void markHelpSeen(client, id);
@@ -69,7 +71,7 @@ export function FirstRunWelcome({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-[rgb(12_18_15/0.62)]" />
+        <Dialog.Overlay className="pointer-events-none fixed inset-0 z-[60] bg-[rgb(12_18_15/0.62)]" />
         <Dialog.Content
           className="on-surface fixed top-1/2 left-1/2 z-[60] grid w-[min(540px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-3 rounded-[16px] border border-line bg-surface p-5 text-ink shadow-lift outline-none"
           data-help="help-welcome"
