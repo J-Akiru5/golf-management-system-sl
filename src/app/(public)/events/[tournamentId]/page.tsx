@@ -130,7 +130,7 @@ export default async function EventPage({ params }: { params: Promise<{ tourname
         </dl>
       </header>
 
-      <nav className="tl-pub-section" aria-label="On this page">
+      <nav className="tl-event-jump" aria-label="On this page">
         {groups.length > 0 && <a href="#pairings">Pairings</a>}
         {top.length > 0 && <a href="#results">Results</a>}
         {hasRulesSection && <a href="#rules">Rules of play</a>}
@@ -192,7 +192,7 @@ export default async function EventPage({ params }: { params: Promise<{ tourname
                 <p className="tl-pub-kicker">
                   {team.tied ? `Rank ${team.rank}, tied` : `Rank ${team.rank}`}
                 </p>
-                <p className="tl-pub-title">{team.name}</p>
+                <p className="tl-event-team">{team.name}</p>
                 <p>
                   {[
                     team.toPar,

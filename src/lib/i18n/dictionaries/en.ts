@@ -838,7 +838,7 @@ export const en = {
     overline: "Tell the club",
     title: "Send feedback",
     intro:
-      "Found a problem, or something that could be better? Send a note to the organizer. This is about the site, not the draw.",
+      "A problem with your entry, score, tee time or the site? Tick what it is about and the organizer will look into it.",
     privacy:
       "Your note is private to club staff. It is never shown on a public page, and it is not an entry or a booking.",
     category: "What is this about?",

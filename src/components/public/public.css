@@ -1140,3 +1140,35 @@
     color: #000;
   }
 }
+
+/* Event page: the on-this-page links sit in one row of chips, and a result's team names read as names,
+   not as display headlines. */
+.tl-pub .tl-event-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 28px 0 8px;
+}
+.tl-pub .tl-event-jump a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(247, 245, 238, 0.2);
+  border-radius: 999px;
+  color: #f7f5ee;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.tl-pub .tl-event-jump a:hover {
+  border-color: #d7b568;
+  color: #d7b568;
+}
+.tl-pub .tl-event-team {
+  margin: 10px 0 12px;
+  color: #f7f5ee;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.35;
+}

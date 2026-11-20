@@ -845,7 +845,7 @@ export const tl: Dictionary = {
     overline: "Sabihin sa club",
     title: "Magpadala ng feedback",
     intro:
-      "May problema ka ba, o may puwedeng gawing mas mabuti? Magpadala ng note sa organizer. Tungkol ito sa site, hindi sa draw.",
+      "May problema sa iyong entry, score, tee time o sa site? Lagyan ng tsek kung tungkol saan ito at titingnan ito ng organizer.",
     privacy:
       "Pribado sa club staff ang note mo. Hindi ito ipinapakita sa pampublikong pahina, at hindi ito entry o booking.",
     category: "Tungkol saan ito?",
