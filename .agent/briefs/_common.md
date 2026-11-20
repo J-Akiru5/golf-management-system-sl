@@ -54,6 +54,11 @@ bash S:/Dev/golf-management-system-sl/ws-tools/build-lock.sh pnpm --filter @teel
 
 Run typecheck, lint and test often. Run the build once at the end.
 
+Line endings: Biome on this machine expects CRLF (git converts on checkout). Files you create with a
+file tool are written with LF and fail `lint` until formatted. Before you run lint, format only your own
+files: `pnpm exec biome format --write <your paths>` (from the repo root, or from `apps/ops` once it is
+included in the lint scope). Never format files you do not own.
+
 ## Working method
 
 - Make small, working steps. Commit on your branch after each coherent step with a plain message.
