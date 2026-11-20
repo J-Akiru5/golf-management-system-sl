@@ -209,8 +209,16 @@ export function createSupabaseBoardRepo(client: SupabaseClient<Database>): Board
     },
 
     async deleteCard(id) {
-      const { error } = await client.from("ws_pipeline_cards").delete().eq("id", id);
+      const { data, error } = await client
+        .from("ws_pipeline_cards")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error !== null) fail("delete the card", error);
+      // Row level security refuses a delete by changing zero rows, not by raising an error.
+      if (data === null || data.length === 0) {
+        fail("delete the card", { message: "nothing was deleted" });
+      }
     },
 
     async listMembers() {

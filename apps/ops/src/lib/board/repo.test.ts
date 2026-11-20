@@ -103,6 +103,12 @@ describe("demo board repo", () => {
     await expect(repo.deleteCard("demo-card-01")).rejects.toThrow(/no longer/);
   });
 
+  it("fails a delete that removed nothing, as row level security does for a member", async () => {
+    const db = supabaseDb();
+    const repo = createSupabaseBoardRepo(db.client());
+    await expect(repo.deleteCard("card-404")).rejects.toThrow("nothing was deleted");
+  });
+
   it("lists members and tournaments", async () => {
     const repo = createDemoBoardRepo();
     const members = await repo.listMembers();
@@ -242,7 +248,7 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: null }> {
 
     if (this.mode === "delete") {
       const kept = rows.filter((row) => !this.matches(row));
-      const removed = rows.length - kept.length;
+      const removed = rows.filter((row) => this.matches(row)).map((row) => ({ id: row.id }));
       rows.length = 0;
       rows.push(...kept);
       return removed;
