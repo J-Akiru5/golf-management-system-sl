@@ -4,10 +4,11 @@ import Link from "next/link";
 import { PublicBottomBar } from "@/components/MobileTabBar";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { RulesSections } from "@/components/public/RulesSections";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BAMBOO_TEE_2026_RULES as rules } from "@/lib/public/tournament-rules";
-import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
+import { openGraphFor, SITE_NAME, twitterFor, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Conditions of Play",
@@ -40,6 +41,14 @@ export const metadata: Metadata = {
 export default function TournamentRulesPage() {
   return (
     <main className="public public-rules mobile-bar-space" data-testid="rules-page" lang="en">
+      <JsonLd
+        data={webPageSchema({
+          path: "/rules",
+          name: "Conditions of Play",
+          description:
+            "The 24th Bamboo Tee Invitational Conditions of Play: format, handicap and divisions, local rules, pace of play, scorecards, tie-breaking and prizes, with the official PDF.",
+        })}
+      />
       <header className="public-head rules-hero">
         <PublicBackLink label="Back to main page" pairingsLabel="Back to pairings" />
 

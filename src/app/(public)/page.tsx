@@ -31,6 +31,7 @@ import {
   SITE_DESCRIPTION,
   SITE_NAME,
   softwareApplicationSchema,
+  sportsEventSchema,
   twitterFor,
 } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -239,9 +240,17 @@ export default async function HomePage() {
       }).format(new Date(`${featured.cutOffDate}T00:00:00Z`))
     : null;
 
+  // Each published event as its own entity, so an engine can answer "when is it and where" without
+  // reading the page design. Built from the event's own name and dates, nothing else.
+  const eventSchemas = events
+    .map((event) =>
+      sportsEventSchema({ id: event.tournamentId, name: event.name, dates: event.dates }),
+    )
+    .filter((schema): schema is Record<string, unknown> => schema !== null);
+
   return (
     <main className="teeline-site">
-      <JsonLd data={softwareApplicationSchema()} />
+      <JsonLd data={[softwareApplicationSchema(), ...eventSchemas]} />
       <MotionLayer />
       <section
         className={`teeline-hero${events.length > 0 ? " with-strip" : ""}`}
