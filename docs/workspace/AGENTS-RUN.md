@@ -47,14 +47,30 @@ from `feat/workspace` (itself cut from the reconciled `develop`, `b0b7bc2`).
 
 | Name | Branch | Base | Status |
 | --- | --- | --- | --- |
-| foundation | `ws/foundation` | `feat/workspace` | not started |
-| next-security | `chore/next-security` | `origin/develop` | not started |
+| foundation | `ws/foundation` | `feat/workspace` | done, reviewed, merged into `feat/workspace` (20 Nov) |
+| next-security | `chore/next-security` | `origin/develop` | done, released in 0.59.0 |
+| docs | `ws/docs` | `feat/workspace` (after foundation) | running |
+| board | `ws/board` | `feat/workspace` (after foundation) | running |
+| tasks | `ws/tasks` | `feat/workspace` (after foundation) | running |
+| settings | `ws/settings` | `feat/workspace` (after foundation) | running |
 
-(Docs, board, tasks, settings, overview, ui-checks and report are added as they start.)
+(Overview, tasks-board, ui-checks and report start after the four above are merged.)
 
 ## What each agent did, and what was rejected
 
-To be filled in as each workstream is reviewed.
+**next-security.** Raised `next` from 16.4.2 to 16.4.6 (`package.json`, lockfile). Reviewed by building
+it: `next build` exit 0. Released as part of 0.59.0 (tag `v0.59.0`).
+
+**foundation.** Built the `apps/ops` scaffold, the access gate (flag, then session, then membership),
+the repository registry with the demo guard, the shell, the UI primitives and placeholder pages.
+Reviewed by re-running typecheck, lint, the ops tests (51) and the RLS harness (91 pass, 0 fail) in its
+worktree, and again on the merged tree. Accepted. Two things I checked on purpose: the CI change only
+adds a `workspace app` job and a deploy-policy check for `apps/ops/vercel.json`, and the `biome.json`
+override only turns the formatter off for the contract files and the RLS script. The log ends with
+`FOUNDATION_EXIT=1`, so `opencode run` itself returned 1. The agent's report and my own re-run show
+every check passing, and I did not establish why it returned 1. Treat the marker as unexplained.
+Merge note: the lockfile conflicted with the Next upgrade, so it was regenerated on top of `main`.
+The seed JSON then failed the wider Biome scope and was formatted.
 
 ## Decisions made without the owner awake (20 Nov 2026)
 
@@ -69,3 +85,27 @@ questions. Decisions taken on that basis, each reversible:
    `postgres_changes`, so one authorization mechanism covers everything.
 5. **Account creation stays in the Supabase dashboard**; `ws_add_member` only attaches an existing
    account. No service-role key is used anywhere in the app.
+
+## Decisions made after the owner asked for it live (20 Nov 2026)
+
+The owner's later instruction was to apply the migrations, deploy, reconcile `main` and level the three
+branches. What was done and what could not be:
+
+6. **The live app was released first, on its own.** `chore/next-security` and the staged clubhouse board
+   commit went out as **0.59.0** (PR #328, both required checks green, merged, tag `v0.59.0`). Without
+   the Next upgrade no new deploy could build. No migration ships in 0.59.0.
+7. **Levelling.** `develop` fast-forwarded to `main` (`702889f`). Direct pushes to `staging` are refused by
+   a branch hook, so staging was brought level through PR #329 (main into staging, the repo's usual
+   way). `staging` has the same content as `main` plus that one merge commit.
+8. **The workspace migrations were NOT applied.** The live project is not reachable with the CLI login on
+   this machine (HTTP 403 on `supabase link` and `migration list`), and no tool here can run migrations.
+   Nothing was worked around. `docs/workspace/apply-on-live.sql` is the four migrations, verbatim and in
+   order, in one transaction, ready to paste into the Supabase SQL editor.
+9. **The Vercel project `teeline-workspace` exists but is not linked to Git yet.** Root directory
+   `apps/ops`, Next.js, Node 24. Production variables set: the public Supabase URL and anon key (copied
+   from the live app's public client bundle, never printed) and `OPS_ENABLED=1`. Domain
+   `teeline.syntaxure.dev` added and verified. It is not Git-linked because `apps/ops/vercel.json`
+   (which limits auto-deploys to `main` and `staging`) is not on `main` yet; linking now would make
+   every push build a root directory that does not exist there.
+10. **`OPS_ENABLED=1` is set in production on purpose**, so the workspace works the moment the SQL has
+    been run and the project is linked, with no further redeploy.
