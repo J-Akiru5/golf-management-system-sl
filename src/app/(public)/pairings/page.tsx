@@ -224,12 +224,13 @@ export default async function PublicPairingsPage({
         </div>
         {data ? (
           <>
-            <p className="tl-pub-kicker">
-              {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
-              {fmtTime(data.firstTeeTime)}
-            </p>
+            {/* The page names itself in the visitor's language, then the event and its start. */}
+            <p className="tl-pub-kicker">{t("pairings.title")}</p>
             <h1 className="tl-pub-title">{data.name}</h1>
-            <p className="tl-pub-intro">{dateLabel}</p>
+            <p className="tl-pub-intro">
+              {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
+              {fmtTime(data.firstTeeTime)} · {dateLabel}
+            </p>
           </>
         ) : (
           <h1 className="tl-pub-title">{t("pairings.title")}</h1>

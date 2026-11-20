@@ -2,9 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { FeedbackLink } from "@/components/public/FeedbackLink";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { getI18n } from "@/lib/i18n/server";
 import { PARTNERS } from "@/lib/public/about";
 
-export function PublicFooter() {
+export async function PublicFooter() {
+  // The links' group is named in the visitor's language, as the old footer bar was.
+  const { t } = await getI18n();
   return (
     <footer className="tl-pub-footer no-print">
       <div className="tl-pub-footer-inner">
@@ -35,7 +38,7 @@ export function PublicFooter() {
             </a>
           ))}
         </nav>
-        <nav className="tl-pub-footer-links" aria-label="Site information">
+        <nav className="tl-pub-footer-links" aria-label={t("feedback.footerLabel")}>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <FeedbackLink />

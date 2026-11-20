@@ -1332,9 +1332,16 @@ await tapTargets(
   phonePage.locator('footer nav[aria-label="Site links"] a'),
   "the public footer links are 44px tap targets",
 );
+// The in-page footer bar under the pairings was removed in 0.62.0 (the owner asked for one shared
+// footer); its links live in the shared footer, checked above. The page's own navigation is the
+// tournament tabs, so those carry the tap-target rule now.
+check(
+  "the old in-page footer bar is gone from /pairings",
+  (await phonePage.locator("main .pairings-foot-nav").count()) === 0,
+);
 await tapTargets(
-  phonePage.locator("main .pairings-foot-nav a:visible"),
-  "the in-page footer links are 44px tap targets",
+  phonePage.locator('nav[aria-label="On this page"] a:visible, nav[aria-label="On this page"] button:visible'),
+  "the pairings page tabs are 44px tap targets",
 );
 const tournamentTabs = phonePage.locator('nav[aria-label="On this page"]');
 const tabWidth = await tournamentTabs.evaluate((element) => ({
