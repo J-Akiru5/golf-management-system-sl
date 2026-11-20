@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { RosterPage, type RosterUnavailable } from "@/components/public/RosterView";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { toPublicRoster } from "@/lib/data/public";
 import {
   readPublicAdvisory,
@@ -11,7 +12,7 @@ import {
 import type { PublicRosterPlayer } from "@/lib/data/types";
 import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
 import { blackoutFlags } from "@/lib/public/results-reveal";
-import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
+import { openGraphFor, SITE_NAME, twitterFor, webPageSchema } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { DemoRoster } from "./DemoRoster";
 
@@ -98,10 +99,21 @@ export default async function PublicRosterPage() {
   }
 
   return (
-    <RosterPage
-      players={players}
-      unavailable={unavailable}
-      advisory={advisoryForToday(advisoryValue)}
-    />
+    <>
+      <JsonLd
+        data={webPageSchema({
+          path: "/roster",
+          name: "Player roster",
+          description:
+            "The confirmed tournament field: name, home club, handicap index, category and flight. No account needed.",
+          type: "CollectionPage",
+        })}
+      />
+      <RosterPage
+        players={players}
+        unavailable={unavailable}
+        advisory={advisoryForToday(advisoryValue)}
+      />
+    </>
   );
 }

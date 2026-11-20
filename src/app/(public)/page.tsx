@@ -30,7 +30,13 @@ import {
   quickActionsFor,
   toLandingEvent,
 } from "@/lib/public/showcase";
-import { openGraphFor, SITE_NAME, softwareApplicationSchema, twitterFor } from "@/lib/seo";
+import {
+  openGraphFor,
+  SITE_NAME,
+  softwareApplicationSchema,
+  sportsEventSchema,
+  twitterFor,
+} from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { APP_VERSION_LABEL } from "@/lib/version";
@@ -114,9 +120,17 @@ export default async function HomePage() {
   const landingEvents = orderForCarousel(events.map((event) => toLandingEvent(event, today)));
   const featured = pickFeatured(landingEvents);
 
+  // Each published event as its own entity, so an engine can answer "when is it and where" without
+  // reading the page design. Built from the event's own name and dates, nothing else.
+  const eventSchemas = events
+    .map((event) =>
+      sportsEventSchema({ id: event.tournamentId, name: event.name, dates: event.dates }),
+    )
+    .filter((schema): schema is Record<string, unknown> => schema !== null);
+
   return (
     <main className="tl-landing">
-      <JsonLd data={softwareApplicationSchema()} />
+      <JsonLd data={[softwareApplicationSchema(), ...eventSchemas]} />
       <LandingHero
         featured={featured}
         eventEyebrow={eventEyebrow(featured, today)}
