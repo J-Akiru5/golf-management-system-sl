@@ -23,6 +23,7 @@ function taskPatch(patch: TaskPatch): TaskUpdate {
   if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
   if (patch.priority !== undefined) row.priority = patch.priority;
   if (patch.status !== undefined) row.status = patch.status;
+  if (patch.position !== undefined) row.position = patch.position;
   if (patch.pipelineCardId !== undefined) row.pipeline_card_id = patch.pipelineCardId;
   if (patch.tournamentId !== undefined) row.tournament_id = patch.tournamentId;
   return row;

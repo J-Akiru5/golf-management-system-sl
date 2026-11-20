@@ -8,6 +8,7 @@ import {
   deleteTask,
   editComment,
   listComments,
+  moveTask,
   setStatus,
   updateTask,
 } from "./actions";
@@ -88,6 +89,65 @@ describe("task actions in demo mode", () => {
   it("returns a plain message instead of throwing", async () => {
     const result = await createTask({ title: "   " });
     expect(result).toEqual({ ok: false, error: "A task needs a title." });
+  });
+
+  it("moves a task to a status and position in one write", async () => {
+    const created = await createTask({ title: "Set the start list" });
+    if (!created.ok) throw new Error("the demo task was not created");
+
+    const moved = await moveTask(created.value.id, "in_progress", 2500, []);
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+
+    expect(moved.value).toHaveLength(1);
+    const row = moved.value[0];
+    expect(row?.status).toBe("in_progress");
+    expect(row?.position).toBe(2500);
+    expect(row?.completed_at).toBeNull();
+
+    const reopened = await moveTask(created.value.id, "done", 2500, []);
+    expect(reopened.ok).toBe(true);
+    if (!reopened.ok) return;
+    expect(reopened.value[0]?.completed_at).not.toBeNull();
+  });
+
+  it("saves the renumbered positions a move carries", async () => {
+    const first = await createTask({ title: "First" });
+    const second = await createTask({ title: "Second" });
+    if (!first.ok || !second.ok) throw new Error("the demo tasks were not created");
+
+    const moved = await moveTask(first.value.id, "blocked", 1500, [
+      { id: second.value.id, position: 2000 },
+    ]);
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+
+    expect(moved.value).toHaveLength(2);
+    const rows = new Map(moved.value.map((row) => [row.id, row]));
+    expect(rows.get(first.value.id)?.position).toBe(1500);
+    expect(rows.get(second.value.id)?.position).toBe(2000);
+  });
+
+  it("refuses a move that is not a status or not a position", async () => {
+    const created = await createTask({ title: "Hold still" });
+    if (!created.ok) throw new Error("the demo task was not created");
+
+    expect(await moveTask(created.value.id, "archived" as never, 1000, [])).toEqual({
+      ok: false,
+      error: "Choose a status.",
+    });
+    expect(await moveTask(created.value.id, "done", Number.NaN, [])).toEqual({
+      ok: false,
+      error: "The new position is not a number.",
+    });
+    expect(await moveTask("  ", "done", 1000, [])).toEqual({
+      ok: false,
+      error: "That task is no longer on the board.",
+    });
+    expect(await moveTask(created.value.id, "done", 1000, [{ id: "", position: 2000 }])).toEqual({
+      ok: false,
+      error: "The renumbering was not valid.",
+    });
   });
 });
 

@@ -113,6 +113,17 @@ describe("demo tasks repo", () => {
     expect(reopened.completed_at).toBeNull();
   });
 
+  it("stores the position a board move sets", async () => {
+    const repo = createDemoTasksRepo();
+    const created = await repo.createTask({ title: "Move me" });
+
+    const moved = await repo.updateTask(created.id, { status: "blocked", position: 1500 });
+
+    expect(moved.status).toBe("blocked");
+    expect(moved.position).toBe(1500);
+    expect((await repo.getTask(created.id))?.position).toBe(1500);
+  });
+
   it("deletes a task and its comments", async () => {
     const repo = createDemoTasksRepo();
     const created = await repo.createTask({ title: "Delete me" });

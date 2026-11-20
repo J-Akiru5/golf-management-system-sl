@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getViewer } from "@/lib/auth/viewer";
+import { TASK_STATUSES } from "@/lib/db/constants";
 import { can, type Viewer as PermissionViewer } from "@/lib/db/permissions";
 import type { TaskStatus, WsTaskCommentRow, WsTaskRow } from "@/lib/db/types";
 import { demoMode } from "@/lib/flags";
@@ -76,6 +77,49 @@ export async function setStatus(id: string, status: TaskStatus): Promise<ActionR
     const row = await repos.tasks.setStatus(id, status);
     revalidatePath("/tasks");
     return row;
+  });
+}
+
+/**
+ * A board move. The task gets its new status and position in one write; `others` carries the
+ * target column's new positions when the move triggered a renumber. Every changed row comes back.
+ *
+ * The browser computed the position, so it is checked here again: a status the database does not
+ * allow, or a position that is not a finite number, is refused rather than saved.
+ */
+export async function moveTask(
+  id: string,
+  status: TaskStatus,
+  position: number,
+  others: ReadonlyArray<{ id: string; position: number }> = [],
+): Promise<ActionResult<WsTaskRow[]>> {
+  return run(async () => {
+    await requireViewer();
+    if (id.trim() === "") throw new Error("That task is no longer on the board.");
+    if (!TASK_STATUSES.some((entry) => entry.id === status)) throw new Error("Choose a status.");
+    if (typeof position !== "number" || !Number.isFinite(position)) {
+      throw new Error("The new position is not a number.");
+    }
+
+    const updates: Array<{ id: string; position: number }> = [];
+    for (const entry of Array.isArray(others) ? others.slice(0, 100) : []) {
+      const other = entry as { id?: unknown; position?: unknown };
+      if (typeof other.id !== "string" || other.id.trim() === "") {
+        throw new Error("The renumbering was not valid.");
+      }
+      if (typeof other.position !== "number" || !Number.isFinite(other.position)) {
+        throw new Error("The renumbering was not valid.");
+      }
+      if (other.id !== id) updates.push({ id: other.id, position: other.position });
+    }
+
+    const repos = await getRepos();
+    const rows: WsTaskRow[] = [await repos.tasks.updateTask(id, { status, position })];
+    for (const other of updates) {
+      rows.push(await repos.tasks.updateTask(other.id, { position: other.position }));
+    }
+    revalidatePath("/tasks");
+    return rows;
   });
 }
 

@@ -292,6 +292,21 @@ describe("supabase tasks repo", () => {
     expect(db.log.at(-1)?.payload).toEqual({ status: "done" });
   });
 
+  it("writes the status and the position a board move asks for", async () => {
+    const { client, db } = createFakeClient({ tables: { ws_tasks: [taskRow()] } });
+    const repo = createSupabaseTasksRepo(client);
+
+    const moved = await repo.updateTask("task-1", { status: "in_progress", position: 2500 });
+
+    expect(moved.status).toBe("in_progress");
+    expect(moved.position).toBe(2500);
+    expect(db.log.at(-1)).toEqual({
+      table: "ws_tasks",
+      op: "update",
+      payload: { status: "in_progress", position: 2500 },
+    });
+  });
+
   it("reads a task back when an edit changes nothing", async () => {
     const { client, db } = createFakeClient({ tables: { ws_tasks: [taskRow()] } });
     const repo = createSupabaseTasksRepo(client);
