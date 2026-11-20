@@ -22,6 +22,7 @@ import {
 } from "./draft";
 import { parseModelTurn } from "./extract";
 import type { ConcernField } from "./fields";
+import { isOptionalConcernField } from "./fields";
 import {
   buildConcernSystemPrompt,
   buildConcernTurns,
@@ -46,6 +47,12 @@ export interface ConcernTurnInput {
   messages: readonly { role: string; content: string }[];
   /** The player's language; an unknown value starts in English. */
   locale: unknown;
+  /**
+   * Optional fields the player already declined. The panel sends what it holds so the "asked once"
+   * rule survives a model that forgets to repeat a decline; a decline carries no note data, so
+   * trusting this list cannot add anything to the note.
+   */
+  declined?: unknown;
   /** Stable for one conversation; providers that need affinity use it. */
   sessionId?: string;
   /** Injected for tests. Production uses the provider facade with the JSON contract. */
@@ -128,8 +135,12 @@ export async function runConcernTurn(input: ConcernTurnInput): Promise<ConcernTu
   const spoke = parsed.language ?? locale;
   const answerCopy = chatCopy(spoke);
 
+  const alreadyDeclined = Array.isArray(input.declined)
+    ? input.declined.filter(isOptionalConcernField)
+    : [];
+
   let draft = mergeConcernDraft(emptyConcernDraft(), parsed.patch);
-  draft = declineConcernFields(draft, parsed.declined);
+  draft = declineConcernFields(draft, [...alreadyDeclined, ...parsed.declined]);
 
   const next = nextMissingField(draft);
   const done = next === null;

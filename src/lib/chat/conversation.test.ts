@@ -125,6 +125,20 @@ describe("one turn of the concern chat", () => {
     expect(result.complete).toBe(true);
   });
 
+  it("keeps a decline the panel already holds when the model forgets to repeat it", async () => {
+    const result = await runConcernTurn({
+      messages: USER,
+      locale: "en",
+      declined: ["handicap", "schedule", "not-a-field"],
+      complete: answer({
+        reply: "Noted.",
+        details: { concerns: ["inquiry"], playerName: "Juan" },
+      }),
+    });
+    expect(result.draft.declined).toEqual(["handicap", "schedule"]);
+    expect(result.complete).toBe(true);
+  });
+
   it("stops at the turn limit and offers the form", async () => {
     const messages = Array.from({ length: CHAT_MAX_TURNS }, (_, index) => ({
       role: index === CHAT_MAX_TURNS - 1 || index % 2 === 1 ? "user" : "assistant",

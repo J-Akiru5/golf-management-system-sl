@@ -147,6 +147,7 @@ export const POST = withApiTiming("POST /api/chat/concern", async (request: Next
         const result = await runConcernTurn({
           messages: messages as { role: string; content: string }[],
           locale,
+          declined: body.declined,
           sessionId,
           complete: async (turns, systemPrompt, id) => {
             if (configs.length === 0) return null;

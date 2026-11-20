@@ -189,6 +189,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
           messages: history,
           language,
           conversationId,
+          declined: draft?.declined ?? [],
           honeypot,
         }),
         signal: controller.signal,
