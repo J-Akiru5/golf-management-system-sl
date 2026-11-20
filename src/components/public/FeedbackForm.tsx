@@ -193,11 +193,9 @@ export function FeedbackForm({
 
   function fieldError(field: Field) {
     if (!problem || PROBLEM_FIELD[problem] !== field) return null;
-    return (
-      <p className="hint m-0" role="alert">
-        {PROBLEM_TEXT[problem]}
-      </p>
-    );
+    // The notice at the end of the form announces the same sentence once; this line puts it next to
+    // the control that needs fixing without opening a second live region.
+    return <p className="hint m-0">{PROBLEM_TEXT[problem]}</p>;
   }
 
   /** The concern the form would send, checked by `normaliseConcern` on the way in. */
