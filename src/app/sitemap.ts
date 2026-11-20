@@ -26,7 +26,7 @@ function page(
 
 /**
  * The pages worth indexing: the product page, the published pairings, the player roster, the
- * leaderboard, the tournament rules and the NGAP FAQ.
+ * leaderboard, the event portfolio, the tournament rules and the NGAP FAQ.
  *
  * Entry links (`/enter/…`) are left out on purpose. They are per-event, time-limited and mostly a
  * form, so the site keeps a small, durable index instead of one that churns with every event. The
@@ -37,6 +37,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     page("/", "weekly", 1),
     page("/demo", "monthly", 0.9),
+    page("/events", "weekly", 0.9),
     page("/pairings", "daily", 0.8),
     page("/roster", "daily", 0.8),
     page("/leaderboard", "daily", 0.8),

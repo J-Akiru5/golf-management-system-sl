@@ -1,6 +1,7 @@
 import { Download, ExternalLink, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PublicBottomBar } from "@/components/MobileTabBar";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { RulesSections } from "@/components/public/RulesSections";
@@ -8,7 +9,11 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BAMBOO_TEE_2026_RULES as rules } from "@/lib/public/tournament-rules";
+import { loadEventArchive } from "@/lib/data/supabase/event-archive";
 import { openGraphFor, SITE_NAME, twitterFor, webPageSchema } from "@/lib/seo";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createSupabasePublicClient } from "@/lib/supabase/public";
+import { todayInManila } from "../events/_lib/today";
 
 export const metadata: Metadata = {
   title: "Conditions of Play",
@@ -38,7 +43,25 @@ export const metadata: Metadata = {
  * This page is a reading aid. The official PDF controls if the two ever disagree, and the page says
  * so in the header and again beside the download button.
  */
-export default function TournamentRulesPage() {
+/**
+ * `/rules` is no longer a nav item: rules of play belong to one event. When the organizer has written
+ * rules for the featured event (or, failing that, the newest event with rules), the address forwards
+ * to that event's `#rules` section. Until any event carries its own rules text, it keeps showing the
+ * static Conditions of Play below, so the published rules never become unreachable.
+ */
+export default async function RulesPage() {
+  if (isSupabaseConfigured()) {
+    const events =
+      (await loadEventArchive(createSupabasePublicClient(), todayInManila()).catch(() => null)) ??
+      [];
+    const withRules = events.filter((event) => event.hasRules);
+    const target = withRules.find((event) => event.featured) ?? withRules[0];
+    if (target) redirect(`/events/${target.tournamentId}#rules`);
+  }
+  return <ConditionsOfPlay />;
+}
+
+function ConditionsOfPlay() {
   return (
     <main className="public public-rules mobile-bar-space" data-testid="rules-page" lang="en">
       <JsonLd

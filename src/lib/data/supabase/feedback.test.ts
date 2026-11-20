@@ -88,6 +88,69 @@ describe("parseFeedbackSubmitResult", () => {
   });
 });
 
+describe("submitFeedback before migration 20261122000000", () => {
+  const details = {
+    concerns: ["score" as const, "tee_off" as const],
+    holeNo: 7,
+    teeColour: "white" as const,
+    playerName: "Juan Dela Cruz",
+    handicap: "12.4",
+    schedule: "Day 2, 7:12 AM",
+    source: "form" as const,
+  };
+
+  it("files a concern as a content note carrying every answer when p_details is unknown", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "PGRST202", message: "Could not find the function public.submit_feedback" },
+      })
+      .mockResolvedValueOnce({
+        data: { ok: true, code: "accepted", message: "Thank you." },
+        error: null,
+      });
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+
+    const result = await submitFeedback(client, {
+      ...SUBMISSION,
+      category: "concern" as never,
+      message: "My score on 7 is wrong.",
+      details,
+    });
+
+    expect(result).toMatchObject({ ok: true, code: "accepted" });
+    const [, args] = rpc.mock.calls[1] as [string, Record<string, unknown>];
+    expect(args.p_category).toBe("content");
+    expect(args).not.toHaveProperty("p_details");
+    expect(args.p_message).toBe(
+      [
+        "Player concern: Score (hole 7), Tee off (White)",
+        "Player name: Juan Dela Cruz",
+        "Handicap: 12.4",
+        "Schedule: Day 2, 7:12 AM",
+        "Sent from: the feedback form",
+        "",
+        "My score on 7 is wrong.",
+      ].join("\n"),
+    );
+  });
+
+  it("still reports not ready when even the old function is missing", async () => {
+    const missing = {
+      data: null,
+      error: { code: "PGRST202", message: "Could not find the function" },
+    };
+    const rpc = vi.fn().mockResolvedValue(missing);
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+
+    const result = await submitFeedback(client, { ...SUBMISSION, details });
+
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ ok: false, code: "not_ready" });
+  });
+});
+
 describe("submitFeedback", () => {
   it("sends the whole validated note through the RPC, including the honeypot field", async () => {
     const rpc = vi.fn().mockResolvedValue({
@@ -108,8 +171,34 @@ describe("submitFeedback", () => {
       p_locale: "en",
       p_honeypot: "",
       p_tournament: null,
+      p_details: null,
     });
     expect(result).toMatchObject({ ok: true, code: "accepted" });
+  });
+
+  it("sends the concern's details through the same call", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { ok: true, code: "accepted", message: "Thank you." },
+      error: null,
+    });
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+    const details = {
+      concerns: ["score" as const],
+      holeNo: 7,
+      source: "form" as const,
+    };
+
+    await submitFeedback(client, {
+      ...SUBMISSION,
+      category: "concern",
+      message: "Score (hole 7)",
+      details,
+    });
+
+    expect(rpc).toHaveBeenCalledWith(
+      "submit_feedback",
+      expect.objectContaining({ p_category: "concern", p_details: details }),
+    );
   });
 
   it("passes a validated event id through without changing it", async () => {
@@ -217,6 +306,28 @@ describe("loadFeedbackInbox", () => {
     const client = { from } as unknown as SupabaseClient<Database>;
 
     await expect(loadFeedbackInbox(client, "club-1")).rejects.toThrow(/follow-up migration/i);
+  });
+
+  it("reads the notes without their details while the concerns migration is not applied", async () => {
+    const limit = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "42703", message: "column public_feedback.details does not exist" },
+      })
+      .mockResolvedValueOnce({ data: [ROW], error: null });
+    const order = vi.fn(() => ({ limit }));
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+    const client = { from } as unknown as SupabaseClient<Database>;
+
+    const notes = await loadFeedbackInbox(client, "club-1");
+
+    expect(select).toHaveBeenNthCalledWith(1, expect.stringContaining("details"));
+    expect(select).toHaveBeenNthCalledWith(2, expect.not.stringMatching(/\bdetails\b/));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]?.details).toBeNull();
   });
 
   it("labels a note with its event name from a club-scoped staff read", async () => {
