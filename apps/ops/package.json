@@ -11,6 +11,7 @@
     "lint": "biome check .",
     "test": "vitest run",
     "test:rls": "node scripts/workspace-rls.mjs ../../supabase/migrations",
+    "check:ui": "node scripts/verify-ui.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:rls && pnpm build"
   },
   "dependencies": {
