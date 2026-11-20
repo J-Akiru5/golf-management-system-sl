@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import { describe, expect, it } from "vitest";
 import {
   DOC_CHANNEL_PREFIX,
   privateDocChannelName,

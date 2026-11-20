@@ -18,3 +18,8 @@ export function formatWhen(iso: string): string {
   if (Number.isNaN(date.getTime())) return "Unknown time";
   return WHEN_FORMAT.format(date);
 }
+
+/** The starting name in the Save version dialog. The person can replace it. */
+export function versionNameFor(date: Date): string {
+  return `Version, ${WHEN_FORMAT.format(date)}`;
+}

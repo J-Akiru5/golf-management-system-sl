@@ -86,6 +86,19 @@ export function describeStatus(input: StatusInput): string {
   return "Saved";
 }
 
+/** A tone for the status dot. Text stays in the normal ink colour; the dot carries the signal. */
+export type StatusTone = "muted" | "ok" | "busy" | "warn" | "bad";
+
+export function statusTone(input: StatusInput): StatusTone {
+  if (input.demo) return "muted";
+  if (!input.online) return "warn";
+  if (input.gaveUp) return "bad";
+  if (input.status === "connecting") return "muted";
+  if (input.status === "disconnected") return "warn";
+  if (input.pending) return "busy";
+  return "ok";
+}
+
 /** SPEC section 6: a refused private channel must not retry forever. */
 export const MAX_RECONNECT_ATTEMPTS = 10;
 

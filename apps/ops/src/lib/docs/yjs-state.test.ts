@@ -1,6 +1,6 @@
-import * as Y from "yjs";
 import { describe, expect, it } from "vitest";
-import { decodeBase64, encodeBase64, encodeDocState, emptyDocState } from "./yjs-state";
+import * as Y from "yjs";
+import { decodeBase64, emptyDocState, encodeBase64, encodeDocState } from "./yjs-state";
 
 describe("base64", () => {
   it("round trips bytes above 0x7f and a long payload", () => {

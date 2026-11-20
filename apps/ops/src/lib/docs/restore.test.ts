@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EditorJson } from "@/lib/db/types";
-import { beforeRestoreName, planRestore, PRE_RESTORE_PREFIX, restoreNotice } from "./restore";
+import { beforeRestoreName, PRE_RESTORE_PREFIX, planRestore, restoreNotice } from "./restore";
 
 const content: EditorJson = {
   type: "doc",

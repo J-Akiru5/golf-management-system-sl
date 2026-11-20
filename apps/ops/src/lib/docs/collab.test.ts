@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   DOC_PERSISTENCE,
-  MAX_RECONNECT_ATTEMPTS,
   describeStatus,
   docProviderOptions,
+  MAX_RECONNECT_ATTEMPTS,
   presenceUsers,
+  statusTone,
   USER_COLORS,
   userColor,
 } from "./collab";
@@ -80,6 +81,16 @@ describe("describeStatus", () => {
     expect(describeStatus({ ...base, status: "disconnected" })).toBe("Reconnecting");
     expect(describeStatus({ ...base, pending: true })).toBe("Saving...");
     expect(describeStatus(base)).toBe("Saved");
+  });
+
+  it("gives each state a tone for the dot", () => {
+    expect(statusTone({ ...base, demo: true })).toBe("muted");
+    expect(statusTone({ ...base, online: false })).toBe("warn");
+    expect(statusTone({ ...base, gaveUp: true })).toBe("bad");
+    expect(statusTone({ ...base, status: "connecting" })).toBe("muted");
+    expect(statusTone({ ...base, status: "disconnected" })).toBe("warn");
+    expect(statusTone({ ...base, pending: true })).toBe("busy");
+    expect(statusTone(base)).toBe("ok");
   });
 });
 
