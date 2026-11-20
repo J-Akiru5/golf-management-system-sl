@@ -165,6 +165,7 @@ describe("crawl rules and the sitemap", () => {
     expect(entries.map((entry) => entry.url)).toEqual([
       `${SITE_URL}/`,
       `${SITE_URL}/demo`,
+      `${SITE_URL}/events`,
       `${SITE_URL}/pairings`,
       `${SITE_URL}/roster`,
       `${SITE_URL}/rules`,
