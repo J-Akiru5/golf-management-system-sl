@@ -18,6 +18,17 @@ Supabase project, because the code and the database are released separately.
 
   Checked locally on an in-process Postgres with 91 rules (non-members and suspended members read nothing, members cannot delete what only owner or partner may, the last owner cannot be removed, channels refuse non-members); not yet checked on a real Supabase project.
 
+## [0.59.0] - 2026-11-20
+
+### Added
+- **The clubhouse board opens on All days.** Once more than one day is published, the board shows each player's total net points across every published round, ranked with ties marked, with the rounds that made it under the name. The three views in the footer are buttons, so a person at the screen can take a list by hand; the board still moves on by itself when a list finishes. No migration.
+
+### Security
+- **Next.js raised from 16.4.2 to 16.4.6.** 16.4.2 is covered by a published advisory, and `next build` refuses to run on it. Dependency change only (`package.json`, `pnpm-lock.yaml`). No migration.
+
+No database migration ships with 0.59.0.
+
+
 ## [0.58.4] - 2026-11-15
 
 ### Fixed

@@ -249,3 +249,43 @@ describe("buildTvBoard", () => {
     expect(column?.players[0]).toMatchObject({ teeTime: null, teeHole: null });
   });
 });
+
+describe("the all-days view", () => {
+  const sessions: Record<string, ScoreSession> = {
+    "a|2026-11-13": "AM",
+    "a|2026-11-14": "PM",
+    "b|2026-11-14": "AM",
+  };
+  const rows = [
+    player(day1, "a", "ALPHA, ANA", 1, 30, 34),
+    player(day2, "a", "ALPHA, ANA", 1, 36, 30),
+    player(day2, "b", "BRAVO, BEN", 2, 31, 40),
+  ];
+  const board = buildTvBoard(data(rows), sessions, "2026-11-14");
+
+  it("adds every published round per player and ranks on the total", () => {
+    expect(board.overall.map((line) => [line.playerId, line.grossPoints, line.netPoints])).toEqual([
+      ["a", 66, 64],
+      ["b", 31, 40],
+    ]);
+    expect(board.days).toBe(2);
+  });
+
+  it("keeps each round with its day and its half, in day order", () => {
+    const line = board.overall.find((entry) => entry.playerId === "a");
+    expect(line?.rounds.map((round) => [round.dayNumber, round.session, round.netPoints])).toEqual([
+      [1, "AM", 34],
+      [2, "PM", 30],
+    ]);
+  });
+
+  it("does not invent a round for a day a player did not play", () => {
+    expect(board.overall.find((entry) => entry.playerId === "b")?.rounds).toHaveLength(1);
+  });
+
+  it("is empty before anything is published", () => {
+    const empty = buildTvBoard(data([]), {}, "2026-11-14");
+    expect(empty.overall).toEqual([]);
+    expect(empty.days).toBe(0);
+  });
+});
