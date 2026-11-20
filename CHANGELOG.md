@@ -9,6 +9,16 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.61.0] - 2026-11-20
+
+### Added
+- **A product landing page at `/` for other golf clubs.** A centred dark hero ("A better desk for tournament day.") with Request a demo, a real proof line and the control-room screen rising into its lower edge (marked as an illustrated layout). Then the club's events (a finished event is marked Completed), the real desk screens (cropped so no player name shows), figures from the 24th Bamboo Tee (327 entries, 118,279 live requests in the 25-hour peak window, 17,403 in the busiest hour, 20,641 public scorecard views, no downtime), what the desk does as a three-step story, About us, and Request a demo. The standings strip shows only while the featured event is live.
+- **The featured event is an organizer setting.** Setup has a new "TeeLine home page" card with "Feature this event on the home page". When an event is featured, the hero shows a "Now hosting" pill and a featured-event band with its quick actions (See all scores and View published pairings; Find my tee time while it is live). One event at a time; the page never picks one by itself. There is no visitor-facing switch.
+- **About us.** The three teams behind TeeLine (Syntaxure Labs builds and runs it, MDM Events runs tournament day, ZenLabs sets up operations with clubs) with their logos and links, and the TeeLine team with photos. The footer links the three teams.
+- **Scroll motion that stays fast on low-end phones.** GSAP and ScrollTrigger load only after the page is idle, in their own chunks. Capable devices get layered hero parallax, the screen easing from tilted to flat, figures counting up, staggered reveals and a pinned three-step story on desktop; low-memory or 4-core devices and Save-Data get short reveals only; reduced motion gets none. Nothing is hidden while waiting for the script.
+- **Request a demo (`/demo`).** A form for clubs; requests arrive in the desk's Feedback inbox as a new "Demo request" category. An email address and consent to be contacted are required.
+- **Migration `20261121000000_landing_showcase_and_demo.sql`, written and NOT applied to the live project.** It adds `tournaments.landing_featured` (one per club, by a partial unique index) with the organizer-only `set_landing_feature()`, `public_showcase_events()` (events finished in the last year stay listed, with `finished` and `featured` flags) and the `demo` feedback category. The owner runs `docs/landing/apply-on-live.sql` in the Supabase SQL editor. Until then the page falls back to `public_events()` with no featured event, the Setup switch says it is available after the database update, and the demo form cannot save.
+
 ## [0.60.0] - 2026-11-20
 
 ### Added

@@ -36,6 +36,7 @@ function page(
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     page("/", "weekly", 1),
+    page("/demo", "monthly", 0.9),
     page("/pairings", "daily", 0.8),
     page("/roster", "daily", 0.8),
     page("/leaderboard", "daily", 0.8),

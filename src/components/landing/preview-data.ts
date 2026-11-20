@@ -1,0 +1,85 @@
+import type { EventCarouselProps, LandingHeroProps, ProductShot, ProofStripProps } from "./types";
+
+/** Sample-only props for the design preview and static-render tests. */
+export const previewHero: LandingHeroProps = {
+  featured: {
+    tournamentId: "preview-bamboo-tee-2026",
+    name: "24th Bamboo Tee",
+    dates: ["2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"],
+    startFormat: "shotgun",
+    firstTeeTime: "06:00",
+    cutOffDate: "2026-10-22",
+    entered: 327,
+    entriesOpen: false,
+    phase: "past",
+    finished: true,
+    dayNumber: 0,
+    dateLabel: "Nov 12–15, 2026",
+    enteredLabel: "327 entered",
+    featured: true,
+  },
+  eventEyebrow: "Final results",
+  quickActions: [
+    { label: "See all scores", href: "/results/all", primary: true },
+    { label: "View published pairings", href: "/pairings", primary: false },
+  ],
+  eventStats: [
+    { label: "Entries", value: "327" },
+    { label: "First tee", value: "6:00 AM" },
+    { label: "Days", value: "4" },
+    { label: "Venue", value: "Iloilo Golf and Country Club" },
+  ],
+  heroShot: {
+    src: "/landing/control-room.webp",
+    alt: "The control room screen: the draw, the field and the items to fix before publishing.",
+    caption:
+      "Control room: the draw, the field and what must be fixed before publishing, on one screen.",
+    width: 1883,
+    height: 931,
+  },
+};
+
+export const previewEvents: EventCarouselProps["events"] = [previewHero.featured!];
+
+export const previewShots: ProductShot[] = [
+  {
+    src: "/landing/control-room.webp",
+    alt: "Illustrated tournament control room with a course overview, field summary and event controls",
+    caption: "One view of the tournament desk",
+    width: 1884,
+    height: 930,
+  },
+  {
+    src: "/landing/hole-overview.webp",
+    alt: "Hole overview screen with a course illustration and distance markers",
+    caption: "Course and hole overview",
+    width: 1500,
+    height: 932,
+  },
+  {
+    src: "/landing/scorecard-entry.webp",
+    alt: "Hole-by-hole score entry table",
+    caption: "Hole-by-hole score entry",
+    width: 1884,
+    height: 490,
+  },
+];
+
+export const previewProof: ProofStripProps = {
+  stats: [
+    { value: "327", label: "entries", detail: "Confirmed field for the event" },
+    { value: "118,279", label: "live requests", detail: "in the 25-hour peak window" },
+    {
+      value: "17,403",
+      label: "in the busiest hour",
+      detail: "pairings, scorecards and leaderboard",
+    },
+    {
+      value: "20,641",
+      label: "public scorecard views",
+      detail: "players and guests on their phones",
+    },
+    { value: "0", label: "downtime", detail: "the site stayed up through the tournament" },
+  ],
+  source: "24th Bamboo Tee, Iloilo Golf and Country Club, 12 to 15 Nov 2026.",
+};

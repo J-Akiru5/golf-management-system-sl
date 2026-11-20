@@ -25,6 +25,11 @@ export interface PublicEvent {
    * page offering an entry link that no longer works.
    */
   entriesOpen: boolean;
+  /**
+   * True only when an organizer turned the home page feature on for this event in the desk. The
+   * page never picks a featured event by itself; an older public payload without the flag is false.
+   */
+  featured: boolean;
 }
 
 const MONTHS = [
