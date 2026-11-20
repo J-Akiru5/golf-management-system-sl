@@ -128,7 +128,9 @@ export default async function HomePage() {
       <ProofStrip stats={PROOF_STATS} source={PROOF_SOURCE} />
       <CapabilitySections />
       {landingEvents.length > 0 && <EventCarousel events={landingEvents} />}
-      {teaser && <LeaderboardTeaser teaser={teaser} />}
+      {/* Standings belong to the day of play. Once the featured event has finished, "See all
+          scores" opens the results, and the landing page shows no standings strip. */}
+      {teaser && featured?.phase === "live" && <LeaderboardTeaser teaser={teaser} />}
       <DemoCta />
       <LandingFooter versionLabel={APP_VERSION_LABEL} />
       <PublicBottomBar />
