@@ -209,7 +209,8 @@ export function BoardView({
   ): Promise<string | null> {
     const response = await createCardAction({ stage, ...values });
     if (!response.ok) return response.message;
-    commit([...cardsRef.current, response.card]);
+    // A realtime INSERT hint may already have added this card; merge by id either way.
+    commit(upsertCard(cardsRef.current, response.card));
     return null;
   }
 
@@ -257,6 +258,12 @@ export function BoardView({
         onChange={setFilter}
       />
 
+      {cards.length === 0 ? (
+        <p className="rounded-md border border-dashed border-line-strong px-3 py-2 text-sm text-ink-muted">
+          The pipeline is empty. Add the first card in any column.
+        </p>
+      ) : null}
+
       {message === null ? null : (
         <div
           role="alert"
@@ -287,9 +294,7 @@ export function BoardView({
           />
         )}
         renderColumnHeader={(column, count) => {
-          const totals = quotedTotals(
-            sortColumn(items.filter((item) => item.columnId === column.id)),
-          );
+          const totals = quotedTotals(items.filter((item) => item.columnId === column.id));
           return (
             <div className="flex w-full flex-col gap-0.5">
               <div className="flex items-center justify-between gap-2">

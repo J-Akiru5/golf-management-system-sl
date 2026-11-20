@@ -2,6 +2,7 @@
 
 import {
   type Announcements,
+  type CollisionDetection,
   closestCenter,
   DndContext,
   type DragEndEvent,
@@ -9,6 +10,8 @@ import {
   type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   TouchSensor,
   useDroppable,
   useSensor,
@@ -25,6 +28,7 @@ import { GripVertical } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { cn } from "@/lib/ui/cn";
 import {
+  COLUMN_PREFIX,
   columnDroppableId,
   type KanbanColumn,
   type KanbanItem,
@@ -34,6 +38,29 @@ import {
 } from "./target";
 
 export type { KanbanColumn, KanbanItem, KanbanMove } from "./target";
+
+/**
+ * Prefer a card under the pointer over the column around it, so a drop lands exactly where it was
+ * released. The column wins only in the empty space of a column, which appends the card. Keyboard
+ * drags have no pointer, so the intersection and nearest-centre checks take over.
+ */
+const boardCollisionDetection: CollisionDetection = (args) => {
+  const isColumn = (id: string | number) => String(id).startsWith(COLUMN_PREFIX);
+
+  const pointerHits = pointerWithin(args);
+  if (pointerHits.length > 0) {
+    const cards = pointerHits.filter((hit) => !isColumn(hit.id));
+    return cards.length > 0 ? cards : pointerHits;
+  }
+
+  const intersections = rectIntersection(args);
+  if (intersections.length > 0) {
+    const cards = intersections.filter((hit) => !isColumn(hit.id));
+    return cards.length > 0 ? cards : intersections;
+  }
+
+  return closestCenter(args);
+};
 
 /**
  * A generic kanban board on dnd-kit.
@@ -136,7 +163,7 @@ export function Kanban<T extends KanbanItem>({
   return (
     <DndContext
       sensors={disabled ? [] : sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={boardCollisionDetection}
       accessibility={{ announcements }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}

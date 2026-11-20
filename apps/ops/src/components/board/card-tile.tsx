@@ -71,7 +71,7 @@ export function CardTile({
         <button
           type="button"
           onClick={onMove}
-          className="inline-flex h-8 flex-none items-center gap-1 rounded-md px-2 text-[12px] font-semibold text-ink-muted hover:bg-surface-sunken hover:text-ink"
+          className="inline-flex h-11 flex-none items-center gap-1 rounded-md px-2 text-[12px] font-semibold text-ink-muted hover:bg-surface-sunken hover:text-ink sm:h-8"
           aria-label={`Move ${card.title} to another stage`}
         >
           <MoveRight className="size-3.5" aria-hidden="true" />

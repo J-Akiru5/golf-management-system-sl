@@ -503,14 +503,14 @@ function matchFilter(card: BoardCard, filter: ListCardsFilter): boolean {
   return true;
 }
 
+let demoRepo: BoardRepo | null = null;
+
 export function createDemoBoardRepo(): BoardRepo {
   // One shared instance, because the demo data is one shared store. It also keeps `createDemoRepos()`
   // equal to itself, which the foundation test checks.
   demoRepo ??= buildDemoBoardRepo();
   return demoRepo;
 }
-
-let demoRepo: BoardRepo | null = null;
 
 function buildDemoBoardRepo(): BoardRepo {
   function update(id: string, patch: CardPatch): BoardCard {
