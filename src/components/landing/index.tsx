@@ -22,7 +22,7 @@ export function ProductShowcase({ shots }: { shots: ProductShot[] }) {
       {remainingShots.length > 0 && (
         <div className="tl-product-secondary" data-tl-stagger>
           {remainingShots.map((shot) => (
-            <figure key={shot.src}>
+            <figure key={shot.src} data-tl-reveal>
               <Image
                 src={shot.src}
                 alt={shot.alt}
@@ -83,90 +83,111 @@ export function CapabilitySections() {
           the organizer.
         </p>
       </div>
-      <article className="tl-capability" data-tl-reveal>
-        <div className="tl-capability-copy">
-          <span className="tl-index">01 / Prepare</span>
-          <h3>Bring the field together.</h3>
-          <p>
-            Take entries at the desk or online, then import handicap indexes. Each player’s
-            category, tee, flight, group and start slot follows that tournament’s settings.
-          </p>
-          <p>
-            When the rules cannot place someone, TeeLine flags the entry for review instead of
-            guessing.
-          </p>
-        </div>
-        <div className="tl-diagram tl-routing-diagram" aria-label="Entry, settings, review">
-          <span>Entries</span>
-          <b aria-hidden="true">→</b>
-          <span>Event settings</span>
-          <b aria-hidden="true">→</b>
-          <span className="tl-diagram-result">Reviewable draw</span>
-        </div>
-      </article>
-      <article className="tl-capability tl-capability-reverse" data-tl-reveal>
-        <div className="tl-capability-copy">
-          <span className="tl-index">02 / Review</span>
-          <h3>The organizer stays in control.</h3>
-          <p>
-            Choose shotgun or tee-time starts. Review the proposed groups, fix anything flagged, and
-            publish when the draw is ready.
-          </p>
-          <p>
-            Players can open published pairings on a phone without an account. Private profile
-            details stay private.
-          </p>
-        </div>
-        <div
-          className="tl-diagram tl-draw-diagram"
-          aria-label="A reviewed draw progresses to published pairings"
-        >
-          <div>
-            <span>Draft draw</span>
-            <i />
-            <i />
-            <i />
+      <div className="tl-capability-story">
+        <article className="tl-capability" data-tl-reveal>
+          <div className="tl-capability-copy">
+            <span className="tl-index">01 / Prepare</span>
+            <h3>Bring the field together.</h3>
+            <p>
+              Take entries at the desk or online, then import handicap indexes. Each player’s
+              category, tee, flight, group and start slot follows that tournament’s settings.
+            </p>
+            <p>
+              When the rules cannot place someone, TeeLine flags the entry for review instead of
+              guessing.
+            </p>
           </div>
-          <b aria-hidden="true">→</b>
-          <div className="tl-diagram-result">
-            <span>Published</span>
-            <i />
-            <i />
-            <i />
+          <div className="tl-diagram tl-routing-diagram" aria-label="Entry, settings, review">
+            <svg className="tl-diagram-lines" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M8 50H92" data-tl-draw />
+            </svg>
+            <span>Entries</span>
+            <b aria-hidden="true">→</b>
+            <span>Event settings</span>
+            <b aria-hidden="true">→</b>
+            <span className="tl-diagram-result">Reviewable draw</span>
           </div>
-        </div>
-      </article>
-      <article className="tl-capability" data-tl-reveal>
-        <div className="tl-capability-copy">
-          <span className="tl-index">03 / Play</span>
-          <h3>Keep the round moving.</h3>
-          <p>
-            Enter scores hole by hole and check them against the card. A live public leaderboard can
-            use a results blackout and timed reveal.
-          </p>
-          <p>
-            Show the board in the clubhouse, print start sheets and scorecards, and keep an audit
-            log of changes. The staff app supports marshals and tabulators.
-          </p>
-        </div>
-        <div
-          className="tl-diagram tl-score-diagram"
-          aria-label="Score entry checked against a card"
-        >
-          <div>
-            <span>Hole</span>
-            <span>Par</span>
-            <span>Score</span>
-            <b>07</b>
-            <b>4</b>
-            <b>5</b>
-            <b>08</b>
-            <b>3</b>
-            <b>3</b>
+        </article>
+        <article className="tl-capability tl-capability-reverse" data-tl-reveal>
+          <div className="tl-capability-copy">
+            <span className="tl-index">02 / Review</span>
+            <h3>The organizer stays in control.</h3>
+            <p>
+              Choose shotgun or tee-time starts. Review the proposed groups, fix anything flagged,
+              and publish when the draw is ready.
+            </p>
+            <p>
+              Players can open published pairings on a phone without an account. Private profile
+              details stay private.
+            </p>
           </div>
-          <span className="tl-diagram-caption">Checked against the card</span>
+          <div
+            className="tl-diagram tl-draw-diagram"
+            aria-label="A reviewed draw progresses to published pairings"
+          >
+            <svg className="tl-diagram-lines" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M14 50H86" data-tl-draw />
+            </svg>
+            <div>
+              <span>Draft draw</span>
+              <i />
+              <i />
+              <i />
+            </div>
+            <b aria-hidden="true">→</b>
+            <div className="tl-diagram-result">
+              <span>Published</span>
+              <i />
+              <i />
+              <i />
+            </div>
+          </div>
+        </article>
+        <article className="tl-capability" data-tl-reveal>
+          <div className="tl-capability-copy">
+            <span className="tl-index">03 / Play</span>
+            <h3>Keep the round moving.</h3>
+            <p>
+              Enter scores hole by hole and check them against the card. A live public leaderboard
+              can use a results blackout and timed reveal.
+            </p>
+            <p>
+              Show the board in the clubhouse, print start sheets and scorecards, and keep an audit
+              log of changes. The staff app supports marshals and tabulators.
+            </p>
+          </div>
+          <div
+            className="tl-diagram tl-score-diagram"
+            aria-label="Score entry checked against a card"
+          >
+            <svg className="tl-diagram-lines" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M8 18H92" data-tl-draw />
+            </svg>
+            <div>
+              <span>Hole</span>
+              <span>Par</span>
+              <span>Score</span>
+              <b>07</b>
+              <b>4</b>
+              <b>5</b>
+              <b>08</b>
+              <b>3</b>
+              <b>3</b>
+            </div>
+            <span className="tl-diagram-caption">Checked against the card</span>
+          </div>
+        </article>
+        <div className="tl-story-progress" aria-hidden="true">
+          <span className="tl-story-progress-track">
+            <span className="tl-story-progress-fill" />
+          </span>
+          <span className="tl-story-progress-labels">
+            <span className="tl-story-progress-label">1 / 3 · Prepare</span>
+            <span className="tl-story-progress-label">2 / 3 · Review</span>
+            <span className="tl-story-progress-label">3 / 3 · Play</span>
+          </span>
         </div>
-      </article>
+      </div>
       <p className="tl-built-note">
         Built in Iloilo by Syntaxure Labs · First run at Iloilo Golf and Country Club
       </p>
