@@ -2,6 +2,7 @@ import { Check, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { LandingMotion } from "./LandingMotion";
 import type { LandingHeroProps } from "./types";
 
 function TeeLineArtwork() {
@@ -44,6 +45,7 @@ export function LandingHero({
 
   return (
     <section className="tl-hero" aria-labelledby="hero-title">
+      <LandingMotion />
       <div className="tl-hero-atmosphere" data-tl-parallax="-0.1" aria-hidden="true" />
       <div className="tl-hero-noise" aria-hidden="true" />
       <div className="tl-hero-grid" aria-hidden="true" />
@@ -72,7 +74,7 @@ export function LandingHero({
 
       <div className="tl-hero-inner">
         {featured && primaryAction && (
-          <Link className="tl-now-pill" href={primaryAction.href}>
+          <Link className="tl-now-pill" href={primaryAction.href} data-tl-reveal>
             <span
               className={`tl-now-status${featured.finished ? " is-finished" : featured.phase === "live" ? " is-live" : ""}`}
               aria-hidden="true"

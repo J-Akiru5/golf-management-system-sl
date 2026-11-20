@@ -2,7 +2,7 @@
 
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { EventCarouselProps, LandingEvent } from "./types";
 
 function EventState({ event }: { event: LandingEvent }) {
@@ -26,16 +26,53 @@ function EventState({ event }: { event: LandingEvent }) {
 export function EventCarousel({ events }: EventCarouselProps) {
   const isSingle = events.length === 1;
   const track = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState(0);
+  const positionLabel = useRef<HTMLSpanElement>(null);
+  const cardStep = useRef(0);
+
+  useEffect(() => {
+    const node = track.current;
+    if (!node || isSingle) return;
+
+    const cards = Array.from(node.querySelectorAll<HTMLElement>(".tl-event-card"));
+    let activeIndex = 0;
+    const updatePosition = () => {
+      const step = cardStep.current;
+      if (step <= 0) return;
+      const nextIndex = Math.min(events.length - 1, Math.round(node.scrollLeft / step));
+      if (nextIndex === activeIndex) return;
+      cards[activeIndex]?.classList.remove("is-active");
+      cards[nextIndex]?.classList.add("is-active");
+      activeIndex = nextIndex;
+      if (positionLabel.current) {
+        positionLabel.current.textContent = `${activeIndex + 1} / ${events.length}`;
+      }
+    };
+    const measureCard = () => {
+      const card = cards[0];
+      if (card) cardStep.current = card.getBoundingClientRect().width + 20;
+      updatePosition();
+    };
+
+    node.addEventListener("scroll", updatePosition, { passive: true });
+    const resizeObserver = new ResizeObserver(measureCard);
+    resizeObserver.observe(node);
+    if (cards[0]) resizeObserver.observe(cards[0]);
+    measureCard();
+
+    return () => {
+      node.removeEventListener("scroll", updatePosition);
+      resizeObserver.disconnect();
+    };
+  }, [events.length, isSingle]);
+
   const scroll = (direction: number) => {
     const node = track.current;
     if (!node) return;
-    const card = node.querySelector<HTMLElement>(".tl-event-card");
     const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
       ? "auto"
       : "smooth";
     node.scrollBy({
-      left: direction * ((card?.offsetWidth ?? node.clientWidth) + 20),
+      left: direction * (cardStep.current || node.clientWidth),
       behavior,
     });
   };
@@ -49,8 +86,8 @@ export function EventCarousel({ events }: EventCarouselProps) {
         </div>
         {events.length > 1 && (
           <div className="tl-carousel-controls">
-            <span aria-live="polite">
-              {position + 1} <i>/</i> {events.length}
+            <span aria-live="polite" ref={positionLabel}>
+              1 <i>/</i> {events.length}
             </span>
             <button type="button" aria-label="Previous event" onClick={() => scroll(-1)}>
               <ChevronLeft aria-hidden="true" />
@@ -79,18 +116,10 @@ export function EventCarousel({ events }: EventCarouselProps) {
               scroll(1);
             }
           }}
-          onScroll={(event) => {
-            const node = event.currentTarget;
-            const card = node.querySelector<HTMLElement>(".tl-event-card");
-            if (card)
-              setPosition(
-                Math.min(events.length - 1, Math.round(node.scrollLeft / (card.offsetWidth + 20))),
-              );
-          }}
         >
-          {events.map((event) => (
+          {events.map((event, index) => (
             <article
-              className={`tl-event-card${event.finished ? " is-finished" : ""}${isSingle ? " is-feature" : ""}`}
+              className={`tl-event-card${event.finished ? " is-finished" : ""}${isSingle ? " is-feature" : ""}${index === 0 ? " is-active" : ""}`}
               key={event.tournamentId}
               data-tl-reveal
             >
