@@ -116,6 +116,14 @@ a provider. Decision (owner: "go anyway, as long as it is logical"): use the pro
 and give it a Supabase client wrapper whose `channel()` always passes `config: { private: true }`.
 That is a few lines in `src/lib/docs/private-client.ts`, not a provider.
 
+The provider uses one string as both its channel name and its persistence key (read from the source:
+`new SupabasePersistence(channelName, ...)`). So the provider is constructed with the bare document id
+as its room name, which is a valid `doc_id` for the persistence upsert, and the wrapper's `channel(name)`
+opens `ws:doc:<name>` as a private channel. The wrapper therefore both forces `private: true` and adds
+the `ws:doc:` prefix. Set `maxReconnectAttempts` to a small number (10): a refused private channel
+reports `CHANNEL_ERROR` and the provider's default is to retry forever. Call
+`client.realtime.setAuth()` before connecting so the channel carries the user's token.
+
 - Persistence: `SupabaseProvider` option `persistence: { table: "ws_doc_states", roomColumn: "doc_id",
   stateColumn: "state", storeTimeout: 2000 }`. It upserts the full state; the migration allows that.
 - Pin `@supabase-labs/y-supabase` to `0.1.0` exactly. It is a young package.
