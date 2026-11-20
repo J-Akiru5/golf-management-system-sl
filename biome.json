@@ -1,7 +1,19 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
   "files": {
-    "includes": ["src/**", "*.json", "*.ts", "!.claude/**", "!.worktrees/**", "!.watch-staging/**"]
+    "includes": [
+      "src/**",
+      "apps/**",
+      "packages/**",
+      "*.json",
+      "*.ts",
+      "!**/node_modules/**",
+      "!**/.next/**",
+      "!**/seed/out/**",
+      "!.claude/**",
+      "!.worktrees/**",
+      "!.watch-staging/**"
+    ]
   },
   "formatter": {
     "indentStyle": "space",
@@ -9,6 +21,13 @@
     "lineWidth": 100,
     "lineEnding": "auto"
   },
+  "overrides": [
+    {
+      "includes": ["apps/ops/src/lib/db/**", "apps/ops/scripts/workspace-rls.mjs"],
+      "formatter": { "enabled": false },
+      "assist": { "enabled": false }
+    }
+  ],
   "linter": {
     "enabled": true,
     "rules": {

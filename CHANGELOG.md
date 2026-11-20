@@ -9,6 +9,21 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-11-20
+
+### Added
+- **TeeLine Workspace (`apps/ops`), an internal ops portal for Syntaxure Labs, MDM Events and ZenLabs, is added as a separate app in this repository.** It has live shared documents (a collaborative editor with presence, autosave, saved versions and restore), a tournament pipeline board from inquiry to closed, team tasks as a list and a board, an overview page, and Settings with member management and roles (owner, partner, member). It is its own Vercel project (`teeline-workspace`, intended domain `teeline.syntaxure.dev`) with its own access list, `workspace_members`, separate from `club_members`, so tournament staff and desk accounts see nothing in it. **The golf app is not changed**: no existing file under `src` was touched (the only addition there is a test that checks the migrations' security rules), and the workspace stays off (`OPS_ENABLED`) until the owner turns it on. The contract is `docs/workspace/SPEC.md`; the run record is `docs/workspace/AGENTS-RUN.md`.
+- **Migrations, all four written and NOT applied to the live project.** The owner runs them in the Supabase SQL editor; `docs/workspace/apply-on-live.sql` is the four in order in one transaction. The workspace cannot sign anyone in until they are run.
+  - `20261120000100_workspace_members.sql`: the access list, role helpers, owner-only add and list functions, and the last-owner protection.
+  - `20261120000200_workspace_docs.sql`: documents, live Yjs state and named snapshots.
+  - `20261120000300_workspace_pipeline_and_tasks.sql`: pipeline cards (linked to `tournaments` by `tournament_id`, which takes a very short lock on that table, so apply outside scoring peaks), tasks and comments.
+  - `20261120000400_workspace_realtime.sql`: authorization for the private Realtime channels and the database-sent change feed. Needs Realtime Authorization turned on for the project, with public access left off.
+
+  Checked locally on an in-process Postgres with 91 rules (non-members and suspended members read nothing, members cannot delete what only owner or partner may, the last owner cannot be removed, channels refuse non-members). **Not yet checked on a real Supabase project**: live sync, persistence and a two-account access check are still to do.
+
+### Changed
+- **The repository is now a pnpm workspace** (`apps/*`, `packages/*`). Root lint covers `apps` and `packages`, root typecheck leaves them to their own packages, the shared brand tokens live in `packages/brand`, and CI has a `workspace app` job. No migration changes the golf app.
+
 ## [0.59.0] - 2026-11-20
 
 ### Added
