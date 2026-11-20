@@ -130,8 +130,10 @@ export type PublicFeedbackRow = {
   club_id: string;
   /** Added by 20261110000300. Null for general site feedback. */
   tournament_id: string | null;
-  category: "improvement" | "bug" | "content";
+  category: "improvement" | "bug" | "content" | "demo" | "concern";
   message: string;
+  /** The structured part of a concern. Added by 20261122000000; null for every other category. */
+  details: Json | null;
   contact_name: string | null;
   contact_email: string | null;
   contact_consent: boolean;
@@ -157,7 +159,7 @@ export type EmailOutboxRow = {
   registration_id: string | null;
   recipient_email: string;
   recipient_name: string;
-  kind: "confirmation" | "reminder" | "custom" | "feedback_digest";
+  kind: "confirmation" | "reminder" | "custom" | "feedback_digest" | "feedback_alert";
   subject: string;
   body: string;
   status: "queued" | "sending" | "sent" | "failed" | "skipped";
@@ -700,6 +702,8 @@ export interface Database {
           tournament_id?: string | null;
           category: PublicFeedbackRow["category"];
           message: string;
+          /** The concern's ticked boxes and follow-up answers. Null for every other category. */
+          details?: Json | null;
           contact_name?: string | null;
           contact_email?: string | null;
           contact_consent?: boolean;
@@ -1254,6 +1258,8 @@ export interface Database {
           p_locale?: string;
           p_honeypot?: string | null;
           p_tournament?: string | null;
+          /** The concern's details. Added by 20261122000000, which is not applied yet. */
+          p_details?: Json | null;
         };
         Returns: Json;
       };
@@ -1269,6 +1275,13 @@ export interface Database {
        * which is not applied yet, so `supabase gen types typescript` cannot produce it.
        */
       public_showcase_events: { Args: Record<string, never>; Returns: Json };
+      /**
+       * Every public event, in state open or closed, with no time limit, newest first, each with
+       * finished, featured and hasRules. Added by hand with
+       * 20261122000000_concerns_and_event_archive.sql, which is not applied yet, so
+       * `supabase gen types typescript` cannot produce it.
+       */
+      public_event_archive: { Args: Record<string, never>; Returns: Json };
       /**
        * The events a signed-out visitor may see: open, cut-off not passed. Added by hand with
        * 20261033000000_public_open_events.sql, which is not applied to the live project yet, so

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { ScoresView } from "@/components/public/ScoresView";
@@ -16,12 +15,23 @@ import { getI18n } from "@/lib/i18n/server";
 import { advisoryForToday } from "@/lib/public/advisory";
 import { blackoutFlags } from "@/lib/public/results-reveal";
 import { buildScoreSessions } from "@/lib/public/score-sessions";
+import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { DemoResults } from "./DemoResults";
 
+const ALL_SCORES_DESCRIPTION =
+  "Every player with a published card, morning and afternoon, on one board: gross and net points for each published round of the tournament.";
+
 export const metadata: Metadata = {
   title: "All scores",
+  description: ALL_SCORES_DESCRIPTION,
   alternates: { canonical: "/results/all" },
+  openGraph: openGraphFor({
+    title: `All scores | ${SITE_NAME}`,
+    description: ALL_SCORES_DESCRIPTION,
+    path: "/results/all",
+  }),
+  twitter: twitterFor({ title: `All scores | ${SITE_NAME}`, description: ALL_SCORES_DESCRIPTION }),
 };
 export const dynamic = "force-dynamic";
 
@@ -131,13 +141,6 @@ export default async function ResultsPage() {
       ) : (
         <ScoresView data={{ ...data, rows }} sessions={sessions} />
       )}
-      <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/pairings">{t("programme.navPairings")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/roster">{t("programme.navPlayers")}</Link>
-      </nav>
     </LeaderboardShell>
   );
 }

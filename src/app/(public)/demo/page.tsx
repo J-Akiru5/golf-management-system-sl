@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PublicBottomBar } from "@/components/MobileTabBar";
 import "@/components/landing/landing.css";
 import { DemoRequestForm } from "@/components/public/DemoRequestForm";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -34,19 +32,6 @@ export const metadata: Metadata = {
 export default function DemoPage() {
   return (
     <main className="tl-demo-page mobile-bar-space">
-      <header className="tl-demo-top">
-        <Link href="/" aria-label="TeeLine Golf home">
-          <TeeLineLogo variant="reverse" width={172} />
-          <span>
-            <b>TeeLine Golf</b>
-            Tournament desk
-          </span>
-        </Link>
-        <Link className="tl-demo-back" href="/">
-          Back to home
-        </Link>
-      </header>
-
       <div className="tl-demo-layout">
         <section className="tl-demo-copy" aria-labelledby="demo-title">
           <p className="tl-kicker">For your tournament committee</p>

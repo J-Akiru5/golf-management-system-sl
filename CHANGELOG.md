@@ -9,6 +9,20 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.62.0] - 2026-11-20
+
+### Added
+- **Teeo, the concern chat, on every public page.** A head-only bubble opens a chat in which Teeo, the TeeLine mascot, takes a player's concern in their own words (English, Tagalog, Hiligaynon or Cebuano) and keeps asking, one question at a time, until it has the concern and its follow-ups, then the player's name, handicap and schedule. The player confirms a summary and the note goes to the desk's Feedback inbox. The panel's code loads only when it is first opened. The provider layer is ported from OptiFeed: Gemini first, then an OpenAI-compatible provider and OpenCode Go, each skipped without its key. **No key is set yet**: until one is, Teeo answers that it cannot reply just now and offers the tick-box form. Keys and models come from environment variables only (`.env.example`).
+- **An Events portfolio.** `/events` lists every event; each event has its own page with its dates, venue and entries, the first published groups, the top of the released results, its rules of play, and links to the full pages. Only published, released data is shown. "Events" replaces "Tournament rules" in the navigation; `/rules` forwards to the event that carries rules and otherwise keeps the published Conditions of Play.
+- **Tick-box concerns on `/feedback`**, from the organizer's list: Inquiry, Name typo, Schedule, Handicap, Score (asks for the hole), Tee off (asks for the tee colour: Blue, Silver, White or Red) and Others (asks for a line). A player can tick several. Name, handicap and schedule are asked for; a concern queues an email alert for the club's owners and organizers in the email outbox (sent from the email desk, not automatically).
+- **SEO and AEO from #333** (per-event schema on `/`, the sitemap with a build-date `lastmod`, crawler rules), carried into the new landing page.
+
+### Changed
+- **One look across the public site.** Every public page uses the landing's shared header, footer, width and dark cards; the duplicate logo blocks and the old footer lines are gone. The feedback page uses the full desktop width with the landing's padding.
+
+### Database
+- **`20261122000000_concerns_and_event_archive.sql` and `20261122000100_concern_chat_rate.sql`, written and NOT applied to the live project.** They add the `concern` category and `public_feedback.details`, `submit_feedback(..., p_details)`, the `feedback_alert` outbox kind, `public_event_archive()` and the chat rate check. The owner runs `docs/public-v2/apply-on-live.sql` after `docs/landing/apply-on-live.sql`. Until then the form and the chat still file a concern, as a plain note that carries every answer; the events pages fall back to the existing event lists; and the chat rate check is skipped.
+
 ## [0.61.0] - 2026-11-20
 
 ### Added
