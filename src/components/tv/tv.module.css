@@ -383,6 +383,53 @@
   color: var(--gold);
 }
 
+/* The all-days list: the event total is the ranking figure at the right, and the rounds that made it
+   sit under the name, so a member can find their own day without the totals column turning into a
+   paragraph. */
+.labels[data-overall="true"],
+.row[data-overall="true"] {
+  grid-template-columns:
+    calc(var(--u) * 3.4) minmax(0, 1fr) calc(var(--u) * 6.4)
+    calc(var(--u) * 8);
+}
+
+.row[data-overall="true"] {
+  padding: calc(var(--u) * 1.15) 0;
+}
+
+.rounds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 1.4);
+  margin-top: calc(var(--u) * 0.3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.round {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 0.4);
+}
+
+.roundDay {
+  font-size: calc(var(--u) * 1.1);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(247, 245, 238, 0.66);
+}
+
+.roundPoints {
+  font-size: calc(var(--u) * 1.6);
+  font-weight: 700;
+  color: rgba(247, 245, 238, 0.9);
+}
+
+.row[data-rank="1"] .roundPoints {
+  color: var(--gold);
+}
+
 .pairCell {
   display: flex;
   flex-direction: column;
@@ -515,10 +562,28 @@
   height: auto;
 }
 
+/* The views are buttons: the board runs itself, but a person at the screen can take a list. */
 .mode,
 .modeOn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   letter-spacing: 0;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.mode:hover,
+.modeOn:hover {
+  color: var(--ink);
+}
+
+.mode:focus-visible,
+.modeOn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 2px;
 }
 
 .mode {

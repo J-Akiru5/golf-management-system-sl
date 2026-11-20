@@ -130,6 +130,104 @@ All three were applied and then checked against the live project by probe, not b
 - The preview carries `AWARDING_DEMO=1`, which serves fictional sample boards so the ceremony can be
   rehearsed. It is refused in production.
 
+### Pair 372 recorded, no schedule touched
+
+The club's admin record lists one member and one guest as a pair, but their registrations share no
+playing day: the member plays Days 1 and 2, the guest Days 3 and 4 PM. The owner's instruction on
+15 Nov was to record the pair and leave every day, session, group and tee time exactly as it is, so
+that is all that was done.
+
+- The write was `save_pair()` with pair number 372. That function writes `registration_pairs`,
+  `registration_pair_members` and one audit row; it never reads or writes `registration_days`,
+  `groups` or `group_members`.
+- Both registrations' day rows, group rows, tee times and start holes were read before the call and
+  again after it, and are identical. The member is still Days 1 and 2 with no session, the guest is
+  still Days 3 and 4 PM, and both keep the groups and times they already had.
+- The desk shows the pair on `/register` and `/pairs/372`. The published snapshot stores no pair
+  numbers, so the public pairings are unchanged and did not need republishing.
+- This is the same shape as pair 371, which the club already records as one pair across different
+  playing days, so the record is consistent with what the club keeps.
+
+### Two blank membership types corrected
+
+Two registrations carried no `membership_type`, which is exactly what makes `save_pair()` answer
+"is not a member entry". Their `player_memberships` rows already said member, so the registration
+rows were set to `member` and nothing else was changed. The desk stops prompting on those two.
+
+### Senior category moved to the White tee (15 Nov 2026)
+
+The owner's instruction: the Senior category plays the White tee. Eighteen Senior entries were on
+Blue because the entry tee is set per player and wins over the category's tee. All eighteen were
+moved to White, and the playing handicap was recomputed from the index on White's 67.9 / 127 / par 70,
+so each dropped by one to three strokes. All 27 Senior entries now carry White. One of them works
+out below zero and plays off -1, which the scoring tables already handle as a plus handicap.
+
+- 27 played-round snapshots corrected across Days 1 to 3 (all provisional), each through
+  `correct_handicap_snapshot`, so every result was recalculated.
+- Days 1, 2 and 3 republished as versions 42, 52 and 87 so the public board follows.
+- Three pair classes moved with the numbers, written on both partners as the desk does: pair 44
+  Class D to C, pair 121 Class B to A, pair 56 Class C to B.
+- No playing day, session, group, tee time or start hole was touched. The draw, the groups and the
+  published pairings are unchanged.
+- The playing-handicap cap (`20261115000400`) is live. The audit log shows the same correction path
+  writing 35 at 02:30 and 30 from 02:59 on, and no snapshot in the event is above 30.
+- Day 4's public board is fed by a tabulator sync that inserts a publication per batch, not by
+  `publish_round`. Its last sync (version 106) predated this change, so the eight Seniors with a Day 4
+  card still carried their Blue figure. The board was rebuilt as version 107 with those eight cards
+  reworked: CELINO 8 to 6 and net 38 to 36, AGREDA 24 to 22, BROCAL 16 to 14, FUENTESFINA 26 to 23,
+  JABILLES 23 to 21, OMAYAN 23 to 21, PORO 22 to 20, TY 27 to 25. No other card was touched.
+- **Open, and it is not from this change:** on version 107, 61 of the 196 Day 4 cards carry a playing
+  handicap that differs from the registration, and 69 carry a different class. The Day 4 board needs a
+  sync from the registrations before the awarding, or a decision on which figure Day 4 scores with.
+
+### Tee conversion verified before the announcement (15 Nov 2026)
+
+The tee values match the spec: Blue 69.6 / 130 / par 70, White 67.9 / 127 / par 70, Ladies Red
+72.1 / 126 / par 70. Silver repeats White's numbers and is used by nobody. The conversion is index
+capped at 30, then index x slope / 113 + (rating - par), rounded half up, the playing handicap capped
+at 30, at 100% allowance.
+
+Every surface now agrees with that, checked card by card:
+
+| Surface | Cards checked | Wrong |
+| --- | --- | --- |
+| Snapshots | 409 | 0 |
+| Day 1 public (v42) | 85 | 0 |
+| Day 2 public (v54) | 113 | 0 |
+| Day 3 public (v89) | 209 | 0 |
+| Day 4 public (v108) | 196 | 0 |
+
+Two faults were found and fixed. A Ladies entry's Day 2 and Day 3 snapshots were built on the Blue
+tee while her registration is Red, so she was scoring 22 instead of 24; both were corrected on the
+registration tee and both days republished. On the Day 4 board, three cards did not match the
+conversion (19 instead of 15, 0 instead of 30, 23 instead of 22); the board was rebuilt as version
+108 with only those cards reworked.
+
+89 registration rows carried a stale playing handicap, 23 of them the old uncapped 34 and the rest
+from before a tee change. They were aligned to the conversion. That column feeds the desk list and
+the printed handicap column; it does not score anything, and no snapshot changed.
+
+### One Senior entry re-classed by hand (15 Nov 2026)
+
+An entry was filed under the Ladies category on the Blue tee, which played off 9. The owner named him
+a Senior, so the entry was moved to the Senior category on White, which gives 7 from his index of 8.2.
+His Day 3 snapshot was corrected and the round republished (version 94), and his Day 4 card was
+reworked on the sync board (version 109). Day 3 net moved from 36 to 34 and Day 4 from 43 to 41. His
+pair stays in Class A.
+
+A second write from the owner's account landed 18 seconds after the first and put the entry back on
+Blue with 9. It was applied again and held. Whoever has that entry open in the desk should not save it
+again with the old tee selected.
+
+A second Senior entry was then found still on Blue even though its category was Senior, so it had
+missed the earlier batch. It was moved to White (index 15.6 gives 15, not 18), its Day 3 snapshot was
+corrected and the round republished, and its Day 4 card was reworked (version 110), where its class
+label also changed from the stale Class B to Class C. All 29 Senior entries now carry White.
+
+**Open:** 7 entries have no tee and 1 has no index. Four of the seven have an index and a stored
+figure that matches Blue exactly, but the tee was never set. One of them has a Day 4 card (plays off
+30). The owner needs to name the tees for those entries.
+
 ### Guardrails while production is live
 
 1. **One release train.** Work goes to `develop`, then one release pull request to `main` with both
@@ -296,6 +394,7 @@ through a pull request to `develop`.
 | Desk is the authority for class and handicap (14 Nov 2026) | **Built on `release/staging-batch`; migration written, **NOT applied**. The owner's rule is that the desk's class and index always win, so a tabulator cannot change either by typing a card. `/api/scorecards/submit` now scores every submitted card with the desk's playing handicap: a card whose HDCP box disagrees is still scored off the desk, the card's own figure is kept as `cardHdcp`, and the reply says "Card handicap X not used; the desk handicap Y scores the card." A submission is refused when the desk holds no handicap for the player. A trigger reclasses an existing result when the desk class changes, and `reset_handicap_from_desk(round_entry, reason)` recalculates a played card's snapshot from the desk index with a reason recorded; both are service-role only. **The live data is not corrected yet:** 18 cards score off an index that differs from the desk (most of them index 0), and three results carry a class the desk disagrees with. | `src/app/api/scorecards/submit/route.ts`, `supabase/migrations/20261114000500_class_and_handicap_follow_desk.sql`, `scripts/desk-sync-2026-11-14.sql` (backfill); `pnpm check` passed (2,725 tests and build) on the source tree |
 | Converge credited on the board and the home footer (14 Nov 2026) | **Built on `release/staging-batch`; no migration.** The club's connectivity partner carries a credit in white beside the TeeLine lockup in the clubhouse board's footer and on its "nothing published yet" screen, separated by a hairline, and the home page footer adds a quiet **Powered by** line with the Converge mark under the platform blurb, in the footer's own type. The mark is the official Converge SVG kept in the repository and printed white rather than in its teal so it reads on the forest background, and it is set at sponsor size rather than at the size of the small print: 30 px in the home footer, 4.2% of the screen height on the board and 6% on the idle screen. The pairings, roster, leaderboard, rules and FAQ footers were left alone: their single row of links is navigation, not a credit strip. | `src/components/tv/TvBoard.tsx`, `src/components/tv/tv.module.css`, `src/app/(public)/page.tsx`, `src/app/globals.css`, `public/partners/converge-logo.svg`; checked on the running board and the home footer, with typecheck, Biome and the 14 TV board tests passing |
 | Public profile shows every player's playing handicap (14 Nov 2026) | **Released as v0.52.4 (PR #290). The migration was run by the owner in the Supabase SQL editor on 14 Nov 2026 and the public function was checked to return `playingHandicap`.** The public profile read the playing handicap only from the player's published cards (`cards[0]`), so players without a published card showed a dash. `profilePlayingHandicap` now uses the card's handicap when there is one and otherwise the playing handicap the system holds on the player's entry, which `public_player_scorecard()` has to return: `20261114000400_public_profile_playing_handicap.sql` is that function with two added lines (checked by test to be exactly that), same release gate and grants, no table or policy change. **Data fill (14 Nov 2026, owner's go):** 28 confirmed entries had no stored playing handicap because they were confirmed from the sheet with no category; 26 of them (those with an index) were filled with the draw's formula on their own tee, or Blue, the open division, when they had none (`min(index, 30)` then the tee formula, allowance 100%, four of them come out at 34), and only entries still empty were written. Hong, Keun Seon and Santa Maria, Joey have no index and were not filled. The values before the change are in `backups/registrations-playing-handicap-2026-11-14T07-48-40-134Z` (local, git-ignored). Three scored players have a round snapshot of 0 although they have an index (Jamelo 25.4, Bautista 16.9, Camot 23.4) and two are stored at 34 (Diaz, Tobes): not touched, they change real scores. The stored value is the draw's, so it does not yet reflect the owner's cap-at-30 decision (not built) | `src/lib/data/public-profile.ts`, `src/components/public/PlayerProfileView.tsx`, `supabase/migrations/20261114000400_public_profile_playing_handicap.sql` |
+| Clubhouse board: all days, and views you can click (15 Nov 2026) | **Built on `release/tv-all-days`; no migration.** The board opens on **All days** once more than one day is published: each player's total net points across every published round, ranked with ties marked, and the rounds that made it under the name (`Day 2 AM 43 · Day 4 AM 41`), so a member who hears their name can find their own morning and afternoon. The other two lists are the day by player and by pair. The footer's views are now buttons: a person at the screen can take a list by hand and it starts from the first name, while the board still moves on by itself when a list finishes. Totals were checked against `public_team_leaderboard` on 15 Nov: 316 players, **15,636 net and 7,697 gross** on both sides, and a player's line checked by hand (Lallana 38/72, Lorena 6/54, Maccslin 20/20). **Known gap:** the day views leave out a player with a published card but no tee time in the published pairings (ALCARAZ, VIC on Day 4, 21 gross points, no net score), so that day's gross total is 21 short of the event total; three Day 4 cards have no net score at all and print a dash. | `src/lib/public/tv-board.ts`, `src/components/tv/TvBoard.tsx`, `src/components/tv/tv.module.css`, `src/lib/public/tv-board.test.ts` (18 tests, four for the all-days view); typecheck and lint pass on the branch, and the board's tests cover the all-days totals, the day order and the empty case |
 
 Whole suite: 76 test files, 776 tests passing (`pnpm test`) on the merged `develop` tree; the scoring
 engine adds 6 files and 91 of those tests, and the demo scoring repository adds 7 more. Separately, `pnpm verify:ui` drives a real browser against a

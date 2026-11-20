@@ -54,6 +54,33 @@ export interface TvPairLine {
   tied: boolean;
 }
 
+/** One published round of a player's overall line: which day, which half, and what they scored. */
+export interface TvOverallRound {
+  dayNumber: number;
+  session: ScoreSession | null;
+  grossPoints: number | null;
+  netPoints: number | null;
+  holesCounted: number;
+  holesTotal: number;
+}
+
+/**
+ * One player across every published day. The total is what the board ranks on; the rounds beneath it
+ * are how the total was made, so a member can find their own morning and afternoon on the screen.
+ */
+export interface TvOverallLine {
+  playerId: string;
+  name: string;
+  /** Every counted round, in day order. Never empty. */
+  rounds: TvOverallRound[];
+  grossPoints: number | null;
+  netPoints: number | null;
+  holesCounted: number;
+  holesTotal: number;
+  rank: number;
+  tied: boolean;
+}
+
 /**
  * One column of the screen. `session` is null when the desk has not published starts for the day,
  * in which case the column holds the whole day rather than inventing a morning and an afternoon.
@@ -73,6 +100,10 @@ export interface TvBoard {
   columns: TvColumn[];
   /** Players on the day whose start is not in the published pairings, so a session cannot place them. */
   unplaced: number;
+  /** How many days have published cards, for the all-days view's heading. */
+  days: number;
+  /** Every player across every published day, ranked on the total. Empty before the first publish. */
+  overall: TvOverallLine[];
 }
 
 /** A sum of the values that exist; null only when there is nothing at all to add. */
@@ -227,6 +258,34 @@ function rankPairs(lines: TvPairLine[]): TvPairLine[] {
   return ranked;
 }
 
+/**
+ * Every published day added together per player.
+ *
+ * The points are summed round by round rather than averaged, so a member who played three days is
+ * ranked on three days. A player who missed a day simply has fewer rounds: the board does not invent
+ * a score for the day they did not play.
+ */
+function buildOverall(rows: ReturnType<typeof buildScoreRows>): TvOverallLine[] {
+  return buildPlayerScores(rows).scores.map((score) => ({
+    playerId: score.playerId,
+    name: score.name,
+    rounds: score.roundScores.map((round) => ({
+      dayNumber: round.dayNumber,
+      session: round.session,
+      grossPoints: round.grossPoints,
+      netPoints: round.netPoints,
+      holesCounted: round.holesCounted,
+      holesTotal: round.holesTotal,
+    })),
+    grossPoints: score.grossPoints,
+    netPoints: score.netPoints,
+    holesCounted: score.holesCounted,
+    holesTotal: score.holesTotal,
+    rank: score.rank,
+    tied: score.tied,
+  }));
+}
+
 function columnFor(
   rows: ReturnType<typeof buildScoreRows>,
   dayNumber: number,
@@ -253,6 +312,8 @@ export function buildTvBoard(
   starts: Readonly<Record<string, ScoreStart>> = {},
 ): TvBoard {
   const rows = buildScoreRows(data, sessions);
+  const overall = buildOverall(rows);
+  const days = new Set(rows.map((row) => row.dayNumber)).size;
   // Only a day that actually has published cards can be the board's day. A round published ahead
   // of its first card, or an empty publication, must not blank the screen while an earlier day's
   // cards are still on the board.
@@ -261,12 +322,20 @@ export function buildTvBoard(
   );
   const { day, isToday } = pickTvDay(played.length > 0 ? played : data.rounds, todayIso);
   if (!day) {
-    return { eventName: data.eventName, day: null, isToday: false, columns: [], unplaced: 0 };
+    return {
+      eventName: data.eventName,
+      day: null,
+      isToday: false,
+      columns: [],
+      unplaced: 0,
+      days,
+      overall,
+    };
   }
 
   const onDay = rows.filter((row) => row.dayNumber === day.dayNumber);
   if (onDay.length === 0) {
-    return { eventName: data.eventName, day, isToday, columns: [], unplaced: 0 };
+    return { eventName: data.eventName, day, isToday, columns: [], unplaced: 0, days, overall };
   }
 
   if (!hasSessions(onDay)) {
@@ -276,6 +345,8 @@ export function buildTvBoard(
       isToday,
       columns: [columnFor(rows, day.dayNumber, null, starts)],
       unplaced: 0,
+      days,
+      overall,
     };
   }
 
@@ -289,5 +360,7 @@ export function buildTvBoard(
     isToday,
     columns: [morning, afternoon],
     unplaced: onDay.filter((row) => !placed.has(row.playerId)).length,
+    days,
+    overall,
   };
 }
