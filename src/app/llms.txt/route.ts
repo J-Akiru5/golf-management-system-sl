@@ -4,7 +4,9 @@ import { COMPANY, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
  * `llms.txt`: a short, plain-text brief for answer engines and AI crawlers.
  *
  * It carries only facts the site itself states, plus the canonical URLs. No marketing claims, no
- * invented statistics, and no club name (the owner asked for TeeLine Golf only).
+ * invented statistics, and no club name (the owner asked for TeeLine Golf only). The answers at the
+ * end are the questions a person actually asks about the product, in the same words the public
+ * pages use, so an answer engine can quote them without paraphrasing past the caveats.
  */
 export function GET(): Response {
   const body = `# ${SITE_NAME}
@@ -35,10 +37,40 @@ sheet, pairings and scorecards. It runs in the browser on a phone or a laptop.
 
 - Home: ${SITE_URL}/
 - Published pairings: ${SITE_URL}/pairings
+- Player roster: ${SITE_URL}/roster
+- Leaderboard and published results: ${SITE_URL}/leaderboard
 - Tournament rules: ${SITE_URL}/rules (the 24th Bamboo Tee Conditions of Play, with the official PDF)
 - NGAP World Handicap System FAQ: ${SITE_URL}/faq (reference text published by the NGAP in 2024)
+- Privacy policy: ${SITE_URL}/privacy
+- Terms of service: ${SITE_URL}/terms
 - Sitemap: ${SITE_URL}/sitemap.xml
 - Crawl rules: ${SITE_URL}/robots.txt
+
+## Questions this site answers
+
+**What is ${SITE_NAME}?**
+Tournament management for golf clubs: entries, handicap-based flights, the draw, published pairings,
+printed start sheets and scorecards, in one application.
+
+**Do players need an account to see the pairings?**
+No. The pairings, the roster, the leaderboard, the rules and the handicap FAQ are public. An account
+is for a player's own entry and start, and for the desk.
+
+**Where do the handicaps come from?**
+From the club's NGAP export. The app does not calculate an official index; the desk's figure is what
+scores a card.
+
+**When do scores appear?**
+Only after the desk publishes them. Publishing freezes the list players see and raises a version
+number, and a player never sees the live board before that.
+
+**What does the rules page contain?**
+The 24th Bamboo Tee Invitational Conditions of Play: format, handicap and divisions, local rules, pace
+of play, scorecards, tie-breaking and prizes, with the official PDF to download.
+
+**What does the FAQ page contain?**
+The NGAP's own answers about the World Handicap System, published in 2024, including its fees and
+dates, with the source noted on the page.
 
 ## Company
 
@@ -52,6 +84,7 @@ Contact: ${COMPANY.email}, ${COMPANY.telephone}. ${COMPANY.url}
 - Official handicap indexes come from the NGAP and the club's export; the app does not calculate an
   official index.
 - Pages are server-rendered and readable without JavaScript.
+- Everything behind sign-in is closed to crawlers; see ${SITE_URL}/robots.txt.
 `;
 
   return new Response(body, {

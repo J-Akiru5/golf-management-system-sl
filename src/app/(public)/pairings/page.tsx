@@ -16,6 +16,7 @@ import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
 import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
@@ -44,7 +45,7 @@ import { pairingsSignature } from "@/lib/public/pairings-live";
 import { pairingsBackLink } from "@/lib/public/pairings-nav";
 import { publicProfileTeeTimes } from "@/lib/public/public-profile-tee-times";
 import { blackoutFlags } from "@/lib/public/results-reveal";
-import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
+import { openGraphFor, SITE_NAME, twitterFor, webPageSchema } from "@/lib/seo";
 import { hasSupabaseAuthCookie } from "@/lib/supabase/cookies";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
@@ -208,6 +209,15 @@ export default async function PublicPairingsPage({
 
   return (
     <main className="public public-pairings mobile-bar-space">
+      <JsonLd
+        data={webPageSchema({
+          path: "/pairings",
+          name: "Pairings, players and scores",
+          description:
+            "The published programme: the pairings, the confirmed tee times, the player list, each player's published scorecard and the cumulative team leaderboard.",
+          type: "CollectionPage",
+        })}
+      />
       <PlayerOfflineNotice path="/pairings" />
       <PairingsLive signature={liveSignature} />
       <header className="public-head public-appbar p-4 sm:p-5">

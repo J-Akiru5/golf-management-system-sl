@@ -18,6 +18,7 @@ import {
   SITE_NAME,
   SITE_TAGLINE,
   SITE_URL,
+  siteVerification,
   twitterFor,
   websiteSchema,
 } from "@/lib/seo";
@@ -43,6 +44,9 @@ export const metadata: Metadata = {
   authors: [{ name: COMPANY.name, url: COMPANY.url }],
   creator: COMPANY.name,
   publisher: COMPANY.name,
+  // The engine's own token, from the deployment's environment. Omitted when it is unset, so a
+  // checkout without it builds a site with no verification tag rather than an empty one.
+  verification: siteVerification(),
   openGraph: openGraphFor({
     title: `${SITE_NAME} | ${SITE_TAGLINE}`,
     description: SITE_DESCRIPTION,

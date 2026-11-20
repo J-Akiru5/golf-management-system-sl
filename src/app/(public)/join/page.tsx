@@ -6,13 +6,25 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { makeTranslator } from "@/lib/i18n/t";
 import { configuredSiteUrl } from "@/lib/public-link";
+import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import styles from "./join.module.css";
+
+const JOIN_DESCRIPTION =
+  "Scan the code, create an account, and find your name on the pairings list. A printable A5 card for the club desk.";
 
 export const metadata: Metadata = {
   title: "Join the tournament",
-  description:
-    "Scan the code, create an account, and find your name on the pairings list. A printable A5 card for the club desk.",
+  description: JOIN_DESCRIPTION,
   alternates: { canonical: "/join" },
+  openGraph: openGraphFor({
+    title: `Join the tournament | ${SITE_NAME}`,
+    description: JOIN_DESCRIPTION,
+    path: "/join",
+  }),
+  twitter: twitterFor({
+    title: `Join the tournament | ${SITE_NAME}`,
+    description: JOIN_DESCRIPTION,
+  }),
 };
 
 interface LanguageBlock {

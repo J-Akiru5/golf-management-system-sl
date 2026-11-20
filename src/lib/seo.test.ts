@@ -14,8 +14,11 @@ import {
   organizationSchema,
   SITE_NAME,
   SITE_URL,
+  siteVerification,
   softwareApplicationSchema,
+  sportsEventSchema,
   twitterFor,
+  webPageSchema,
   websiteSchema,
 } from "./seo";
 
@@ -53,6 +56,23 @@ describe("the canonical identity", () => {
     expect(absoluteUrl("/faq")).toBe(`${SITE_URL}/faq`);
     expect(absoluteUrl("faq")).toBe(`${SITE_URL}/faq`);
     expect(absoluteUrl("https://example.test/a")).toBe("https://example.test/a");
+  });
+
+  it("takes the Search Console token from the environment, and omits the tag when there is none", () => {
+    expect(siteVerification({})).toBeUndefined();
+    expect(siteVerification({ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: "   " })).toBeUndefined();
+    expect(siteVerification({ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: "token-123" })).toEqual({
+      google: "token-123",
+    });
+    expect(siteVerification({ NEXT_PUBLIC_BING_SITE_VERIFICATION: "bing-1" })).toEqual({
+      other: { "msvalidate.01": "bing-1" },
+    });
+    expect(
+      siteVerification({
+        NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: "g",
+        NEXT_PUBLIC_BING_SITE_VERIFICATION: "b",
+      }),
+    ).toEqual({ google: "g", other: { "msvalidate.01": "b" } });
   });
 
   it("keeps the company facts that were published on the company's own site", () => {
@@ -106,11 +126,39 @@ describe("structured data", () => {
     expect(site.url).toBe(SITE_URL);
     expect((site.publisher as Record<string, string>)["@id"]).toBe(organization["@id"]);
 
+    expect(organization.logo).toBe(`${SITE_URL}/icons/icon-512.png`);
+    expect(organization.image).toBe(`${SITE_URL}${OG_IMAGE.url}`);
+
     const app = softwareApplicationSchema();
     expect(app["@type"]).toBe("SoftwareApplication");
     expect(app.applicationCategory).toBe("SportsApplication");
     expect(app.operatingSystem).toBe("Web");
     expect((app.publisher as Record<string, string>)["@id"]).toBe(organization["@id"]);
+  });
+
+  it("describes a published tournament as a SportsEvent from its own name and dates", () => {
+    const event = sportsEventSchema({
+      id: "1f0d98d4-e5c8-4929-bca9-2920c1a74cbb",
+      name: "24th Bamboo Tee",
+      dates: ["2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"],
+    });
+    expect(event?.["@type"]).toBe("SportsEvent");
+    expect(event?.name).toBe("24th Bamboo Tee");
+    expect(event?.startDate).toBe("2026-11-12");
+    expect(event?.endDate).toBe("2026-11-15");
+    expect(event?.sport).toBe("Golf");
+    expect(event?.url).toBe(`${SITE_URL}/rules`);
+    expect((event?.organizer as Record<string, string>)["@id"]).toBe(`${SITE_URL}/#organization`);
+    const address = (event?.location as Record<string, unknown>).address as Record<string, string>;
+    expect(address.addressCountry).toBe("PH");
+    // No status is claimed: schema.org has no "finished" value.
+    expect(event?.eventStatus).toBeUndefined();
+    noClubName(event);
+  });
+
+  it("refuses to describe an event with no name or no dates", () => {
+    expect(sportsEventSchema({ id: "x", name: "  ", dates: ["2026-01-01"] })).toBeNull();
+    expect(sportsEventSchema({ id: "x", name: "Event", dates: [] })).toBeNull();
   });
 
   it("turns the NGAP FAQ into a FAQPage with every answer and both source notes", () => {
@@ -131,6 +179,25 @@ describe("structured data", () => {
     }
     expect(answers.join(" ")).toContain("(indicate date)");
     expect(answers.join(" ")).toMatch(/image/i);
+  });
+
+  it("gives a public list page its own entity, attached to the site and the company", () => {
+    const page = webPageSchema({
+      path: "/leaderboard",
+      name: "Leaderboard",
+      description: "The published results.",
+      type: "CollectionPage",
+    });
+    expect(page["@type"]).toBe("CollectionPage");
+    expect(page["@id"]).toBe(`${SITE_URL}/leaderboard#webpage`);
+    expect(page.url).toBe(`${SITE_URL}/leaderboard`);
+    expect((page.isPartOf as Record<string, string>)["@id"]).toBe(`${SITE_URL}/#website`);
+    expect((page.publisher as Record<string, string>)["@id"]).toBe(`${SITE_URL}/#organization`);
+    expect((page.primaryImageOfPage as Record<string, unknown>).url).toBe(
+      `${SITE_URL}${OG_IMAGE.url}`,
+    );
+    expect(webPageSchema({ path: "/rules", name: "n", description: "d" })["@type"]).toBe("WebPage");
+    noClubName(page);
   });
 
   it("never names the club, in any schema", () => {
@@ -160,13 +227,27 @@ describe("crawl rules and the sitemap", () => {
     expect(disallow).not.toContain("/enter");
   });
 
-  it("lists the durable pages and no entry links", () => {
+  it("names the AI crawlers with the same private paths as everyone else", () => {
+    const rules = robots().rules;
+    const list = Array.isArray(rules) ? rules : [rules];
+    const wildcard = list[0] as { userAgent?: string; disallow?: string[] };
+    const agents = list.find((rule) =>
+      Array.isArray((rule as { userAgent?: unknown }).userAgent),
+    ) as { userAgent?: string[]; disallow?: string[] } | undefined;
+    expect(agents?.userAgent).toEqual(
+      expect.arrayContaining(["GPTBot", "ClaudeBot", "PerplexityBot", "Google-Extended"]),
+    );
+    expect(agents?.disallow).toEqual(wildcard.disallow);
+  });
+
+  it("lists the seven durable pages and no entry links", () => {
     const entries = sitemap();
     expect(entries.map((entry) => entry.url)).toEqual([
       `${SITE_URL}/`,
       `${SITE_URL}/demo`,
       `${SITE_URL}/pairings`,
       `${SITE_URL}/roster`,
+      `${SITE_URL}/leaderboard`,
       `${SITE_URL}/rules`,
       `${SITE_URL}/faq`,
     ]);
@@ -182,6 +263,8 @@ describe("crawl rules and the sitemap", () => {
     expect(text).toContain(`${SITE_URL}/pairings`);
     expect(text).toContain(`${SITE_URL}/rules`);
     expect(text).toContain(`${SITE_URL}/faq`);
+    expect(text).toContain(`${SITE_URL}/leaderboard`);
+    expect(text).toContain(`${SITE_URL}/privacy`);
     expect(text).toContain(`${SITE_URL}/sitemap.xml`);
     expect(text).toContain(COMPANY.email);
     expect(text).not.toMatch(/IGCC|Iloilo Golf/i);
