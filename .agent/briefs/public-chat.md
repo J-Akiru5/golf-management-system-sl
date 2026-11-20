@@ -13,8 +13,13 @@ natural and warm, and keeps asking, one question at a time, until it has what th
 which concerns (the list in `src/lib/data/concerns.ts`), the follow-ups those need (hole number for a
 score, tee colour for tee off, a line for others), the player's name, handicap and schedule (day and
 tee time). Then it shows a short summary, the player confirms, and it files the note in the desk's
-Feedback inbox (the database then emails the organizers). The mascot's name and artwork come later
-from the owner: use a constant `MASCOT_NAME = "TeeLine Assistant"` and a placeholder SVG.
+Feedback inbox (the database then emails the organizers). The mascot is **Teeo**: a friendly robot golfer (forest-green cap with the TeeLine flag mark, a warm
+gold visor face with a smile, ivory and forest armour, gold light accents). Use `MASCOT_NAME = "Teeo"`.
+The artwork arrives as `public/brand/teeo.webp` (full figure, on an off-white ground) and
+`public/brand/teeo-head.webp` (square head crop); the orchestrator adds the files. Build a
+`TeeoAvatar` component (`size`, `variant: "head" | "full"`) that renders those images in a round
+ivory badge, and until the files exist show a simple placeholder SVG through the same component.
+Teeo introduces itself by name, in the player's language.
 
 ## Reference implementation: OptiFeed (public repo J-Akiru5/OptiFeed, same owner)
 
