@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PublicBottomBar } from "@/components/MobileTabBar";
+import "@/components/landing/landing.css";
 import { DemoRequestForm } from "@/components/public/DemoRequestForm";
-import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 
@@ -32,27 +33,37 @@ export const metadata: Metadata = {
  */
 export default function DemoPage() {
   return (
-    <main className="public mobile-bar-space">
-      <header className="public-head">
-        <PublicBackLink label="Back to TeeLine Golf" />
-        <div className="flex flex-wrap items-center gap-3">
+    <main className="tl-demo-page mobile-bar-space">
+      <header className="tl-demo-top">
+        <Link href="/" aria-label="TeeLine Golf home">
           <TeeLineLogo variant="reverse" width={172} />
-          <span className="leading-tight">
-            <b className="block font-display text-[13px] font-semibold">TeeLine Golf</b>
-            <span className="text-xs text-on-forest-muted">Tournament desk</span>
+          <span>
+            <b>TeeLine Golf</b>
+            Tournament desk
           </span>
-        </div>
-        <p className="overline mt-3 !text-gold-on-forest">Request a demo</p>
-        <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-          See TeeLine Golf with your club's own event.
-        </h1>
-        <p className="text-on-forest-muted">
-          Tell us who you are and what you would like to see. We will reply and arrange a
-          walkthrough of the desk, the draw, the published pairings and live scoring.
-        </p>
+        </Link>
+        <Link className="tl-demo-back" href="/">
+          Back to home
+        </Link>
       </header>
 
-      <DemoRequestForm />
+      <div className="tl-demo-layout">
+        <section className="tl-demo-copy" aria-labelledby="demo-title">
+          <p className="tl-kicker">For your tournament committee</p>
+          <h1 id="demo-title">See TeeLine with your club's own event.</h1>
+          <p>
+            Bring your tournament workflow. We will walk through the desk and show how the pieces
+            fit together.
+          </p>
+          <ul>
+            <li>Set up entries and tournament rules.</li>
+            <li>Review the proposed draw before publishing pairings.</li>
+            <li>Follow score entry, checks and the public results.</li>
+            <li>Ask about the steps that matter to your committee.</li>
+          </ul>
+        </section>
+        <DemoRequestForm />
+      </div>
 
       <PublicBottomBar />
     </main>

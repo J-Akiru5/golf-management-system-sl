@@ -24,6 +24,7 @@ function EventState({ event }: { event: LandingEvent }) {
 }
 
 export function EventCarousel({ events }: EventCarouselProps) {
+  const isSingle = events.length === 1;
   const track = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState(0);
   const scroll = (direction: number) => {
@@ -41,34 +42,33 @@ export function EventCarousel({ events }: EventCarouselProps) {
 
   return (
     <section className="tl-events tl-section" aria-labelledby="tl-events-title">
-      <div className="tl-events-heading">
+      <div className="tl-events-heading" data-tl-reveal>
         <div>
           <p className="tl-kicker">At the club</p>
           <h2 id="tl-events-title">Events at Iloilo Golf and Country Club</h2>
         </div>
-        <div className="tl-carousel-controls">
-          <span aria-live="polite">
-            {position + 1} <i>/</i> {events.length}
-          </span>
-          {events.length > 1 && (
+        {events.length > 1 && (
+          <div className="tl-carousel-controls">
+            <span aria-live="polite">
+              {position + 1} <i>/</i> {events.length}
+            </span>
             <button type="button" aria-label="Previous event" onClick={() => scroll(-1)}>
               <ChevronLeft aria-hidden="true" />
             </button>
-          )}
-          {events.length > 1 && (
             <button type="button" aria-label="Next event" onClick={() => scroll(1)}>
               <ChevronRight aria-hidden="true" />
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
       {events.length ? (
         <div
-          className="tl-event-track"
+          className={`tl-event-track${isSingle ? " is-single" : ""}`}
+          data-tl-stagger
           ref={track}
-          role="region"
-          aria-label="Tournament events"
-          tabIndex={0}
+          role={isSingle ? undefined : "region"}
+          aria-label={isSingle ? undefined : "Tournament events"}
+          tabIndex={isSingle ? undefined : 0}
           onKeyDown={(event) => {
             if (event.key === "ArrowLeft") {
               event.preventDefault();
@@ -90,13 +90,16 @@ export function EventCarousel({ events }: EventCarouselProps) {
         >
           {events.map((event) => (
             <article
-              className={`tl-event-card${event.finished ? " is-finished" : ""}`}
+              className={`tl-event-card${event.finished ? " is-finished" : ""}${isSingle ? " is-feature" : ""}`}
               key={event.tournamentId}
+              data-tl-reveal
             >
               <div className="tl-event-card-top">
-                <span className="tl-event-index">
-                  {String(events.indexOf(event) + 1).padStart(2, "0")}
-                </span>
+                {!isSingle && (
+                  <span className="tl-event-index">
+                    {String(events.indexOf(event) + 1).padStart(2, "0")}
+                  </span>
+                )}
                 <EventState event={event} />
               </div>
               <h3>{event.name}</h3>
@@ -105,10 +108,34 @@ export function EventCarousel({ events }: EventCarouselProps) {
                 <span>Iloilo Golf and Country Club</span>
                 <span>{event.enteredLabel}</span>
               </div>
+              {isSingle && (
+                <dl className="tl-event-facts" data-tl-stagger>
+                  <div>
+                    <dt>Playing days</dt>
+                    <dd>{event.dates.length}</dd>
+                  </div>
+                  <div>
+                    <dt>Start format</dt>
+                    <dd>{event.startFormat}</dd>
+                  </div>
+                  <div>
+                    <dt>First tee</dt>
+                    <dd>{event.firstTeeTime}</dd>
+                  </div>
+                </dl>
+              )}
               <div className="tl-card-links">
-                <Link href="/pairings">Pairings</Link>
-                <Link href="/results/all">Scores</Link>
-                {event.entriesOpen && <Link href={`/enter/${event.tournamentId}`}>Enter</Link>}
+                <Link className="tl-button tl-button-quiet" href="/pairings">
+                  View published pairings
+                </Link>
+                <Link className="tl-button tl-button-quiet" href="/results/all">
+                  See all scores
+                </Link>
+                {event.entriesOpen && (
+                  <Link className="tl-button tl-button-light" href={`/enter/${event.tournamentId}`}>
+                    Enter
+                  </Link>
+                )}
               </div>
             </article>
           ))}

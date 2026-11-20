@@ -129,7 +129,7 @@ export function DemoRequestForm() {
   }
 
   return (
-    <form className="card grid gap-4" onSubmit={submit} noValidate>
+    <form className="tl-demo-form card grid gap-4" onSubmit={submit} noValidate>
       <p className="notice m-0" role="note">
         Your details go to the club's private desk. They are not shown on this site.
       </p>

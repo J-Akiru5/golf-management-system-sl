@@ -16,6 +16,7 @@ export const previewHero: LandingHeroProps = {
     dayNumber: 0,
     dateLabel: "Nov 12–15, 2026",
     enteredLabel: "327 entered",
+    featured: true,
   },
   eventEyebrow: "Final results",
   quickActions: [
@@ -28,7 +29,14 @@ export const previewHero: LandingHeroProps = {
     { label: "Days", value: "4" },
     { label: "Venue", value: "Iloilo Golf and Country Club" },
   ],
-  defaultView: "event",
+  heroShot: {
+    src: "/landing/control-room.webp",
+    alt: "The control room screen: the draw, the field and the items to fix before publishing.",
+    caption:
+      "Control room: the draw, the field and what must be fixed before publishing, on one screen.",
+    width: 1883,
+    height: 931,
+  },
 };
 
 export const previewEvents: EventCarouselProps["events"] = [previewHero.featured!];
@@ -60,9 +68,18 @@ export const previewShots: ProductShot[] = [
 export const previewProof: ProofStripProps = {
   stats: [
     { value: "327", label: "entries", detail: "Confirmed field for the event" },
-    { value: "4", label: "playing days", detail: "Nov 12–15, 2026" },
-    { value: "6:00", label: "first tee", detail: "AM start" },
-    { value: "IGCC", label: "venue", detail: "Iloilo Golf and Country Club" },
+    { value: "118,279", label: "live requests", detail: "in the 25-hour peak window" },
+    {
+      value: "17,403",
+      label: "in the busiest hour",
+      detail: "pairings, scorecards and leaderboard",
+    },
+    {
+      value: "20,641",
+      label: "public scorecard views",
+      detail: "players and guests on their phones",
+    },
+    { value: "0", label: "downtime", detail: "the site stayed up through the tournament" },
   ],
-  source: "Sample figures for visual review · 24th Bamboo Tee, Nov 12–15, 2026",
+  source: "24th Bamboo Tee, Iloilo Golf and Country Club, 12 to 15 Nov 2026.",
 };

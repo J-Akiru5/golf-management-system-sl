@@ -1,10 +1,8 @@
-"use client";
-
 import { Check, ChevronRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { useId, useState } from "react";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
-import type { HeroView, LandingHeroProps } from "./types";
+import type { LandingHeroProps } from "./types";
 
 function TeeLineArtwork() {
   return (
@@ -15,45 +13,43 @@ function TeeLineArtwork() {
       aria-hidden="true"
       preserveAspectRatio="xMidYMid slice"
     >
-      <g className="tl-contours" stroke="#8DB39B" strokeWidth="1">
-        <path d="M-80 486C140 380 250 440 390 340s240-162 410-66 230 83 360-20 230-154 390-78" />
-        <path d="M-90 526C130 420 260 486 410 382s240-170 410-76 220 96 360-8 240-150 390-72" />
-        <path d="M-100 566C120 460 270 532 430 424s240-178 410-86 210 109 360 4 250-145 390-66" />
-        <path d="M-110 606C110 500 280 578 450 466s240-186 410-96 200 122 360 16 260-140 390-60" />
-        <path d="M90 650c100-140 270-134 350-250s150-208 300-188 194 182 330 154 180-142 354-108" />
+      <g className="tl-contours" data-tl-parallax="0.15" stroke="#8DB39B" strokeWidth="1">
+        <path d="M-100 470C100 386 250 435 392 344s246-166 411-72 232 88 367-14 230-158 395-78" />
+        <path d="M-106 505C100 420 260 472 410 380s250-174 414-82 224 98 368-2 238-154 396-74" />
+        <path d="M-112 540C100 454 270 510 428 416s254-180 417-92 216 108 369 10 246-150 397-70" />
+        <path d="M-118 575C100 488 280 548 446 452s258-185 420-102 208 118 370 22 254-145 398-66" />
+        <path d="M-124 610C100 522 290 586 464 488s260-190 423-112 200 128 371 34 262-140 399-62" />
+        <path d="M80 660c104-150 270-140 360-258s162-198 307-176 196 176 334 150 184-140 360-104" />
       </g>
-      <path
-        className="tl-tee-line"
-        d="M-80 430C180 430 230 320 430 320s270 92 430 72 250-120 390-118 220 46 330 8"
-      />
-      <circle cx="790" cy="391" r="5" fill="#D7B568" />
+      <g className="tl-tee-line-layer" data-tl-parallax="0.35">
+        <path
+          className="tl-tee-line"
+          data-tl-draw
+          d="M-80 430C180 430 230 320 430 320s270 92 430 72 250-120 390-118 220 46 330 8"
+        />
+        <circle cx="790" cy="391" r="6" fill="#D7B568" />
+      </g>
     </svg>
   );
 }
 
-export function LandingHero(props: LandingHeroProps) {
-  const [view, setView] = useState<HeroView>(props.featured ? props.defaultView : "clubs");
-  const tabsId = useId();
-  const eventTabLabel =
-    props.featured && props.featured.name.length <= 23 ? props.featured.name : "Now hosting";
-  const tabs: { id: HeroView; label: string }[] = [
-    { id: "clubs", label: "For clubs" },
-    { id: "event", label: eventTabLabel },
-  ];
-
-  function moveTab(key: string) {
-    if (key !== "ArrowLeft" && key !== "ArrowRight" && key !== "Home" && key !== "End") return;
-    const next = key === "Home" || key === "ArrowLeft" ? "clubs" : "event";
-    setView(next);
-    document.getElementById(`${tabsId}-${next}`)?.focus();
-  }
+export function LandingHero({
+  featured,
+  eventEyebrow,
+  quickActions,
+  eventStats,
+  heroShot,
+}: LandingHeroProps) {
+  const primaryAction = quickActions.find((action) => action.primary);
 
   return (
     <section className="tl-hero" aria-labelledby="hero-title">
-      <div className="tl-hero-atmosphere" aria-hidden="true" />
+      <div className="tl-hero-atmosphere" data-tl-parallax="-0.1" aria-hidden="true" />
+      <div className="tl-hero-noise" aria-hidden="true" />
+      <div className="tl-hero-grid" aria-hidden="true" />
       <TeeLineArtwork />
       <header className="tl-nav-wrap">
-        <Link href="/" className="tl-brand">
+        <Link href="/" className="tl-brand" aria-label="TeeLine Golf home">
           <TeeLineLogo variant="reverse" width={164} />
         </Link>
         <nav className="tl-nav-links" aria-label="Main navigation">
@@ -73,96 +69,120 @@ export function LandingHero(props: LandingHeroProps) {
           </Link>
         </div>
       </header>
+
       <div className="tl-hero-inner">
-        {props.featured && (
-          <div className="tl-hero-switch" role="tablist" aria-label="Landing page view">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                id={`${tabsId}-${tab.id}`}
-                type="button"
-                role="tab"
-                aria-selected={view === tab.id}
-                aria-controls={`${tabsId}-panel`}
-                tabIndex={view === tab.id ? 0 : -1}
-                onClick={() => setView(tab.id)}
-                onKeyDown={(event) => moveTab(event.key)}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {featured && primaryAction && (
+          <Link className="tl-now-pill" href={primaryAction.href}>
+            <span
+              className={`tl-now-status${featured.finished ? " is-finished" : featured.phase === "live" ? " is-live" : ""}`}
+              aria-hidden="true"
+            >
+              {featured.finished ? <Check /> : <i />}
+            </span>
+            <span className="tl-now-label">Now hosting</span>
+            <span className="tl-now-divider" aria-hidden="true" />
+            <span className="tl-now-event">{featured.name}</span>
+            {featured.finished && <span className="tl-now-completed">Completed</span>}
+            <span className="tl-now-action">
+              {primaryAction.label} <ChevronRight aria-hidden="true" />
+            </span>
+          </Link>
+        )}
+
+        <div className="tl-club-hero">
+          <p className="tl-kicker" data-tl-reveal>
+            Tournament operations for golf clubs
+          </p>
+          <h1 id="hero-title" data-tl-reveal>
+            A better desk for
+            <br />
+            tournament day.
+          </h1>
+          <p className="tl-hero-copy" data-tl-reveal>
+            Run your golf tournament from entries to results from one desk.
+          </p>
+          <div className="tl-hero-actions" data-tl-reveal>
+            <Link className="tl-button tl-button-light" href="/demo">
+              Request a demo <ChevronRight aria-hidden="true" />
+            </Link>
+            <a className="tl-button tl-button-quiet" href="#product">
+              See it in use
+            </a>
+          </div>
+          <p className="tl-hero-proof" data-tl-reveal>
+            First run at Iloilo Golf and Country Club <span>·</span> 327 entries <span>·</span> 0
+            downtime
+          </p>
+        </div>
+
+        {heroShot && (
+          <div className="tl-hero-window-wrap" data-tl-tilt>
+            <figure className="tl-hero-window">
+              <div className="tl-window tl-hero-window-bar" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <span>TOURNAMENT DESK</span>
+              </div>
+              <Image
+                src={heroShot.src}
+                alt={heroShot.alt}
+                width={heroShot.width}
+                height={heroShot.height}
+                priority
+                sizes="(max-width: 700px) 96vw, (max-width: 1200px) 92vw, 1000px"
+              />
+            </figure>
           </div>
         )}
-        <div
-          id={props.featured ? `${tabsId}-panel` : undefined}
-          role={props.featured ? "tabpanel" : undefined}
-          aria-labelledby={props.featured ? `${tabsId}-${view}` : undefined}
-          className="tl-hero-panel"
-        >
-          {view === "event" && props.featured ? (
-            <div className="tl-event-hero">
-              <p className="tl-event-eyebrow">
-                <span aria-hidden="true" />
-                {props.eventEyebrow}
-                {props.featured.finished && (
-                  <span className="tl-completed">
-                    <Check aria-hidden="true" />
-                    Completed
-                  </span>
-                )}
-              </p>
-              <h1 id="hero-title" className="tl-event-title">
-                {props.featured.name}
-              </h1>
-              <p className="tl-event-date">{props.featured.dateLabel}</p>
-              <p className="tl-event-meta">
-                Iloilo Golf and Country Club <span aria-hidden="true">·</span>{" "}
-                {props.featured.enteredLabel}
-              </p>
-              <div className="tl-hero-actions">
-                {props.quickActions.map((action) => (
-                  <Link
-                    key={action.label}
-                    className={`tl-button ${action.primary ? "tl-button-light" : "tl-button-quiet"}`}
-                    href={action.href}
-                  >
-                    {action.label}
-                    {action.primary && <ChevronRight aria-hidden="true" />}
-                  </Link>
-                ))}
-              </div>
-              <dl className="tl-event-stats" aria-label="Event at a glance">
-                {props.eventStats.slice(0, 4).map((stat) => (
-                  <div key={stat.label}>
-                    <dt>{stat.label}</dt>
-                    <dd>{stat.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          ) : (
-            <div className="tl-club-hero">
-              <p className="tl-kicker">Tournament operations for golf clubs</p>
-              <h1 id="hero-title">
-                A better desk for
-                <br />
-                tournament day.
-              </h1>
-              <p className="tl-hero-copy">
-                Run your golf tournament from entries to results from one desk.
-              </p>
-              <div className="tl-hero-actions">
-                <Link className="tl-button tl-button-light" href="/demo">
-                  Request a demo <ChevronRight aria-hidden="true" />
-                </Link>
-                <a className="tl-button tl-button-quiet" href="#product">
-                  See it in use
-                </a>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
+
+      {featured && (
+        <aside className="tl-featured-band" aria-label="Featured event" data-tl-reveal>
+          <div className="tl-featured-event">
+            <p className="tl-featured-overline">
+              {eventEyebrow}
+              {featured.finished ? (
+                <span className="tl-completed">
+                  <Check aria-hidden="true" />
+                  Completed
+                </span>
+              ) : featured.phase === "live" ? (
+                <span className="tl-state tl-state-live">
+                  <span aria-hidden="true" />
+                  Live
+                </span>
+              ) : null}
+            </p>
+            <h2>{featured.name}</h2>
+            <p className="tl-featured-date">{featured.dateLabel}</p>
+            <p className="tl-featured-venue">
+              Iloilo Golf and Country Club <span aria-hidden="true">·</span> {featured.enteredLabel}
+            </p>
+          </div>
+          <dl className="tl-featured-stats" aria-label="Event at a glance">
+            {eventStats.slice(0, 4).map((stat) => (
+              <div key={stat.label}>
+                <dt>{stat.label}</dt>
+                <dd>{stat.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="tl-featured-actions">
+            {quickActions.map((action) => (
+              <Link
+                key={action.label}
+                className={`tl-button ${action.primary ? "tl-button-light" : "tl-button-quiet"}`}
+                href={action.href}
+              >
+                {action.label}
+                {action.primary && <ChevronRight aria-hidden="true" />}
+              </Link>
+            ))}
+          </div>
+        </aside>
+      )}
+
       <div className="tl-hero-bottomline">
         <span>TEE LINE / TOURNAMENT DESK</span>
         <span>BUILT FOR THE COMMITTEE</span>
