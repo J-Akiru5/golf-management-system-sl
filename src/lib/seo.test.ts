@@ -16,6 +16,7 @@ import {
   SITE_URL,
   siteVerification,
   softwareApplicationSchema,
+  sportsEventSchema,
   twitterFor,
   webPageSchema,
   websiteSchema,
@@ -125,11 +126,39 @@ describe("structured data", () => {
     expect(site.url).toBe(SITE_URL);
     expect((site.publisher as Record<string, string>)["@id"]).toBe(organization["@id"]);
 
+    expect(organization.logo).toBe(`${SITE_URL}/icons/icon-512.png`);
+    expect(organization.image).toBe(`${SITE_URL}${OG_IMAGE.url}`);
+
     const app = softwareApplicationSchema();
     expect(app["@type"]).toBe("SoftwareApplication");
     expect(app.applicationCategory).toBe("SportsApplication");
     expect(app.operatingSystem).toBe("Web");
     expect((app.publisher as Record<string, string>)["@id"]).toBe(organization["@id"]);
+  });
+
+  it("describes a published tournament as a SportsEvent from its own name and dates", () => {
+    const event = sportsEventSchema({
+      id: "1f0d98d4-e5c8-4929-bca9-2920c1a74cbb",
+      name: "24th Bamboo Tee",
+      dates: ["2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"],
+    });
+    expect(event?.["@type"]).toBe("SportsEvent");
+    expect(event?.name).toBe("24th Bamboo Tee");
+    expect(event?.startDate).toBe("2026-11-12");
+    expect(event?.endDate).toBe("2026-11-15");
+    expect(event?.sport).toBe("Golf");
+    expect(event?.url).toBe(`${SITE_URL}/rules`);
+    expect((event?.organizer as Record<string, string>)["@id"]).toBe(`${SITE_URL}/#organization`);
+    const address = (event?.location as Record<string, unknown>).address as Record<string, string>;
+    expect(address.addressCountry).toBe("PH");
+    // No status is claimed: schema.org has no "finished" value.
+    expect(event?.eventStatus).toBeUndefined();
+    noClubName(event);
+  });
+
+  it("refuses to describe an event with no name or no dates", () => {
+    expect(sportsEventSchema({ id: "x", name: "  ", dates: ["2026-01-01"] })).toBeNull();
+    expect(sportsEventSchema({ id: "x", name: "Event", dates: [] })).toBeNull();
   });
 
   it("turns the NGAP FAQ into a FAQPage with every answer and both source notes", () => {

@@ -135,7 +135,57 @@ export function organizationSchema(): Record<string, unknown> {
       { "@type": "AdministrativeArea", name: "Western Visayas" },
     ],
     description: COMPANY.description,
+    // A logo is what an entity needs to be recognised rather than merely read. The app icon is the
+    // brand mark and it is raster, which is what the engines accept.
+    logo: absoluteUrl("/icons/icon-512.png"),
+    image: absoluteUrl(OG_IMAGE.url),
     brand: { "@type": "Brand", name: SITE_NAME },
+  };
+}
+
+/**
+ * A golf tournament, as the event entity the public pages describe.
+ *
+ * Built only from what the event itself publishes: its name and its playing dates. No venue name, no
+ * attendance claim, no status the page does not state. `eventStatus` is left out on purpose, because
+ * schema.org has no "finished" value and the honest thing after the last day is silence, not
+ * `EventScheduled`.
+ */
+export function sportsEventSchema({
+  id,
+  name,
+  dates,
+}: {
+  id: string;
+  name: string;
+  dates: readonly string[];
+}): Record<string, unknown> | null {
+  const start = dates[0];
+  const end = dates.at(-1);
+  if (!name.trim() || !start || !end) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "SportsEvent",
+    "@id": `${SITE_URL}/#event-${id}`,
+    name,
+    startDate: start,
+    endDate: end,
+    sport: "Golf",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    // The town the club plays in, as the Conditions of Play state it. The club itself is not named.
+    location: {
+      "@type": "Place",
+      name: "Santa Barbara, Iloilo",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Santa Barbara",
+        addressRegion: "Iloilo",
+        addressCountry: "PH",
+      },
+    },
+    organizer: { "@id": ORGANIZATION_ID },
+    url: absoluteUrl("/rules"),
+    description: `${name}: published pairings, results and the Conditions of Play.`,
   };
 }
 

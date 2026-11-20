@@ -13,9 +13,9 @@ Google Search Console.
 | Open Graph card | `public/og/teeline-og.jpg` | 1200 × 630 JPEG, hybrid of the fairway photo and the TeeLine reverse logo, under 100 KB |
 | Card generator | `scripts/make-og-image.mjs` | Rebuilds the card from the committed photo and the brand SVGs; run `node scripts/make-og-image.mjs` |
 | Crawl rules | `src/app/robots.ts` | Public pages open; desk, player area, login and API disallowed; sitemap and host declared; the AI crawlers are named one by one with the same private paths |
-| Sitemap | `src/app/sitemap.ts` | `/`, `/pairings`, `/roster`, `/leaderboard`, `/rules`, `/faq` |
+| Sitemap | `src/app/sitemap.ts` | `/`, `/pairings`, `/roster`, `/leaderboard`, `/rules`, `/faq`; `lastmod` is the build date, not the request time |
 | AI brief | `src/app/llms.txt/route.ts` | `/llms.txt` with what the product is, who it is for, canonical links and company contact |
-| Structured data | `src/lib/seo.ts` + `src/components/seo/JsonLd.tsx` | `Organization`, `WebSite`, `SoftwareApplication` site-wide; `CollectionPage` on `/pairings`, `/roster` and `/leaderboard`; `WebPage` on `/rules` and `/faq`; `FAQPage` with the 18 NGAP answers on `/faq` |
+| Structured data | `src/lib/seo.ts` + `src/components/seo/JsonLd.tsx` | `Organization` (with its logo), `WebSite`, `SoftwareApplication` site-wide; `SportsEvent` for each published tournament on the home page; `CollectionPage` on `/pairings`, `/roster` and `/leaderboard`; `WebPage` on `/rules` and `/faq`; `FAQPage` with the 18 NGAP answers on `/faq` |
 | Non-production exclusion | `next.config.ts` | Every build that is not production sends `X-Robots-Tag: noindex, nofollow` |
 | Entry links | `src/app/(public)/enter/[id]/layout.tsx` | `noindex` — per-event forms are not part of the durable index |
 | Search Console token | `src/app/layout.tsx` + `src/lib/seo.ts` | `siteVerification()` reads `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` and `NEXT_PUBLIC_BING_SITE_VERIFICATION`; with neither set, no tag is rendered |
@@ -94,6 +94,13 @@ description. All of them now have a title, a description, a canonical path, an O
 Twitter card, and the five list and prose pages add their own `WebPage` or `CollectionPage` entity
 (`webPageSchema`), attached to the `WebSite` and the company by id.
 
+**The tournament itself is an entity.** The home page now emits a `SportsEvent` for each
+tournament the club has published, built only from that event's own name and playing dates: start,
+end, golf, the town, the organizer by id, and a link to the Conditions of Play. It claims no status,
+because schema.org has no "finished" value and the honest answer after the last day is silence
+rather than `EventScheduled`. The company's `Organization` node also carries its logo and image now,
+which is what an entity needs to be recognised rather than only read.
+
 **The leaderboard is in the sitemap.** It is the page a member searches for while an event is
 running, it only ever shows what the desk has published, and it was missing from the six durable
 pages. `/results` stays `noindex`: it holds the awarding reveal, not a durable page.
@@ -131,7 +138,29 @@ behaviour, not a fault. Verify against production, after `main` carries the toke
 
 ### What was checked, and what was not
 
-Checked: typecheck, Biome, and the SEO tests (13, including the new token, `WebPage` and AI-crawler
-rules); the pages render the expected metadata and JSON-LD on a development build. Not checked, and
+Checked: typecheck, Biome, and the SEO tests (15, including the new token, `WebPage`, `SportsEvent`
+and AI-crawler rules); every page's JSON-LD was fetched from a running build and parsed; the home
+page carries `SoftwareApplication` and a `SportsEvent` for the published tournament. Not checked, and
 not claimable from here: that Google has crawled, indexed or verified anything. Search Console is
 the owner's account.
+
+### Deliberately not added
+
+These are the things a 2026 checklist usually includes that this site does not have, and why. Each
+is a decision, not an omission.
+
+- **`BreadcrumbList`.** There is no visible breadcrumb trail on the public pages, only a back link,
+  and markup that does not match what a person sees is against the guidelines. Add the trail first
+  if the pages ever grow one.
+- **`hreflang`.** The site is translated, but the language lives in a cookie rather than in the URL,
+  so there is no second URL to point at. Real multilingual indexing needs `/tl/…` and `/hil/…`
+  routes, which is a routing change, not a tag.
+- **Ratings, reviews, prices, attendance.** Nothing here publishes them, and inventing them would be
+  the one kind of structured data that gets a site penalised.
+- **`FAQPage` rich results.** Google limited those snippets to government and health sites in 2023.
+  The markup still earns its place: it is what an answer engine reads. Do not expect a snippet.
+- **`IndexNow`.** Bing and Yandex accept instant pings when a page changes. It needs a key file and
+  a ping on publish; worth doing when someone owns the search-monitoring side, not before.
+- **Per-page Open Graph images.** Every page shares one 1200 x 630 card. Templated images per page
+  are a project of their own and would not change indexing.
+- **`meta keywords`.** Ignored by every engine since well before 2026.
