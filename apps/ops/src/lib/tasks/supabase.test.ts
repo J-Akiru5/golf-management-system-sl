@@ -151,10 +151,9 @@ class FakeQuery {
     }
 
     if (this.op === "delete") {
-      for (const row of rows.filter((candidate) => this.matches(candidate))) {
-        rows.splice(rows.indexOf(row), 1);
-      }
-      return { data: null, error: null };
+      const removed = rows.filter((candidate) => this.matches(candidate));
+      for (const row of removed) rows.splice(rows.indexOf(row), 1);
+      return { data: removed.map((row) => ({ id: row.id })), error: null };
     }
 
     let selected = rows.filter((row) => this.matches(row));
@@ -313,6 +312,13 @@ describe("supabase tasks repo", () => {
     expect(db.tables.ws_tasks?.map((row) => row.id)).toEqual(["task-2"]);
   });
 
+  it("fails a delete that removed nothing, as row level security does for a member", async () => {
+    const { client } = createFakeClient({ tables: { ws_tasks: [taskRow()] } });
+    const repo = createSupabaseTasksRepo(client);
+
+    await expect(repo.deleteTask("task-404")).rejects.toThrow("nothing was deleted");
+  });
+
   it("reads comments oldest first", async () => {
     const { client } = createFakeClient({
       tables: {
@@ -365,6 +371,13 @@ describe("supabase tasks repo", () => {
     await repo.deleteComment("comment-1");
 
     expect(db.tables.ws_task_comments).toEqual([]);
+  });
+
+  it("fails a comment delete that removed nothing", async () => {
+    const { client } = createFakeClient({ tables: { ws_task_comments: [commentRow()] } });
+    const repo = createSupabaseTasksRepo(client);
+
+    await expect(repo.deleteComment("comment-404")).rejects.toThrow("nothing was deleted");
   });
 
   it("refuses an empty title and an empty comment", async () => {

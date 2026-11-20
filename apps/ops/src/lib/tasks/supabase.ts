@@ -104,8 +104,10 @@ export function createSupabaseTasksRepo(client: SupabaseClient<Database>): Tasks
   }
 
   async function deleteTask(id: string): Promise<void> {
-    const { error } = await client.from("ws_tasks").delete().eq("id", id);
+    const { data, error } = await client.from("ws_tasks").delete().eq("id", id).select("id");
     if (error) fail("Could not delete the task", error.message);
+    // Row level security refuses a delete by changing zero rows, not by raising an error.
+    if (!data || data.length === 0) fail("Could not delete the task", "nothing was deleted");
   }
 
   async function listComments(taskId: string): Promise<WsTaskCommentRow[]> {
@@ -141,8 +143,13 @@ export function createSupabaseTasksRepo(client: SupabaseClient<Database>): Tasks
   }
 
   async function deleteComment(id: string): Promise<void> {
-    const { error } = await client.from("ws_task_comments").delete().eq("id", id);
+    const { data, error } = await client
+      .from("ws_task_comments")
+      .delete()
+      .eq("id", id)
+      .select("id");
     if (error) fail("Could not delete the comment", error.message);
+    if (!data || data.length === 0) fail("Could not delete the comment", "nothing was deleted");
   }
 
   async function listMembers(): Promise<TaskMember[]> {
