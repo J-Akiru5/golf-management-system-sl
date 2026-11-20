@@ -59,6 +59,40 @@ jobs:
       - name: Check
         run: pnpm check
 
+  ops:
+    name: workspace app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # The workspace app is its own Vercel project, so it carries the same rule: only staging and
+      # main may auto-deploy.
+      - name: Deploy policy (ops)
+        run: |
+          node <<'NODE'
+          const d = require("./apps/ops/vercel.json")?.git?.deploymentEnabled ?? {};
+          const ok = d.staging === true && d.main === true && d["*"] === false && d["**"] === false;
+          if (!ok) {
+            console.error("apps/ops/vercel.json must allow only staging and main to auto-deploy");
+            process.exit(1);
+          }
+          console.log("deploy policy: apps/ops staging and main only");
+          NODE
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Typecheck, lint, unit tests, the RLS check and the build, in that order.
+      - name: Check
+        run: pnpm --filter @teeline/ops check
+
   browser:
     name: browser checks
     runs-on: ubuntu-latest

@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+/* The shared brand tokens, copied from the live app and guarded by src/lib/brand-drift.test.ts. */
+@import "../../../../packages/brand/tokens.css";
+/* Tailwind's own `overline` utility draws a line over the text. Our small label is the one used. */
+@source not inline("overline");
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--line);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-size: 15px;
+    line-height: 22px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    margin: 0;
+    color: var(--ink);
+  }
+  p {
+    margin: 0;
+  }
+  a {
+    color: var(--fairway);
+    text-underline-offset: 3px;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+  button {
+    cursor: pointer;
+  }
+  ::selection {
+    background: var(--fairway-soft);
+    color: var(--ink);
+  }
+}
+
+@layer components {
+  .overline {
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .hint {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--ink-muted);
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The lockup is artwork with its own two colourways. Show the file that suits the surface. */
+  .logo-on-light {
+    display: block;
+  }
+  .logo-on-dark {
+    display: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .logo-on-light {
+      display: none;
+    }
+    :root:not([data-theme="light"]) .logo-on-dark {
+      display: block;
+    }
+  }
+  :root[data-theme="light"] .logo-on-light {
+    display: block;
+  }
+  :root[data-theme="light"] .logo-on-dark {
+    display: none;
+  }
+  :root[data-theme="dark"] .logo-on-light {
+    display: none;
+  }
+  :root[data-theme="dark"] .logo-on-dark {
+    display: block;
+  }
+}
