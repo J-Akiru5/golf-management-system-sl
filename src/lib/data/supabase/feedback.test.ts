@@ -407,6 +407,43 @@ describe("updateFeedbackResolution", () => {
   });
 });
 
+describe("demo requests", () => {
+  it("sends the demo category through the same feedback RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { ok: true, code: "accepted", message: "Thank you." },
+      error: null,
+    });
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+
+    await submitFeedback(client, {
+      ...SUBMISSION,
+      category: "demo",
+      message: "Club: Iloilo Golf and Country Club\n\nWhat would you like to see?",
+      pagePath: "/demo",
+    });
+
+    expect(rpc).toHaveBeenCalledWith(
+      "submit_feedback",
+      expect.objectContaining({
+        p_category: "demo",
+        p_contact_email: "jo@example.com",
+        p_contact_consent: true,
+        p_page_path: "/demo",
+      }),
+    );
+  });
+
+  it("keeps the server's clear message when a demo request has no email", () => {
+    const result = parseFeedbackSubmitResult({
+      ok: false,
+      code: "contact_email_required",
+      message: "Enter an email address so the club can reply about a demo.",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/email address/i);
+  });
+});
+
 describe("countNewFeedback", () => {
   it("counts only new notes for the club", async () => {
     const statusScope = vi.fn().mockResolvedValue({ count: 4, error: null });

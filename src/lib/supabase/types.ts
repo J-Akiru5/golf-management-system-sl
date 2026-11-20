@@ -1251,6 +1251,12 @@ export interface Database {
        */
       public_events: { Args: Record<string, never>; Returns: Json };
       /**
+       * The landing page's events, including events finished in the last year, each with a
+       * `finished` flag. Added by hand with 20261121000000_landing_showcase_and_demo.sql, which is
+       * not applied yet, so `supabase gen types typescript` cannot produce it.
+       */
+      public_showcase_events: { Args: Record<string, never>; Returns: Json };
+      /**
        * The events a signed-out visitor may see: open, cut-off not passed. Added by hand with
        * 20261033000000_public_open_events.sql, which is not applied to the live project yet, so
        * `supabase gen types typescript` cannot produce it. Remove this comment when it can.
