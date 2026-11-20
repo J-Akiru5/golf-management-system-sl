@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import {
+  AboutSection,
   CapabilitySections,
   DemoCta,
   EventCarousel,
@@ -132,6 +133,7 @@ export default async function HomePage() {
       {/* Standings belong to the day of play. Once the featured event has finished, "See all
           scores" opens the results, and the landing page shows no standings strip. */}
       {teaser && featured?.phase === "live" && <LeaderboardTeaser teaser={teaser} />}
+      <AboutSection />
       <DemoCta />
       <LandingFooter versionLabel={APP_VERSION_LABEL} />
       <PublicBottomBar />

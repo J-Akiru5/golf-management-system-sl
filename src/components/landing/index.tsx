@@ -1,7 +1,8 @@
-import { ChevronRight } from "lucide-react";
+import { ArrowUpRight, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { ABOUT_PROMISE, PARTNERS, TEAM } from "@/lib/public/about";
 import { EventCarousel } from "./EventCarousel";
 import { LandingHero } from "./LandingHero";
 import "./landing.css";
@@ -195,6 +196,76 @@ export function CapabilitySections() {
   );
 }
 
+/** Who is behind TeeLine: the three organizations, then the team. Static content from about.ts. */
+export function AboutSection() {
+  return (
+    <section className="tl-about tl-section" id="about" aria-labelledby="tl-about-title">
+      <div className="tl-section-heading tl-about-intro">
+        <p className="tl-kicker" data-tl-reveal>
+          About us
+        </p>
+        <h2 id="tl-about-title" data-tl-reveal>
+          {ABOUT_PROMISE}
+        </h2>
+        <p data-tl-reveal>
+          TeeLine Golf is built in Iloilo by three teams that work together on club tournaments: one
+          builds the software, one runs the day, one helps the club get ready.
+        </p>
+      </div>
+
+      <ul className="tl-partners" data-tl-stagger>
+        {PARTNERS.map((partner) => (
+          <li key={partner.name} className="tl-partner" data-tl-reveal>
+            <a
+              className="tl-partner-link"
+              href={partner.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${partner.name}, ${partner.hrefLabel} (opens in a new tab)`}
+            >
+              <span className={`tl-partner-logo is-${partner.tile}`}>
+                <Image
+                  src={partner.logo.src}
+                  alt={`${partner.name} logo`}
+                  width={partner.logo.width}
+                  height={partner.logo.height}
+                  sizes="160px"
+                />
+              </span>
+              <span className="tl-partner-role">{partner.role}</span>
+              <span className="tl-partner-name">{partner.name}</span>
+              <span className="tl-partner-detail">{partner.detail}</span>
+              <span className="tl-partner-href">
+                {partner.hrefLabel} <ArrowUpRight aria-hidden="true" />
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+
+      <div className="tl-team-heading">
+        <h3 data-tl-reveal>The team</h3>
+      </div>
+      <ul className="tl-team" data-tl-stagger>
+        {TEAM.map((member) => (
+          <li key={member.name} className="tl-team-card" data-tl-reveal>
+            <Image
+              src={member.photo}
+              alt={`${member.name}, ${member.title}`}
+              width={320}
+              height={320}
+              sizes="(max-width: 700px) 40vw, 200px"
+            />
+            <h4>{member.name}</h4>
+            <p className="tl-team-title">{member.title}</p>
+            <p className="tl-team-focus">{member.focus}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** The closing Request a demo band. Links to /demo. */
 export function DemoCta() {
   return (
@@ -253,8 +324,35 @@ export function LandingFooter({ versionLabel }: LandingFooterProps) {
           <Link href="/terms">Terms</Link>
         </nav>
       </div>
+      <nav className="tl-footer-partners" aria-label="The teams behind TeeLine">
+        {PARTNERS.map((partner) => (
+          <a
+            key={partner.name}
+            href={partner.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`tl-footer-partner is-${partner.tile}`}
+            aria-label={`${partner.name} (opens in a new tab)`}
+          >
+            <Image
+              src={partner.logo.src}
+              alt=""
+              width={partner.logo.width}
+              height={partner.logo.height}
+              sizes="96px"
+            />
+            <span>{partner.name}</span>
+          </a>
+        ))}
+      </nav>
       <div className="tl-footer-bar">
-        <p>Developed by Syntaxure Labs · {versionLabel}</p>
+        <p>
+          Developed by{" "}
+          <a href="https://syntaxure.dev/" target="_blank" rel="noopener noreferrer">
+            Syntaxure Labs
+          </a>{" "}
+          · {versionLabel}
+        </p>
         <Link href="/login">Sign in</Link>
       </div>
     </footer>

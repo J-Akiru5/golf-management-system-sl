@@ -58,6 +58,7 @@ export function LandingHero({
           <a href="#product">The desk</a>
           <a href="#how-it-works">How it works</a>
           <a href="#proof">In use</a>
+          <a href="#about">About</a>
           <Link href="/pairings">Player pairings</Link>
           <Link href="/rules">Tournament rules</Link>
           <Link href="/faq">NGAP FAQ</Link>
