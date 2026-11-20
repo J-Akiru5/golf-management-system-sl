@@ -1,0 +1,6 @@
+.next
+node_modules
+.tmp
+seed/out
+next-env.d.ts
+*.tsbuildinfo
