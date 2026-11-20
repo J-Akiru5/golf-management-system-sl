@@ -375,14 +375,15 @@ export function DemoPairings({
           <LanguageSwitcher tone="on-forest" />
           <HelpButton audience="player" screen="pairings" />
         </div>
-        <p className="tl-pub-kicker">
+        {/* The page names itself in the visitor's language, then the event and its start. */}
+        <p className="tl-pub-kicker">{t("pairings.title")}</p>
+        <h1 className="tl-pub-title">{tournament.name}</h1>
+        <p className="tl-pub-intro">
           {tournament.config.startFormat === "shotgun"
             ? t("pairings.shotgun")
             : t("pairings.twoTee")}{" "}
-          · {fmtTime(tournament.config.firstTeeTime)}
+          · {fmtTime(tournament.config.firstTeeTime)} · {dateLabel}
         </p>
-        <h1 className="tl-pub-title">{tournament.name}</h1>
-        <p className="tl-pub-intro">{dateLabel}</p>
       </header>
 
       <PublicTournamentNav active={tab} />
