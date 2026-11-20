@@ -310,7 +310,7 @@ export function LandingFooter({ versionLabel }: LandingFooterProps) {
         <nav aria-label="Product">
           <h2>Product</h2>
           <Link href="/pairings">Published pairings</Link>
-          <Link href="/rules">Tournament rules</Link>
+          <Link href="/events">Events and results</Link>
           <Link href="/leaderboard">Public leaderboard</Link>
           <Link href="/demo">Request a demo</Link>
         </nav>

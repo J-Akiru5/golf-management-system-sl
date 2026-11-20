@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { HelpButton } from "@/components/help";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PublicBottomBar } from "@/components/MobileTabBar";
@@ -10,10 +9,8 @@ import { HeldNotice } from "@/components/public/HeldNotice";
 import { PlayerProfileSearch } from "@/components/public/PlayerProfileSearch";
 import { PlayerProfileView } from "@/components/public/PlayerProfileView";
 import { RulesOfPlay } from "@/components/public/ProgrammeView";
-import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { addIsoDays } from "@/lib/data/dates";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
@@ -35,7 +32,6 @@ import { fmtTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/context";
 import { manilaToday } from "@/lib/player/dashboard";
 import { SAMPLE_PLAYER } from "@/lib/player/demo-identity";
-import { pairingsBackLink } from "@/lib/public/pairings-nav";
 import { publicProfileTeeTimes } from "@/lib/public/public-profile-tee-times";
 import { blackoutFlags } from "@/lib/public/results-reveal";
 import { useDesk } from "@/lib/store/desk-store";
@@ -321,7 +317,6 @@ export function DemoPairings({
   playerId?: string | null;
 }) {
   const { t } = useI18n();
-  const back = pairingsBackLink(tab);
   const { published, tournament, days, entries, registrations, players } = useDesk();
   const release = useDemoReleaseState(tournament?.id ?? "bamboo-tee-2026");
 
@@ -374,32 +369,21 @@ export function DemoPairings({
 
   return (
     <main className="public public-pairings mobile-bar-space">
-      <header className="public-head !p-4 sm:!p-5">
-        <PublicBackLink label={t(back.labelKey)} href={back.href} />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <TeeLineLogo variant="reverse" width={144} />
-            <span className="leading-tight">
-              <b className="block font-display text-[13px] font-semibold">{t("pairings.title")}</b>
-              <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle compact tone="nav" />
-            <LanguageSwitcher tone="on-forest" />
-            <HelpButton audience="player" screen="pairings" />
-          </div>
+      <header className="public-head tl-pub-page-head tl-pairings-head">
+        <div className="public-appbar-controls flex items-center gap-2">
+          <ThemeToggle compact tone="nav" />
+          <LanguageSwitcher tone="on-forest" />
+          <HelpButton audience="player" screen="pairings" />
         </div>
-        <p className="overline mt-2 !text-gold-on-forest">
+        {/* The page names itself in the visitor's language, then the event and its start. */}
+        <p className="tl-pub-kicker">{t("pairings.title")}</p>
+        <h1 className="tl-pub-title">{tournament.name}</h1>
+        <p className="tl-pub-intro">
           {tournament.config.startFormat === "shotgun"
             ? t("pairings.shotgun")
             : t("pairings.twoTee")}{" "}
-          · {fmtTime(tournament.config.firstTeeTime)}
+          · {fmtTime(tournament.config.firstTeeTime)} · {dateLabel}
         </p>
-        <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px]">
-          {tournament.name}
-        </h1>
-        <p className="text-on-forest-muted">{dateLabel}</p>
       </header>
 
       <PublicTournamentNav active={tab} />
@@ -457,18 +441,6 @@ export function DemoPairings({
         </>
       )}
 
-      <div className="pairings-foot no-print">
-        <p className="pairings-foot-note">{t("pairings.demoFooter")}</p>
-        <nav className="pairings-foot-nav" aria-label={t("feedback.footerLabel")}>
-          <Link href="/">{t("pairings.home")}</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/roster">{t("programme.playersTitle")}</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/rules?from=pairings">{t("programme.navFullRules")}</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
-        </nav>
-      </div>
       <PublicBottomBar />
     </main>
   );

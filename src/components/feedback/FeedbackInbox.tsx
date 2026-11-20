@@ -4,6 +4,7 @@ import { Mail, MessageSquare, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SectionCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { concernSummary } from "@/lib/data/concerns";
 import {
   canTriageFeedback,
   DEFAULT_FEEDBACK_FILTERS,
@@ -64,6 +65,23 @@ function contactLine(note: FeedbackNote): string {
 function eventLabel(note: FeedbackNote): string {
   if (note.eventName) return note.eventName;
   return note.tournamentId ? "Event name unavailable" : "General feedback (no event)";
+}
+
+/** The one line a concern leads with, for example "Score (hole 7), Tee off (White)". */
+function concernLine(note: FeedbackNote): string | null {
+  return note.details ? concernSummary(note.details) : null;
+}
+
+/** The concern's own answers, in the desk's words. A missing answer is left out, not guessed. */
+function concernFacts(note: FeedbackNote): { term: string; value: string }[] {
+  const details = note.details;
+  if (!details) return [];
+  const facts: { term: string; value: string }[] = [];
+  if (details.playerName) facts.push({ term: "Player", value: details.playerName });
+  if (details.handicap) facts.push({ term: "Handicap", value: details.handicap });
+  if (details.schedule) facts.push({ term: "Schedule", value: details.schedule });
+  facts.push({ term: "Sent from", value: details.source === "chat" ? "The chatbot" : "The form" });
+  return facts;
 }
 
 /**
@@ -481,6 +499,9 @@ export function FeedbackInbox({
         <ul className="grid grid-cols-[minmax(0,1fr)] gap-2.5" aria-label="Feedback notes">
           {visible.map((note) => {
             const open = openId === note.id;
+            const summary = concernLine(note);
+            const facts = concernFacts(note);
+            const transcript = note.details?.transcript ?? [];
             const short =
               note.message.length > 140 ? `${note.message.slice(0, 140).trimEnd()}…` : note.message;
             return (
@@ -501,8 +522,11 @@ export function FeedbackInbox({
                       aria-expanded={open}
                       className="mt-2 block w-full text-left font-semibold text-ink"
                     >
-                      {open ? note.message : short}
+                      {open ? (summary ?? note.message) : (summary ?? short)}
                     </button>
+                    {summary && note.message !== summary && (
+                      <p className="hint m-0 mt-1">{open ? note.message : short}</p>
+                    )}
                   </div>
                   <time dateTime={note.createdAt} className="hint whitespace-nowrap">
                     {when(note.createdAt)}
@@ -511,6 +535,37 @@ export function FeedbackInbox({
 
                 {open && (
                   <div className="grid gap-3 border-t border-line pt-3">
+                    {summary && (
+                      <div className="grid gap-2 border-b border-line pb-3">
+                        <p className="overline m-0">Concern</p>
+                        <p className="m-0 text-[14px] whitespace-pre-wrap">{summary}</p>
+                        {facts.length > 0 && (
+                          <dl className="grid gap-2 sm:grid-cols-2">
+                            {facts.map((fact) => (
+                              <div className="min-w-0" key={fact.term}>
+                                <dt className="overline">{fact.term}</dt>
+                                <dd className="m-0 break-words text-[14px]">{fact.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
+                        {transcript.length > 0 && (
+                          <details>
+                            <summary className="cursor-pointer font-semibold text-ink">
+                              {`The conversation (${transcript.length} ${transcript.length === 1 ? "turn" : "turns"})`}
+                            </summary>
+                            <ol className="mt-2 grid gap-2">
+                              {transcript.map((turn, index) => (
+                                <li className="text-[14px]" key={`${index}-${turn.role}`}>
+                                  <b>{turn.role === "user" ? "Player" : "Assistant"}:</b>{" "}
+                                  <span className="whitespace-pre-wrap">{turn.content}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
+                        )}
+                      </div>
+                    )}
                     <dl className="grid gap-2 sm:grid-cols-2">
                       <div className="min-w-0">
                         <dt className="overline">Contact</dt>

@@ -849,7 +849,7 @@ export const hil: Dictionary = {
     overline: "Sugiri ang club",
     title: "Magpadala sang feedback",
     intro:
-      "May problema ka ukon may mahimo nga mas maayo? Magpadala sang note sa organizer. Nahanungod ini sa site, indi sa draw.",
+      "May problema sa imo entry, score, tee time ukon sa site? I-tsek kung parte sa ano ini kag tan-awon ini sang organizer.",
     privacy:
       "Pribado sa club staff ang note mo. Indi ini ginapakita sa pampubliko nga pahina, kag indi ini entry ukon booking.",
     category: "Nahanungod sa ano ini?",

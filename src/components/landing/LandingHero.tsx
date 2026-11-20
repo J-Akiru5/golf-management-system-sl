@@ -60,7 +60,7 @@ export function LandingHero({
           <a href="#proof">In use</a>
           <a href="#about">About</a>
           <Link href="/pairings">Player pairings</Link>
-          <Link href="/rules">Tournament rules</Link>
+          <Link href="/events">Events</Link>
           <Link href="/faq">NGAP FAQ</Link>
         </nav>
         <div className="tl-nav-actions">

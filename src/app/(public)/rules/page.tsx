@@ -1,13 +1,16 @@
 import { Download, ExternalLink, FileText } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PublicBottomBar } from "@/components/MobileTabBar";
-import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { RulesSections } from "@/components/public/RulesSections";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { loadEventArchive } from "@/lib/data/supabase/event-archive";
 import { BAMBOO_TEE_2026_RULES as rules } from "@/lib/public/tournament-rules";
-import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
+import { openGraphFor, SITE_NAME, twitterFor, webPageSchema } from "@/lib/seo";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createSupabasePublicClient } from "@/lib/supabase/public";
+import { todayInManila } from "../events/_lib/today";
 
 export const metadata: Metadata = {
   title: "Conditions of Play",
@@ -37,33 +40,48 @@ export const metadata: Metadata = {
  * This page is a reading aid. The official PDF controls if the two ever disagree, and the page says
  * so in the header and again beside the download button.
  */
-export default function TournamentRulesPage() {
+/**
+ * `/rules` is no longer a nav item: rules of play belong to one event. When the organizer has written
+ * rules for the featured event (or, failing that, the newest event with rules), the address forwards
+ * to that event's `#rules` section. Until any event carries its own rules text, it keeps showing the
+ * static Conditions of Play below, so the published rules never become unreachable.
+ */
+export default async function RulesPage() {
+  if (isSupabaseConfigured()) {
+    const events =
+      (await loadEventArchive(createSupabasePublicClient(), todayInManila()).catch(() => null)) ??
+      [];
+    const withRules = events.filter((event) => event.hasRules);
+    const target = withRules.find((event) => event.featured) ?? withRules[0];
+    if (target) redirect(`/events/${target.tournamentId}#rules`);
+  }
+  return <ConditionsOfPlay />;
+}
+
+function ConditionsOfPlay() {
   return (
     <main className="public public-rules mobile-bar-space" data-testid="rules-page" lang="en">
-      <header className="public-head rules-hero">
-        <PublicBackLink label="Back to main page" pairingsLabel="Back to pairings" />
-
+      <JsonLd
+        data={webPageSchema({
+          path: "/rules",
+          name: "Conditions of Play",
+          description:
+            "The 24th Bamboo Tee Invitational Conditions of Play: format, handicap and divisions, local rules, pace of play, scorecards, tie-breaking and prizes, with the official PDF.",
+        })}
+      />
+      <header className="public-head rules-hero tl-pub-page-head">
         <div className="rules-hero-top">
-          <div className="flex flex-wrap items-center gap-3">
-            <TeeLineLogo variant="reverse" width={144} />
-            <span className="leading-tight">
-              <b className="block font-display text-[13px] font-semibold">Tournament rules</b>
-              <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-            </span>
-          </div>
+          <p className="tl-pub-kicker">
+            {rules.eventName} · {rules.dates}
+          </p>
           <div className="flex items-center gap-3">
             <span className="rules-pdf-badge">{rules.pdf.pageCount} pages · PDF</span>
             <ThemeToggle compact tone="nav" />
           </div>
         </div>
 
-        <p className="overline mt-2 !text-gold-on-forest">
-          {rules.eventName} · {rules.dates}
-        </p>
-        <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px] lg:text-[52px] lg:leading-[56px]">
-          {rules.title}
-        </h1>
-        <p className="rules-hero-sub">{rules.subtitle}</p>
+        <h1 className="tl-pub-title">{rules.title}</h1>
+        <p className="rules-hero-sub tl-pub-intro">{rules.subtitle}</p>
         <p className="rules-hero-meta">
           {rules.venue} · The official rules are published in English.
         </p>
@@ -139,17 +157,6 @@ export default function TournamentRulesPage() {
         </div>
       </section>
 
-      <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/">TEELINE GOLF HOME</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/pairings">Tee times and pairings</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/roster">Player roster</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/leaderboard">Leaderboard</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/faq">NGAP FAQ</Link>
-      </nav>
       <PublicBottomBar />
     </main>
   );
