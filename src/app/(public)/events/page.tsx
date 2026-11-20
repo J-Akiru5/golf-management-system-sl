@@ -96,14 +96,6 @@ export default async function EventsPage() {
           </ul>
         )}
       </section>
-
-      <nav className="tl-pub-section" aria-label="More pages">
-        <Link href="/">Main page</Link>
-        <span aria-hidden="true"> · </span>
-        <Link href="/pairings">Published pairings</Link>
-        <span aria-hidden="true"> · </span>
-        <Link href="/leaderboard">Leaderboard</Link>
-      </nav>
     </div>
   );
 }

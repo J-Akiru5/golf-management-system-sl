@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { ScoresView } from "@/components/public/ScoresView";
@@ -142,13 +141,6 @@ export default async function ResultsPage() {
       ) : (
         <ScoresView data={{ ...data, rows }} sessions={sessions} />
       )}
-      <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/pairings">{t("programme.navPairings")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/roster">{t("programme.navPlayers")}</Link>
-      </nav>
     </LeaderboardShell>
   );
 }

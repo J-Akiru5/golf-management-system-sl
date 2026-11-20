@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PublicBottomBar } from "@/components/MobileTabBar";
 import { FeedbackForm } from "@/components/public/FeedbackForm";
-import { PublicBackLink } from "@/components/public/PublicBackLink";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { normalizeFeedbackTournamentId, normalizePagePath } from "@/lib/data/feedback";
 import { getI18n } from "@/lib/i18n/server";
 import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
@@ -47,29 +44,13 @@ export default async function FeedbackPage({
 
   return (
     <main className="public mobile-bar-space">
-      <header className="public-head">
-        <PublicBackLink label={t("feedback.backHome")} />
-        <div className="flex flex-wrap items-center gap-3">
-          <TeeLineLogo variant="reverse" width={172} />
-          <span className="leading-tight">
-            <b className="block font-display text-[13px] font-semibold">TeeLine Golf</b>
-            <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-          </span>
-        </div>
-        <p className="overline mt-3 !text-gold-on-forest">{t("feedback.overline")}</p>
-        <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-          {t("feedback.title")}
-        </h1>
-        <p className="text-on-forest-muted">{t("feedback.intro")}</p>
+      <header className="public-head tl-pub-page-head">
+        <p className="tl-pub-kicker">{t("feedback.overline")}</p>
+        <h1 className="tl-pub-title">{t("feedback.title")}</h1>
+        <p className="tl-pub-intro">{t("feedback.intro")}</p>
       </header>
 
       <FeedbackForm sourcePath={sourcePath} tournamentId={tournamentId} />
-
-      <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/">{t("pairings.home")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/privacy">Privacy policy</Link>
-      </nav>
       <PublicBottomBar />
     </main>
   );
