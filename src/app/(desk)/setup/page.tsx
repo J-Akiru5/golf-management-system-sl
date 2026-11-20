@@ -20,6 +20,7 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CourseCardEditor } from "@/components/course/CourseCardEditor";
 import { CourseHandicapConverter } from "@/components/course/CourseHandicapConverter";
+import { LandingFeatureCard } from "@/components/desk/LandingFeatureCard";
 import { PublicReleaseCard } from "@/components/desk/PublicReleaseCard";
 import { ResultsBlackoutCard } from "@/components/desk/ResultsBlackoutCard";
 import { NeedsTournament } from "@/components/NeedsTournament";
@@ -114,6 +115,11 @@ export default function SetupPage() {
           <PublicReleaseCard
             tournamentId={tournament.id}
             tournamentName={tournament.name}
+            canEdit={canEdit}
+            demo={status === "demo"}
+          />
+          <LandingFeatureCard
+            tournamentId={tournament.id}
             canEdit={canEdit}
             demo={status === "demo"}
           />

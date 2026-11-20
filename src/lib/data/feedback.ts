@@ -10,8 +10,23 @@
  */
 import type { TranslationKey } from "@/lib/i18n/t";
 
+/**
+ * The categories the public feedback form offers. A demo request has its own page, so it is not one
+ * of these choices.
+ */
 export const FEEDBACK_CATEGORIES = ["improvement", "bug", "content"] as const;
-export type FeedbackCategory = (typeof FEEDBACK_CATEGORIES)[number];
+export type FeedbackFormCategory = (typeof FEEDBACK_CATEGORIES)[number];
+
+/** A request sent from /demo. It lands in the same inbox as every other note. */
+export const FEEDBACK_DEMO_CATEGORY = "demo" as const;
+
+export type FeedbackCategory = FeedbackFormCategory | typeof FEEDBACK_DEMO_CATEGORY;
+
+/** Every category the desk can show and filter by. */
+export const FEEDBACK_INBOX_CATEGORIES: readonly FeedbackCategory[] = [
+  ...FEEDBACK_CATEGORIES,
+  FEEDBACK_DEMO_CATEGORY,
+];
 
 export const FEEDBACK_STATUSES = ["new", "read", "planned", "done", "dismissed"] as const;
 export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
@@ -41,6 +56,7 @@ export const FEEDBACK_CATEGORY_LABELS: Record<FeedbackCategory, string> = {
   improvement: "Improvement",
   bug: "Bug",
   content: "Content",
+  demo: "Demo request",
 };
 
 export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
@@ -52,7 +68,7 @@ export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
 };
 
 /** The public form's translated labels, keyed by the stored category. */
-export const FEEDBACK_CATEGORY_KEYS: Record<FeedbackCategory, TranslationKey> = {
+export const FEEDBACK_CATEGORY_KEYS: Record<FeedbackFormCategory, TranslationKey> = {
   improvement: "feedback.categoryImprovement",
   bug: "feedback.categoryBug",
   content: "feedback.categoryContent",
@@ -154,7 +170,9 @@ function firstValue(value: string | string[] | null | undefined): string | null 
 }
 
 export function isFeedbackCategory(value: unknown): value is FeedbackCategory {
-  return typeof value === "string" && (FEEDBACK_CATEGORIES as readonly string[]).includes(value);
+  return (
+    typeof value === "string" && (FEEDBACK_INBOX_CATEGORIES as readonly string[]).includes(value)
+  );
 }
 
 export function isFeedbackStatus(value: unknown): value is FeedbackStatus {

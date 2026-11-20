@@ -160,10 +160,11 @@ describe("crawl rules and the sitemap", () => {
     expect(disallow).not.toContain("/enter");
   });
 
-  it("lists the five durable pages and no entry links", () => {
+  it("lists the durable pages and no entry links", () => {
     const entries = sitemap();
     expect(entries.map((entry) => entry.url)).toEqual([
       `${SITE_URL}/`,
+      `${SITE_URL}/demo`,
       `${SITE_URL}/pairings`,
       `${SITE_URL}/roster`,
       `${SITE_URL}/rules`,

@@ -28,6 +28,7 @@ const events: PublicEvent[] = [
     cutOffDate: "2026-11-01",
     entered: 87,
     entriesOpen: true,
+    featured: false,
   },
   {
     tournamentId: "preview-urgent",
@@ -38,6 +39,7 @@ const events: PublicEvent[] = [
     cutOffDate: "2026-10-21",
     entered: 41,
     entriesOpen: true,
+    featured: false,
   },
   {
     tournamentId: "preview-closes-today",
@@ -48,6 +50,7 @@ const events: PublicEvent[] = [
     cutOffDate: "2026-10-19",
     entered: 12,
     entriesOpen: true,
+    featured: false,
   },
   {
     tournamentId: "preview-crosses-month",
@@ -58,6 +61,7 @@ const events: PublicEvent[] = [
     cutOffDate: "2026-11-20",
     entered: 0,
     entriesOpen: true,
+    featured: false,
   },
   {
     tournamentId: "preview-long-name",
@@ -68,6 +72,7 @@ const events: PublicEvent[] = [
     cutOffDate: "2026-12-10",
     entered: 126,
     entriesOpen: true,
+    featured: false,
   },
 ];
 
