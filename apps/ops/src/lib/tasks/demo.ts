@@ -9,8 +9,9 @@ import type { TaskCardOption, TaskDraft, TaskMember, TaskPatch, TasksRepo } from
  * The demo repository: in-memory data for checking the screens without a database.
  *
  * The store lives at module level so a create, an edit or a comment survives the round trip from
- * the page to a server action and back. It is only reachable when demo mode is on, which a
- * production build cannot do (see `lib/flags.ts`).
+ * the page to a server action and back. The repository object itself is shared too: it holds no
+ * per-caller state, because demo mode has one local viewer and no database to ask. It is only
+ * reachable when demo mode is on, which a production build cannot do (see `lib/flags.ts`).
  *
  * The eleven tasks from the 17 Nov meeting are the real seed and stay unassigned: the owner
  * assigns them. The extra tasks are demo only, and they are assigned so every tab has content.
@@ -217,104 +218,120 @@ function applyPatch(row: WsTaskRow, patch: TaskPatch): void {
   }
 }
 
-export function createDemoTasksRepo(): TasksRepo {
-  return {
-    async listTasks() {
-      return store().tasks.map((task) => ({ ...task }));
-    },
+async function listTasks(): Promise<WsTaskRow[]> {
+  return store().tasks.map((task) => ({ ...task }));
+}
 
-    async getTask(id) {
-      const row = store().tasks.find((task) => task.id === id);
-      return row ? { ...row } : null;
-    },
+async function getTask(id: string): Promise<WsTaskRow | null> {
+  const row = store().tasks.find((task) => task.id === id);
+  return row ? { ...row } : null;
+}
 
-    async createTask(input: TaskDraft) {
-      const now = new Date().toISOString();
-      const current = store();
-      const top = current.tasks.reduce((highest, task) => Math.max(highest, task.position), 0);
-      const row: WsTaskRow = {
-        id: `demo-task-${current.nextTaskId++}`,
-        title: cleanTitle(input.title),
-        description: cleanText(input.description),
-        assignee_id: input.assigneeId ?? null,
-        due_date: input.dueDate ?? null,
-        priority: input.priority ?? "normal",
-        status: "todo",
-        position: top + POSITION_STEP,
-        pipeline_card_id: input.pipelineCardId ?? null,
-        tournament_id: input.tournamentId ?? null,
-        completed_at: null,
-        created_by: DEMO_OWNER,
-        created_at: now,
-        updated_at: now,
-      };
-      current.tasks.push(row);
-      return { ...row };
-    },
-
-    async updateTask(id, patch) {
-      const row = findTask(id);
-      applyPatch(row, patch);
-      return { ...row };
-    },
-
-    async setStatus(id, status) {
-      const row = findTask(id);
-      applyPatch(row, { status });
-      return { ...row };
-    },
-
-    async deleteTask(id) {
-      const current = store();
-      const index = current.tasks.findIndex((task) => task.id === id);
-      if (index === -1) throw new Error("Task not found.");
-      current.tasks.splice(index, 1);
-      current.comments = current.comments.filter((comment) => comment.task_id !== id);
-    },
-
-    async listComments(taskId) {
-      return store()
-        .comments.filter((comment) => comment.task_id === taskId)
-        .sort((a, b) => a.created_at.localeCompare(b.created_at))
-        .map((comment) => ({ ...comment }));
-    },
-
-    async addComment(taskId, body) {
-      findTask(taskId);
-      const current = store();
-      const row: WsTaskCommentRow = {
-        id: `demo-comment-${current.nextCommentId++}`,
-        task_id: taskId,
-        body: cleanBody(body),
-        author_id: DEMO_OWNER,
-        created_at: new Date().toISOString(),
-        edited_at: null,
-      };
-      current.comments.push(row);
-      return { ...row };
-    },
-
-    async editComment(id, body) {
-      const row = store().comments.find((comment) => comment.id === id);
-      if (!row) throw new Error("Comment not found.");
-      row.body = cleanBody(body);
-      row.edited_at = new Date().toISOString();
-      return { ...row };
-    },
-
-    async deleteComment(id) {
-      const current = store();
-      const index = current.comments.findIndex((comment) => comment.id === id);
-      if (index === -1) throw new Error("Comment not found.");
-      current.comments.splice(index, 1);
-    },
-
-    async listMembers() {
-      return DEMO_MEMBERS.map((member) => ({ ...member }));
-    },
-
-    async listCards() {
-      return DEMO_CARDS.map((card) => ({ ...card }));
-    },
+async function createTask(input: TaskDraft): Promise<WsTaskRow> {
+  const now = new Date().toISOString();
+  const current = store();
+  const top = current.tasks.reduce((highest, task) => Math.max(highest, task.position), 0);
+  const row: WsTaskRow = {
+    id: `demo-task-${current.nextTaskId++}`,
+    title: cleanTitle(input.title),
+    description: cleanText(input.description),
+    assignee_id: input.assigneeId ?? null,
+    due_date: input.dueDate ?? null,
+    priority: input.priority ?? "normal",
+    status: "todo",
+    position: top + POSITION_STEP,
+    pipeline_card_id: input.pipelineCardId ?? null,
+    tournament_id: input.tournamentId ?? null,
+    completed_at: null,
+    created_by: DEMO_OWNER,
+    created_at: now,
+    updated_at: now,
   };
+  current.tasks.push(row);
+  return { ...row };
+}
+
+async function updateTask(id: string, patch: TaskPatch): Promise<WsTaskRow> {
+  const row = findTask(id);
+  applyPatch(row, patch);
+  return { ...row };
+}
+
+async function setStatus(id: string, status: WsTaskRow["status"]): Promise<WsTaskRow> {
+  const row = findTask(id);
+  applyPatch(row, { status });
+  return { ...row };
+}
+
+async function deleteTask(id: string): Promise<void> {
+  const current = store();
+  const index = current.tasks.findIndex((task) => task.id === id);
+  if (index === -1) throw new Error("Task not found.");
+  current.tasks.splice(index, 1);
+  current.comments = current.comments.filter((comment) => comment.task_id !== id);
+}
+
+async function listComments(taskId: string): Promise<WsTaskCommentRow[]> {
+  return store()
+    .comments.filter((comment) => comment.task_id === taskId)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .map((comment) => ({ ...comment }));
+}
+
+async function addComment(taskId: string, body: string): Promise<WsTaskCommentRow> {
+  findTask(taskId);
+  const current = store();
+  const row: WsTaskCommentRow = {
+    id: `demo-comment-${current.nextCommentId++}`,
+    task_id: taskId,
+    body: cleanBody(body),
+    author_id: DEMO_OWNER,
+    created_at: new Date().toISOString(),
+    edited_at: null,
+  };
+  current.comments.push(row);
+  return { ...row };
+}
+
+async function editComment(id: string, body: string): Promise<WsTaskCommentRow> {
+  const row = store().comments.find((comment) => comment.id === id);
+  if (!row) throw new Error("Comment not found.");
+  row.body = cleanBody(body);
+  row.edited_at = new Date().toISOString();
+  return { ...row };
+}
+
+async function deleteComment(id: string): Promise<void> {
+  const current = store();
+  const index = current.comments.findIndex((comment) => comment.id === id);
+  if (index === -1) throw new Error("Comment not found.");
+  current.comments.splice(index, 1);
+}
+
+async function listMembers(): Promise<TaskMember[]> {
+  return DEMO_MEMBERS.map((member) => ({ ...member }));
+}
+
+async function listCards(): Promise<TaskCardOption[]> {
+  return DEMO_CARDS.map((card) => ({ ...card }));
+}
+
+/** One shared repository over the module store. It has no per-caller state to keep. */
+const DEMO_TASKS_REPO: TasksRepo = {
+  listTasks,
+  getTask,
+  createTask,
+  updateTask,
+  setStatus,
+  deleteTask,
+  listComments,
+  addComment,
+  editComment,
+  deleteComment,
+  listMembers,
+  listCards,
+};
+
+export function createDemoTasksRepo(): TasksRepo {
+  return DEMO_TASKS_REPO;
 }

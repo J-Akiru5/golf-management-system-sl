@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanBody, cleanText, cleanTitle, COMMENT_MAX_LENGTH } from "./text";
+import { COMMENT_MAX_LENGTH, cleanBody, cleanText, cleanTitle } from "./text";
 
 describe("cleanText", () => {
   it("turns an empty or missing value into null", () => {

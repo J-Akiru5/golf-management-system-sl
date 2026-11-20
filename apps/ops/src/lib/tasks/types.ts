@@ -1,9 +1,9 @@
 import type {
   TaskPriority,
   TaskStatus,
+  WorkspaceRole,
   WsTaskCommentRow,
   WsTaskRow,
-  WorkspaceRole,
 } from "@/lib/db/types";
 
 /** A workspace member as the task screens need them: an id and a name to show. */
