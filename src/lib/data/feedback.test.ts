@@ -5,6 +5,7 @@ import {
   DEFAULT_FEEDBACK_FILTERS,
   FEEDBACK_CATEGORIES,
   FEEDBACK_CATEGORY_LABELS,
+  FEEDBACK_CONCERN_CATEGORY,
   FEEDBACK_DEMO_CATEGORY,
   FEEDBACK_INBOX_CATEGORIES,
   FEEDBACK_MESSAGE_MAX,
@@ -500,5 +501,168 @@ describe("the demo category", () => {
       updated_at: "2026-11-10T08:00:00.000Z",
     };
     expect(parseFeedbackNote(row)?.category).toBe("demo");
+  });
+});
+
+describe("a concern note", () => {
+  const concern = (
+    details: unknown,
+    overrides: Partial<Parameters<typeof validateFeedback>[0]> = {},
+  ) =>
+    validateFeedback(
+      draft({
+        category: "concern",
+        message: "",
+        details,
+        ...overrides,
+      }),
+    );
+
+  it("accepts the tick boxes with the follow-up answers and keeps the details", () => {
+    const result = concern({
+      concerns: ["score", "tee_off"],
+      holeNo: "7",
+      teeColour: "white",
+      playerName: "  Jo   Cruz ",
+      handicap: "12.4",
+      schedule: "Day 2, 7:12 AM",
+      source: "form",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok && result.kind === "submission") {
+      expect(result.value.category).toBe("concern");
+      expect(result.value.details).toEqual({
+        concerns: ["score", "tee_off"],
+        holeNo: 7,
+        teeColour: "white",
+        playerName: "Jo Cruz",
+        handicap: "12.4",
+        schedule: "Day 2, 7:12 AM",
+        source: "form",
+      });
+      // The details are the message, so the inbox lists one readable line.
+      expect(result.value.message).toBe("Score (hole 7), Tee off (White)");
+    }
+  });
+
+  it("keeps a typed message as the message", () => {
+    const result = concern(
+      { concerns: ["inquiry"], source: "form" },
+      { message: "  What time is the first tee?  " },
+    );
+    expect(result.ok && result.kind === "submission" ? result.value.message : null).toBe(
+      "What time is the first tee?",
+    );
+  });
+
+  it("refuses an empty note, an unknown box, and a missing follow-up answer", () => {
+    expect(concern(undefined)).toEqual({ ok: false, error: "noConcern" });
+    expect(concern({ concerns: [], source: "form" })).toEqual({ ok: false, error: "noConcern" });
+    expect(concern({ concerns: ["weather"], source: "form" })).toEqual({
+      ok: false,
+      error: "unknownConcern",
+    });
+    expect(concern({ concerns: ["score"], source: "form" })).toEqual({
+      ok: false,
+      error: "holeRequired",
+    });
+    expect(concern({ concerns: ["score"], holeNo: 19, source: "form" })).toEqual({
+      ok: false,
+      error: "holeOutOfRange",
+    });
+    expect(concern({ concerns: ["tee_off"], source: "form" })).toEqual({
+      ok: false,
+      error: "teeRequired",
+    });
+    expect(concern({ concerns: ["tee_off"], teeColour: "green", source: "form" })).toEqual({
+      ok: false,
+      error: "teeUnknown",
+    });
+    expect(concern({ concerns: ["other"], source: "form" })).toEqual({
+      ok: false,
+      error: "otherRequired",
+    });
+  });
+
+  it("refuses a 201-character answer and an unknown source", () => {
+    expect(concern({ concerns: ["other"], otherText: "x".repeat(201), source: "form" })).toEqual({
+      ok: false,
+      error: "concernTooLong",
+    });
+    expect(concern({ concerns: ["inquiry"], source: "email" })).toEqual({
+      ok: false,
+      error: "badSource",
+    });
+  });
+
+  it("accepts a transcript on a chat note only", () => {
+    const turns = [{ role: "user", content: "My score is wrong on hole 7." }];
+    expect(concern({ concerns: ["score"], holeNo: 7, source: "chat", transcript: turns }).ok).toBe(
+      true,
+    );
+    expect(concern({ concerns: ["inquiry"], source: "form", transcript: turns })).toEqual({
+      ok: false,
+      error: "badTranscript",
+    });
+  });
+
+  it("is offered to the desk inbox with a plain label", () => {
+    expect(FEEDBACK_INBOX_CATEGORIES).toContain(FEEDBACK_CONCERN_CATEGORY);
+    expect(FEEDBACK_CATEGORY_LABELS[FEEDBACK_CONCERN_CATEGORY]).toBe("Concern");
+  });
+
+  it("is parsed from an inbox row with its details", () => {
+    const note = parseFeedbackNote({
+      id: "note-9",
+      club_id: "club-1",
+      category: "concern",
+      message: "Score (hole 7)",
+      details: { concerns: ["score"], holeNo: 7, source: "form" },
+      locale: "en",
+      status: "new",
+      created_at: "2026-11-20T08:00:00.000Z",
+      updated_at: "2026-11-20T08:00:00.000Z",
+    });
+    expect(note?.details).toEqual({ concerns: ["score"], holeNo: 7, source: "form" });
+  });
+
+  it("keeps the note and drops unreadable details", () => {
+    const note = parseFeedbackNote({
+      id: "note-10",
+      club_id: "club-1",
+      category: "concern",
+      message: "Something is wrong",
+      details: { concerns: ["weather"], source: "form" },
+      locale: "en",
+      status: "new",
+      created_at: "2026-11-20T08:00:00.000Z",
+      updated_at: "2026-11-20T08:00:00.000Z",
+    });
+    expect(note).not.toBeNull();
+    expect(note?.details).toBeNull();
+  });
+
+  it("is found by the inbox search through its summary and its own answers", () => {
+    const row: FeedbackNote = {
+      ...NOTE,
+      id: "note-11",
+      category: "concern",
+      message: "Score (hole 7), Tee off (White)",
+      details: {
+        concerns: ["score", "tee_off"],
+        holeNo: 7,
+        teeColour: "white",
+        playerName: "Jo Cruz",
+        schedule: "Day 2, 7:12 AM",
+        source: "form",
+      },
+    };
+    expect(
+      filterFeedback([row], { ...DEFAULT_FEEDBACK_FILTERS, query: "hole 7" }).map((n) => n.id),
+    ).toEqual(["note-11"]);
+    expect(
+      filterFeedback([row], { ...DEFAULT_FEEDBACK_FILTERS, query: "jo cruz" }).map((n) => n.id),
+    ).toEqual(["note-11"]);
   });
 });

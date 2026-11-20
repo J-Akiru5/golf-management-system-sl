@@ -6,6 +6,7 @@
  * visible and which role may change a status.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ConcernDetails } from "@/lib/data/concerns";
 import {
   FEEDBACK_RESOLUTION_NOTE_MAX,
   type FeedbackNote,
@@ -25,10 +26,21 @@ export type FeedbackSubmitCode =
   | "message_too_long"
   | "contact_name_too_long"
   | "contact_email_invalid"
+  | "contact_email_required"
   | "consent_required"
   | "invalid_page"
   | "invalid_locale"
   | "invalid_event"
+  | "no_concern"
+  | "unknown_concern"
+  | "hole_required"
+  | "hole_out_of_range"
+  | "tee_required"
+  | "tee_unknown"
+  | "other_required"
+  | "too_long"
+  | "bad_source"
+  | "bad_transcript"
   | "rate_limited"
   | "not_configured"
   | "not_ready"
@@ -53,10 +65,21 @@ const SUBMIT_CODES: readonly FeedbackSubmitCode[] = [
   "message_too_long",
   "contact_name_too_long",
   "contact_email_invalid",
+  "contact_email_required",
   "consent_required",
   "invalid_page",
   "invalid_locale",
   "invalid_event",
+  "no_concern",
+  "unknown_concern",
+  "hole_required",
+  "hole_out_of_range",
+  "tee_required",
+  "tee_unknown",
+  "other_required",
+  "too_long",
+  "bad_source",
+  "bad_transcript",
   "rate_limited",
   "not_configured",
   "not_ready",
@@ -71,6 +94,14 @@ const GENERIC_FAILURE = "The note could not be sent. Check your connection and t
  * the payload a staff browser receives.
  */
 const FEEDBACK_INBOX_COLUMNS =
+  "id, club_id, tournament_id, category, message, details, contact_name, contact_email, contact_consent, page_path, locale, status, resolution_note, resolution_note_updated_at, resolution_note_updated_by, created_at, updated_at, status_changed_at, status_changed_by";
+
+/**
+ * The same list without the concern details, for a project that has not applied
+ * 20261122000000 yet. The inbox then lists the notes and drops the concern panel rather than
+ * failing to load at all.
+ */
+const FEEDBACK_INBOX_COLUMNS_BEFORE_CONCERNS =
   "id, club_id, tournament_id, category, message, contact_name, contact_email, contact_consent, page_path, locale, status, resolution_note, resolution_note_updated_at, resolution_note_updated_by, created_at, updated_at, status_changed_at, status_changed_by";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -121,9 +152,18 @@ function isMissingFollowupColumn(error: { code?: string; message?: string }): bo
   return error.code === "42703" && /(tournament_id|resolution_note)/i.test(error.message ?? "");
 }
 
+/** The follow-ups are applied but the concern details are not: read the notes without them. */
+function isMissingDetailsColumn(error: { code?: string; message?: string }): boolean {
+  return error.code === "42703" && /details/i.test(error.message ?? "");
+}
+
 export async function submitFeedback(
   client: SupabaseClient<Database>,
-  submission: FeedbackSubmission & { honeypot?: string; tournamentId?: string | null },
+  submission: FeedbackSubmission & {
+    honeypot?: string;
+    tournamentId?: string | null;
+    details?: ConcernDetails | null;
+  },
 ): Promise<FeedbackSubmitResult> {
   const { data, error } = await client.rpc("submit_feedback", {
     p_category: submission.category,
@@ -137,6 +177,9 @@ export async function submitFeedback(
     // Null is a general note. The database checks the club and public visibility; the browser never
     // decides that an event is valid.
     p_tournament: submission.tournamentId ?? null,
+    // The concern's ticked boxes and follow-up answers. Null for every other category; the
+    // database re-checks the whole shape before it stores anything.
+    p_details: submission.details ?? null,
   });
 
   if (error) {
@@ -158,12 +201,20 @@ export async function loadFeedbackInbox(
   options: FeedbackInboxOptions = {},
 ): Promise<FeedbackNote[]> {
   const limit = Math.min(Math.max(Math.trunc(options.limit ?? 300), 1), 500);
-  const { data, error } = await client
-    .from("public_feedback")
-    .select(FEEDBACK_INBOX_COLUMNS)
-    .eq("club_id", clubId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  const read = (columns: string) =>
+    client
+      .from("public_feedback")
+      .select(columns)
+      .eq("club_id", clubId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+  let { data, error } = await read(FEEDBACK_INBOX_COLUMNS);
+  // A project without the concerns migration still gets its inbox: the notes are readable, only
+  // the concern panel is missing from this payload.
+  if (error && isMissingDetailsColumn(error)) {
+    ({ data, error } = await read(FEEDBACK_INBOX_COLUMNS_BEFORE_CONCERNS));
+  }
 
   if (error) {
     if (isMissingTable(error)) {
@@ -237,13 +288,19 @@ export async function updateFeedbackStatus(
   id: string,
   status: FeedbackStatus,
 ): Promise<FeedbackNote> {
-  const { data, error } = await client
-    .from("public_feedback")
-    .update({ status })
-    .eq("club_id", clubId)
-    .eq("id", id)
-    .select(FEEDBACK_INBOX_COLUMNS)
-    .maybeSingle();
+  const update = (columns: string) =>
+    client
+      .from("public_feedback")
+      .update({ status })
+      .eq("club_id", clubId)
+      .eq("id", id)
+      .select(columns)
+      .maybeSingle();
+
+  let { data, error } = await update(FEEDBACK_INBOX_COLUMNS);
+  if (error && isMissingDetailsColumn(error)) {
+    ({ data, error } = await update(FEEDBACK_INBOX_COLUMNS_BEFORE_CONCERNS));
+  }
 
   if (error) {
     if (isMissingTable(error)) {
@@ -286,13 +343,19 @@ export async function updateFeedbackResolution(
     );
   }
 
-  const { data, error } = await client
-    .from("public_feedback")
-    .update({ resolution_note: normalized.value })
-    .eq("club_id", clubId)
-    .eq("id", id)
-    .select(FEEDBACK_INBOX_COLUMNS)
-    .maybeSingle();
+  const update = (columns: string) =>
+    client
+      .from("public_feedback")
+      .update({ resolution_note: normalized.value })
+      .eq("club_id", clubId)
+      .eq("id", id)
+      .select(columns)
+      .maybeSingle();
+
+  let { data, error } = await update(FEEDBACK_INBOX_COLUMNS);
+  if (error && isMissingDetailsColumn(error)) {
+    ({ data, error } = await update(FEEDBACK_INBOX_COLUMNS_BEFORE_CONCERNS));
+  }
 
   if (error) {
     if (isMissingTable(error)) {

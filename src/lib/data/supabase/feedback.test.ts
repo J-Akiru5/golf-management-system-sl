@@ -108,8 +108,34 @@ describe("submitFeedback", () => {
       p_locale: "en",
       p_honeypot: "",
       p_tournament: null,
+      p_details: null,
     });
     expect(result).toMatchObject({ ok: true, code: "accepted" });
+  });
+
+  it("sends the concern's details through the same call", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { ok: true, code: "accepted", message: "Thank you." },
+      error: null,
+    });
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+    const details = {
+      concerns: ["score" as const],
+      holeNo: 7,
+      source: "form" as const,
+    };
+
+    await submitFeedback(client, {
+      ...SUBMISSION,
+      category: "concern",
+      message: "Score (hole 7)",
+      details,
+    });
+
+    expect(rpc).toHaveBeenCalledWith(
+      "submit_feedback",
+      expect.objectContaining({ p_category: "concern", p_details: details }),
+    );
   });
 
   it("passes a validated event id through without changing it", async () => {
@@ -217,6 +243,28 @@ describe("loadFeedbackInbox", () => {
     const client = { from } as unknown as SupabaseClient<Database>;
 
     await expect(loadFeedbackInbox(client, "club-1")).rejects.toThrow(/follow-up migration/i);
+  });
+
+  it("reads the notes without their details while the concerns migration is not applied", async () => {
+    const limit = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "42703", message: "column public_feedback.details does not exist" },
+      })
+      .mockResolvedValueOnce({ data: [ROW], error: null });
+    const order = vi.fn(() => ({ limit }));
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+    const client = { from } as unknown as SupabaseClient<Database>;
+
+    const notes = await loadFeedbackInbox(client, "club-1");
+
+    expect(select).toHaveBeenNthCalledWith(1, expect.stringContaining("details"));
+    expect(select).toHaveBeenNthCalledWith(2, expect.not.stringMatching(/\bdetails\b/));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]?.details).toBeNull();
   });
 
   it("labels a note with its event name from a club-scoped staff read", async () => {
