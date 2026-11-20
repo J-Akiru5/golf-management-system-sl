@@ -12,35 +12,16 @@ export { EventCarousel, LandingHero };
 
 /** The real admin screens, shown in perspective. */
 export function ProductShowcase({ shots }: { shots: ProductShot[] }) {
+  const remainingShots = shots.slice(1);
   return (
     <section className="tl-product tl-section" id="product" aria-labelledby="tl-product-title">
-      <div className="tl-section-heading">
+      <div className="tl-section-heading" data-tl-reveal>
         <p className="tl-kicker">Inside the desk</p>
         <h2 id="tl-product-title">A clear view of tournament day.</h2>
       </div>
-      {shots[0] && (
-        <figure className="tl-product-main">
-          <div className="tl-window" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </div>
-          <Image
-            src={shots[0].src}
-            alt={shots[0].alt}
-            width={shots[0].width}
-            height={shots[0].height}
-            sizes="(max-width: 900px) 100vw, 1200px"
-          />
-          <figcaption>{shots[0].caption}</figcaption>
-          {shots[0].src.includes("control-room") && (
-            <p className="tl-illustrated-note">Illustrated layout · not IGCC’s real holes</p>
-          )}
-        </figure>
-      )}
-      {shots.length > 1 && (
-        <div className="tl-product-secondary">
-          {shots.slice(1).map((shot) => (
+      {remainingShots.length > 0 && (
+        <div className="tl-product-secondary" data-tl-stagger>
+          {remainingShots.map((shot) => (
             <figure key={shot.src}>
               <Image
                 src={shot.src}
@@ -48,6 +29,7 @@ export function ProductShowcase({ shots }: { shots: ProductShot[] }) {
                 width={shot.width}
                 height={shot.height}
                 sizes="(max-width: 700px) 100vw, 50vw"
+                loading="lazy"
               />
               <figcaption>{shot.caption}</figcaption>
             </figure>
@@ -62,14 +44,19 @@ export function ProductShowcase({ shots }: { shots: ProductShot[] }) {
 export function ProofStrip({ stats, source }: ProofStripProps) {
   return (
     <section className="tl-proof tl-section" id="proof" aria-labelledby="tl-proof-title">
-      <div className="tl-proof-heading">
+      <div className="tl-proof-heading" data-tl-reveal>
         <p className="tl-kicker">A tournament, in the desk</p>
         <h2 id="tl-proof-title">The work stays in view.</h2>
       </div>
-      <div className="tl-proof-grid">
+      <div className="tl-proof-grid" data-tl-stagger>
         {stats.map((stat) => (
-          <article className="tl-proof-card" key={stat.label}>
-            <p className="tl-proof-value">{stat.value}</p>
+          <article className="tl-proof-card" key={stat.label} data-tl-reveal>
+            <p
+              className="tl-proof-value"
+              data-tl-count={stat.value.replace(/[^\d.]/g, "") || undefined}
+            >
+              {stat.value}
+            </p>
             <h3>{stat.label}</h3>
             <p className="tl-proof-detail">{stat.detail}</p>
           </article>
@@ -88,7 +75,7 @@ export function CapabilitySections() {
       id="how-it-works"
       aria-labelledby="tl-capabilities-title"
     >
-      <div className="tl-section-heading tl-capabilities-intro">
+      <div className="tl-section-heading tl-capabilities-intro" data-tl-reveal>
         <p className="tl-kicker">From entry to result</p>
         <h2 id="tl-capabilities-title">The tournament, under one roof.</h2>
         <p>
@@ -96,7 +83,7 @@ export function CapabilitySections() {
           the organizer.
         </p>
       </div>
-      <article className="tl-capability">
+      <article className="tl-capability" data-tl-reveal>
         <div className="tl-capability-copy">
           <span className="tl-index">01 / Prepare</span>
           <h3>Bring the field together.</h3>
@@ -117,7 +104,7 @@ export function CapabilitySections() {
           <span className="tl-diagram-result">Reviewable draw</span>
         </div>
       </article>
-      <article className="tl-capability tl-capability-reverse">
+      <article className="tl-capability tl-capability-reverse" data-tl-reveal>
         <div className="tl-capability-copy">
           <span className="tl-index">02 / Review</span>
           <h3>The organizer stays in control.</h3>
@@ -149,7 +136,7 @@ export function CapabilitySections() {
           </div>
         </div>
       </article>
-      <article className="tl-capability">
+      <article className="tl-capability" data-tl-reveal>
         <div className="tl-capability-copy">
           <span className="tl-index">03 / Play</span>
           <h3>Keep the round moving.</h3>
@@ -190,7 +177,7 @@ export function CapabilitySections() {
 /** The closing Request a demo band. Links to /demo. */
 export function DemoCta() {
   return (
-    <section className="tl-demo-cta" aria-labelledby="tl-demo-title">
+    <section className="tl-demo-cta" aria-labelledby="tl-demo-title" data-tl-reveal>
       <div>
         <p className="tl-kicker">For your tournament committee</p>
         <h2 id="tl-demo-title">See the desk at work.</h2>
@@ -218,7 +205,14 @@ export function LandingFooter({ versionLabel }: LandingFooterProps) {
           </Link>
           <p className="tl-powered">
             Powered by{" "}
-            <Image src="/partners/converge-logo.svg" alt="Converge" width={104} height={24} />
+            <Image
+              src="/partners/converge-logo.svg"
+              alt="Converge"
+              width={104}
+              height={24}
+              sizes="104px"
+              loading="lazy"
+            />
           </p>
         </div>
         <nav aria-label="Product">
