@@ -162,6 +162,7 @@ export function Kanban<T extends KanbanItem>({
 
   return (
     <DndContext
+      id="teeline-kanban"
       sensors={disabled ? [] : sensors}
       collisionDetection={boardCollisionDetection}
       accessibility={{ announcements }}

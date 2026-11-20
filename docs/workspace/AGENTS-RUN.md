@@ -53,9 +53,9 @@ from `feat/workspace` (itself cut from the reconciled `develop`, `b0b7bc2`).
 | board | `ws/board` | `feat/workspace` (after foundation) | done, reviewed, one fix by the orchestrator, merged |
 | tasks | `ws/tasks` | `feat/workspace` (after foundation) | done, reviewed, one fix by the orchestrator, merged |
 | settings | `ws/settings` | `feat/workspace` (after foundation) | done, reviewed, one fix by the orchestrator, merged |
-| tasks-board | `ws/tasks-board` | `feat/workspace` (after board and tasks) | running |
-| overview | `ws/overview` | `feat/workspace` (after the four) | running |
-| ui-checks | `ws/ui-checks` | `feat/workspace` (after the four) | running |
+| tasks-board | `ws/tasks-board` | `feat/workspace` (after board and tasks) | done, reviewed, merged |
+| overview | `ws/overview` | `feat/workspace` (after the four) | done, reviewed, merged |
+| ui-checks | `ws/ui-checks` | `feat/workspace` (after the four) | done, merged; its log ends `UICHECKS_EXIT=1` because the suite was red on two defects, fixed by the orchestrator (see below) |
 
 (The report starts after the three above are merged.)
 
@@ -91,6 +91,8 @@ settings match SPEC section 6. A dev-only "Yjs was already imported" warning is 
 `pnpm why yjs` shows a single `13.6.33`. A missing document returns the not-found page with HTTP 200
 because of streaming; not changed. The converter was run against the real portal by the agent with
 output outside the repo; nothing from it is committed.
+
+**ui-checks.** Stayed inside its owned paths (`apps/ops/scripts/verify-ui.mjs`, one script line in `apps/ops/package.json`). Its suite was red on the merged tree for two real defects it found, not for a fault in the checker: the document page had no visible `h1`, and the board's `DndContext` had no stable `id`, so server and browser rendered different drag-handle ids. Both were fixed by the orchestrator (`h1` around the title input; `id="teeline-kanban"`). With both fixed in the agent's own experiment the script reported 267 passed, 0 failed. The CI job for the workspace app does not run `check:ui` yet; adding a browser job is a workflow change left for the owner.
 
 Orchestrator checks on the merged tree (after docs): root typecheck and lint clean, 2995 root tests,
 412 ops tests, RLS harness 91 pass 0 fail, and `next build` of `apps/ops` exit 0 with all eight routes.

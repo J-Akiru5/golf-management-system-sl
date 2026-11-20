@@ -158,14 +158,16 @@ export function DocEditor({
         <Label htmlFor="doc-title" className="sr-only">
           Document title
         </Label>
-        <Input
-          id="doc-title"
-          value={title}
-          maxLength={200}
-          onChange={(event) => setTitle(event.target.value)}
-          className="h-12 max-w-2xl flex-1 font-display text-lg font-bold"
-          aria-label="Document title"
-        />
+        <h1 className="max-w-2xl flex-1">
+          <Input
+            id="doc-title"
+            value={title}
+            maxLength={200}
+            onChange={(event) => setTitle(event.target.value)}
+            className="h-12 w-full font-display text-lg font-bold"
+            aria-label="Document title"
+          />
+        </h1>
         {titleChanged ? (
           <Button type="submit" variant="secondary" size="sm" disabled={savingTitle}>
             {savingTitle ? "Saving..." : "Save title"}
