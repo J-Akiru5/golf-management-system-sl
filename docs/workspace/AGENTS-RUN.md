@@ -49,12 +49,15 @@ from `feat/workspace` (itself cut from the reconciled `develop`, `b0b7bc2`).
 | --- | --- | --- | --- |
 | foundation | `ws/foundation` | `feat/workspace` | done, reviewed, merged into `feat/workspace` (20 Nov) |
 | next-security | `chore/next-security` | `origin/develop` | done, released in 0.59.0 |
-| docs | `ws/docs` | `feat/workspace` (after foundation) | running |
-| board | `ws/board` | `feat/workspace` (after foundation) | running |
-| tasks | `ws/tasks` | `feat/workspace` (after foundation) | running |
-| settings | `ws/settings` | `feat/workspace` (after foundation) | running |
+| docs | `ws/docs` | `feat/workspace` (after foundation) | done, reviewed, merged |
+| board | `ws/board` | `feat/workspace` (after foundation) | done, reviewed, one fix by the orchestrator, merged |
+| tasks | `ws/tasks` | `feat/workspace` (after foundation) | done, reviewed, one fix by the orchestrator, merged |
+| settings | `ws/settings` | `feat/workspace` (after foundation) | done, reviewed, one fix by the orchestrator, merged |
+| tasks-board | `ws/tasks-board` | `feat/workspace` (after board and tasks) | running |
+| overview | `ws/overview` | `feat/workspace` (after the four) | running |
+| ui-checks | `ws/ui-checks` | `feat/workspace` (after the four) | running |
 
-(Overview, tasks-board, ui-checks and report start after the four above are merged.)
+(The report starts after the three above are merged.)
 
 ## What each agent did, and what was rejected
 
@@ -71,6 +74,28 @@ override only turns the formatter off for the contract files and the RLS script.
 every check passing, and I did not establish why it returned 1. Treat the marker as unexplained.
 Merge note: the lockfile conflicted with the Next upgrade, so it was regenerated on top of `main`.
 The seed JSON then failed the wider Biome scope and was formatted.
+
+**settings, tasks, board.** Each stayed inside its owned paths (checked with
+`git diff --name-only feat/workspace...HEAD`). Realtime wiring read correctly in tasks and board: `setAuth`
+first, a private channel, `removeChannel` on unmount. One defect found in all three on review, fixed by the
+orchestrator before merging (5 tests added): **row level security refuses an update or delete by changing
+zero rows and raising no error**, so the repositories would have reported success on a change that never
+happened. Settings (role, status, remove, display name), tasks (task and comment delete) and board (card
+delete) now ask for the affected row and fail when there is none. Task and card updates were already safe
+because they use `.single()`. Settings' demo role switch (`?as=`) is only read when `demoMode()` is true,
+which is off in production.
+
+**docs.** Stayed inside its owned paths. Its repository already treated zero rows as a failure. The private
+channel wrapper forces `private: true` and the `ws:doc:` prefix on every channel, and the persistence
+settings match SPEC section 6. A dev-only "Yjs was already imported" warning is not a duplicate install:
+`pnpm why yjs` shows a single `13.6.33`. A missing document returns the not-found page with HTTP 200
+because of streaming; not changed. The converter was run against the real portal by the agent with
+output outside the repo; nothing from it is committed.
+
+Orchestrator checks on the merged tree (after docs): root typecheck and lint clean, 2995 root tests,
+412 ops tests, RLS harness 91 pass 0 fail, and `next build` of `apps/ops` exit 0 with all eight routes.
+Not verified by anyone: realtime and persistence against a real project, drag gestures in a real browser,
+and light, dark and 390px by eye (the agents used tokens and ran scripted checks only).
 
 ## Decisions made without the owner awake (20 Nov 2026)
 
