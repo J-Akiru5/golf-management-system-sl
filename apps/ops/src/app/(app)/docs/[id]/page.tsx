@@ -59,6 +59,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
 
   return (
     <DocEditor
+      key={doc.id}
       docId={doc.id}
       title={doc.title}
       archived={doc.archived}

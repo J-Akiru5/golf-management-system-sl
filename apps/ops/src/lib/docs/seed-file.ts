@@ -40,7 +40,8 @@ export function readSeedContent(docId: string): EditorJson | null {
 
   let raw: string;
   try {
-    raw = readFileSync(seedFilePath(), "utf8");
+    // The file is optional and lives outside the bundle, so the build must not trace it.
+    raw = readFileSync(/* turbopackIgnore: true */ seedFilePath(), "utf8");
   } catch {
     return null;
   }
