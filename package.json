@@ -5,7 +5,9 @@
   "description": "TeeLine Golf tournament management by Syntaxure Labs.",
   "scripts": {
     "dev": "next dev",
+    "dev:ops": "pnpm --filter @teeline/ops dev",
     "build": "next build",
+    "check:ops": "pnpm --filter @teeline/ops check",
     "start": "next start",
     "lint": "biome check .",
     "format": "biome format --write .",
