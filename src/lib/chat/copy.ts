@@ -43,6 +43,8 @@ export function chatLocaleFromAppLocale(value: unknown): ChatLocale {
 
 export interface ChatCopy {
   tagline: string;
+  quickReplies: readonly [string, string, string, string];
+  quickRepliesLabel: string;
   greeting: string;
   fallback: string;
   fallbackTitle: string;
@@ -76,7 +78,14 @@ export interface ChatCopy {
 }
 
 const EN: ChatCopy = {
-  tagline: "Tournament concern helper",
+  tagline: "Your tournament concern buddy.",
+  quickRepliesLabel: "Quick replies",
+  quickReplies: [
+    "My name is misspelled",
+    "A score looks wrong",
+    "Question about my tee time",
+    "Handicap question",
+  ],
   greeting:
     "Hello, I am Teeo. Tell me your concern in your own words, and I will pass it to the organizer.",
   fallback:
@@ -98,7 +107,7 @@ const EN: ChatCopy = {
   editHint: "Tell me what to change, and I will update the note.",
   send: "Send",
   sending: "Sending",
-  placeholder: "Type your message",
+  placeholder: "Tell Teeo your concern…",
   openLabel: "Ask Teeo",
   closeLabel: "Close the chat",
   languageLabel: "Language",
@@ -135,7 +144,14 @@ const EN: ChatCopy = {
 };
 
 const TL: ChatCopy = {
-  tagline: "Katulong sa concern ng tournament",
+  tagline: "Kaibigan mo sa mga concern sa tournament.",
+  quickRepliesLabel: "Mabilis na sagot",
+  quickReplies: [
+    "Mali ang baybay ng pangalan ko",
+    "Parang mali ang score",
+    "May tanong ako sa tee time",
+    "Tanong tungkol sa handicap",
+  ],
   greeting:
     "Kumusta, ako si Teeo. Sabihin mo ang concern mo sa sarili mong salita, at ipapaabot ko ito sa organizer.",
   fallback:
@@ -157,7 +173,7 @@ const TL: ChatCopy = {
   editHint: "Sabihin kung ano ang babaguhin, at ia-update ko ang note.",
   send: "Ipadala",
   sending: "Ipinapadala",
-  placeholder: "Isulat ang mensahe",
+  placeholder: "Sabihin kay Teeo ang concern mo…",
   openLabel: "Tanungin si Teeo",
   closeLabel: "Isara ang chat",
   languageLabel: "Wika",
@@ -194,7 +210,14 @@ const TL: ChatCopy = {
 };
 
 const HIL: ChatCopy = {
-  tagline: "Katabang sa concern sang tournament",
+  tagline: "Abyan mo sa mga concern sang tournament.",
+  quickRepliesLabel: "Madasig nga sabat",
+  quickReplies: [
+    "Sayop ang spelling sang akon ngalan",
+    "Daw sala ang score",
+    "Pamangkot parte sa akon tee time",
+    "Pamangkot parte sa handicap",
+  ],
   greeting:
     "Kumusta, ako si Teeo. Isugid mo ang concern mo sa kaugalingon mo nga hambal, kag ipaabot ko ini sa organizer.",
   fallback:
@@ -216,7 +239,7 @@ const HIL: ChatCopy = {
   editHint: "Isugid kon ano ang bag-uhon, kag i-update ko ang note.",
   send: "Ipadala",
   sending: "Ginapadala",
-  placeholder: "Isulat ang mensahe",
+  placeholder: "Isugid kay Teeo ang concern mo…",
   openLabel: "Pamangkuta si Teeo",
   closeLabel: "Sirad-i ang chat",
   languageLabel: "Hambal",
@@ -253,7 +276,14 @@ const HIL: ChatCopy = {
 };
 
 const CEB: ChatCopy = {
-  tagline: "Katabang sa concern sa tournament",
+  tagline: "Kauban nimo sa mga concern sa tournament.",
+  quickRepliesLabel: "Dali nga tubag",
+  quickReplies: [
+    "Sayop ang spelling sa akong ngalan",
+    "Murag sayop ang score",
+    "Aduna koy pangutana sa akong tee time",
+    "Pangutana bahin sa handicap",
+  ],
   greeting:
     "Kumusta, ako si Teeo. Isulti ang imong concern sa imong kaugalingong pulong, ug ipaabot nako kini sa organizer.",
   fallback:
@@ -275,7 +305,7 @@ const CEB: ChatCopy = {
   editHint: "Isulti kung unsa ang usbon, ug i-update nako ang note.",
   send: "Ipadala",
   sending: "Ginapadala",
-  placeholder: "Isulat ang mensahe",
+  placeholder: "Isulti kang Teeo ang imong concern…",
   openLabel: "Pangutana ni Teeo",
   closeLabel: "Sirad-i ang chat",
   languageLabel: "Pinulongan",

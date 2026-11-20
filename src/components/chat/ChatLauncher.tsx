@@ -45,7 +45,7 @@ export function ChatLauncher() {
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
       >
-        <TeeoAvatar size={40} />
+        <TeeoAvatar size={40} variant="head" />
         <span>{copy.openLabel}</span>
       </button>
       {open && <ChatPanel onClose={close} />}
