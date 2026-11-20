@@ -61,12 +61,14 @@ alter table public.public_feedback
 comment on column public.public_feedback.details is
   'The structured part of a player concern: ticked concerns, hole number, tee colour, other text, player name, handicap, schedule, source and a chat transcript. The shape is the one src/lib/data/concerns.ts defines. Null for every other category.';
 
--- A concern is the only category that stores details. The check keeps a future caller from putting
--- a structured payload on an ordinary note without saying so here first.
+-- A concern is the only category the app sends details for today. The check keeps the column an
+-- object, so the desk never has to read a stray string or array as a concern.
 alter table public.public_feedback
   drop constraint if exists public_feedback_details_concern_only;
 alter table public.public_feedback
-  add constraint public_feedback_details_concern_only
+  drop constraint if exists public_feedback_details_object;
+alter table public.public_feedback
+  add constraint public_feedback_details_object
   check (details is null or jsonb_typeof(details) = 'object');
 
 alter table public.public_feedback
