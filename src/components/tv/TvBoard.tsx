@@ -185,22 +185,22 @@ export function TvBoardView({ board }: { board: TvBoard }) {
       </div>
 
       <footer className={styles.foot}>
-        <span data-testid="tv-what">
+        <span className={styles.footWhat} data-testid="tv-what">
           {mode === "players"
-            ? "Every player with a published card today, ranked by net points"
-            : "Two-man pairs from the draw, both partners' points added together"}
-        </span>
-        <span className={styles.modes}>
-          <span className={mode === "players" ? styles.modeOn : styles.mode}>By player</span>
-          <span className={mode === "pairs" ? styles.modeOn : styles.mode}>By pair</span>
+            ? "Every player with a published card, ranked by net points"
+            : "Two-man pairs, both partners' points added together"}
         </span>
         <span className={styles.footRight}>
-          {board.unplaced > 0
-            ? `${board.unplaced} without a start`
-            : "Scores update as they verify"}
+          <span className={styles.modes}>
+            <span className={mode === "players" ? styles.modeOn : styles.mode}>By player</span>
+            <span className={mode === "pairs" ? styles.modeOn : styles.mode}>By pair</span>
+          </span>
           <span className={styles.powered}>
             <span className={styles.poweredLabel}>Powered by</span>
             <TeeLineLogo variant="reverse" width={146} className={styles.poweredLogo} />
+            <span className={styles.poweredRule} aria-hidden="true" />
+            {/* The club's connectivity partner, drawn in the same white as the platform lockup. */}
+            <img src="/partners/converge-logo.svg" alt="Converge" className={styles.convergeLogo} />
           </span>
         </span>
       </footer>
@@ -402,6 +402,12 @@ export function TvIdle({ eventName, note }: { eventName?: string | null; note: s
         <div className={styles.idleBrand}>
           <span className={styles.poweredLabel}>Powered by</span>
           <TeeLineLogo variant="reverse" width={240} className={styles.idleLogo} />
+          <span className={styles.poweredRule} aria-hidden="true" />
+          <img
+            src="/partners/converge-logo.svg"
+            alt="Converge"
+            className={`${styles.convergeLogo} ${styles.convergeLogoIdle}`}
+          />
         </div>
       </div>
     </main>

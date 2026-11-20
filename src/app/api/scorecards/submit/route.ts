@@ -17,6 +17,7 @@ interface CardInput {
   holes?: unknown;
   note?: unknown;
   markerPlayerId?: unknown;
+  checked?: unknown;
 }
 
 interface NameOnlyInput {
@@ -24,6 +25,9 @@ interface NameOnlyInput {
   name?: unknown;
   day?: unknown;
   session?: unknown;
+  holes?: unknown;
+  written?: unknown;
+  note?: unknown;
 }
 
 const HOLE_VALUE = /^(?:|[0-9]{1,2}|X)$/;
@@ -101,9 +105,13 @@ export async function POST(request: Request): Promise<NextResponse> {
   const submittedBy = text(body.submittedBy) || access.email || "";
   const inputs = Array.isArray(body.cards) ? (body.cards as CardInput[]) : [];
   const nameOnlyInputs = Array.isArray(body.nameOnly) ? (body.nameOnly as NameOnlyInput[]) : [];
-  if (!slug || inputs.length === 0) {
+  if (!slug || (inputs.length === 0 && nameOnlyInputs.length === 0)) {
     return NextResponse.json(
-      { ok: false, message: "A submission needs the day document and at least one checked card." },
+      {
+        ok: false,
+        message:
+          "A submission needs the day document and at least one checked card or name-only card.",
+      },
       { status: 400 },
     );
   }
@@ -145,13 +153,17 @@ export async function POST(request: Request): Promise<NextResponse> {
       });
       continue;
     }
+    // The desk owns the handicap. A number written on the paper card is a reading of the card, not a
+    // decision: the desk's index, on the player's tee at the event's allowance, is what the card is
+    // scored with. The card's own figure is kept beside it so the desk can see the difference.
     const writtenHcp = text(input.hdcp);
     const systemHcp = player.playingHandicap;
-    if (!writtenHcp && systemHcp === null) {
+    if (systemHcp === null) {
       unmatched.push({
         id,
         name: player.name,
-        message: "The card has no HDCP and the system has no playing handicap for this player.",
+        message:
+          "The desk has no handicap for this player. Set the index in the desk, then send the card again.",
       });
       continue;
     }
@@ -159,23 +171,33 @@ export async function POST(request: Request): Promise<NextResponse> {
     const correctionNote = Object.entries(corrections)
       .map(([key, value]) => `${key} ${value}`)
       .join("; ");
+    const cardHdcpNote =
+      writtenHcp && writtenHcp !== String(systemHcp)
+        ? `Card handicap ${writtenHcp} not used; the desk handicap ${systemHcp} scores the card.`
+        : "";
     cards.push({
       id: id || `card-${playerId}`,
       playerId,
       registrationId: player.registrationId,
       name: player.name,
+      checked: input.checked === true,
       day,
       session: text(input.session) || player.session,
       group: text(input.group) || (player.group !== null ? String(player.group) : ""),
       tee: text(input.tee) || player.teeCode,
-      hdcp: writtenHcp || String(systemHcp),
-      handicapSource: writtenHcp ? "card" : "system",
+      hdcp: String(systemHcp),
+      handicapSource: "system",
+      cardHdcp: writtenHcp || null,
       systemHcp,
       systemIndex: player.frozenIndex,
       written: text(input.written),
       holes,
       markerPlayerId: text(input.markerPlayerId) || player.partnerPlayerId,
-      note: [text(input.note), correctionNote ? `Tabulator correction: ${correctionNote}.` : ""]
+      note: [
+        text(input.note),
+        correctionNote ? `Tabulator correction: ${correctionNote}.` : "",
+        cardHdcpNote,
+      ]
         .filter(Boolean)
         .join(" "),
       corrections,
@@ -188,16 +210,19 @@ export async function POST(request: Request): Promise<NextResponse> {
       name: text(entry.name),
       day: dayNumber(entry.day),
       session: text(entry.session),
+      holes: holesOf(entry.holes) ?? Array.from({ length: 18 }, () => ""),
+      written: text(entry.written),
+      note: text(entry.note),
     }))
     .filter((entry) => entry.name || entry.id);
 
-  if (cards.length === 0) {
+  if (cards.length === 0 && nameOnly.length === 0) {
     return NextResponse.json(
       {
         ok: false,
         message:
           unmatched.length === 0
-            ? "No checked card could be read."
+            ? "No checked card or name-only card could be read."
             : unmatched.map((entry) => entry.message).join(" "),
       },
       { status: 400 },

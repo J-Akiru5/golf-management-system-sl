@@ -31,9 +31,6 @@ export function normalizeSlug(value: unknown): string {
   return SCORECARD_SLUG.test(text) ? text : "";
 }
 
-/** One document holds one playing day, so this is generous: a field is about 100 cards. */
-export const MAX_CARDS = 500;
-
 /**
  * Turns one hole cell into the text the page stores, or `null` when it is not a usable score.
  *
@@ -58,17 +55,15 @@ export function normalizeHole(value: unknown): string | null {
 }
 
 /**
- * The page state must contain cards, and each card must contain exactly 18 holes. Blanks are
- * accepted in every spelling a scan or an older export uses and are stored as empty text; a real
- * out-of-range score is refused with the card and hole named so it can be fixed on the page.
+ * The page state must contain a `cards` array, and each card must contain exactly 18 holes. There
+ * is no fixed card count: one document can hold every playing day. Blanks are accepted in every
+ * spelling a scan or an older export uses and are stored as empty text; a real out-of-range score
+ * is refused with the card and hole named so it can be fixed on the page.
  */
 export function validateScorecardPayload(value: unknown): ScorecardPayloadResult {
   if (!isRecord(value)) return { ok: false, message: "The scorecard payload must be an object." };
   if (!Array.isArray(value.cards)) {
     return { ok: false, message: "The scorecard payload must contain a cards array." };
-  }
-  if (value.cards.length > MAX_CARDS) {
-    return { ok: false, message: `The scorecard payload has more than ${MAX_CARDS} cards.` };
   }
   const cards: Record<string, unknown>[] = [];
   for (const [index, card] of value.cards.entries()) {

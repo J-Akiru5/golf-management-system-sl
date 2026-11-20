@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_CARDS, normalizeSlug, validateScorecardPayload } from "./document";
+import { normalizeSlug, validateScorecardPayload } from "./document";
 
 function card(overrides: Record<string, unknown> = {}) {
   return {
@@ -92,10 +92,9 @@ describe("validateScorecardPayload", () => {
     }
   });
 
-  it("allows a whole field of cards but not an unbounded payload", () => {
+  it("accepts every playing day in one document, with no fixed card count", () => {
     const many = (count: number) =>
       Array.from({ length: count }, (_, index) => card({ id: `c${index}` }));
-    expect(validateScorecardPayload({ cards: many(MAX_CARDS) }).ok).toBe(true);
-    expect(validateScorecardPayload({ cards: many(MAX_CARDS + 1) }).ok).toBe(false);
+    expect(validateScorecardPayload({ cards: many(1200) }).ok).toBe(true);
   });
 });
