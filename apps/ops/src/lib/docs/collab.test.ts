@@ -66,6 +66,7 @@ describe("describeStatus", () => {
     gaveUp: false,
     status: "connected" as const,
     pending: false,
+    hasEdits: false,
   };
 
   it("says demo, offline and cannot connect before anything else", () => {
@@ -80,7 +81,8 @@ describe("describeStatus", () => {
     expect(describeStatus({ ...base, status: "connecting" })).toBe("Connecting");
     expect(describeStatus({ ...base, status: "disconnected" })).toBe("Reconnecting");
     expect(describeStatus({ ...base, pending: true })).toBe("Saving...");
-    expect(describeStatus(base)).toBe("Saved");
+    expect(describeStatus({ ...base, hasEdits: true })).toBe("Saved");
+    expect(describeStatus(base)).toBe("Connected");
   });
 
   it("gives each state a tone for the dot", () => {

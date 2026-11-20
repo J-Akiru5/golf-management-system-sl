@@ -70,6 +70,8 @@ export type StatusInput = {
   status: ConnectionStatus;
   /** A local edit is waiting for the persistence debounce. */
   pending: boolean;
+  /** Something has been written in this session, so the line can say the work is saved. */
+  hasEdits: boolean;
 };
 
 /**
@@ -83,7 +85,7 @@ export function describeStatus(input: StatusInput): string {
   if (input.status === "connecting") return "Connecting";
   if (input.status === "disconnected") return "Reconnecting";
   if (input.pending) return "Saving...";
-  return "Saved";
+  return input.hasEdits ? "Saved" : "Connected";
 }
 
 /** A tone for the status dot. Text stays in the normal ink colour; the dot carries the signal. */

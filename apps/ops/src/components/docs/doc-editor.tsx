@@ -226,6 +226,7 @@ function LiveDocument({
   const [gaveUp, setGaveUp] = useState(false);
   const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(false);
+  const [hasEdits, setHasEdits] = useState(false);
   const [people, setPeople] = useState<PresenceUser[]>([]);
   const [canSeed, setCanSeed] = useState(demo && seedContent !== null);
   const [snapshots, setSnapshots] = useState(initialSnapshots);
@@ -281,6 +282,7 @@ function LiveDocument({
 
     function markPending() {
       setPending(true);
+      setHasEdits(true);
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => setPending(false), SAVE_SETTLE_MS);
     }
@@ -463,7 +465,7 @@ function LiveDocument({
     await refreshSnapshots();
   }
 
-  const statusInput = { demo, online, gaveUp, status, pending };
+  const statusInput = { demo, online, gaveUp, status, pending, hasEdits };
   const statusText = describeStatus(statusInput);
   const tone = statusTone(statusInput);
 
