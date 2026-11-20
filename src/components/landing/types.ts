@@ -18,6 +18,11 @@ export type LandingEvent = PublicEvent & {
   dateLabel: string;
   /** For example "327 entered". */
   enteredLabel: string;
+  /**
+   * True only when an organizer switched "Feature on the home page" on for this event in the desk.
+   * The landing page never picks a featured event by itself.
+   */
+  featured: boolean;
 };
 
 export type QuickAction = {
@@ -27,13 +32,15 @@ export type QuickAction = {
   primary: boolean;
 };
 
-/** Which side of the hero switch is showing. */
-export type HeroView = "clubs" | "event";
-
 export type HeroStat = { label: string; value: string };
 
+/**
+ * The hero speaks to clubs. There is no visitor-facing switch: whether an event is featured is an
+ * organizer's decision in the desk (Setup, "TeeLine home page"). When one is featured, the hero shows
+ * a "Now hosting" pill and a featured-event band with its quick actions; when none is, neither renders.
+ */
 export type LandingHeroProps = {
-  /** The event the "Now hosting" side features, or null when there is none to show. */
+  /** The event an organizer chose to feature, or null. */
   featured: LandingEvent | null;
   /** Small line above the event title, for example "Final results" or "Live now · Day 2 of 4". */
   eventEyebrow: string;
@@ -41,8 +48,8 @@ export type LandingHeroProps = {
   quickActions: QuickAction[];
   /** Event facts for the stat row: entries, first tee, days, venue. */
   eventStats: HeroStat[];
-  /** The side the page opens on. The visitor can switch; with no featured event there is no switch. */
-  defaultView: HeroView;
+  /** The first product screenshot, shown rising into the hero's lower edge. */
+  heroShot: ProductShot | null;
 };
 
 export type ProductShot = {
