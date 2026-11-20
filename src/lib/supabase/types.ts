@@ -256,6 +256,8 @@ export type TournamentRow = {
   flight_basis: "index" | "course_handicap";
   published: boolean;
   published_snapshot: Json | null;
+  /** Added by 20261121000000. The organizer's home page feature; set only through the RPC. */
+  landing_featured?: boolean;
   created_at: string;
   dates: string[] | null;
   state: "draft" | "open" | "closed";
@@ -809,6 +811,8 @@ export interface Database {
           flight_basis?: TournamentRow["flight_basis"];
           published?: boolean;
           published_snapshot?: Json | null;
+          /** Added by 20261121000000. At most one event per club carries it. */
+          landing_featured?: boolean;
           /** Added by 20261110000000. The stored public release policy, including the reveal time. */
           publish_views?: Json;
           /** Added by 20261110000100. Audit only; never exposed by a public read. */
@@ -1149,6 +1153,15 @@ export interface Database {
         Args: { p_tournament: string; p_surface: string; p_released: boolean };
         Returns: Json;
       };
+      /**
+       * Owner or organizer only. Turns the home page feature on or off for one event and returns
+       * `{ tournamentId, featured }`. Added by hand with
+       * 20261121000000_landing_showcase_and_demo.sql.
+       */
+      set_landing_feature: {
+        Args: { p_tournament: string; p_featured: boolean };
+        Returns: Json;
+      };
       /** Added by 20261037000000; all return JSON and are granted to authenticated only. */
       save_day_rule: {
         Args: { p_tournament: string; p_required: number | null; p_max: number | null };
@@ -1251,9 +1264,9 @@ export interface Database {
        */
       public_events: { Args: Record<string, never>; Returns: Json };
       /**
-       * The landing page's events, including events finished in the last year, each with a
-       * `finished` flag. Added by hand with 20261121000000_landing_showcase_and_demo.sql, which is
-       * not applied yet, so `supabase gen types typescript` cannot produce it.
+       * The landing page's events, including events finished in the last year, each with `finished`
+       * and `featured` flags. Added by hand with 20261121000000_landing_showcase_and_demo.sql,
+       * which is not applied yet, so `supabase gen types typescript` cannot produce it.
        */
       public_showcase_events: { Args: Record<string, never>; Returns: Json };
       /**

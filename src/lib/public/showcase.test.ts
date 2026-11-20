@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PublicEvent } from "./highlights";
 import {
-  defaultHeroView,
   eventDayNumber,
   eventEyebrow,
   eventPhase,
@@ -24,6 +23,7 @@ function event(overrides: Partial<PublicEvent> = {}): PublicEvent {
     cutOffDate: "2026-11-01",
     entered: 327,
     entriesOpen: false,
+    featured: false,
     ...overrides,
   };
 }
@@ -94,6 +94,11 @@ describe("toLandingEvent", () => {
   it("uses the event's own entry count, including none", () => {
     expect(toLandingEvent(event({ entered: 0 }), TODAY).enteredLabel).toBe("No entries yet");
   });
+
+  it("copies the organizer's feature flag without deciding it", () => {
+    expect(toLandingEvent(event({ featured: true }), TODAY).featured).toBe(true);
+    expect(toLandingEvent(event({ featured: false }), TODAY).featured).toBe(false);
+  });
 });
 
 describe("orderForCarousel", () => {
@@ -126,51 +131,29 @@ describe("orderForCarousel", () => {
 });
 
 describe("pickFeatured", () => {
-  it("prefers the live event", () => {
-    const live = toLandingEvent(event({ tournamentId: "live" }), TODAY);
-    const soon = toLandingEvent(event({ tournamentId: "soon", dates: ["2026-11-20"] }), TODAY);
-    expect(pickFeatured([soon, live])?.tournamentId).toBe("live");
+  it("returns the event an organizer featured, whatever its phase", () => {
+    const finished = toLandingEvent(
+      event({ tournamentId: "finished", dates: ["2026-11-10"], featured: true }),
+      TODAY,
+    );
+    const live = toLandingEvent(event({ tournamentId: "live", dates: ["2026-11-13"] }), TODAY);
+    expect(pickFeatured([live, finished])?.tournamentId).toBe("finished");
   });
 
-  it("uses the soonest upcoming event when nothing is live", () => {
-    const later = toLandingEvent(event({ tournamentId: "later", dates: ["2026-12-01"] }), TODAY);
+  it("does not fall back to a live or upcoming event when none is featured", () => {
+    const live = toLandingEvent(event({ tournamentId: "live", dates: ["2026-11-13"] }), TODAY);
     const soon = toLandingEvent(event({ tournamentId: "soon", dates: ["2026-11-20"] }), TODAY);
-    expect(pickFeatured([later, soon])?.tournamentId).toBe("soon");
+    expect(pickFeatured([live, soon])).toBeNull();
   });
 
-  it("uses the most recently finished event when nothing is live or upcoming", () => {
-    const recent = toLandingEvent(event({ tournamentId: "recent", dates: ["2026-11-10"] }), TODAY);
-    const older = toLandingEvent(event({ tournamentId: "older", dates: ["2026-10-01"] }), TODAY);
-    expect(pickFeatured([older, recent])?.tournamentId).toBe("recent");
+  it("takes the first flagged event when several carry the flag", () => {
+    const first = toLandingEvent(event({ tournamentId: "first", featured: true }), TODAY);
+    const second = toLandingEvent(event({ tournamentId: "second", featured: true }), TODAY);
+    expect(pickFeatured([first, second])?.tournamentId).toBe("first");
   });
 
   it("answers null with no events", () => {
     expect(pickFeatured([])).toBeNull();
-  });
-});
-
-describe("defaultHeroView", () => {
-  it("opens on the event while it is live", () => {
-    expect(defaultHeroView(toLandingEvent(event(), TODAY), TODAY)).toBe("event");
-  });
-
-  it("opens on the event when the first day is within seven days", () => {
-    const soon = toLandingEvent(event({ dates: ["2026-11-20"] }), TODAY);
-    expect(defaultHeroView(soon, TODAY)).toBe("event");
-  });
-
-  it("opens on clubs when the first day is further away", () => {
-    const later = toLandingEvent(event({ dates: ["2026-11-21"] }), TODAY);
-    expect(defaultHeroView(later, TODAY)).toBe("clubs");
-  });
-
-  it("opens on clubs for a finished event", () => {
-    const past = toLandingEvent(event(), "2026-11-20");
-    expect(defaultHeroView(past, "2026-11-20")).toBe("clubs");
-  });
-
-  it("opens on clubs with no featured event", () => {
-    expect(defaultHeroView(null, TODAY)).toBe("clubs");
   });
 });
 

@@ -17,7 +17,7 @@ export function demoOpenEvents(today: string): PublicEvent[] {
 
   return makeDemoTournaments()
     .filter((t) => t.state === "open" && t.cutOffDate >= today)
-    .map((t) => ({
+    .map((t, index) => ({
       tournamentId: t.id,
       name: t.name,
       dates: t.dates,
@@ -26,5 +26,9 @@ export function demoOpenEvents(today: string): PublicEvent[] {
       cutOffDate: t.cutOffDate,
       entered: entries.filter((e) => e.tournamentId === t.id).length,
       entriesOpen: true,
+      // The demo has no desk setting to read, so the first listed event is the featured one. That
+      // matches the live page without a database: one featured event when there is a listed event,
+      // none when the filter above leaves nothing.
+      featured: index === 0,
     }));
 }

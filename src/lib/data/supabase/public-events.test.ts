@@ -21,7 +21,7 @@ const TODAY = "2026-11-14";
 
 describe("toPublicEvent", () => {
   it("keeps a good row and marks it finished from the dates when today is passed", () => {
-    expect(toPublicEvent(good, TODAY)).toEqual({ ...good, finished: true });
+    expect(toPublicEvent(good, TODAY)).toEqual({ ...good, finished: true, featured: false });
   });
 
   it("drops a row with no id, because there is nowhere to send anyone", () => {
@@ -50,6 +50,7 @@ describe("toPublicEvent", () => {
       cutOffDate: "",
       entered: 0,
       entriesOpen: true,
+      featured: false,
       finished: false,
     });
   });
@@ -85,6 +86,14 @@ describe("toPublicEvent", () => {
     expect(toPublicEvent({ ...good, dates: [] }, "2026-11-14")?.finished).toBe(false);
   });
 
+  it("reads the organizer's feature flag only from an explicit true", () => {
+    expect(toPublicEvent({ ...good, featured: true })?.featured).toBe(true);
+    expect(toPublicEvent({ ...good, featured: false })?.featured).toBe(false);
+    expect(toPublicEvent({ ...good, featured: "true" })?.featured).toBe(false);
+    // The older payloads do not carry the flag, and the page then has no featured event.
+    expect(toPublicEvent(good)?.featured).toBe(false);
+  });
+
   it("filters a dates list down to strings", () => {
     expect(toPublicEvent({ ...good, dates: ["2026-11-12", null, 7, "2026-11-13"] })?.dates).toEqual(
       ["2026-11-12", "2026-11-13"],
@@ -104,6 +113,7 @@ describe("toPublicEvent", () => {
       "dates",
       "entered",
       "entriesOpen",
+      "featured",
       "finished",
       "firstTeeTime",
       "name",
@@ -137,7 +147,7 @@ describe("loadShowcaseEvents", () => {
 
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledWith("public_showcase_events");
-    expect(events).toEqual([{ ...good, finished: true }]);
+    expect(events).toEqual([{ ...good, finished: true, featured: false }]);
   });
 
   it("falls back to public_events when the showcase function is missing", async () => {
@@ -155,7 +165,7 @@ describe("loadShowcaseEvents", () => {
       "public_showcase_events",
       "public_events",
     ]);
-    expect(events).toEqual([{ ...good, finished: true }]);
+    expect(events).toEqual([{ ...good, finished: true, featured: false }]);
   });
 
   it("falls back to public_open_events when the first two reads fail", async () => {

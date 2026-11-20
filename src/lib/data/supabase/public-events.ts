@@ -63,6 +63,9 @@ export function toPublicEvent(raw: unknown, today?: string): PublicEventWithFini
     entered: count(row.entered),
     // The older payload has no flag and only ever returned open events, so absent means open.
     entriesOpen: flag(row.entriesOpen, true),
+    // Only an explicit true from the organizer's feature setting counts. The older payloads do not
+    // carry the flag at all, so they stay unflagged rather than guessing an event.
+    featured: row.featured === true,
     finished: flag(row.finished, derived),
   };
 }
