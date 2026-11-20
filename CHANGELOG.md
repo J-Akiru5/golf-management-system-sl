@@ -9,6 +9,13 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.61.0] - 2026-11-20
+
+### Added
+- **A product landing page at `/` for other golf clubs.** A dark hero with a For clubs / Now hosting switch: the clubs side explains TeeLine and leads to Request a demo; the event side features the club's current or most recent event with its quick actions (See all scores and View published pairings; Find my tee time while an event is live) and its entries, first tee, days and venue. Under it: the real desk screens (cropped so no player name shows), figures from the 24th Bamboo Tee (327 entries, 118,279 live requests in the 25-hour peak window, 17,403 in the busiest hour, 20,641 public scorecard views, no downtime), what the desk does, and an event carousel in which a finished event is marked Completed. The standings strip now shows only while the featured event is live.
+- **Request a demo (`/demo`).** A form for clubs; requests arrive in the desk's Feedback inbox as a new "Demo request" category. An email address and consent to be contacted are required.
+- **Migration `20261121000000_landing_showcase_and_demo.sql`, written and NOT applied to the live project.** It adds `public_showcase_events()` (events finished in the last year stay listed, with a `finished` flag) and the `demo` feedback category. The owner runs `docs/landing/apply-on-live.sql` in the Supabase SQL editor. Until then the page falls back to `public_events()`, and the demo form cannot save.
+
 ## [0.60.0] - 2026-11-20
 
 ### Added
