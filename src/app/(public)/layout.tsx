@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { ChatLauncher } from "@/components/chat";
 import { PublicShell } from "@/components/public/PublicShell";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { I18nProvider } from "@/lib/i18n/context";
@@ -23,6 +24,9 @@ export default async function PublicLayout({ children }: { children: ReactNode }
     <div lang={locale}>
       <I18nProvider locale={locale}>
         <PublicShell>{children}</PublicShell>
+        {/* Teeo, the concern chat: a fixed bubble on every public page. The panel's code loads only
+            when a visitor first opens it. */}
+        <ChatLauncher />
         <InstallPrompt />
       </I18nProvider>
     </div>

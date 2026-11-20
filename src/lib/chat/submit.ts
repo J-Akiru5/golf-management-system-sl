@@ -17,7 +17,7 @@ import {
   normaliseConcern,
 } from "@/lib/data/concerns";
 import { normalizePagePath } from "@/lib/data/feedback";
-import { parseFeedbackSubmitResult } from "@/lib/data/supabase/feedback";
+import { legacyConcernMessage, parseFeedbackSubmitResult } from "@/lib/data/supabase/feedback";
 import { type ChatLocale, chatLocaleFromAppLocale, isChatLocale } from "./copy";
 
 /** The three values `public_feedback.locale` accepts today. */
@@ -117,7 +117,7 @@ export async function submitConcernNote(
     return { ok: true, message: "Thank you. The organizer will read your note." };
   }
 
-  const { data, error } = await client.rpc("submit_feedback", {
+  const first = await client.rpc("submit_feedback", {
     p_category: "concern",
     p_message: prepared.message,
     p_contact_name: null,
@@ -129,6 +129,25 @@ export async function submitConcernNote(
     p_tournament: null,
     p_details: prepared.details,
   });
+  let { data, error } = first;
+
+  // A project that has not run migration 20261122000000 has no `p_details` and no `concern`
+  // category. The note still reaches the organizer: it is filed through the function the project
+  // already has, as a `content` note whose text carries every answer (the same fallback as the
+  // tick-box form). The transcript waits for the migration.
+  if (error && isMissingFunction(error)) {
+    ({ data, error } = await client.rpc("submit_feedback", {
+      p_category: "content",
+      p_message: legacyConcernMessage(prepared.details, prepared.message),
+      p_contact_name: null,
+      p_contact_email: null,
+      p_contact_consent: false,
+      p_page_path: prepared.pagePath,
+      p_locale: prepared.locale,
+      p_honeypot: prepared.honeypot,
+      p_tournament: null,
+    }));
+  }
 
   if (error) {
     if (isMissingFunction(error)) {

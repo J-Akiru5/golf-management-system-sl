@@ -181,6 +181,26 @@ describe("filing the note", () => {
     expect(client.calls).not.toHaveBeenCalled();
   });
 
+  it("files the note as a content note with every answer before migration 20261122000000", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "PGRST202", message: "Could not find the function public.submit_feedback" },
+      })
+      .mockResolvedValueOnce({
+        data: { ok: true, code: "accepted", message: "Thank you." },
+        error: null,
+      });
+    const outcome = await submitConcernNote({ rpc }, preparedNote());
+    expect(outcome).toMatchObject({ ok: true });
+    const [, args] = rpc.mock.calls[1] as [string, Record<string, unknown>];
+    expect(args.p_category).toBe("content");
+    expect(args).not.toHaveProperty("p_details");
+    expect(String(args.p_message)).toMatch(/^Player concern: /);
+    expect(String(args.p_message)).toContain("Sent from: the Teeo chat");
+  });
+
   it("reports the inbox as not ready when the function is missing", async () => {
     const client = rpcClient({
       error: { code: "PGRST202", message: "Could not find the function public.submit_feedback" },

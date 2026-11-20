@@ -348,3 +348,94 @@
     scroll-behavior: auto;
   }
 }
+
+/* Dark direction, matching the landing and the public pages: charcoal panel, forest header, ivory
+   text, gold for marks and focus only. Later in the file so it wins over the baseline above. */
+.tl-chat-panel {
+  border: 1px solid rgba(247, 245, 238, 0.16);
+  background: #171c19;
+  color: #f7f5ee;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+.tl-chat-head {
+  border-bottom: 1px solid rgba(247, 245, 238, 0.12);
+  background: linear-gradient(145deg, #073d2e, #10251b);
+}
+.tl-chat-name {
+  color: #f7f5ee;
+}
+.tl-chat-tagline {
+  color: #b9c3bc;
+}
+.tl-chat-icon-button {
+  border-color: rgba(247, 245, 238, 0.25);
+  color: #f7f5ee;
+}
+.tl-chat-language {
+  border-bottom: 1px solid rgba(247, 245, 238, 0.1);
+  background: #1d241f;
+  color: #c8d0ca;
+}
+.tl-chat-language select,
+.tl-chat-composer textarea {
+  border: 1px solid rgba(247, 245, 238, 0.2);
+  background: #121613;
+  color: #f7f5ee;
+}
+.tl-chat-composer textarea::placeholder {
+  color: #8f9a93;
+}
+.tl-chat-log {
+  background: #171c19;
+}
+.tl-chat-turn[data-role="assistant"] .tl-chat-bubble {
+  border: 1px solid rgba(247, 245, 238, 0.1);
+  background: #202823;
+  color: #f7f5ee;
+}
+.tl-chat-turn[data-role="user"] .tl-chat-bubble {
+  border: 1px solid rgba(215, 181, 104, 0.35);
+  background: #073d2e;
+  color: #f7f5ee;
+}
+.tl-chat-composer {
+  border-top: 1px solid rgba(247, 245, 238, 0.1);
+  background: #1d241f;
+}
+.tl-chat-send,
+.tl-chat-button {
+  background: #f7f5ee;
+  color: #171c19;
+}
+.tl-chat-button[data-variant="quiet"] {
+  border: 1px solid rgba(247, 245, 238, 0.3);
+  background: transparent;
+  color: #f7f5ee;
+}
+.tl-chat-send:disabled,
+.tl-chat-button:disabled {
+  background: #3a443d;
+  color: #9ba89f;
+}
+.tl-chat-notice {
+  border: 1px solid rgba(215, 181, 104, 0.4);
+  background: rgba(215, 181, 104, 0.1);
+  color: #f7f5ee;
+}
+.tl-chat-link {
+  color: #d7b568;
+}
+.tl-chat-summary {
+  border: 1px solid rgba(247, 245, 238, 0.14);
+  background: #202823;
+  color: #f7f5ee;
+}
+.tl-chat-summary dt,
+.tl-chat-summary-note {
+  color: #b9c3bc;
+}
+.tl-chat-launcher {
+  border: 1px solid rgba(215, 181, 104, 0.55);
+  background: #073d2e;
+  color: #f7f5ee;
+}
