@@ -1,36 +1,59 @@
-/**
- * Landing page components. STUBS: the design builder replaces each body with the real component and
- * keeps every export name and props type exactly as written here (see ./types.ts). The page and the
- * data layer compose these without knowing how they look.
- */
-import type {
-  EventCarouselProps,
-  LandingFooterProps,
-  LandingHeroProps,
-  ProductShot,
-  ProofStripProps,
-} from "./types";
+import { ChevronRight } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { TeeLineLogo } from "@/components/TeeLineLogo";
+import { EventCarousel } from "./EventCarousel";
+import { LandingHero } from "./LandingHero";
+import "./landing.css";
+import type { LandingFooterProps, ProductShot, ProofStripProps } from "./types";
 
 export type * from "./types";
-
-/** Nav, the For clubs / Now hosting switch, both hero sides, quick actions and the event stats. */
-export function LandingHero(props: LandingHeroProps) {
-  return (
-    <section aria-labelledby="hero-title">
-      <h1 id="hero-title">{props.featured?.name ?? "TeeLine Golf"}</h1>
-    </section>
-  );
-}
+export { EventCarousel, LandingHero };
 
 /** The real admin screens, shown in perspective. */
 export function ProductShowcase({ shots }: { shots: ProductShot[] }) {
   return (
-    <section aria-label="The TeeLine desk">
-      {shots.map((shot) => (
-        <figure key={shot.src}>
-          <figcaption>{shot.caption}</figcaption>
+    <section className="tl-product tl-section" id="product" aria-labelledby="tl-product-title">
+      <div className="tl-section-heading">
+        <p className="tl-kicker">Inside the desk</p>
+        <h2 id="tl-product-title">A clear view of tournament day.</h2>
+      </div>
+      {shots[0] && (
+        <figure className="tl-product-main">
+          <div className="tl-window" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+          <Image
+            src={shots[0].src}
+            alt={shots[0].alt}
+            width={shots[0].width}
+            height={shots[0].height}
+            sizes="(max-width: 900px) 100vw, 1200px"
+          />
+          <figcaption>{shots[0].caption}</figcaption>
+          {shots[0].src.includes("control-room") && (
+            <p className="tl-illustrated-note">Illustrated layout · not IGCC’s real holes</p>
+          )}
         </figure>
-      ))}
+      )}
+      {shots.length > 1 && (
+        <div className="tl-product-secondary">
+          {shots.slice(1).map((shot) => (
+            <figure key={shot.src}>
+              <Image
+                src={shot.src}
+                alt={shot.alt}
+                width={shot.width}
+                height={shot.height}
+                sizes="(max-width: 700px) 100vw, 50vw"
+              />
+              <figcaption>{shot.caption}</figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -38,29 +61,128 @@ export function ProductShowcase({ shots }: { shots: ProductShot[] }) {
 /** Numbers from the 24th Bamboo Tee. */
 export function ProofStrip({ stats, source }: ProofStripProps) {
   return (
-    <section aria-label="In use">
-      {stats.map((stat) => (
-        <p key={stat.label}>
-          {stat.value} {stat.label}
-        </p>
-      ))}
-      <p>{source}</p>
+    <section className="tl-proof tl-section" id="proof" aria-labelledby="tl-proof-title">
+      <div className="tl-proof-heading">
+        <p className="tl-kicker">A tournament, in the desk</p>
+        <h2 id="tl-proof-title">The work stays in view.</h2>
+      </div>
+      <div className="tl-proof-grid">
+        {stats.map((stat) => (
+          <article className="tl-proof-card" key={stat.label}>
+            <p className="tl-proof-value">{stat.value}</p>
+            <h3>{stat.label}</h3>
+            <p className="tl-proof-detail">{stat.detail}</p>
+          </article>
+        ))}
+      </div>
+      <p className="tl-proof-source">{source}</p>
     </section>
   );
 }
 
 /** What TeeLine does, section by section. Static copy, written in the component. */
 export function CapabilitySections() {
-  return <section aria-label="What TeeLine does" />;
-}
-
-/** The club's events, live first, finished ones marked Completed. */
-export function EventCarousel({ events }: EventCarouselProps) {
   return (
-    <section aria-label="Events">
-      {events.map((event) => (
-        <p key={event.tournamentId}>{event.name}</p>
-      ))}
+    <section
+      className="tl-capabilities tl-section"
+      id="how-it-works"
+      aria-labelledby="tl-capabilities-title"
+    >
+      <div className="tl-section-heading tl-capabilities-intro">
+        <p className="tl-kicker">From entry to result</p>
+        <h2 id="tl-capabilities-title">The tournament, under one roof.</h2>
+        <p>
+          Set the rules for each event. TeeLine works out the draw, then leaves the decisions with
+          the organizer.
+        </p>
+      </div>
+      <article className="tl-capability">
+        <div className="tl-capability-copy">
+          <span className="tl-index">01 / Prepare</span>
+          <h3>Bring the field together.</h3>
+          <p>
+            Take entries at the desk or online, then import handicap indexes. Each player’s
+            category, tee, flight, group and start slot follows that tournament’s settings.
+          </p>
+          <p>
+            When the rules cannot place someone, TeeLine flags the entry for review instead of
+            guessing.
+          </p>
+        </div>
+        <div className="tl-diagram tl-routing-diagram" aria-label="Entry, settings, review">
+          <span>Entries</span>
+          <b aria-hidden="true">→</b>
+          <span>Event settings</span>
+          <b aria-hidden="true">→</b>
+          <span className="tl-diagram-result">Reviewable draw</span>
+        </div>
+      </article>
+      <article className="tl-capability tl-capability-reverse">
+        <div className="tl-capability-copy">
+          <span className="tl-index">02 / Review</span>
+          <h3>The organizer stays in control.</h3>
+          <p>
+            Choose shotgun or tee-time starts. Review the proposed groups, fix anything flagged, and
+            publish when the draw is ready.
+          </p>
+          <p>
+            Players can open published pairings on a phone without an account. Private profile
+            details stay private.
+          </p>
+        </div>
+        <div
+          className="tl-diagram tl-draw-diagram"
+          aria-label="A reviewed draw progresses to published pairings"
+        >
+          <div>
+            <span>Draft draw</span>
+            <i />
+            <i />
+            <i />
+          </div>
+          <b aria-hidden="true">→</b>
+          <div className="tl-diagram-result">
+            <span>Published</span>
+            <i />
+            <i />
+            <i />
+          </div>
+        </div>
+      </article>
+      <article className="tl-capability">
+        <div className="tl-capability-copy">
+          <span className="tl-index">03 / Play</span>
+          <h3>Keep the round moving.</h3>
+          <p>
+            Enter scores hole by hole and check them against the card. A live public leaderboard can
+            use a results blackout and timed reveal.
+          </p>
+          <p>
+            Show the board in the clubhouse, print start sheets and scorecards, and keep an audit
+            log of changes. The staff app supports marshals and tabulators.
+          </p>
+        </div>
+        <div
+          className="tl-diagram tl-score-diagram"
+          aria-label="Score entry checked against a card"
+        >
+          <div>
+            <span>Hole</span>
+            <span>Par</span>
+            <span>Score</span>
+            <b>07</b>
+            <b>4</b>
+            <b>5</b>
+            <b>08</b>
+            <b>3</b>
+            <b>3</b>
+          </div>
+          <span className="tl-diagram-caption">Checked against the card</span>
+        </div>
+      </article>
+      <p className="tl-built-note">
+        Built in Iloilo by Syntaxure Labs · First run at Iloilo Golf and Country Club
+      </p>
     </section>
   );
 }
@@ -68,12 +190,58 @@ export function EventCarousel({ events }: EventCarouselProps) {
 /** The closing Request a demo band. Links to /demo. */
 export function DemoCta() {
   return (
-    <section aria-label="Request a demo">
-      <a href="/demo">Request a demo</a>
+    <section className="tl-demo-cta" aria-labelledby="tl-demo-title">
+      <div>
+        <p className="tl-kicker">For your tournament committee</p>
+        <h2 id="tl-demo-title">See the desk at work.</h2>
+        <p>Bring your tournament workflow. We’ll show you how it fits.</p>
+      </div>
+      <div className="tl-demo-actions">
+        <Link className="tl-button tl-button-light" href="/demo">
+          Request a demo <ChevronRight aria-hidden="true" />
+        </Link>
+        <p>
+          Already a TeeLine club? <Link href="/login">Sign in</Link>
+        </p>
+      </div>
     </section>
   );
 }
 
 export function LandingFooter({ versionLabel }: LandingFooterProps) {
-  return <footer>{versionLabel}</footer>;
+  return (
+    <footer className="tl-footer">
+      <div className="tl-footer-grid">
+        <div className="tl-footer-brand">
+          <Link href="/" aria-label="TeeLine Golf home">
+            <TeeLineLogo variant="reverse" width={168} />
+          </Link>
+          <p className="tl-powered">
+            Powered by{" "}
+            <Image src="/partners/converge-logo.svg" alt="Converge" width={104} height={24} />
+          </p>
+        </div>
+        <nav aria-label="Product">
+          <h2>Product</h2>
+          <Link href="/pairings">Published pairings</Link>
+          <Link href="/rules">Tournament rules</Link>
+          <Link href="/leaderboard">Public leaderboard</Link>
+          <Link href="/demo">Request a demo</Link>
+        </nav>
+        <div>
+          <h2>Club</h2>
+          <p>Iloilo Golf and Country Club</p>
+        </div>
+        <nav aria-label="Legal">
+          <h2>Legal</h2>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+        </nav>
+      </div>
+      <div className="tl-footer-bar">
+        <p>Developed by Syntaxure Labs · {versionLabel}</p>
+        <Link href="/login">Sign in</Link>
+      </div>
+    </footer>
+  );
 }
