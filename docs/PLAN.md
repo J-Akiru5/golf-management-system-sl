@@ -130,6 +130,104 @@ All three were applied and then checked against the live project by probe, not b
 - The preview carries `AWARDING_DEMO=1`, which serves fictional sample boards so the ceremony can be
   rehearsed. It is refused in production.
 
+### Pair 372 recorded, no schedule touched
+
+The club's admin record lists one member and one guest as a pair, but their registrations share no
+playing day: the member plays Days 1 and 2, the guest Days 3 and 4 PM. The owner's instruction on
+15 Nov was to record the pair and leave every day, session, group and tee time exactly as it is, so
+that is all that was done.
+
+- The write was `save_pair()` with pair number 372. That function writes `registration_pairs`,
+  `registration_pair_members` and one audit row; it never reads or writes `registration_days`,
+  `groups` or `group_members`.
+- Both registrations' day rows, group rows, tee times and start holes were read before the call and
+  again after it, and are identical. The member is still Days 1 and 2 with no session, the guest is
+  still Days 3 and 4 PM, and both keep the groups and times they already had.
+- The desk shows the pair on `/register` and `/pairs/372`. The published snapshot stores no pair
+  numbers, so the public pairings are unchanged and did not need republishing.
+- This is the same shape as pair 371, which the club already records as one pair across different
+  playing days, so the record is consistent with what the club keeps.
+
+### Two blank membership types corrected
+
+Two registrations carried no `membership_type`, which is exactly what makes `save_pair()` answer
+"is not a member entry". Their `player_memberships` rows already said member, so the registration
+rows were set to `member` and nothing else was changed. The desk stops prompting on those two.
+
+### Senior category moved to the White tee (15 Nov 2026)
+
+The owner's instruction: the Senior category plays the White tee. Eighteen Senior entries were on
+Blue because the entry tee is set per player and wins over the category's tee. All eighteen were
+moved to White, and the playing handicap was recomputed from the index on White's 67.9 / 127 / par 70,
+so each dropped by one to three strokes. All 27 Senior entries now carry White. One of them works
+out below zero and plays off -1, which the scoring tables already handle as a plus handicap.
+
+- 27 played-round snapshots corrected across Days 1 to 3 (all provisional), each through
+  `correct_handicap_snapshot`, so every result was recalculated.
+- Days 1, 2 and 3 republished as versions 42, 52 and 87 so the public board follows.
+- Three pair classes moved with the numbers, written on both partners as the desk does: pair 44
+  Class D to C, pair 121 Class B to A, pair 56 Class C to B.
+- No playing day, session, group, tee time or start hole was touched. The draw, the groups and the
+  published pairings are unchanged.
+- The playing-handicap cap (`20261115000400`) is live. The audit log shows the same correction path
+  writing 35 at 02:30 and 30 from 02:59 on, and no snapshot in the event is above 30.
+- Day 4's public board is fed by a tabulator sync that inserts a publication per batch, not by
+  `publish_round`. Its last sync (version 106) predated this change, so the eight Seniors with a Day 4
+  card still carried their Blue figure. The board was rebuilt as version 107 with those eight cards
+  reworked: CELINO 8 to 6 and net 38 to 36, AGREDA 24 to 22, BROCAL 16 to 14, FUENTESFINA 26 to 23,
+  JABILLES 23 to 21, OMAYAN 23 to 21, PORO 22 to 20, TY 27 to 25. No other card was touched.
+- **Open, and it is not from this change:** on version 107, 61 of the 196 Day 4 cards carry a playing
+  handicap that differs from the registration, and 69 carry a different class. The Day 4 board needs a
+  sync from the registrations before the awarding, or a decision on which figure Day 4 scores with.
+
+### Tee conversion verified before the announcement (15 Nov 2026)
+
+The tee values match the spec: Blue 69.6 / 130 / par 70, White 67.9 / 127 / par 70, Ladies Red
+72.1 / 126 / par 70. Silver repeats White's numbers and is used by nobody. The conversion is index
+capped at 30, then index x slope / 113 + (rating - par), rounded half up, the playing handicap capped
+at 30, at 100% allowance.
+
+Every surface now agrees with that, checked card by card:
+
+| Surface | Cards checked | Wrong |
+| --- | --- | --- |
+| Snapshots | 409 | 0 |
+| Day 1 public (v42) | 85 | 0 |
+| Day 2 public (v54) | 113 | 0 |
+| Day 3 public (v89) | 209 | 0 |
+| Day 4 public (v108) | 196 | 0 |
+
+Two faults were found and fixed. A Ladies entry's Day 2 and Day 3 snapshots were built on the Blue
+tee while her registration is Red, so she was scoring 22 instead of 24; both were corrected on the
+registration tee and both days republished. On the Day 4 board, three cards did not match the
+conversion (19 instead of 15, 0 instead of 30, 23 instead of 22); the board was rebuilt as version
+108 with only those cards reworked.
+
+89 registration rows carried a stale playing handicap, 23 of them the old uncapped 34 and the rest
+from before a tee change. They were aligned to the conversion. That column feeds the desk list and
+the printed handicap column; it does not score anything, and no snapshot changed.
+
+### One Senior entry re-classed by hand (15 Nov 2026)
+
+An entry was filed under the Ladies category on the Blue tee, which played off 9. The owner named him
+a Senior, so the entry was moved to the Senior category on White, which gives 7 from his index of 8.2.
+His Day 3 snapshot was corrected and the round republished (version 94), and his Day 4 card was
+reworked on the sync board (version 109). Day 3 net moved from 36 to 34 and Day 4 from 43 to 41. His
+pair stays in Class A.
+
+A second write from the owner's account landed 18 seconds after the first and put the entry back on
+Blue with 9. It was applied again and held. Whoever has that entry open in the desk should not save it
+again with the old tee selected.
+
+A second Senior entry was then found still on Blue even though its category was Senior, so it had
+missed the earlier batch. It was moved to White (index 15.6 gives 15, not 18), its Day 3 snapshot was
+corrected and the round republished, and its Day 4 card was reworked (version 110), where its class
+label also changed from the stale Class B to Class C. All 29 Senior entries now carry White.
+
+**Open:** 7 entries have no tee and 1 has no index. Four of the seven have an index and a stored
+figure that matches Blue exactly, but the tee was never set. One of them has a Day 4 card (plays off
+30). The owner needs to name the tees for those entries.
+
 ### Guardrails while production is live
 
 1. **One release train.** Work goes to `develop`, then one release pull request to `main` with both

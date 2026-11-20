@@ -1,8 +1,48 @@
+﻿# Changelog
+
+All notable changes to TeeLine Golf. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Versioning rules are in [`docs/VERSIONING.md`](docs/VERSIONING.md). Versions before 1.0.0 are
+pre-release: usable for testing, not yet signed off by the club.
+
+Each entry lists the database migrations that ship with it and whether they are applied to the live
+Supabase project, because the code and the database are released separately.
+
 ## [Unreleased]
+
+## [0.59.0] - 2026-11-20
+
+### Added
+- **The clubhouse board opens on All days.** Once more than one day is published, the board shows each player's total net points across every published round, ranked with ties marked, with the rounds that made it under the name. The three views in the footer are buttons, so a person at the screen can take a list by hand; the board still moves on by itself when a list finishes. No migration.
+
+### Security
+- **Next.js raised from 16.4.2 to 16.4.6.** 16.4.2 is covered by a published advisory, and `next build` refuses to run on it. Dependency change only (`package.json`, `pnpm-lock.yaml`). No migration.
+
+No database migration ships with 0.59.0.
+
+
+## [0.58.4] - 2026-11-15
+
+### Fixed
+- **A Member/Guest change now reaches the event registration, the pair and the public pages.** `set_player_membership` only changed the player's membership row; the registration, which the lists, pairs and public profile read, kept the old role. It now updates the player's registrations, moves the pair seat (or takes the player out of the pair if the partner holds that side), and the desk lists refresh without a reload. Migration `20261115000800_membership_follows_registration.sql`.
+- **Players with no recorded role can be searched and paired.** 14 registrations (for example ASENCIO, JOHN MARK) had no member/guest role, so the pair dialog never listed them. Migration `20261115000900_registration_role_backfill.sql` fills the empty roles (active membership = member, none = guest) and defaults new registrations the same way. `20261115000800` is applied on the live project (15 Nov 2026); `20261115000900` is to be run in the SQL editor.
+
+## [0.58.3] - 2026-11-15
 
 ### Fixed
 - **A hand-added card can be sent to the admin with its scores.** A hand-added card whose name matches a player on the day's list is linked to that player before sending, so it travels as a scored card. A card for a player not in the system is sent as a name-only entry that carries its 18 scores, and the admin queue shows it so the admin can add the player without re-keying the card. The batch send now sends the cards that have a desk handicap and holds only the ones that do not, naming them, instead of refusing the whole batch. No migration.
 - **The admin queue opens by default and shows its count.** The Tabulator submissions section on `/scores/review` no longer starts collapsed, and its heading shows how many day submissions are waiting. No migration.
+
+Also carries #317: a tabulation document may hold more than 500 cards. No migration.
+
+## [0.58.2] - 2026-11-15
+
+### Changed
+- **A handicap record now drives the registration, the round snapshots and the public pages.** Saving or editing a record on the player page re-applies the player's latest index to their registrations and recalculates the playing handicap on every open round, so no Re-freeze step is needed. The playing-handicap cap applies. Rounds opened without a rules version record 'unconfirmed'. Final rounds are never touched. Migrations: `20261115000600_handicap_follows_records.sql` and `20261115000700_handicap_follow_unconfirmed_rules.sql`, applied to the live project on 15 Nov 2026 (as 000400 and 000500). No app code change.
+
+## [0.58.1] - 2026-11-15
+
+### Fixed
+- **Production now runs the playing-handicap cap.** Vercel blocked the production deployment of 0.58.0 (`218ee04`) because that merge was made by an account that is not on the Vercel team, so the site kept serving 0.57.2. 0.58.1 carries exactly the same code as 0.58.0 and is merged by the owner so that it deploys. There is no code change and no migration; `20261115000400_cap_playing_handicap.sql` is already applied. The `v0.58.0` tag stays where it is.
 
 ## [0.58.0] - 2026-11-15
 
@@ -11,6 +51,10 @@
 
 ### Added
 - **Send all scored in this batch sends a whole batch without ticking every card.** It sends every card in the shown batch that has at least one hole score, including cards not ticked as checked, and leaves out cards with no scores. A card the desk has no handicap for is still held and named. The admin review marks a card that was not ticked as checked, so the paper can be checked. No migration.
+
+### Fixed
+- **A hand-added card can be sent to the admin with its scores.** A hand-added card whose name matches a player on the day's list is linked to that player before sending, so it travels as a scored card. A card for a player not in the system is sent as a name-only entry that carries its 18 scores, and the admin queue shows it so the admin can add the player without re-keying the card. The batch send now sends the cards that have a desk handicap and holds only the ones that do not, naming them, instead of refusing the whole batch. No migration.
+- **The admin queue opens by default and shows its count.** The Tabulator submissions section on `/scores/review` no longer starts collapsed, and its heading shows how many day submissions are waiting. No migration.
 
 ### Migrations shipping with this release
 
@@ -86,6 +130,8 @@
 
 - `20261115000200_results_reveal.sql`: **written, not applied.** Without it the blackout still works
   through the existing release gate, but the per-lane countdown cannot be read by a signed-out page.
+
+
 
 ## [0.55.0] - 2026-11-15
 
@@ -620,6 +666,7 @@ None.
 ### Changed
 - **The public player card uses the same paper layout as the leaderboard card.** The table takes the paper palette (green header, light banded rows, hairline edges) instead of the page theme, so the profile card and the card opened from a leaderboard row read as one thing and the card stays legible in the dark theme. The rows, the totals and the pinned hole column are unchanged. No migration.
 
+
 ## [0.42.0] - 2026-11-13
 
 ### Changed
@@ -627,6 +674,7 @@ None.
   text in the card header and the tee time follows as a smaller muted pill, in comfortable and
   compact views and on the printed sheet. The hole filter, the session headings and the published
   times are unchanged. No migration.
+
 
 ## [0.41.0] - 2026-11-13
 
@@ -1610,6 +1658,7 @@ Player mobile/PWA pass, public programme, player scorecard and scorecard correct
   player lands on their entry instead of a second identity form. The claim card is a fallback for an
   ambiguous or missing name and is pre-filled with the account name. Supabase email confirmation
   still controls whether a new account gets a session immediately. No migration.
+
 
 ## [0.26.0] - 2026-10-25
 

@@ -929,3 +929,138 @@
     print-color-adjust: exact;
   }
 }
+
+/* Scores leaderboard ------------------------------------------------------------------------- */
+
+.leaderboardTable {
+  width: 100%;
+  margin-top: 4mm;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #000;
+  background: #fff;
+  font-size: 8.5pt;
+}
+
+.leaderboardTable th,
+.leaderboardTable td {
+  padding: 1.4mm 1.6mm;
+  border: 0.5px solid #000;
+  vertical-align: middle;
+}
+
+.leaderboardTable thead th {
+  background: #efefef;
+  font-size: 7.5pt;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.leaderboardTable tbody tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.leaderboardTable .pairCell {
+  font-weight: 800;
+}
+
+.leaderboardTable .pairNumber,
+.leaderboardTable .sideLine,
+.leaderboardTable .nameLine,
+.leaderboardTable .teamTotal {
+  display: block;
+}
+
+.leaderboardTable .pairNumber {
+  font-size: 8.5pt;
+}
+
+.leaderboardTable .sideLine {
+  margin-top: 0.8mm;
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.leaderboardTable .nameLine {
+  font-size: 8pt;
+  font-weight: 600;
+}
+
+.leaderboardTable .teamTotal {
+  margin-top: 1mm;
+  font-size: 7pt;
+  font-weight: 700;
+}
+
+.leaderboardTable .classCell,
+.leaderboardTable .hcpCell,
+.leaderboardTable .dayCell,
+.leaderboardTable .totalCell {
+  text-align: center;
+}
+
+.leaderboardTable .classCell {
+  font-weight: 700;
+}
+
+.leaderboardTable .hcpCell {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.leaderboardTable .dayCell {
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboardTable .dayCell b {
+  font-size: 10pt;
+}
+
+.leaderboardTable .totalCell {
+  font-size: 10pt;
+  font-weight: 800;
+}
+
+.leaderboardTable .dayDate {
+  display: block;
+  margin-top: 0.6mm;
+  font-size: 6.2pt;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.leaderboardTable .sessionMark {
+  display: block;
+  margin-top: 0.4mm;
+  font-size: 6pt;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.leaderboardTable .dash {
+  color: #555;
+}
+
+.leaderboardNote {
+  margin: 2mm 0 0;
+  font-size: 7.5pt;
+  line-height: 1.35;
+}
+
+.leaderboardNote + .signatures {
+  margin-top: 8mm;
+}
+
+@media print {
+  .leaderboardTable thead {
+    display: table-header-group;
+  }
+}

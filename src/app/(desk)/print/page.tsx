@@ -598,6 +598,11 @@ export default function PrintCenter() {
                 <Smartphone aria-hidden="true" /> Public preview
               </Link>
             </Button>
+            <Button variant="secondary" asChild className="min-h-11">
+              <Link href="/print/leaderboard">
+                <Trophy aria-hidden="true" /> Scores leaderboard
+              </Link>
+            </Button>
             <Button
               variant="gold"
               onClick={() => window.print()}
