@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import {
   canTriageFeedback,
   DEFAULT_FEEDBACK_FILTERS,
-  FEEDBACK_CATEGORIES,
   FEEDBACK_CATEGORY_LABELS,
+  FEEDBACK_INBOX_CATEGORIES,
   FEEDBACK_RESOLUTION_NOTE_MAX,
   FEEDBACK_STATUS_LABELS,
   FEEDBACK_STATUSES,
@@ -448,7 +448,7 @@ export function FeedbackInbox({
             }
           >
             <option value="all">Every category</option>
-            {FEEDBACK_CATEGORIES.map((category) => (
+            {FEEDBACK_INBOX_CATEGORIES.map((category) => (
               <option key={category} value={category}>
                 {FEEDBACK_CATEGORY_LABELS[category]}
               </option>
