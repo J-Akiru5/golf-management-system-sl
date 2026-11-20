@@ -45,8 +45,16 @@ feel" with parallax, while staying fast on low-end phones (good INP, lazy loadin
    that is not the final one once the count ends.
 5. **Section reveals**: headings and cards rise 24 px and fade in with a 0.06 s stagger. Capability
    diagrams draw their lines in (`data-tl-draw`).
-6. **Carousel**: cards stagger in; the active card lifts slightly. No autoplay.
-7. **Buttons**: a small magnetic pull on the primary buttons on fine pointers only (max 6 px), via
+6. **Pinned story (desktop, full tier only)**: the "From entry to result" section pins while the
+   visitor scrolls through its three steps (Prepare, Review, Play). The copy column advances step by
+   step and the diagram on the other side crossfades to the matching step, with a thin gold progress
+   line showing 1/3, 2/3, 3/3. Use `ScrollTrigger` `pin: true`, `scrub`, `anticipatePin: 1`, and an
+   end of about 2.5 viewport heights. In lite, none, under 1024 px wide or without JS it is the normal
+   stacked layout with all three steps visible (the server markup is the stacked layout; the pin only
+   rearranges it after the library loads, and reverts on unmount or resize below 1024 px via
+   `matchMedia`).
+7. **Carousel**: cards stagger in; the active card lifts slightly. No autoplay.
+8. **Buttons**: a small magnetic pull on the primary buttons on fine pointers only (max 6 px), via
    `gsap.quickTo`. Nothing on touch.
 
 ## Performance rules (non-negotiable)
