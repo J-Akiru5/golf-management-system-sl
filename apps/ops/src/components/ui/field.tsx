@@ -1,6 +1,11 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/ui/cn";
 
+/**
+ * The text controls: Input, Textarea, Select and Label. They live in one file because they share
+ * one field look. The select is a styled native control, so a phone opens its own picker.
+ */
+
 /** Shared look for the text controls. The focus ring comes from the base layer. */
 const FIELD =
   "w-full rounded-md border border-line-strong bg-surface-raised text-ink placeholder:text-ink-muted disabled:cursor-not-allowed disabled:opacity-60";
