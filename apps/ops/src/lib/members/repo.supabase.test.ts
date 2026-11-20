@@ -43,6 +43,9 @@ class FakeQuery {
   private orderBy: string | null = null;
   private patch: Partial<Row> | null = null;
   private mode: "select" | "update" | "delete" = "select";
+  private returning = false;
+  /** When set, update and delete behave as if row level security refused them: zero rows. */
+  public refuse = false;
 
   constructor(
     private rows: Row[],
@@ -50,6 +53,7 @@ class FakeQuery {
   ) {}
 
   select() {
+    if (this.mode !== "select") this.returning = true;
     return this;
   }
 
@@ -107,22 +111,32 @@ class FakeQuery {
       return { data: single ? (found[0] ?? null) : found, error: null };
     }
 
+    const hit = this.refuse ? [] : this.rows.filter((row) => this.matches(row));
+
     if (this.mode === "update") {
-      for (const row of this.rows) {
-        if (this.matches(row)) Object.assign(row, this.patch);
-      }
-      return { data: null, error: null };
+      for (const row of hit) Object.assign(row, this.patch);
+      return {
+        data: this.returning ? hit.map((row) => ({ user_id: row.user_id })) : null,
+        error: null,
+      };
     }
 
-    const keep = this.rows.filter((row) => !this.matches(row));
+    const keep = this.rows.filter((row) => !hit.includes(row));
     this.rows.length = 0;
     this.rows.push(...keep);
-    return { data: null, error: null };
+    return {
+      data: this.returning ? hit.map((row) => ({ user_id: row.user_id })) : null,
+      error: null,
+    };
   }
 }
 
 function fakeClient(
-  options: { user?: { id: string; email: string | null } | null; fail?: FakeError } = {},
+  options: {
+    user?: { id: string; email: string | null } | null;
+    fail?: FakeError;
+    refuse?: boolean;
+  } = {},
 ) {
   const rows = ROWS.map((row) => ({ ...row }));
   const user =
@@ -136,7 +150,11 @@ function fakeClient(
     auth: {
       getUser: async () => ({ data: { user }, error: null }),
     },
-    from: () => new FakeQuery(rows, fail),
+    from: () => {
+      const query = new FakeQuery(rows, fail);
+      query.refuse = options.refuse ?? false;
+      return query;
+    },
     rpc: async (name: string, args?: Record<string, unknown>) => {
       rpcCalls.push({ name, args });
       if (fail) return { data: null, error: fail };
@@ -234,6 +252,32 @@ describe("Supabase members repo", () => {
     const { client, rows } = fakeClient();
     await createSupabaseMembersRepo(client).updateMyDisplayName("  Ana R.  ");
     expect(rows.find((row) => row.user_id === "u-ana")?.display_name).toBe("Ana R.");
+  });
+});
+
+describe("Supabase members repo when row level security refuses a change", () => {
+  it("throws instead of reporting a role change that changed nothing", async () => {
+    const { client, rows } = fakeClient({ refuse: true });
+    const repo = createSupabaseMembersRepo(client);
+    await expect(repo.setRole("u-grace", "partner")).rejects.toThrow("No row was changed.");
+    expect(rows.find((row) => row.user_id === "u-grace")?.role).toBe("member");
+  });
+
+  it("throws for a refused status change, removal and display name update", async () => {
+    const { client, rows } = fakeClient({ refuse: true });
+    const repo = createSupabaseMembersRepo(client);
+    await expect(repo.setStatus("u-grace", "suspended")).rejects.toThrow("No row was changed.");
+    await expect(repo.removeMember("u-grace")).rejects.toThrow("No row was changed.");
+    await expect(repo.updateMyDisplayName("Ana R.")).rejects.toThrow("No row was changed.");
+    expect(rows).toHaveLength(2);
+  });
+
+  it("a refused change reads as the generic sentence, never as success", async () => {
+    const { client } = fakeClient({ refuse: true });
+    const repo = createSupabaseMembersRepo(client);
+    await expect(repo.setRole("u-grace", "partner")).rejects.toSatisfy(
+      (error) => mapMemberError(error) === "Something went wrong. Nothing was changed.",
+    );
   });
 });
 

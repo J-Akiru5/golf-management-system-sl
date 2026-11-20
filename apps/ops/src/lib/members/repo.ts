@@ -92,6 +92,14 @@ function throwIf(error: SupabaseError | null): void {
   throw wrapped;
 }
 
+/**
+ * Row level security does not raise an error when it refuses an update or a delete: it just changes
+ * zero rows. Treat zero rows as a failure so the screen never reports a change that did not happen.
+ */
+function requireChanged(data: unknown[] | null): void {
+  if (!data || data.length === 0) throw new Error("No row was changed.");
+}
+
 export function createSupabaseMembersRepo(client: SupabaseClient<Database>): MembersRepo {
   async function currentUserId(): Promise<string | null> {
     const { data } = await client.auth.getUser();
@@ -119,11 +127,13 @@ export function createSupabaseMembersRepo(client: SupabaseClient<Database>): Mem
       const userId = await currentUserId();
       if (!userId) throw new Error("There is no signed-in account to update.");
 
-      const { error } = await client
+      const { data, error } = await client
         .from("workspace_members")
         .update({ display_name: name.trim() })
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .select("user_id");
       throwIf(error);
+      requireChanged(data);
     },
 
     async listMembers() {
@@ -153,24 +163,33 @@ export function createSupabaseMembersRepo(client: SupabaseClient<Database>): Mem
     },
 
     async setRole(userId, role) {
-      const { error } = await client
+      const { data, error } = await client
         .from("workspace_members")
         .update({ role })
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .select("user_id");
       throwIf(error);
+      requireChanged(data);
     },
 
     async setStatus(userId, status) {
-      const { error } = await client
+      const { data, error } = await client
         .from("workspace_members")
         .update({ status })
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .select("user_id");
       throwIf(error);
+      requireChanged(data);
     },
 
     async removeMember(userId) {
-      const { error } = await client.from("workspace_members").delete().eq("user_id", userId);
+      const { data, error } = await client
+        .from("workspace_members")
+        .delete()
+        .eq("user_id", userId)
+        .select("user_id");
       throwIf(error);
+      requireChanged(data);
     },
   };
 }
