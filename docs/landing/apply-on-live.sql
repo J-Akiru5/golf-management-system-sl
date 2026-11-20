@@ -21,13 +21,20 @@
 
 begin;
 
--- The landing page's event list, and demo requests in the feedback inbox
+-- The landing page's event list, the home page feature, and demo requests in the feedback inbox
 --
--- Two small additions, in one file because the landing page needs both:
+-- Three small additions, in one file because the landing page needs all three:
 --
---   * `public_showcase_events()` returns the same payload as `public_events()` plus a `finished`
---     flag, and keeps a finished event listed for about a year. The landing page's carousel can
---     then mark the club's most recent event Completed instead of losing it a week after it ended.
+--   * `public.tournaments.landing_featured` is the one event an organizer chose to show at the top
+--     of the public home page. A partial unique index keeps it to one event per club, and
+--     `set_landing_feature()` is the only supported way to change it: it checks the caller's role
+--     and clears the previous feature in the same statement, so the index can never be tripped by a
+--     normal switch. The page itself never picks a featured event.
+--
+--   * `public_showcase_events()` returns the same payload as `public_events()` plus `finished` and
+--     `featured` flags, and keeps a finished event listed for about a year. The landing page's
+--     carousel can then mark the club's most recent event Completed instead of losing it a week
+--     after it ended, and the hero can show the organizer's featured event.
 --     `public_events()` and `public_open_events()` are unchanged; the app still falls back to them
 --     while this migration has not reached a project.
 --
@@ -35,9 +42,10 @@ begin;
 --     the existing table, permission model and `submit_feedback` write path. A demo request must
 --     carry a contact email, because the point of the note is a reply.
 --
--- Both functions are security definer, like the other public reads and writes, because every club
--- table is behind `is_club_member` and a visitor is not a member. The grants below are explicit:
--- new functions are private by default.
+-- The public read functions are security definer, like the other public reads and writes, because
+-- every club table is behind `is_club_member` and a visitor is not a member. The setter is security
+-- definer too, and refuses anyone who is not the club's owner or organizer. The grants below are
+-- explicit: new functions are private by default.
 
 -- 1. The home page feature ----------------------------------------------------------------------
 -- Which event sits at the top of the public home page is the organizer's decision, not a rule the
