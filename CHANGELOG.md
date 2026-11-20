@@ -9,6 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **TeeLine Workspace, an internal ops portal, is being built as a separate app (`apps/ops`).** Live shared documents, a tournament pipeline board, team tasks, and Settings for members and roles, for Syntaxure Labs, MDM Events and ZenLabs. It has its own Vercel project and its own access list (`workspace_members`), separate from `club_members`, so tournament staff see nothing in it. The live tournament app is unchanged, and the workspace stays off (feature flag) until the owner turns it on. The build contract is `docs/workspace/SPEC.md`; the decisions are in `docs/PLAN.md`. Migrations, **all four written, not applied** (the owner applies them, to a non-production project first):
+  - `20261120000100_workspace_members.sql`: the access list, role helpers, owner-only add and list functions, and the last-owner protection.
+  - `20261120000200_workspace_docs.sql`: documents, live Yjs state and named snapshots.
+  - `20261120000300_workspace_pipeline_and_tasks.sql`: pipeline cards (linked to `tournaments` by `tournament_id`, which takes a very short lock on that table, so apply outside scoring peaks), tasks and comments.
+  - `20261120000400_workspace_realtime.sql`: authorization for the private Realtime channels and the database-sent change feed. Needs Realtime Authorization on the project.
+
+  Checked locally on an in-process Postgres with 91 rules (non-members and suspended members read nothing, members cannot delete what only owner or partner may, the last owner cannot be removed, channels refuse non-members); not yet checked on a real Supabase project.
+
 ## [0.58.4] - 2026-11-15
 
 ### Fixed
