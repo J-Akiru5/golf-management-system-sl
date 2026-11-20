@@ -396,7 +396,7 @@
 .tl-landing .tl-product-secondary figcaption {
   padding-top: 12px;
   color: #c2cbc4;
-  font-size: 12px;
+  font-size: 14px;
 }
 .tl-landing .tl-illustrated-note {
   position: absolute;
@@ -409,9 +409,23 @@
   color: #f7f5ee;
   font-size: 10px;
 }
+/* In the hero the window's lower edge fades into the page, so the note sits at the top instead. */
+.tl-landing .tl-hero-window {
+  position: relative;
+}
+.tl-landing .tl-illustrated-note.tl-hero-note {
+  top: 44px;
+  right: 16px;
+  bottom: auto;
+  left: auto;
+  z-index: 2;
+  font-size: 11px;
+}
+/* One column: the hole overview is about 1.6:1 and the score entry strip about 3.9:1, so side by side
+   the strip sat in a tall, mostly empty card. Stacked, each screenshot keeps its own shape. */
 .tl-landing .tl-product-secondary {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1fr;
   gap: 20px;
   margin-top: 22px;
 }
@@ -1036,6 +1050,12 @@
   .tl-landing .tl-illustrated-note {
     left: 13px;
     bottom: 48px;
+    font-size: 8px;
+  }
+  .tl-landing .tl-illustrated-note.tl-hero-note {
+    top: 34px;
+    right: 8px;
+    padding: 3px 6px;
     font-size: 8px;
   }
   .tl-landing .tl-product-secondary {

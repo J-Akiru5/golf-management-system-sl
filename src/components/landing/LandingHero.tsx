@@ -132,6 +132,13 @@ export function LandingHero({
                 priority
                 sizes="(max-width: 700px) 96vw, (max-width: 1200px) 92vw, 1000px"
               />
+              {/* The control room's course map is a drawn layout. It must never read as IGCC's
+                  real holes or tee data. */}
+              {heroShot.src.includes("control-room") && (
+                <p className="tl-illustrated-note tl-hero-note">
+                  Illustrated layout · not IGCC’s real holes
+                </p>
+              )}
             </figure>
           </div>
         )}
