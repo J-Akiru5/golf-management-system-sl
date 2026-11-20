@@ -38,7 +38,7 @@ export function PipelineCard({ summary }: { summary: PipelineSummary }) {
           >
             <span className="truncate text-sm text-ink">{stage.label}</span>
             <span className="tnum text-sm font-semibold text-ink">{stage.count}</span>
-            <span className="tnum text-xs text-ink-muted">
+            <span className="tnum min-w-0 break-words text-xs text-ink-muted">
               {totalsText(stage.totals) ?? "No quoted value"}
             </span>
           </li>
