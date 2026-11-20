@@ -22,7 +22,6 @@ import {
 } from "@/lib/public/leaderboard-teaser";
 import { PRODUCT_SHOTS, PROOF_SOURCE, PROOF_STATS } from "@/lib/public/platform-proof";
 import {
-  defaultHeroView,
   eventEyebrow,
   eventStatsFor,
   orderForCarousel,
@@ -122,7 +121,7 @@ export default async function HomePage() {
         eventEyebrow={eventEyebrow(featured, today)}
         quickActions={quickActionsFor(featured)}
         eventStats={eventStatsFor(featured, today)}
-        defaultView={defaultHeroView(featured, today)}
+        heroShot={PRODUCT_SHOTS[0] ?? null}
       />
       <ProductShowcase shots={PRODUCT_SHOTS} />
       <ProofStrip stats={PROOF_STATS} source={PROOF_SOURCE} />

@@ -1,10 +1,17 @@
--- The landing page's event list, and demo requests in the feedback inbox
+-- The landing page's event list, the home page feature, and demo requests in the feedback inbox
 --
--- Two small additions, in one file because the landing page needs both:
+-- Three small additions, in one file because the landing page needs all three:
 --
---   * `public_showcase_events()` returns the same payload as `public_events()` plus a `finished`
---     flag, and keeps a finished event listed for about a year. The landing page's carousel can
---     then mark the club's most recent event Completed instead of losing it a week after it ended.
+--   * `public.tournaments.landing_featured` is the one event an organizer chose to show at the top
+--     of the public home page. A partial unique index keeps it to one event per club, and
+--     `set_landing_feature()` is the only supported way to change it: it checks the caller's role
+--     and clears the previous feature in the same statement, so the index can never be tripped by a
+--     normal switch. The page itself never picks a featured event.
+--
+--   * `public_showcase_events()` returns the same payload as `public_events()` plus `finished` and
+--     `featured` flags, and keeps a finished event listed for about a year. The landing page's
+--     carousel can then mark the club's most recent event Completed instead of losing it a week
+--     after it ended, and the hero can show the organizer's featured event.
 --     `public_events()` and `public_open_events()` are unchanged; the app still falls back to them
 --     while this migration has not reached a project.
 --
@@ -12,11 +19,80 @@
 --     the existing table, permission model and `submit_feedback` write path. A demo request must
 --     carry a contact email, because the point of the note is a reply.
 --
--- Both functions are security definer, like the other public reads and writes, because every club
--- table is behind `is_club_member` and a visitor is not a member. The grants below are explicit:
--- new functions are private by default.
+-- The public read functions are security definer, like the other public reads and writes, because
+-- every club table is behind `is_club_member` and a visitor is not a member. The setter is security
+-- definer too, and refuses anyone who is not the club's owner or organizer. The grants below are
+-- explicit: new functions are private by default.
 
--- 1. The landing page's event list --------------------------------------------------------------
+-- 1. The home page feature ----------------------------------------------------------------------
+-- Which event sits at the top of the public home page is the organizer's decision, not a rule the
+-- page applies. The column is private until `set_landing_feature()` says otherwise, and the partial
+-- unique index is what makes "one event at a time" a database fact rather than a promise. The column
+-- comes first in this file because `public_showcase_events()` below reads it.
+
+alter table public.tournaments
+  add column if not exists landing_featured boolean not null default false;
+
+comment on column public.tournaments.landing_featured is
+  'True for the one event an organizer chose to feature at the top of the public home page. At most one per club, enforced by tournaments_one_landing_feature.';
+
+create unique index if not exists tournaments_one_landing_feature
+  on public.tournaments (club_id)
+  where landing_featured;
+
+create or replace function public.set_landing_feature(
+  p_tournament uuid,
+  p_featured boolean
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_club uuid;
+begin
+  if p_featured is null then
+    raise exception 'A feature value is required' using errcode = '22023';
+  end if;
+
+  -- Lock the row so two switches pressed at once cannot interleave the clear and the set.
+  select t.club_id into v_club
+    from public.tournaments t
+   where t.id = p_tournament
+   for update;
+
+  if v_club is null then
+    raise exception 'Tournament not found' using errcode = 'P0002';
+  end if;
+
+  if not public.has_club_role(v_club, array['owner', 'organizer']) then
+    raise exception 'Only the owner or an organizer can change the home page feature'
+      using errcode = '42501';
+  end if;
+
+  -- Turning the feature on replaces any other event of the club, before the new one is set, so the
+  -- unique index is never violated for a moment.
+  if p_featured then
+    update public.tournaments
+       set landing_featured = false
+     where club_id = v_club
+       and id <> p_tournament
+       and landing_featured;
+  end if;
+
+  update public.tournaments
+     set landing_featured = p_featured
+   where id = p_tournament;
+
+  return jsonb_build_object('tournamentId', p_tournament, 'featured', p_featured);
+end;
+$$;
+
+revoke all on function public.set_landing_feature(uuid, boolean) from public;
+grant execute on function public.set_landing_feature(uuid, boolean) to authenticated;
+
+-- 2. The landing page's event list --------------------------------------------------------------
 
 create or replace function public.public_showcase_events()
 returns jsonb
@@ -37,6 +113,7 @@ as $$
         'firstTeeTime', to_char(t.first_tee_time, 'HH24:MI'),
         'cutOffDate', t.cutoff_date,
         'entriesOpen', (t.state = 'open' and t.cutoff_date >= current_date),
+        'featured', t.landing_featured,
         'entered', (
           select count(*)
           from public.registrations r
@@ -60,12 +137,12 @@ as $$
 $$;
 
 comment on function public.public_showcase_events() is
-  'Events the landing page may show, including ones finished in the last year, each with a finished flag. Same fields as public_events(): no contact details, no player data.';
+  'Events the landing page may show, including ones finished in the last year, each with a finished flag and the organizer''s featured flag. Same fields as public_events(): no contact details, no player data.';
 
 revoke all on function public.public_showcase_events() from public;
 grant execute on function public.public_showcase_events() to anon, authenticated;
 
--- 2. Demo requests in the feedback inbox --------------------------------------------------------
+-- 3. Demo requests in the feedback inbox --------------------------------------------------------
 
 -- The table check and the function check both name the allowed categories. They are kept in step
 -- here, in one file, so a note cannot pass one and fail the other.
@@ -334,10 +411,11 @@ grant execute on function public.submit_feedback(
   text, text, text, text, boolean, text, text, text, uuid
 ) to anon, authenticated;
 
--- 3. Self-check ---------------------------------------------------------------------------------
--- Prove the new filter, the finished flag, the field list and the demo rule, in this transaction.
--- The probes are deleted explicitly rather than relying on a rollback: the SQL editor runs a script
--- statement by statement, so an inserted row can outlive the block that raised.
+-- 4. Self-check ---------------------------------------------------------------------------------
+-- Prove the new filter, the finished and featured flags, the field list, the feature setting and the
+-- demo rule, in this transaction. The probes are deleted explicitly rather than relying on a
+-- rollback: the SQL editor runs a script statement by statement, so an inserted row can outlive the
+-- block that raised.
 
 do $$
 declare
@@ -409,12 +487,46 @@ begin
     select array_agg(k) into v_keys
     from jsonb_array_elements(v_rows) e, jsonb_object_keys(e) k
     where k not in ('tournamentId', 'name', 'dates', 'startFormat', 'firstTeeTime', 'cutOffDate',
-                    'entriesOpen', 'entered', 'finished');
+                    'entriesOpen', 'entered', 'finished', 'featured');
     if v_keys is not null then
       raise exception 'The showcase payload carries unexpected fields: %', v_keys;
     end if;
 
     delete from public.tournaments where name like 'zz-showcase-%';
+  end if;
+
+  -- The home page feature is a column, one-per-club index and authenticated setter. Catalog checks
+  -- only: no event row is read or written here.
+  if not exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'tournaments'
+       and column_name = 'landing_featured'
+  ) then
+    raise exception 'public.tournaments has no landing_featured column';
+  end if;
+
+  if not exists (
+    select 1 from pg_indexes
+     where schemaname = 'public'
+       and tablename = 'tournaments'
+       and indexname = 'tournaments_one_landing_feature'
+  ) then
+    raise exception 'The one-feature-per-club index is missing';
+  end if;
+
+  if not exists (
+    select 1
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname = 'set_landing_feature'
+  ) then
+    raise exception 'public.set_landing_feature is missing';
+  end if;
+
+  if has_function_privilege('anon', 'public.set_landing_feature(uuid, boolean)', 'EXECUTE') then
+    raise exception 'anon can execute public.set_landing_feature';
   end if;
 
   -- The category check accepts demo, and the function requires an email for it.
@@ -454,7 +566,7 @@ begin
   end if;
 end $$;
 
--- 4. Owner check, after the migration is applied ------------------------------------------------
+-- 5. Owner check, after the migration is applied ------------------------------------------------
 --
 -- The number of events the landing page can show:
 --
@@ -466,3 +578,9 @@ end $$;
 --          (e ->> 'finished')::boolean as finished
 --     from jsonb_array_elements(public.public_showcase_events()) e
 --    order by (e ->> 'finished')::boolean, e ->> 'name';
+--
+-- The home page feature:
+--
+--   select name, landing_featured from public.tournaments order by play_date desc limit 5;
+--
+-- The organizer turns the feature on in Setup, "TeeLine home page".

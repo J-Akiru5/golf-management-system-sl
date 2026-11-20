@@ -5,13 +5,7 @@
  * date decision below is arithmetic on the ISO string, so the server render and the hydrated page
  * cannot disagree.
  */
-import type {
-  EventPhase,
-  HeroStat,
-  HeroView,
-  LandingEvent,
-  QuickAction,
-} from "@/components/landing/types";
+import type { EventPhase, HeroStat, LandingEvent, QuickAction } from "@/components/landing/types";
 import {
   dateRange,
   daysBetween,
@@ -65,6 +59,8 @@ export function toLandingEvent(event: PublicEvent, today: string): LandingEvent 
     dayNumber: phase === "live" ? eventDayNumber(event, today) : 0,
     dateLabel: dateRange(event.dates),
     enteredLabel: enteredLabel(event.entered),
+    // A copy, not a recomputation: which event is featured is the organizer's decision.
+    featured: event.featured,
   };
 }
 
@@ -89,25 +85,15 @@ export function orderForCarousel(events: readonly LandingEvent[]): LandingEvent[
   });
 }
 
-/** The live event; else the soonest upcoming; else the most recently finished; else null. */
-export function pickFeatured(events: readonly LandingEvent[]): LandingEvent | null {
-  const ordered = orderForCarousel(events);
-  return ordered[0] ?? null;
-}
-
 /**
- * The side the hero opens on. An event is worth the front door while it is being played, or while
- * its first day is close enough that a visitor is likely to enter. Otherwise the page speaks to
- * clubs first. With no featured event there is no event side at all.
+ * The event an organizer chose to feature on the home page, or nothing.
+ *
+ * The flag is a desk setting, never a guess. There is no fallback to a live, upcoming or finished
+ * event: with no flag set, the hero shows no event band at all. If several events somehow carry the
+ * flag, the first in the given order wins rather than the page inventing a rule.
  */
-export function defaultHeroView(featured: LandingEvent | null, today: string): HeroView {
-  if (!featured) return "clubs";
-  if (featured.phase === "live") return "event";
-  if (featured.phase === "upcoming") {
-    const days = daysBetween(today, firstDate(featured));
-    if (days >= 0 && days <= 7) return "event";
-  }
-  return "clubs";
+export function pickFeatured(events: readonly LandingEvent[]): LandingEvent | null {
+  return events.find((event) => event.featured) ?? null;
 }
 
 /**
