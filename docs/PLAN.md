@@ -49,6 +49,75 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 
 ---
 
+## TeeLine Workspace, the internal ops portal (plan of 20 Nov 2026)
+
+An internal tool for Syntaxure Labs, MDM Events and ZenLabs: live shared documents, a tournament
+pipeline board and team tasks. It is not part of the tournament desk and does not touch scoring, the
+draw, the tabulator, public pages or handicap logic. **Status: planning. Nothing is built, no
+migration is written yet.**
+
+### Decisions the owner made on 20 Nov 2026
+
+- **Branches reconciled.** `main` (0.58.4) was merged into `develop` as `b0b7bc2` and pushed. `develop`
+  does not deploy. All workspace work branches from it: integration branch `feat/workspace`, one
+  `ws/<name>` branch per workstream, one PR to `develop`, no auto-merge.
+- **The workspace is its own app with its own Vercel project**, so it cannot destabilise the 21 and 22
+  Dec tournament. The repository layout for this is proposed below and waits for the owner's answer.
+- **User management, role-based access control and a Settings page are in scope.** The admin side of
+  the tournament desk has none of these today: `/admin` is one page and staff are added by SQL
+  (`docs/STAFF_ACCESS.md`). The owner edits members and roles in the workspace Settings page.
+- **Card design follows the TeeLine design system.** No callout boxes with a coloured side bar, no
+  generic "artifact" look. Cards use the existing tokens (`surface-raised`, `line`), Geist for body
+  text, Manrope for UI titles, Bebas Neue for headings, and gold only for marks and rules, never body
+  text (`docs/brand`, brand guidelines v1.0). Light and dark are both required.
+- **The exposed test password stays as it is for now.** A staff test-account password appeared in the
+  17 Nov meeting export. The owner will rotate it later. It has not been rotated as of 20 Nov, and the
+  export is not used as a source for the workspace seed.
+
+### Scope
+
+| Area | Phase A (first build) | Phase B (needs the owner's approval first) |
+| --- | --- | --- |
+| Docs | Live co-edited documents, presence, autosave, saved versions, restore | Comments |
+| Pipeline | Tournament kanban, inquiry to closed, linked to existing tournaments | Invoicing fields |
+| Tasks | List and board views, assignee, due date, priority, comments, pipeline link | Notifications |
+| Members and roles | `workspace_members` (owner, partner, member), invite and remove, change role | Per-document sharing |
+| Settings | Members and roles, workspace name, profile and theme, feature flag state | Management of tournament staff (`club_members`) |
+
+Managing tournament staff (`club_members`) from the portal would change how existing auth and RLS are
+used, so it is Phase B and needs a decision from the owner before it is designed in detail.
+
+### Proposed layout (not confirmed)
+
+Add, do not move: keep the live app at the repository root until after 22 Dec, add the workspace as
+`apps/ops` (a pnpm workspace package) with its own Vercel project whose root directory is `apps/ops`,
+and put the shared brand tokens in `packages/brand`. Moving the live app into `apps/web` is a separate
+release after the tournament, because it changes the production Vercel project's root directory and
+every import path. A separate origin also means a separate sign-in session against the same Supabase
+project, and the new domain has to be added to Supabase's allowed redirect URLs (a project setting the
+owner applies).
+
+### Rules for this work
+
+- Workers are OpenCode with `opencode-go/deepseek-v4.1-flash` only. Claude Code orchestrates and
+  reviews. Agents never write migrations, never push and never deploy.
+- Migrations are written by one author, reviewed by the owner and applied by the owner. Each is recorded
+  in the changelog as applied or not applied.
+- Workspace tables are separate (`ws_` prefix plus `workspace_members`), RLS is on for every table, and
+  the workspace membership is independent of `club_members`, so tabulators and desk staff see nothing
+  by default.
+- No service-role key reaches the client.
+
+### Known risk found while reconciling
+
+`pnpm build` stops at its last step on both `main` and `develop`: the installed Next.js 16.4.2 is
+reported as affected by a known security advisory, and the build refuses to finish. Typecheck, lint,
+all 2976 tests and the compile step pass. The two branches pin the same Next version, so the merge did
+not cause it. Production deploys may fail the same way. Owner decision needed: upgrade Next before 21
+Dec.
+
+---
+
 ## Final day of the 24th Bamboo Tee (plan of 15 Nov 2026)
 
 Production is `v0.57.0`. Day 4 is the last playing day: every score and every handicap has to be final
