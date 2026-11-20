@@ -240,11 +240,12 @@ describe("crawl rules and the sitemap", () => {
     expect(agents?.disallow).toEqual(wildcard.disallow);
   });
 
-  it("lists the seven durable pages and no entry links", () => {
+  it("lists the eight durable pages and no entry links", () => {
     const entries = sitemap();
     expect(entries.map((entry) => entry.url)).toEqual([
       `${SITE_URL}/`,
       `${SITE_URL}/demo`,
+      `${SITE_URL}/events`,
       `${SITE_URL}/pairings`,
       `${SITE_URL}/roster`,
       `${SITE_URL}/leaderboard`,

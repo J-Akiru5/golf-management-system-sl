@@ -13,11 +13,9 @@ import { PlayerProfileSearch } from "@/components/public/PlayerProfileSearch";
 import { PlayerProfileView } from "@/components/public/PlayerProfileView";
 import { RulesOfPlay } from "@/components/public/ProgrammeView";
 import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
-import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { fmtDateLabel, fmtRange } from "@/lib/data/labels";
 import { type PublicReleaseState, toPublicPairings } from "@/lib/data/public";
@@ -42,7 +40,6 @@ import { getI18n } from "@/lib/i18n/server";
 import { loadPortal } from "@/lib/player/portal";
 import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
 import { pairingsSignature } from "@/lib/public/pairings-live";
-import { pairingsBackLink } from "@/lib/public/pairings-nav";
 import { publicProfileTeeTimes } from "@/lib/public/public-profile-tee-times";
 import { blackoutFlags } from "@/lib/public/results-reveal";
 import { openGraphFor, SITE_NAME, twitterFor, webPageSchema } from "@/lib/seo";
@@ -120,7 +117,6 @@ export default async function PublicPairingsPage({
   if (tab === "leaderboard") redirect("/leaderboard");
 
   const { t } = await getI18n();
-  const back = pairingsBackLink(tab);
   if (!isSupabaseConfigured()) return <DemoPairings tab={tab} playerId={rawPlayerId} />;
 
   const playerId = rawPlayerId && PLAYER_ID.test(rawPlayerId) ? rawPlayerId : null;
@@ -220,46 +216,25 @@ export default async function PublicPairingsPage({
       />
       <PlayerOfflineNotice path="/pairings" />
       <PairingsLive signature={liveSignature} />
-      <header className="public-head public-appbar p-4 sm:p-5">
-        {/* Inside a player's profile the way back is the pairings list; everywhere else it is the
-            main page. */}
-        <PublicBackLink label={t(back.labelKey)} href={back.href} />
+      <header className="public-head tl-pub-page-head tl-pairings-head">
         <div className="public-appbar-controls flex items-center gap-2">
           <ThemeToggle compact tone="nav" />
           <LanguageSwitcher tone="on-forest" />
           <HelpButton audience="player" screen="pairings" />
         </div>
-        <div className="appbar-foot">
-          <div className="public-appbar-brand flex flex-wrap items-center gap-3">
-            <TeeLineLogo variant="reverse" width={144} />
-            <span className="leading-tight">
-              {data && (
-                <b className="block font-display text-[13px] font-semibold">
-                  {t("pairings.title")}
-                </b>
-              )}
-              <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-            </span>
-          </div>
-          <div className="appbar-title">
-            {data ? (
-              <>
-                <p className="public-appbar-kicker overline !text-gold-on-forest">
-                  {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
-                  {fmtTime(data.firstTeeTime)}
-                </p>
-                <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
-                  {data.name}
-                </h1>
-                <p className="text-on-forest-muted">{dateLabel}</p>
-              </>
-            ) : (
-              <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
-                {t("pairings.title")}
-              </h1>
-            )}
-          </div>
-        </div>
+        {data ? (
+          <>
+            {/* The page names itself in the visitor's language, then the event and its start. */}
+            <p className="tl-pub-kicker">{t("pairings.title")}</p>
+            <h1 className="tl-pub-title">{data.name}</h1>
+            <p className="tl-pub-intro">
+              {data.startFormat === "shotgun" ? t("pairings.shotgun") : t("pairings.twoTee")} ·{" "}
+              {fmtTime(data.firstTeeTime)} · {dateLabel}
+            </p>
+          </>
+        ) : (
+          <h1 className="tl-pub-title">{t("pairings.title")}</h1>
+        )}
       </header>
 
       {advisory && <PublicAdvisoryBanner advisory={advisory} />}
@@ -384,18 +359,6 @@ export default async function PublicPairingsPage({
         </>
       )}
 
-      <div className="pairings-foot no-print">
-        <p className="pairings-foot-note">{t("pairings.footer")}</p>
-        <nav className="pairings-foot-nav" aria-label={t("feedback.footerLabel")}>
-          <Link href="/">{t("pairings.home")}</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/roster">{t("programme.playersTitle")}</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/rules?from=pairings">{t("programme.navFullRules")}</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/leaderboard">{t("programme.navLeaderboard")}</Link>
-        </nav>
-      </div>
       <PublicBottomBar />
     </main>
   );

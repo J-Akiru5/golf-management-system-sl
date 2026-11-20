@@ -8,11 +8,17 @@
  * check. They are repeated here rather than inferred from a generated type so the form can be built
  * and tested without a Supabase client.
  */
+import {
+  type ConcernDetails,
+  type ConcernProblem,
+  concernSummary,
+  normaliseConcern,
+} from "@/lib/data/concerns";
 import type { TranslationKey } from "@/lib/i18n/t";
 
 /**
- * The categories the public feedback form offers. A demo request has its own page, so it is not one
- * of these choices.
+ * The older categories the public form offered before the tick boxes. They stay in the inbox so a
+ * note saved before the change is still readable and filterable.
  */
 export const FEEDBACK_CATEGORIES = ["improvement", "bug", "content"] as const;
 export type FeedbackFormCategory = (typeof FEEDBACK_CATEGORIES)[number];
@@ -20,12 +26,22 @@ export type FeedbackFormCategory = (typeof FEEDBACK_CATEGORIES)[number];
 /** A request sent from /demo. It lands in the same inbox as every other note. */
 export const FEEDBACK_DEMO_CATEGORY = "demo" as const;
 
-export type FeedbackCategory = FeedbackFormCategory | typeof FEEDBACK_DEMO_CATEGORY;
+/**
+ * The tick-box form's one category. A concern note stores `details`, the player's ticked boxes and
+ * their follow-up answers, and its message may be empty because the details are the message.
+ */
+export const FEEDBACK_CONCERN_CATEGORY = "concern" as const;
+
+export type FeedbackCategory =
+  | FeedbackFormCategory
+  | typeof FEEDBACK_DEMO_CATEGORY
+  | typeof FEEDBACK_CONCERN_CATEGORY;
 
 /** Every category the desk can show and filter by. */
 export const FEEDBACK_INBOX_CATEGORIES: readonly FeedbackCategory[] = [
   ...FEEDBACK_CATEGORIES,
   FEEDBACK_DEMO_CATEGORY,
+  FEEDBACK_CONCERN_CATEGORY,
 ];
 
 export const FEEDBACK_STATUSES = ["new", "read", "planned", "done", "dismissed"] as const;
@@ -57,6 +73,7 @@ export const FEEDBACK_CATEGORY_LABELS: Record<FeedbackCategory, string> = {
   bug: "Bug",
   content: "Content",
   demo: "Demo request",
+  concern: "Concern",
 };
 
 export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
@@ -84,7 +101,32 @@ export type FeedbackProblem =
   | "contactEmailInvalid"
   | "consentRequired"
   | "pagePathInvalid"
-  | "locale";
+  | "locale"
+  // The concern's own problems, one for each code `normaliseConcern` can return.
+  | "noConcern"
+  | "unknownConcern"
+  | "holeRequired"
+  | "holeOutOfRange"
+  | "teeRequired"
+  | "teeUnknown"
+  | "otherRequired"
+  | "concernTooLong"
+  | "badSource"
+  | "badTranscript";
+
+/** The concern's problem codes, in the form's own words. The database returns the same names. */
+const CONCERN_PROBLEMS: Record<ConcernProblem, FeedbackProblem> = {
+  no_concern: "noConcern",
+  unknown_concern: "unknownConcern",
+  hole_required: "holeRequired",
+  hole_out_of_range: "holeOutOfRange",
+  tee_required: "teeRequired",
+  tee_unknown: "teeUnknown",
+  other_required: "otherRequired",
+  too_long: "concernTooLong",
+  bad_source: "badSource",
+  bad_transcript: "badTranscript",
+};
 
 export interface FeedbackDraft {
   category: string;
@@ -95,6 +137,8 @@ export interface FeedbackDraft {
   pagePath?: string | null;
   locale: string;
   honeypot?: string;
+  /** The ticked concern, for category "concern". Checked by `normaliseConcern`. */
+  details?: unknown;
 }
 
 export interface FeedbackSubmission {
@@ -105,6 +149,8 @@ export interface FeedbackSubmission {
   contactConsent: boolean;
   pagePath: string | null;
   locale: FeedbackLocale;
+  /** The cleaned concern, or null for any other category. */
+  details?: ConcernDetails | null;
 }
 
 export type FeedbackValidation =
@@ -121,6 +167,11 @@ export interface FeedbackNote {
   eventName: string | null;
   category: FeedbackCategory;
   message: string;
+  /**
+   * The structured part of a concern, parsed from `public_feedback.details`. Absent or null on any
+   * other note, and on a note whose stored details could not be read.
+   */
+  details?: ConcernDetails | null;
   contactName: string | null;
   contactEmail: string | null;
   contactConsent: boolean;
@@ -278,10 +329,27 @@ export function validateFeedback(draft: FeedbackDraft): FeedbackValidation {
   const category = normalizeFeedbackCategory(draft.category);
   if (!category) return { ok: false, error: "category" };
 
-  const message = typeof draft.message === "string" ? draft.message.trim() : "";
-  if (message === "") return { ok: false, error: "messageRequired" };
-  if (message.length < FEEDBACK_MESSAGE_MIN) return { ok: false, error: "messageTooShort" };
-  if (message.length > FEEDBACK_MESSAGE_MAX) return { ok: false, error: "messageTooLong" };
+  // The concern is checked first, exactly as the database function checks it, so the form's
+  // follow-up answers are refused before anything else in the note is looked at.
+  const isConcern = category === FEEDBACK_CONCERN_CATEGORY;
+  let details: ConcernDetails | null = null;
+  if (isConcern) {
+    const concern = normaliseConcern(draft.details);
+    if (!concern.ok) return { ok: false, error: CONCERN_PROBLEMS[concern.problem] };
+    details = concern.details;
+  }
+
+  const typed = typeof draft.message === "string" ? draft.message.trim() : "";
+  if (typed === "") {
+    // The details are the message for a concern; every other category still needs one.
+    if (!isConcern) return { ok: false, error: "messageRequired" };
+  } else {
+    if (typed.length < FEEDBACK_MESSAGE_MIN) return { ok: false, error: "messageTooShort" };
+    if (typed.length > FEEDBACK_MESSAGE_MAX) return { ok: false, error: "messageTooLong" };
+  }
+  // The stored message is what the inbox lists. A concern with nothing typed leads with its summary,
+  // the same line the database stores, so the desk never sees a blank note.
+  const message = typed === "" && details ? concernSummary(details) : typed;
 
   const contactName = asNullableText(draft.contactName);
   if (contactName && contactName.length > FEEDBACK_CONTACT_NAME_MAX) {
@@ -314,6 +382,8 @@ export function validateFeedback(draft: FeedbackDraft): FeedbackValidation {
     value: {
       category,
       message,
+      // Only a concern carries details, so an ordinary note keeps exactly the shape it had.
+      ...(details ? { details } : {}),
       contactName: hasContact ? contactName : null,
       contactEmail: hasContact ? contactEmail : null,
       contactConsent: hasContact,
@@ -321,6 +391,16 @@ export function validateFeedback(draft: FeedbackDraft): FeedbackValidation {
       locale,
     },
   };
+}
+
+/**
+ * Reads the stored `details` of a concern. The object was validated when it was saved, so a note
+ * whose details no longer parse is shown without them rather than hiding the whole note.
+ */
+export function parseFeedbackDetails(value: unknown): ConcernDetails | null {
+  if (value === null || value === undefined) return null;
+  const parsed = normaliseConcern(value);
+  return parsed.ok ? parsed.details : null;
 }
 
 /**
@@ -361,6 +441,7 @@ export function parseFeedbackNote(value: unknown): FeedbackNote | null {
     eventName: asNullableText(row.event_name),
     category,
     message,
+    details: parseFeedbackDetails(row.details),
     contactName: asNullableText(row.contact_name),
     contactEmail: asNullableText(row.contact_email),
     contactConsent: row.contact_consent === true,
@@ -420,6 +501,10 @@ export function matchesFeedbackFilters(note: FeedbackNote, filters: FeedbackFilt
   if (query === "") return true;
   return [
     note.message,
+    note.details ? concernSummary(note.details) : "",
+    note.details?.playerName ?? "",
+    note.details?.handicap ?? "",
+    note.details?.schedule ?? "",
     note.contactName ?? "",
     note.contactEmail ?? "",
     note.pagePath ?? "",

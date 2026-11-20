@@ -211,13 +211,6 @@ async function LeaderboardView({
           {t("programme.scoresSeeAll")}
         </Link>
       </div>
-      <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/results/all">{t("programme.navScores")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/pairings">{t("programme.navPairings")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/roster">{t("programme.navPlayers")}</Link>
-      </nav>
     </LeaderboardShell>
   );
 }
@@ -291,11 +284,6 @@ async function RoundLeaderboardFallback({
           )}
         </div>
       )}
-      <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/pairings">Pairings</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/roster">Players</Link>
-      </nav>
     </LeaderboardShell>
   );
 }
