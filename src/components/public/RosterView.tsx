@@ -8,9 +8,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { PublicBottomBar } from "@/components/MobileTabBar";
 import { HeldNotice } from "@/components/public/HeldNotice";
 import { PublicAdvisoryBanner } from "@/components/public/PublicAdvisoryBanner";
-import { PublicBackLink } from "@/components/public/PublicBackLink";
 import { PublicTournamentNav } from "@/components/public/PublicTournamentNav";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { filterRoster, rosterFlights } from "@/lib/data/public";
 import { publicTabHref } from "@/lib/data/public-tabs";
@@ -51,27 +49,15 @@ export function RosterPage({
   const { t } = useI18n();
   return (
     <main className="public public-pairings mobile-bar-space">
-      <header className="public-head public-appbar p-4 sm:p-5">
-        <PublicBackLink label={t("pairings.backHome")} />
+      <header className="public-head tl-pub-page-head tl-pairings-head">
         <div className="public-appbar-controls flex items-center gap-2">
           <ThemeToggle compact tone="nav" />
           <LanguageSwitcher tone="on-forest" />
           <HelpButton audience="player" screen="pairings" />
         </div>
-        <div className="appbar-foot">
-          <div className="public-appbar-brand flex flex-wrap items-center gap-3">
-            <TeeLineLogo variant="reverse" width={144} />
-            <span className="leading-tight">
-              <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-            </span>
-          </div>
-          <div className="appbar-title">
-            <h1 className="font-serif text-[25px] leading-8 font-semibold !text-on-forest sm:text-[40px] sm:leading-[44px] lg:text-[52px] lg:leading-[56px]">
-              {t("programme.playersTitle")}
-            </h1>
-            <p className="text-on-forest-muted">{t("programme.playersIntro")}</p>
-          </div>
-        </div>
+        <p className="tl-pub-kicker">Players</p>
+        <h1 className="tl-pub-title">{t("programme.playersTitle")}</h1>
+        <p className="tl-pub-intro">{t("programme.playersIntro")}</p>
       </header>
 
       {advisory && <PublicAdvisoryBanner advisory={advisory} />}
@@ -112,13 +98,6 @@ export function RosterPage({
         <RosterDirectory players={players} />
       )}
 
-      <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/pairings">{t("programme.navPairings")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/rules">{t("programme.navFullRules")}</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/">{t("pairings.home")}</Link>
-      </nav>
       <PublicBottomBar />
     </main>
   );

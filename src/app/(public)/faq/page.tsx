@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PublicBottomBar } from "@/components/MobileTabBar";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { NGAP_FAQ, NGAP_FAQ_CURRENT, NGAP_FAQ_SOURCE } from "@/lib/public/ngap-faq";
 import { faqPageSchema, openGraphFor, SITE_NAME, twitterFor, webPageSchema } from "@/lib/seo";
 
@@ -44,19 +42,10 @@ export default function NgapFaqPage() {
           faqPageSchema(NGAP_FAQ),
         ]}
       />
-      <header className="public-head">
-        <div className="flex flex-wrap items-center gap-3">
-          <TeeLineLogo variant="reverse" width={172} />
-          <span className="leading-tight">
-            <b className="block font-display text-[13px] font-semibold">NGAP WHS FAQ</b>
-            <span className="text-xs text-on-forest-muted">Iloilo Golf &amp; Country Club</span>
-          </span>
-        </div>
-        <p className="overline mt-3 !text-gold-on-forest">Handicaps</p>
-        <h1 className="font-serif text-[28px] leading-8 font-semibold !text-on-forest sm:text-[44px] sm:leading-[48px]">
-          NGAP World Handicap System: frequently asked questions
-        </h1>
-        <p className="text-on-forest-muted">
+      <header className="public-head tl-pub-page-head">
+        <p className="tl-pub-kicker">Handicaps</p>
+        <h1 className="tl-pub-title">NGAP World Handicap System: frequently asked questions</h1>
+        <p className="tl-pub-intro">
           The questions golfers ask about the NGAP&rsquo;s WHS, in the NGAP&rsquo;s words.
         </p>
       </header>
@@ -103,13 +92,6 @@ export default function NgapFaqPage() {
         ))}
       </ol>
 
-      <nav className="site-foot-nav no-print" aria-label="Footer">
-        <Link href="/">TEELINE GOLF HOME</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/pairings">Player pairings</Link>
-        <span aria-hidden="true">·</span>
-        <Link href="/rules">Tournament rules</Link>
-      </nav>
       <PublicBottomBar />
     </main>
   );

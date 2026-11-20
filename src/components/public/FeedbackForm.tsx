@@ -290,89 +290,90 @@ export function FeedbackForm({
       )}
 
       <fieldset className="tl-field border-0 p-0">
-        <legend className="tl-pub-title">What is your concern? Tick all that apply</legend>
+        <legend className="tl-concern-legend">What is your concern? Tick all that apply</legend>
         <p className="hint m-0">You can tick more than one.</p>
         <div className="tl-check-grid">
           {CONCERN_KINDS.map((kind) => (
-            <label className="tl-check" key={kind}>
-              <input
-                type="checkbox"
-                checked={concerns.includes(kind)}
-                onChange={(e) => toggleConcern(kind, e.target.checked)}
-                aria-invalid={problem !== null && PROBLEM_FIELD[problem] === "concerns"}
-              />
-              <span>{CONCERN_LABELS[kind]}</span>
-            </label>
+            <div className="tl-concern-item" key={kind}>
+              <label className="tl-check-option">
+                <input
+                  className="tl-check-control"
+                  type="checkbox"
+                  checked={concerns.includes(kind)}
+                  onChange={(e) => toggleConcern(kind, e.target.checked)}
+                  aria-invalid={problem !== null && PROBLEM_FIELD[problem] === "concerns"}
+                />
+                <span>{CONCERN_LABELS[kind]}</span>
+              </label>
+              {kind === "score" && ticksScore && (
+                <div className="tl-reveal-field tl-field">
+                  <label htmlFor="feedback-hole">Hole no.</label>
+                  <input
+                    id="feedback-hole"
+                    className="tl-input"
+                    type="number"
+                    inputMode="numeric"
+                    min={HOLE_MIN}
+                    max={HOLE_MAX}
+                    step={1}
+                    value={holeNo}
+                    onChange={(e) => {
+                      setHoleNo(e.target.value);
+                      clearProblem();
+                    }}
+                    aria-invalid={problem === "holeRequired" || problem === "holeOutOfRange"}
+                  />
+                  {fieldError("hole")}
+                </div>
+              )}
+              {kind === "tee_off" && ticksTeeOff && (
+                <fieldset className="tl-reveal-field tl-field border-0 p-0">
+                  <legend>Tee colour</legend>
+                  <div className="tl-radio-grid">
+                    {TEE_COLOURS.map((colour) => (
+                      <label className="tl-radio-option" key={colour}>
+                        <input
+                          className="tl-radio-control"
+                          type="radio"
+                          name="teeColour"
+                          value={colour}
+                          checked={teeColour === colour}
+                          onChange={() => {
+                            setTeeColour(colour);
+                            clearProblem();
+                          }}
+                          aria-invalid={problem === "teeRequired" || problem === "teeUnknown"}
+                        />
+                        <span>{TEE_COLOUR_LABELS[colour]}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {fieldError("tee")}
+                </fieldset>
+              )}
+              {kind === "other" && ticksOther && (
+                <div className="tl-reveal-field tl-field">
+                  <label htmlFor="feedback-other">What is the other concern?</label>
+                  <input
+                    id="feedback-other"
+                    className="tl-input"
+                    type="text"
+                    maxLength={CONCERN_TEXT_MAX}
+                    value={otherText}
+                    onChange={(e) => {
+                      setOtherText(e.target.value);
+                      clearProblem();
+                    }}
+                    aria-invalid={problem === "otherRequired" || problem === "concernTooLong"}
+                  />
+                  {fieldError("other")}
+                </div>
+              )}
+            </div>
           ))}
         </div>
         {fieldError("concerns")}
       </fieldset>
-
-      {ticksScore && (
-        <div className="tl-reveal-field tl-field">
-          <label htmlFor="feedback-hole">Hole no.</label>
-          <input
-            id="feedback-hole"
-            className="tl-input"
-            type="number"
-            inputMode="numeric"
-            min={HOLE_MIN}
-            max={HOLE_MAX}
-            step={1}
-            value={holeNo}
-            onChange={(e) => {
-              setHoleNo(e.target.value);
-              clearProblem();
-            }}
-            aria-invalid={problem === "holeRequired" || problem === "holeOutOfRange"}
-          />
-          {fieldError("hole")}
-        </div>
-      )}
-
-      {ticksTeeOff && (
-        <fieldset className="tl-reveal-field tl-field border-0 p-0">
-          <legend>Tee colour</legend>
-          <div className="flex flex-wrap gap-4">
-            {TEE_COLOURS.map((colour) => (
-              <label className="tl-radio" key={colour}>
-                <input
-                  type="radio"
-                  name="teeColour"
-                  value={colour}
-                  checked={teeColour === colour}
-                  onChange={() => {
-                    setTeeColour(colour);
-                    clearProblem();
-                  }}
-                  aria-invalid={problem === "teeRequired" || problem === "teeUnknown"}
-                />
-                <span>{TEE_COLOUR_LABELS[colour]}</span>
-              </label>
-            ))}
-          </div>
-          {fieldError("tee")}
-        </fieldset>
-      )}
-
-      {ticksOther && (
-        <div className="tl-reveal-field tl-field">
-          <label htmlFor="feedback-other">What is the other concern?</label>
-          <input
-            id="feedback-other"
-            className="tl-input"
-            type="text"
-            maxLength={CONCERN_TEXT_MAX}
-            value={otherText}
-            onChange={(e) => {
-              setOtherText(e.target.value);
-              clearProblem();
-            }}
-            aria-invalid={problem === "otherRequired" || problem === "concernTooLong"}
-          />
-          {fieldError("other")}
-        </div>
-      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="tl-field">
@@ -464,8 +465,9 @@ export function FeedbackForm({
       </div>
 
       <div className="tl-field">
-        <label className="tl-check">
+        <label className="tl-check-option">
           <input
+            className="tl-check-control"
             type="checkbox"
             checked={contactConsent}
             onChange={(e) => {

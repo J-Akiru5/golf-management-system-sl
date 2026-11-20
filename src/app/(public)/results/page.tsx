@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { AwardingPodium } from "@/components/public/AwardingPodium";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
@@ -71,7 +70,7 @@ export default async function AwardingResultsPage() {
 
   if (awardingDemoOn()) {
     return (
-      <PodiumShell footer={false} title={t("awarding.title")} subtitle={t("awarding.subtitle")}>
+      <PodiumShell title={t("awarding.title")} subtitle={t("awarding.subtitle")}>
         <AwardingPodium lanes={demoLaneReveal(Date.now())} serverNow={serverNow} demo />
       </PodiumShell>
     );
@@ -122,28 +121,15 @@ export default async function AwardingResultsPage() {
 function PodiumShell({
   title,
   subtitle,
-  footer = true,
   children,
 }: {
   title: string;
   subtitle: string;
-  footer?: boolean;
   children: ReactNode;
 }) {
   return (
     <LeaderboardShell eventName={title} dateText={subtitle} active="scores">
       {children}
-      {footer && (
-        <nav className="site-foot-nav no-print" aria-label="Footer">
-          <Link href="/leaderboard">Leaderboard</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/pairings">Pairings</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/roster">Players</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/results/all">All scores</Link>
-        </nav>
-      )}
     </LeaderboardShell>
   );
 }

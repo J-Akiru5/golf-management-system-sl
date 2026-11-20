@@ -103,9 +103,11 @@ export default async function EventPage({ params }: { params: Promise<{ tourname
   const groups = published?.groups ?? [];
   const top = leaderboard ? buildTeamLeaderboard(leaderboard).teams.slice(0, 3) : [];
   const rulesText = rulesHeld ? null : (programme?.rulesOfPlay ?? null);
+  const bambooRulesLink = !rulesHeld && !rulesText && /24th\s+.*bamboo\s+tee/i.test(event.name);
+  const hasRulesSection = Boolean(rulesText || bambooRulesLink);
 
   return (
-    <div className="tl-pub-page">
+    <div className="tl-pub-page tl-pub-event-page">
       <header className="tl-pub-section">
         <div className="flex flex-wrap items-center gap-3">
           <span className="tl-pub-chip">{ARCHIVE_PHASE_LABELS[event.phase]}</span>
@@ -131,7 +133,7 @@ export default async function EventPage({ params }: { params: Promise<{ tourname
       <nav className="tl-pub-section" aria-label="On this page">
         {groups.length > 0 && <a href="#pairings">Pairings</a>}
         {top.length > 0 && <a href="#results">Results</a>}
-        {rulesText && <a href="#rules">Rules of play</a>}
+        {hasRulesSection && <a href="#rules">Rules of play</a>}
       </nav>
 
       {groups.length > 0 && (
@@ -144,7 +146,7 @@ export default async function EventPage({ params }: { params: Promise<{ tourname
             <Link href="/pairings">pairings page</Link> has the same groups with the player cards.
           </p>
           <ul className="grid gap-3 sm:grid-cols-2">
-            {groups.map((group) => (
+            {groups.slice(0, 6).map((group) => (
               <li
                 className="tl-pub-card"
                 key={`${group.dayNumber ?? 1}:${group.number}`}
@@ -162,6 +164,9 @@ export default async function EventPage({ params }: { params: Promise<{ tourname
               </li>
             ))}
           </ul>
+          <Link className="tl-pub-action" href="/pairings">
+            See all published pairings
+          </Link>
           {pairings?.skippedRows ? (
             <p className="tl-pub-card" role="status">
               Part of the published draw could not be read, so{" "}
@@ -200,6 +205,9 @@ export default async function EventPage({ params }: { params: Promise<{ tourname
               </li>
             ))}
           </ol>
+          <Link className="tl-pub-action" href="/results/all">
+            See all scores
+          </Link>
         </section>
       )}
 
@@ -210,6 +218,20 @@ export default async function EventPage({ params }: { params: Promise<{ tourname
           </h2>
           <p>The organizer&rsquo;s rules for this event, as published.</p>
           <div className="tl-pub-card whitespace-pre-wrap">{rulesText}</div>
+        </section>
+      )}
+
+      {bambooRulesLink && (
+        <section className="tl-pub-section" id="rules" aria-labelledby="rules-title">
+          <h2 id="rules-title" className="tl-pub-title">
+            Rules of play
+          </h2>
+          <div className="tl-pub-card tl-pub-rules-link">
+            <p>The published Conditions of Play for the 24th Bamboo Tee are available here.</p>
+            <Link className="tl-pub-action" href="/rules">
+              Conditions of Play
+            </Link>
+          </div>
         </section>
       )}
 
@@ -227,12 +249,6 @@ export default async function EventPage({ params }: { params: Promise<{ tourname
           ))}
         </ul>
       </section>
-
-      <nav className="tl-pub-section" aria-label="More pages">
-        <Link href="/events">All events</Link>
-        <span aria-hidden="true"> · </span>
-        <Link href="/">Main page</Link>
-      </nav>
     </div>
   );
 }
