@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { TasksView } from "@/components/tasks/tasks-view";
+import { TasksView, type TaskTab } from "@/components/tasks/tasks-view";
 import { getViewer } from "@/lib/auth/viewer";
 import { demoMode } from "@/lib/flags";
 import { getRepos } from "@/lib/repos";
@@ -13,14 +13,27 @@ import {
   deleteTask,
   editComment,
   listComments,
+  moveTask,
   setStatus,
   updateTask,
 } from "./actions";
 
 export const metadata: Metadata = { title: "Tasks" };
 
-/** The task list. The gate in the app layout has already allowed this viewer in. */
-export default async function TasksPage() {
+/**
+ * The tasks screen. The gate in the app layout has already allowed this viewer in.
+ *
+ * `?view=board` opens the board tab, so the board can be linked. Every other value, and no value,
+ * opens the first list tab.
+ */
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const initialTab: TaskTab = params.view === "board" ? "board" : "mine";
+
   const demo = demoMode();
   const repos = await getRepos();
 
@@ -48,6 +61,7 @@ export default async function TasksPage() {
     createTask,
     updateTask,
     setStatus,
+    moveTask,
     deleteTask,
     listComments,
     addComment,
@@ -63,6 +77,7 @@ export default async function TasksPage() {
       viewer={viewer}
       today={isoToday()}
       live={!demo}
+      initialTab={initialTab}
       actions={actions}
     />
   );

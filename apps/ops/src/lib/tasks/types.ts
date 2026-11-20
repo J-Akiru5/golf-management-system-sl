@@ -34,6 +34,8 @@ export type TaskPatch = {
   dueDate?: string | null;
   priority?: TaskPriority;
   status?: TaskStatus;
+  /** The board's ordering value within its column. Only a move sets it. */
+  position?: number;
   pipelineCardId?: string | null;
   tournamentId?: string | null;
 };
@@ -49,6 +51,16 @@ export type TaskActions = {
   createTask(input: TaskDraft): Promise<ActionResult<WsTaskRow>>;
   updateTask(id: string, patch: TaskPatch): Promise<ActionResult<WsTaskRow>>;
   setStatus(id: string, status: TaskStatus): Promise<ActionResult<WsTaskRow>>;
+  /**
+   * A board move: the task's new status and position, plus the positions a rebalance rewrote.
+   * Every row it changed comes back so the screen can replace its optimistic copy.
+   */
+  moveTask(
+    id: string,
+    status: TaskStatus,
+    position: number,
+    others: ReadonlyArray<{ id: string; position: number }>,
+  ): Promise<ActionResult<WsTaskRow[]>>;
   deleteTask(id: string): Promise<ActionResult<void>>;
   listComments(taskId: string): Promise<ActionResult<WsTaskCommentRow[]>>;
   addComment(taskId: string, body: string): Promise<ActionResult<WsTaskCommentRow>>;

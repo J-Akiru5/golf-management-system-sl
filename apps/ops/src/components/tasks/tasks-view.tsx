@@ -3,13 +3,13 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { channels } from "@/lib/db/constants";
 import type { TaskStatus, WsTaskRow } from "@/lib/db/types";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { planTaskMove } from "@/lib/tasks/board";
 import {
   filterTasks,
   mergeTaskChange,
@@ -28,16 +28,33 @@ import type {
 } from "@/lib/tasks/types";
 import { LiveIndicator, type LiveState } from "./live-indicator";
 import { NewTaskDialog } from "./new-task-dialog";
+import { TaskBoard, type TaskBoardMove } from "./task-board";
 import { TaskDetailSheet } from "./task-detail-sheet";
 import { TaskList } from "./task-list";
 
+/** The tabs on this screen: the four list filters, plus the board. */
+export type TaskTab = TaskView | "board";
+
 /**
- * The task list screen.
+ * Keeps the board linkable: the board is `?view=board` and every list tab is plain `/tasks`.
+ * A shallow replace is enough here; there is nothing for the server to re-render, and the page
+ * reads the same parameter on a full load.
+ */
+function rememberTab(tab: TaskTab): void {
+  if (typeof window === "undefined") return;
+  const url = tab === "board" ? "/tasks?view=board" : "/tasks";
+  if (`${window.location.pathname}${window.location.search}` === url) return;
+  window.history.replaceState(null, "", url);
+}
+
+/**
+ * The task screen: the list with its four filters, and the board.
  *
  * The server renders the first data. From there this component owns the list: it applies a local
  * write as soon as the server confirms it, and folds in live changes by id and `updated_at`. A
  * change for a task whose own write is still in flight is dropped, so a local edit is never undone
- * by an event that left the database before the write landed.
+ * by an event that left the database before the write landed. The board reads the same list, so a
+ * remote move appears there without a reload.
  */
 export function TasksView({
   initialTasks,
@@ -46,6 +63,7 @@ export function TasksView({
   viewer,
   today,
   live,
+  initialTab,
   actions,
 }: {
   initialTasks: WsTaskRow[];
@@ -54,10 +72,11 @@ export function TasksView({
   viewer: TaskViewer;
   today: string;
   live: boolean;
+  initialTab: TaskTab;
   actions: TaskActions;
 }) {
   const [tasks, setTasks] = useState<WsTaskRow[]>(initialTasks);
-  const [tab, setTab] = useState<TaskView>("mine");
+  const [tab, setTab] = useState<TaskTab>(initialTab);
   const [assigneeId, setAssigneeId] = useState<string>(() => {
     if (members.some((member) => member.id === viewer.id)) return viewer.id;
     return members[0]?.id ?? "";
@@ -70,6 +89,11 @@ export function TasksView({
 
   const pending = useRef<Set<string>>(new Set());
   const openTaskIdRef = useRef<string | null>(null);
+  const tasksRef = useRef<WsTaskRow[]>(initialTasks);
+
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
 
   useEffect(() => {
     openTaskIdRef.current = openTaskId;
@@ -115,6 +139,44 @@ export function TasksView({
         setError(messageOf(cause));
       } finally {
         pending.current.delete(id);
+      }
+    },
+    [actions],
+  );
+
+  const handleMove = useCallback(
+    async (move: TaskBoardMove) => {
+      const snapshot = tasksRef.current;
+      let plan: ReturnType<typeof planTaskMove>;
+      try {
+        plan = planTaskMove(snapshot, move);
+      } catch {
+        // The task left the list between the drag and the drop. Nothing to save.
+        return;
+      }
+      if (plan.updates.length === 0) return;
+
+      // Only the rows this move touched are restored if it fails, so an unrelated live change that
+      // arrived meanwhile is kept.
+      const affected = new Map(
+        snapshot
+          .filter((task) => plan.updates.some((update) => update.id === task.id))
+          .map((task) => [task.id, task]),
+      );
+      for (const update of plan.updates) pending.current.add(update.id);
+      setTasks(plan.tasks);
+      setError(null);
+
+      try {
+        const others = plan.updates.filter((update) => update.id !== move.id);
+        const rows = await unwrap(actions.moveTask(move.id, move.toStatus, plan.position, others));
+        const saved = new Map(rows.map((row) => [row.id, row]));
+        setTasks((current) => current.map((task) => saved.get(task.id) ?? task));
+      } catch (cause) {
+        setTasks((current) => current.map((task) => affected.get(task.id) ?? task));
+        setError(messageOf(cause));
+      } finally {
+        for (const update of plan.updates) pending.current.delete(update.id);
       }
     },
     [actions],
@@ -245,7 +307,9 @@ export function TasksView({
       <Tabs
         value={tab}
         onValueChange={(value) => {
-          if (value !== "board") setTab(value as TaskView);
+          const next = value as TaskTab;
+          setTab(next);
+          rememberTab(next);
         }}
       >
         <TabsList className="flex w-full flex-wrap justify-start sm:w-auto">
@@ -253,15 +317,7 @@ export function TasksView({
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="assignee">By assignee</TabsTrigger>
           <TabsTrigger value="overdue">Overdue</TabsTrigger>
-          <TabsTrigger
-            value="board"
-            disabled
-            className="gap-2 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60"
-            title="The board view arrives in a second pass"
-          >
-            Board
-            <Badge tone="neutral">Coming soon</Badge>
-          </TabsTrigger>
+          <TabsTrigger value="board">Board</TabsTrigger>
         </TabsList>
 
         <TabsContent value="mine">
@@ -341,6 +397,17 @@ export function TasksView({
               title: "Nothing overdue",
               body: "Open tasks past their due date appear here.",
             }}
+          />
+        </TabsContent>
+
+        <TabsContent value="board">
+          <TaskBoard
+            tasks={tasks}
+            members={members}
+            viewerId={viewer.id}
+            today={today}
+            onOpen={setOpenTaskId}
+            onMove={handleMove}
           />
         </TabsContent>
       </Tabs>
