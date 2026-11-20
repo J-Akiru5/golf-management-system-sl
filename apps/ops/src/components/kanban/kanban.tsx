@@ -50,6 +50,8 @@ export type KanbanProps<T extends KanbanItem> = {
   onMove: (move: KanbanMove) => void;
   disabled?: boolean;
   renderColumnHeader?: (column: KanbanColumn, count: number) => ReactNode;
+  /** Rendered between the column header and its first card, for a per-column action. */
+  renderColumnTop?: (column: KanbanColumn, count: number) => ReactNode;
   /** The name a screen reader hears for a card. Falls back to the card id. */
   getItemLabel?: (item: T) => string;
   emptyLabel?: string;
@@ -62,6 +64,7 @@ export function Kanban<T extends KanbanItem>({
   onMove,
   disabled = false,
   renderColumnHeader,
+  renderColumnTop,
   getItemLabel,
   emptyLabel = "No cards",
 }: KanbanProps<T>) {
@@ -147,6 +150,7 @@ export function Kanban<T extends KanbanItem>({
             items={byColumn.get(column.id) ?? []}
             renderCard={renderCard}
             renderColumnHeader={renderColumnHeader}
+            renderColumnTop={renderColumnTop}
             getItemLabel={getItemLabel}
             disabled={disabled}
             emptyLabel={emptyLabel}
@@ -168,6 +172,7 @@ function KanbanColumnView<T extends KanbanItem>({
   items,
   renderCard,
   renderColumnHeader,
+  renderColumnTop,
   getItemLabel,
   disabled,
   emptyLabel,
@@ -176,6 +181,7 @@ function KanbanColumnView<T extends KanbanItem>({
   items: readonly T[];
   renderCard: (item: T) => ReactNode;
   renderColumnHeader?: (column: KanbanColumn, count: number) => ReactNode;
+  renderColumnTop?: (column: KanbanColumn, count: number) => ReactNode;
   getItemLabel?: (item: T) => string;
   disabled: boolean;
   emptyLabel: string;
@@ -211,6 +217,9 @@ function KanbanColumnView<T extends KanbanItem>({
           isOver && "border-gold ring-2 ring-gold/40",
         )}
       >
+        {renderColumnTop === undefined ? null : (
+          <li className="list-none">{renderColumnTop(column, items.length)}</li>
+        )}
         <SortableContext
           items={items.map((item) => item.id)}
           strategy={verticalListSortingStrategy}

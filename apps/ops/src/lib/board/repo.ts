@@ -504,6 +504,15 @@ function matchFilter(card: BoardCard, filter: ListCardsFilter): boolean {
 }
 
 export function createDemoBoardRepo(): BoardRepo {
+  // One shared instance, because the demo data is one shared store. It also keeps `createDemoRepos()`
+  // equal to itself, which the foundation test checks.
+  demoRepo ??= buildDemoBoardRepo();
+  return demoRepo;
+}
+
+let demoRepo: BoardRepo | null = null;
+
+function buildDemoBoardRepo(): BoardRepo {
   function update(id: string, patch: CardPatch): BoardCard {
     const index = store().findIndex((card) => card.id === id);
     const current = store()[index];
