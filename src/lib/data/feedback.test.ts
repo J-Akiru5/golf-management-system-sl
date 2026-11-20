@@ -3,12 +3,17 @@ import {
   canTriageFeedback,
   countNewFeedbackNotes,
   DEFAULT_FEEDBACK_FILTERS,
+  FEEDBACK_CATEGORIES,
+  FEEDBACK_CATEGORY_LABELS,
+  FEEDBACK_DEMO_CATEGORY,
+  FEEDBACK_INBOX_CATEGORIES,
   FEEDBACK_MESSAGE_MAX,
   FEEDBACK_RATE_LIMIT,
   FEEDBACK_RESOLUTION_NOTE_MAX,
   type FeedbackNote,
   feedbackStatusChoices,
   filterFeedback,
+  isFeedbackCategory,
   isFeedbackRateLimited,
   isValidFeedbackEmail,
   matchesFeedbackFilters,
@@ -449,5 +454,51 @@ describe("inbox filters", () => {
       query: "x",
     });
     expect(parseFeedbackFilters({})).toEqual(DEFAULT_FEEDBACK_FILTERS);
+  });
+});
+
+describe("the demo category", () => {
+  it("is not offered on the public feedback form", () => {
+    expect(FEEDBACK_CATEGORIES).not.toContain(FEEDBACK_DEMO_CATEGORY);
+  });
+
+  it("is available to the desk inbox and its filters", () => {
+    expect(FEEDBACK_INBOX_CATEGORIES).toContain(FEEDBACK_DEMO_CATEGORY);
+    expect(isFeedbackCategory(FEEDBACK_DEMO_CATEGORY)).toBe(true);
+    expect(isFeedbackCategory("praise")).toBe(false);
+  });
+
+  it("has a plain label for the inbox", () => {
+    expect(FEEDBACK_CATEGORY_LABELS[FEEDBACK_DEMO_CATEGORY]).toBe("Demo request");
+  });
+
+  it("passes validation with a careful contact and consent", () => {
+    const result = validateFeedback(
+      draft({
+        category: FEEDBACK_DEMO_CATEGORY,
+        message: "Club: Iloilo Golf and Country Club\n\nWhat would you like to see?",
+        contactName: "Jo Cruz",
+        contactEmail: "jo@example.com",
+        contactConsent: true,
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok && result.kind === "submission") {
+      expect(result.value.category).toBe("demo");
+    }
+  });
+
+  it("is parsed from an inbox row instead of being dropped", () => {
+    const row = {
+      id: "note-1",
+      club_id: "club-1",
+      category: "demo",
+      message: "Club: Iloilo Golf and Country Club",
+      locale: "en",
+      status: "new",
+      created_at: "2026-11-10T08:00:00.000Z",
+      updated_at: "2026-11-10T08:00:00.000Z",
+    };
+    expect(parseFeedbackNote(row)?.category).toBe("demo");
   });
 });
