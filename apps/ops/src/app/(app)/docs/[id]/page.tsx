@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { DocEditor } from "@/components/docs/doc-editor";
 import { can } from "@/lib/db/permissions";
 import type { EditorJson } from "@/lib/db/types";
@@ -9,7 +10,27 @@ import { demoMode } from "@/lib/flags";
 import { getRepos } from "@/lib/repos";
 import { getServerSupabase } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Document" };
+/** Read once per request: the page and its metadata both need the document. */
+const loadDocument = cache(async (id: string) => {
+  const repos = await getRepos();
+  return repos.docs.getDoc(id);
+});
+
+/**
+ * The title comes from the document, and the metadata is resolved before the page streams. That is
+ * why the missing-document answer belongs here: it gives a real 404 instead of a streamed shell.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  if (!(await getDocsViewer())) notFound();
+  const doc = await loadDocument(id);
+  if (!doc) notFound();
+  return { title: doc.title };
+}
 
 export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,10 +38,10 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   const viewer = await getDocsViewer();
   if (!viewer) notFound();
 
-  const repos = await getRepos();
-  const doc = await repos.docs.getDoc(id);
+  const doc = await loadDocument(id);
   if (!doc) notFound();
 
+  const repos = await getRepos();
   const snapshots = await repos.docs.listSnapshots(id);
   const demo = demoMode();
 

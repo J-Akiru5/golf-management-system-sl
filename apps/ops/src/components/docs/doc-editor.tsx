@@ -39,6 +39,7 @@ import {
   statusTone,
   userColor,
 } from "@/lib/docs/collab";
+import { toPlainJson } from "@/lib/docs/editor-json";
 import { versionNameFor } from "@/lib/docs/format";
 import { withPrivateDocChannels } from "@/lib/docs/private-client";
 import type { DocSnapshot } from "@/lib/docs/repo";
@@ -404,7 +405,7 @@ function LiveDocument({
       name: versionName,
       kind: "manual",
       state: encodeDocState(session.doc),
-      content: editor.getJSON() as unknown as EditorJson,
+      content: toPlainJson(editor.getJSON()) as unknown as EditorJson,
     });
     setBusy(false);
     if (!result.ok) {
@@ -431,7 +432,7 @@ function LiveDocument({
           name: step.name,
           kind: step.kind,
           state: encodeDocState(session.doc),
-          content: editor.getJSON() as unknown as EditorJson,
+          content: toPlainJson(editor.getJSON()) as unknown as EditorJson,
         });
         if (!result.ok) {
           setBusy(false);
