@@ -113,7 +113,14 @@ export function LandingMotion() {
 
         const context = gsap.context(() => {
           if (tier === "full") mediaContext = gsap.matchMedia();
-          const reveal = (elements: Element[], stagger = 0) => {
+          // Motion starts after idle, so anything already on screen has been visible for a moment.
+          // Animating it "from" hidden would make it blink out and back in; only content below the
+          // fold gets a reveal. One layout read per element, once, at start.
+          const viewportBottom = window.innerHeight;
+          const reveal = (candidates: Element[], stagger = 0) => {
+            const elements = candidates.filter(
+              (element) => element.getBoundingClientRect().top > viewportBottom,
+            );
             if (!elements.length) return;
             gsap.from(elements, {
               y: tier === "lite" ? 12 : 24,
@@ -180,33 +187,25 @@ export function LandingMotion() {
               }
             }
 
-            const teeLine = root.querySelector<SVGPathElement>(".tl-tee-line[data-tl-draw]");
-            if (teeLine) {
-              const length = teeLine.getTotalLength();
-              gsap.fromTo(
-                teeLine,
-                { strokeDasharray: length, strokeDashoffset: length },
-                { strokeDashoffset: 0, duration: 1.6, ease: "power3.out" },
-              );
-              const contours = root.querySelector(".tl-contours");
-              if (contours)
-                gsap.fromTo(contours, { opacity: 0 }, { opacity: 0.5, delay: 1.6, duration: 0.5 });
-            }
+            // The hero tee line draws itself in CSS on first paint (landing.css, tl-line-draw), so
+            // it never waits for this script and is never reset by it.
 
             const frame = root.querySelector<HTMLElement>("[data-tl-tilt] .tl-hero-window");
             if (frame) {
+              // Starts from the CSS resting tilt at scroll 0, so nothing jumps when this loads.
               gsap.fromTo(
                 frame,
-                { rotateX: 18, scale: 0.96 },
+                { rotateX: 14, scale: 0.97 },
                 {
                   rotateX: 0,
                   scale: 1,
                   willChange: "transform",
                   ease: "none",
                   scrollTrigger: {
-                    trigger: frame,
-                    start: "top 88%",
-                    end: "center 55%",
+                    trigger: root.querySelector(".tl-hero") ?? frame,
+                    start: "top top",
+                    end: () => `+=${Math.round(window.innerHeight * 0.6)}`,
+                    invalidateOnRefresh: true,
                     scrub: true,
                   },
                 },
