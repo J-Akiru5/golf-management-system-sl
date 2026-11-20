@@ -3,10 +3,12 @@ import { SITE_URL } from "@/lib/seo";
 
 /**
  * The pages worth indexing: the product page, the published pairings, the player roster, the
- * tournament rules and the NGAP FAQ.
+ * leaderboard, the tournament rules and the NGAP FAQ.
  *
  * Entry links (`/enter/…`) are left out on purpose. They are per-event, time-limited and mostly a
- * form, so the site keeps a small, durable index instead of one that churns with every event.
+ * form, so the site keeps a small, durable index instead of one that churns with every event. The
+ * leaderboard is in because it is the page a member searches for during an event, and it only ever
+ * shows what the desk has published.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
@@ -14,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/`, lastModified, changeFrequency: "weekly", priority: 1 },
     { url: `${SITE_URL}/pairings`, lastModified, changeFrequency: "daily", priority: 0.8 },
     { url: `${SITE_URL}/roster`, lastModified, changeFrequency: "daily", priority: 0.8 },
+    { url: `${SITE_URL}/leaderboard`, lastModified, changeFrequency: "daily", priority: 0.8 },
     { url: `${SITE_URL}/rules`, lastModified, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/faq`, lastModified, changeFrequency: "monthly", priority: 0.7 },
   ];

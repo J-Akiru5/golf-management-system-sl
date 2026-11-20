@@ -16,12 +16,23 @@ import { getI18n } from "@/lib/i18n/server";
 import { advisoryForToday } from "@/lib/public/advisory";
 import { blackoutFlags } from "@/lib/public/results-reveal";
 import { buildScoreSessions } from "@/lib/public/score-sessions";
+import { openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { DemoResults } from "./DemoResults";
 
+const ALL_SCORES_DESCRIPTION =
+  "Every player with a published card, morning and afternoon, on one board: gross and net points for each published round of the tournament.";
+
 export const metadata: Metadata = {
   title: "All scores",
+  description: ALL_SCORES_DESCRIPTION,
   alternates: { canonical: "/results/all" },
+  openGraph: openGraphFor({
+    title: `All scores | ${SITE_NAME}`,
+    description: ALL_SCORES_DESCRIPTION,
+    path: "/results/all",
+  }),
+  twitter: twitterFor({ title: `All scores | ${SITE_NAME}`, description: ALL_SCORES_DESCRIPTION }),
 };
 export const dynamic = "force-dynamic";
 

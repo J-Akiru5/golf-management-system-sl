@@ -12,12 +12,13 @@ Google Search Console.
 | Metadata | `src/app/layout.tsx` + each public page | Title, description, canonical, Open Graph, Twitter card, robots (large image preview allowed) |
 | Open Graph card | `public/og/teeline-og.jpg` | 1200 × 630 JPEG, hybrid of the fairway photo and the TeeLine reverse logo, under 100 KB |
 | Card generator | `scripts/make-og-image.mjs` | Rebuilds the card from the committed photo and the brand SVGs; run `node scripts/make-og-image.mjs` |
-| Crawl rules | `src/app/robots.ts` | Public pages open; desk, player area, login and API disallowed; sitemap and host declared |
-| Sitemap | `src/app/sitemap.ts` | `/`, `/pairings`, `/faq` |
+| Crawl rules | `src/app/robots.ts` | Public pages open; desk, player area, login and API disallowed; sitemap and host declared; the AI crawlers are named one by one with the same private paths |
+| Sitemap | `src/app/sitemap.ts` | `/`, `/pairings`, `/roster`, `/leaderboard`, `/rules`, `/faq` |
 | AI brief | `src/app/llms.txt/route.ts` | `/llms.txt` with what the product is, who it is for, canonical links and company contact |
-| Structured data | `src/lib/seo.ts` + `src/components/seo/JsonLd.tsx` | `Organization`, `WebSite`, `SoftwareApplication` site-wide; `FAQPage` on `/faq` |
+| Structured data | `src/lib/seo.ts` + `src/components/seo/JsonLd.tsx` | `Organization`, `WebSite`, `SoftwareApplication` site-wide; `CollectionPage` on `/pairings`, `/roster` and `/leaderboard`; `WebPage` on `/rules` and `/faq`; `FAQPage` with the 18 NGAP answers on `/faq` |
 | Non-production exclusion | `next.config.ts` | Every build that is not production sends `X-Robots-Tag: noindex, nofollow` |
 | Entry links | `src/app/(public)/enter/[id]/layout.tsx` | `noindex` — per-event forms are not part of the durable index |
+| Search Console token | `src/app/layout.tsx` + `src/lib/seo.ts` | `siteVerification()` reads `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` and `NEXT_PUBLIC_BING_SITE_VERIFICATION`; with neither set, no tag is rendered |
 
 Company facts in `Organization` and `llms.txt` come from the operator's own site, mdmevents.org
 (MDM Digital, Media & Technology Services, 56 Quezon St., Arevalo, Iloilo City; hello@mdmevents.org;
@@ -80,3 +81,57 @@ What this work does is make the site genuinely eligible and measurable for inten
   the club name.
 - The canonical host is a single constant. Changing domains means changing it and the Vercel
   production domain together, then re-verifying Search Console.
+
+## November 2026: what was completed
+
+The October pass built the identity: one canonical host, the OG card, robots, a five-page sitemap,
+`llms.txt`, and the site-wide schemas. This pass finishes the pages and the answer-engine side, and
+leaves the one step only the owner can do.
+
+**Every indexable public page now carries a full set.** `/leaderboard` had a title and nothing else;
+`/join`, `/privacy` and `/terms` had no card and two had no canonical; `/results/all` had no
+description. All of them now have a title, a description, a canonical path, an Open Graph card and a
+Twitter card, and the five list and prose pages add their own `WebPage` or `CollectionPage` entity
+(`webPageSchema`), attached to the `WebSite` and the company by id.
+
+**The leaderboard is in the sitemap.** It is the page a member searches for while an event is
+running, it only ever shows what the desk has published, and it was missing from the six durable
+pages. `/results` stays `noindex`: it holds the awarding reveal, not a durable page.
+
+**Answer engines.** `llms.txt` now lists the roster, the leaderboard and the legal pages, and adds six
+questions answered in the site's own words: what the product is, whether pairings need an account,
+where handicaps come from, when scores appear, and what the rules and FAQ pages contain. `robots.txt`
+names GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-SearchBot, PerplexityBot,
+Google-Extended, Applebot-Extended, Bingbot and CCBot, each allowed the public pages and refused the
+private ones, from the same list the wildcard rule uses. This states the policy that was already in
+force; it does not change it. If the owner ever wants AI training traffic excluded, that is a
+business decision and `Google-Extended` is the switch.
+
+### The one step left: Search Console
+
+The tag is wired; the token is not in the repository, and it should not be. The site is verified only
+after a production build carries the owner's token.
+
+1. Open Search Console, add the property `https://golf.syntaxure.dev/` (a URL-prefix property) or a
+   Domain property for `golf.syntaxure.dev` if you can edit its DNS.
+2. Choose the **HTML tag** method. It gives you a tag like
+   `<meta name="google-site-verification" content="...">`.
+3. Copy only the `content` value into `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` in Vercel, for the
+   **Production** environment, then redeploy `main`. The layout renders the tag from that value;
+   nothing else needs editing.
+4. Press **Verify** in Search Console.
+5. Submit `https://golf.syntaxure.dev/sitemap.xml` under **Sitemaps**, then use **URL inspection** on
+   `/`, `/pairings`, `/leaderboard`, `/rules` and `/faq` and request indexing once each.
+6. Repeat for Bing Webmaster Tools with `NEXT_PUBLIC_BING_SITE_VERIFICATION` if wanted; the
+   `msvalidate.01` tag is already wired to it.
+
+A preview or `develop` deployment will never appear in Search Console: `next.config.ts` sends
+`X-Robots-Tag: noindex, nofollow` on every build that is not production, which is the intended
+behaviour, not a fault. Verify against production, after `main` carries the token.
+
+### What was checked, and what was not
+
+Checked: typecheck, Biome, and the SEO tests (13, including the new token, `WebPage` and AI-crawler
+rules); the pages render the expected metadata and JSON-LD on a development build. Not checked, and
+not claimable from here: that Google has crawled, indexed or verified anything. Search Console is
+the owner's account.

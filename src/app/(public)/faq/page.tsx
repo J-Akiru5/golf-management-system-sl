@@ -4,7 +4,7 @@ import { PublicBottomBar } from "@/components/MobileTabBar";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { NGAP_FAQ, NGAP_FAQ_CURRENT, NGAP_FAQ_SOURCE } from "@/lib/public/ngap-faq";
-import { faqPageSchema, openGraphFor, SITE_NAME, twitterFor } from "@/lib/seo";
+import { faqPageSchema, openGraphFor, SITE_NAME, twitterFor, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "NGAP WHS FAQ",
@@ -33,7 +33,17 @@ export const metadata: Metadata = {
 export default function NgapFaqPage() {
   return (
     <main className="public mobile-bar-space">
-      <JsonLd data={faqPageSchema(NGAP_FAQ)} />
+      <JsonLd
+        data={[
+          webPageSchema({
+            path: "/faq",
+            name: "NGAP WHS FAQ",
+            description:
+              "Frequently asked questions about the NGAP World Handicap System, in the NGAP's words, with the 2024 fees and dates it published.",
+          }),
+          faqPageSchema(NGAP_FAQ),
+        ]}
+      />
       <header className="public-head">
         <div className="flex flex-wrap items-center gap-3">
           <TeeLineLogo variant="reverse" width={172} />

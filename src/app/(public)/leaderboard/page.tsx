@@ -5,6 +5,7 @@ import { LeaderboardShell } from "@/components/public/LeaderboardShell";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { RevealPoller } from "@/components/public/RevealPoller";
 import { TeamLeaderboard } from "@/components/public/TeamLeaderboard";
+import { JsonLd } from "@/components/seo/JsonLd";
 import {
   loadPublicPhotos,
   loadPublishedRounds,
@@ -32,11 +33,28 @@ import { getI18n } from "@/lib/i18n/server";
 import { advisoryForToday, type PublicAdvisory } from "@/lib/public/advisory";
 import { POLL_MS } from "@/lib/public/pairings-live";
 import { blackoutFlags, revealSignature } from "@/lib/public/results-reveal";
+import { openGraphFor, SITE_NAME, twitterFor, webPageSchema } from "@/lib/seo";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { DemoLeaderboard } from "./DemoLeaderboard";
 
-export const metadata: Metadata = { title: "Leaderboard" };
+const LEADERBOARD_DESCRIPTION =
+  "The published gross and net results of the tournament, day by day, with the cumulative team leaderboard. No account needed.";
+
+export const metadata: Metadata = {
+  title: "Leaderboard",
+  description: LEADERBOARD_DESCRIPTION,
+  alternates: { canonical: "/leaderboard" },
+  openGraph: openGraphFor({
+    title: `Leaderboard | ${SITE_NAME}`,
+    description: LEADERBOARD_DESCRIPTION,
+    path: "/leaderboard",
+  }),
+  twitter: twitterFor({
+    title: `Leaderboard | ${SITE_NAME}`,
+    description: LEADERBOARD_DESCRIPTION,
+  }),
+};
 export const dynamic = "force-dynamic";
 
 const dateLabel = (date: string) =>
@@ -50,6 +68,27 @@ const dateLabel = (date: string) =>
  * per-round gross and net tables, with a notice, so the page never breaks on an older project.
  */
 export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string | string[]; flight?: string | string[] }>;
+}) {
+  return (
+    <>
+      <JsonLd
+        data={webPageSchema({
+          path: "/leaderboard",
+          name: "Leaderboard",
+          description: LEADERBOARD_DESCRIPTION,
+          type: "CollectionPage",
+        })}
+      />
+      <LeaderboardView searchParams={searchParams} />
+    </>
+  );
+}
+
+/** The board itself. Split out so the structured data sits above every one of its many states. */
+async function LeaderboardView({
   searchParams,
 }: {
   searchParams: Promise<{ category?: string | string[]; flight?: string | string[] }>;

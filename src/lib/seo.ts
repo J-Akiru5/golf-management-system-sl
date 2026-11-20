@@ -49,6 +49,34 @@ export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
+/**
+ * Search Console, Bing and any other engine that verifies with a meta tag.
+ *
+ * The token is the engine's own string, so it belongs to the owner, not to the repository: it is read
+ * from the deployment's environment and simply omitted when it is not set, which keeps a fresh
+ * checkout and a preview deployment building without it. `NEXT_PUBLIC_` because the tag it produces
+ * is public by nature: a crawler has to read it.
+ */
+export interface SiteVerification {
+  google?: string;
+  other?: Record<string, string>;
+}
+
+export function siteVerification(
+  env: Record<string, string | undefined> = process.env,
+): SiteVerification | undefined {
+  const google = env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+  const bing = env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim();
+  const other: Record<string, string> = {};
+  // Bing Webmaster Tools verifies with this exact key.
+  if (bing) other["msvalidate.01"] = bing;
+  if (!google && Object.keys(other).length === 0) return undefined;
+  return {
+    ...(google ? { google } : {}),
+    ...(Object.keys(other).length > 0 ? { other } : {}),
+  };
+}
+
 /** The Open Graph object every public page shares, with only the title, description and path varying. */
 export function openGraphFor({
   title,
@@ -122,6 +150,42 @@ export function websiteSchema(): Record<string, unknown> {
     description: SITE_DESCRIPTION,
     inLanguage: "en-PH",
     publisher: { "@id": ORGANIZATION_ID },
+  };
+}
+
+/**
+ * One public page as an entity, so an answer engine can attach a description and a publisher to the
+ * page it is reading instead of to the site as a whole. `CollectionPage` is the honest type for the
+ * lists (pairings, roster, leaderboard); `WebPage` for the prose pages.
+ */
+export function webPageSchema({
+  path,
+  name,
+  description,
+  type = "WebPage",
+}: {
+  path: string;
+  name: string;
+  description: string;
+  type?: "WebPage" | "CollectionPage";
+}): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": type,
+    "@id": `${absoluteUrl(path)}#webpage`,
+    url: absoluteUrl(path),
+    name,
+    description,
+    inLanguage: "en-PH",
+    isPartOf: { "@id": WEBSITE_ID },
+    publisher: { "@id": ORGANIZATION_ID },
+    primaryImageOfPage: {
+      "@type": "ImageObject",
+      url: absoluteUrl(OG_IMAGE.url),
+      width: OG_IMAGE.width,
+      height: OG_IMAGE.height,
+      caption: OG_IMAGE.alt,
+    },
   };
 }
 
