@@ -9,6 +9,20 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-11-21
+
+### Added
+- **Tournament presets (#346).** Save a tournament's full rulebook as a preset (tees with ratings, allowance, cap, categories and age bands, flights, group size, start format, days and sessions) and start a new event from one in Setup, then change any rule for that event. A preset applies before entries are filed. The first preset is made from the 24th Bamboo Tee with `seed_preset_from_tournament`, not from typed numbers.
+- **Workspace Timeline (#351).** A calendar (month, week, agenda; the PakaonAI calendar's layout) and a Gantt chart of tournaments with their prep window, pipeline cards, GitHub milestones and releases, and tasks with due dates, with filters by type and person. Owners and partners edit, members view.
+- **GitHub issues on the workspace Tasks board, both ways (#350).** Issues appear as tasks with number, labels, milestone and assignee; editing or closing in either place updates the other, through a signed webhook with a loop guard. Owners map GitHub logins to members and see the sync log in Settings.
+
+### Fixed
+- The entry-limits script's self-check tested Supabase's default table grant instead of row level security and stopped on the live project; it now checks that RLS is on and that no policy lets visitors write. The permissions script is wrapped in `begin`/`commit` like the others.
+
+### Database
+- **Applied on the live project on 21 Nov 2026 by the owner:** the 0.61.0 to 0.63.0 scripts (landing, public-v2, AI providers, god mode, permissions, security).
+- **Written and NOT applied:** `20261123000400_tournament_presets.sql`, `20261123000500_github_task_sync.sql`, `20261123000600_timeline_permission.sql` (`docs/presets/`, `docs/github-sync/`, `docs/timeline/apply-on-live.sql`).
+
 ## [0.63.0] - 2026-11-21
 
 ### Added

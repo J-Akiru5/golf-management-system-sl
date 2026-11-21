@@ -20,7 +20,7 @@ export const ACCESS_LEVEL_LABEL: Record<AccessLevel, string> = {
 };
 
 /** The icon the shell draws beside a page. The shell maps each one to a lucide icon. */
-export type PageIcon = "overview" | "docs" | "board" | "tasks" | "settings" | "admin";
+export type PageIcon = "overview" | "docs" | "board" | "tasks" | "timeline" | "settings" | "admin";
 
 /** `workspace` pages live in this app. A desk page would be the same model with `desk`. */
 export type PageApp = "workspace" | "desk";
@@ -74,6 +74,15 @@ export const PAGES = [
     label: "Tasks",
     route: "/tasks",
     icon: "tasks",
+    levels: ACCESS_LEVELS,
+    nav: true,
+  },
+  {
+    id: "timeline",
+    app: "workspace",
+    label: "Timeline",
+    route: "/timeline",
+    icon: "timeline",
     levels: ACCESS_LEVELS,
     nav: true,
   },
@@ -169,6 +178,7 @@ export const ROLE_DEFAULTS: Record<WorkspaceRole, Record<PageId, AccessLevel>> =
     documents: "edit",
     pipeline: "edit",
     tasks: "edit",
+    timeline: "edit",
     "settings.profile": "edit",
     "settings.members": "edit",
     "settings.ai_providers": "edit",
@@ -179,6 +189,7 @@ export const ROLE_DEFAULTS: Record<WorkspaceRole, Record<PageId, AccessLevel>> =
     documents: "edit",
     pipeline: "edit",
     tasks: "edit",
+    timeline: "edit",
     "settings.profile": "edit",
     "settings.members": "view",
     "settings.ai_providers": "none",
@@ -189,6 +200,7 @@ export const ROLE_DEFAULTS: Record<WorkspaceRole, Record<PageId, AccessLevel>> =
     documents: "edit",
     pipeline: "view",
     tasks: "edit",
+    timeline: "view",
     "settings.profile": "edit",
     "settings.members": "none",
     "settings.ai_providers": "none",
