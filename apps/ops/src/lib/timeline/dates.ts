@@ -80,6 +80,18 @@ export function dayKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * The calendar day on this machine as `YYYY-MM-DD`. The one place the clock is read for this page;
+ * every other function takes the day as a value. Local parts match `isoToday()` in the task list, so
+ * the two pages agree about what "today" is.
+ */
+export function todayKey(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 /** A date or timestamp as the day it falls on, or null. Used for `created_at` values. */
 export function dayFromTimestamp(value: unknown): string | null {
   if (typeof value !== "string") return null;

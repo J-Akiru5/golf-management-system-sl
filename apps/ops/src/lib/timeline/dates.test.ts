@@ -17,6 +17,7 @@ import {
   rangesOverlap,
   startOfMonth,
   startOfWeek,
+  todayKey,
   weekDays,
   weekdayIndex,
 } from "./dates";
@@ -64,6 +65,11 @@ describe("day arithmetic", () => {
     expect(dayFromTimestamp("2026-11-18")).toBe("2026-11-18");
     expect(dayFromTimestamp("18/11/2026")).toBeNull();
     expect(dayFromTimestamp(undefined)).toBeNull();
+  });
+
+  it("asks the clock once, for the local calendar day", () => {
+    expect(todayKey(new Date(2026, 10, 21, 9, 30))).toBe("2026-11-21");
+    expect(todayKey(new Date(2026, 0, 1, 0, 5))).toBe("2026-01-01");
   });
 });
 
