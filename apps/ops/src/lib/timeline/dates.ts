@@ -94,6 +94,17 @@ export function addDays(day: string, days: number): string {
   return dayKey(new Date(date.getTime() + days * DAY_MS));
 }
 
+/** Whole months moved. The day is clamped, so 31 Jan plus one month is 28 or 29 February. */
+export function addMonths(day: string, months: number): string {
+  const date = parseDay(day);
+  if (date === null) throw new Error(`Not a day: ${day}`);
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + months;
+  const last = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const target = new Date(Date.UTC(year, month, Math.min(date.getUTCDate(), last)));
+  return dayKey(target);
+}
+
 /** `to` minus `from`, in whole days. Negative when `to` is earlier. */
 export function daysBetween(from: string, to: string): number {
   const start = parseDay(from);
