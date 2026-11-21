@@ -1092,10 +1092,15 @@ check(
 );
 // The reload has painted but React may not have attached the control yet; wait for it rather
 // than counting on the first frame after networkidle.
-await expect(page.getByRole("button", { name: "Collapse" })).toHaveCount(1, { timeout: 15000 });
+// Exact, because the alerts bell has a "Collapse issues badge" button and Playwright's name
+// matching is a substring by default: the rail control is only unambiguous when the whole name
+// is compared.
+await expect(page.getByRole("button", { name: "Collapse", exact: true })).toHaveCount(1, {
+  timeout: 15000,
+});
 check("and the rail says how to put it back", true);
 
-await page.getByRole("button", { name: "Collapse" }).click();
+await page.getByRole("button", { name: "Collapse", exact: true }).click();
 await page.waitForTimeout(300);
 check(
   "collapsing returns it to compact",
