@@ -7,33 +7,41 @@
  *   node scripts/health-check.mjs
  *   node scripts/health-check.mjs --json
  *
- * It only reads: GETs plus one read-only RPC. There are no dependencies beyond Node 22's global
+ * It only reads: GETs plus read-only RPCs. There are no dependencies beyond Node 22's global
  * fetch, so CI installs nothing. A hard check prints FAIL and makes the process exit 1. The reader
  * is a warning instead, because the scan service is allowed to sleep.
  *
  * The Supabase check is skipped unless HEALTH_SUPABASE_URL and HEALTH_SUPABASE_ANON_KEY are set.
- * SUPABASE_URL and SUPABASE_ANON_KEY are accepted as fallbacks for a local run.
+ * SUPABASE_URL and SUPABASE_ANON_KEY are accepted as fallbacks for a local run. HEALTH_SITE_URL
+ * overrides the live host, so the same file can check staging without an edit.
+ *
+ * The event check follows the site: it reads the featured event, or failing that the first event
+ * open for entry, and proves that `/events` carries it. It names no club, no event and no date
+ * window, so a check that passes this week does not fail the next event by design.
  */
 
-const SITE = "https://golf.syntaxure.dev";
+const SITE = (process.env.HEALTH_SITE_URL || "https://golf.syntaxure.dev").replace(/\/+$/, "");
 const READER = "https://reader.syntaxure.dev/health";
 const TIMEOUT_MS = 20_000;
 const TIME_ZONE = "Asia/Manila";
 
-/** The event the public payload must carry while it is being played. */
-const EVENT_WINDOW = {
-  name: "Bamboo Tee",
-  from: "2026-11-10",
-  to: "2026-11-20",
-};
+/** The public portfolio page the featured or open event must also appear on. */
+const EVENT_PAGE = "/events";
 
+/** [name, path, markers]. A marker is text the HTML must carry, so a 200 error page cannot pass. */
 const CHECKS = [
-  ["pairings", "/pairings"],
-  ["leaderboard", "/leaderboard"],
-  ["manifest", "/manifest.webmanifest"],
-  ["icon-192", "/icons/icon-192.png"],
-  ["icon-512", "/icons/icon-512.png"],
-  ["offline", "/offline"],
+  ["pairings", "/pairings", null],
+  ["roster", "/roster", ["Player roster"]],
+  ["leaderboard", "/leaderboard", ["Leaderboard"]],
+  ["results", "/results", ["Awarding results"]],
+  ["results_all", "/results/all", ["All scores"]],
+  ["events", "/events", null],
+  ["feedback", "/feedback", ["Send feedback"]],
+  ["tv", "/tv", ["Clubhouse board"]],
+  ["manifest", "/manifest.webmanifest", null],
+  ["icon-192", "/icons/icon-192.png", null],
+  ["icon-512", "/icons/icon-512.png", null],
+  ["offline", "/offline", null],
 ];
 
 const results = [];
@@ -87,14 +95,29 @@ async function checkHome() {
   }
 }
 
-async function checkPath(name, path) {
+async function checkPath(name, path, markers = null) {
   try {
     const { response, ms } = await get(`${SITE}${path}`);
-    const bytes = (await response.arrayBuffer()).byteLength;
     if (response.status !== 200) {
+      await response.arrayBuffer();
       record(name, "fail", `${path} returned ${response.status}, expected 200`);
       return;
     }
+    if (markers) {
+      const body = await response.text();
+      const found = markers.find((text) => body.includes(text));
+      if (!found) {
+        record(
+          name,
+          "fail",
+          `${path} 200 in ${ms}ms but the body has none of: ${markers.join(", ")}`,
+        );
+        return;
+      }
+      record(name, "pass", `${path} 200 in ${ms}ms, found "${found}"`);
+      return;
+    }
+    const bytes = (await response.arrayBuffer()).byteLength;
     record(name, "pass", `${path} 200 in ${ms}ms, ${bytes} bytes`);
   } catch (error) {
     record(name, "fail", `${path} ${describeError(error)}`);
@@ -139,6 +162,96 @@ function supabaseSettings() {
   return { url: url.replace(/\/+$/, ""), key };
 }
 
+/** A YYYY-MM-DD date, or "" when the value is not one. */
+function isoDate(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+}
+
+/**
+ * The events a visitor may see, normalised. `null` means a row cannot be shown at all, which is a
+ * broken payload rather than an empty list. `chosen` is the featured event, else the first one open
+ * for entry: the same rule the landing page and `/events` give a visitor.
+ */
+function readEventList(events) {
+  const rows = [];
+  for (const event of events) {
+    if (typeof event !== "object" || event === null) return null;
+    const row = event;
+    const name = typeof row.name === "string" ? row.name.trim() : "";
+    const rawDates = Array.isArray(row.dates) ? row.dates : [];
+    const dates = rawDates.map(isoDate);
+    if (!name || dates.length === 0 || dates.some((date) => date === "")) return null;
+    rows.push({
+      name,
+      dates,
+      featured: row.featured === true,
+      entriesOpen: row.entriesOpen === true,
+    });
+  }
+  const chosen = rows.find((row) => row.featured) ?? rows.find((row) => row.entriesOpen) ?? null;
+  return { rows, chosen };
+}
+
+/** The featured/open read, from the showcase function with the older function as its fallback. */
+async function readPublicEventRows(url, key) {
+  const { response, ms } = await get(`${url}/rest/v1/rpc/public_showcase_events`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  const body = await response.text();
+  if (response.status === 200) {
+    try {
+      const parsed = JSON.parse(body);
+      if (Array.isArray(parsed)) return { rows: parsed, ms, source: "public_showcase_events" };
+    } catch {
+      // The older function may still answer; fall through to it.
+    }
+  }
+
+  // Rollout fallback: a project without the showcase migration answers with a missing function.
+  // The app falls back the same way.
+  const legacy = await get(`${url}/rest/v1/rpc/public_events`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  const legacyBody = await legacy.response.text();
+  if (legacy.response.status !== 200) {
+    return {
+      error: `public_showcase_events ${response.status}, public_events ${legacy.response.status}: ${excerpt(legacyBody)}`,
+    };
+  }
+  try {
+    const parsed = JSON.parse(legacyBody);
+    if (Array.isArray(parsed)) {
+      return { rows: parsed, ms: legacy.ms, source: "public_events" };
+    }
+  } catch {
+    // Reported below with the body.
+  }
+  return { error: `200 but the body is not an array: ${excerpt(legacyBody)}` };
+}
+
+/** The event names are HTML-escaped on the page, so the comparison decodes the page once. */
+function decodeHtml(value) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&#x27;/gi, "'");
+}
+
 async function checkPublicEvents() {
   const name = "public_events";
   const { url, key } = supabaseSettings();
@@ -152,53 +265,64 @@ async function checkPublicEvents() {
   }
 
   try {
-    const { response, ms } = await get(`${url}/rest/v1/rpc/public_events`, {
-      method: "POST",
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: "{}",
-    });
-    const body = await response.text();
-    if (response.status !== 200) {
-      record(name, "fail", `returned ${response.status} in ${ms}ms: ${excerpt(body)}`);
+    const read = await readPublicEventRows(url, key);
+    if (read.error) {
+      record(name, "fail", read.error);
       return;
     }
 
-    let events;
-    try {
-      events = JSON.parse(body);
-    } catch {
-      record(name, "fail", `200 but the body is not JSON: ${excerpt(body)}`);
+    const list = readEventList(read.rows);
+    if (!list) {
+      record(name, "fail", `200 in ${read.ms}ms but a row has no name or no usable dates`);
       return;
     }
-    if (!Array.isArray(events)) {
-      record(name, "fail", `200 but the body is not an array: ${excerpt(body)}`);
+    if (list.rows.length === 0) {
+      record(name, "pass", `200 in ${read.ms}ms, no events announced; nothing to carry`);
       return;
     }
-
-    const names = events
-      .map((event) => (event && typeof event.name === "string" ? event.name : ""))
-      .filter(Boolean);
-    const today = manilaToday();
-    const inWindow = today >= EVENT_WINDOW.from && today <= EVENT_WINDOW.to;
-    const wanted = EVENT_WINDOW.name.toLowerCase();
-
-    if (inWindow && !names.some((eventName) => eventName.toLowerCase().includes(wanted))) {
+    if (list.rows.filter((row) => row.featured).length > 1) {
+      record(name, "fail", `${list.rows.length} event(s) but more than one is featured`);
+      return;
+    }
+    if (!list.chosen) {
       record(
         name,
-        "fail",
-        `200 in ${ms}ms, ${names.length} event(s), but no ${EVENT_WINDOW.name} during the event window: ${excerpt(names.join(", "))}`,
+        "pass",
+        `200 in ${read.ms}ms, ${list.rows.length} event(s), none featured or open for entry right now`,
       );
       return;
     }
 
-    const suffix = inWindow
-      ? `, ${EVENT_WINDOW.name} present`
-      : `, ${EVENT_WINDOW.name} not required today (${today})`;
-    record(name, "pass", `200 in ${ms}ms, ${names.length} event(s)${suffix}`);
+    const chosen = list.chosen;
+    const from = [...chosen.dates].sort()[0];
+    const to = [...chosen.dates].sort().at(-1);
+    const today = manilaToday();
+    const playing = today >= from && today <= to;
+    const page = await get(`${SITE}${EVENT_PAGE}`);
+    const html = decodeHtml(await page.response.text());
+    if (page.response.status !== 200) {
+      record(
+        name,
+        "fail",
+        `${read.source} carries "${chosen.name}" but ${EVENT_PAGE} returned ${page.response.status}`,
+      );
+      return;
+    }
+    if (!html.includes(chosen.name)) {
+      record(
+        name,
+        "fail",
+        `${read.source} carries "${chosen.name}" but ${EVENT_PAGE} does not list it`,
+      );
+      return;
+    }
+
+    const when = playing ? "playing today" : `not playing today (${today})`;
+    record(
+      name,
+      "pass",
+      `200 in ${read.ms}ms, ${list.rows.length} event(s) from ${read.source}, ${chosen.featured ? "featured" : "open"} "${chosen.name}" ${from} to ${to}, ${when}, listed on ${EVENT_PAGE}`,
+    );
   } catch (error) {
     record(name, "fail", describeError(error));
   }
@@ -220,8 +344,8 @@ async function checkReader() {
 }
 
 await checkHome();
-for (const [name, path] of CHECKS) {
-  await checkPath(name, path);
+for (const [name, path, markers] of CHECKS) {
+  await checkPath(name, path, markers);
 }
 await checkMy();
 await checkPublicEvents();
