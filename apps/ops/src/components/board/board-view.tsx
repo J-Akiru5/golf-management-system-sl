@@ -51,12 +51,15 @@ export function BoardView({
   initialCards,
   members,
   tournaments,
+  canEdit,
   canDelete,
   demo,
 }: {
   initialCards: BoardCard[];
   members: BoardMember[];
   tournaments: BoardTournament[];
+  /** False at view level: no quick add, no drag, no save, no delete. */
+  canEdit: boolean;
   canDelete: boolean;
   demo: boolean;
 }) {
@@ -260,7 +263,9 @@ export function BoardView({
 
       {cards.length === 0 ? (
         <p className="rounded-md border border-dashed border-line-strong px-3 py-2 text-sm text-ink-muted">
-          The pipeline is empty. Add the first card in any column.
+          {canEdit
+            ? "The pipeline is empty. Add the first card in any column."
+            : "The pipeline is empty."}
         </p>
       ) : null}
 
@@ -284,13 +289,14 @@ export function BoardView({
         columns={COLUMNS}
         items={items}
         onMove={handleKanbanMove}
+        disabled={!canEdit}
         getItemLabel={(item) => item.title}
         renderCard={(item) => (
           <CardTile
             card={item}
             ownerName={item.owner_id === null ? null : (memberNames.get(item.owner_id) ?? null)}
             onOpen={() => setOpenId(item.id)}
-            onMove={() => setMovingId(item.id)}
+            onMove={canEdit ? () => setMovingId(item.id) : undefined}
           />
         )}
         renderColumnHeader={(column, count) => {
@@ -311,16 +317,18 @@ export function BoardView({
             </div>
           );
         }}
-        renderColumnTop={(column) => (
-          <QuickAdd
-            stageLabel={column.label}
-            onCreate={(values) =>
-              isPipelineStage(column.id)
-                ? handleCreate(column.id, values)
-                : Promise.resolve("Choose a stage.")
-            }
-          />
-        )}
+        renderColumnTop={(column) =>
+          canEdit ? (
+            <QuickAdd
+              stageLabel={column.label}
+              onCreate={(values) =>
+                isPipelineStage(column.id)
+                  ? handleCreate(column.id, values)
+                  : Promise.resolve("Choose a stage.")
+              }
+            />
+          ) : null
+        }
       />
 
       {visible.length === 0 && cards.length > 0 ? (
@@ -333,6 +341,7 @@ export function BoardView({
         <CardSheet
           key={selectedCard.id}
           card={selectedCard}
+          canEdit={canEdit}
           canDelete={canDelete}
           members={members}
           tournaments={tournaments}

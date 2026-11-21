@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AppShell, type ShellViewer } from "@/components/shell/app-shell";
 import { NoAccess } from "@/components/shell/no-access";
+import { fullAccess } from "@/lib/access/pages";
+import { currentAccess } from "@/lib/access/server";
 import { decideAccess } from "@/lib/auth/access";
 import { getViewer } from "@/lib/auth/viewer";
 import { demoMode, opsEnabled } from "@/lib/flags";
@@ -19,6 +21,10 @@ const DEMO_VIEWER: ShellViewer = {
 /**
  * The gate from SPEC section 4, in order: flag off, no session, no member row or suspended, then
  * the shell. The decision itself is the pure `decideAccess`; this file only maps it to a page.
+ *
+ * The shell also receives the person's effective access, because the menu is built from it: a page
+ * at `none` is absent from the menu. The routes check their own page again; the menu is not the
+ * protection.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const enabled = opsEnabled();
@@ -28,7 +34,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // build, see demoMode().
   if (demoMode()) {
     return (
-      <AppShell viewer={DEMO_VIEWER} signOut={signOut}>
+      <AppShell viewer={DEMO_VIEWER} access={fullAccess()} signOut={signOut}>
         {children}
       </AppShell>
     );
@@ -56,8 +62,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     demo: false,
   };
 
+  const access = await currentAccess();
+
   return (
-    <AppShell viewer={shellViewer} signOut={signOut}>
+    <AppShell viewer={shellViewer} access={access} signOut={signOut}>
       {children}
     </AppShell>
   );

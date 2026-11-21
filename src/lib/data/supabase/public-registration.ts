@@ -69,6 +69,11 @@ export interface SubmissionPlayer {
   contactNumber?: string;
   homeCourse?: string;
   email?: string;
+  /**
+   * The form's honeypot, sent only when it was filled. The server answers it like a real entry and
+   * writes nothing. It is not a player detail and is never stored on the player row.
+   */
+  honeypot?: string;
 }
 
 export interface SubmissionAnswers {
@@ -85,7 +90,15 @@ export interface SubmissionAnswers {
 
 export interface SubmissionResult {
   ok: boolean;
-  code: "accepted" | "invalid" | "closed" | "duplicate" | "ambiguous" | "not_found" | "error";
+  code:
+    | "accepted"
+    | "invalid"
+    | "closed"
+    | "duplicate"
+    | "ambiguous"
+    | "not_found"
+    | "rate_limited"
+    | "error";
   message: string;
 }
 
@@ -169,7 +182,15 @@ export function parseSubmissionResult(value: Json): SubmissionResult {
   const code = typeof raw.code === "string" ? raw.code : "error";
   return {
     ok: raw.ok === true,
-    code: ["accepted", "invalid", "closed", "duplicate", "ambiguous", "not_found"].includes(code)
+    code: [
+      "accepted",
+      "invalid",
+      "closed",
+      "duplicate",
+      "ambiguous",
+      "not_found",
+      "rate_limited",
+    ].includes(code)
       ? (code as SubmissionResult["code"])
       : "error",
     message:

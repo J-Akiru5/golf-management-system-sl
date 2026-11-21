@@ -16,6 +16,7 @@ import { PIPELINE_STAGES, PRICING_MODELS } from "@/lib/db/constants";
  */
 export function CardSheet({
   card,
+  canEdit,
   canDelete,
   members,
   tournaments,
@@ -24,6 +25,8 @@ export function CardSheet({
   onDelete,
 }: {
   card: BoardCard;
+  /** False at view level: the fields are shown but cannot be changed. */
+  canEdit: boolean;
   canDelete: boolean;
   members: readonly BoardMember[];
   tournaments: readonly BoardTournament[];
@@ -81,179 +84,196 @@ export function CardSheet({
     >
       <SheetContent title="Card details" description={card.club_name}>
         <form onSubmit={submit} className="flex flex-col gap-3">
-          <div>
-            <Label htmlFor="card-title" className="mb-1 block">
-              Title
-            </Label>
-            <Input
-              id="card-title"
-              name="title"
-              defaultValue={card.title}
-              maxLength={160}
-              required
-              autoComplete="off"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="card-club" className="mb-1 block">
-              Club
-            </Label>
-            <Input
-              id="card-club"
-              name="clubName"
-              defaultValue={card.club_name}
-              maxLength={160}
-              required
-              autoComplete="off"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          {canEdit ? null : (
+            <p className="hint">
+              You can view this card but not change it. Ask an owner for edit access to the
+              pipeline.
+            </p>
+          )}
+          <fieldset disabled={!canEdit} className="flex flex-col gap-3">
             <div>
-              <Label htmlFor="card-stage" className="mb-1 block">
-                Stage
-              </Label>
-              <Select id="card-stage" name="stage" defaultValue={card.stage}>
-                {PIPELINE_STAGES.map((stage) => (
-                  <option key={stage.id} value={stage.id}>
-                    {stage.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="card-owner" className="mb-1 block">
-                Owner
-              </Label>
-              <Select id="card-owner" name="ownerId" defaultValue={card.owner_id ?? ""}>
-                <option value="">Unassigned</option>
-                {members.map((member) => (
-                  <option key={member.user_id} value={member.user_id}>
-                    {member.display_name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="card-start" className="mb-1 block">
-                Start date
+              <Label htmlFor="card-title" className="mb-1 block">
+                Title
               </Label>
               <Input
-                id="card-start"
-                name="startDate"
-                type="date"
-                defaultValue={card.start_date ?? ""}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="card-end" className="mb-1 block">
-                End date
-              </Label>
-              <Input id="card-end" name="endDate" type="date" defaultValue={card.end_date ?? ""} />
-            </div>
-
-            <div>
-              <Label htmlFor="card-players" className="mb-1 block">
-                Expected players
-              </Label>
-              <Input
-                id="card-players"
-                name="expectedPlayers"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={5000}
-                step={1}
-                defaultValue={card.expected_players ?? ""}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="card-pricing" className="mb-1 block">
-                Pricing model
-              </Label>
-              <Select id="card-pricing" name="pricingModel" defaultValue={card.pricing_model ?? ""}>
-                <option value="">Not set</option>
-                {PRICING_MODELS.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="card-amount" className="mb-1 block">
-                Quoted amount
-              </Label>
-              <Input
-                id="card-amount"
-                name="quotedAmount"
-                inputMode="decimal"
-                defaultValue={card.quoted_amount ?? ""}
-                placeholder="0.00"
-                autoComplete="off"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="card-currency" className="mb-1 block">
-                Currency
-              </Label>
-              <Input
-                id="card-currency"
-                name="currency"
-                defaultValue={card.currency}
-                maxLength={3}
+                id="card-title"
+                name="title"
+                defaultValue={card.title}
+                maxLength={160}
                 required
                 autoComplete="off"
-                className="uppercase"
               />
             </div>
-          </div>
 
-          {tournaments.length === 0 ? null : (
             <div>
-              <Label htmlFor="card-tournament" className="mb-1 block">
-                Linked tournament
+              <Label htmlFor="card-club" className="mb-1 block">
+                Club
               </Label>
-              <Select
-                id="card-tournament"
-                name="tournamentId"
-                defaultValue={card.tournament_id ?? ""}
-              >
-                <option value="">No tournament</option>
-                {!tournamentVisible && card.tournament_id !== null ? (
-                  <option value={card.tournament_id}>Linked tournament (not visible)</option>
-                ) : null}
-                {tournaments.map((tournament) => (
-                  <option key={tournament.id} value={tournament.id}>
-                    {tournament.name}
-                    {tournament.play_date === null
-                      ? ""
-                      : ` (${formatDate(tournament.play_date) ?? ""})`}
-                  </option>
-                ))}
-              </Select>
+              <Input
+                id="card-club"
+                name="clubName"
+                defaultValue={card.club_name}
+                maxLength={160}
+                required
+                autoComplete="off"
+              />
             </div>
-          )}
 
-          <div>
-            <Label htmlFor="card-notes" className="mb-1 block">
-              Notes
-            </Label>
-            <Textarea
-              id="card-notes"
-              name="notes"
-              defaultValue={card.notes ?? ""}
-              rows={4}
-              maxLength={20000}
-            />
-          </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="card-stage" className="mb-1 block">
+                  Stage
+                </Label>
+                <Select id="card-stage" name="stage" defaultValue={card.stage}>
+                  {PIPELINE_STAGES.map((stage) => (
+                    <option key={stage.id} value={stage.id}>
+                      {stage.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="card-owner" className="mb-1 block">
+                  Owner
+                </Label>
+                <Select id="card-owner" name="ownerId" defaultValue={card.owner_id ?? ""}>
+                  <option value="">Unassigned</option>
+                  {members.map((member) => (
+                    <option key={member.user_id} value={member.user_id}>
+                      {member.display_name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="card-start" className="mb-1 block">
+                  Start date
+                </Label>
+                <Input
+                  id="card-start"
+                  name="startDate"
+                  type="date"
+                  defaultValue={card.start_date ?? ""}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="card-end" className="mb-1 block">
+                  End date
+                </Label>
+                <Input
+                  id="card-end"
+                  name="endDate"
+                  type="date"
+                  defaultValue={card.end_date ?? ""}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="card-players" className="mb-1 block">
+                  Expected players
+                </Label>
+                <Input
+                  id="card-players"
+                  name="expectedPlayers"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={5000}
+                  step={1}
+                  defaultValue={card.expected_players ?? ""}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="card-pricing" className="mb-1 block">
+                  Pricing model
+                </Label>
+                <Select
+                  id="card-pricing"
+                  name="pricingModel"
+                  defaultValue={card.pricing_model ?? ""}
+                >
+                  <option value="">Not set</option>
+                  {PRICING_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="card-amount" className="mb-1 block">
+                  Quoted amount
+                </Label>
+                <Input
+                  id="card-amount"
+                  name="quotedAmount"
+                  inputMode="decimal"
+                  defaultValue={card.quoted_amount ?? ""}
+                  placeholder="0.00"
+                  autoComplete="off"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="card-currency" className="mb-1 block">
+                  Currency
+                </Label>
+                <Input
+                  id="card-currency"
+                  name="currency"
+                  defaultValue={card.currency}
+                  maxLength={3}
+                  required
+                  autoComplete="off"
+                  className="uppercase"
+                />
+              </div>
+            </div>
+
+            {tournaments.length === 0 ? null : (
+              <div>
+                <Label htmlFor="card-tournament" className="mb-1 block">
+                  Linked tournament
+                </Label>
+                <Select
+                  id="card-tournament"
+                  name="tournamentId"
+                  defaultValue={card.tournament_id ?? ""}
+                >
+                  <option value="">No tournament</option>
+                  {!tournamentVisible && card.tournament_id !== null ? (
+                    <option value={card.tournament_id}>Linked tournament (not visible)</option>
+                  ) : null}
+                  {tournaments.map((tournament) => (
+                    <option key={tournament.id} value={tournament.id}>
+                      {tournament.name}
+                      {tournament.play_date === null
+                        ? ""
+                        : ` (${formatDate(tournament.play_date) ?? ""})`}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="card-notes" className="mb-1 block">
+                Notes
+              </Label>
+              <Textarea
+                id="card-notes"
+                name="notes"
+                defaultValue={card.notes ?? ""}
+                rows={4}
+                maxLength={20000}
+              />
+            </div>
+          </fieldset>
 
           {error === null ? null : (
             <p
@@ -265,14 +285,16 @@ export function CardSheet({
           )}
 
           <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
-            <Button type="submit" variant="primary" disabled={busy}>
-              {saving ? "Saving" : "Save changes"}
-            </Button>
+            {canEdit ? (
+              <Button type="submit" variant="primary" disabled={busy}>
+                {saving ? "Saving" : "Save changes"}
+              </Button>
+            ) : null}
             <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
-              Cancel
+              {canEdit ? "Cancel" : "Close"}
             </Button>
 
-            {canDelete ? (
+            {canEdit && canDelete ? (
               <div className="ml-auto flex items-center gap-2">
                 {confirmDelete ? (
                   <>

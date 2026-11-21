@@ -23,10 +23,12 @@ export type DocsListProps = {
   docs: DocSummary[];
   archived: boolean;
   search: string;
+  /** False at view level: no new document, rename, archive or delete. */
+  canEdit: boolean;
   canDelete: boolean;
 };
 
-export function DocsList({ docs, archived, search, canDelete }: DocsListProps) {
+export function DocsList({ docs, archived, search, canEdit, canDelete }: DocsListProps) {
   const router = useRouter();
   const [newOpen, setNewOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -87,17 +89,19 @@ export function DocsList({ docs, archived, search, canDelete }: DocsListProps) {
           </Link>
         </Button>
 
-        <Button
-          variant="primary"
-          onClick={() => {
-            setNewTitle("");
-            setNewError(null);
-            setNewOpen(true);
-          }}
-        >
-          <Plus />
-          New document
-        </Button>
+        {canEdit ? (
+          <Button
+            variant="primary"
+            onClick={() => {
+              setNewTitle("");
+              setNewError(null);
+              setNewOpen(true);
+            }}
+          >
+            <Plus />
+            New document
+          </Button>
+        ) : null}
       </div>
 
       {search ? (
@@ -124,29 +128,31 @@ export function DocsList({ docs, archived, search, canDelete }: DocsListProps) {
                   {search ? "Clear the search" : "Back to active documents"}
                 </Link>
               </Button>
-            ) : (
+            ) : canEdit ? (
               <Button variant="primary" onClick={() => setNewOpen(true)}>
                 <Plus />
                 New document
               </Button>
-            )
+            ) : undefined
           }
         >
           {search
             ? "Try a shorter word, or clear the search to see every document."
             : archived
               ? "Archiving keeps a document out of the way without deleting it."
-              : "A document is shared with the whole workspace. Create one to start writing."}
+              : canEdit
+                ? "A document is shared with the whole workspace. Create one to start writing."
+                : "Documents other people create appear here."}
         </EmptyState>
       ) : (
         <ul className="flex flex-col gap-3">
           {docs.map((doc) => (
-            <DocRow key={doc.id} doc={doc} canDelete={canDelete} />
+            <DocRow key={doc.id} doc={doc} canEdit={canEdit} canDelete={canDelete} />
           ))}
         </ul>
       )}
 
-      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+      <Dialog open={canEdit && newOpen} onOpenChange={setNewOpen}>
         <DialogContent
           title="New document"
           description="Everyone in the workspace can open and edit it."
@@ -182,7 +188,15 @@ export function DocsList({ docs, archived, search, canDelete }: DocsListProps) {
   );
 }
 
-function DocRow({ doc, canDelete }: { doc: DocSummary; canDelete: boolean }) {
+function DocRow({
+  doc,
+  canEdit,
+  canDelete,
+}: {
+  doc: DocSummary;
+  canEdit: boolean;
+  canDelete: boolean;
+}) {
   const router = useRouter();
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -254,23 +268,32 @@ function DocRow({ doc, canDelete }: { doc: DocSummary; canDelete: boolean }) {
           <Button variant="secondary" size="sm" asChild>
             <Link href={`/docs/${doc.id}`}>Open</Link>
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setName(doc.title);
-              setError(null);
-              setRenameOpen(true);
-            }}
-          >
-            <Pencil />
-            Rename
-          </Button>
-          <Button variant="ghost" size="sm" disabled={busy} onClick={() => void toggleArchive()}>
-            {doc.archived ? <ArchiveRestore /> : <Archive />}
-            {doc.archived ? "Unarchive" : "Archive"}
-          </Button>
-          {canDelete ? (
+          {canEdit ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setName(doc.title);
+                  setError(null);
+                  setRenameOpen(true);
+                }}
+              >
+                <Pencil />
+                Rename
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={() => void toggleArchive()}
+              >
+                {doc.archived ? <ArchiveRestore /> : <Archive />}
+                {doc.archived ? "Unarchive" : "Archive"}
+              </Button>
+            </>
+          ) : null}
+          {canEdit && canDelete ? (
             <Button
               variant="ghost"
               size="sm"

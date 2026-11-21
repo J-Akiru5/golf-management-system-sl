@@ -44,12 +44,15 @@ export function CommentsThread({
   viewer,
   actions,
   refreshKey,
+  canWrite = true,
 }: {
   taskId: string;
   memberNames: ReadonlyMap<string, string>;
   viewer: TaskViewer;
   actions: CommentActions;
   refreshKey: number;
+  /** False at view level: no composer, no edit, no delete. */
+  canWrite?: boolean;
 }) {
   const [comments, setComments] = useState<WsTaskCommentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,8 +157,10 @@ export function CommentsThread({
       <ul className="flex flex-col gap-2">
         {comments.map((comment) => {
           const name = authorName(comment.author_id, memberNames);
-          const canEdit = canEditComment(permissionViewer, viewer.id, comment.author_id);
-          const canDelete = canDeleteComment(permissionViewer, viewer.id, comment.author_id);
+          const canEdit =
+            canWrite && canEditComment(permissionViewer, viewer.id, comment.author_id);
+          const canDelete =
+            canWrite && canDeleteComment(permissionViewer, viewer.id, comment.author_id);
           const editing = editingId === comment.id;
 
           return (
@@ -241,20 +246,22 @@ export function CommentsThread({
         })}
       </ul>
 
-      <div className="flex flex-col gap-2">
-        <Textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          rows={3}
-          aria-label="New comment"
-          placeholder="Add a comment"
-        />
-        <div>
-          <Button variant="secondary" disabled={busy} onClick={() => void handleAdd()}>
-            Add comment
-          </Button>
+      {canWrite ? (
+        <div className="flex flex-col gap-2">
+          <Textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={3}
+            aria-label="New comment"
+            placeholder="Add a comment"
+          />
+          <div>
+            <Button variant="secondary" disabled={busy} onClick={() => void handleAdd()}>
+              Add comment
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {error ? (
         <p role="alert" className="text-sm text-danger">

@@ -1,22 +1,55 @@
 import { describe, expect, it } from "vitest";
-import { isActive, NAV_ITEMS, pageTitle } from "./nav";
+import { fullAccess, roleAccess } from "@/lib/access/pages";
+import { isActive, navItemsFor, pageTitle } from "./nav";
 
-describe("NAV_ITEMS", () => {
-  it("has the five places in order with unique paths", () => {
-    expect(NAV_ITEMS.map((item) => item.label)).toEqual([
+const labels = (access: Parameters<typeof navItemsFor>[0]) =>
+  navItemsFor(access).map((item) => item.label);
+
+describe("navItemsFor", () => {
+  it("gives the owner every place, with Admin last", () => {
+    expect(labels(fullAccess())).toEqual([
       "Overview",
       "Documents",
       "Pipeline",
       "Tasks",
       "Settings",
+      "Admin",
     ]);
-    expect(NAV_ITEMS.map((item) => item.href)).toEqual([
-      "/",
-      "/docs",
-      "/board",
-      "/tasks",
-      "/settings",
-    ]);
+  });
+
+  it("hides a page at none and keeps it at view", () => {
+    const partner = roleAccess("partner");
+    expect(labels(partner)).toEqual(["Overview", "Documents", "Pipeline", "Tasks", "Settings"]);
+
+    const member = roleAccess("member");
+    expect(labels(member)).not.toContain("Admin");
+    expect(labels(member)).toContain("Pipeline");
+  });
+
+  it("hides everything a person with no access has", () => {
+    expect(labels({})).toEqual([]);
+  });
+
+  it("opens Settings at the first tab the person may see", () => {
+    const access = {
+      ...roleAccess("member"),
+      "settings.profile": "none" as const,
+      "settings.members": "view" as const,
+    };
+
+    const settings = navItemsFor(access).find((item) => item.label === "Settings");
+    expect(settings?.href).toBe("/settings/members");
+  });
+
+  it("drops the Settings entry when no Settings page is visible", () => {
+    const access = {
+      ...roleAccess("member"),
+      "settings.profile": "none" as const,
+      "settings.members": "none" as const,
+      "settings.ai_providers": "none" as const,
+    };
+
+    expect(labels(access)).not.toContain("Settings");
   });
 });
 
@@ -39,9 +72,10 @@ describe("pageTitle", () => {
     expect(pageTitle("/")).toBe("Overview");
     expect(pageTitle("/docs/abc")).toBe("Documents");
     expect(pageTitle("/settings/members")).toBe("Settings");
+    expect(pageTitle("/admin/audit")).toBe("Admin");
   });
 
-  it("falls back for a path outside the five", () => {
+  it("falls back for a path outside the menu", () => {
     expect(pageTitle("/login")).toBe("Workspace");
   });
 });

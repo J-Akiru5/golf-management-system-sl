@@ -24,6 +24,7 @@ function TaskDetailBody({
   viewer,
   commentActions,
   commentsRefresh,
+  canEdit,
   onClose,
   onSave,
   onDelete,
@@ -34,6 +35,7 @@ function TaskDetailBody({
   viewer: TaskViewer;
   commentActions: CommentActions;
   commentsRefresh: number;
+  canEdit: boolean;
   onClose: () => void;
   onSave: (id: string, patch: TaskPatch) => Promise<WsTaskRow>;
   onDelete: (id: string) => Promise<void>;
@@ -45,7 +47,7 @@ function TaskDetailBody({
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const memberNames = new Map(members.map((member) => [member.id, member.displayName]));
-  const mayDelete = can({ role: viewer.role, status: "active" }, "content.delete");
+  const mayDelete = canEdit && can({ role: viewer.role, status: "active" }, "content.delete");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,25 +87,34 @@ function TaskDetailBody({
   return (
     <div className="flex flex-col gap-4">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <TaskFormFields
-          idPrefix="task-detail"
-          values={values}
-          onChange={setValues}
-          members={members}
-          cards={cards}
-          includeStatus
-        />
+        {canEdit ? null : (
+          <p className="hint">
+            You can view this task but not change it. Ask an owner for edit access to tasks.
+          </p>
+        )}
+        <fieldset disabled={!canEdit} className="flex flex-col gap-4">
+          <TaskFormFields
+            idPrefix="task-detail"
+            values={values}
+            onChange={setValues}
+            members={members}
+            cards={cards}
+            includeStatus
+          />
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" variant="primary" disabled={saving}>
-            {saving ? "Saving..." : "Save"}
-          </Button>
-          {notice ? (
-            <span role="status" className="text-sm text-ink-muted">
-              {notice}
-            </span>
+          {canEdit ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" variant="primary" disabled={saving}>
+                {saving ? "Saving..." : "Save"}
+              </Button>
+              {notice ? (
+                <span role="status" className="text-sm text-ink-muted">
+                  {notice}
+                </span>
+              ) : null}
+            </div>
           ) : null}
-        </div>
+        </fieldset>
 
         {error ? (
           <p role="alert" className="text-sm text-danger">
@@ -143,6 +154,7 @@ function TaskDetailBody({
           viewer={viewer}
           actions={commentActions}
           refreshKey={commentsRefresh}
+          canWrite={canEdit}
         />
       </div>
     </div>
@@ -160,6 +172,7 @@ export function TaskDetailSheet({
   viewer,
   commentActions,
   commentsRefresh,
+  canEdit,
   onClose,
   onSave,
   onDelete,
@@ -170,6 +183,8 @@ export function TaskDetailSheet({
   viewer: TaskViewer;
   commentActions: CommentActions;
   commentsRefresh: number;
+  /** False at view level: the fields and the thread are read only, with no save or delete. */
+  canEdit: boolean;
   onClose: () => void;
   onSave: (id: string, patch: TaskPatch) => Promise<WsTaskRow>;
   onDelete: (id: string) => Promise<void>;
@@ -191,6 +206,7 @@ export function TaskDetailSheet({
             viewer={viewer}
             commentActions={commentActions}
             commentsRefresh={commentsRefresh}
+            canEdit={canEdit}
             onClose={onClose}
             onSave={onSave}
             onDelete={onDelete}

@@ -19,6 +19,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     });
   }
 
+  // An invite or recovery link lands on /auth/confirm with no session yet. That route exchanges
+  // the one-time token and sets the cookie itself, so it must pass through untouched.
+  if (request.nextUrl.pathname.startsWith("/auth/")) {
+    return NextResponse.next();
+  }
+
   // No Supabase configuration means demo mode or a misconfiguration. Either way there is no
   // session to refresh, and the layout fails closed.
   const settings = supabaseSettings();

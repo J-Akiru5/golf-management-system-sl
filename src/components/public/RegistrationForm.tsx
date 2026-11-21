@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { daySelectionProblem } from "@/lib/data/day-selection";
+import { ENTRY_HONEYPOT_FIELD, entryPlayerPayload } from "@/lib/data/entry-form";
 import { instructionText } from "@/lib/data/instructions";
 import { daySessionSummary } from "@/lib/data/sessions";
 import type {
@@ -44,6 +45,7 @@ export function RegistrationForm({
   const [declaredWshId, setDeclaredWshId] = useState("");
   const [declaredWshHandicap, setDeclaredWshHandicap] = useState("");
   const [extra, setExtra] = useState<Record<string, string>>({});
+  const [trap, setTrap] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
 
@@ -69,15 +71,18 @@ export function RegistrationForm({
     setMessage(null);
     try {
       const text = await onSubmit(
-        {
-          name: name.trim(),
-          birthdate,
-          gender: gender || "M",
-          ngapId: ngapId.trim() || undefined,
-          contactNumber: contactNumber.trim() || undefined,
-          homeCourse: homeCourse.trim() || undefined,
-          email: email.trim() || undefined,
-        },
+        entryPlayerPayload(
+          {
+            name: name.trim(),
+            birthdate,
+            gender: gender || "M",
+            ngapId: ngapId.trim() || undefined,
+            contactNumber: contactNumber.trim() || undefined,
+            homeCourse: homeCourse.trim() || undefined,
+            email: email.trim() || undefined,
+          },
+          trap,
+        ),
         {
           role,
           sponsor,
@@ -375,6 +380,31 @@ export function RegistrationForm({
         </button>
       </div>
       <p className="hint">{t("enter.form.reviewNote")}</p>
+
+      {/* Kept out of sight and out of the keyboard order. A script fills it in, and the server then
+          answers like a real entry and writes nothing. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: "-10000px",
+          top: "auto",
+          width: "1px",
+          height: "1px",
+          overflow: "hidden",
+        }}
+      >
+        <label htmlFor="entry-do-not-fill">Leave this field empty</label>
+        <input
+          id="entry-do-not-fill"
+          name={ENTRY_HONEYPOT_FIELD}
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={trap}
+          onChange={(e) => setTrap(e.target.value)}
+        />
+      </div>
     </form>
   );
 }
