@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarRange,
   CheckSquare,
   FileText,
   LayoutDashboard,
@@ -28,6 +29,7 @@ const ICONS: Record<NavIcon, typeof LayoutDashboard> = {
   docs: FileText,
   board: SquareKanban,
   tasks: CheckSquare,
+  timeline: CalendarRange,
   settings: Settings,
   admin: ShieldCheck,
 };

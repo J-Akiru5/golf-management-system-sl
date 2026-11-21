@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Kanban, type KanbanMove } from "@/components/kanban/kanban";
 import { Badge } from "@/components/ui/badge";
 import type { TaskStatus, WsTaskRow } from "@/lib/db/types";
+import { linkMap } from "@/lib/github/links";
 import {
   endOfColumn,
   filterBoardTasks,
@@ -57,15 +58,21 @@ export function TaskBoard({
     return members[0]?.id ?? "";
   });
   const [movingId, setMovingId] = useState<string | null>(null);
+  const [githubOnly, setGithubOnly] = useState(false);
 
   const memberNames = useMemo(
     () => new Map(members.map((member) => [member.id, member.displayName])),
     [members],
   );
 
-  const visible = useMemo(
+  const links = useMemo(() => linkMap(tasks), [tasks]);
+  const filtered = useMemo(
     () => filterBoardTasks(tasks, view, viewerId, assigneeId, today),
     [tasks, view, viewerId, assigneeId, today],
+  );
+  const visible = useMemo(
+    () => (githubOnly ? filtered.filter((task) => links.has(task.id)) : filtered),
+    [filtered, githubOnly, links],
   );
   const groups = useMemo(() => groupTasksByStatus(visible), [visible]);
   const items = useMemo(() => toBoardItems(visible), [visible]);
@@ -105,6 +112,9 @@ export function TaskBoard({
         members={members}
         assigneeId={assigneeId}
         onAssigneeChange={setAssigneeId}
+        githubOnly={githubOnly}
+        onGithubOnlyChange={setGithubOnly}
+        githubCount={filtered.filter((task) => links.has(task.id)).length}
       />
 
       <Kanban

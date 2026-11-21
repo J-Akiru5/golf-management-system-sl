@@ -2,7 +2,9 @@ import { MoveRight } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import type { WsTaskRow } from "@/lib/db/types";
+import { readTaskLink } from "@/lib/github/links";
 import { dueLabel, isOverdue } from "@/lib/tasks/logic";
+import { GithubBadge } from "./github-badge";
 import { PriorityBadge } from "./task-badges";
 
 /**
@@ -29,6 +31,7 @@ export function TaskBoardCard({
   onMove?: () => void;
 }) {
   const late = isOverdue(task, today);
+  const link = readTaskLink(task);
 
   return (
     <Card className="p-3">
@@ -42,6 +45,12 @@ export function TaskBoardCard({
           {task.title}
         </span>
       </button>
+
+      {link ? (
+        <div className="mt-1.5">
+          <GithubBadge link={link} compact />
+        </div>
+      ) : null}
 
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
         <PriorityBadge priority={task.priority} />

@@ -6,7 +6,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Select } from "@/components/ui/field";
 import { TASK_STATUSES } from "@/lib/db/constants";
 import type { TaskStatus, WsTaskRow } from "@/lib/db/types";
+import { readTaskLink } from "@/lib/github/links";
 import { dueLabel, isOverdue } from "@/lib/tasks/logic";
+import { GithubBadge } from "./github-badge";
 import { PriorityBadge, StatusBadge } from "./task-badges";
 
 export type TaskListProps = {
@@ -137,10 +139,16 @@ export function TaskList({
               {tasks.map((task) => {
                 const late = isOverdue(task, today);
                 const card = cardLabel(task, cardTitles);
+                const link = readTaskLink(task);
                 return (
                   <tr key={task.id} className="border-t border-line hover:bg-surface-sunken/60">
                     <td className="px-3 py-2.5">
                       <TitleButton task={task} onOpen={onOpen} />
+                      {link ? (
+                        <div className="mt-1.5">
+                          <GithubBadge link={link} compact />
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2.5">
                       {canEdit ? (
@@ -180,6 +188,7 @@ export function TaskList({
         {tasks.map((task) => {
           const late = isOverdue(task, today);
           const card = cardLabel(task, cardTitles);
+          const link = readTaskLink(task);
           return (
             <li
               key={task.id}
@@ -190,6 +199,7 @@ export function TaskList({
                 onOpen={onOpen}
                 className="flex min-h-11 w-full items-center"
               />
+              {link ? <GithubBadge link={link} /> : null}
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={task.status} />
                 <PriorityBadge priority={task.priority} />
