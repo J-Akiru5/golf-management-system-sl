@@ -4,7 +4,7 @@ Golf tournament management for **Iloilo Golf & Country Club (IGCC)**, built by *
 The organizer adds players; the system routes each one to a category, tee, flight, group and start
 slot; the organizer reviews, overrides and publishes; players read their pairings on a phone.
 
-> **Status date:** 15 Nov 2026 · **Production:** `v0.53.0` (live; the 0.52.1 tabulator fix reached production through 0.52.2 after Vercel blocked the 0.52.1 merge, see the decision log, 14 Nov 2026) · **Branches:** `develop` (integration, no deploy), `staging` (preview), `main` (production) ·
+> **Status date:** 21 Nov 2026 · **Production:** `v0.63.0` (golf.syntaxure.dev; workspace Admin, page access, BYOK, friendlier Teeo, security limits) · **Next:** v1.0.0 before the Dec 21–22 event, milestone #1 (#341 to #357) · **Workspace:** `v0.60.0` app at teeline.syntaxure.dev · **Branches:** `develop` (integration, no deploy), `staging` (preview), `main` (production) ·
 > **Product name:** TeeLine Golf (approved direction; trademark clearance has not been established)
 
 This is the single plan for humans and AI agents. Section 1 is the 60-second version. Everything
@@ -49,12 +49,58 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 
 ---
 
+## Public site, landing page and Teeo (0.61.0 to 0.63.0, 20 to 21 Nov 2026)
+
+**Verified on 21 Nov 2026** against the live site, the tags and the merged code unless marked otherwise.
+
+| Release | What shipped | Evidence |
+| --- | --- | --- |
+| **0.61.0** (tag on `41a1392`) | The product landing page at `/` for other golf clubs (centred dark hero, the control-room screen marked as an illustrated layout, the club's events, desk screens, the 24th Bamboo Tee figures, a three-step story, About us with Syntaxure Labs, MDM Events and ZenLabs and the TeeLine team, Request a demo). The featured event is an organizer setting in Setup ("TeeLine home page"); there is no visitor-facing switch. Tiered GSAP motion loaded after idle (full, lite, none). `/demo` files into the Feedback inbox | PRs #334, #335; production deploy READY |
+| **0.62.0** (tag on `617a7fa`) | Teeo, the concern chat, on every public page (head-only bubble; Gemini, OpenAI-compatible and OpenCode Go in order; English, Tagalog, Hiligaynon, Cebuano). The Events portfolio (`/events`, `/events/<id>`); "Events" replaces "Tournament rules" in the nav and `/rules` forwards to the event with rules, else keeps the Conditions of Play. Tick-box concerns on `/feedback` from Ma'am Mary Ann's list. One public look (shared header, footer, width, dark cards). #333 (SEO/AEO by dev-lou) carried into the landing page | PRs #338, #339, #340; 3,220 tests and 290 browser checks passing; live site checked |
+| **0.63.0** (released 21 Nov 2026) | A friendlier Teeo panel in Pakoy's layout (quick-reply chips, pill input, round send button). BYOK: AI provider keys managed by workspace owners in the ops app (Settings, AI providers), encrypted with AES-256-GCM, used by Teeo with environment variables as the fallback | `feat/teeo-byok` |
+
+### Database scripts the owner runs (none applied as of 21 Nov 2026)
+
+Run in the Supabase SQL editor, in this order; each is one transaction.
+
+1. `docs/landing/apply-on-live.sql` (0.61.0): `tournaments.landing_featured`, `set_landing_feature()`, `public_showcase_events()`, the `demo` feedback category.
+2. `docs/public-v2/apply-on-live.sql` (0.62.0): `public_feedback.details`, the `concern` category, `submit_feedback(..., p_details)`, the `feedback_alert` outbox kind, `public_event_archive()`, `chat_rate_check()`.
+3. `docs/ai-providers/apply-on-live.sql` (0.63.0): `ai_provider_settings` and its audit table, owner-only functions.
+4. `docs/god-mode/apply-on-live.sql` (0.63.0): the Admin console's functions, `god_audit`, `god_suspensions`.
+5. `docs/permissions/apply-on-live.sql` (0.63.0, after 4): role and per-person page access, `ws_can()`.
+6. `docs/security/apply-on-live.sql` (0.63.0): limits on the public entry form.
+
+Settings outside SQL (owner, 21 Nov 2026): `AI_SECRET_KEY` on both Vercel projects (done), `SUPABASE_SECRET_ROLE_KEY` on the workspace project (done), `https://teeline.syntaxure.dev/**` in Supabase redirect URLs (done), the Invite and Reset password email templates switched to `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=…`, and Resend as the Supabase SMTP sender so invites reach people outside the Supabase team.
+
+Until they run, the site still works: no event is featured, concerns from the form and Teeo are filed as plain `content` notes carrying every answer, `/events` uses the existing event lists, Teeo's rate check is skipped, and Teeo answers that it cannot reply just now and offers the tick-box form.
+
+### Owner steps that are not code
+
+- Switch the 24th Bamboo Tee on in Setup, "TeeLine home page", after script 1.
+- Set `AI_SECRET_KEY` (32 random bytes, base64) on both Vercel projects, the same value on each, then add provider keys in the workspace. Or set `GEMINI_API_KEY` on the golf project only.
+- A concern's email alert is queued in the outbox and sent from the email desk; nothing sends it automatically.
+
+### Decisions the owner made (20 to 21 Nov 2026)
+
+- The landing page is for other golf clubs; the call to action is Request a demo; dark; real admin screens, cropped so no player name shows.
+- The featured event is an admin control, never chosen by the page.
+- Tournament rules leave the navbar and belong to each event in an Events portfolio.
+- Concerns are tick boxes (seniors do not use drop-downs); several may be ticked; tee colours are Blue, Silver, White and Red.
+- Teeo is the mascot; only its head shows in the bubble; it speaks English, Tagalog, Hiligaynon and Cebuano; a finished chat goes to the inbox with an email alert; it is on every public page.
+- Promotion of a stable batch to `main` was approved in advance on 20 Nov 2026.
+
+---
+
 ## TeeLine Workspace, the internal ops portal (plan of 20 Nov 2026)
 
 An internal tool for Syntaxure Labs, MDM Events and ZenLabs: live shared documents, a tournament
 pipeline board and team tasks. It is not part of the tournament desk and does not touch scoring, the
-draw, the tabulator, public pages or handicap logic. **Status: planning. Nothing is built, no
-migration is written yet.**
+draw, the tabulator, public pages or handicap logic. **Status (21 Nov 2026): built and released in
+v0.60.0 (`apps/ops`), deployed as the Vercel project `teeline-workspace` at teeline.syntaxure.dev.**
+The owner ran the workspace SQL on 20 Nov 2026. Accounts are created in Supabase (Authentication,
+Users) and the first owner is added with `supabase/seed/workspace_members.example.sql`; after that,
+owners manage members in Settings. The text below is the plan as written on 20 Nov and is kept for the
+record.
 
 ### Decisions the owner made on 20 Nov 2026
 
@@ -1411,6 +1457,9 @@ Agent ground rules:
 
 | Date | Decision |
 | --- | --- |
+| 20 Nov 2026 | **0.61.0: the landing page for other clubs, and the featured event is an organizer setting.** The visitor-facing For clubs / Now hosting switch was removed at the owner's request; Setup has "Feature this event on the home page", one event per club. Released as v0.61.0 (`41a1392`). |
+| 20 Nov 2026 | **0.62.0: Teeo, the Events portfolio, tick-box concerns and one public look.** Tournament rules left the navbar for per-event pages; concerns use Ma'am Mary Ann's tick-box list. Before the 0.62.0 database script runs, the form and Teeo file a concern as a plain `content` note carrying every answer. #333 (merged straight into `staging` by dev-lou) was carried into the landing page and reached `main` in this release. Released as v0.62.0 (`617a7fa`); the owner approved promotion in advance. |
+| 21 Nov 2026 | **BYOK for Teeo lives in the workspace.** AI provider keys are set by workspace owners in Settings, AI providers, tested with a live call before they are stored, encrypted with AES-256-GCM under `AI_SECRET_KEY`, shown only as the last four characters, and audited with a reason. The golf app reads them on the server with the service role and falls back to environment variables. |
 | 17 Oct 2026 | Rules confirmed by the organizer (spec v1). Rules are tournament settings, not constants. |
 | 17 Oct 2026 | Stack: Next.js + Supabase (`supabase-js` and SQL migrations, not Prisma) + Vercel. |
 | 17 Oct 2026 | Multi-tenant data model from day one (`club_id` + RLS), IGCC the only tenant. |

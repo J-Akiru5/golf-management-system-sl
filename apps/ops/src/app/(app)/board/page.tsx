@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { BoardView } from "@/components/board/board-view";
+import { requirePageAccess } from "@/lib/access/guard";
+import { levelFor } from "@/lib/access/pages";
+import { currentAccess } from "@/lib/access/server";
 import { getViewer } from "@/lib/auth/viewer";
 import { can, type Viewer } from "@/lib/db/permissions";
 import { demoMode } from "@/lib/flags";
@@ -8,11 +11,15 @@ import { getRepos } from "@/lib/repos";
 export const metadata: Metadata = { title: "Pipeline" };
 
 /**
- * The pipeline board route. The access gate has already run in the layout; this page only loads
- * the data and decides whether the viewer may see the delete control.
+ * The pipeline board route. The menu hides it at `none`; this guard refuses the address. The page
+ * then loads the data and decides whether the viewer may see the delete control.
  */
 export default async function PipelinePage() {
+  await requirePageAccess("pipeline");
+
   const demo = demoMode();
+  const access = await currentAccess();
+  const canEdit = levelFor(access, "pipeline") === "edit";
   const repos = await getRepos();
   const [cards, members, tournaments] = await Promise.all([
     repos.board.listCards(),
@@ -30,7 +37,8 @@ export default async function PipelinePage() {
       initialCards={cards}
       members={members}
       tournaments={tournaments}
-      canDelete={can(viewer, "content.delete")}
+      canEdit={canEdit}
+      canDelete={canEdit && can(viewer, "content.delete")}
       demo={demo}
     />
   );

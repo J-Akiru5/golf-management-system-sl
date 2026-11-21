@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { DocsList } from "@/components/docs/docs-list";
+import { requirePageAccess } from "@/lib/access/guard";
+import { levelFor } from "@/lib/access/pages";
+import { currentAccess } from "@/lib/access/server";
 import { can } from "@/lib/db/permissions";
 import { getDocsViewer, permissionsViewer } from "@/lib/docs/viewer";
 import { getRepos } from "@/lib/repos";
@@ -11,6 +14,8 @@ export default async function DocumentsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  await requirePageAccess("documents");
+
   const params = await searchParams;
   const rawSearch = params.q;
   const search = (typeof rawSearch === "string" ? rawSearch : "").trim();
@@ -24,6 +29,7 @@ export default async function DocumentsPage({
 
   const repos = await getRepos();
   const docs = await repos.docs.listDocs({ archived, search });
+  const canEdit = levelFor(await currentAccess(), "documents") === "edit";
 
   return (
     <div className="flex flex-col gap-4">
@@ -44,7 +50,8 @@ export default async function DocumentsPage({
         docs={docs}
         archived={archived}
         search={search}
-        canDelete={can(permissionsViewer(viewer), "content.delete")}
+        canEdit={canEdit}
+        canDelete={canEdit && can(permissionsViewer(viewer), "content.delete")}
       />
     </div>
   );

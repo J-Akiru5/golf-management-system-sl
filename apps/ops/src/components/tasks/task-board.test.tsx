@@ -40,6 +40,7 @@ function renderBoard(tasks: WsTaskRow[], onMove: (move: TaskBoardMove) => void =
       today="2026-11-20"
       onOpen={() => {}}
       onMove={onMove}
+      canEdit
     />,
   );
 }
@@ -179,6 +180,7 @@ describe("TaskBoard", () => {
         today="2026-11-20"
         onOpen={() => {}}
         onMove={() => {}}
+        canEdit
       />,
     );
 

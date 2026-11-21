@@ -1,5 +1,6 @@
 "use client";
 
+import { Globe2, SendHorizontal, X } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
@@ -80,6 +81,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
   // A restored session can hold `complete` without a draft if the stored draft was unreadable; the
   // composer stays available in that case so the player is never stuck.
   const showComposer = !sent && (!complete || draft === null);
+  const showQuickReplies = showComposer && !messages.some((message) => message.role === "user");
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -104,6 +106,14 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     const log = logRef.current;
     if (log) log.scrollTop = log.scrollHeight;
   }, [messages, status, complete, notice]);
+
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = "48px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 108)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 108 ? "auto" : "hidden";
+  }, [input]);
 
   function handleLanguage(next: ChatLocale) {
     setLanguage(next);
@@ -299,53 +309,70 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
       onKeyDown={handleKeyDown}
     >
       <header className="tl-chat-head">
-        <TeeoAvatar size={44} />
+        <TeeoAvatar size={48} variant="head" className="tl-chat-head-avatar" />
         <div className="tl-chat-head-text">
           <h2 id="tl-chat-title" className="tl-chat-name">
             {MASCOT_NAME}
           </h2>
           <p className="tl-chat-tagline">{copy.tagline}</p>
         </div>
+        <label className="tl-chat-language" htmlFor="tl-chat-language">
+          <Globe2 size={16} aria-hidden="true" />
+          <span aria-hidden="true">{language.toUpperCase()}</span>
+          <span className="tl-chat-sr">{copy.languageLabel}</span>
+          <select
+            id="tl-chat-language"
+            value={language}
+            aria-label={copy.languageLabel}
+            onChange={(event) => {
+              if (isChatLocale(event.target.value)) handleLanguage(event.target.value);
+            }}
+          >
+            {CHAT_LOCALES.map((value) => (
+              <option key={value} value={value}>
+                {CHAT_LOCALE_LABELS[value]}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           className="tl-chat-icon-button"
           onClick={onClose}
           aria-label={copy.closeLabel}
         >
-          <span aria-hidden="true">×</span>
+          <X size={20} aria-hidden="true" />
         </button>
       </header>
-
-      <div className="tl-chat-language">
-        <label htmlFor="tl-chat-language">{copy.languageLabel}</label>
-        <select
-          id="tl-chat-language"
-          value={language}
-          onChange={(event) => {
-            if (isChatLocale(event.target.value)) handleLanguage(event.target.value);
-          }}
-        >
-          {CHAT_LOCALES.map((value) => (
-            <option key={value} value={value}>
-              {CHAT_LOCALE_LABELS[value]}
-            </option>
-          ))}
-        </select>
-      </div>
 
       <div className="tl-chat-log" ref={logRef} aria-live="polite" aria-relevant="additions">
         {messages.map((message, index) => (
           // The transcript is append-only and has no ids; the position is stable until it is reset.
-          <div key={`${message.role}-${index}`} className="tl-chat-turn" data-role={message.role}>
-            {message.role === "assistant" && <TeeoAvatar size={32} />}
+          <div
+            key={`${message.role}-${index}`}
+            className="tl-chat-turn"
+            data-role={message.role}
+            data-avatar={
+              message.role === "assistant" &&
+              (index === 0 || messages[index - 1]?.role !== "assistant")
+                ? "true"
+                : "false"
+            }
+          >
+            {message.role === "assistant" &&
+              (index === 0 || messages[index - 1]?.role !== "assistant") && (
+                <TeeoAvatar size={28} variant="head" />
+              )}
             <p className="tl-chat-bubble">{message.content}</p>
           </div>
         ))}
-        {status === "thinking" && (
-          <div className="tl-chat-turn" data-role="assistant">
-            <TeeoAvatar size={32} />
-            <p className="tl-chat-bubble" aria-label={copy.sending}>
-              ...
+        {status === "thinking" && messages[messages.length - 1]?.role === "user" && (
+          <div className="tl-chat-turn" data-role="assistant" data-avatar="true">
+            <TeeoAvatar size={28} variant="head" />
+            <p className="tl-chat-bubble tl-chat-typing" role="status" aria-label={copy.sending}>
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
             </p>
           </div>
         )}
@@ -363,7 +390,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
 
       {fallback && !sent && (
         <p className="tl-chat-notice">
-          <Link className="tl-chat-link" href={feedbackHref}>
+          <Link className="tl-chat-fallback-button" href={feedbackHref}>
             {copy.fallbackTitle}
           </Link>
         </p>
@@ -411,47 +438,71 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
       )}
 
       {showComposer && (
-        <form
-          className="tl-chat-composer"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void send(input);
-          }}
-        >
-          <label className="tl-chat-sr" htmlFor="tl-chat-input">
-            {copy.placeholder}
-          </label>
-          <textarea
-            id="tl-chat-input"
-            ref={inputRef}
-            value={input}
-            rows={1}
-            maxLength={CHAT_MESSAGE_MAX}
-            placeholder={copy.placeholder}
-            onChange={(event) => setInput(event.target.value)}
-            disabled={busy || atTurnLimit}
-          />
-          <button
-            type="submit"
-            className="tl-chat-button tl-chat-send"
-            disabled={busy || atTurnLimit || input.trim() === ""}
+        <>
+          {showQuickReplies && (
+            <div className="tl-chat-quick-replies" role="group" aria-label={copy.quickRepliesLabel}>
+              {copy.quickReplies.map((reply) => (
+                <button
+                  key={reply}
+                  type="button"
+                  className="tl-chat-quick-reply"
+                  onClick={() => void send(reply)}
+                  disabled={busy || atTurnLimit}
+                >
+                  {reply}
+                </button>
+              ))}
+            </div>
+          )}
+          <form
+            className="tl-chat-composer"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void send(input);
+            }}
           >
-            {busy ? copy.sending : copy.send}
-          </button>
-          <div className="tl-chat-honeypot" aria-hidden="true">
-            <label>
-              website
-              <input
-                type="text"
-                name="website"
-                tabIndex={-1}
-                autoComplete="off"
-                value={honeypot}
-                onChange={(event) => setHoneypot(event.target.value)}
-              />
+            <label className="tl-chat-sr" htmlFor="tl-chat-input">
+              {copy.placeholder}
             </label>
-          </div>
-        </form>
+            <textarea
+              id="tl-chat-input"
+              ref={inputRef}
+              value={input}
+              rows={1}
+              maxLength={CHAT_MESSAGE_MAX}
+              placeholder={copy.placeholder}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void send(input);
+                }
+              }}
+              disabled={busy || atTurnLimit}
+            />
+            <button
+              type="submit"
+              className="tl-chat-send"
+              disabled={busy || atTurnLimit || input.trim() === ""}
+              aria-label={busy ? copy.sending : copy.send}
+            >
+              <SendHorizontal size={19} aria-hidden="true" />
+            </button>
+            <div className="tl-chat-honeypot" aria-hidden="true">
+              <label>
+                website
+                <input
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={honeypot}
+                  onChange={(event) => setHoneypot(event.target.value)}
+                />
+              </label>
+            </div>
+          </form>
+        </>
       )}
 
       {sent && (

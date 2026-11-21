@@ -3,6 +3,9 @@ import { DocumentsCard } from "@/components/overview/documents-card";
 import { MyTasksCard } from "@/components/overview/my-tasks-card";
 import { PipelineCard } from "@/components/overview/pipeline-card";
 import { SectionMessage } from "@/components/overview/section-message";
+import { requirePageAccess } from "@/lib/access/guard";
+import { levelAtLeast, levelFor } from "@/lib/access/pages";
+import { currentAccess } from "@/lib/access/server";
 import { getViewer } from "@/lib/auth/viewer";
 import type { DocSummary } from "@/lib/docs/repo";
 import { demoMode } from "@/lib/flags";
@@ -30,22 +33,32 @@ type Section<T> = { ok: true; value: T } | { ok: false };
 
 const FAILED = { ok: false } as const;
 
-function compute<T>(work: () => T): Section<T> {
+const FAILED_MESSAGE = "This section could not load. Reload the page to try again.";
+
+async function sectionOf<T, R>(
+  read: () => Promise<T>,
+  shape: (value: T) => R,
+): Promise<Section<R>> {
   try {
-    return { ok: true, value: work() };
+    return { ok: true, value: shape(await read()) };
   } catch {
     return FAILED;
   }
 }
 
-const FAILED_MESSAGE = "This section could not load. Reload the page to try again.";
-
 /**
  * The first screen a member sees: their work, the pipeline and the documents that changed. Each
- * section is read and summarised on its own, so one refused read does not empty the page.
+ * section is read and summarised on its own, so one refused read does not empty the page. A section
+ * the person has no access to is not shown and not read.
  */
 export default async function OverviewPage() {
+  await requirePageAccess("overview");
+
   const demo = demoMode();
+  const access = await currentAccess();
+  const canReadTasks = levelAtLeast(levelFor(access, "tasks"), "view");
+  const canReadPipeline = levelAtLeast(levelFor(access, "pipeline"), "view");
+  const canReadDocuments = levelAtLeast(levelFor(access, "documents"), "view");
 
   let viewerId: string;
   let displayName: string;
@@ -72,31 +85,34 @@ export default async function OverviewPage() {
     repos = null;
   }
 
-  let tasks: Section<TaskSummary>;
-  let pipeline: Section<PipelineSummary>;
-  let documents: Section<DocSummary[]>;
-
-  if (repos === null) {
-    tasks = FAILED;
-    pipeline = FAILED;
-    documents = FAILED;
-  } else {
-    const [taskRows, cards, docs] = await Promise.allSettled([
-      repos.tasks.listTasks(),
-      repos.board.listCards(),
-      repos.docs.listDocs({ archived: false }),
-    ]);
-
-    tasks =
-      taskRows.status === "fulfilled"
-        ? compute(() => taskSummary(taskRows.value, viewerId, today))
-        : FAILED;
-    pipeline = cards.status === "fulfilled" ? compute(() => pipelineSummary(cards.value)) : FAILED;
-    documents =
-      docs.status === "fulfilled"
-        ? compute(() => recentDocs(docs.value, RECENT_DOC_LIMIT))
-        : FAILED;
-  }
+  const source = repos;
+  const [tasks, pipeline, documents]: [
+    Section<TaskSummary>,
+    Section<PipelineSummary>,
+    Section<DocSummary[]>,
+  ] =
+    source === null
+      ? [FAILED, FAILED, FAILED]
+      : await Promise.all([
+          canReadTasks
+            ? sectionOf(
+                () => source.tasks.listTasks(),
+                (rows) => taskSummary(rows, viewerId, today),
+              )
+            : Promise.resolve(FAILED),
+          canReadPipeline
+            ? sectionOf(
+                () => source.board.listCards(),
+                (cards) => pipelineSummary(cards),
+              )
+            : Promise.resolve(FAILED),
+          canReadDocuments
+            ? sectionOf(
+                () => source.docs.listDocs({ archived: false }),
+                (docs) => recentDocs(docs, RECENT_DOC_LIMIT),
+              )
+            : Promise.resolve(FAILED),
+        ] as const);
 
   return (
     <div className="flex flex-col gap-4">
@@ -107,23 +123,29 @@ export default async function OverviewPage() {
       </header>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {tasks.ok ? (
-          <MyTasksCard summary={tasks.value} today={today} />
-        ) : (
-          <SectionMessage title="My tasks">{FAILED_MESSAGE}</SectionMessage>
-        )}
+        {canReadTasks ? (
+          tasks.ok ? (
+            <MyTasksCard summary={tasks.value} today={today} />
+          ) : (
+            <SectionMessage title="My tasks">{FAILED_MESSAGE}</SectionMessage>
+          )
+        ) : null}
 
-        {pipeline.ok ? (
-          <PipelineCard summary={pipeline.value} />
-        ) : (
-          <SectionMessage title="Pipeline">{FAILED_MESSAGE}</SectionMessage>
-        )}
+        {canReadPipeline ? (
+          pipeline.ok ? (
+            <PipelineCard summary={pipeline.value} />
+          ) : (
+            <SectionMessage title="Pipeline">{FAILED_MESSAGE}</SectionMessage>
+          )
+        ) : null}
 
-        {documents.ok ? (
-          <DocumentsCard docs={documents.value} />
-        ) : (
-          <SectionMessage title="Documents">{FAILED_MESSAGE}</SectionMessage>
-        )}
+        {canReadDocuments ? (
+          documents.ok ? (
+            <DocumentsCard docs={documents.value} />
+          ) : (
+            <SectionMessage title="Documents">{FAILED_MESSAGE}</SectionMessage>
+          )
+        ) : null}
       </div>
     </div>
   );

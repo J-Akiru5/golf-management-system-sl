@@ -64,6 +64,7 @@ export function TasksView({
   today,
   live,
   initialTab,
+  canEdit,
   actions,
 }: {
   initialTasks: WsTaskRow[];
@@ -73,6 +74,8 @@ export function TasksView({
   today: string;
   live: boolean;
   initialTab: TaskTab;
+  /** False at view level: no new task, no status change, no edit, no delete, no comment. */
+  canEdit: boolean;
   actions: TaskActions;
 }) {
   const [tasks, setTasks] = useState<WsTaskRow[]>(initialTasks);
@@ -291,10 +294,12 @@ export function TasksView({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <LiveIndicator state={liveState} />
-          <Button variant="primary" onClick={() => setNewOpen(true)}>
-            <Plus aria-hidden="true" />
-            New task
-          </Button>
+          {canEdit ? (
+            <Button variant="primary" onClick={() => setNewOpen(true)}>
+              <Plus aria-hidden="true" />
+              New task
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -328,6 +333,7 @@ export function TasksView({
             today={today}
             onOpen={setOpenTaskId}
             onStatus={handleStatus}
+            canEdit={canEdit}
             empty={{
               title: "No tasks assigned to you",
               body: "Work that is assigned to you appears here.",
@@ -343,14 +349,17 @@ export function TasksView({
             today={today}
             onOpen={setOpenTaskId}
             onStatus={handleStatus}
+            canEdit={canEdit}
             empty={{
               title: "No tasks yet",
-              body: "Create the first task to get started.",
-              action: (
+              body: canEdit
+                ? "Create the first task to get started."
+                : "Tasks other people create appear here.",
+              action: canEdit ? (
                 <Button variant="secondary" onClick={() => setNewOpen(true)}>
                   New task
                 </Button>
-              ),
+              ) : undefined,
             }}
           />
         </TabsContent>
@@ -378,6 +387,7 @@ export function TasksView({
             today={today}
             onOpen={setOpenTaskId}
             onStatus={handleStatus}
+            canEdit={canEdit}
             empty={{
               title: "No tasks for this member",
               body: "Pick another member, or assign this one some work.",
@@ -393,6 +403,7 @@ export function TasksView({
             today={today}
             onOpen={setOpenTaskId}
             onStatus={handleStatus}
+            canEdit={canEdit}
             empty={{
               title: "Nothing overdue",
               body: "Open tasks past their due date appear here.",
@@ -408,17 +419,20 @@ export function TasksView({
             today={today}
             onOpen={setOpenTaskId}
             onMove={handleMove}
+            canEdit={canEdit}
           />
         </TabsContent>
       </Tabs>
 
-      <NewTaskDialog
-        open={newOpen}
-        onOpenChange={setNewOpen}
-        members={members}
-        cards={cards}
-        onCreate={handleCreate}
-      />
+      {canEdit ? (
+        <NewTaskDialog
+          open={newOpen}
+          onOpenChange={setNewOpen}
+          members={members}
+          cards={cards}
+          onCreate={handleCreate}
+        />
+      ) : null}
 
       <TaskDetailSheet
         task={openTask}
@@ -427,6 +441,7 @@ export function TasksView({
         viewer={viewer}
         commentActions={commentActions}
         commentsRefresh={commentsRefresh}
+        canEdit={canEdit}
         onClose={() => setOpenTaskId(null)}
         onSave={handleSave}
         onDelete={handleDelete}

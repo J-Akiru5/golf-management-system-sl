@@ -18,7 +18,8 @@ export function CardTile({
   card: BoardCard;
   ownerName: string | null;
   onOpen: () => void;
-  onMove: () => void;
+  /** Absent at view level: the card can be opened but not moved. */
+  onMove?: () => void;
 }) {
   const amount =
     card.quoted_amount === null ? null : formatMoney(card.quoted_amount, card.currency);
@@ -68,15 +69,17 @@ export function CardTile({
             </>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onMove}
-          className="inline-flex h-11 flex-none items-center gap-1 rounded-md px-2 text-[12px] font-semibold text-ink-muted hover:bg-surface-sunken hover:text-ink sm:h-8"
-          aria-label={`Move ${card.title} to another stage`}
-        >
-          <MoveRight className="size-3.5" aria-hidden="true" />
-          Move
-        </button>
+        {onMove ? (
+          <button
+            type="button"
+            onClick={onMove}
+            className="inline-flex h-11 flex-none items-center gap-1 rounded-md px-2 text-[12px] font-semibold text-ink-muted hover:bg-surface-sunken hover:text-ink sm:h-8"
+            aria-label={`Move ${card.title} to another stage`}
+          >
+            <MoveRight className="size-3.5" aria-hidden="true" />
+            Move
+          </button>
+        ) : null}
       </div>
     </Card>
   );
