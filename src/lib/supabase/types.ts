@@ -276,6 +276,22 @@ export type TournamentRow = {
   draw_revision: number;
 };
 
+/**
+ * One saved standard. Added by 20261123000400_tournament_presets.sql; the table may not exist on a
+ * database that has not applied it, which the preset controls read as "available after the next
+ * database update".
+ */
+export type TournamentPresetRow = {
+  id: string;
+  club_id: string;
+  name: string;
+  description: string | null;
+  settings: Json;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /** One stable day of an event. Added by 20261037000000. */
 export type TournamentDayRow = {
   id: string;
@@ -851,6 +867,23 @@ export interface Database {
           is_playing_day?: boolean;
         }
       >;
+      /** Added by 20261123000400. A saved set of rules an event copies; never linked live. */
+      tournament_presets: Table<
+        TournamentPresetRow,
+        {
+          id?: string;
+          club_id: string;
+          name: string;
+          description?: string | null;
+          settings: Json;
+          created_by?: string | null;
+        },
+        {
+          name?: string;
+          description?: string | null;
+          settings?: Json;
+        }
+      >;
       registration_days: Table<
         RegistrationDayRow,
         {
@@ -1379,6 +1412,23 @@ export interface Database {
         Returns: Json;
       };
       unpublish_pairings: { Args: { p_tournament: string }; Returns: undefined };
+      /**
+       * Tournament presets. Added by 20261123000400_tournament_presets.sql; an older database
+       * answers PGRST202, which the preset controls read as "available after the next update".
+       */
+      preset_settings_problem: { Args: { p_settings: Json }; Returns: string | null };
+      save_tournament_preset: {
+        Args: { p_club: string; p_name: string; p_description: string | null; p_settings: Json };
+        Returns: Json;
+      };
+      seed_preset_from_tournament: {
+        Args: { p_tournament: string; p_name: string; p_description?: string | null };
+        Returns: Json;
+      };
+      apply_tournament_preset: {
+        Args: { p_tournament: string; p_preset: string };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
