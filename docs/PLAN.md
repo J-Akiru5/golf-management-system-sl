@@ -59,7 +59,7 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 | **0.62.0** (tag on `617a7fa`) | Teeo, the concern chat, on every public page (head-only bubble; Gemini, OpenAI-compatible and OpenCode Go in order; English, Tagalog, Hiligaynon, Cebuano). The Events portfolio (`/events`, `/events/<id>`); "Events" replaces "Tournament rules" in the nav and `/rules` forwards to the event with rules, else keeps the Conditions of Play. Tick-box concerns on `/feedback` from Ma'am Mary Ann's list. One public look (shared header, footer, width, dark cards). #333 (SEO/AEO by dev-lou) carried into the landing page | PRs #338, #339, #340; 3,220 tests and 290 browser checks passing; live site checked |
 | **0.63.0** (released 21 Nov 2026) | A friendlier Teeo panel in Pakoy's layout (quick-reply chips, pill input, round send button). BYOK: AI provider keys managed by workspace owners in the ops app (Settings, AI providers), encrypted with AES-256-GCM, used by Teeo with environment variables as the fallback | `feat/teeo-byok` |
 
-### Database scripts the owner runs (scripts 1 to 6 applied by the owner on 21 Nov 2026)
+### Database scripts the owner runs (scripts 1 to 9 applied; live state checked 21 Nov 2026)
 
 Run in the Supabase SQL editor, in this order; each is one transaction.
 
@@ -73,9 +73,40 @@ Run in the Supabase SQL editor, in this order; each is one transaction.
 8. `docs/github-sync/apply-on-live.sql` (0.64.0): GitHub issue sync on workspace tasks.
 9. `docs/timeline/apply-on-live.sql` (0.64.0): the Timeline page in the permission matrix.
 
+#### Live database state (21 Nov 2026, read-only)
+
+Checked from `382b614` (v0.64.0) with `scripts/migration-ledger.mjs` (`pnpm migrations:check`). The `supabase_migrations` schema is not exposed to PostgREST, so these object checks are the evidence; set `SUPABASE_ACCESS_TOKEN` in `.env.local` to compare the migrations table itself. The script never writes.
+
+| Item | Live state |
+| --- | --- |
+| Scripts 1 to 6 (0.61.0 to 0.63.0) | **Applied.** `tournaments.landing_featured`, `public_feedback.details`, `chat_rate_events`, `ai_provider_settings`, `god_audit`, `ws_role_permissions` and the workspace tables are present. |
+| Workspace 0.60 | **Applied.** `workspace_members`, `ws_tasks` and `ws_role_permissions` are present. |
+| Script 7, presets (0.64.0) | **Table present, no preset.** `tournament_presets` exists but has 0 rows; the `seed_preset_from_tournament` step has not run. |
+| Script 8, GitHub sync (0.64.0) | **Applied.** `ws_tasks.github_issue_number` and its sibling columns, `github_user_map` and `github_sync_log` are present. |
+| Script 9, timeline (0.64.0) | **Applied.** 3 `timeline` rows in `ws_role_permissions`. |
+| Entry limits (0.64.0) | **Applied.** `registrations.rate_key` is present. |
+| Photo token (`20261111000100`) | **Not applied.** `players.public_photo_token` is missing; public photo publication refuses until it runs. |
+| Scorecard scans (`20261113000100`) | **Not applied.** `scorecard_scans` is missing; the QR scan table is not available. |
+| Per-day afternoon start (`20261108000800`) | **Not applied.** `competition_rounds.pm_first_tee_time` is missing. |
+| Membership backfill (`20261115000900`) | **Incomplete.** 3 registrations have no `membership_type`. The column is `membership_type`; there is no `registrations.role` column. |
+| Rounds per day (`20261108000500`) | **Applied.** 4 `competition_rounds` rows: Days 1 to 4, Day 4 `draft`. |
+| Results reveal (`20261115000200`) | **Applied.** `tournaments.publish_views` is present. |
+| Open round (`20261108000100`) | **Rounds exist; function not called.** The read-only check saw the rounds, not the function. The plan and changelog still disagree; verify before the next event. |
+
+**Outstanding, in this order (owner runs the SQL; Karl re-runs the script and updates this table):**
+
+1. `20261115000900_registration_role_backfill.sql` — 3 registrations have no `membership_type`; run it.
+2. `20261111000100_public_photo_token.sql` — missing; public photo publication refuses without it.
+3. `20261113000100_scorecard_scans.sql` — missing; needed for the QR scan table (#343).
+4. `20261108000800_day_pm_start.sql` — missing; the per-day afternoon start.
+5. Preset seed — `select public.seed_preset_from_tournament(<the Bamboo Tee id>, 'Bamboo Tee standard');`; the table is empty.
+6. Verify `20261108000100_open_round.sql` and the per-day save functions on the live project; the rounds exist, the functions were not called by this check.
+
+The 0.64.0 changelog says scripts 7 to 9 are written and **not applied**. The live object checks show they are applied, except the preset seed. The `[Unreleased]` changelog note records the correction. The `demo` request form files into the feedback inbox (the `demo` category), so there is no `demo_requests` table to check.
+
 Settings outside SQL (owner, 21 Nov 2026): `AI_SECRET_KEY` on both Vercel projects (done), `SUPABASE_SECRET_ROLE_KEY` on the workspace project (done), `https://teeline.syntaxure.dev/**` in Supabase redirect URLs (done), the Invite and Reset password email templates switched to `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=…`, and Resend as the Supabase SMTP sender so invites reach people outside the Supabase team.
 
-Until they run, the site still works: no event is featured, concerns from the form and Teeo are filed as plain `content` notes carrying every answer, `/events` uses the existing event lists, Teeo's rate check is skipped, and Teeo answers that it cannot reply just now and offers the tick-box form.
+If a script in the list has not run, the pre-script fallback is: no event is featured, concerns from the form and Teeo are filed as plain `content` notes carrying every answer, `/events` uses the existing event lists, Teeo's rate check is skipped, and Teeo answers that it cannot reply just now and offers the tick-box form.
 
 ### Owner steps that are not code
 

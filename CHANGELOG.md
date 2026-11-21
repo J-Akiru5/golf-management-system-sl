@@ -9,6 +9,9 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Docs
+- **The migration ledger and the live database state are recorded.** `scripts/migration-ledger.mjs` (`pnpm migrations:check`) compares `supabase/migrations` with the live `supabase_migrations.schema_migrations` table when `SUPABASE_ACCESS_TOKEN` is set, and otherwise checks the key tables, columns and rows. The 21 Nov 2026 check from `382b614` (v0.64.0) shows scripts 1 to 9 applied, the preset seed empty, and four older gaps: the photo token, the scorecard scans, the per-day afternoon start, and 3 registrations without `membership_type`. `docs/PLAN.md` has the table and the owner order. No migration is applied by the script. This corrects the 0.64.0 Database paragraph, which said scripts 7 to 9 were not applied.
+
 ## [0.64.0] - 2026-11-21
 
 ### Added
