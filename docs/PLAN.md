@@ -4,7 +4,7 @@ Golf tournament management for **Iloilo Golf & Country Club (IGCC)**, built by *
 The organizer adds players; the system routes each one to a category, tee, flight, group and start
 slot; the organizer reviews, overrides and publishes; players read their pairings on a phone.
 
-> **Status date:** 21 Nov 2026 · **Production:** `v0.62.0` (live at golf.syntaxure.dev, tag on `617a7fa`; 0.63.0 with the friendlier Teeo and BYOK keys is in progress on `feat/teeo-byok`) · **Workspace:** `v0.60.0` app at teeline.syntaxure.dev · **Branches:** `develop` (integration, no deploy), `staging` (preview), `main` (production) ·
+> **Status date:** 21 Nov 2026 · **Production:** `v0.63.0` (golf.syntaxure.dev; workspace Admin, page access, BYOK, friendlier Teeo, security limits) · **Next:** v1.0.0 before the Dec 21–22 event, milestone #1 (#341 to #357) · **Workspace:** `v0.60.0` app at teeline.syntaxure.dev · **Branches:** `develop` (integration, no deploy), `staging` (preview), `main` (production) ·
 > **Product name:** TeeLine Golf (approved direction; trademark clearance has not been established)
 
 This is the single plan for humans and AI agents. Section 1 is the 60-second version. Everything
@@ -57,7 +57,7 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 | --- | --- | --- |
 | **0.61.0** (tag on `41a1392`) | The product landing page at `/` for other golf clubs (centred dark hero, the control-room screen marked as an illustrated layout, the club's events, desk screens, the 24th Bamboo Tee figures, a three-step story, About us with Syntaxure Labs, MDM Events and ZenLabs and the TeeLine team, Request a demo). The featured event is an organizer setting in Setup ("TeeLine home page"); there is no visitor-facing switch. Tiered GSAP motion loaded after idle (full, lite, none). `/demo` files into the Feedback inbox | PRs #334, #335; production deploy READY |
 | **0.62.0** (tag on `617a7fa`) | Teeo, the concern chat, on every public page (head-only bubble; Gemini, OpenAI-compatible and OpenCode Go in order; English, Tagalog, Hiligaynon, Cebuano). The Events portfolio (`/events`, `/events/<id>`); "Events" replaces "Tournament rules" in the nav and `/rules` forwards to the event with rules, else keeps the Conditions of Play. Tick-box concerns on `/feedback` from Ma'am Mary Ann's list. One public look (shared header, footer, width, dark cards). #333 (SEO/AEO by dev-lou) carried into the landing page | PRs #338, #339, #340; 3,220 tests and 290 browser checks passing; live site checked |
-| **0.63.0** (in progress) | A friendlier Teeo panel in Pakoy's layout (quick-reply chips, pill input, round send button). BYOK: AI provider keys managed by workspace owners in the ops app (Settings, AI providers), encrypted with AES-256-GCM, used by Teeo with environment variables as the fallback | `feat/teeo-byok` |
+| **0.63.0** (released 21 Nov 2026) | A friendlier Teeo panel in Pakoy's layout (quick-reply chips, pill input, round send button). BYOK: AI provider keys managed by workspace owners in the ops app (Settings, AI providers), encrypted with AES-256-GCM, used by Teeo with environment variables as the fallback | `feat/teeo-byok` |
 
 ### Database scripts the owner runs (none applied as of 21 Nov 2026)
 
@@ -66,6 +66,11 @@ Run in the Supabase SQL editor, in this order; each is one transaction.
 1. `docs/landing/apply-on-live.sql` (0.61.0): `tournaments.landing_featured`, `set_landing_feature()`, `public_showcase_events()`, the `demo` feedback category.
 2. `docs/public-v2/apply-on-live.sql` (0.62.0): `public_feedback.details`, the `concern` category, `submit_feedback(..., p_details)`, the `feedback_alert` outbox kind, `public_event_archive()`, `chat_rate_check()`.
 3. `docs/ai-providers/apply-on-live.sql` (0.63.0): `ai_provider_settings` and its audit table, owner-only functions.
+4. `docs/god-mode/apply-on-live.sql` (0.63.0): the Admin console's functions, `god_audit`, `god_suspensions`.
+5. `docs/permissions/apply-on-live.sql` (0.63.0, after 4): role and per-person page access, `ws_can()`.
+6. `docs/security/apply-on-live.sql` (0.63.0): limits on the public entry form.
+
+Settings outside SQL (owner, 21 Nov 2026): `AI_SECRET_KEY` on both Vercel projects (done), `SUPABASE_SECRET_ROLE_KEY` on the workspace project (done), `https://teeline.syntaxure.dev/**` in Supabase redirect URLs (done), the Invite and Reset password email templates switched to `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=…`, and Resend as the Supabase SMTP sender so invites reach people outside the Supabase team.
 
 Until they run, the site still works: no event is featured, concerns from the form and Teeo are filed as plain `content` notes carrying every answer, `/events` uses the existing event lists, Teeo's rate check is skipped, and Teeo answers that it cannot reply just now and offers the tick-box form.
 
