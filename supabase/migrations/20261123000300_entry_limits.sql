@@ -399,7 +399,20 @@ begin
     raise exception 'submit_registration did not answer the honeypot with the ordinary acceptance';
   end if;
 
-  if has_table_privilege('anon', 'public.registrations', 'INSERT') then
-    raise exception 'anon gained an insert privilege on public.registrations';
+  -- Supabase grants table privileges to anon by default; row level security is what protects
+  -- the table. So the check is that RLS is on and that no policy lets a visitor write a row.
+  if not exists (
+    select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public' and c.relname = 'registrations' and c.relrowsecurity
+  ) then
+    raise exception 'row level security is off on public.registrations';
+  end if;
+  if exists (
+    select 1 from pg_policies
+     where schemaname = 'public' and tablename = 'registrations'
+       and cmd in ('INSERT', 'ALL')
+       and (roles && array['anon', 'public']::name[])
+  ) then
+    raise exception 'a policy lets visitors write to public.registrations';
   end if;
 end $$;
