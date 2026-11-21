@@ -233,6 +233,21 @@ const b = 2;</code></pre>
     expect(html).toContain('rowspan="9"');
     expect(html).toContain("<td><p>One</p></td>");
   });
+
+  it("drops a table with no rows and gives an empty cell a block", () => {
+    const { html } = convert(
+      "layout-table.html",
+      "<body><table></table><table><tr><td></td></tr></table><p>After</p></body>",
+      "html",
+    );
+
+    expect(html.match(/<table>/g)?.length).toBe(1);
+    expect(html).toContain("<td><p></p></td>");
+    expect(html).toContain("<p>After</p>");
+
+    const json = generateJSON(html, EDITOR_EXTENSIONS) as { content?: Array<{ type: string }> };
+    expect((json.content ?? []).map((node) => node.type)).toEqual(["table", "paragraph"]);
+  });
 });
 
 describe("the Markdown converter", () => {

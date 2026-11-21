@@ -539,6 +539,14 @@ function normalizeDocument(body: Element, doc: Document): void {
     }
   }
 
+  // A row without cells and a table without rows are not tables the editor can hold.
+  for (const row of Array.from(body.querySelectorAll("tr"))) {
+    if (row.querySelector("td, th") === null) row.remove();
+  }
+  for (const table of Array.from(body.querySelectorAll("table"))) {
+    if (table.querySelector("tr") === null) table.remove();
+  }
+
   // A code block is plain text, kept exactly as written.
   for (const pre of Array.from(body.querySelectorAll("pre"))) {
     const text = (pre.textContent ?? "").replace(/\r\n?/g, "\n").replace(/\n+$/, "");
@@ -551,6 +559,11 @@ function normalizeDocument(body: Element, doc: Document): void {
   const selector = EMPTY_REMOVABLE.join(",");
   for (const el of Array.from(body.querySelectorAll(selector)).reverse()) {
     if (isEmptyNode(el)) el.remove();
+  }
+
+  // Every table cell needs at least one block inside it, even when it is empty.
+  for (const cell of Array.from(body.querySelectorAll("td, th"))) {
+    if (cell.firstElementChild === null) cell.appendChild(doc.createElement("p"));
   }
 
   for (const el of Array.from(
