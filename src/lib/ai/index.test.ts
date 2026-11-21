@@ -46,13 +46,16 @@ afterEach(() => {
 });
 
 describe("the AI facade", () => {
-  it("reports no key when the chain is empty", () => {
-    expect(isAiEnabled({ configs: [] })).toBe(false);
-    expect(aiDebugInfo({ configs: [] })).toMatchObject({ primary: "none", hasKey: false });
+  it("reports no key when the chain is empty", async () => {
+    await expect(isAiEnabled({ configs: [] })).resolves.toBe(false);
+    await expect(aiDebugInfo({ configs: [] })).resolves.toMatchObject({
+      primary: "none",
+      hasKey: false,
+    });
   });
 
-  it("keeps the key out of the diagnostics", () => {
-    const info = aiDebugInfo({ configs: [GEMINI] });
+  it("keeps the key out of the diagnostics", async () => {
+    const info = await aiDebugInfo({ configs: [GEMINI] });
     expect(info).toMatchObject({ primary: "gemini", model: "gemini-2.5-flash", hasKey: true });
     expect(JSON.stringify(info)).not.toContain("gemini-key");
   });

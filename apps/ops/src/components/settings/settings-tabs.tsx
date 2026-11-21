@@ -7,11 +7,12 @@ import { cn } from "@/lib/ui/cn";
 const TABS = [
   { href: "/settings", label: "Profile" },
   { href: "/settings/members", label: "Members" },
+  { href: "/settings/ai-providers", label: "AI providers" },
 ] as const;
 
 /**
- * The two Settings pages. Links, not a client tab panel, because each page is its own route and
- * should be shareable and reloadable. The look matches the tabs primitive.
+ * The Settings pages. Links, not a client tab panel, because each page is its own route and should
+ * be shareable and reloadable. The look matches the tabs primitive.
  */
 export function SettingsTabs() {
   const pathname = usePathname();
