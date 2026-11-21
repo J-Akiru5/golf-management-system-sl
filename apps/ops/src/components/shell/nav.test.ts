@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isActive, NAV_ITEMS, pageTitle } from "./nav";
+import { isActive, NAV_ITEMS, navItemsFor, pageTitle } from "./nav";
 
 describe("NAV_ITEMS", () => {
   it("has the five places in order with unique paths", () => {
@@ -16,6 +16,26 @@ describe("NAV_ITEMS", () => {
       "/board",
       "/tasks",
       "/settings",
+    ]);
+  });
+});
+
+describe("navItemsFor", () => {
+  it("adds Admin for an owner only, last", () => {
+    expect(navItemsFor(true).map((item) => item.label)).toEqual([
+      "Overview",
+      "Documents",
+      "Pipeline",
+      "Tasks",
+      "Settings",
+      "Admin",
+    ]);
+    expect(navItemsFor(false).map((item) => item.label)).toEqual([
+      "Overview",
+      "Documents",
+      "Pipeline",
+      "Tasks",
+      "Settings",
     ]);
   });
 });
@@ -39,9 +59,10 @@ describe("pageTitle", () => {
     expect(pageTitle("/")).toBe("Overview");
     expect(pageTitle("/docs/abc")).toBe("Documents");
     expect(pageTitle("/settings/members")).toBe("Settings");
+    expect(pageTitle("/admin/audit")).toBe("Admin");
   });
 
-  it("falls back for a path outside the five", () => {
+  it("falls back for a path outside the menu", () => {
     expect(pageTitle("/login")).toBe("Workspace");
   });
 });

@@ -1,6 +1,14 @@
 "use client";
 
-import { CheckSquare, FileText, LayoutDashboard, Menu, Settings, SquareKanban } from "lucide-react";
+import {
+  CheckSquare,
+  FileText,
+  LayoutDashboard,
+  Menu,
+  Settings,
+  ShieldCheck,
+  SquareKanban,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
@@ -8,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/ui/cn";
 import { BrandMark } from "./brand-mark";
-import { isActive, NAV_ITEMS, type NavIcon, pageTitle } from "./nav";
+import { isActive, NAV_ITEMS, type NavIcon, type NavItem, navItemsFor, pageTitle } from "./nav";
 import { ThemeToggle } from "./theme-toggle";
 import { type ShellViewer, UserCard, UserMenu } from "./user-menu";
 
@@ -20,20 +28,23 @@ const ICONS: Record<NavIcon, typeof LayoutDashboard> = {
   board: SquareKanban,
   tasks: CheckSquare,
   settings: Settings,
+  admin: ShieldCheck,
 };
 
 function NavList({
+  items,
   pathname,
   onNavigate,
   className,
 }: {
+  items: ReadonlyArray<NavItem>;
   pathname: string;
   onNavigate?: () => void;
   className?: string;
 }) {
   return (
     <nav aria-label="Main" className={cn("flex flex-col gap-1", className)}>
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const Icon = ICONS[item.icon];
         const active = isActive(pathname, item.href);
         return (
@@ -113,6 +124,7 @@ export function AppShell({
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const title = pageTitle(pathname);
+  const items = navItemsFor(viewer.role === "owner");
 
   return (
     <div className="min-h-dvh bg-surface text-ink">
@@ -130,7 +142,7 @@ export function AppShell({
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto p-3">
-          <NavList pathname={pathname} />
+          <NavList items={items} pathname={pathname} />
         </div>
         <div className="border-t border-line p-3">
           <ThemeToggle className="w-full justify-between" />
@@ -150,7 +162,7 @@ export function AppShell({
               <Link href="/" aria-label="TeeLine Workspace home" onClick={() => setMenuOpen(false)}>
                 <BrandMark />
               </Link>
-              <NavList pathname={pathname} onNavigate={() => setMenuOpen(false)} />
+              <NavList items={items} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
               <div className="mt-auto flex flex-col gap-3 pt-3">
                 <ThemeToggle className="w-full justify-between" />
                 <UserCard viewer={viewer} signOut={signOut} />
