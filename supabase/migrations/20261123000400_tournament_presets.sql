@@ -1157,13 +1157,14 @@ end $$;
 
 -- 9. Owner steps, after the migration is applied --------------------------------------------------
 --
--- Save the 24th Bamboo Tee's own rules as the first preset (no numbers are typed in by hand):
+-- Make the first preset in the desk, not in the SQL editor. Open Setup, open "Tournament presets",
+-- and press "Save these settings as a preset" under the 24th Bamboo Tee's own rules. The desk stores
+-- what the event already runs on, so no number is typed in by hand.
 --
---   select public.seed_preset_from_tournament(
---     (select id from public.tournaments order by play_date desc limit 1),
---     'Bamboo Tee standard'
---   );
+-- The SQL editor cannot do that step: seed_preset_from_tournament asks for a signed-in owner or
+-- organizer, the editor has no signed-in user, and the call is refused with 42501. The desk makes
+-- the same preset through save_tournament_preset.
 --
--- The preset list the desk reads:
+-- The read-only check for the list the desk shows:
 --
 --   select id, name, description, created_at from public.tournament_presets order by name;

@@ -18,6 +18,30 @@ Supabase project, because the code and the database are released separately.
 ### Docs
 - **The migration ledger and the live database state are recorded.** `scripts/migration-ledger.mjs` (`pnpm migrations:check`) compares `supabase/migrations` with the live `supabase_migrations.schema_migrations` table when `SUPABASE_ACCESS_TOKEN` is set, and otherwise checks the key tables, columns and rows. The 21 Nov 2026 check from `382b614` (v0.64.0) shows scripts 1 to 9 applied, the preset seed empty, and four older gaps: the photo token, the scorecard scans, the per-day afternoon start, and 3 registrations without `membership_type`. `docs/PLAN.md` has the table and the owner order. No migration is applied by the script. This corrects the 0.64.0 Database paragraph, which said scripts 7 to 9 were not applied.
 
+## [0.65.0] - 2026-11-21
+
+### Added
+- **Import a document into the workspace.** Documents has an Import button for people who can edit documents: HTML, Markdown and plain text up to 2 MB, or a PDF up to 10 MB, become a new shared document with a first saved version. The text is converted in the browser; the file itself is not uploaded. Scripts, styles and images are left out.
+- **PDF import.** Headings, paragraphs, lists and lined-up tables are kept; repeated page headers and footers are dropped; images and charts are not imported. A scanned PDF with no text is refused with a plain message. Characters a PDF stores without their text (Chrome writes some numbers and punctuation this way) show as a visible mark with a warning, and are never guessed.
+- **Insert from file** inside an open document puts a file's text at the cursor as a normal shared edit.
+- `docs/migrations/catch-up-2026-11-21.sql` applies the three migrations the live probe found missing (tee holes, scorecard scans, role backfill) and the smaller changes after them, in one transaction that is safe to run twice.
+
+### Fixed
+- The registration role backfill migration had a `case` with no `end`, so it never applied; it is fixed.
+- A document seeded from the server's file keeps connecting when its seed claim fails.
+
+### Database
+- No new migration. `20261115000900_registration_role_backfill` is corrected; the owner applies it on live through the catch-up script.
+
+## [0.64.1] - 2026-11-21
+
+### Fixed
+- **Teeo scrolls with a mouse wheel** on the landing page; its smooth scrolling had taken every wheel event.
+- The first tournament preset is saved from the desk (Setup, "Save these settings as a preset"); the SQL editor cannot run `seed_preset_from_tournament` because it has no signed-in organizer.
+
+### Added
+- **Migration probe (#354):** `pnpm migrations:probe` writes `docs/migrations/probe.sql`, one read-only query that lists every migration as applied, partly applied or missing on the live database.
+
 ## [0.64.0] - 2026-11-21
 
 ### Added

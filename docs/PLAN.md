@@ -49,6 +49,20 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 
 ---
 
+## Live migration probe (21 Nov 2026)
+
+The owner ran `docs/migrations/probe.sql` on the live project. Result:
+
+- Truly missing: `20261113000300_tee_holes`, `20261113000100_scorecard_scans` and
+  `20261115000900_registration_role_backfill`. The backfill never ran anywhere because its `case`
+  had no `end`; the file is fixed.
+- Every "partly" row is an object a later migration dropped or replaced (old function signatures,
+  the first public photo policy). Nothing to re-run.
+- `docs/migrations/catch-up-2026-11-21.sql` applies the three missing migrations plus the photo
+  limits, the flights constraint drop and the timeline permission rows, in one transaction. It is
+  safe to run twice and ends with a self-check. It was dry-run twice on an in-process Postgres built
+  from all other migrations.
+
 ## Public site, landing page and Teeo (0.61.0 to 0.63.0, 20 to 21 Nov 2026)
 
 **Verified on 21 Nov 2026** against the live site, the tags and the merged code unless marked otherwise.
@@ -61,17 +75,27 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 
 ### Database scripts the owner runs (scripts 1 to 9 applied; live state checked 21 Nov 2026)
 
-Run in the Supabase SQL editor, in this order; each is one transaction.
+Run in the Supabase SQL editor, in this order; each is one transaction. The SQL editor does not
+record a run in `supabase_migrations.schema_migrations`, so the record of what a project has is the
+migration probe. `docs/migrations/README.md` explains it: `pnpm migrations:probe` writes
+`docs/migrations/probe.sql`, which is one read-only query to paste into the editor of the project.
+It answers one row per migration with `applied`, `partly` or `missing`, and the result is written
+down here.
 
-1. `docs/landing/apply-on-live.sql` (0.61.0): `tournaments.landing_featured`, `set_landing_feature()`, `public_showcase_events()`, the `demo` feedback category.
-2. `docs/public-v2/apply-on-live.sql` (0.62.0): `public_feedback.details`, the `concern` category, `submit_feedback(..., p_details)`, the `feedback_alert` outbox kind, `public_event_archive()`, `chat_rate_check()`.
-3. `docs/ai-providers/apply-on-live.sql` (0.63.0): `ai_provider_settings` and its audit table, owner-only functions.
-4. `docs/god-mode/apply-on-live.sql` (0.63.0): the Admin console's functions, `god_audit`, `god_suspensions`.
-5. `docs/permissions/apply-on-live.sql` (0.63.0, after 4): role and per-person page access, `ws_can()`.
-6. `docs/security/apply-on-live.sql` (0.63.0): limits on the public entry form.
-7. `docs/presets/apply-on-live.sql` (0.64.0): tournament presets; then `select public.seed_preset_from_tournament(<the Bamboo Tee id>, 'Bamboo Tee standard');`.
-8. `docs/github-sync/apply-on-live.sql` (0.64.0): GitHub issue sync on workspace tasks.
-9. `docs/timeline/apply-on-live.sql` (0.64.0): the Timeline page in the permission matrix.
+1. `docs/landing/apply-on-live.sql` (0.61.0, applied 21 Nov 2026): `tournaments.landing_featured`, `set_landing_feature()`, `public_showcase_events()`, the `demo` feedback category.
+2. `docs/public-v2/apply-on-live.sql` (0.62.0, applied 21 Nov 2026): `public_feedback.details`, the `concern` category, `submit_feedback(..., p_details)`, the `feedback_alert` outbox kind, `public_event_archive()`, `chat_rate_check()`.
+3. `docs/ai-providers/apply-on-live.sql` (0.63.0, applied 21 Nov 2026): `ai_provider_settings` and its audit table, owner-only functions.
+4. `docs/god-mode/apply-on-live.sql` (0.63.0, applied 21 Nov 2026): the Admin console's functions, `god_audit`, `god_suspensions`.
+5. `docs/permissions/apply-on-live.sql` (0.63.0, applied 21 Nov 2026, after 4): role and per-person page access, `ws_can()`.
+6. `docs/security/apply-on-live.sql` (0.63.0, applied 21 Nov 2026): limits on the public entry form.
+7. `docs/presets/apply-on-live.sql` (0.64.0, applied 21 Nov 2026 per the object check below): tournament presets. After it runs, make the first preset in the desk, Setup, "Save these settings as a preset"; the editor cannot call `seed_preset_from_tournament`, which needs a signed-in owner or organizer.
+8. `docs/github-sync/apply-on-live.sql` (0.64.0, applied 21 Nov 2026 per the object check below): GitHub issue sync on workspace tasks.
+9. `docs/timeline/apply-on-live.sql` (0.64.0, applied 21 Nov 2026 per the object check below): the Timeline page in the permission matrix.
+
+**Probe result:** not run yet. Record each run under this line: the date, the project, the count of
+`applied`, `partly` and `missing` rows, and every `partly` or `missing` migration by name. Until the
+probe has been run, the object check below is the record: it was run from the repository on
+21 Nov 2026 and it is what the numbered list above reflects.
 
 #### Live database state (21 Nov 2026, read-only)
 
@@ -93,14 +117,16 @@ Checked from `382b614` (v0.64.0) with `scripts/migration-ledger.mjs` (`pnpm migr
 | Results reveal (`20261115000200`) | **Applied.** `tournaments.publish_views` is present. |
 | Open round (`20261108000100`) | **Rounds exist; function not called.** The read-only check saw the rounds, not the function. The plan and changelog still disagree; verify before the next event. |
 
-**Outstanding, in this order (owner runs the SQL; Karl re-runs the script and updates this table):**
+**Outstanding, in this order (owner runs the SQL; Karl re-runs the check and updates this table):**
 
-1. `20261115000900_registration_role_backfill.sql` — 3 registrations have no `membership_type`; run it.
+1. `20261115000900_registration_role_backfill.sql` — 3 registrations have no `membership_type`. The 0.65.0 catch-up carries the corrected version of this script (the `case` had no `end`).
 2. `20261111000100_public_photo_token.sql` — missing; public photo publication refuses without it.
-3. `20261113000100_scorecard_scans.sql` — missing; needed for the QR scan table (#343).
+3. `20261113000100_scorecard_scans.sql` — missing; needed for the QR scan table (#343). The 0.65.0 catch-up carries it.
 4. `20261108000800_day_pm_start.sql` — missing; the per-day afternoon start.
-5. Preset seed — `select public.seed_preset_from_tournament(<the Bamboo Tee id>, 'Bamboo Tee standard');`; the table is empty.
+5. Preset seed — make the first preset in the desk, Setup, "Save these settings as a preset"; the table is empty.
 6. Verify `20261108000100_open_round.sql` and the per-day save functions on the live project; the rounds exist, the functions were not called by this check.
+
+`docs/migrations/catch-up-2026-11-21.sql` (0.65.0) runs the outstanding migrations that the probe found missing in one transaction, so steps 1, 3 and the rest of its list should be run from there rather than script by script. After it runs, re-run the check and update the table above.
 
 The 0.64.0 changelog says scripts 7 to 9 are written and **not applied**. The live object checks show they are applied, except the preset seed. The `[Unreleased]` changelog note records the correction. The `demo` request form files into the feedback inbox (the `demo` category), so there is no `demo_requests` table to check.
 
