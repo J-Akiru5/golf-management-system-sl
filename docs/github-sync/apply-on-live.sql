@@ -13,8 +13,8 @@
 --   4. Run it once. It is wrapped in one transaction, so a failure changes nothing.
 --
 -- AFTER it runs: the checks at the bottom should return eight columns, two tables with row level
--- security, and four functions. Then open Settings in the workspace; the GitHub section should say
--- the token and secret are present.
+-- security, and the sync functions. Then open Settings in the workspace; the GitHub section should
+-- say the token and secret are present.
 
 begin;
 
@@ -82,9 +82,11 @@ create index ws_tasks_github_issue on public.ws_tasks (github_issue_number)
 -- 2. Which GitHub login belongs to which member ---------------------------------------------------
 
 create table public.github_user_map (
-  -- GitHub treats a login case-insensitively, so the stored key is the lower-case form.
+  -- GitHub treats a login case-insensitively, so the stored key is the lower-case form. A login
+  -- starts and ends with a letter or digit and may hold single hyphens inside, up to 39 characters.
   github_login text primary key
-    check (github_login = lower(github_login) and github_login ~ '^[a-z0-9][a-z0-9-]{0,38}$'),
+    check (github_login = lower(github_login)
+      and github_login ~ '^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$'),
   member_id uuid not null references public.workspace_members (user_id) on delete cascade,
   created_by uuid default auth.uid() references auth.users (id) on delete set null,
   created_at timestamptz not null default now(),
@@ -584,16 +586,13 @@ where n.nspname = 'public'
   and c.relname in ('github_user_map', 'github_sync_log')
 order by c.relname;
 
--- 3. The sync functions and who may run them. gh_apply_issue must list service_role only.
+-- 3. The sync functions and the roles they are granted to. gh_apply_issue must not be granted to
+-- anon or authenticated.
 select p.proname as function_name,
        pg_get_function_identity_arguments(p.oid) as arguments,
-       r.rolname as granted_to
+       coalesce(array_to_string(p.proacl, ', '), 'default') as access
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
-left join lateral (
-  select unnest(p.proacl)::regrole::text as role_name
-) acl on true
-left join pg_roles r on r.rolname = acl.role_name
 where n.nspname = 'public'
   and p.proname in ('gh_apply_issue', 'gh_mark_task_synced', 'gh_sync_member_for')
 order by p.proname;

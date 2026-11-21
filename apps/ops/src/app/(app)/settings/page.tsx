@@ -2,6 +2,7 @@ import { UserRound } from "lucide-react";
 import type { Metadata } from "next";
 import { AboutWorkspaceCard } from "@/components/settings/about-workspace-card";
 import { DemoBanner } from "@/components/settings/demo-banner";
+import { GithubSettings, type GithubSettingsActions } from "@/components/settings/github-settings";
 import { ProfileNameForm } from "@/components/settings/profile-name-form";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +12,19 @@ import { requirePageAccess } from "@/lib/access/guard";
 import { levelFor } from "@/lib/access/pages";
 import { currentAccess } from "@/lib/access/server";
 import { demoMode, opsEnabled } from "@/lib/flags";
+import { githubConnection } from "@/lib/github/config";
+import { serverGithubRepo } from "@/lib/github/repo";
+import type { GithubSyncLogRow, GithubUserMapRow } from "@/lib/github/types";
 import { formatJoined, roleLabel, roleSummary } from "@/lib/members/format";
 import { parseDemoViewer, settingsMembersRepo } from "@/lib/members/viewer";
+import { getRepos } from "@/lib/repos";
+import type { TaskMember } from "@/lib/tasks/types";
 import { updateDisplayNameAction } from "./actions";
+import {
+  importOpenIssuesAction,
+  removeGithubMappingAction,
+  saveGithubMappingAction,
+} from "./github-actions";
 
 export const metadata: Metadata = { title: "Profile" };
 
@@ -37,6 +48,38 @@ export default async function SettingsPage({
       </EmptyState>
     );
   }
+
+  // The GitHub section is owner-only, on this page rather than a page of its own, so it needs no
+  // entry in the page registry and no new permission row.
+  const isOwner = me.role === "owner" && me.status === "active";
+  const connection = githubConnection();
+  let mappings: GithubUserMapRow[] = [];
+  let log: GithubSyncLogRow[] = [];
+  let members: TaskMember[] = [];
+  let githubUnavailable: string | null = null;
+
+  if (isOwner && !demo) {
+    try {
+      const repo = await serverGithubRepo();
+      const [mapRows, logRows, memberRows] = await Promise.all([
+        repo.listUserMap(),
+        repo.listLog(20),
+        (await getRepos()).tasks.listMembers(),
+      ]);
+      mappings = mapRows;
+      log = logRows;
+      members = memberRows;
+    } catch {
+      githubUnavailable =
+        "The GitHub tables could not be read. Apply docs/github-sync/apply-on-live.sql, then reload this page.";
+    }
+  }
+
+  const githubActions: GithubSettingsActions = {
+    importIssues: importOpenIssuesAction.bind(null, demoViewer),
+    saveMapping: saveGithubMappingAction.bind(null, demoViewer),
+    removeMapping: removeGithubMappingAction.bind(null, demoViewer),
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -88,6 +131,17 @@ export default async function SettingsPage({
       </div>
 
       <AboutWorkspaceCard demo={demo} enabled={opsEnabled()} />
+
+      {isOwner ? (
+        <GithubSettings
+          connection={connection}
+          mappings={mappings}
+          log={log}
+          members={members}
+          unavailable={githubUnavailable}
+          actions={githubActions}
+        />
+      ) : null}
     </div>
   );
 }
