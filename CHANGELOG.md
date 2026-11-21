@@ -9,6 +9,9 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Fixed
+- **A scorecard is scored on the tee written on it (#296).** The owner's rule of 14 Nov 2026 makes the card's tee the source of the WHS playing handicap, and the scoring code now works it out that way. When the card names a tee the round has no rating for, the card is refused with that tee named, never scored on another one. The sheet import still saves on the registration tee, so a card whose written tee differs from the registration is now blocked with the registration tee named as the fix instead of being imported on a tee it was not played from. A tee named "Ladies Red" or "Ladies" now gives the tabulation page the real Ladies rating and par, so Ladies net scores may move to the correct figure. No migration ships with this change.
+
 ## [0.64.0] - 2026-11-21
 
 ### Added
