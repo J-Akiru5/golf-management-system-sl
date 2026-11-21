@@ -354,11 +354,13 @@ function LiveDocument({
             claim.current.granted = result.value;
           } else {
             // The import created this document and cannot fill it: remove it rather than leave it
-            // empty. A document seeded from the server's file is not ours to delete.
-            setFailure(
-              pendingImport ? await discardEmptyImport(docId, result.error) : result.error,
-            );
-            return;
+            // empty, and stop. A document seeded from the server's file is not ours to delete, so
+            // it reports the failure and still connects, as it did before imports existed.
+            if (pendingImport) {
+              setFailure(await discardEmptyImport(docId, result.error));
+              return;
+            }
+            setFailure(result.error);
           }
         }
         if (claim.current.granted) {
