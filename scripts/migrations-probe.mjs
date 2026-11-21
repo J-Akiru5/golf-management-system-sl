@@ -360,7 +360,8 @@ function quote(value) {
 }
 
 function renderRow(row) {
-  const objects = row.objects.map((object) => `        '${quote(object)}',`).join("\n");
+  // No trailing comma: Postgres refuses `array['a', 'b', ]`.
+  const objects = row.objects.map((object) => `        '${quote(object)}'`).join(",\n");
   return `    ('${quote(row.migration)}', array[\n${objects}\n    ]::text[])`;
 }
 

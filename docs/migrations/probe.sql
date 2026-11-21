@@ -38,12 +38,12 @@ with expected (migration, objects) as (
         'index public.handicap_records_lookup',
         'policy public.club_members.club_members_read_own',
         'policy public.clubs.clubs_member_read',
-        'policy storage.objects.player_photos_member_all',
+        'policy storage.objects.player_photos_member_all'
     ]::text[]),
     ('20261018000000_supabase_data_layer', array[
         'function public.public_pairings(uuid)',
         'column public.club_members.display_name',
-        'column public.tournaments.published_snapshot',
+        'column public.tournaments.published_snapshot'
     ]::text[]),
     ('20261019000000_staff_auth_audit', array[
         'function public.has_club_role(uuid, text[])',
@@ -56,7 +56,7 @@ with expected (migration, objects) as (
         'policy public.club_members.club_members_manager_read',
         'policy public.club_members.club_members_manager_write',
         'policy public.tournaments.tournaments_manager_write',
-        'policy public.tournaments.tournaments_member_read',
+        'policy public.tournaments.tournaments_member_read'
     ]::text[]),
     ('20261020000000_shell_domain', array[
         'table public.deferred_matches',
@@ -77,11 +77,11 @@ with expected (migration, objects) as (
         'column public.tournaments.stale_index_days',
         'column public.tournaments.state',
         'policy public.deferred_matches.deferred_matches_member_all',
-        'policy public.handicap_import_batches.handicap_import_batches_member_all',
+        'policy public.handicap_import_batches.handicap_import_batches_member_all'
     ]::text[]),
     ('20261021000000_public_registration', array[
         'function public.public_registration_form(uuid)',
-        'function public.submit_registration(uuid, jsonb, jsonb)',
+        'function public.submit_registration(uuid, jsonb, jsonb)'
     ]::text[]),
     ('20261022000000_versioned_publish', array[
         'table public.pairings_versions',
@@ -92,20 +92,20 @@ with expected (migration, objects) as (
         'column public.tournaments.draw_revision',
         'policy public.group_members.group_members_member_read',
         'policy public.groups.groups_member_read',
-        'policy public.pairings_versions.pairings_versions_member_read',
+        'policy public.pairings_versions.pairings_versions_member_read'
     ]::text[]),
     ('20261023000000_player_portal', array[
         'function public.claim_player_record(text, text)',
         'function public.current_player_id()',
         'function public.player_portal_entries()',
         'column public.players.user_id',
-        'index public.players_user_id_key',
+        'index public.players_user_id_key'
     ]::text[]),
     ('20261024000000_event_setup', array[
-        'function public.save_event_setup(uuid, integer, jsonb, jsonb, jsonb, jsonb, jsonb)',
+        'function public.save_event_setup(uuid, integer, jsonb, jsonb, jsonb, jsonb, jsonb)'
     ]::text[]),
     ('20261025000000_event_setup_errcode_fix', array[
-        'function public.save_event_setup(uuid, integer, jsonb, jsonb, jsonb, jsonb, jsonb)',
+        'function public.save_event_setup(uuid, integer, jsonb, jsonb, jsonb, jsonb, jsonb)'
     ]::text[]),
     ('20261026000000_notifications', array[
         'table public.notification_reads',
@@ -114,23 +114,23 @@ with expected (migration, objects) as (
         'function public.sync_notifications(uuid)',
         'index public.notifications_outstanding',
         'policy public.notification_reads.notification_reads_own',
-        'policy public.notifications.notifications_member_read',
+        'policy public.notifications.notifications_member_read'
     ]::text[]),
     ('20261027000000_setup_tournament_fields', array[
-        'function public.save_event_setup(uuid, integer, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)',
+        'function public.save_event_setup(uuid, integer, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)'
     ]::text[]),
     ('20261028000000_help_seen', array[
         'table public.help_seen',
-        'policy public.help_seen.help_seen_own',
+        'policy public.help_seen.help_seen_own'
     ]::text[]),
     ('20261029000000_course_data_confirmed', array[
-        'column public.tournaments.course_data_confirmed',
+        'column public.tournaments.course_data_confirmed'
     ]::text[]),
     ('20261031000000_private_functions_by_default', array[
-        'function public.lock_new_functions()',
+        'function public.lock_new_functions()'
     ]::text[]),
     ('20261033000000_public_open_events', array[
-        'function public.public_open_events()',
+        'function public.public_open_events()'
     ]::text[]),
     ('20261034000000_course_maps', array[
         'table public.course_map_holes',
@@ -145,7 +145,7 @@ with expected (migration, objects) as (
         'index public.course_maps_one_published',
         'policy public.course_map_holes.course_map_holes_member_read',
         'policy public.course_map_reviews.course_map_reviews_member_read',
-        'policy public.course_maps.course_maps_member_read',
+        'policy public.course_maps.course_maps_member_read'
     ]::text[]),
     ('20261035000000_scoring_schema', array[
         'table public.approved_hole_scores',
@@ -209,7 +209,7 @@ with expected (migration, objects) as (
         'policy public.scoring_audit.scoring_audit_member_read',
         'policy public.tie_break_policies.tie_break_policies_manager_write',
         'policy public.tie_break_policies.tie_break_policies_member_read',
-        'policy storage.objects.scorecard_images_member_all',
+        'policy storage.objects.scorecard_images_member_all'
     ]::text[]),
     ('20261036000000_scoring_workflow', array[
         'function public.apply_canonical(uuid, uuid, jsonb)',
@@ -223,7 +223,7 @@ with expected (migration, objects) as (
         'function public.reject_scorecard(uuid, text)',
         'function public.resolve_hole(uuid, uuid, smallint, smallint, text, jsonb)',
         'function public.save_handicap_snapshot(uuid, numeric, text, date, numeric, text, text)',
-        'function public.submit_scorecard(uuid, uuid, text, text, jsonb, smallint, text, text, text, bigint, text, text, jsonb)',
+        'function public.submit_scorecard(uuid, uuid, text, text, jsonb, smallint, text, text, text, bigint, text, text, jsonb)'
     ]::text[]),
     ('20261037000000_player_registration_model', array[
         'table public.audit_log',
@@ -297,11 +297,11 @@ with expected (migration, objects) as (
         'policy public.tournament_days.tournament_days_manager_write',
         'policy public.tournament_days.tournament_days_read',
         'policy storage.objects.registration_imports_manager_insert',
-        'policy storage.objects.registration_imports_manager_read',
+        'policy storage.objects.registration_imports_manager_read'
     ]::text[]),
     ('20261038000000_public_day_selection', array[
         'function public.public_registration_form(uuid)',
-        'function public.submit_registration(uuid, jsonb, jsonb)',
+        'function public.submit_registration(uuid, jsonb, jsonb)'
     ]::text[]),
     ('20261039000000_caddies_public_photos', array[
         'table public.caddie_assignments',
@@ -330,7 +330,7 @@ with expected (migration, objects) as (
         'policy public.caddies.caddies_manager_write',
         'policy public.caddies.caddies_read',
         'policy storage.objects.player_photos_public_read',
-        'policy storage.objects.player_photos_public_staff_write',
+        'policy storage.objects.player_photos_public_staff_write'
     ]::text[]),
     ('20261040000000_event_calendar_branding', array[
         'table public.email_outbox',
@@ -343,120 +343,120 @@ with expected (migration, objects) as (
         'index public.tournaments_host_name',
         'policy public.email_outbox.email_outbox_manager_all',
         'policy storage.objects.event_logos_manager_write',
-        'policy storage.objects.event_logos_staff_read',
+        'policy storage.objects.event_logos_staff_read'
     ]::text[]),
     ('20261041000000_public_programme_rules', array[
         'function public.public_programme(uuid)',
         'function public.save_event_setup(uuid, integer, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)',
-        'column public.tournaments.rules_of_play',
+        'column public.tournaments.rules_of_play'
     ]::text[]),
     ('20261042000000_player_scorecard_snapshot', array[
         'function public.build_round_scorecards(uuid, integer)',
         'function public.build_round_snapshot(uuid, text, integer)',
         'function public.player_portal_entries()',
-        'function public.public_round_results(uuid)',
+        'function public.public_round_results(uuid)'
     ]::text[]),
     ('20261043000000_scorecard_correction', array[
-        'function public.record_scorecard_correction(uuid, text)',
+        'function public.record_scorecard_correction(uuid, text)'
     ]::text[]),
     ('20261103000000_public_events_entries_closed', array[
-        'function public.public_events()',
+        'function public.public_events()'
     ]::text[]),
     ('20261104000000_create_registration_rpc', array[
-        'function public.create_registration(uuid, uuid, uuid, jsonb, integer[], numeric, uuid, date, timestamptz, text)',
+        'function public.create_registration(uuid, uuid, uuid, jsonb, integer[], numeric, uuid, date, timestamptz, text)'
     ]::text[]),
     ('20261104000100_harden_claim_and_import_player', array[
         'function public.claim_player_record(text, date)',
-        'function public.find_or_create_import_player(uuid, text, text, text, date, text, text, text, text, text, text, uuid, boolean)',
+        'function public.find_or_create_import_player(uuid, text, text, text, date, text, text, text, text, text, text, uuid, boolean)'
     ]::text[]),
     ('20261104000200_portal_group_by_player_id', array[
-        'function public.player_portal_entries()',
+        'function public.player_portal_entries()'
     ]::text[]),
     ('20261104000300_link_player_account', array[
-        'function public.link_player_account(uuid, text)',
+        'function public.link_player_account(uuid, text)'
     ]::text[]),
     ('20261104000400_public_programme_confirmed_only', array[
-        'function public.public_programme(uuid)',
+        'function public.public_programme(uuid)'
     ]::text[]),
     ('20261104000500_delete_player_guard', array[
-        'function public.guard_player_delete()',
+        'function public.guard_player_delete()'
     ]::text[]),
     ('20261104000600_confirm_registrations', array[
-        'function public.confirm_registrations(uuid, uuid[])',
+        'function public.confirm_registrations(uuid, uuid[])'
     ]::text[]),
     ('20261104000800_setup_delete_guard', array[
-        'function public.save_event_setup(uuid, integer, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)',
+        'function public.save_event_setup(uuid, integer, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)'
     ]::text[]),
     ('20261104000900_claim_ngap_birthdate_only', array[
-        'function public.claim_player_record(text, date)',
+        'function public.claim_player_record(text, date)'
     ]::text[]),
     ('20261104001000_scorecard_revocation', array[
-        'function public.revoke_scorecard(uuid, jsonb, text)',
+        'function public.revoke_scorecard(uuid, jsonb, text)'
     ]::text[]),
     ('20261104001100_registration_day_wave', array[
         'function public.assign_registration_day_tee(uuid, integer, time, smallint, boolean, text)',
         'column public.registration_days.wave',
-        'index public.registration_days_wave',
+        'index public.registration_days_wave'
     ]::text[]),
     ('20261105000100_registration_day_session', array[
         'function public.set_registration_days(uuid, integer[], jsonb)',
-        'column public.registration_days.session',
+        'column public.registration_days.session'
     ]::text[]),
     ('20261105000300_player_soft_delete', array[
         'column public.players.active',
         'column public.players.deleted_at',
         'index public.players_club_active',
-        'index public.players_club_deleted',
+        'index public.players_club_deleted'
     ]::text[]),
     ('20261105000400_class_group_remap', array[
-        'function public.detach_dropped_class_groups(uuid, uuid[])',
+        'function public.detach_dropped_class_groups(uuid, uuid[])'
     ]::text[]),
     ('20261106000000_staff_check_in', array[
         'function public.set_entry_day_check_in(uuid, smallint, boolean)',
         'column public.registration_days.checked_in_at',
         'column public.registration_days.checked_in_by',
-        'index public.registration_days_checked_in',
+        'index public.registration_days_checked_in'
     ]::text[]),
     ('20261106000100_draw_by_playing_day', array[
         'function public.save_draw(uuid, integer, jsonb, jsonb, uuid)',
-        'column public.tournaments.pm_first_tee_time',
+        'column public.tournaments.pm_first_tee_time'
     ]::text[]),
     ('20261106000200_group_members_per_playing_day', array[
         'function public.save_draw(uuid, integer, jsonb, jsonb, uuid)',
         'column public.group_members.round_id',
         'index public.group_members_one_per_playing_day',
-        'index public.group_members_round',
+        'index public.group_members_round'
     ]::text[]),
     ('20261108000100_open_round', array[
-        'function public.open_round(uuid, integer, smallint, text, uuid, text, smallint)',
+        'function public.open_round(uuid, integer, smallint, text, uuid, text, smallint)'
     ]::text[]),
     ('20261108000200_notification_single_read', array[
-        'function public.mark_notification_read(uuid)',
+        'function public.mark_notification_read(uuid)'
     ]::text[]),
     ('20261108000300_player_self_profile', array[
         'function public.player_own_profile()',
-        'function public.player_update_own_contact(text, text, text)',
+        'function public.player_update_own_contact(text, text, text)'
     ]::text[]),
     ('20261108000500_rounds_per_playing_day', array[
-        'function public.ensure_round_for_playing_day()',
+        'function public.ensure_round_for_playing_day()'
     ]::text[]),
     ('20261108000600_public_pairings_by_day', array[
-        'function public.public_pairings_by_day(uuid)',
+        'function public.public_pairings_by_day(uuid)'
     ]::text[]),
     ('20261108000700_portal_starts_by_day', array[
-        'function public.player_portal_entries()',
+        'function public.player_portal_entries()'
     ]::text[]),
     ('20261108000800_day_pm_start', array[
-        'column public.tournament_days.pm_start_time',
+        'column public.tournament_days.pm_start_time'
     ]::text[]),
     ('20261108000900_save_draw_requires_day', array[
-        'function public.save_draw(uuid, integer, jsonb, jsonb, uuid)',
+        'function public.save_draw(uuid, integer, jsonb, jsonb, uuid)'
     ]::text[]),
     ('20261108001000_notifications_per_day', array[
-        'function public.sync_notifications(uuid)',
+        'function public.sync_notifications(uuid)'
     ]::text[]),
     ('20261108001100_cap_handicap_snapshot_index', array[
-        'function public.save_handicap_snapshot(uuid, numeric, text, date, numeric, text, text)',
+        'function public.save_handicap_snapshot(uuid, numeric, text, date, numeric, text, text)'
     ]::text[]),
     ('20261108002000_registration_pairs', array[
         'table public.registration_pair_members',
@@ -469,21 +469,21 @@ with expected (migration, objects) as (
         'index public.registration_pair_members_club',
         'index public.registration_pair_members_registration',
         'policy public.registration_pair_members.registration_pair_members_member_read',
-        'policy public.registration_pairs.registration_pairs_member_read',
+        'policy public.registration_pairs.registration_pairs_member_read'
     ]::text[]),
     ('20261108002100_fix_save_draw_round_id', array[
-        'function public.save_draw(uuid, integer, jsonb, jsonb, uuid)',
+        'function public.save_draw(uuid, integer, jsonb, jsonb, uuid)'
     ]::text[]),
     ('20261108003000_public_profile_leaderboard', array[
         'function public.public_player_scorecard(uuid, uuid)',
         'function public.public_programme(uuid)',
-        'function public.public_team_leaderboard(uuid)',
+        'function public.public_team_leaderboard(uuid)'
     ]::text[]),
     ('20261110000000_publish_views', array[
         'function public.public_pairings_by_day(uuid)',
         'function public.public_pairings(uuid)',
         'function public.publish_allows(uuid, text)',
-        'column public.tournaments.publish_views',
+        'column public.tournaments.publish_views'
     ]::text[]),
     ('20261110000100_public_release_enforcement', array[
         'function public.public_pairings_by_day(uuid)',
@@ -497,7 +497,7 @@ with expected (migration, objects) as (
         'function public.public_team_leaderboard(uuid)',
         'function public.set_public_release(uuid, text, boolean)',
         'column public.tournaments.publish_views_updated_at',
-        'column public.tournaments.publish_views_updated_by',
+        'column public.tournaments.publish_views_updated_by'
     ]::text[]),
     ('20261110000200_public_feedback', array[
         'table public.public_feedback',
@@ -507,7 +507,7 @@ with expected (migration, objects) as (
         'index public.public_feedback_club_status_created_idx',
         'index public.public_feedback_rate_idx',
         'policy public.public_feedback.public_feedback_manager_status',
-        'policy public.public_feedback.public_feedback_staff_read',
+        'policy public.public_feedback.public_feedback_staff_read'
     ]::text[]),
     ('20261110000300_feedback_followups', array[
         'function public.stamp_public_feedback_status()',
@@ -516,22 +516,22 @@ with expected (migration, objects) as (
         'column public.public_feedback.resolution_note_updated_at',
         'column public.public_feedback.resolution_note_updated_by',
         'column public.public_feedback.tournament_id',
-        'index public.public_feedback_club_tournament_created_idx',
+        'index public.public_feedback_club_tournament_created_idx'
     ]::text[]),
     ('20261110000400_provisional_publication', array[
-        'function public.publish_round(uuid, text)',
+        'function public.publish_round(uuid, text)'
     ]::text[]),
     ('20261111000100_public_photo_token', array[
         'function public.clear_public_photo_path()',
         'column public.players.photo_public_token',
-        'index public.players_public_photo_token',
+        'index public.players_public_photo_token'
     ]::text[]),
     ('20261112000100_public_advisory', array[
         'function public.public_advisory(uuid)',
-        'column public.tournaments.public_advisory',
+        'column public.tournaments.public_advisory'
     ]::text[]),
     ('20261112000200_desk_can_correct_scorecard', array[
-        'function public.record_scorecard_correction(uuid, text)',
+        'function public.record_scorecard_correction(uuid, text)'
     ]::text[]),
     ('20261113000100_scorecard_scans', array[
         'table public.scorecard_scans',
@@ -544,7 +544,7 @@ with expected (migration, objects) as (
         'function public.set_aside_scorecard_scan(uuid, text)',
         'index public.scorecard_scans_club_created',
         'index public.scorecard_scans_round_state',
-        'policy public.scorecard_scans.scorecard_scans_member_read',
+        'policy public.scorecard_scans.scorecard_scans_member_read'
     ]::text[]),
     ('20261113000200_pickup_scores', array[
         'function public.apply_canonical(uuid, uuid, jsonb)',
@@ -556,54 +556,54 @@ with expected (migration, objects) as (
         'function public.submit_scorecard(uuid, uuid, text, text, jsonb, smallint, text, text, text, bigint, text, text, jsonb)',
         'column public.approved_hole_scores.picked_up',
         'column public.hole_resolutions.picked_up',
-        'column public.scorecard_entries.picked_up',
+        'column public.scorecard_entries.picked_up'
     ]::text[]),
     ('20261113000300_tee_holes', array[
         'table public.tee_holes',
         'policy public.tee_holes.tee_holes_manager_write',
-        'policy public.tee_holes.tee_holes_member_read',
+        'policy public.tee_holes.tee_holes_member_read'
     ]::text[]),
     ('20261114000100_card_handicap_snapshot', array[
-        'function public.save_card_handicap_snapshot(uuid, text)',
+        'function public.save_card_handicap_snapshot(uuid, text)'
     ]::text[]),
     ('20261114000200_save_handicap_record', array[
-        'function public.save_handicap_record(uuid, numeric, date, text)',
+        'function public.save_handicap_record(uuid, numeric, date, text)'
     ]::text[]),
     ('20261114000300_correct_handicap_snapshot', array[
         'function public.correct_handicap_snapshot(uuid, numeric, date, text)',
-        'function public.handicap_snapshot_guard()',
+        'function public.handicap_snapshot_guard()'
     ]::text[]),
     ('20261114000400_public_profile_playing_handicap', array[
-        'function public.public_player_scorecard(uuid, uuid)',
+        'function public.public_player_scorecard(uuid, uuid)'
     ]::text[]),
     ('20261114000500_class_and_handicap_follow_desk', array[
         'function public.reset_handicap_from_desk(uuid, text)',
-        'function public.sync_result_class_from_registration()',
+        'function public.sync_result_class_from_registration()'
     ]::text[]),
     ('20261115000100_card_handicap_signed_handicap', array[
-        'function public.save_card_handicap_snapshot(uuid, text)',
+        'function public.save_card_handicap_snapshot(uuid, text)'
     ]::text[]),
     ('20261115000200_results_reveal', array[
-        'function public.public_reveal_state(uuid)',
+        'function public.public_reveal_state(uuid)'
     ]::text[]),
     ('20261115000300_correct_handicap_no_rules_version', array[
-        'function public.correct_handicap_snapshot(uuid, numeric, date, text)',
+        'function public.correct_handicap_snapshot(uuid, numeric, date, text)'
     ]::text[]),
     ('20261115000400_cap_playing_handicap', array[
         'function public.correct_handicap_snapshot(uuid, numeric, date, text)',
-        'function public.save_handicap_snapshot(uuid, numeric, text, date, numeric, text, text)',
+        'function public.save_handicap_snapshot(uuid, numeric, text, date, numeric, text, text)'
     ]::text[]),
     ('20261115000600_handicap_follows_records', array[
-        'function public.handicap_record_follow()',
+        'function public.handicap_record_follow()'
     ]::text[]),
     ('20261115000700_handicap_follow_unconfirmed_rules', array[
-        'function public.reset_handicap_from_desk(uuid, text)',
+        'function public.reset_handicap_from_desk(uuid, text)'
     ]::text[]),
     ('20261115000800_membership_follows_registration', array[
-        'function public.set_player_membership(uuid, text, text)',
+        'function public.set_player_membership(uuid, text, text)'
     ]::text[]),
     ('20261115000900_registration_role_backfill', array[
-        'function public.default_registration_role()',
+        'function public.default_registration_role()'
     ]::text[]),
     ('20261120000100_workspace_members', array[
         'table public.workspace_members',
@@ -616,7 +616,7 @@ with expected (migration, objects) as (
         'function public.ws_touch_updated_at()',
         'policy public.workspace_members.workspace_members_delete',
         'policy public.workspace_members.workspace_members_read',
-        'policy public.workspace_members.workspace_members_update',
+        'policy public.workspace_members.workspace_members_update'
     ]::text[]),
     ('20261120000200_workspace_docs', array[
         'table public.ws_doc_snapshots',
@@ -635,7 +635,7 @@ with expected (migration, objects) as (
         'policy public.ws_docs.ws_docs_create',
         'policy public.ws_docs.ws_docs_delete',
         'policy public.ws_docs.ws_docs_edit',
-        'policy public.ws_docs.ws_docs_read',
+        'policy public.ws_docs.ws_docs_read'
     ]::text[]),
     ('20261120000300_workspace_pipeline_and_tasks', array[
         'table public.ws_pipeline_cards',
@@ -661,31 +661,31 @@ with expected (migration, objects) as (
         'policy public.ws_tasks.ws_tasks_create',
         'policy public.ws_tasks.ws_tasks_delete',
         'policy public.ws_tasks.ws_tasks_edit',
-        'policy public.ws_tasks.ws_tasks_read',
+        'policy public.ws_tasks.ws_tasks_read'
     ]::text[]),
     ('20261120000400_workspace_realtime', array[
         'function public.ws_broadcast_board()',
         'function public.ws_broadcast_tasks()',
         'policy realtime.messages.ws_members_receive',
-        'policy realtime.messages.ws_members_send',
+        'policy realtime.messages.ws_members_send'
     ]::text[]),
     ('20261121000000_landing_showcase_and_demo', array[
         'function public.public_showcase_events()',
         'function public.set_landing_feature(uuid, boolean)',
         'function public.submit_feedback(text, text, text, text, boolean, text, text, text, uuid)',
         'column public.tournaments.landing_featured',
-        'index public.tournaments_one_landing_feature',
+        'index public.tournaments_one_landing_feature'
     ]::text[]),
     ('20261122000000_concerns_and_event_archive', array[
         'function public.public_event_archive()',
         'function public.submit_feedback(text, text, text, text, boolean, text, text, text, uuid, jsonb)',
-        'column public.public_feedback.details',
+        'column public.public_feedback.details'
     ]::text[]),
     ('20261122000100_concern_chat_rate', array[
         'table public.chat_rate_events',
         'function public.chat_rate_check(text, integer, integer)',
         'index public.chat_rate_events_created_idx',
-        'index public.chat_rate_events_key_created_idx',
+        'index public.chat_rate_events_key_created_idx'
     ]::text[]),
     ('20261123000000_ai_provider_settings', array[
         'table public.ai_provider_audit',
@@ -695,7 +695,7 @@ with expected (migration, objects) as (
         'function public.ws_save_ai_provider(text, text, integer, boolean, text, text, text, text)',
         'function public.ws_set_ai_provider_key(text, text, text, text, integer, text, text)',
         'index public.ai_provider_audit_recent',
-        'index public.ai_provider_settings_chain',
+        'index public.ai_provider_settings_chain'
     ]::text[]),
     ('20261123000100_god_mode', array[
         'table public.god_audit',
@@ -713,7 +713,7 @@ with expected (migration, objects) as (
         'index public.god_audit_action',
         'index public.god_audit_at',
         'index public.god_audit_target',
-        'index public.god_suspensions_open',
+        'index public.god_suspensions_open'
     ]::text[]),
     ('20261123000200_workspace_permissions', array[
         'table public.ws_role_permissions',
@@ -756,12 +756,12 @@ with expected (migration, objects) as (
         'policy public.ws_tasks.ws_tasks_edit',
         'policy public.ws_tasks.ws_tasks_read',
         'policy realtime.messages.ws_members_receive',
-        'policy realtime.messages.ws_members_send',
+        'policy realtime.messages.ws_members_send'
     ]::text[]),
     ('20261123000300_entry_limits', array[
         'function public.submit_registration(uuid, jsonb, jsonb)',
         'column public.registrations.rate_key',
-        'index public.registrations_rate_bucket_idx',
+        'index public.registrations_rate_bucket_idx'
     ]::text[]),
     ('20261123000400_tournament_presets', array[
         'table public.tournament_presets',
@@ -773,7 +773,7 @@ with expected (migration, objects) as (
         'index public.tournament_presets_club',
         'index public.tournament_presets_club_name',
         'policy public.tournament_presets.tournament_presets_manager_write',
-        'policy public.tournament_presets.tournament_presets_read',
+        'policy public.tournament_presets.tournament_presets_read'
     ]::text[]),
     ('20261123000500_github_task_sync', array[
         'table public.github_sync_log',
@@ -797,7 +797,7 @@ with expected (migration, objects) as (
         'policy public.github_user_map.github_user_map_create',
         'policy public.github_user_map.github_user_map_delete',
         'policy public.github_user_map.github_user_map_edit',
-        'policy public.github_user_map.github_user_map_read',
+        'policy public.github_user_map.github_user_map_read'
     ]::text[])
 ),
 counted as (

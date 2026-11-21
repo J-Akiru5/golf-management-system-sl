@@ -185,7 +185,9 @@ describe("migration probe: output shape", () => {
     const sql = renderProbe(rows);
 
     expect(sql).toContain("'20260101000000_a', array[");
-    expect(sql).toContain("'table public.a',");
+    expect(sql).toContain("'table public.a'\n    ]::text[]");
+    // Postgres refuses a trailing comma inside an array literal, which the live run hit on 21 Nov.
+    expect(sql).not.toMatch(/,\s*\]::text\[\]/);
     expect(sql.indexOf("20260101000000_a")).toBeLessThan(sql.indexOf("20260101000000_b"));
     expect(sql).toContain("order by migration");
   });
