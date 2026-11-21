@@ -1,5 +1,6 @@
 "use client";
 
+import { groupCardQrPayload, sessionForTeeTime } from "@/lib/scorecards/scan";
 import styles from "./print.module.css";
 import { Scorecard } from "./Scorecard";
 import type { CourseDataStatus, PrintGroup, PrintHole, PrintStartFormat } from "./types";
@@ -14,6 +15,10 @@ export interface ScorecardsProps {
   startFormat: PrintStartFormat;
   courseDataStatus: CourseDataStatus;
   courseName?: string | null;
+  /** The playing day of these groups. The group code is not built without it. */
+  dayNumber?: number | null;
+  /** The event's afternoon start, so each group's session matches the tabulator field list. */
+  pmFirstTeeTime?: string | null;
   showQrCodes?: boolean;
 }
 
@@ -28,28 +33,35 @@ export function Scorecards({
   startFormat,
   courseDataStatus,
   courseName,
+  dayNumber,
+  pmFirstTeeTime,
   showQrCodes = true,
 }: ScorecardsProps) {
   const groupsWithPlayers = groups.filter((group) => group.players.length > 0);
 
   return (
     <section className={styles.scorecards} aria-label="Scorecards">
-      {groupsWithPlayers.map(({ players, ...group }) => (
-        <Scorecard
-          key={`${group.startHole}-${group.number}`}
-          eventTitle={title}
-          eventSubtitle={subtitle}
-          eventHost={hostName}
-          eventLogoUrl={logoUrl}
-          courseName={courseName}
-          group={group}
-          players={players}
-          holes={holes}
-          startFormat={startFormat}
-          courseDataStatus={courseDataStatus}
-          showQrCodes={showQrCodes}
-        />
-      ))}
+      {groupsWithPlayers.map(({ players, ...group }) => {
+        const session = sessionForTeeTime(group.time, pmFirstTeeTime);
+        const cardId = groupCardQrPayload(dayNumber, session, group.number);
+        return (
+          <Scorecard
+            key={`${group.startHole}-${group.number}`}
+            eventTitle={title}
+            eventSubtitle={subtitle}
+            eventHost={hostName}
+            eventLogoUrl={logoUrl}
+            courseName={courseName}
+            group={group}
+            players={players}
+            holes={holes}
+            startFormat={startFormat}
+            courseDataStatus={courseDataStatus}
+            cardId={cardId}
+            showQrCodes={showQrCodes}
+          />
+        );
+      })}
       {groupsWithPlayers.length === 0 && <p>No groups to print yet.</p>}
     </section>
   );
