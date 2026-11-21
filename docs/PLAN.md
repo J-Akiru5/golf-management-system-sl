@@ -49,6 +49,20 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 
 ---
 
+## Live migration probe (21 Nov 2026)
+
+The owner ran `docs/migrations/probe.sql` on the live project. Result:
+
+- Truly missing: `20261113000300_tee_holes`, `20261113000100_scorecard_scans` and
+  `20261115000900_registration_role_backfill`. The backfill never ran anywhere because its `case`
+  had no `end`; the file is fixed.
+- Every "partly" row is an object a later migration dropped or replaced (old function signatures,
+  the first public photo policy). Nothing to re-run.
+- `docs/migrations/catch-up-2026-11-21.sql` applies the three missing migrations plus the photo
+  limits, the flights constraint drop and the timeline permission rows, in one transaction. It is
+  safe to run twice and ends with a self-check. It was dry-run twice on an in-process Postgres built
+  from all other migrations.
+
 ## Public site, landing page and Teeo (0.61.0 to 0.63.0, 20 to 21 Nov 2026)
 
 **Verified on 21 Nov 2026** against the live site, the tags and the merged code unless marked otherwise.

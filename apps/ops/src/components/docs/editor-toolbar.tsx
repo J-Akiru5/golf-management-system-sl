@@ -51,8 +51,11 @@ function Divider() {
   return <span aria-hidden="true" className="mx-1 h-6 w-px flex-none bg-line" />;
 }
 
-/** The editing controls. Every button is 44px, and the row wraps on a phone. */
-export function EditorToolbar({ editor }: { editor: Editor }) {
+/**
+ * The editing controls. Every button is 44px, and the row wraps on a phone. `actions` holds a
+ * control that has its own button, such as Insert from file.
+ */
+export function EditorToolbar({ editor, actions }: { editor: Editor; actions?: ReactNode }) {
   const [, bump] = useReducer((count: number) => count + 1, 0);
 
   useEffect(() => {
@@ -145,6 +148,12 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
       >
         <Redo2 />
       </ToolButton>
+      {actions ? (
+        <>
+          <Divider />
+          {actions}
+        </>
+      ) : null}
     </div>
   );
 }
