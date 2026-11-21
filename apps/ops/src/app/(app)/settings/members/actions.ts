@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAccess } from "@/lib/access/server";
 import type { WorkspaceMemberStatus, WorkspaceRole } from "@/lib/db/types";
 import { type ActionResult, mapMemberError } from "@/lib/members/errors";
 import { checkDisplayName, isWorkspaceRole } from "@/lib/members/rules";
@@ -33,6 +34,7 @@ export async function addMemberAction(
   if (!isWorkspaceRole(roleValue)) return { ok: false, message: "Choose a role." };
 
   try {
+    await requireAccess("settings.members", "edit");
     const repo = await settingsMembersRepo(demoViewer);
     await repo.addMember({ email, role: roleValue, displayName });
     revalidateMembers();
@@ -50,6 +52,7 @@ export async function setMemberRoleAction(
   if (!isWorkspaceRole(role)) return { ok: false, message: "Choose a role." };
 
   try {
+    await requireAccess("settings.members", "edit");
     const repo = await settingsMembersRepo(demoViewer);
     await repo.setRole(userId, role);
     revalidateMembers();
@@ -69,6 +72,7 @@ export async function setMemberStatusAction(
   }
 
   try {
+    await requireAccess("settings.members", "edit");
     const repo = await settingsMembersRepo(demoViewer);
     await repo.setStatus(userId, status);
     revalidateMembers();
@@ -83,6 +87,7 @@ export async function removeMemberAction(
   userId: string,
 ): Promise<ActionResult> {
   try {
+    await requireAccess("settings.members", "edit");
     const repo = await settingsMembersRepo(demoViewer);
     await repo.removeMember(userId);
     revalidateMembers();

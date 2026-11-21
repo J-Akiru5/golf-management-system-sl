@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { DocEditor } from "@/components/docs/doc-editor";
+import { requirePageAccess } from "@/lib/access/guard";
+import { levelFor } from "@/lib/access/pages";
+import { currentAccess } from "@/lib/access/server";
 import { can } from "@/lib/db/permissions";
 import type { EditorJson } from "@/lib/db/types";
 import { hasDocState, readSeedContent } from "@/lib/docs/seed-file";
@@ -26,6 +29,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  await requirePageAccess("documents");
   if (!(await getDocsViewer())) notFound();
   const doc = await loadDocument(id);
   if (!doc) notFound();
@@ -34,6 +38,7 @@ export async function generateMetadata({
 
 export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await requirePageAccess("documents");
 
   const viewer = await getDocsViewer();
   if (!viewer) notFound();
@@ -44,6 +49,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   const repos = await getRepos();
   const snapshots = await repos.docs.listSnapshots(id);
   const demo = demoMode();
+  const canEdit = levelFor(await currentAccess(), "documents") === "edit";
 
   /**
    * The converted first document opens with its content because the first editor imports it when
@@ -65,7 +71,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
       archived={doc.archived}
       viewer={{ id: viewer.id, displayName: viewer.displayName, role: viewer.role }}
       demo={demo}
-      canDelete={can(permissionsViewer(viewer), "content.delete")}
+      canEdit={canEdit}
+      canDelete={canEdit && can(permissionsViewer(viewer), "content.delete")}
       seedContent={seedContent}
       initialSnapshots={snapshots}
     />

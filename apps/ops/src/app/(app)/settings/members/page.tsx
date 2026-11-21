@@ -10,6 +10,7 @@ import {
 import { RolesCard } from "@/components/settings/roles-card";
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requirePageAccess } from "@/lib/access/guard";
 import { can } from "@/lib/db/permissions";
 import { demoMode } from "@/lib/flags";
 import { formatJoined, roleLabel } from "@/lib/members/format";
@@ -29,6 +30,7 @@ export default async function MembersPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  await requirePageAccess("settings.members");
   const demoViewer = parseDemoViewer(params.as);
   const repo = await settingsMembersRepo(demoViewer);
   const me = await repo.getMe();

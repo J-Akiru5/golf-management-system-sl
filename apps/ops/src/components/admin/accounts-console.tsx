@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/field";
+import type { UserPermission } from "@/lib/access/types";
 import { relativeTime } from "@/lib/admin/format";
 import {
   accountStatus,
@@ -50,6 +51,8 @@ export function AccountsConsole({
   accounts,
   clubs,
   audit,
+  overrides,
+  permissionsReady,
   viewerId,
   nowIso,
   canUseServiceRole,
@@ -58,6 +61,9 @@ export function AccountsConsole({
   accounts: GodAccount[];
   clubs: ReadonlyArray<AdminClub>;
   audit: GodAuditEntry[];
+  overrides: ReadonlyArray<UserPermission>;
+  /** False when the permissions migration has not been applied: the sheet explains, no controls. */
+  permissionsReady: boolean;
   viewerId: string;
   nowIso: string;
   canUseServiceRole: boolean;
@@ -470,6 +476,8 @@ export function AccountsConsole({
           account={active}
           clubs={clubs}
           audit={audit}
+          overrides={overrides}
+          permissionsReady={permissionsReady}
           nowIso={nowIso}
           viewerId={viewerId}
           canUseServiceRole={canUseServiceRole}

@@ -14,9 +14,10 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import type { AccessMap } from "@/lib/access/pages";
 import { cn } from "@/lib/ui/cn";
 import { BrandMark } from "./brand-mark";
-import { isActive, NAV_ITEMS, type NavIcon, type NavItem, navItemsFor, pageTitle } from "./nav";
+import { isActive, type NavIcon, type NavItem, navItemsFor, pageTitle } from "./nav";
 import { ThemeToggle } from "./theme-toggle";
 import { type ShellViewer, UserCard, UserMenu } from "./user-menu";
 
@@ -75,13 +76,13 @@ function NavList({
   );
 }
 
-function BottomNav({ pathname }: { pathname: string }) {
+function BottomNav({ pathname, items }: { pathname: string; items: ReadonlyArray<NavItem> }) {
   return (
     <nav
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const Icon = ICONS[item.icon];
         const active = isActive(pathname, item.href);
         return (
@@ -114,17 +115,20 @@ function BottomNav({ pathname }: { pathname: string }) {
  */
 export function AppShell({
   viewer,
+  access,
   signOut,
   children,
 }: {
   viewer: ShellViewer;
+  /** The pages this person may see. The menu and the bottom bar are built from it. */
+  access: AccessMap;
   signOut: () => Promise<void>;
   children: ReactNode;
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const title = pageTitle(pathname);
-  const items = navItemsFor(viewer.role === "owner");
+  const items = navItemsFor(access);
 
   return (
     <div className="min-h-dvh bg-surface text-ink">
@@ -182,7 +186,7 @@ export function AppShell({
         </main>
       </div>
 
-      <BottomNav pathname={pathname} />
+      <BottomNav pathname={pathname} items={items} />
     </div>
   );
 }
