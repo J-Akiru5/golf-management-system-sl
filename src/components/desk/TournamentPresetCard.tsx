@@ -43,6 +43,7 @@ export function TournamentPresetCard({
   entries,
   canEdit,
   demo,
+  unsaved,
   onApplied,
 }: {
   tournament: Tournament;
@@ -51,6 +52,8 @@ export function TournamentPresetCard({
   entries: number;
   canEdit: boolean;
   demo: boolean;
+  /** This screen holds edits that are not saved yet. Applying reloads the saved event. */
+  unsaved: boolean;
   /** Called after a preset is applied, so the screen reloads the event and drops its draft. */
   onApplied: () => void;
 }) {
@@ -332,6 +335,7 @@ export function TournamentPresetCard({
                     </Button>
                     <span className="hint">
                       Nothing is filed yet, so the whole set can be replaced.
+                      {unsaved ? " Edits on this screen that are not saved yet are dropped." : ""}
                     </span>
                   </div>
                 )}
@@ -361,6 +365,12 @@ export function TournamentPresetCard({
                       {replacements.map((line) => (
                         <li key={line}>{line}</li>
                       ))}
+                      {unsaved && (
+                        <li>
+                          Edits on this screen that are not saved yet are dropped. Save them first
+                          if the event should keep them.
+                        </li>
+                      )}
                     </ul>
                     <div className="flex flex-wrap gap-2">
                       <Button

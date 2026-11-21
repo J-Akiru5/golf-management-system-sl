@@ -601,6 +601,7 @@ function SetupWizard({
                     entries={fieldSize}
                     canEdit={canEdit}
                     demo={status === "demo"}
+                    unsaved={dirty.length > 0}
                     onApplied={() => {
                       // The event now holds the preset's rules: the draft built on the old ones is
                       // dropped, and the desk re-reads the saved setup so this screen shows them.

@@ -11,6 +11,7 @@ import {
   settingsFromTournament,
   settingsJson,
   settingsSummary,
+  startFormatLabel,
   type TournamentSettings,
   teeColourOf,
 } from "./presets";
@@ -448,11 +449,20 @@ describe("summary and replacement lines", () => {
       playingHandicapCap: 24,
       groupSize: 3,
       firstTeeTime: "07:00",
+      tees: settings.tees.slice(0, 2),
     };
     const lines = replacementLines(settings, next);
     expect(lines.join(" ")).toContain("100% / 30 becomes 85% / 24");
     expect(lines.join(" ")).toContain("up to 4 becomes up to 3");
-    expect(lines.join(" ")).toContain("from 06:30 becomes shotgun from 07:00");
+    expect(lines.join(" ")).toContain("Shotgun start from 06:30 becomes Shotgun start from 07:00");
+    // Tees belong to the course, so a marker the preset does not name is not removed by an apply.
+    expect(lines.join(" ")).toContain("Tees in use: 3 become 2");
+    expect(lines.join(" ")).toContain("stays on the course");
+  });
+
+  it("writes a start format in plain words", () => {
+    expect(startFormatLabel("shotgun")).toBe("Shotgun start");
+    expect(startFormatLabel("two_tee")).toBe("Two-tee start");
   });
 
   it("formats an age band and an allowance", () => {

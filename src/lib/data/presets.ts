@@ -694,7 +694,7 @@ export function settingsSummary(settings: TournamentSettings): PresetLine[] {
 
   lines.push({
     label: "Start",
-    detail: `${settings.startFormat === "two_tee" ? "Two-tee start" : "Shotgun start"} from ${settings.firstTeeTime}${
+    detail: `${startFormatLabel(settings.startFormat)} from ${settings.firstTeeTime}${
       settings.afternoonStart ? `, afternoon from ${settings.afternoonStart}` : ""
     }, batches ${settings.batchGapMinutes} min apart, start times ${settings.waveGapMinutes} min apart`,
   });
@@ -730,14 +730,19 @@ export function allowancePercent(allowance: number): string {
  */
 export function replacementLines(current: TournamentSettings, next: TournamentSettings): string[] {
   return [
-    `Tees: ${current.tees.length} replaced by ${next.tees.length}`,
     `Categories: ${current.categories.length} replaced by ${next.categories.length}`,
     `Classes: ${current.flights.length} replaced by ${next.flights.length}`,
+    `Tees in use: ${current.tees.length} become ${next.tees.length}. A marker the preset does not name stays on the course.`,
     `Handicap allowance and index limit: ${allowancePercent(current.allowance)} / ${current.maxIndex} becomes ${allowancePercent(next.allowance)} / ${next.maxIndex}`,
     `Group size: up to ${current.groupSize} becomes up to ${next.groupSize}`,
-    `Start: ${current.startFormat} from ${current.firstTeeTime} becomes ${next.startFormat} from ${next.firstTeeTime}`,
+    `Start: ${startFormatLabel(current.startFormat)} from ${current.firstTeeTime} becomes ${startFormatLabel(next.startFormat)} from ${next.firstTeeTime}`,
     `Playing days: ${current.days.length} keeps its dates, with the start times from the preset`,
   ];
+}
+
+/** "Shotgun start", "Two-tee start": the start format as the desk writes it. */
+export function startFormatLabel(format: StartFormat): string {
+  return format === "two_tee" ? "Two-tee start" : "Shotgun start";
 }
 
 /** One preset as the desk reads it. */
