@@ -7,6 +7,7 @@ import { TASK_STATUSES } from "@/lib/db/constants";
 import { can, type Viewer as PermissionViewer } from "@/lib/db/permissions";
 import type { TaskStatus, WsTaskCommentRow, WsTaskRow } from "@/lib/db/types";
 import { demoMode } from "@/lib/flags";
+import { syncSavedTask } from "@/lib/github/task-sync";
 import { getRepos } from "@/lib/repos";
 import type { ActionResult, TaskDraft, TaskPatch, TaskViewer } from "@/lib/tasks/types";
 
@@ -67,8 +68,12 @@ export async function updateTask(id: string, patch: TaskPatch): Promise<ActionRe
     await requireViewer();
     await requireAccess("tasks", "edit");
     const repos = await getRepos();
+    const before = await repos.tasks.getTask(id);
     const row = await repos.tasks.updateTask(id, patch);
     revalidatePath("/tasks");
+    // A linked task pushes its title, status and assignee to GitHub. The save already succeeded, so
+    // the push cannot fail this action.
+    if (before) await syncSavedTask(before, row);
     return row;
   });
 }
@@ -78,8 +83,10 @@ export async function setStatus(id: string, status: TaskStatus): Promise<ActionR
     await requireViewer();
     await requireAccess("tasks", "edit");
     const repos = await getRepos();
+    const before = await repos.tasks.getTask(id);
     const row = await repos.tasks.setStatus(id, status);
     revalidatePath("/tasks");
+    if (before) await syncSavedTask(before, row);
     return row;
   });
 }
@@ -119,11 +126,13 @@ export async function moveTask(
     }
 
     const repos = await getRepos();
+    const beforeMove = await repos.tasks.getTask(id);
     const rows: WsTaskRow[] = [await repos.tasks.updateTask(id, { status, position })];
     for (const other of updates) {
       rows.push(await repos.tasks.updateTask(other.id, { position: other.position }));
     }
     revalidatePath("/tasks");
+    if (beforeMove && rows[0]) await syncSavedTask(beforeMove, rows[0]);
     return rows;
   });
 }
