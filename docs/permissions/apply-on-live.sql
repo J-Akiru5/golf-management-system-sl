@@ -5,6 +5,8 @@
 -- It creates the permission tables, seeds the role matrix, and narrows the existing workspace
 -- policies and functions. Nothing is dropped and no data is deleted. If it fails, nothing is applied.
 --
+begin;
+
 -- Workspace permissions: a role matrix plus per-person overrides, enforced in the menu, the routes,
 -- the server actions and here.
 --
@@ -851,3 +853,5 @@ begin
     raise exception 'the wrapped ws_list_ai_providers must be callable by authenticated';
   end if;
 end $$;
+
+commit;
