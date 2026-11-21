@@ -1,6 +1,6 @@
 import { searchKey } from "@/lib/names";
 import { normalizeHole } from "@/lib/scorecards/document";
-import { type EventCardMarker, pickDeskMarker } from "../event-card";
+import { type EventCardMarker, pickDeskMarker, teeLetter, teeLetterName } from "../event-card";
 import {
   cardBoxNote,
   type EventScoringRules,
@@ -21,7 +21,10 @@ import type { CardEntry, Scorecard, StrokeLimits, TeeRatings } from "../types";
  * Pure: no database, clock or network. Nothing is guessed. A card is matched to a player by exact
  * name (case, accents, punctuation and word order ignored) or it is listed as unmatched. A blank
  * hole, a player with no tee, or a written total that does not add up blocks that card by name. The
- * HDCP box is kept as a note: the WHS playing handicap comes from the registration index and tee.
+ * HDCP box is kept as a note: the WHS playing handicap comes from the registration index and the tee
+ * written on the card. The import save still scores on the registration tee, so a card whose tee
+ * differs from the registration is blocked with the registration tee named as the fix, rather than
+ * imported on a tee it was not played from.
  */
 
 export const SHEET_EXPORT_FORMAT = "bamboo-scores-edit";
@@ -247,6 +250,35 @@ export function sheetCaptureKey(roundId: string, slug: string, sheetCardId: stri
   return `sheet:${roundId}:${slug}:${sheetCardId}`;
 }
 
+/**
+ * Why a card cannot be imported on the tee it was played from. The import save works the playing
+ * handicap out from the registration index and tee, so a card whose own tee differs would be scored
+ * on the wrong tee (finding T3). The fix is the registration tee, which also makes the draw and the
+ * printed card agree. A card tee with no rating is not guessed at (finding T7).
+ */
+function cardTeeProblem(
+  cardTee: string,
+  tee: TeeRatings | null | undefined,
+  fromRegistration: boolean,
+): string | null {
+  const written = cardTee.trim();
+  if (written === "") return null;
+
+  const letter = teeLetter(written);
+  if (!letter) {
+    return `The tee on the card ("${written}") is not one of B, W, L or S. Check the card, set the registration tee to the tee written on it, then import it again.`;
+  }
+
+  const registrationLetter = tee ? teeLetter(tee.name) || teeLetter(tee.id) : "";
+  if (registrationLetter === letter) return null;
+
+  const onFile = tee?.name
+    ? `${fromRegistration ? "the registration tee is" : "the round's tee is"} ${tee.name}`
+    : "the registration has no tee";
+  const name = written.length > 1 ? written : teeLetterName(letter);
+  return `The card says ${name} (${letter}), but ${onFile}. Set the registration tee to ${name} in the field list, then import the card again.`;
+}
+
 export function resolveSheetImport(input: ResolveSheetImportInput): SheetImportPlan {
   const plan: SheetImportPlan = {
     ready: [],
@@ -356,7 +388,12 @@ export function resolveSheetImport(input: ResolveSheetImportInput): SheetImportP
 
     // The playing handicap comes from the player's registration index and tee under the event
     // rule. The HDCP box on the sheet is kept as a note beside it, never as the number to play off.
-    const tee = player.tee === undefined ? input.tee : player.tee;
+    // A card that names a different tee is blocked: the save path still scores the registration
+    // tee, so importing it would publish a number the card was not played from.
+    const registration = player.tee;
+    const tee = registration === undefined ? input.tee : registration;
+    const teeProblem = cardTeeProblem(card.tee, tee, registration !== undefined);
+    if (teeProblem) reasons.push(teeProblem);
     const handicap = eventPlayingHandicap({
       index: player.frozenIndex ?? null,
       tee,
