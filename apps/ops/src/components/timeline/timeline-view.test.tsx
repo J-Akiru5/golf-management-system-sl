@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import type { GithubFeed } from "@/lib/timeline/github";
 import type { TimelineItem } from "@/lib/timeline/types";
+import { dayLabel } from "./calendar-view";
 import { TimelineView } from "./timeline-view";
 
 afterEach(cleanup);
@@ -240,5 +241,23 @@ describe("TimelineView", () => {
     expect(screen.getByText("0 items shown.")).toBeTruthy();
     await user.click(screen.getByRole("tab", { name: /Gantt/ }));
     expect(screen.getByText("Nothing to plot yet")).toBeTruthy();
+  });
+});
+
+describe("dayLabel", () => {
+  it("says the day is clear", () => {
+    expect(dayLabel("2026-11-21", [])).toBe("Saturday, 21 November 2026, nothing scheduled");
+  });
+
+  it("speaks the names, not only the count", () => {
+    expect(dayLabel("2026-11-12", [items[1] as TimelineItem])).toBe(
+      "Thursday, 12 November 2026, 1 item: Cebu invitational",
+    );
+  });
+
+  it("stops at three names", () => {
+    const label = dayLabel("2026-11-12", items.slice(0, 4));
+    expect(label).toContain("4 items");
+    expect(label).toContain("and 1 more");
   });
 });

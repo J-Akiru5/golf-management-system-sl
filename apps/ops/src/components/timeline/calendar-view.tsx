@@ -59,6 +59,22 @@ function rangeTitle(zoom: CalendarZoom, anchor: string): string {
   return formatMonthYear(anchor);
 }
 
+/**
+ * What a day cell announces. The colour of a chip is not information a screen reader can read, so
+ * the names are spoken too, up to three of them.
+ */
+export function dayLabel(day: string, items: ReadonlyArray<TimelineItem>): string {
+  const date = formatDayLong(day);
+  if (items.length === 0) return `${date}, nothing scheduled`;
+
+  const names = items
+    .slice(0, 3)
+    .map((item) => item.title)
+    .join(", ");
+  const more = items.length > 3 ? ` and ${items.length - 3} more` : "";
+  return `${date}, ${items.length} item${items.length === 1 ? "" : "s"}: ${names}${more}`;
+}
+
 export function CalendarView({
   items,
   today,
@@ -174,11 +190,7 @@ export function CalendarView({
                   type="button"
                   onClick={() => setSelected(isSelected ? null : day)}
                   aria-pressed={isSelected}
-                  aria-label={`${formatDayLong(day)}, ${
-                    dayItems.length === 0
-                      ? "nothing on"
-                      : `${dayItems.length} item${dayItems.length === 1 ? "" : "s"}`
-                  }`}
+                  aria-label={dayLabel(day, dayItems)}
                   className={cn(
                     "flex min-h-24 flex-col gap-1 border-b border-r border-line p-1.5 text-left align-top last:border-r-0 focus-visible:relative focus-visible:z-10",
                     outside ? "bg-surface-sunken/50 text-ink-muted" : "bg-surface-raised",
