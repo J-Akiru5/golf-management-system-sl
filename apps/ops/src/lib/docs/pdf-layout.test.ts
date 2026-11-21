@@ -73,6 +73,23 @@ describe("headings by size", () => {
     expect(html).not.toContain("<h2>");
     expect(html).not.toContain("<h3>");
   });
+
+  it("does not let one long title become the body size", () => {
+    const page = [
+      item("A very long report title that takes most of the width of the page", 72, 740, {
+        height: 18,
+      }),
+      item("The body still sets the size of the ordinary text.", 72, 700, { height: 10 }),
+      item("It runs over a second line as body text does.", 72, 686, { height: 10 }),
+    ];
+
+    const { html } = pdfPagesToDocument([page]);
+
+    expect(html).toContain("<h2>A very long report title");
+    expect(html).toContain(
+      "<p>The body still sets the size of the ordinary text. It runs over a second line as body text does.</p>",
+    );
+  });
 });
 
 describe("lists", () => {

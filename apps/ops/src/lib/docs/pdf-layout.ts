@@ -129,20 +129,24 @@ function groupIntoLines(items: readonly PdfTextItem[]): Line[] {
   });
 }
 
-/** The size most of the text on a page uses, weighted by how much text each size carries. */
+/**
+ * The size most lines on a page use. A long title on its own must not become the body size, so the
+ * count is by line; when two sizes are equally common the smaller one wins, because headings are
+ * larger than the text around them.
+ */
 function bodySize(lines: readonly Line[]): number {
-  const weights = new Map<number, number>();
+  const counts = new Map<number, number>();
   for (const line of lines) {
     const key = Math.round(line.size * 2) / 2;
-    weights.set(key, (weights.get(key) ?? 0) + Math.max(1, line.text.length));
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
   let size = 0;
   let best = -1;
-  for (const [key, weight] of weights) {
-    if (weight > best) {
+  for (const [key, count] of counts) {
+    if (count > best || (count === best && size > 0 && key < size)) {
       size = key;
-      best = weight;
+      best = count;
     }
   }
   return size > 0 ? size : 10;
