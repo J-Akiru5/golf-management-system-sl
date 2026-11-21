@@ -40,8 +40,10 @@ export const OUTPUT_FILE = join(ROOT, "docs", "migrations", "probe.sql");
  */
 export const ALLOW_LIST = {
   "20261023000001_player_portal_grants": "grants only: three revoke execute statements",
-  "20261030000000_revoke_anon_execute": "grants only: revoke anon and grant authenticated on existing functions",
-  "20261032000000_photo_bucket_limits": "storage bucket settings only: file size limit and mime types",
+  "20261030000000_revoke_anon_execute":
+    "grants only: revoke anon and grant authenticated on existing functions",
+  "20261032000000_photo_bucket_limits":
+    "storage bucket settings only: file size limit and mime types",
   "20261105000200_flights_field_wide_classes": "one constraint dropped, nothing created",
   "20261108004000_public_leaderboard_sides": "retired no-op, kept so the version is on record",
   "20261123000600_timeline_permission": "three permission rows inserted, nothing created",
