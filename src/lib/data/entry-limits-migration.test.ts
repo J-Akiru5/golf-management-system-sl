@@ -49,6 +49,7 @@ describe("the entry limits migration", () => {
   it("bounds one connection's submissions and one event's new player rows", () => {
     expect(sql).toContain("r.rate_key = v_rate_key");
     expect(sql).toContain("interval '10 minutes'");
+    expect(sql).toContain("v_recent >= 20");
     expect(sql).toContain("pg_advisory_xact_lock");
     expect(sql).toContain("interval '1 hour'");
     expect(sql).toContain("v_new_players >= 25");

@@ -23,9 +23,11 @@ begin;
 -- checks and the same messages; only the limits below are new. No policy, grant or row is changed.
 --
 --   * A submission with a filled honeypot answers exactly like a real entry and writes nothing.
---   * One connection may send ten entries in ten minutes. The count is kept on the rows it already
---     created, so no extra row and no raw address is stored. The key is the same pseudonymous digest
---     pattern the feedback form uses: a hash over the club and the proxy address.
+--   * One connection may send twenty entries in ten minutes. The count is kept on the rows it
+--     already created, so no extra row and no raw address is stored. The key is the same
+--     pseudonymous digest pattern the feedback form uses: a hash over the club and the proxy
+--     address. Twenty is chosen for a shared clubhouse connection, where several players enter
+--     together.
 --   * An event accepts at most 25 new player rows in an hour. A returning member matches an existing
 --     player row and is not affected; the cap only bounds rows created by the form itself.
 
@@ -156,7 +158,7 @@ begin
   )::text;
 
   -- Serialize the check-and-insert for one bucket, so two simultaneous requests cannot both see
-  -- nine rows and both slip in as the tenth and eleventh.
+  -- nineteen rows and both slip in as the twentieth and twenty-first.
   perform pg_advisory_xact_lock(hashtextextended('entry-rate|' || v_rate_key, 0));
 
   select count(*) into v_recent
@@ -166,7 +168,7 @@ begin
      and r.rate_key = v_rate_key
      and r.created_at > now() - interval '10 minutes';
 
-  if v_recent >= 10 then
+  if v_recent >= 20 then
     return jsonb_build_object('ok', false, 'code', 'rate_limited',
       'message', 'Too many entries were sent just now. Wait a few minutes and try again.');
   end if;
