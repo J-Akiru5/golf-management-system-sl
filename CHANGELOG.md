@@ -9,6 +9,21 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.65.0] - 2026-11-21
+
+### Added
+- **Import a document into the workspace.** Documents has an Import button for people who can edit documents: HTML, Markdown and plain text up to 2 MB, or a PDF up to 10 MB, become a new shared document with a first saved version. The text is converted in the browser; the file itself is not uploaded. Scripts, styles and images are left out.
+- **PDF import.** Headings, paragraphs, lists and lined-up tables are kept; repeated page headers and footers are dropped; images and charts are not imported. A scanned PDF with no text is refused with a plain message. Characters a PDF stores without their text (Chrome writes some numbers and punctuation this way) show as a visible mark with a warning, and are never guessed.
+- **Insert from file** inside an open document puts a file's text at the cursor as a normal shared edit.
+- `docs/migrations/catch-up-2026-11-21.sql` applies the three migrations the live probe found missing (tee holes, scorecard scans, role backfill) and the smaller changes after them, in one transaction that is safe to run twice.
+
+### Fixed
+- The registration role backfill migration had a `case` with no `end`, so it never applied; it is fixed.
+- A document seeded from the server's file keeps connecting when its seed claim fails.
+
+### Database
+- No new migration. `20261115000900_registration_role_backfill` is corrected; the owner applies it on live through the catch-up script.
+
 ## [0.64.1] - 2026-11-21
 
 ### Fixed
