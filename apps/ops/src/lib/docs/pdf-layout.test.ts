@@ -39,6 +39,24 @@ describe("grouping lines and paragraphs", () => {
     expect(html).toContain("<p>New paragraph</p>");
   });
 
+  it("keeps wrapped lines together when the body text has generous leading", () => {
+    // 11 point text on a 17.3 point pitch, as in the live analytics report, with one wider gap.
+    const page = [
+      item("The platform answered", 72, 700, { height: 11 }),
+      item("live requests with zero", 72, 682.7, { height: 11 }),
+      item("downtime on the final day.", 72, 665.4, { height: 11 }),
+      item("A second paragraph starts", 72, 630, { height: 11 }),
+      item("after a wider gap.", 72, 612.7, { height: 11 }),
+    ];
+
+    const { html } = pdfPagesToDocument([page]);
+
+    expect(html).toContain(
+      "<p>The platform answered live requests with zero downtime on the final day.</p>",
+    );
+    expect(html).toContain("<p>A second paragraph starts after a wider gap.</p>");
+  });
+
   it("treats baselines within the small tolerance as one line", () => {
     const page = [item("One", 72, 700), item("line", 110, 700.8)];
 

@@ -184,9 +184,32 @@ function joinLines(parts: readonly string[]): string {
   return collapse(joined);
 }
 
-function breaksParagraph(previous: Line, current: Line): boolean {
+/**
+ * The usual distance between one body line and the next on this page. Many documents set body text
+ * with generous leading (1.6 times the font size is common), so a fixed multiple of the font size
+ * would split every wrapped line into its own paragraph. The median gap between consecutive body
+ * lines is the page's own line pitch; null when the page has too few body lines to tell.
+ */
+function linePitch(lines: readonly Line[], body: number): number | null {
+  const gaps: number[] = [];
+  for (let index = 1; index < lines.length; index++) {
+    const previous = lines[index - 1];
+    const current = lines[index];
+    if (!previous || !current) continue;
+    if (Math.abs(previous.size - body) > 0.5 || Math.abs(current.size - body) > 0.5) continue;
+    const gap = previous.y - current.y;
+    if (gap > 0 && gap < body * 3) gaps.push(gap);
+  }
+  return gaps.length >= 3 ? median(gaps) : null;
+}
+
+/** A gap this much wider than the page's line pitch starts a new paragraph. */
+const PITCH_GAP = 1.25;
+
+function breaksParagraph(previous: Line, current: Line, pitch: number | null): boolean {
   const baselineGap = previous.y - current.y;
-  const expected = Math.max(previous.size, current.size, 1) * PARAGRAPH_GAP;
+  const bySize = Math.max(previous.size, current.size, 1) * PARAGRAPH_GAP;
+  const expected = pitch === null ? bySize : Math.max(bySize, pitch * PITCH_GAP);
   return baselineGap > expected;
 }
 
@@ -237,6 +260,7 @@ type PageBlocks = { blocks: string[]; heading: string | null };
 
 function pageBlocks(lines: readonly Line[]): PageBlocks {
   const body = bodySize(lines);
+  const pitch = linePitch(lines, body);
   const largest = lines.reduce((max, line) => Math.max(max, line.size), 0);
 
   const blocks: string[] = [];
@@ -291,7 +315,7 @@ function pageBlocks(lines: readonly Line[]): PageBlocks {
       if (tableRun(lines, index) !== null) break;
       if (headingLevel(next, body, largest) !== null) break;
       if (looksLikeListItem(next.text) !== null) break;
-      if (breaksParagraph(previous, next)) break;
+      if (breaksParagraph(previous, next, pitch)) break;
       parts.push(next.text);
       previous = next;
       index++;

@@ -47,7 +47,11 @@ export type ImportCheck = { ok: true; kind: ImportKind } | { ok: false; error: s
 export type ConvertedContent = { html: string; heading: string | null };
 
 /** What the dialog needs: the editor HTML and the title to suggest. */
-export type ConvertedImport = { html: string; title: string };
+/**
+ * `warning` is set when the file converted but something in it could not be read as text, so the
+ * member checks the result against the original before relying on it.
+ */
+export type ConvertedImport = { html: string; title: string; warning?: string };
 
 const KIND_BY_EXTENSION: Record<string, ImportKind> = {
   html: "html",
@@ -964,17 +968,47 @@ export function pdfTitle(
   return titleFromFileName(fileName);
 }
 
+/** The mark that stands in for a character the PDF stores without its text. */
+export const MISSING_CHARACTER = "\u25AF";
+
+/**
+ * Characters in the Unicode private use area. Some PDF writers (Chrome's among them) store a
+ * subset font's numbers and punctuation as glyph codes there, with no text behind them. Which code
+ * means which character depends on the font, so they are never decoded: guessing a figure is worse
+ * than showing that it is missing.
+ */
+const PRIVATE_USE = /[\uE000-\uF8FF]/g;
+const HAS_PRIVATE_USE = /[\uE000-\uF8FF]/;
+
+export const MISSING_CHARACTERS_WARNING =
+  "Some characters in this PDF, often numbers and punctuation, are stored without their text. " +
+  `They show as ${MISSING_CHARACTER}. Check every figure against the PDF, or import an HTML or ` +
+  "text copy of it instead.";
+
 /** Turn the items pdf.js reported for each page into editor HTML and the title to suggest. */
 export function convertPdfDocument(input: {
   name: string;
   pages: ReadonlyArray<ReadonlyArray<PdfTextItem>>;
   metadataTitle?: string | null;
 }): ConvertedImport {
-  const converted = pdfPagesToDocument(input.pages);
-  return {
+  let missing = 0;
+  const pages = input.pages.map((items) =>
+    items.map((item) => {
+      if (!HAS_PRIVATE_USE.test(item.str)) return item;
+      const str = item.str.replace(PRIVATE_USE, () => {
+        missing += 1;
+        return MISSING_CHARACTER;
+      });
+      return { ...item, str };
+    }),
+  );
+  const converted = pdfPagesToDocument(pages);
+  const result: ConvertedImport = {
     html: converted.html,
     title: pdfTitle(input.metadataTitle ?? null, converted.heading, input.name),
   };
+  if (missing > 0) result.warning = MISSING_CHARACTERS_WARNING;
+  return result;
 }
 
 /** The items, pages and metadata pdf.js reports for one file. */

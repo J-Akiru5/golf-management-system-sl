@@ -7,11 +7,14 @@ import { describe, expect, it } from "vitest";
 import {
   checkImportFile,
   convertDocument,
+  convertPdfDocument,
   emptyImportMessage,
   IMPORT_MAX_BYTES,
   IMPORT_PDF_MAX_BYTES,
   importKindFor,
   importVersionName,
+  MISSING_CHARACTER,
+  MISSING_CHARACTERS_WARNING,
   PDF_NO_TEXT_MESSAGE,
   pdfTitle,
   safeHref,
@@ -432,6 +435,42 @@ describe("the suggested title", () => {
     expect(pdfTitle(null, "First heading", "report.pdf")).toBe("First heading");
     expect(pdfTitle("", null, "analytics-report.pdf")).toBe("analytics-report");
     expect(pdfTitle(null, null, "folder/report.pdf")).toBe("report");
+  });
+});
+
+describe("PDF characters stored without text", () => {
+  // Chrome writes some subset fonts' digits and punctuation as private use code points. The live
+  // analytics report had "25-26 November 2026" as four such codes, a dash and four more.
+  const glyph = (code: number) => String.fromCodePoint(code);
+  const item = (str: string, x: number) => ({
+    str,
+    x,
+    y: 700,
+    height: 10,
+    fontName: "f1",
+    hasEOL: false,
+  });
+
+  it("shows each one as a visible mark and warns, never decoding it", () => {
+    const converted = convertPdfDocument({
+      name: "report.pdf",
+      pages: [
+        [item("Window: ", 10), item(glyph(0xe072) + glyph(0xe075), 60), item(" November", 80)],
+      ],
+    });
+    expect(converted.html).toContain(`${MISSING_CHARACTER}${MISSING_CHARACTER}`);
+    expect(converted.html).not.toMatch(/[\uE000-\uF8FF]/);
+    expect(converted.html).not.toMatch(/25|12/);
+    expect(converted.warning).toBe(MISSING_CHARACTERS_WARNING);
+  });
+
+  it("gives no warning for a PDF whose text is all readable", () => {
+    const converted = convertPdfDocument({
+      name: "report.pdf",
+      pages: [[item("Window: 25 November", 10)]],
+    });
+    expect(converted.warning).toBeUndefined();
+    expect(converted.html).not.toContain(MISSING_CHARACTER);
   });
 });
 

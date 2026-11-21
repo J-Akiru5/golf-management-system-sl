@@ -156,6 +156,11 @@ export function ImportDocument() {
                 Scripts, styles and images are left out.
               </p>
               <p className="hint">Images and charts in a PDF are not imported.</p>
+              {prepared?.warning ? (
+                <p role="status" className="text-sm font-medium text-warning">
+                  {prepared.warning}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-1.5">

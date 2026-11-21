@@ -32,6 +32,7 @@ export function InsertFromFile({ editor, canEdit }: { editor: Editor; canEdit: b
   const [prepared, setPrepared] = useState<ReturnType<typeof importHtmlToJson>>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
   const [inserting, setInserting] = useState(false);
 
@@ -43,6 +44,7 @@ export function InsertFromFile({ editor, canEdit }: { editor: Editor; canEdit: b
     setFile(null);
     setPrepared(null);
     setError(null);
+    setWarning(null);
     setReading(false);
     setInserting(false);
   }
@@ -58,6 +60,7 @@ export function InsertFromFile({ editor, canEdit }: { editor: Editor; canEdit: b
     setFile(null);
     setPrepared(null);
     setError(null);
+    setWarning(null);
     setNotice(null);
     if (chosen === null) return;
 
@@ -69,6 +72,7 @@ export function InsertFromFile({ editor, canEdit }: { editor: Editor; canEdit: b
         throw new Error("That file could not be turned into text the editor can hold.");
       setFile(chosen);
       setPrepared(content);
+      setWarning(converted.warning ?? null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "That file could not be read.");
       input.value = "";
@@ -149,6 +153,11 @@ export function InsertFromFile({ editor, canEdit }: { editor: Editor; canEdit: b
                 Scripts, styles and images are left out.
               </p>
               <p className="hint">Images and charts in a PDF are not imported.</p>
+              {warning ? (
+                <p role="status" className="text-sm font-medium text-warning">
+                  {warning}
+                </p>
+              ) : null}
             </div>
 
             {reading ? (
