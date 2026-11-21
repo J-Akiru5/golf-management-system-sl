@@ -9,6 +9,9 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **Live updates on the desk and the public pages (#349).** Another desk user's save appears on the scores screen within about ten seconds without a reload, and a round the desk publishes reaches an open phone the same way. Both use a visible-tab poll with jitter and backoff: the desk re-reads the round and redraws only when its signature moved, the public pages ask a small endpoint for a signature and re-render only when it changed. A hidden tab, an offline phone and a write in flight ask nothing. No Supabase Realtime, no new service, no migration. How to check it on event day: `docs/health/live-updates-event-day.md`.
+
 ## [0.64.0] - 2026-11-21
 
 ### Added
