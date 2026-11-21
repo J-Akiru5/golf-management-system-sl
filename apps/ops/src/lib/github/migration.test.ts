@@ -287,12 +287,20 @@ describe("GitHub -> workspace", () => {
       await sync({ issue_number: 370, labels: ["ops"], updated_at: "2020-01-02T00:00:00Z" }),
     ).toBe("applied");
 
-    const after = await db.query<{ updated_at: Date; synced_at: Date }>(
-      "select updated_at, synced_at from public.ws_tasks where github_issue_number = 370",
+    const after = await db.query<{
+      updated_at: Date;
+      synced_at: Date;
+      github_labels: string[];
+    }>(
+      "select updated_at, synced_at, github_labels from public.ws_tasks where github_issue_number = 370",
     );
-    expect(after.rows[0]?.updated_at.getTime()).toBe(before.rows[0]?.updated_at.getTime());
+    // A sync writes both stamps in one statement, so the row never looks edited since the last sync.
+    expect(after.rows[0]?.github_labels).toEqual(["ops"]);
     expect(after.rows[0]?.synced_at.getTime()).toBeGreaterThanOrEqual(
-      before.rows[0]?.synced_at.getTime() ?? 0,
+      after.rows[0]?.updated_at.getTime() ?? 0,
+    );
+    expect(before.rows[0]?.synced_at.getTime()).toBeGreaterThanOrEqual(
+      before.rows[0]?.updated_at.getTime() ?? 0,
     );
   });
 
@@ -366,17 +374,20 @@ describe("workspace -> GitHub", () => {
       github_labels: string[];
       github_updated_at: Date;
       updated_at: Date;
+      synced_at: Date;
       title: string;
     }>(
-      "select github_labels, github_updated_at, updated_at, title from public.ws_tasks where id = $1",
+      "select github_labels, github_updated_at, updated_at, synced_at, title from public.ws_tasks where id = $1",
       [taskId],
     );
     // The push records GitHub's answer but does not rename the local task: the workspace is the
-    // side that changed and already has the title it pushed.
+    // side that changed and already has the title it pushed. The row is synced, not edited.
     expect(row.rows[0]?.github_labels).toEqual(["ops", "pushed", "workspace"]);
     expect(row.rows[0]?.github_updated_at.toISOString()).toBe("2020-01-05T00:00:00.000Z");
     expect(row.rows[0]?.title).toBe("Edited in the workspace");
-    expect(row.rows[0]?.updated_at.getTime()).toBe(task.rows[0]?.updated_at.getTime());
+    expect(row.rows[0]?.synced_at.getTime()).toBeGreaterThanOrEqual(
+      row.rows[0]?.updated_at.getTime() ?? 0,
+    );
 
     const log = await db.query<{ direction: string; outcome: string; detail: string }>(
       "select direction, outcome, detail from public.github_sync_log order by id desc limit 1",

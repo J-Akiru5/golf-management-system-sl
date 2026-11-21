@@ -1,5 +1,5 @@
 -- TeeLine Workspace: two-way sync between GitHub issues and workspace tasks (#350).
--- ADDITIVE: new nullable link columns on ws_tasks, two new tables, three functions and two triggers.
+-- ADDITIVE: new nullable link columns on ws_tasks, two new tables, four functions and two triggers.
 -- Nothing existing changes meaning, so the app keeps working before, during and after the run. The
 -- only lock is the brief one that adding nullable columns and a defaulted array takes on ws_tasks.
 --
@@ -16,8 +16,9 @@
 --
 -- The loop guard is github_updated_at: an issue event whose updated_at is not newer than the one
 -- already stored is an echo (GitHub reports the change we just pushed) and is skipped. A conflict is
--- decided by comparing the issue's updated_at with the task's updated_at, which stays at the last
--- workspace edit because a sync-only write puts it back (see the z trigger below).
+-- decided by comparing the task's last workspace edit with the last sync (synced_at) and with the
+-- event's timestamp: a sync-only write sets updated_at and synced_at in the same statement, so it
+-- never looks like a workspace edit.
 
 -- 1. Link columns on tasks -----------------------------------------------------------------------
 
@@ -146,30 +147,6 @@ revoke all on function public.gh_tasks_guard() from public, anon;
 create trigger gh_tasks_guard
   before insert or update on public.ws_tasks
   for each row execute function public.gh_tasks_guard();
-
--- A sync-only write must not look like someone edited the task in the workspace. ws_tasks_stamp
--- sets updated_at := now(); BEFORE ROW triggers fire in name order, and this name sorts after
--- "ws_tasks_stamp", so it runs second and puts the previous value back. The name is part of the
--- mechanism, not a style choice.
-
-create function public.gh_tasks_keep_stamp()
-returns trigger
-language plpgsql
-set search_path = ''
-as $$
-begin
-  if current_setting('teeline.github_sync', true) = 'on' then
-    new.updated_at := old.updated_at;
-  end if;
-  return new;
-end;
-$$;
-
-revoke all on function public.gh_tasks_keep_stamp() from public, anon;
-
-create trigger ws_tasks_z_github_keep_stamp
-  before update on public.ws_tasks
-  for each row execute function public.gh_tasks_keep_stamp();
 
 -- 5. Helpers -------------------------------------------------------------------------------------
 
