@@ -2,8 +2,11 @@
  * POST /api/chat/concern: one turn of Teeo's conversation.
  *
  * Public and signed out. Limits: 20 turns per conversation and 2000 characters per message (both
- * enforced in `src/lib/chat`), a honeypot field, and a per-connection and per-conversation rate check
- * backed by the database. No secret ever leaves this route: a failure answers with a fixed line in
+ * enforced in `src/lib/chat`), a honeypot field, a per-connection and per-conversation rate check,
+ * and a daily ceiling on provider calls, all backed by the database. When a provider is configured a
+ * bucket that cannot be read refuses the turn instead of allowing it: the player gets the polite
+ * fallback and nothing is spent. With no provider configured there is nothing to spend, so the
+ * check may be skipped. No secret ever leaves this route: a failure answers with a fixed line in
  * the player's language and no provider detail.
  *
  * The reply is one strict JSON completion, so the provider is called once and its answer is checked
@@ -18,15 +21,14 @@ import { completeAi, stableSessionId } from "@/lib/ai";
 import { loadProviderConfigs } from "@/lib/ai/config";
 import { withApiTiming } from "@/lib/api/timing";
 import { runConcernTurn } from "@/lib/chat/conversation";
-import { chatCopy, chatLocaleFromAppLocale, isChatLocale } from "@/lib/chat/copy";
+import { type ChatLocale, chatCopy, chatLocaleFromAppLocale, isChatLocale } from "@/lib/chat/copy";
 import { summariseForPlayer } from "@/lib/chat/draft";
 import type { ConcernChatEvent } from "@/lib/chat/events";
 import {
-  CHAT_CONVERSATION_POLICY,
-  CHAT_IP_POLICY,
   type ChatRateRpcClient,
-  chatRateKey,
-  checkChatRateLimit,
+  chatDailyCap,
+  checkChatBudget,
+  checkChatTurn,
   clientAddressFromHeaders,
   normaliseConversationId,
 } from "@/lib/chat/rate-limit";
@@ -50,7 +52,10 @@ function json(body: unknown, status: number): Response {
   return Response.json(body, { status, headers: NO_STORE });
 }
 
-/** No database means no rate check, not a broken chat. The note itself is still rate-limited. */
+/**
+ * The bucket client, or null when Supabase is not configured. A missing client is not a broken
+ * chat: the turn gate decides whether to allow the turn (no provider configured) or refuse it.
+ */
 function rateClient(): ChatRateRpcClient | null {
   if (!isSupabaseConfigured()) return null;
   try {
@@ -64,6 +69,19 @@ function rateClient(): ChatRateRpcClient | null {
 
 function sseLine(event: ConcernChatEvent): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
+}
+
+/** The fixed reply: no model answer, and the panel offers the tick-box form instead. */
+function fallbackResponse(locale: ChatLocale, text: string, reason: string): Response {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(sseLine({ type: "meta", language: locale, fallback: true, reason }));
+      controller.enqueue(sseLine({ type: "delta", text }));
+      controller.enqueue(sseLine({ type: "done", fallback: true }));
+      controller.close();
+    },
+  });
+  return new Response(stream, { headers: SSE_HEADERS });
 }
 
 export const POST = withApiTiming("POST /api/chat/concern", async (request: NextRequest) => {
@@ -100,45 +118,32 @@ export const POST = withApiTiming("POST /api/chat/concern", async (request: Next
   const honeypot = typeof body.honeypot === "string" ? body.honeypot.trim() : "";
   const address = clientAddressFromHeaders(request.headers);
 
-  const client = rateClient();
-  if (client) {
-    const ipKey = await chatRateKey("ip", address ?? "no-address");
-    const ipCheck = await checkChatRateLimit(client, ipKey, CHAT_IP_POLICY);
-    if (!ipCheck.allowed) {
-      return json({ ok: false, code: "rate_limited", message: copy.rateLimited }, 429);
-    }
-
-    if (conversationId) {
-      const conversationKey = await chatRateKey("conversation", conversationId);
-      const conversationCheck = await checkChatRateLimit(
-        client,
-        conversationKey,
-        CHAT_CONVERSATION_POLICY,
-      );
-      if (!conversationCheck.allowed) {
-        return json({ ok: false, code: "rate_limited", message: copy.rateLimited }, 429);
-      }
-    }
+  // A filled honeypot is a bot. It gets the ordinary greeting and no provider call, so it learns
+  // nothing and costs nothing. Checked first, so a bot does not consume a real bucket.
+  if (honeypot !== "") {
+    return fallbackResponse(locale, copy.greeting, "honeypot");
   }
 
   const configs = await loadProviderConfigs();
+  const providerConfigured = configs.length > 0;
   const sessionId = stableSessionId("concern", conversationId ?? address ?? "anonymous");
+  const client = rateClient();
 
-  // A filled honeypot is a bot. It gets the ordinary greeting and no provider call, so it learns
-  // nothing and costs nothing.
-  if (honeypot !== "") {
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(
-          sseLine({ type: "meta", language: locale, fallback: true, reason: "honeypot" }),
-        );
-        controller.enqueue(sseLine({ type: "delta", text: copy.greeting }));
-        controller.enqueue(sseLine({ type: "done", fallback: true }));
-        controller.close();
-      },
-    });
-    return new Response(stream, { headers: SSE_HEADERS });
+  const gate = await checkChatTurn(client, {
+    address,
+    conversationId,
+    providerConfigured,
+  });
+  if (!gate.allowed) {
+    if (gate.reason === "rate_limited") {
+      return json({ ok: false, code: "rate_limited", message: copy.rateLimited }, 429);
+    }
+    // A provider is configured and the buckets cannot be read, so the turn is not spent.
+    console.warn("[chat] the rate check could not run, so the turn is not spent");
+    return fallbackResponse(locale, copy.fallback, "rate_check_unavailable");
   }
+
+  const dailyCap = chatDailyCap();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -150,7 +155,20 @@ export const POST = withApiTiming("POST /api/chat/concern", async (request: Next
           declined: body.declined,
           sessionId,
           complete: async (turns, systemPrompt, id) => {
-            if (configs.length === 0) return null;
+            if (!providerConfigured) return null;
+
+            // The daily ceiling is charged here, once per provider call, so the count matches what
+            // is actually spent. A ceiling that cannot be read refuses the call.
+            const budget = await checkChatBudget(client, { providerConfigured, cap: dailyCap });
+            if (!budget.allowed) {
+              console.warn(
+                budget.degraded
+                  ? "[chat] the daily ceiling could not be read, so the turn is not spent"
+                  : "[chat] the daily provider ceiling is reached",
+              );
+              return null;
+            }
+
             const answer = await completeAi(turns, systemPrompt, id, { configs, json: true });
             return answer?.content ?? null;
           },
