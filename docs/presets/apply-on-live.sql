@@ -14,8 +14,10 @@
 --      save_event_setup, the guarded path the Settings screen uses, then replaces its categories
 --      and classes with the preset's. An event that already has entries or a draw is refused before
 --      anything is written. The preset itself is never changed.
---   4. seed_preset_from_tournament saves an existing event's own rules as a preset. Nothing is typed
---      in by hand: run it once on the 24th Bamboo Tee to get the first preset.
+--   4. seed_preset_from_tournament saves an existing event's own rules as a preset. It needs a
+--      signed-in owner or organizer, so the SQL editor cannot call it. The first preset is made in
+--      the desk instead: Setup, "Save these settings as a preset" stores the open event's rules
+--      through save_tournament_preset.
 --
 -- Run it once on a project. It is wrapped in one transaction, so a failure changes nothing.
 -- The desk works before you run it: the preset controls say they are available after the next
@@ -1182,18 +1184,19 @@ end $$;
 
 -- 9. Owner steps, after the migration is applied --------------------------------------------------
 --
--- Save the 24th Bamboo Tee's own rules as the first preset (no numbers are typed in by hand):
+-- Make the first preset in the desk, not in the SQL editor. Open Setup, open "Tournament presets",
+-- and press "Save these settings as a preset" under the 24th Bamboo Tee's own rules. The desk stores
+-- what the event already runs on, so no number is typed in by hand.
 --
---   select public.seed_preset_from_tournament(
---     (select id from public.tournaments order by play_date desc limit 1),
---     'Bamboo Tee standard'
---   );
+-- The SQL editor cannot do that step: seed_preset_from_tournament asks for a signed-in owner or
+-- organizer, the editor has no signed-in user, and the call is refused with 42501. The desk makes
+-- the same preset through save_tournament_preset.
 --
--- The preset list the desk reads:
+-- The read-only check for the list the desk shows:
 --
 --   select id, name, description, created_at from public.tournament_presets order by name;
 
 commit;
 
--- After it runs, seed the first preset from the live event (section 9 above has the call and the
--- read-only checks), then open Settings, Basics, "Start from a preset" and preview it.
+-- After it runs, make the first preset in the desk (section 9 above), then open Settings, Basics,
+-- "Start from a preset" and preview it.
