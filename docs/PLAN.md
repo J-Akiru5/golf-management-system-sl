@@ -59,19 +59,27 @@ is correct. `MANGALINDAN, VIC` on the sheet is the already-public `MANGALINDAN, 
 | **0.62.0** (tag on `617a7fa`) | Teeo, the concern chat, on every public page (head-only bubble; Gemini, OpenAI-compatible and OpenCode Go in order; English, Tagalog, Hiligaynon, Cebuano). The Events portfolio (`/events`, `/events/<id>`); "Events" replaces "Tournament rules" in the nav and `/rules` forwards to the event with rules, else keeps the Conditions of Play. Tick-box concerns on `/feedback` from Ma'am Mary Ann's list. One public look (shared header, footer, width, dark cards). #333 (SEO/AEO by dev-lou) carried into the landing page | PRs #338, #339, #340; 3,220 tests and 290 browser checks passing; live site checked |
 | **0.63.0** (released 21 Nov 2026) | A friendlier Teeo panel in Pakoy's layout (quick-reply chips, pill input, round send button). BYOK: AI provider keys managed by workspace owners in the ops app (Settings, AI providers), encrypted with AES-256-GCM, used by Teeo with environment variables as the fallback | `feat/teeo-byok` |
 
-### Database scripts the owner runs (scripts 1 to 6 applied by the owner on 21 Nov 2026)
+### Database scripts the owner runs (1 to 6 applied by the owner on 21 Nov 2026; 7 to 9 are for 0.64.0)
 
-Run in the Supabase SQL editor, in this order; each is one transaction.
+Run in the Supabase SQL editor, in this order; each is one transaction. The SQL editor does not
+record a run in `supabase_migrations.schema_migrations`, so the record of what a project has is the
+migration probe. `docs/migrations/README.md` explains it: `pnpm migrations:probe` writes
+`docs/migrations/probe.sql`, which is one read-only query to paste into the editor of the project.
+It answers one row per migration with `applied`, `partly` or `missing`, and the result is written
+down here.
 
-1. `docs/landing/apply-on-live.sql` (0.61.0): `tournaments.landing_featured`, `set_landing_feature()`, `public_showcase_events()`, the `demo` feedback category.
-2. `docs/public-v2/apply-on-live.sql` (0.62.0): `public_feedback.details`, the `concern` category, `submit_feedback(..., p_details)`, the `feedback_alert` outbox kind, `public_event_archive()`, `chat_rate_check()`.
-3. `docs/ai-providers/apply-on-live.sql` (0.63.0): `ai_provider_settings` and its audit table, owner-only functions.
-4. `docs/god-mode/apply-on-live.sql` (0.63.0): the Admin console's functions, `god_audit`, `god_suspensions`.
-5. `docs/permissions/apply-on-live.sql` (0.63.0, after 4): role and per-person page access, `ws_can()`.
-6. `docs/security/apply-on-live.sql` (0.63.0): limits on the public entry form.
-7. `docs/presets/apply-on-live.sql` (0.64.0): tournament presets; then `select public.seed_preset_from_tournament(<the Bamboo Tee id>, 'Bamboo Tee standard');`.
-8. `docs/github-sync/apply-on-live.sql` (0.64.0): GitHub issue sync on workspace tasks.
-9. `docs/timeline/apply-on-live.sql` (0.64.0): the Timeline page in the permission matrix.
+1. `docs/landing/apply-on-live.sql` (0.61.0, applied 21 Nov 2026): `tournaments.landing_featured`, `set_landing_feature()`, `public_showcase_events()`, the `demo` feedback category.
+2. `docs/public-v2/apply-on-live.sql` (0.62.0, applied 21 Nov 2026): `public_feedback.details`, the `concern` category, `submit_feedback(..., p_details)`, the `feedback_alert` outbox kind, `public_event_archive()`, `chat_rate_check()`.
+3. `docs/ai-providers/apply-on-live.sql` (0.63.0, applied 21 Nov 2026): `ai_provider_settings` and its audit table, owner-only functions.
+4. `docs/god-mode/apply-on-live.sql` (0.63.0, applied 21 Nov 2026): the Admin console's functions, `god_audit`, `god_suspensions`.
+5. `docs/permissions/apply-on-live.sql` (0.63.0, applied 21 Nov 2026, after 4): role and per-person page access, `ws_can()`.
+6. `docs/security/apply-on-live.sql` (0.63.0, applied 21 Nov 2026): limits on the public entry form.
+7. `docs/presets/apply-on-live.sql` (0.64.0, to run): tournament presets. After it runs, make the first preset in the desk, Setup, "Save these settings as a preset"; the editor cannot call `seed_preset_from_tournament`, which needs a signed-in owner or organizer.
+8. `docs/github-sync/apply-on-live.sql` (0.64.0, to run): GitHub issue sync on workspace tasks.
+9. `docs/timeline/apply-on-live.sql` (0.64.0, to run): the Timeline page in the permission matrix.
+
+**Probe result:** not run yet. Record each run under this line: the date, the project, the count of
+`applied`, `partly` and `missing` rows, and every `partly` or `missing` migration by name.
 
 Settings outside SQL (owner, 21 Nov 2026): `AI_SECRET_KEY` on both Vercel projects (done), `SUPABASE_SECRET_ROLE_KEY` on the workspace project (done), `https://teeline.syntaxure.dev/**` in Supabase redirect URLs (done), the Invite and Reset password email templates switched to `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=…`, and Resend as the Supabase SMTP sender so invites reach people outside the Supabase team.
 
