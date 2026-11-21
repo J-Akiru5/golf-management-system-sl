@@ -12,6 +12,7 @@ describe("navItemsFor", () => {
       "Documents",
       "Pipeline",
       "Tasks",
+      "Timeline",
       "Settings",
       "Admin",
     ]);
@@ -19,7 +20,14 @@ describe("navItemsFor", () => {
 
   it("hides a page at none and keeps it at view", () => {
     const partner = roleAccess("partner");
-    expect(labels(partner)).toEqual(["Overview", "Documents", "Pipeline", "Tasks", "Settings"]);
+    expect(labels(partner)).toEqual([
+      "Overview",
+      "Documents",
+      "Pipeline",
+      "Tasks",
+      "Timeline",
+      "Settings",
+    ]);
 
     const member = roleAccess("member");
     expect(labels(member)).not.toContain("Admin");
@@ -71,6 +79,7 @@ describe("pageTitle", () => {
   it("names the section", () => {
     expect(pageTitle("/")).toBe("Overview");
     expect(pageTitle("/docs/abc")).toBe("Documents");
+    expect(pageTitle("/timeline")).toBe("Timeline");
     expect(pageTitle("/settings/members")).toBe("Settings");
     expect(pageTitle("/admin/audit")).toBe("Admin");
   });
