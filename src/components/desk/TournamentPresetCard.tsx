@@ -294,8 +294,8 @@ export function TournamentPresetCard({
 
             {presets.length === 0 && brokenPresets.length === 0 && (
               <p className="hint m-0">
-                No presets yet. Save these settings below, or run{" "}
-                <code>seed_preset_from_tournament</code> on the live event to keep its standard.
+                No presets yet. Save this event&rsquo;s own rules as the first one with &ldquo;Save
+                these settings as a preset&rdquo; below.
               </p>
             )}
 
