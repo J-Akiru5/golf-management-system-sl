@@ -4,7 +4,7 @@ import { CalendarRange, ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDay, formatDayLong } from "@/lib/timeline/dates";
-import { itemDatesLabel, PREP_DAYS } from "@/lib/timeline/items";
+import { basisNote, itemDatesLabel, PREP_DAYS } from "@/lib/timeline/items";
 import {
   formatWindow,
   type GanttBar,
@@ -49,6 +49,7 @@ function GanttRow({ bar, todayPct }: { bar: GanttBar; todayPct: number | null })
   const style = KIND_STYLE[item.kind];
   const external = item.href !== null && /^https?:\/\//.test(item.href);
   const centre = bar.play.leftPct + bar.play.widthPct / 2;
+  const note = basisNote(item.basis);
 
   const label = (
     <span
@@ -98,8 +99,10 @@ function GanttRow({ bar, todayPct }: { bar: GanttBar; todayPct: number | null })
           className={cn(
             "absolute inset-y-2 z-20 min-w-[6px] overflow-hidden rounded-sm border",
             style.bar,
+            note === null ? null : "border-dashed",
           )}
           style={{ left: `${bar.play.leftPct}%`, width: `${bar.play.widthPct}%` }}
+          title={note ?? undefined}
         />
       )}
     </span>
@@ -252,8 +255,8 @@ export function GanttView({ items, today }: { items: ReadonlyArray<TimelineItem>
       </div>
 
       <p className="hint">
-        A bar with no dates of its own runs from the day its card was created to its last update;
-        stage change dates are not stored. Scroll sideways for later months.
+        A bar with no dates of its own is dashed: it runs from the day its card was created to its
+        last update, because stage change dates are not stored. Scroll sideways for later months.
       </p>
 
       <span className="sr-only">
