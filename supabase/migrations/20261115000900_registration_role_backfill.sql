@@ -28,6 +28,7 @@ update public.registrations r
              where m.player_id = r.player_id and m.club_id = r.club_id and m.status = 'active'
            ) then 'member'::text
            else 'guest'::text
+           end
          ), true)
  where r.membership_type is null
    and coalesce(r.answers ->> 'role', '') not in ('member', 'guest');

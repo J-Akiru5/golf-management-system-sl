@@ -16,6 +16,7 @@ import * as Y from "yjs";
 import {
   claimSeedStateAction,
   createSnapshotAction,
+  deleteDocumentAction,
   deleteSnapshotAction,
   listSnapshotsAction,
   renameDocumentAction,
@@ -41,6 +42,7 @@ import {
 } from "@/lib/docs/collab";
 import { toPlainJson } from "@/lib/docs/editor-json";
 import { versionNameFor } from "@/lib/docs/format";
+import { clearPendingImport, readPendingImport } from "@/lib/docs/pending-import";
 import { withPrivateDocChannels } from "@/lib/docs/private-client";
 import type { DocSnapshot } from "@/lib/docs/repo";
 import { planRestore, restoreNotice } from "@/lib/docs/restore";
@@ -49,6 +51,7 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/ui/cn";
 import { EditorToolbar } from "./editor-toolbar";
 import { HistorySheet } from "./history-sheet";
+import { InsertFromFile } from "./insert-from-file";
 import { Presence } from "./presence";
 
 export type DocEditorProps = {
@@ -102,6 +105,18 @@ function StatusLine({ tone, text }: { tone: StatusTone; text: string }) {
       <span>{text}</span>
     </p>
   );
+}
+
+/**
+ * The import created this document and its text could not be seeded, so remove the document rather
+ * than leave an empty one behind. Returns the message to show.
+ */
+async function discardEmptyImport(docId: string, failure: string): Promise<string> {
+  clearPendingImport(docId);
+  const removal = await deleteDocumentAction(docId);
+  return removal.ok
+    ? `${failure} The empty document was removed, so nothing was left behind.`
+    : `${failure} The empty document could not be removed: ${removal.error}`;
 }
 
 /**
@@ -239,7 +254,11 @@ function LiveDocument({
   const [pending, setPending] = useState(false);
   const [hasEdits, setHasEdits] = useState(false);
   const [people, setPeople] = useState<PresenceUser[]>([]);
-  const [canSeed, setCanSeed] = useState(demo && seedContent !== null);
+  // An import hands its converted content over in this tab, so the seed source is that content when
+  // it is waiting for this document, and the server's seed file otherwise.
+  const [pendingImport] = useState(() => readPendingImport(docId));
+  const [seed] = useState<EditorJson | null>(() => pendingImport?.content ?? seedContent);
+  const [canSeed, setCanSeed] = useState(demo && seed !== null);
   const [snapshots, setSnapshots] = useState(initialSnapshots);
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -324,17 +343,32 @@ function LiveDocument({
     async function start() {
       setOnline(typeof navigator === "undefined" ? true : navigator.onLine);
 
-      if (seedContent && !claim.current.settled) {
+      if (seed && !claim.current.settled) {
         claim.current.settled = true;
         if (demo) {
           claim.current.granted = true;
         } else {
           const result = await claimSeedStateAction(docId);
           if (cancelled) return;
-          if (result.ok) claim.current.granted = result.value;
-          else setFailure(result.error);
+          if (result.ok) {
+            claim.current.granted = result.value;
+          } else {
+            // The import created this document and cannot fill it: remove it rather than leave it
+            // empty, and stop. A document seeded from the server's file is not ours to delete, so
+            // it reports the failure and still connects, as it did before imports existed.
+            if (pendingImport) {
+              setFailure(await discardEmptyImport(docId, result.error));
+              return;
+            }
+            setFailure(result.error);
+          }
         }
-        if (claim.current.granted) setCanSeed(true);
+        if (claim.current.granted) {
+          setCanSeed(true);
+        } else if (pendingImport) {
+          clearPendingImport(docId);
+          setNotice("This document already had content, so the imported text was not added.");
+        }
       }
 
       if (demo) {
@@ -380,7 +414,7 @@ function LiveDocument({
       doc.off("update", onDocUpdate);
       provider?.destroy();
     };
-  }, [demo, docId, seedContent, session]);
+  }, [demo, docId, pendingImport, seed, session]);
 
   // Presence: everyone whose awareness state carries a name and a colour.
   useEffect(() => {
@@ -395,13 +429,60 @@ function LiveDocument({
     };
   }, [session]);
 
-  // Seed the converted first document once, and only into an empty live document.
+  // Seed the converted content once, and only into an empty live document.
   useEffect(() => {
-    if (!editor || !canSeed || !seedContent || seeded.current) return;
-    if (session.doc.getXmlFragment("default").length > 0) return;
+    if (!editor || !canSeed || !seed || seeded.current) return;
+    if (session.doc.getXmlFragment("default").length > 0) {
+      if (pendingImport) clearPendingImport(docId);
+      return;
+    }
     seeded.current = true;
-    editor.commands.setContent(seedContent as unknown as JSONContent, { emitUpdate: true });
-  }, [canSeed, editor, seedContent, session.doc]);
+    try {
+      editor.commands.setContent(seed as unknown as JSONContent, { emitUpdate: true });
+    } catch {
+      seeded.current = false;
+      if (!pendingImport) {
+        setFailure("The first document could not be placed in the editor.");
+        return;
+      }
+      clearPendingImport(docId);
+      void deleteDocumentAction(docId).then((removal) => {
+        setFailure(
+          removal.ok
+            ? "The imported text could not be placed in the document, so the empty document was removed."
+            : `The imported text could not be placed in the document, and the empty document could not be removed: ${removal.error}`,
+        );
+      });
+      return;
+    }
+
+    if (!pendingImport) return;
+    clearPendingImport(docId);
+    void saveImportedVersion(pendingImport.versionName);
+  }, [canSeed, docId, editor, pendingImport, seed, session.doc]);
+
+  /**
+   * The first saved version of an imported document. The text is already in the document, so a
+   * failure here is reported without removing it.
+   */
+  async function saveImportedVersion(name: string) {
+    if (!editor) return;
+    const result = await createSnapshotAction({
+      docId,
+      name,
+      kind: "manual",
+      state: encodeDocState(session.doc),
+      content: toPlainJson(editor.getJSON()) as unknown as EditorJson,
+    });
+    if (!result.ok) {
+      setFailure(
+        `The text is in the document, but its first saved version was not: ${result.error}`,
+      );
+      return;
+    }
+    setSnapshots((current) => [result.value, ...current]);
+    setNotice(`Imported and saved "${result.value.name}".`);
+  }
 
   async function refreshSnapshots() {
     const result = await listSnapshotsAction(docId);
@@ -508,7 +589,14 @@ function LiveDocument({
         </div>
       </div>
 
-      {canEdit && editor ? <EditorToolbar editor={editor} /> : <Skeleton className="h-12 w-full" />}
+      {canEdit && editor ? (
+        <EditorToolbar
+          editor={editor}
+          actions={<InsertFromFile editor={editor} canEdit={canEdit} />}
+        />
+      ) : (
+        <Skeleton className="h-12 w-full" />
+      )}
 
       <Card className={EDITOR_BODY}>
         {editor ? (
