@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/desk/RoleGate";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
@@ -25,6 +25,7 @@ import { ScorecardWorkspace } from "@/components/scoring/ScorecardWorkspace";
 import { ScoresSubnav, type ScoresTab } from "@/components/scoring/ScoresSubnav";
 import { SheetImportPanel } from "@/components/scoring/SheetImportPanel";
 import { TabulatorSubmissionsPanel } from "@/components/scoring/TabulatorSubmissionsPanel";
+import { useLiveRound } from "@/components/scoring/useLiveRound";
 import { Button } from "@/components/ui/button";
 import type { ClubRole } from "@/lib/auth/member";
 import { isFinalPlayingDay } from "@/lib/data/dates";
@@ -54,6 +55,7 @@ import {
 import { classLabel } from "@/lib/scoring/class-label";
 import { pickDeskMarker } from "@/lib/scoring/event-card";
 import { eventRulesFor } from "@/lib/scoring/event-rules";
+import { roundLiveSignature } from "@/lib/scoring/live-signature";
 import {
   DEFAULT_PUBLISH_MODE,
   formatPublishTime,
@@ -200,6 +202,31 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
   const courseKey = view
     ? `${view.roundId}:${holes.map((hole) => `${hole.number}:${hole.par}:${hole.strokeIndex}`).join("|")}`
     : "";
+
+  /**
+   * Every view this screen put on screen itself: the day's load, a save, an approval, a publish or
+   * an import. A poll that started before one of these is stale and is thrown away.
+   */
+  const ownView = useRef(0);
+  const applyView = useCallback((next: ScoringRoundView | null) => {
+    ownView.current += 1;
+    setView(next);
+  }, []);
+
+  /**
+   * Another desk user's save reaches this screen without a reload: the round is read again every
+   * ten seconds while the tab is visible, and the screen changes only when the round actually
+   * moved. A write on this screen pauses the poll, so a half-saved card is never replaced by an
+   * older copy. How to check this on event day: `docs/health/live-updates-event-day.md`.
+   */
+  useLiveRound({
+    enabled: status !== "demo" && Boolean(tournamentId),
+    paused: () => busy || importBusy || submitting,
+    stamp: () => ownView.current,
+    signature: () => roundLiveSignature(view),
+    load: () => scoring.loadRound(tournamentId, day),
+    onFresh: setView,
+  });
 
   /** The day's morning and afternoon, from the day's own stored times and the event's. */
   const sessions = useMemo(() => {
@@ -374,13 +401,13 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setLoaded(false);
     setError(null);
     // The old day's round, cards and import preview must not stay on screen.
-    setView(null);
+    applyView(null);
     setSubmissionFile(null);
     scoring
       .loadRound(tournamentId, day)
       .then((next) => {
         if (cancelled) return;
-        setView(next);
+        applyView(next);
         setLoaded(true);
       })
       .catch((reason: unknown) => {
@@ -484,7 +511,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setError(null);
     try {
       const next = await action();
-      if (next) setView(next);
+      if (next) applyView(next);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -502,7 +529,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setError(null);
     try {
       const next = await scoring.correctHandicap(tournamentId, input, day);
-      setView(next);
+      applyView(next);
       setSavedNote(
         "Handicap corrected and the player's result recalculated. Publish the round to update the public board.",
       );
@@ -548,7 +575,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         `Automatic publish after a save: ${names.join(", ")}`,
         day,
       );
-      setView(next);
+      applyView(next);
       setSavedNote(
         `Published automatically after ${names.length} saved ${
           names.length === 1 ? "card" : "cards"
@@ -580,7 +607,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setError(null);
     try {
       const next = await scoring.approveCard(tournamentId, cardId, "Desk approval", day);
-      setView(next);
+      applyView(next);
       const card = next.cards.find((candidate) => candidate.id === cardId);
       const name =
         next.players.find((player) => player.playerId === card?.playerId)?.playerName ?? cardId;
@@ -597,7 +624,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
     setError(null);
     try {
       const next = await scoring.openRound(tournamentId, input);
-      setView(next);
+      applyView(next);
       try {
         setRoundState(await scoring.loadOpenRoundState(tournamentId, day));
       } catch (reason) {
@@ -1042,7 +1069,9 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
         <div className="notice info" role="note">
           <b>Connected round. </b>
           Only approved cards and desk resolutions become canonical. Publication and finalization
-          stay blocked until the configured gates are met.
+          stay blocked until the configured gates are met. This screen also reads the round again
+          every ten seconds while the tab is visible, so another desk user's save appears without a
+          reload.
         </div>
       )}
 
@@ -1133,7 +1162,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                     view={view}
                     roundState={roundState}
                     busy={busy}
-                    onImported={setView}
+                    onImported={applyView}
                     onImportingChange={setImportBusy}
                   />
                 </RoleGate>
@@ -1178,7 +1207,7 @@ export function ScoresDesk({ tab }: { tab: ScoresTab }) {
                       key={view.roundId}
                       view={view}
                       busy={busy}
-                      onImported={setView}
+                      onImported={applyView}
                       onImportingChange={setImportBusy}
                       initialFile={submissionFile}
                     />

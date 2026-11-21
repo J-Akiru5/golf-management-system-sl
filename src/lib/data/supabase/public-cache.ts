@@ -1,11 +1,13 @@
 import { createHash } from "node:crypto";
 import { unstable_cache } from "next/cache";
 import type { PublicReleaseState } from "@/lib/data/public";
+import { loadPublishedRounds } from "@/lib/data/public-results";
 import { loadPublicTeamCards, type PublicTeamCards } from "@/lib/data/public-team-cards";
 import type { PublicTeamLeaderboardData } from "@/lib/data/public-team-leaderboard";
 import { loadPublicTeamLeaderboard } from "@/lib/data/public-team-leaderboard";
 import type { PublicProgramme } from "@/lib/data/types";
 import type { PublicAdvisory } from "@/lib/public/advisory";
+import { liveSignature, resultsSignature } from "@/lib/public/live-signature";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { loadPublicAdvisory } from "./public-advisory";
 import { loadPublicPairings } from "./public-pairings";
@@ -117,4 +119,48 @@ export function readPublicTeamCards(
     publicCacheKey("public-team-cards", [tournamentKey(tournamentId), ...ids]),
     () => loadPublicTeamCards(createSupabasePublicClient(), ids, tournamentId ?? null),
   );
+}
+
+/**
+ * The published results, as one short string: the version and time of each published round.
+ *
+ * The public leaderboard, All scores and the roster poll it while the tab is visible, so a round
+ * the desk publishes reaches an open phone without a reload. It is a cached read under the same
+ * tag as every other public read, so a publish clears it at once and the steady state is one small
+ * query per window, not one per visitor. A database without the function, or a failed read, answers
+ * `unavailable` rather than failing the whole page: the next check tries again.
+ */
+export function readPublicResultsSignature(tournamentId?: string | null): Promise<string> {
+  return cachedPublicRead(
+    publicCacheKey("public-results-signature", [tournamentKey(tournamentId)]),
+    async () => {
+      try {
+        const rounds = await loadPublishedRounds(createSupabasePublicClient());
+        return resultsSignature(rounds);
+      } catch {
+        return "unavailable";
+      }
+    },
+  );
+}
+
+/**
+ * Everything a public page shows, as one string: the published pairings, the release keys and the
+ * published rounds. `/api/revalidate-pairings` (GET) serves it to the pages' poll, and the page that
+ * rendered it passes the same string down, so the two are compared like for like.
+ *
+ * Composed from the cached reads above rather than cached again: each part keeps its own key, so a
+ * poll never costs more than the page did.
+ */
+export async function readPublicLiveSignature(tournamentId?: string | null): Promise<string> {
+  const [pairings, release, results] = await Promise.all([
+    readPublicPairings(tournamentId).catch(() => null),
+    readPublicReleaseState(tournamentId).catch(() => null),
+    readPublicResultsSignature(tournamentId),
+  ]);
+  return liveSignature({
+    published: pairings?.published ?? null,
+    release,
+    results,
+  });
 }
