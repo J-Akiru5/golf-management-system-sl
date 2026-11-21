@@ -60,11 +60,12 @@ export default async function SettingsPage({
 
   if (isOwner && !demo) {
     try {
-      const repo = await serverGithubRepo();
+      const syncRepo = await serverGithubRepo();
+      const taskRepo = await getRepos();
       const [mapRows, logRows, memberRows] = await Promise.all([
-        repo.listUserMap(),
-        repo.listLog(20),
-        (await getRepos()).tasks.listMembers(),
+        syncRepo.listUserMap(),
+        syncRepo.listLog(20),
+        taskRepo.tasks.listMembers(),
       ]);
       mappings = mapRows;
       log = logRows;
