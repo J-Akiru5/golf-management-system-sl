@@ -1,3 +1,10 @@
+import { generateJSON } from "@tiptap/core";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import StarterKit from "@tiptap/starter-kit";
+import type { EditorJson } from "@/lib/db/types";
+import { toPlainJson } from "./editor-json";
+import { type PdfTextItem, pdfPagesToDocument } from "./pdf-layout";
+
 /**
  * Importing a document from a file a member picks.
  *
@@ -12,11 +19,14 @@
  * with every attribute except a safe link target and a table cell's span.
  */
 
-/** The largest file the dialog accepts. A longer document than this is better split. */
+/** The largest text file the dialog accepts. A longer document than this is better split. */
 export const IMPORT_MAX_BYTES = 2 * 1024 * 1024;
 
+/** A PDF carries images and font data, so it is allowed more room than a text file. */
+export const IMPORT_PDF_MAX_BYTES = 10 * 1024 * 1024;
+
 /** The `accept` attribute for the file control. Kept in step with `importKindFor`. */
-export const IMPORT_ACCEPT = ".html,.htm,.md,.markdown,.txt";
+export const IMPORT_ACCEPT = ".html,.htm,.md,.markdown,.txt,.pdf";
 
 /** The same limit the documents repository enforces (`TITLE_MAX` in ./repo). */
 const TITLE_MAX = 200;
@@ -24,7 +34,10 @@ const TITLE_MAX = 200;
 /** The same limit the snapshots repository enforces (`SNAPSHOT_NAME_MAX` in ./repo). */
 const VERSION_NAME_MAX = 120;
 
-export type ImportKind = "html" | "markdown" | "text";
+export type ImportKind = "html" | "markdown" | "text" | "pdf";
+
+/** The kinds that are read as text. A PDF is read by pdf.js instead. */
+export type TextImportKind = Exclude<ImportKind, "pdf">;
 
 export type ImportFileInfo = { name: string; size: number };
 
@@ -42,7 +55,20 @@ const KIND_BY_EXTENSION: Record<string, ImportKind> = {
   md: "markdown",
   markdown: "markdown",
   txt: "text",
+  pdf: "pdf",
 };
+
+/** The message a file with nothing readable in it gets. A scanned PDF is the common case. */
+export const PDF_NO_TEXT_MESSAGE = "This PDF has no text to import. It is probably a scan.";
+
+export function emptyImportMessage(kind: ImportKind): string {
+  return kind === "pdf" ? PDF_NO_TEXT_MESSAGE : "That file has no text to import.";
+}
+
+/** The size limit for a kind. */
+export function maxBytesFor(kind: ImportKind): number {
+  return kind === "pdf" ? IMPORT_PDF_MAX_BYTES : IMPORT_MAX_BYTES;
+}
 
 /** The converter for a file name, or null when the extension is not one we accept. */
 export function importKindFor(name: string): ImportKind | null {
@@ -57,12 +83,20 @@ export function checkImportFile(file: ImportFileInfo): ImportCheck {
   if (kind === null) {
     return {
       ok: false,
-      error: "Choose an HTML, Markdown or text file: .html, .htm, .md, .markdown or .txt.",
+      error:
+        "Choose an HTML, Markdown, text or PDF file: .html, .htm, .md, .markdown, .txt or .pdf.",
     };
   }
   if (file.size === 0) return { ok: false, error: "That file is empty." };
-  if (file.size > IMPORT_MAX_BYTES) {
-    return { ok: false, error: "That file is larger than 2 MB. Split it into smaller files." };
+  const limit = maxBytesFor(kind);
+  if (file.size > limit) {
+    return {
+      ok: false,
+      error:
+        kind === "pdf"
+          ? "That file is larger than 10 MB. Split it into smaller files."
+          : "That file is larger than 2 MB. Split it into smaller files.",
+    };
   }
   return { ok: true, kind };
 }
@@ -902,15 +936,142 @@ export function textToDocument(text: string): ConvertedContent {
   return { html: out.join("\n"), heading: null };
 }
 
+/* PDF ---------------------------------------------------------------------------------------- */
+
+/** The extensions a metadata title may carry when it is really just a file name. */
+const FILE_EXTENSIONS =
+  /\.(pdf|html?|xhtml|md|markdown|txt|rtf|docx?|odt|pptx?|odp|xlsx?|ods|csv)$/i;
+
+function looksLikeFileName(value: string): boolean {
+  return /[\\/]/.test(value) || FILE_EXTENSIONS.test(value);
+}
+
+/**
+ * The title for a PDF: its metadata title when that is a real title, then the first heading, then
+ * the file name without its extension.
+ */
+export function pdfTitle(
+  metadataTitle: string | null,
+  heading: string | null,
+  fileName: string,
+): string {
+  const metadata = metadataTitle === null ? "" : collapseWhitespace(metadataTitle);
+  if (metadata.length > 0 && !looksLikeFileName(metadata)) return clampTitle(metadata);
+
+  const firstHeading = heading === null ? "" : collapseWhitespace(heading);
+  if (firstHeading.length > 0) return clampTitle(firstHeading);
+
+  return titleFromFileName(fileName);
+}
+
+/** Turn the items pdf.js reported for each page into editor HTML and the title to suggest. */
+export function convertPdfDocument(input: {
+  name: string;
+  pages: ReadonlyArray<ReadonlyArray<PdfTextItem>>;
+  metadataTitle?: string | null;
+}): ConvertedImport {
+  const converted = pdfPagesToDocument(input.pages);
+  return {
+    html: converted.html,
+    title: pdfTitle(input.metadataTitle ?? null, converted.heading, input.name),
+  };
+}
+
+/** The items, pages and metadata pdf.js reports for one file. */
+type ExtractedPdf = {
+  pages: PdfTextItem[][];
+  metadataTitle: string | null;
+};
+
+/**
+ * Read a PDF with pdf.js. The library and its worker are loaded only here, so the Documents page
+ * itself does not carry them. The worker is the file bundled with the package, never a CDN.
+ */
+async function extractPdf(file: File): Promise<ExtractedPdf> {
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url,
+  ).toString();
+
+  const data = new Uint8Array(await file.arrayBuffer());
+  const loadingTask = pdfjs.getDocument({ data });
+  const pdfDocument = await loadingTask.promise;
+  const pages: PdfTextItem[][] = [];
+  let metadataTitle: string | null = null;
+
+  try {
+    for (let number = 1; number <= pdfDocument.numPages; number++) {
+      const page = await pdfDocument.getPage(number);
+      const content = await page.getTextContent();
+      pages.push(
+        content.items.flatMap((item) =>
+          "str" in item
+            ? [
+                {
+                  str: item.str,
+                  x: Number(item.transform[4] ?? 0),
+                  y: Number(item.transform[5] ?? 0),
+                  height: item.height,
+                  fontName: item.fontName,
+                  hasEOL: item.hasEOL,
+                },
+              ]
+            : [],
+        ),
+      );
+    }
+
+    try {
+      const metadata = await pdfDocument.getMetadata();
+      const info = metadata.info as { Title?: unknown };
+      if (typeof info.Title === "string") metadataTitle = info.Title;
+    } catch {
+      // A PDF without metadata is normal. The heading or the file name is the title.
+    }
+  } finally {
+    await loadingTask.destroy();
+  }
+
+  return { pages, metadataTitle };
+}
+
+/** Read a PDF file and convert it. A scan returns empty HTML, which the dialog reports. */
+export async function readPdfDocument(file: File): Promise<ConvertedImport> {
+  const extracted = await extractPdf(file);
+  return convertPdfDocument({
+    name: file.name,
+    pages: extracted.pages,
+    metadataTitle: extracted.metadataTitle,
+  });
+}
+
+/**
+ * The conversion every importer uses: check the file, read it as text or with pdf.js, and refuse a
+ * file with nothing readable in it. The error message is written for the member, not for a log.
+ */
+export async function prepareImport(file: File): Promise<ConvertedImport> {
+  const check = checkImportFile({ name: file.name, size: file.size });
+  if (!check.ok) throw new Error(check.error);
+
+  const converted =
+    check.kind === "pdf"
+      ? await readPdfDocument(file)
+      : convertDocument({ name: file.name, kind: check.kind, text: await file.text() });
+
+  if (converted.html.trim().length === 0) throw new Error(emptyImportMessage(check.kind));
+  return converted;
+}
+
 /* Entry point -------------------------------------------------------------------------------- */
 
 /**
- * Convert a picked file into editor HTML and the title to suggest for the document. The title is
- * the first heading when the file has one, otherwise the file name without its extension.
+ * Convert a text file into editor HTML and the title to suggest for the document. The title is the
+ * first heading when the file has one, otherwise the file name without its extension.
  */
 export function convertDocument(input: {
   name: string;
-  kind: ImportKind;
+  kind: TextImportKind;
   text: string;
 }): ConvertedImport {
   const converted =
@@ -922,4 +1083,31 @@ export function convertDocument(input: {
 
   const title = clampTitle(converted.heading ?? titleFromFileName(input.name));
   return { html: converted.html, title };
+}
+
+/* Editor schema ------------------------------------------------------------------------------ */
+
+/**
+ * The same extensions the editor opens documents with (see doc-editor.tsx). The converted HTML is
+ * checked against the schema it will be shown in, so an import cannot reach the editor as something
+ * it would drop.
+ */
+const IMPORT_EXTENSIONS = [
+  StarterKit.configure({ undoRedo: false, heading: { levels: [1, 2, 3] } }),
+  Table.configure({ resizable: false }),
+  TableRow,
+  TableHeader,
+  TableCell,
+];
+
+/** Convert editor HTML into a Tiptap document ready to seed or insert, or null when it is empty. */
+export function importHtmlToJson(html: string): EditorJson | null {
+  try {
+    const parsed = generateJSON(html, IMPORT_EXTENSIONS) as EditorJson;
+    const content = parsed.content;
+    if (!Array.isArray(content) || content.length === 0) return null;
+    return toPlainJson(parsed);
+  } catch {
+    return null;
+  }
 }

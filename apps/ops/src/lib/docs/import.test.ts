@@ -7,9 +7,13 @@ import { describe, expect, it } from "vitest";
 import {
   checkImportFile,
   convertDocument,
+  emptyImportMessage,
   IMPORT_MAX_BYTES,
+  IMPORT_PDF_MAX_BYTES,
   importKindFor,
   importVersionName,
+  PDF_NO_TEXT_MESSAGE,
+  pdfTitle,
   safeHref,
   titleFromFileName,
 } from "./import";
@@ -34,14 +38,18 @@ describe("the file check", () => {
     expect(importKindFor("notes.md")).toBe("markdown");
     expect(importKindFor("notes.markdown")).toBe("markdown");
     expect(importKindFor("notes.txt")).toBe("text");
-    expect(importKindFor("notes.pdf")).toBeNull();
+    expect(importKindFor("notes.pdf")).toBe("pdf");
+    expect(importKindFor("notes.PDF")).toBe("pdf");
     expect(importKindFor("notes")).toBeNull();
   });
 
-  it("refuses a file that is not one of the three kinds", () => {
-    const result = checkImportFile({ name: "deck.pdf", size: 400 });
+  it("refuses a file that is not one of the supported kinds", () => {
+    const result = checkImportFile({ name: "deck.pptx", size: 400 });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain(".html");
+    if (!result.ok) {
+      expect(result.error).toContain(".html");
+      expect(result.error).toContain(".pdf");
+    }
   });
 
   it("refuses an empty file", () => {
@@ -59,6 +67,31 @@ describe("the file check", () => {
     const tooBig = checkImportFile({ name: "notes.md", size: IMPORT_MAX_BYTES + 1 });
     expect(tooBig.ok).toBe(false);
     if (!tooBig.ok) expect(tooBig.error).toContain("2 MB");
+  });
+
+  it("allows a PDF ten megabytes and refuses one byte more", () => {
+    expect(checkImportFile({ name: "report.pdf", size: 400 })).toEqual({ ok: true, kind: "pdf" });
+    expect(checkImportFile({ name: "report.pdf", size: IMPORT_PDF_MAX_BYTES })).toEqual({
+      ok: true,
+      kind: "pdf",
+    });
+
+    const tooBig = checkImportFile({ name: "report.pdf", size: IMPORT_PDF_MAX_BYTES + 1 });
+    expect(tooBig.ok).toBe(false);
+    if (!tooBig.ok) expect(tooBig.error).toContain("10 MB");
+  });
+
+  it("keeps the text limit at two megabytes, not the PDF limit", () => {
+    const tooBig = checkImportFile({ name: "notes.txt", size: IMPORT_MAX_BYTES + 1 });
+    expect(tooBig.ok).toBe(false);
+    if (!tooBig.ok) expect(tooBig.error).toContain("2 MB");
+  });
+
+  it("has a scan message for a PDF and a plain message for text", () => {
+    expect(emptyImportMessage("pdf")).toBe(PDF_NO_TEXT_MESSAGE);
+    expect(emptyImportMessage("pdf")).toContain("probably a scan");
+    expect(emptyImportMessage("text")).toBe("That file has no text to import.");
+    expect(emptyImportMessage("html")).toBe("That file has no text to import.");
   });
 });
 
@@ -381,6 +414,24 @@ describe("the suggested title", () => {
     expect(convert("notes.md", "```\n# Not a heading\n```\n\n# Real", "markdown").title).toBe(
       "Real",
     );
+  });
+
+  it("uses a PDF metadata title when it is a real title", () => {
+    expect(pdfTitle("Analytics report", "First heading", "report.pdf")).toBe("Analytics report");
+    expect(pdfTitle("  Analytics   report  ", null, "report.pdf")).toBe("Analytics report");
+  });
+
+  it("ignores a PDF metadata title that is really a file name", () => {
+    expect(pdfTitle("analytics-report.pdf", "First heading", "report.pdf")).toBe("First heading");
+    expect(pdfTitle("C:\\reports\\analytics.pdf", "First heading", "report.pdf")).toBe(
+      "First heading",
+    );
+  });
+
+  it("falls back to the first heading and then the file name for a PDF", () => {
+    expect(pdfTitle(null, "First heading", "report.pdf")).toBe("First heading");
+    expect(pdfTitle("", null, "analytics-report.pdf")).toBe("analytics-report");
+    expect(pdfTitle(null, null, "folder/report.pdf")).toBe("report");
   });
 });
 

@@ -1,8 +1,5 @@
 "use client";
 
-import { generateJSON } from "@tiptap/core";
-import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
-import StarterKit from "@tiptap/starter-kit";
 import { FileUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, type FormEvent, useState } from "react";
@@ -11,30 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Input, Label } from "@/components/ui/field";
 import type { EditorJson } from "@/lib/db/types";
-import { toPlainJson } from "@/lib/docs/editor-json";
 import {
   type ConvertedImport,
-  checkImportFile,
-  convertDocument,
   IMPORT_ACCEPT,
   IMPORT_MAX_BYTES,
+  IMPORT_PDF_MAX_BYTES,
+  importHtmlToJson,
   importVersionName,
+  prepareImport,
 } from "@/lib/docs/import";
 import { savePendingImport } from "@/lib/docs/pending-import";
 
-/**
- * The same extensions the editor uses, so the converted HTML is checked against the schema it will
- * be opened with. The heading levels match doc-editor.tsx.
- */
-const PARSE_EXTENSIONS = [
-  StarterKit.configure({ undoRedo: false, heading: { levels: [1, 2, 3] } }),
-  Table.configure({ resizable: false }),
-  TableRow,
-  TableHeader,
-  TableCell,
-];
-
 const SIZE_HINT = `${IMPORT_MAX_BYTES / (1024 * 1024)} MB`;
+const PDF_SIZE_HINT = `${IMPORT_PDF_MAX_BYTES / (1024 * 1024)} MB`;
 
 /**
  * The Import action beside "New document". The file is read and converted in this browser; only the
@@ -76,25 +62,9 @@ export function ImportDocument() {
     setFile(chosen);
     if (chosen === null) return;
 
-    const check = checkImportFile({ name: chosen.name, size: chosen.size });
-    if (!check.ok) {
-      setFile(null);
-      setError(check.error);
-      input.value = "";
-      return;
-    }
-
     setReading(true);
     try {
-      const text = await chosen.text();
-      const converted = convertDocument({ name: chosen.name, kind: check.kind, text });
-      if (converted.html.trim().length === 0) {
-        setFile(null);
-        setError("That file has no text to import.");
-        input.value = "";
-        return;
-      }
-      setPrepared(converted);
+      setPrepared(await prepareImport(chosen));
     } catch (cause) {
       setFile(null);
       setError(cause instanceof Error ? cause.message : "That file could not be read.");
@@ -115,13 +85,8 @@ export function ImportDocument() {
     setImporting(true);
     setError(null);
 
-    let content: EditorJson;
-    try {
-      const parsed = generateJSON(prepared.html, PARSE_EXTENSIONS) as EditorJson;
-      const blocks = Array.isArray(parsed.content) ? parsed.content : [];
-      if (blocks.length === 0) throw new Error("empty");
-      content = toPlainJson(parsed);
-    } catch {
+    const content: EditorJson | null = importHtmlToJson(prepared.html);
+    if (content === null) {
       setImporting(false);
       setError("That file could not be turned into a document. Check that it holds readable text.");
       return;
@@ -187,9 +152,10 @@ export function ImportDocument() {
                 className="h-auto py-2.5 text-sm file:mr-3 file:h-9 file:cursor-pointer file:rounded-md file:border-0 file:bg-surface-sunken file:px-3 file:text-sm file:font-semibold file:text-ink"
               />
               <p className="hint">
-                HTML, Markdown or plain text, up to {SIZE_HINT}. Scripts, styles and images are left
-                out.
+                HTML, Markdown or plain text up to {SIZE_HINT}, or a PDF up to {PDF_SIZE_HINT}.
+                Scripts, styles and images are left out.
               </p>
+              <p className="hint">Images and charts in a PDF are not imported.</p>
             </div>
 
             <div className="flex flex-col gap-1.5">
