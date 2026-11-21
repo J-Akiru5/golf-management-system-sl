@@ -23,6 +23,7 @@ import { CourseHandicapConverter } from "@/components/course/CourseHandicapConve
 import { LandingFeatureCard } from "@/components/desk/LandingFeatureCard";
 import { PublicReleaseCard } from "@/components/desk/PublicReleaseCard";
 import { ResultsBlackoutCard } from "@/components/desk/ResultsBlackoutCard";
+import { TournamentPresetCard } from "@/components/desk/TournamentPresetCard";
 import { NeedsTournament } from "@/components/NeedsTournament";
 import { PageHeader, SectionCard } from "@/components/PageHeader";
 import { EntryLinkCard } from "@/components/public/EntryLinkCard";
@@ -92,7 +93,7 @@ const SECTION_TITLE: Record<SetupSection, string> = {
 };
 
 export default function SetupPage() {
-  const { tournament, tees, holes, entries, adapters, status, member, state } = useDesk();
+  const { tournament, tees, holes, entries, adapters, status, member, state, reload } = useDesk();
   if (!tournament) return <NeedsTournament what="Settings" />;
   // Owner and organizer only, the same rule the database enforces. Demo mode has no roles.
   const canEdit = status === "demo" || member?.role === "owner" || member?.role === "organizer";
@@ -130,6 +131,7 @@ export default function SetupPage() {
       saveDayRule={(required, max) =>
         adapters.tournaments.saveDayRule(tournament.id, required, max)
       }
+      onReload={reload}
     />
   );
 }
@@ -146,6 +148,7 @@ function SetupWizard({
   save,
   confirmCourse,
   saveDayRule,
+  onReload,
 }: {
   tournament: Tournament;
   tees: ReturnType<typeof useDesk>["tees"];
@@ -167,6 +170,8 @@ function SetupWizard({
   /** Resolves once the database has recorded the confirmation; the demo resolves at once. */
   confirmCourse: (confirmed: boolean) => void | Promise<void>;
   saveDayRule: (required: number | null, max: number | null) => Promise<void>;
+  /** Re-reads the desk after a preset was applied, so this screen shows the event's new rules. */
+  onReload: () => void;
 }) {
   // Everything on this screen is a draft until a save button is pressed. The old screen wrote on
   // every keystroke; the bulk write could not be retried as a whole, and a single failure left a
@@ -589,151 +594,171 @@ function SetupWizard({
             <legend className="sr">Tournament setup fields</legend>
             <div className="grid min-w-0 gap-6">
               {tab === "basics" && (
-                <SectionCard
-                  id="basics"
-                  icon={<SlidersHorizontal />}
-                  title="Basics"
-                  action={sectionAction("basics")}
-                >
-                  <div className="grid gap-3.5 sm:grid-cols-2">
-                    <label className="field sm:col-span-2">
-                      <span>Event name</span>
-                      <input
-                        type="text"
-                        value={draft.name}
-                        onChange={(e) => update({ name: e.target.value }, "basics")}
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Registered state</span>
-                      <select
-                        value={draft.state}
-                        onChange={(e) =>
-                          update({ state: e.target.value as Tournament["state"] }, "basics")
-                        }
-                      >
-                        <option value="draft">Draft</option>
-                        <option value="open">Open</option>
-                        <option value="closed">Closed</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="grid gap-2.5">
-                    <span className="text-[13px] font-semibold">Days of play</span>
-                    {draft.dates.map((date, index) => (
-                      <div key={index} className="flex flex-wrap items-end gap-2">
-                        <label className="field min-w-0 flex-1">
-                          <span>
-                            {index === 0 ? "Day 1 (first day of play)" : `Day ${index + 1}`}
-                          </span>
-                          <input
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDay(index, e.target.value)}
-                          />
-                        </label>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Remove day ${index + 1}`}
-                          disabled={draft.dates.length <= 1}
-                          className="text-ink-muted hover:text-danger"
-                          onClick={() => removeDay(index)}
+                <>
+                  <TournamentPresetCard
+                    tournament={draft}
+                    tees={draftTees}
+                    entries={fieldSize}
+                    canEdit={canEdit}
+                    demo={status === "demo"}
+                    onApplied={() => {
+                      // The event now holds the preset's rules: the draft built on the old ones is
+                      // dropped, and the desk re-reads the saved setup so this screen shows them.
+                      setDirty([]);
+                      setSaveError("");
+                      setRetrySections(null);
+                      onReload();
+                    }}
+                  />
+                  <SectionCard
+                    id="basics"
+                    icon={<SlidersHorizontal />}
+                    title="Basics"
+                    action={sectionAction("basics")}
+                  >
+                    <div className="grid gap-3.5 sm:grid-cols-2">
+                      <label className="field sm:col-span-2">
+                        <span>Event name</span>
+                        <input
+                          type="text"
+                          value={draft.name}
+                          onChange={(e) => update({ name: e.target.value }, "basics")}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Registered state</span>
+                        <select
+                          value={draft.state}
+                          onChange={(e) =>
+                            update({ state: e.target.value as Tournament["state"] }, "basics")
+                          }
                         >
-                          <Trash2 aria-hidden="true" />
+                          <option value="draft">Draft</option>
+                          <option value="open">Open</option>
+                          <option value="closed">Closed</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div className="grid gap-2.5">
+                      <span className="text-[13px] font-semibold">Days of play</span>
+                      {draft.dates.map((date, index) => (
+                        <div key={index} className="flex flex-wrap items-end gap-2">
+                          <label className="field min-w-0 flex-1">
+                            <span>
+                              {index === 0 ? "Day 1 (first day of play)" : `Day ${index + 1}`}
+                            </span>
+                            <input
+                              type="date"
+                              value={date}
+                              onChange={(e) => setDay(index, e.target.value)}
+                            />
+                          </label>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Remove day ${index + 1}`}
+                            disabled={draft.dates.length <= 1}
+                            className="text-ink-muted hover:text-danger"
+                            onClick={() => removeDay(index)}
+                          >
+                            <Trash2 aria-hidden="true" />
+                          </Button>
+                        </div>
+                      ))}
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="secondary" size="sm" onClick={addDay}>
+                          <Plus aria-hidden="true" /> Add a day
                         </Button>
                       </div>
-                    ))}
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="secondary" size="sm" onClick={addDay}>
-                        <Plus aria-hidden="true" /> Add a day
-                      </Button>
-                    </div>
-                    <p className="hint">
-                      Add a day puts the next calendar day after the last one, and every day keeps
-                      its own date field, so a specific date can be set. Age and cut-off are read on
-                      the first day until the club says which day counts. This is an open question.
-                    </p>
-                    <div className="grid gap-2 rounded-[12px] border border-line bg-surface-sunken p-3">
-                      <b className="text-[14px]">Playing-day rule</b>
                       <p className="hint">
-                        A four-day event can require two days, for example. The rule is checked when
-                        a registration is saved or imported. Leave both empty for no rule.
+                        Add a day puts the next calendar day after the last one, and every day keeps
+                        its own date field, so a specific date can be set. Age and cut-off are read
+                        on the first day until the club says which day counts. This is an open
+                        question.
                       </p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="field">
-                          <span>Must play exactly (days)</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={draft.dates.length}
-                            value={dayRuleRequired ?? ""}
-                            disabled={!canEdit}
-                            onChange={(e) =>
-                              setDayRuleRequired(e.target.value ? Number(e.target.value) : null)
-                            }
-                          />
-                        </label>
-                        <label className="field">
-                          <span>May play at most (days)</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={draft.dates.length}
-                            value={dayRuleMax ?? ""}
-                            disabled={!canEdit}
-                            onChange={(e) =>
-                              setDayRuleMax(e.target.value ? Number(e.target.value) : null)
-                            }
-                          />
-                        </label>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={!canEdit || dayRuleSaving}
-                          onClick={async () => {
-                            setDayRuleSaving(true);
-                            setDayRuleError("");
-                            setDayRuleMessage("");
-                            try {
-                              await saveDayRule(dayRuleRequired, dayRuleMax);
-                              setDayRuleMessage("Playing-day rule saved.");
-                            } catch (e) {
-                              setDayRuleError(
-                                e instanceof Error ? e.message : "The day rule could not be saved.",
-                              );
-                            } finally {
-                              setDayRuleSaving(false);
-                            }
-                          }}
-                        >
-                          {dayRuleSaving ? "Saving…" : "Save rule"}
-                        </Button>
-                        {dayRuleMessage && <span className="hint">{dayRuleMessage}</span>}
-                        {dayRuleError && (
-                          <span className="hint !text-danger" role="alert">
-                            {dayRuleError}
-                          </span>
-                        )}
+                      <div className="grid gap-2 rounded-[12px] border border-line bg-surface-sunken p-3">
+                        <b className="text-[14px]">Playing-day rule</b>
+                        <p className="hint">
+                          A four-day event can require two days, for example. The rule is checked
+                          when a registration is saved or imported. Leave both empty for no rule.
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="field">
+                            <span>Must play exactly (days)</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={draft.dates.length}
+                              value={dayRuleRequired ?? ""}
+                              disabled={!canEdit}
+                              onChange={(e) =>
+                                setDayRuleRequired(e.target.value ? Number(e.target.value) : null)
+                              }
+                            />
+                          </label>
+                          <label className="field">
+                            <span>May play at most (days)</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={draft.dates.length}
+                              value={dayRuleMax ?? ""}
+                              disabled={!canEdit}
+                              onChange={(e) =>
+                                setDayRuleMax(e.target.value ? Number(e.target.value) : null)
+                              }
+                            />
+                          </label>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={!canEdit || dayRuleSaving}
+                            onClick={async () => {
+                              setDayRuleSaving(true);
+                              setDayRuleError("");
+                              setDayRuleMessage("");
+                              try {
+                                await saveDayRule(dayRuleRequired, dayRuleMax);
+                                setDayRuleMessage("Playing-day rule saved.");
+                              } catch (e) {
+                                setDayRuleError(
+                                  e instanceof Error
+                                    ? e.message
+                                    : "The day rule could not be saved.",
+                                );
+                              } finally {
+                                setDayRuleSaving(false);
+                              }
+                            }}
+                          >
+                            {dayRuleSaving ? "Saving…" : "Save rule"}
+                          </Button>
+                          {dayRuleMessage && <span className="hint">{dayRuleMessage}</span>}
+                          {dayRuleError && (
+                            <span className="hint !text-danger" role="alert">
+                              {dayRuleError}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <label className="check text-[14px]">
-                    <input
-                      type="checkbox"
-                      checked={draft.nameNeedsConfirmation}
-                      onChange={(e) =>
-                        update({ nameNeedsConfirmation: e.target.checked }, "basics")
-                      }
-                    />
-                    <span>
-                      The event name still needs the organizer's confirmation. It is shown with a
-                      caution note until this is unticked.
-                    </span>
-                  </label>
-                </SectionCard>
+                    <label className="check text-[14px]">
+                      <input
+                        type="checkbox"
+                        checked={draft.nameNeedsConfirmation}
+                        onChange={(e) =>
+                          update({ nameNeedsConfirmation: e.target.checked }, "basics")
+                        }
+                      />
+                      <span>
+                        The event name still needs the organizer's confirmation. It is shown with a
+                        caution note until this is unticked.
+                      </span>
+                    </label>
+                  </SectionCard>
+                </>
               )}
 
               {tab === "playbook" && (
