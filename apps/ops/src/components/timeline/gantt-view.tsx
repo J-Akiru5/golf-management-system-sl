@@ -90,7 +90,7 @@ function GanttRow({ bar, todayPct }: { bar: GanttBar; todayPct: number | null })
             "absolute top-1/2 z-20 size-3.5 -translate-y-1/2 rotate-45 rounded-[2px] border",
             style.bar,
           )}
-          style={{ left: `calc(${centre}% - 7px)` }}
+          style={{ left: `calc(${Math.min(99, Math.max(1, centre))}% - 7px)` }}
         />
       ) : (
         <span
@@ -102,16 +102,6 @@ function GanttRow({ bar, todayPct }: { bar: GanttBar; todayPct: number | null })
           style={{ left: `${bar.play.leftPct}%`, width: `${bar.play.widthPct}%` }}
         />
       )}
-      {/* A point has no bar to hover, so its name rides beside the diamond. */}
-      {item.milestone ? (
-        <span
-          aria-hidden="true"
-          className="absolute top-1/2 z-20 -translate-y-1/2 whitespace-nowrap pl-3 text-[11.5px] font-semibold text-ink-muted"
-          style={{ left: `${centre}%` }}
-        >
-          {item.title}
-        </span>
-      ) : null}
     </span>
   );
 
@@ -269,7 +259,6 @@ export function GanttView({ items, today }: { items: ReadonlyArray<TimelineItem>
       <span className="sr-only">
         The chart covers {formatDayLong(window.from)} to {formatDayLong(window.to)}.
       </span>
-      <span className="sr-only">{groups.length} groups.</span>
     </div>
   );
 }
