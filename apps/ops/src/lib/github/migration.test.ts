@@ -410,6 +410,19 @@ describe("workspace -> GitHub", () => {
     ).rejects.toMatchObject({ code: "42501" });
   });
 
+  it("lets the webhook's service role record a push, because it has no signed-in member", async () => {
+    const task = await db.query<{ id: string }>(
+      "select id from public.ws_tasks where github_issue_number = 350",
+    );
+    await expect(
+      asService(
+        `select public.gh_mark_task_synced(
+          '${task.rows[0]?.id}', null, 'outbound', 'applied', 'Pushed after a conflict'
+        )`,
+      ),
+    ).resolves.toHaveLength(1);
+  });
+
   it("refuses an unknown outcome", async () => {
     const task = await db.query<{ id: string }>(
       "select id from public.ws_tasks where github_issue_number = 350",

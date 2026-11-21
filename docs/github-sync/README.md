@@ -22,7 +22,7 @@ secret or issue body is ever recorded there.
 
 Run `docs/github-sync/apply-on-live.sql` in the Supabase SQL editor of the project the golf app and the
 workspace share. It is one transaction and additive: eight nullable link columns on `ws_tasks`, the
-`github_user_map` and `github_sync_log` tables, four functions and three triggers. The read-only checks
+`github_user_map` and `github_sync_log` tables, four functions and two triggers. The read-only checks
 at the bottom should return eight columns and both tables with row level security on.
 
 ### 2. Environment variables

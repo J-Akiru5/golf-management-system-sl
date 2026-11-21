@@ -364,7 +364,11 @@ grant execute on function public.gh_apply_issue(jsonb, text) to service_role;
 -- 7. Workspace -> GitHub: record the result of a push ---------------------------------------------
 -- Called by the signed-in member's server action after the GitHub API call, with the issue GitHub
 -- returned. The member check here keeps the mirrored columns from being written by a session that is
--- not on the workspace list.
+-- not on the workspace list. A trusted caller with no JWT (the webhook's service role, the SQL
+-- editor) is allowed, the same rule ws_lock_columns uses.
+--
+-- The webhook uses this too when the workspace edit won a conflict and the push back to GitHub
+-- succeeded: it has no signed-in member to attribute the write to.
 
 create function public.gh_mark_task_synced(
   p_task_id uuid,
@@ -383,7 +387,7 @@ declare
   v_labels text[] := '{}'::text[];
   v_assignees text[] := '{}'::text[];
 begin
-  if not public.ws_is_member() then
+  if (select auth.uid()) is not null and not public.ws_is_member() then
     raise exception 'only an active workspace member can record a GitHub sync' using errcode = '42501';
   end if;
   if p_direction not in ('inbound', 'outbound') then
@@ -438,7 +442,7 @@ $$;
 revoke all on function public.gh_mark_task_synced(uuid, jsonb, text, text, text)
   from public, anon;
 grant execute on function public.gh_mark_task_synced(uuid, jsonb, text, text, text)
-  to authenticated;
+  to authenticated, service_role;
 
 -- 8. Row level security --------------------------------------------------------------------------
 
