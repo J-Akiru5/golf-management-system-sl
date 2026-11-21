@@ -41,13 +41,13 @@ export function stableSessionId(...parts: (string | number | null | undefined)[]
 }
 
 /** True when at least one provider holds a usable key. */
-export function isAiEnabled(options: AiCallOptions = {}): boolean {
-  return (options.configs ?? loadProviderConfigs()).length > 0;
+export async function isAiEnabled(options: AiCallOptions = {}): Promise<boolean> {
+  return (options.configs ?? (await loadProviderConfigs())).length > 0;
 }
 
 /** One log line naming the chain and never a key. */
-export function aiDebugInfo(options: AiCallOptions = {}) {
-  const configs = options.configs ?? loadProviderConfigs();
+export async function aiDebugInfo(options: AiCallOptions = {}) {
+  const configs = options.configs ?? (await loadProviderConfigs());
   return {
     chain: describeProviderChain(configs),
     primary: configs[0]?.provider ?? "none",
@@ -66,7 +66,7 @@ export async function* streamAi(
   sessionId: string,
   options: AiCallOptions = {},
 ): AsyncGenerator<string> {
-  const configs = options.configs ?? loadProviderConfigs();
+  const configs = options.configs ?? (await loadProviderConfigs());
   let lastError: unknown = null;
 
   for (const config of configs) {
@@ -111,7 +111,7 @@ export async function completeAi(
   sessionId: string,
   options: AiCallOptions = {},
 ): Promise<CompletionResult | null> {
-  const configs = options.configs ?? loadProviderConfigs();
+  const configs = options.configs ?? (await loadProviderConfigs());
   let lastError: unknown = null;
 
   for (const config of configs) {

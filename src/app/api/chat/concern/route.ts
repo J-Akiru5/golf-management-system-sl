@@ -121,7 +121,7 @@ export const POST = withApiTiming("POST /api/chat/concern", async (request: Next
     }
   }
 
-  const configs = loadProviderConfigs();
+  const configs = await loadProviderConfigs();
   const sessionId = stableSessionId("concern", conversationId ?? address ?? "anonymous");
 
   // A filled honeypot is a bot. It gets the ordinary greeting and no provider call, so it learns
