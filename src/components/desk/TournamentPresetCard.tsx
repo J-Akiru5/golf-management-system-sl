@@ -47,7 +47,7 @@ export function TournamentPresetCard({
 }: {
   tournament: Tournament;
   tees: Tee[];
-  /** Entries already filed for this event. A category or class one of them uses is kept. */
+  /** Entries already filed for this event. A preset is applied before entries exist. */
   entries: number;
   canEdit: boolean;
   demo: boolean;
@@ -226,7 +226,7 @@ export function TournamentPresetCard({
 
   const replacements = selected
     ? currentSettings
-      ? replacementLines(currentSettings, selected.settings, entries)
+      ? replacementLines(currentSettings, selected.settings)
       : [
           "The event's tees, categories, classes, handicap allowance, group sizes and start settings are replaced by the preset's.",
           "The event keeps its own name and dates.",
@@ -316,7 +316,7 @@ export function TournamentPresetCard({
                   ))}
                 </dl>
 
-                {!confirming && (
+                {!confirming && entries === 0 && (
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="primary"
@@ -331,11 +331,20 @@ export function TournamentPresetCard({
                       <Wand2 aria-hidden="true" /> Apply preset
                     </Button>
                     <span className="hint">
-                      {entries > 0
-                        ? `${entries} ${entries === 1 ? "entry is" : "entries are"} already filed. A category one of them uses is kept; a tee or class one of them still uses stops the replacement.`
-                        : "Nothing is filed yet, so the whole set can be replaced."}
+                      Nothing is filed yet, so the whole set can be replaced.
                     </span>
                   </div>
+                )}
+
+                {!confirming && entries > 0 && (
+                  <p className="notice m-0" role="note">
+                    <b>
+                      This event already has {entries === 1 ? "1 entry" : `${entries} entries`}.
+                    </b>{" "}
+                    A preset is applied to an event before entries are filed, because replacing its
+                    categories and classes under filed entries would leave two sets behind. Change
+                    the rules on this screen by hand, or start the next event from the preset.
+                  </p>
                 )}
 
                 {confirming && (

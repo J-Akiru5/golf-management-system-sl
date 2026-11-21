@@ -10,10 +10,12 @@
 --   * `save_tournament_preset` stores the rules as one JSON document, validated by
 --     `preset_settings_problem` before a row is written. The app builds the same shape
 --     (`src/lib/data/presets.ts`), so a payload the desk accepts is one this function accepts.
---   * `apply_tournament_preset` copies the preset into the event through `save_event_setup`, the
---     same guarded path the Settings screen uses: owner or organizer only, revision-guarded, and a
---     tee, category or class still in use by an entry is kept rather than deleted. The event can be
---     edited freely afterwards, and the preset does not change with it.
+--   * `apply_tournament_preset` copies the preset into the event: its tees, handicap rules and
+--     start settings through `save_event_setup`, the same guarded path the Settings screen uses,
+--     then its categories and classes. An event that already has entries or a draw is refused
+--     before anything is written, because replacing the set under filed entries either fails or
+--     leaves two sets behind. The event can be edited freely afterwards, and the preset does not
+--     change with it.
 --
 -- `seed_preset_from_tournament` reads an existing event and saves it as a preset. It is how the
 -- first preset comes from the 24th Bamboo Tee: no number is typed in by hand and no number is
@@ -110,6 +112,8 @@ declare
   v_name text;
   v_names text[] := '{}';
   v_markers text[] := '{}';
+  v_category_names text[] := '{}';
+  v_flight_names text[] := '{}';
   v_marker text;
   v_min numeric;
   v_max numeric;
@@ -207,6 +211,10 @@ begin
     if char_length(v_name) > 60 then
       return format('The category name "%s" is longer than 60 characters.', v_name);
     end if;
+    if lower(v_name) = any (v_category_names) then
+      return format('The category name "%s" is used twice.', v_name);
+    end if;
+    v_category_names := v_category_names || lower(v_name);
     if coalesce(v_item ->> 'gender', '') not in ('M', 'F', 'any') then
       return format('Category "%s" needs who it is for: Men, Women or Everyone.', v_name);
     end if;
@@ -266,6 +274,10 @@ begin
     if v_name = '' then
       return 'A class has no name.';
     end if;
+    if lower(v_name) = any (v_flight_names) then
+      return format('The class name "%s" is used twice.', v_name);
+    end if;
+    v_flight_names := v_flight_names || lower(v_name);
     if coalesce(v_item ->> 'min', '') !~ '^[0-9]+(\.[0-9]+)?$'
        or coalesce(v_item ->> 'max', '') !~ '^[0-9]+(\.[0-9]+)?$' then
       return format('Class "%s" needs a starting and an ending value from 0 to 54.', v_name);
@@ -702,10 +714,18 @@ comment on function public.seed_preset_from_tournament(uuid, text, text) is
   'Saves an existing event''s own rules as a preset. Reads the event; nothing is typed in by hand.';
 
 -- 6. Apply a preset to an event ------------------------------------------------------------------
--- The copy goes through `save_event_setup`, so the event's own settings, tees, categories and
--- classes are written through the same guarded transaction the Settings screen uses: owner or
--- organizer only, revision-guarded, and anything an entry still uses is kept instead of deleted.
--- The preset is only read: applying it never changes it.
+-- A preset is applied to an event before entries are filed. The event's tees, handicap rules and
+-- start settings go through `save_event_setup`, the same guarded transaction the Settings screen
+-- uses: owner or organizer only, revision-guarded, and a tee still in use refuses the save. Its
+-- categories and classes are then replaced with the preset's under the same role check. An event
+-- that already has entries or a draw is refused before anything is written, because replacing the
+-- set under filed entries either fails on a foreign key or leaves two sets side by side. The preset
+-- is only read: applying it never changes it.
+--
+-- Why the categories and classes are written here rather than through `save_event_setup`: that
+-- function deletes every category or class whose id the payload does not carry, and a new row has
+-- no id yet, so it deletes the row it has just inserted. Passing it a preset's fresh set would end
+-- with no categories and no classes at all.
 
 create or replace function public.apply_tournament_preset(
   p_tournament uuid,
@@ -718,27 +738,33 @@ set search_path = ''
 as $$
 declare
   v_club uuid;
+  v_course uuid;
   v_revision integer;
   v_settings jsonb;
   v_problem text;
+  v_entries integer;
   v_tees jsonb;
-  v_categories jsonb;
-  v_flights jsonb;
-  v_carrier text;
+  v_result jsonb;
+  v_carrier uuid;
+  v_category jsonb;
+  v_flight jsonb;
+  v_tee uuid;
+  v_category_id uuid;
+  v_categories integer := 0;
+  v_flights integer := 0;
   v_days integer := 0;
   v_ignored jsonb := '[]'::jsonb;
   v_day jsonb;
   v_day_number integer;
   v_morning time;
   v_afternoon time;
-  v_result jsonb;
   v_notes jsonb := '[]'::jsonb;
   v_cap integer;
   v_max_index numeric;
 begin
   -- The event row is locked, so the revision this call carries is the one it writes against.
-  select t.club_id, t.draw_revision
-    into v_club, v_revision
+  select t.club_id, t.course_id, t.draw_revision
+    into v_club, v_course, v_revision
     from public.tournaments t
    where t.id = p_tournament
      for update;
@@ -765,6 +791,23 @@ begin
     raise exception 'This preset cannot be applied: %', v_problem using errcode = '22023';
   end if;
 
+  -- An event that already has entries or a draw keeps them: replacing its categories and classes
+  -- under filed entries either fails on a foreign key or leaves two sets side by side. Refuse before
+  -- anything is written, and say what to do instead.
+  select count(*) into v_entries
+    from public.registrations r
+   where r.tournament_id = p_tournament and r.club_id = v_club;
+
+  if v_entries > 0
+     or exists (
+       select 1 from public.groups g
+        where g.tournament_id = p_tournament and g.club_id = v_club
+     ) then
+    raise exception
+      'This event already has entries or a draw on file, so its categories and classes cannot be replaced. A preset is applied to an event before entries are filed. Change the rules on this screen by hand for this event, or start the next event from the preset.'
+      using errcode = '23514';
+  end if;
+
   select coalesce(
     jsonb_agg(
       jsonb_build_object(
@@ -780,51 +823,15 @@ begin
   into v_tees
   from jsonb_array_elements(v_settings -> 'tees') as e;
 
-  -- A class row is still stored under one carrier category, though the class itself is cut over the
-  -- whole field. The first category of the preset carries them, as the Settings screen does.
-  v_carrier := v_settings -> 'categories' -> 0 ->> 'name';
-
-  select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'id', '',
-        'name', e ->> 'name',
-        'gender', e ->> 'gender',
-        'minAge', (e ->> 'minAge')::smallint,
-        'maxAge', e ->> 'maxAge',
-        'teeName', e ->> 'teeName'
-      )
-      order by ord
-    ),
-    '[]'::jsonb
-  )
-  into v_categories
-  from jsonb_array_elements(v_settings -> 'categories') with ordinality as x(e, ord);
-
-  select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'id', '',
-        'categoryName', v_carrier,
-        'name', e ->> 'name',
-        'min', (e ->> 'min')::numeric,
-        'max', (e ->> 'max')::numeric
-      )
-      order by (e ->> 'min')::numeric, (e ->> 'max')::numeric
-    ),
-    '[]'::jsonb
-  )
-  into v_flights
-  from jsonb_array_elements(coalesce(v_settings -> 'flights', '[]'::jsonb)) as e;
-
+  -- Tees, the handicap rules and the start settings: the guarded function the Settings screen uses.
   v_result := public.save_event_setup(
     p_tournament,
     v_revision,
     null,
     null,
     v_tees,
-    v_categories,
-    v_flights,
+    null,
+    null,
     null,
     jsonb_build_object(
       'maxIndex', v_settings -> 'maxIndex',
@@ -840,6 +847,71 @@ begin
     ),
     null
   );
+  v_revision := coalesce((v_result ->> 'revision')::integer, v_revision);
+
+  -- Categories and classes are replaced whole. Nothing filed points at them: that was checked above.
+  delete from public.flights f
+   where f.club_id = v_club
+     and f.category_id in (
+       select c.id from public.categories c
+        where c.tournament_id = p_tournament and c.club_id = v_club
+     );
+
+  delete from public.categories c
+   where c.tournament_id = p_tournament and c.club_id = v_club;
+
+  -- The tees were written above, so each category's tee is found by the name the preset carries.
+  for v_category in select * from jsonb_array_elements(v_settings -> 'categories') loop
+    select t.id into v_tee
+      from public.tees t
+     where t.club_id = v_club
+       and t.course_id = v_course
+       and t.name = v_category ->> 'teeName';
+
+    if v_tee is null then
+      raise exception 'The preset names the tee "%", which is not on this event''s course.',
+        v_category ->> 'teeName' using errcode = '23503';
+    end if;
+
+    insert into public.categories
+      (club_id, tournament_id, tee_id, name, gender, min_age, max_age)
+    values (
+      v_club,
+      p_tournament,
+      v_tee,
+      v_category ->> 'name',
+      coalesce(nullif(v_category ->> 'gender', ''), 'any'),
+      coalesce((v_category ->> 'minAge')::smallint, 0),
+      nullif(v_category ->> 'maxAge', '')::smallint
+    )
+    returning id into v_category_id;
+
+    v_categories := v_categories + 1;
+    -- A class row hangs off one carrier category; the class itself is cut over the whole field.
+    if v_carrier is null then
+      v_carrier := v_category_id;
+    end if;
+  end loop;
+
+  if v_carrier is not null then
+    for v_flight in
+      select * from jsonb_array_elements(coalesce(v_settings -> 'flights', '[]'::jsonb))
+    loop
+      insert into public.flights (club_id, category_id, name, min_value, max_value)
+      values (
+        v_club,
+        v_carrier,
+        v_flight ->> 'name',
+        (v_flight ->> 'min')::numeric,
+        (v_flight ->> 'max')::numeric
+      );
+
+      v_flights := v_flights + 1;
+    end loop;
+  end if;
+
+  -- A tee the preset does not name is left on the course: tees belong to the course, not to one
+  -- event, so an event's preset does not remove a marker another event or the club may still use.
 
   -- `save_event_setup` does not write two things the preset holds: the event's afternoon start and
   -- each playing day's own session starts. They are written here, under the same role check.
@@ -889,11 +961,11 @@ begin
 
   return jsonb_build_object(
     'ok', true,
-    'revision', coalesce((v_result ->> 'revision')::integer, v_revision),
+    'revision', v_revision,
     'applied', jsonb_build_object(
       'tees', jsonb_array_length(v_tees),
-      'categories', jsonb_array_length(v_categories),
-      'flights', jsonb_array_length(v_flights),
+      'categories', v_categories,
+      'flights', v_flights,
       'days', v_days
     ),
     'ignoredDays', v_ignored,
@@ -1065,6 +1137,21 @@ begin
        )
      ) not like '%cover the same players%' then
     raise exception 'the validator accepted two categories that cover the same players';
+  end if;
+
+  if public.preset_settings_problem(
+       v_good || jsonb_build_object(
+         'categories', jsonb_build_array(
+           jsonb_build_object(
+             'name', 'Regular', 'gender', 'M', 'minAge', 0, 'maxAge', null, 'teeName', 'Blue'
+           ),
+           jsonb_build_object(
+             'name', 'Regular', 'gender', 'F', 'minAge', 0, 'maxAge', null, 'teeName', 'Red'
+           )
+         )
+       )
+     ) not like '%used twice%' then
+    raise exception 'the validator accepted two categories with one name';
   end if;
 end $$;
 

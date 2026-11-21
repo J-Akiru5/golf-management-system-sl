@@ -76,6 +76,41 @@ describe("tournament presets migration", () => {
     expect(body).not.toMatch(/delete from public\.tournament_presets/);
   });
 
+  it("refuses an event that already has entries or a draw, before writing anything", () => {
+    const body = functionBody("apply_tournament_preset");
+    expect(body).toContain("from public.registrations r");
+    expect(body).toContain("already has entries or a draw on file");
+    expect(body).toContain("using errcode = '23514'");
+    // The refusal comes before the first write in the function.
+    const refusal = body.indexOf("already has entries or a draw on file");
+    expect(refusal).toBeGreaterThan(body.indexOf("preset_settings_problem(v_settings)"));
+    expect(refusal).toBeLessThan(body.indexOf("public.save_event_setup("));
+  });
+
+  it("creates each category and class itself, because save_event_setup deletes rows it has no id for", () => {
+    const body = functionBody("apply_tournament_preset");
+    expect(body).toContain("insert into public.categories");
+    expect(body).toContain("returning id into v_category_id");
+    expect(body).toContain("insert into public.flights");
+    // A blank id in that function's payload would be deleted again straight after the insert.
+    expect(body).not.toMatch(/'id',\s*''/);
+  });
+
+  it("replaces the categories and classes only on an event nothing points at", () => {
+    const body = functionBody("apply_tournament_preset");
+    expect(body).toContain("delete from public.categories c");
+    expect(body).toContain("delete from public.flights f");
+    expect(body).toContain("where c.tournament_id = p_tournament and c.club_id = v_club");
+  });
+
+  it("leaves a tee the preset does not name on the course", () => {
+    // Tees belong to the course, so an event's preset must not remove a marker another event or the
+    // club may still use. The preset's own tees are upserted and the rest are kept.
+    const body = functionBody("apply_tournament_preset");
+    expect(body).not.toContain("delete from public.tees");
+    expect(body).toContain("left on the course");
+  });
+
   it("writes the event's afternoon start and the day session starts that save_event_setup does not", () => {
     const body = functionBody("apply_tournament_preset");
     expect(body).toContain("set pm_first_tee_time =");
@@ -132,5 +167,14 @@ describe("tournament presets migration", () => {
     expect(applyScript.indexOf("create table")).toBeLessThan(applyScript.indexOf("\ncommit;\n"));
     expect(applyScript).toContain("create table public.tournament_presets");
     expect(applyScript).toContain("create or replace function public.apply_tournament_preset");
+  });
+
+  it("pastes the migration itself, so the script cannot drift from it", () => {
+    const normal = (text: string) => text.replace(/\r\n/g, "\n");
+    const script = normal(applyScript);
+    const migration = normal(sql);
+    const start = script.indexOf("\nbegin;\n") + "\nbegin;\n".length;
+    const end = script.indexOf("\ncommit;\n");
+    expect(script.slice(start, end).trim()).toBe(migration.trim());
   });
 });

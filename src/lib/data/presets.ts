@@ -265,6 +265,7 @@ export function readSettings(value: unknown): PresetSettingsResult {
   // Categories ----------------------------------------------------------------------------------
   const categories: PresetCategory[] = [];
   const rawCategories = Array.isArray(value.categories) ? value.categories : null;
+  const categoryNames = new Set<string>();
   if (rawCategories === null) problems.push("The preset has no list of categories.");
   for (const item of rawCategories ?? []) {
     if (!isRecord(item)) {
@@ -281,6 +282,10 @@ export function readSettings(value: unknown): PresetSettingsResult {
       problems.push("A category has no name.");
       continue;
     }
+    if (categoryNames.has(name.toLowerCase())) {
+      problems.push(`The category name "${name}" is used twice.`);
+    }
+    categoryNames.add(name.toLowerCase());
     if (name.length > PRESET_LIMITS.categoryName) {
       problems.push(`The category name "${name}" is too long.`);
     }
@@ -335,6 +340,7 @@ export function readSettings(value: unknown): PresetSettingsResult {
   // Classes -------------------------------------------------------------------------------------
   const flights: PresetFlight[] = [];
   const rawFlights = Array.isArray(value.flights) ? value.flights : [];
+  const flightNames = new Set<string>();
   for (const item of rawFlights) {
     if (!isRecord(item)) {
       problems.push("One class in the preset is not readable.");
@@ -347,6 +353,10 @@ export function readSettings(value: unknown): PresetSettingsResult {
       problems.push("A class has no name.");
       continue;
     }
+    if (flightNames.has(name.toLowerCase())) {
+      problems.push(`The class name "${name}" is used twice.`);
+    }
+    flightNames.add(name.toLowerCase());
     if (min === null || !inRange(min, PRESET_LIMITS.class)) {
       problems.push(`Class "${name}" needs a starting value from 0 to 54.`);
       continue;
@@ -718,12 +728,8 @@ export function allowancePercent(allowance: number): string {
  * What applying a preset replaces, in plain lines. The confirm shows these before anything is
  * written, so the organizer knows what the event loses as well as what it gains.
  */
-export function replacementLines(
-  current: TournamentSettings,
-  next: TournamentSettings,
-  entries: number,
-): string[] {
-  const lines = [
+export function replacementLines(current: TournamentSettings, next: TournamentSettings): string[] {
+  return [
     `Tees: ${current.tees.length} replaced by ${next.tees.length}`,
     `Categories: ${current.categories.length} replaced by ${next.categories.length}`,
     `Classes: ${current.flights.length} replaced by ${next.flights.length}`,
@@ -732,12 +738,6 @@ export function replacementLines(
     `Start: ${current.startFormat} from ${current.firstTeeTime} becomes ${next.startFormat} from ${next.firstTeeTime}`,
     `Playing days: ${current.days.length} keeps its dates, with the start times from the preset`,
   ];
-  if (entries > 0) {
-    lines.push(
-      `${entries} ${entries === 1 ? "entry is" : "entries are"} already filed. A category one of them uses is kept; a tee or class one of them still uses stops the replacement and names what is in the way.`,
-    );
-  }
-  return lines;
 }
 
 /** One preset as the desk reads it. */

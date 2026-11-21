@@ -221,6 +221,32 @@ describe("readSettings", () => {
     expect(read.ok).toBe(true);
   });
 
+  it("refuses two categories with one name", () => {
+    const read = readSettings({
+      ...settingsJson(settings),
+      categories: [
+        { name: "Regular", gender: "M", minAge: 0, maxAge: 59, teeName: "Blue" },
+        { name: "regular", gender: "F", minAge: 0, maxAge: null, teeName: "Ladies Red" },
+      ],
+    });
+    expect(read.ok).toBe(false);
+    if (read.ok) return;
+    expect(read.problems.join(" ")).toContain('The category name "regular" is used twice');
+  });
+
+  it("refuses two classes with one name", () => {
+    const read = readSettings({
+      ...settingsJson(settings),
+      flights: [
+        { name: "Class A", min: 0, max: 12 },
+        { name: "Class A", min: 12.1, max: 30 },
+      ],
+    });
+    expect(read.ok).toBe(false);
+    if (read.ok) return;
+    expect(read.problems.join(" ")).toContain('The class name "Class A" is used twice');
+  });
+
   it("refuses classes that overlap", () => {
     const read = readSettings({
       ...settingsJson(settings),
@@ -409,11 +435,9 @@ describe("summary and replacement lines", () => {
     expect(lines.find((line) => line.label === "Classes")?.detail).toContain("No classes");
   });
 
-  it("warns that filed entries keep the category they use", () => {
-    const lines = replacementLines(settings, settings, 12);
-    expect(lines.join(" ")).toContain("12 entries are already filed");
-    expect(replacementLines(settings, settings, 1).join(" ")).toContain("1 entry is already filed");
-    expect(replacementLines(settings, settings, 0).join(" ")).not.toContain("already filed");
+  it("does not list a filed entry: a preset is applied before entries exist", () => {
+    // The refusal lives in the database and in the card's note; the confirm lists the rules only.
+    expect(replacementLines(settings, settings).join(" ")).not.toContain("already filed");
   });
 
   it("names what each rule becomes", () => {
@@ -425,7 +449,7 @@ describe("summary and replacement lines", () => {
       groupSize: 3,
       firstTeeTime: "07:00",
     };
-    const lines = replacementLines(settings, next, 0);
+    const lines = replacementLines(settings, next);
     expect(lines.join(" ")).toContain("100% / 30 becomes 85% / 24");
     expect(lines.join(" ")).toContain("up to 4 becomes up to 3");
     expect(lines.join(" ")).toContain("from 06:30 becomes shotgun from 07:00");
