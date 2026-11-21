@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label } from "@/components/ui/field";
 import { formatWhen } from "@/lib/docs/format";
 import type { DocSummary } from "@/lib/docs/repo";
+import { ImportDocument } from "./import-document";
 
 export type DocsListProps = {
   docs: DocSummary[];
@@ -90,17 +91,20 @@ export function DocsList({ docs, archived, search, canEdit, canDelete }: DocsLis
         </Button>
 
         {canEdit ? (
-          <Button
-            variant="primary"
-            onClick={() => {
-              setNewTitle("");
-              setNewError(null);
-              setNewOpen(true);
-            }}
-          >
-            <Plus />
-            New document
-          </Button>
+          <>
+            <ImportDocument />
+            <Button
+              variant="primary"
+              onClick={() => {
+                setNewTitle("");
+                setNewError(null);
+                setNewOpen(true);
+              }}
+            >
+              <Plus />
+              New document
+            </Button>
+          </>
         ) : null}
       </div>
 
