@@ -1,5 +1,6 @@
 import { normalizeScanResult } from "@/lib/scoring/scan/normalize";
 import type { ScorecardScanResult } from "@/lib/scoring/scan/types";
+import type { FieldLookup, FieldPlayer } from "./field";
 
 /**
  * Reading a card photo for the tabulation page.
@@ -86,4 +87,52 @@ export async function readCardPhoto(input: {
         : "The card reader could not be reached. Try again, or enter the card by hand.",
     };
   }
+}
+
+/**
+ * The printed card's QR code holds one identifier and nothing else: the player row id that the
+ * scoring round and the day document's card are built from. No name, NGAP number or URL goes on
+ * the paper. The printed card is one card per group, so each player's row carries its own code;
+ * the tabulator scans the card, resolves each id in the chosen day's field list, and gets the
+ * player, tee, class and current playing handicap from there.
+ *
+ * This is deliberately the player id, not the day document's storage key
+ * (`fld-<playerId>-d<day>-<session>`): the print props carry no day or registration id, and the
+ * round is the day the tabulator is working on. A future full card id is also accepted by
+ * `findFieldCard`, which reads the player id out of that shape.
+ */
+export const CARD_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
+
+/** The printed payload for a card id, or an empty string when the id cannot go on paper. */
+export function cardQrPayload(cardId: string): string {
+  const id = cardId.trim();
+  return CARD_ID_PATTERN.test(id) ? id : "";
+}
+
+/** The card id a scanned QR value holds, or null when it is not a card code. */
+export function parseCardQr(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const id = value.trim();
+  return CARD_ID_PATTERN.test(id) ? id : null;
+}
+
+/**
+ * The field player a printed card id names, in one day's list. The direct match is the player row
+ * id or the event registration id; the stored day-document shape is also accepted so a code from a
+ * later print layout keeps working.
+ */
+export function findFieldCard(
+  field: Pick<FieldLookup, "players"> | null | undefined,
+  cardId: unknown,
+): FieldPlayer | null {
+  const id = parseCardQr(cardId);
+  if (!id || !field) return null;
+  const direct = field.players.find(
+    (player) => player.playerId === id || player.registrationId === id,
+  );
+  if (direct) return direct;
+  const stored = /^fld-(.+)-d\d+-(?:am|pm)$/i.exec(id);
+  const playerId = stored?.[1];
+  if (!playerId) return null;
+  return field.players.find((player) => player.playerId === playerId) ?? null;
 }

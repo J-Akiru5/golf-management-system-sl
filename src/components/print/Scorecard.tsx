@@ -3,7 +3,7 @@
 import { QRCodeSVG } from "qrcode.react";
 import { fmtHcp, fmtTime } from "@/lib/format";
 import { handicapDots } from "@/lib/print/handicap-dots";
-import { SITE_URL } from "@/lib/seo";
+import { cardQrPayload } from "@/lib/scorecards/scan";
 import styles from "./print.module.css";
 import type {
   CourseDataStatus,
@@ -58,10 +58,10 @@ export function Scorecard({
   // The tee is part of the card: the course handicap on it is read off that tee's rating and slope,
   // so a group playing several tees names each one in the header.
   const teesInPlay = [...new Set(players.map((player) => player.teeName).filter(Boolean))];
-  // Each player gets their own code, because a claim is per player. Scanning opens the player page
-  // with the NGAP number already in the claim form, so linking is one birthdate away.
-  const claimUrl = (ngapId: string) => `${SITE_URL}/my?ngap=${encodeURIComponent(ngapId)}`;
-  const codePlayers = players.filter((player) => (player.ngapId ?? "").trim() !== "");
+  // Each player's row carries that player's card id, because the scorecard is one card per group
+  // and the desk scores it player by player. The code holds only the id: the tabulation page
+  // resolves it in the chosen day's field list and fills in the player, tee, class and handicap.
+  // A damaged code is not a dead end there; the tabulator picks the player from the day's list.
 
   return (
     <article
@@ -100,22 +100,43 @@ export function Scorecard({
           </div>
         </header>
 
-        {showQrCodes && codePlayers.length > 0 && (
+        {showQrCodes && players.length > 0 && (
           <div className={styles.qrPanel}>
-            {codePlayers.map((player) => (
-              <div key={player.id} className={styles.qrPlayer}>
-                <QRCodeSVG
-                  value={claimUrl((player.ngapId ?? "").trim())}
-                  size={68}
-                  level="M"
-                  aria-label={`QR code to link ${player.name}`}
-                />
-                <span>{player.name}</span>
-              </div>
-            ))}
+            {players.map((player) => {
+              const payload = cardQrPayload(player.id);
+              return (
+                <div key={player.id} className={styles.qrPlayer}>
+                  {payload ? (
+                    <QRCodeSVG
+                      value={payload}
+                      size={68}
+                      level="M"
+                      aria-label={`QR code for ${player.name}'s card`}
+                    />
+                  ) : (
+                    <span
+                      role="img"
+                      aria-label={`No card code for ${player.name}`}
+                      style={{
+                        width: 68,
+                        height: 68,
+                        display: "grid",
+                        placeItems: "center",
+                        border: "1px dashed #777",
+                        fontSize: 8,
+                        textAlign: "center",
+                      }}
+                    >
+                      No code
+                    </span>
+                  )}
+                  <span>{player.name}</span>
+                </div>
+              );
+            })}
             <p className={styles.qrNote}>
-              Scan your code, then confirm your birthdate to link your NGAP record and open your
-              card.
+              For the score desk: scan a player&rsquo;s code to open that player&rsquo;s card. The
+              code holds only the card id.
             </p>
           </div>
         )}
