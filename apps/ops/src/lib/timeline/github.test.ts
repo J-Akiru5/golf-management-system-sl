@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  type FetchLike,
   GITHUB_CACHE_MS,
   GITHUB_DEFAULT_REPO,
   GITHUB_ERROR_MESSAGE,
   GITHUB_UNCONFIGURED_MESSAGE,
-  type FetchLike,
   loadGithubFeed,
   parseMilestones,
   parseReleases,
