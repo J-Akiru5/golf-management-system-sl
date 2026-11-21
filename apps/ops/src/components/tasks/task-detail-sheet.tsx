@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { can } from "@/lib/db/permissions";
 import type { WsTaskRow } from "@/lib/db/types";
+import { readTaskLink } from "@/lib/github/links";
 import { messageOf } from "@/lib/tasks/result";
 import type { TaskCardOption, TaskMember, TaskPatch, TaskViewer } from "@/lib/tasks/types";
 import { type CommentActions, CommentsThread } from "./comments-thread";
+import { GithubLinkPanel } from "./github-link-panel";
 import {
   patchFromValues,
   TaskFormFields,
@@ -48,6 +50,7 @@ function TaskDetailBody({
 
   const memberNames = new Map(members.map((member) => [member.id, member.displayName]));
   const mayDelete = canEdit && can({ role: viewer.role, status: "active" }, "content.delete");
+  const githubLink = readTaskLink(task);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -122,6 +125,8 @@ function TaskDetailBody({
           </p>
         ) : null}
       </form>
+
+      {githubLink ? <GithubLinkPanel link={githubLink} /> : null}
 
       {mayDelete ? (
         <div className="flex flex-col gap-2 border-t border-line pt-4">

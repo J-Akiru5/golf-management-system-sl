@@ -17,12 +17,20 @@ export function TaskBoardFilters({
   members,
   assigneeId,
   onAssigneeChange,
+  githubOnly,
+  onGithubOnlyChange,
+  githubCount,
 }: {
   view: TaskView;
   onViewChange: (view: TaskView) => void;
   members: ReadonlyArray<TaskMember>;
   assigneeId: string;
   onAssigneeChange: (id: string) => void;
+  /** True when the board is narrowed to tasks linked to a GitHub issue. */
+  githubOnly: boolean;
+  onGithubOnlyChange: (value: boolean) => void;
+  /** How many tasks in the current view are linked, so the filter is worth offering. */
+  githubCount: number;
 }) {
   return (
     <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
@@ -64,6 +72,21 @@ export function TaskBoardFilters({
           </Select>
         </div>
       ) : null}
+
+      <label className="flex min-h-11 items-center gap-2 self-end text-[13px] text-ink">
+        <input
+          type="checkbox"
+          checked={githubOnly}
+          onChange={(event) => onGithubOnlyChange(event.currentTarget.checked)}
+          className="size-5 rounded-sm"
+        />
+        <span>
+          Linked to GitHub
+          {githubCount === 0 ? null : (
+            <span className="tnum ml-1 text-ink-muted">({githubCount})</span>
+          )}
+        </span>
+      </label>
     </div>
   );
 }
