@@ -3,7 +3,7 @@
 import { QRCodeSVG } from "qrcode.react";
 import { fmtHcp, fmtTime } from "@/lib/format";
 import { handicapDots } from "@/lib/print/handicap-dots";
-import { cardQrPayload } from "@/lib/scorecards/scan";
+import { printNameOrder } from "@/lib/scorecards/scan";
 import styles from "./print.module.css";
 import type {
   CourseDataStatus,
@@ -24,6 +24,8 @@ export interface ScorecardProps {
   holes: readonly PrintHole[];
   startFormat: PrintStartFormat;
   courseDataStatus: CourseDataStatus;
+  /** The one group code `grp-<day>-<session>-<group>`, or empty when it cannot be built. */
+  cardId?: string;
   showQrCodes?: boolean;
 }
 
@@ -41,6 +43,7 @@ export function Scorecard({
   holes,
   startFormat,
   courseDataStatus,
+  cardId = "",
   showQrCodes = true,
 }: ScorecardProps) {
   const holesByNumber = new Map(holes.map((hole) => [hole.number, hole]));
@@ -55,13 +58,18 @@ export function Scorecard({
   const canAllocateDots = courseDataComplete;
   const startLabel =
     startFormat === "shotgun" ? `Hole ${group.startHole}` : `Tee ${group.startHole}`;
+  // The printed rows are in name order, the same order the tabulator page builds a group from the
+  // field list. That is what lets a reader row pair with the right player when a handwritten name
+  // cannot be read. The draw's position order is not available to the tabulator page from the
+  // group code alone.
+  const orderedPlayers = [...players].sort((left, right) => {
+    const a = printNameOrder(left.name);
+    const b = printNameOrder(right.name);
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
   // The tee is part of the card: the course handicap on it is read off that tee's rating and slope,
   // so a group playing several tees names each one in the header.
-  const teesInPlay = [...new Set(players.map((player) => player.teeName).filter(Boolean))];
-  // Each player's row carries that player's card id, because the scorecard is one card per group
-  // and the desk scores it player by player. The code holds only the id: the tabulation page
-  // resolves it in the chosen day's field list and fills in the player, tee, class and handicap.
-  // A damaged code is not a dead end there; the tabulator picks the player from the day's list.
+  const teesInPlay = [...new Set(orderedPlayers.map((player) => player.teeName).filter(Boolean))];
 
   return (
     <article
@@ -100,43 +108,38 @@ export function Scorecard({
           </div>
         </header>
 
-        {showQrCodes && players.length > 0 && (
+        {showQrCodes && orderedPlayers.length > 0 && (
           <div className={styles.qrPanel}>
-            {players.map((player) => {
-              const payload = cardQrPayload(player.id);
-              return (
-                <div key={player.id} className={styles.qrPlayer}>
-                  {payload ? (
-                    <QRCodeSVG
-                      value={payload}
-                      size={68}
-                      level="M"
-                      aria-label={`QR code for ${player.name}'s card`}
-                    />
-                  ) : (
-                    <span
-                      role="img"
-                      aria-label={`No card code for ${player.name}`}
-                      style={{
-                        width: 68,
-                        height: 68,
-                        display: "grid",
-                        placeItems: "center",
-                        border: "1px dashed #777",
-                        fontSize: 8,
-                        textAlign: "center",
-                      }}
-                    >
-                      No code
-                    </span>
-                  )}
-                  <span>{player.name}</span>
-                </div>
-              );
-            })}
+            <div className={styles.qrPlayer}>
+              {cardId ? (
+                <QRCodeSVG
+                  value={cardId}
+                  size={68}
+                  level="M"
+                  aria-label={`QR code for group ${group.number}'s scorecards`}
+                />
+              ) : (
+                <span
+                  role="img"
+                  aria-label={`No card code for group ${group.number}`}
+                  style={{
+                    width: 68,
+                    height: 68,
+                    display: "grid",
+                    placeItems: "center",
+                    border: "1px dashed #777",
+                    fontSize: 8,
+                    textAlign: "center",
+                  }}
+                >
+                  No code
+                </span>
+              )}
+              <span>Group {group.number}</span>
+            </div>
             <p className={styles.qrNote}>
-              For the score desk: scan a player&rsquo;s code to open that player&rsquo;s card. The
-              code holds only the card id.
+              For the score desk: scan the sheet&rsquo;s code to open the group&rsquo;s cards. The
+              code holds only the group card id.
             </p>
           </div>
         )}
@@ -175,7 +178,7 @@ export function Scorecard({
                 <td key={hole.number}>{hole.strokeIndex ?? "—"}</td>
               ))}
             </tr>
-            {players.map((player) => {
+            {orderedPlayers.map((player) => {
               const dots = canAllocateDots
                 ? handicapDots(
                     player.playingHandicap,

@@ -310,6 +310,8 @@ export default function StaffPrintPage() {
                 holes={holes}
                 startFormat={tournament.config.startFormat}
                 courseDataStatus={courseDataStatus}
+                dayNumber={day?.number}
+                pmFirstTeeTime={tournament.config.pmFirstTeeTime}
                 showQrCodes={showQrCodes}
               />
             )}

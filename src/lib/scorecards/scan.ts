@@ -90,30 +90,94 @@ export async function readCardPhoto(input: {
 }
 
 /**
- * The printed card's QR code holds one identifier and nothing else: the player row id that the
- * scoring round and the day document's card are built from. No name, NGAP number or URL goes on
- * the paper. The printed card is one card per group, so each player's row carries its own code;
- * the tabulator scans the card, resolves each id in the chosen day's field list, and gets the
- * player, tee, class and current playing handicap from there.
+ * A printed card's QR code holds one identifier and nothing else. The owner's decision of
+ * 21 Nov 2026 is one code per printed group sheet, the group card id
+ * `grp-<day>-<session>-<groupNumber>`; scanning it opens every player in that group. The previous
+ * per-player code (the player row id, or the stored `fld-...` key) is still accepted, so a card
+ * printed before the change resolves one player.
  *
- * This is deliberately the player id, not the day document's storage key
- * (`fld-<playerId>-d<day>-<session>`): the print props carry no day or registration id, and the
- * round is the day the tabulator is working on. A future full card id is also accepted by
- * `findFieldCard`, which reads the player id out of that shape.
+ * No name, NGAP number, URL or score goes on the paper.
  */
 export const CARD_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 
-/** The printed payload for a card id, or an empty string when the id cannot go on paper. */
+/** The per-player payload used before the single group code. Kept for older printed cards. */
 export function cardQrPayload(cardId: string): string {
   const id = cardId.trim();
   return CARD_ID_PATTERN.test(id) ? id : "";
 }
 
-/** The card id a scanned QR value holds, or null when it is not a card code. */
+/**
+ * The card id a scanned QR value holds, or null when it is not a card code. This accepts the old
+ * per-player id, the stored `fld-...` key and the new `grp-...` group code; use
+ * `parseGroupCardQr` when the value has to be resolved as a group.
+ */
 export function parseCardQr(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const id = value.trim();
   return CARD_ID_PATTERN.test(id) ? id : null;
+}
+
+/** A locale-independent order for printed player rows: accents folded and upper case. */
+export function printNameOrder(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
+}
+
+export type CardSession = "AM" | "PM";
+
+/**
+ * The session a printed group's tee time belongs to. This is the same rule as the tabulator field
+ * list (`sessionFromTeeTime` in `field.ts`): the event's afternoon start, with 12:30 as the
+ * fallback. Null when the print sheet has no tee time, so a group code is never guessed.
+ */
+export function sessionForTeeTime(teeTime: string, pmFirst?: string | null): CardSession | null {
+  const time = teeTime.trim().slice(0, 5);
+  if (!time) return null;
+  const afternoon = pmFirst?.trim().slice(0, 5) || "12:30";
+  return time < afternoon ? "AM" : "PM";
+}
+
+/**
+ * The one code printed on a group's scorecard sheet: `grp-<day>-<session>-<groupNumber>`, for
+ * example `grp-1-am-24`. Empty when any part cannot be built, so the sheet shows "No code" rather
+ * than a guessed group.
+ */
+export function groupCardQrPayload(
+  dayNumber: number | null | undefined,
+  session: CardSession | null | undefined,
+  groupNumber: number | null | undefined,
+): string {
+  if (dayNumber == null || !Number.isInteger(dayNumber) || dayNumber < 1) return "";
+  if (!session) return "";
+  if (groupNumber == null || !Number.isInteger(groupNumber) || groupNumber < 1) return "";
+  return `grp-${dayNumber}-${session.toLowerCase()}-${groupNumber}`;
+}
+
+export interface GroupCardQr {
+  dayNumber: number;
+  session: CardSession;
+  groupNumber: number;
+}
+
+const GROUP_CARD_QR = /^grp-([1-9]\d*)-(am|pm)-([1-9]\d*)$/;
+
+/** The day, session and group in a `grp-...` code, or null when the value is not one. */
+export function parseGroupCardQr(value: unknown): GroupCardQr | null {
+  const id = parseCardQr(value);
+  if (!id) return null;
+  const match = GROUP_CARD_QR.exec(id);
+  if (!match) return null;
+  const day = match[1];
+  const session = match[2];
+  const group = match[3];
+  if (!day || !session || !group) return null;
+  const dayNumber = Number(day);
+  const groupNumber = Number(group);
+  if (!Number.isSafeInteger(dayNumber) || !Number.isSafeInteger(groupNumber)) return null;
+  return { dayNumber, session: session === "am" ? "AM" : "PM", groupNumber };
 }
 
 /**
