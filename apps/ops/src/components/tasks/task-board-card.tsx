@@ -25,7 +25,8 @@ export function TaskBoardCard({
   assigneeName: string | null;
   today: string;
   onOpen: () => void;
-  onMove: () => void;
+  /** Absent at view level: the card can be opened but not moved. */
+  onMove?: () => void;
 }) {
   const late = isOverdue(task, today);
 
@@ -66,15 +67,17 @@ export function TaskBoardCard({
             </>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onMove}
-          aria-label={`Move ${task.title} to another status`}
-          className="inline-flex h-11 flex-none items-center gap-1 rounded-md px-2 text-[12px] font-semibold text-ink-muted hover:bg-surface-sunken hover:text-ink sm:h-8"
-        >
-          <MoveRight className="size-3.5" aria-hidden="true" />
-          Move to...
-        </button>
+        {onMove ? (
+          <button
+            type="button"
+            onClick={onMove}
+            aria-label={`Move ${task.title} to another status`}
+            className="inline-flex h-11 flex-none items-center gap-1 rounded-md px-2 text-[12px] font-semibold text-ink-muted hover:bg-surface-sunken hover:text-ink sm:h-8"
+          >
+            <MoveRight className="size-3.5" aria-hidden="true" />
+            Move to...
+          </button>
+        ) : null}
       </div>
     </Card>
   );

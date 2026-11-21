@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAccess } from "@/lib/access/server";
 import { getViewer } from "@/lib/auth/viewer";
 import { TASK_STATUSES } from "@/lib/db/constants";
 import { can, type Viewer as PermissionViewer } from "@/lib/db/permissions";
@@ -53,6 +54,7 @@ async function run<T>(work: () => Promise<T>): Promise<ActionResult<T>> {
 export async function createTask(input: TaskDraft): Promise<ActionResult<WsTaskRow>> {
   return run(async () => {
     await requireViewer();
+    await requireAccess("tasks", "edit");
     const repos = await getRepos();
     const row = await repos.tasks.createTask(input);
     revalidatePath("/tasks");
@@ -63,6 +65,7 @@ export async function createTask(input: TaskDraft): Promise<ActionResult<WsTaskR
 export async function updateTask(id: string, patch: TaskPatch): Promise<ActionResult<WsTaskRow>> {
   return run(async () => {
     await requireViewer();
+    await requireAccess("tasks", "edit");
     const repos = await getRepos();
     const row = await repos.tasks.updateTask(id, patch);
     revalidatePath("/tasks");
@@ -73,6 +76,7 @@ export async function updateTask(id: string, patch: TaskPatch): Promise<ActionRe
 export async function setStatus(id: string, status: TaskStatus): Promise<ActionResult<WsTaskRow>> {
   return run(async () => {
     await requireViewer();
+    await requireAccess("tasks", "edit");
     const repos = await getRepos();
     const row = await repos.tasks.setStatus(id, status);
     revalidatePath("/tasks");
@@ -95,6 +99,7 @@ export async function moveTask(
 ): Promise<ActionResult<WsTaskRow[]>> {
   return run(async () => {
     await requireViewer();
+    await requireAccess("tasks", "edit");
     if (id.trim() === "") throw new Error("That task is no longer on the board.");
     if (!TASK_STATUSES.some((entry) => entry.id === status)) throw new Error("Choose a status.");
     if (typeof position !== "number" || !Number.isFinite(position)) {
@@ -126,6 +131,7 @@ export async function moveTask(
 export async function deleteTask(id: string): Promise<ActionResult<void>> {
   return run(async () => {
     const viewer = await requireViewer();
+    await requireAccess("tasks", "edit");
     if (!can(permissionViewer(viewer), "content.delete")) {
       throw new Error("Only an owner or partner can delete a task.");
     }
@@ -138,6 +144,7 @@ export async function deleteTask(id: string): Promise<ActionResult<void>> {
 export async function listComments(taskId: string): Promise<ActionResult<WsTaskCommentRow[]>> {
   return run(async () => {
     await requireViewer();
+    await requireAccess("tasks", "view");
     const repos = await getRepos();
     return repos.tasks.listComments(taskId);
   });
@@ -149,6 +156,7 @@ export async function addComment(
 ): Promise<ActionResult<WsTaskCommentRow>> {
   return run(async () => {
     await requireViewer();
+    await requireAccess("tasks", "edit");
     const repos = await getRepos();
     const row = await repos.tasks.addComment(taskId, body);
     revalidatePath("/tasks");
@@ -162,6 +170,7 @@ export async function editComment(
 ): Promise<ActionResult<WsTaskCommentRow>> {
   return run(async () => {
     await requireViewer();
+    await requireAccess("tasks", "edit");
     const repos = await getRepos();
     // Only the author may edit, and the database enforces it. The button is hidden for anyone else.
     const row = await repos.tasks.editComment(id, body);
@@ -173,6 +182,7 @@ export async function editComment(
 export async function deleteComment(id: string): Promise<ActionResult<void>> {
   return run(async () => {
     await requireViewer();
+    await requireAccess("tasks", "edit");
     const repos = await getRepos();
     // The author, or an owner or partner. RLS enforces the same rule.
     await repos.tasks.deleteComment(id);

@@ -55,6 +55,7 @@ function renderView(tasks: WsTaskRow[], actions: TaskActions, initialTab: "mine"
       today="2026-11-20"
       live={false}
       initialTab={initialTab}
+      canEdit
       actions={actions}
     />,
   );

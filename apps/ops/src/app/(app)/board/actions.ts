@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAccess } from "@/lib/access/server";
 import type { BoardCard } from "@/lib/board/repo";
 import {
   type CardFormValues,
@@ -43,6 +44,7 @@ export async function createCardAction(input: {
   if (!isPipelineStage(stage)) return { ok: false, message: "Choose a stage." };
 
   try {
+    await requireAccess("pipeline", "edit");
     const repos = await getRepos();
     const card = await repos.board.createCard({
       title: parsed.title,
@@ -80,6 +82,7 @@ export async function saveCardAction(input: {
   if (!parsed.ok) return parsed;
 
   try {
+    await requireAccess("pipeline", "edit");
     const repos = await getRepos();
     const card = await repos.board.updateCard(id, parsed.patch);
     return { ok: true, card };
@@ -114,6 +117,7 @@ export async function moveCardAction(input: {
   }
 
   try {
+    await requireAccess("pipeline", "edit");
     const repos = await getRepos();
     const moved = await repos.board.moveCard({ id, stage, position: input.position });
     const updated = [moved];
@@ -130,6 +134,7 @@ export async function moveCardAction(input: {
 export async function deleteCardAction(id: string): Promise<DoneResult> {
   if (asString(id) === "") return { ok: false, message: "That card is no longer on the board." };
   try {
+    await requireAccess("pipeline", "edit");
     const repos = await getRepos();
     await repos.board.deleteCard(id);
     return { ok: true };

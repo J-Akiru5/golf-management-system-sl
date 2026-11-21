@@ -11,9 +11,12 @@ const INITIAL: ActionResult = { ok: true, message: "" };
 export function ProfileNameForm({
   name,
   action,
+  canEdit = true,
 }: {
   name: string;
   action: (state: ActionResult, formData: FormData) => Promise<ActionResult>;
+  /** False at view level: the name is shown, not the form. */
+  canEdit?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, INITIAL);
   // Controlled, so a saved name is what the field shows afterwards. The server value is the truth.
@@ -22,6 +25,18 @@ export function ProfileNameForm({
   useEffect(() => {
     setValue(name);
   }, [name]);
+
+  if (!canEdit) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <p className="text-[13px] font-medium text-ink">Display name</p>
+        <p className="text-sm text-ink">{name}</p>
+        <p className="hint">
+          You can view this page but not change it. Ask an owner for edit access to your profile.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-3">

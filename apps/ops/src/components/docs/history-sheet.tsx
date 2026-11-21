@@ -24,6 +24,7 @@ export function HistorySheet({
   onOpenChange,
   snapshots,
   busy,
+  canRestore,
   canDelete,
   onRestore,
   onDelete,
@@ -32,6 +33,7 @@ export function HistorySheet({
   onOpenChange: (open: boolean) => void;
   snapshots: DocSnapshot[];
   busy: boolean;
+  canRestore: boolean;
   canDelete: boolean;
   onRestore: (snapshot: DocSnapshot) => void;
   onDelete: (snapshot: DocSnapshot) => void;
@@ -140,17 +142,19 @@ export function HistorySheet({
                       </div>
                     ) : null}
 
-                    {answering === null ? (
+                    {answering === null && (canRestore || canDelete) ? (
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={busy}
-                          onClick={() => setConfirm({ id: snapshot.id, action: "restore" })}
-                        >
-                          <RotateCcw />
-                          Restore
-                        </Button>
+                        {canRestore ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={busy}
+                            onClick={() => setConfirm({ id: snapshot.id, action: "restore" })}
+                          >
+                            <RotateCcw />
+                            Restore
+                          </Button>
+                        ) : null}
                         {canDelete ? (
                           <Button
                             size="sm"

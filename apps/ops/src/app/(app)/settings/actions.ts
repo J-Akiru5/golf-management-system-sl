@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAccess } from "@/lib/access/server";
 import type { WorkspaceRole } from "@/lib/db/types";
 import { type ActionResult, mapMemberError } from "@/lib/members/errors";
 import { checkDisplayName } from "@/lib/members/rules";
@@ -20,6 +21,7 @@ export async function updateDisplayNameAction(
   if (problem) return { ok: false, message: problem };
 
   try {
+    await requireAccess("settings.profile", "edit");
     const repo = await settingsMembersRepo(demoViewer);
     await repo.updateMyDisplayName(name);
     revalidatePath("/settings");

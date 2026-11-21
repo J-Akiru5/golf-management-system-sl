@@ -57,6 +57,8 @@ export type DocEditorProps = {
   archived: boolean;
   viewer: { id: string; displayName: string; role: WorkspaceRole };
   demo: boolean;
+  /** False at view level: the text is shown but cannot be changed, and nothing can be saved. */
+  canEdit: boolean;
   canDelete: boolean;
   /** Converted content to import once, when the document has no state row. */
   seedContent: EditorJson | null;
@@ -112,6 +114,7 @@ export function DocEditor({
   archived,
   viewer,
   demo,
+  canEdit,
   canDelete,
   seedContent,
   initialSnapshots,
@@ -154,26 +157,30 @@ export function DocEditor({
         {archived ? <Badge tone="neutral">Archived</Badge> : null}
       </div>
 
-      <form onSubmit={commitTitle} className="flex flex-wrap items-center gap-2">
-        <Label htmlFor="doc-title" className="sr-only">
-          Document title
-        </Label>
-        <h1 className="max-w-2xl flex-1">
-          <Input
-            id="doc-title"
-            value={title}
-            maxLength={200}
-            onChange={(event) => setTitle(event.target.value)}
-            className="h-12 w-full font-display text-lg font-bold"
-            aria-label="Document title"
-          />
-        </h1>
-        {titleChanged ? (
-          <Button type="submit" variant="secondary" size="sm" disabled={savingTitle}>
-            {savingTitle ? "Saving..." : "Save title"}
-          </Button>
-        ) : null}
-      </form>
+      {canEdit ? (
+        <form onSubmit={commitTitle} className="flex flex-wrap items-center gap-2">
+          <Label htmlFor="doc-title" className="sr-only">
+            Document title
+          </Label>
+          <h1 className="max-w-2xl flex-1">
+            <Input
+              id="doc-title"
+              value={title}
+              maxLength={200}
+              onChange={(event) => setTitle(event.target.value)}
+              className="h-12 w-full font-display text-lg font-bold"
+              aria-label="Document title"
+            />
+          </h1>
+          {titleChanged ? (
+            <Button type="submit" variant="secondary" size="sm" disabled={savingTitle}>
+              {savingTitle ? "Saving..." : "Save title"}
+            </Button>
+          ) : null}
+        </form>
+      ) : (
+        <h1 className="text-2xl">{title}</h1>
+      )}
       {titleError ? (
         <p role="alert" className="text-sm text-danger">
           {titleError}
@@ -185,6 +192,7 @@ export function DocEditor({
           docId={docId}
           viewer={viewer}
           demo={demo}
+          canEdit={canEdit}
           canDelete={canDelete}
           seedContent={seedContent}
           initialSnapshots={initialSnapshots}
@@ -207,6 +215,7 @@ function LiveDocument({
   docId,
   viewer,
   demo,
+  canEdit,
   canDelete,
   seedContent,
   initialSnapshots,
@@ -272,6 +281,7 @@ function LiveDocument({
         "aria-multiline": "true",
       },
     },
+    editable: canEdit,
   });
 
   // Connection, persistence and the seed claim.
@@ -477,17 +487,19 @@ function LiveDocument({
         <StatusLine tone={tone} text={statusText} />
         <Presence users={people} />
         <div className="ml-auto flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setVersionName(versionNameFor(new Date()));
-              setSaveOpen(true);
-            }}
-          >
-            <Save />
-            Save version
-          </Button>
+          {canEdit ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setVersionName(versionNameFor(new Date()));
+                setSaveOpen(true);
+              }}
+            >
+              <Save />
+              Save version
+            </Button>
+          ) : null}
           <Button variant="secondary" size="sm" onClick={() => setHistoryOpen(true)}>
             <RotateCcw />
             History
@@ -496,7 +508,7 @@ function LiveDocument({
         </div>
       </div>
 
-      {editor ? <EditorToolbar editor={editor} /> : <Skeleton className="h-12 w-full" />}
+      {canEdit && editor ? <EditorToolbar editor={editor} /> : <Skeleton className="h-12 w-full" />}
 
       <Card className={EDITOR_BODY}>
         {editor ? (
@@ -511,7 +523,9 @@ function LiveDocument({
       </Card>
 
       <p className="hint">
-        Changes are shared as you type. Save a version before a big change so you can return to it.
+        {canEdit
+          ? "Changes are shared as you type. Save a version before a big change so you can return to it."
+          : "You can read this document but not change it. Ask an owner for edit access to documents."}
       </p>
 
       {notice ? (
@@ -565,6 +579,7 @@ function LiveDocument({
         onOpenChange={setHistoryOpen}
         snapshots={snapshots}
         busy={busy}
+        canRestore={canEdit}
         canDelete={canDelete}
         onRestore={(snapshot) => void restoreVersion(snapshot)}
         onDelete={(snapshot) => void deleteVersion(snapshot)}

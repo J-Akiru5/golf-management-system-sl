@@ -54,7 +54,7 @@ const members = [
 
 function renderBoard(cards: BoardCard[]) {
   return render(
-    <BoardView initialCards={cards} members={members} tournaments={[]} canDelete demo />,
+    <BoardView initialCards={cards} members={members} tournaments={[]} canEdit canDelete demo />,
   );
 }
 
@@ -209,6 +209,7 @@ describe("BoardView", () => {
         initialCards={[card({})]}
         members={members}
         tournaments={[]}
+        canEdit
         canDelete={false}
         demo
       />,

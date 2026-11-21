@@ -4,24 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/ui/cn";
 
-const TABS = [
-  { href: "/settings", label: "Profile" },
-  { href: "/settings/members", label: "Members" },
-] as const;
+export type SettingsTab = { page: string; href: string; label: string };
 
 /**
- * The two Settings pages. Links, not a client tab panel, because each page is its own route and
- * should be shareable and reloadable. The look matches the tabs primitive.
+ * The Settings pages this person may open. Links, not a client tab panel, because each page is its
+ * own route and should be shareable and reloadable. The page list comes from the access registry;
+ * a tab they cannot open is absent, never greyed out.
  */
-export function SettingsTabs() {
+export function SettingsTabs({ tabs }: { tabs: ReadonlyArray<SettingsTab> }) {
   const pathname = usePathname();
+
+  if (tabs.length === 0) return null;
 
   return (
     <nav
       aria-label="Settings"
       className="inline-flex items-center gap-0.5 self-start rounded-md bg-surface-sunken p-1 text-ink-muted"
     >
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = pathname === tab.href;
         return (
           <Link

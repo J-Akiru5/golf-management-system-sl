@@ -9,6 +9,21 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.63.0] - 2026-11-21
+
+### Added
+- **Workspace Admin (owner only), the god-mode view.** Every Supabase account in one table with its workspace role, desk roles, tabulator flag, linked player, status, last sign-in and last active (inactive 30+ days flagged). Search, filters and bulk actions. Invite by email (the person sets their own password from the link), change workspace and desk roles, tabulator on/off, a reversible suspend that remembers the previous roles and signs the person out, restore, send a password reset, sign out everywhere, and an audit log of every action with its reason. New `/auth/confirm` and `/auth/set-password` pages in the workspace handle invite and reset links.
+- **Granular page access in the workspace.** Each page (Overview, Documents, Pipeline, Tasks, Profile, Members, AI providers, Admin) is No access, View or Edit per role, with per-person overrides. A page with no access is hidden from the menu and refused on the server and in the database. The defaults match the previous behaviour.
+- **BYOK for Teeo.** Workspace owners manage AI providers in Settings, AI providers: model, priority, reasoning effort, enabled, base URL, and a key that is tested with one live call before it is stored, encrypted with AES-256-GCM under `AI_SECRET_KEY`, shown only as its last four characters, with every change audited. Teeo reads the chain on the server and falls back to environment keys.
+- **A friendlier Teeo panel** in the PakaonAI assistant's layout: header band with the language pill, warm body, quick-reply chips, pill input and round send button.
+- Health diagnosis reports for the v1.0.0 cut (`docs/health/`) and the v1.0.0 milestone (#341 to #357).
+
+### Security
+- Limits on anonymous writes to the public entry form, a daily cap on Teeo's provider calls that fails closed when it cannot be checked, and a test that every database table has row level security (#353).
+
+### Database
+- **Written and NOT applied:** `20261123000000_ai_provider_settings.sql`, `20261123000100_god_mode.sql`, `20261123000200_workspace_permissions.sql`, `20261123000300_entry_limits.sql`. The owner runs `docs/ai-providers/`, `docs/god-mode/`, `docs/permissions/` and `docs/security/apply-on-live.sql` after the 0.61.0 and 0.62.0 scripts (order in `docs/PLAN.md`). Until then Admin and AI providers say they need the database, the workspace keeps today's role rules, and Teeo answers with its fixed fallback.
+
 ## [0.62.0] - 2026-11-20
 
 ### Added
