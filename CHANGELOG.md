@@ -9,6 +9,9 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Added
+- **Live updates on the desk and the public pages (#349).** Another desk user's save appears on the scores screen within about ten seconds without a reload, and a round the desk publishes reaches an open phone the same way. Both use a visible-tab poll with jitter and backoff: the desk re-reads the round and redraws only when its signature moved, the public pages ask a small endpoint for a signature and re-render only when it changed. A hidden tab, an offline phone and a write in flight ask nothing. No Supabase Realtime, no new service, no migration. How to check it on event day: `docs/health/live-updates-event-day.md`.
+
 ### Fixed
 - **A scorecard is scored on the tee written on it (#296).** The owner's rule of 14 Nov 2026 makes the card's tee the source of the WHS playing handicap, and the scoring code now works it out that way. When the card names a tee the round has no rating for, the card is refused with that tee named, never scored on another one. The sheet import still saves on the registration tee, so a card whose written tee differs from the registration is now blocked with the registration tee named as the fix instead of being imported on a tee it was not played from. A tee named "Ladies Red" or "Ladies" now gives the tabulation page the real Ladies rating and par, so Ladies net scores may move to the correct figure. No migration ships with this change.
 
