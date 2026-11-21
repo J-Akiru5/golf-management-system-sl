@@ -1951,7 +1951,14 @@ check(
   tvBoard === 1 || tvHeld || tvIdle,
   `(board ${tvBoard}, held ${tvHeld}, idle ${tvIdle})`,
 );
-check("the TV screen carries the club's name", tvText.includes("Iloilo Golf & Country Club"));
+const tvLower = tvText.toLowerCase();
+check(
+  "the TV screen carries the club's name",
+  // The board sets the club name in caps, and innerText returns it as drawn, so compare in lower
+  // case rather than assuming the stored spelling reaches the wall.
+  tvLower.includes("iloilo golf & country club"),
+  `(${tvText.slice(0, 60)})`,
+);
 if (tvBoard === 1) {
   await tvPage.getByRole("button", { name: "By player", exact: true }).click();
   await tvPage.waitForTimeout(500);
