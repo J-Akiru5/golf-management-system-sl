@@ -17,12 +17,13 @@ import {
 } from "./pages";
 
 describe("the registry", () => {
-  it("has the eight pages, each with a role default for every role", () => {
+  it("has the nine pages, each with a role default for every role", () => {
     expect(PAGE_IDS).toEqual([
       "overview",
       "documents",
       "pipeline",
       "tasks",
+      "timeline",
       "settings.profile",
       "settings.members",
       "settings.ai_providers",
@@ -42,6 +43,8 @@ describe("the registry", () => {
     expect(pageForPath("/docs/abc")).toBe("documents");
     expect(pageForPath("/board")).toBe("pipeline");
     expect(pageForPath("/tasks")).toBe("tasks");
+    expect(pageForPath("/timeline")).toBe("timeline");
+    expect(pageForPath("/timeline/2026-12")).toBe("timeline");
     expect(pageForPath("/settings")).toBe("settings.profile");
     expect(pageForPath("/settings/members")).toBe("settings.members");
     expect(pageForPath("/settings/members/anything")).toBe("settings.members");
@@ -58,7 +61,7 @@ describe("the registry", () => {
       pages
         .filter((page) => page.nav)
         .map((page) => ("navLabel" in page ? page.navLabel : page.label)),
-    ).toEqual(["Overview", "Documents", "Pipeline", "Tasks", "Settings", "Admin"]);
+    ).toEqual(["Overview", "Documents", "Pipeline", "Tasks", "Timeline", "Settings", "Admin"]);
   });
 });
 
@@ -89,6 +92,13 @@ describe("effectiveAccess", () => {
   it("gives a person with no role nothing", () => {
     expect(effectiveAccess(null, {}, "overview")).toBe("none");
     expect(effectiveAccess(null, { overview: "edit" }, "overview")).toBe("none");
+  });
+
+  it("opens the Timeline to an owner and partner as edit, and to a member as view", () => {
+    expect(effectiveAccess("owner", {}, "timeline")).toBe("edit");
+    expect(effectiveAccess("partner", {}, "timeline")).toBe("edit");
+    expect(effectiveAccess("member", {}, "timeline")).toBe("view");
+    expect(navItemsFor(roleAccess("member")).map((item) => item.label)).toContain("Timeline");
   });
 });
 
@@ -145,6 +155,7 @@ describe("the menu", () => {
       "Documents",
       "Pipeline",
       "Tasks",
+      "Timeline",
       "Settings",
     ]);
 
