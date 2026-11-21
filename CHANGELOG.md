@@ -9,6 +9,15 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.64.1] - 2026-11-21
+
+### Fixed
+- **Teeo scrolls with a mouse wheel** on the landing page; its smooth scrolling had taken every wheel event.
+- The first tournament preset is saved from the desk (Setup, "Save these settings as a preset"); the SQL editor cannot run `seed_preset_from_tournament` because it has no signed-in organizer.
+
+### Added
+- **Migration probe (#354):** `pnpm migrations:probe` writes `docs/migrations/probe.sql`, one read-only query that lists every migration as applied, partly applied or missing on the live database.
+
 ## [0.64.0] - 2026-11-21
 
 ### Added

@@ -303,6 +303,9 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
   return (
     <div
       className="tl-chat-panel"
+      // The landing page's smooth scrolling (Lenis) takes every wheel event; this attribute tells it
+      // to leave the panel alone so the conversation scrolls with a mouse wheel.
+      data-lenis-prevent=""
       role="dialog"
       aria-modal="false"
       aria-labelledby="tl-chat-title"
