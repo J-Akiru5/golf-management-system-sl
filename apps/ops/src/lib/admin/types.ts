@@ -1,3 +1,4 @@
+import type { AccessLevel } from "@/lib/access/pages";
 import type { WorkspaceMemberStatus, WorkspaceRole } from "@/lib/db/types";
 
 /**
@@ -166,4 +167,11 @@ export type AdminActions = {
   bulkSuspend(userIds: string[], apps: GodApp[], reason: string): Promise<BulkAdminResult>;
   bulkRestore(userIds: string[], reason: string): Promise<BulkAdminResult>;
   bulkSignOut(userIds: string[], reason: string): Promise<BulkAdminResult>;
+  /** One page for one person. A null level puts them back on the role default. */
+  setUserPermission(
+    userId: string,
+    page: string,
+    level: AccessLevel | null,
+    reason: string,
+  ): Promise<AdminActionResult>;
 };

@@ -7,6 +7,9 @@ import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requirePageAccess } from "@/lib/access/guard";
+import { levelFor } from "@/lib/access/pages";
+import { currentAccess } from "@/lib/access/server";
 import { demoMode, opsEnabled } from "@/lib/flags";
 import { formatJoined, roleLabel, roleSummary } from "@/lib/members/format";
 import { parseDemoViewer, settingsMembersRepo } from "@/lib/members/viewer";
@@ -20,10 +23,12 @@ export default async function SettingsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  await requirePageAccess("settings.profile");
   const demoViewer = parseDemoViewer(params.as);
   const repo = await settingsMembersRepo(demoViewer);
   const me = await repo.getMe();
   const demo = demoMode();
+  const canEdit = levelFor(await currentAccess(), "settings.profile") === "edit";
 
   if (me === null) {
     return (
@@ -47,6 +52,7 @@ export default async function SettingsPage({
             <ProfileNameForm
               name={me.displayName}
               action={updateDisplayNameAction.bind(null, demoViewer)}
+              canEdit={canEdit}
             />
             <dl className="flex flex-col gap-3">
               <div>

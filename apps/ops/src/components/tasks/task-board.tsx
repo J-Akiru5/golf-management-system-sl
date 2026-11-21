@@ -40,6 +40,7 @@ export function TaskBoard({
   today,
   onOpen,
   onMove,
+  canEdit,
 }: {
   tasks: WsTaskRow[];
   members: ReadonlyArray<TaskMember>;
@@ -47,6 +48,8 @@ export function TaskBoard({
   today: string;
   onOpen: (id: string) => void;
   onMove: (move: TaskBoardMove) => void;
+  /** False at view level: the card opens but nothing can be dragged or moved. */
+  canEdit: boolean;
 }) {
   const [view, setView] = useState<TaskView>("mine");
   const [assigneeId, setAssigneeId] = useState<string>(() => {
@@ -108,6 +111,7 @@ export function TaskBoard({
         columns={TASK_BOARD_COLUMNS}
         items={items}
         onMove={handleDrag}
+        disabled={!canEdit}
         getItemLabel={(item) => item.title}
         emptyLabel="No tasks"
         renderColumnHeader={(column, count) => {
@@ -138,7 +142,7 @@ export function TaskBoard({
             }
             today={today}
             onOpen={() => onOpen(item.id)}
-            onMove={() => setMovingId(item.id)}
+            onMove={canEdit ? () => setMovingId(item.id) : undefined}
           />
         )}
       />

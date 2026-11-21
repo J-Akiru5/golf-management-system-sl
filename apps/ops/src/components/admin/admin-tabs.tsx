@@ -2,15 +2,16 @@ import Link from "next/link";
 import { cn } from "@/lib/ui/cn";
 
 const TABS = [
-  { href: "/admin", label: "Accounts" },
-  { href: "/admin/audit", label: "Audit log" },
+  { href: "/admin", label: "Accounts", id: "accounts" },
+  { href: "/admin/permissions", label: "Permissions", id: "permissions" },
+  { href: "/admin/audit", label: "Audit log", id: "audit" },
 ] as const;
 
-export type AdminTab = "accounts" | "audit";
+export type AdminTab = "accounts" | "permissions" | "audit";
 
 /**
- * The two Admin pages. Links, not a client tab panel, so the audit log is a real address that can
- * be bookmarked and reloaded.
+ * The three Admin pages. Links, not a client tab panel, so each is a real address that can be
+ * bookmarked and reloaded. The whole Admin page is owner-only, so every tab is always shown.
  */
 export function AdminTabs({ active }: { active: AdminTab }) {
   return (
@@ -19,9 +20,7 @@ export function AdminTabs({ active }: { active: AdminTab }) {
       className="inline-flex items-center gap-0.5 self-start rounded-md bg-surface-sunken p-1 text-ink-muted"
     >
       {TABS.map((tab) => {
-        const isActive =
-          (tab.href === "/admin" && active === "accounts") ||
-          (tab.href === "/admin/audit" && active === "audit");
+        const isActive = tab.id === active;
         return (
           <Link
             key={tab.href}

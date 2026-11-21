@@ -7,6 +7,7 @@ import {
 import { DemoBanner } from "@/components/settings/demo-banner";
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requirePageAccess } from "@/lib/access/guard";
 import {
   AI_PROVIDERS,
   type AiAuditAction,
@@ -66,6 +67,7 @@ export default async function AiProvidersPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  await requirePageAccess("settings.ai_providers");
   const demoViewer = parseDemoViewer(params.as);
   const members = await settingsMembersRepo(demoViewer);
   const me = await members.getMe();

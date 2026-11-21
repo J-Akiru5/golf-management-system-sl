@@ -16,6 +16,8 @@ export type TaskListProps = {
   today: string;
   onOpen: (id: string) => void;
   onStatus: (id: string, status: TaskStatus) => void;
+  /** False at view level: the status is a badge, not a control. */
+  canEdit?: boolean;
   empty: { title: string; body: string; action?: ReactNode };
 };
 
@@ -93,6 +95,7 @@ export function TaskList({
   today,
   onOpen,
   onStatus,
+  canEdit = true,
   empty,
 }: TaskListProps) {
   if (tasks.length === 0) {
@@ -140,7 +143,11 @@ export function TaskList({
                       <TitleButton task={task} onOpen={onOpen} />
                     </td>
                     <td className="px-3 py-2.5">
-                      <StatusSelect task={task} onStatus={onStatus} />
+                      {canEdit ? (
+                        <StatusSelect task={task} onStatus={onStatus} />
+                      ) : (
+                        <StatusBadge status={task.status} />
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <PriorityBadge priority={task.priority} />

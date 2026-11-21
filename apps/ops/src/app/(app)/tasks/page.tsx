@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TasksView, type TaskTab } from "@/components/tasks/tasks-view";
+import { requirePageAccess } from "@/lib/access/guard";
+import { levelFor } from "@/lib/access/pages";
+import { currentAccess } from "@/lib/access/server";
 import { getViewer } from "@/lib/auth/viewer";
 import { demoMode } from "@/lib/flags";
 import { getRepos } from "@/lib/repos";
@@ -33,6 +36,9 @@ export default async function TasksPage({
 }) {
   const params = await searchParams;
   const initialTab: TaskTab = params.view === "board" ? "board" : "mine";
+
+  await requirePageAccess("tasks");
+  const canEdit = levelFor(await currentAccess(), "tasks") === "edit";
 
   const demo = demoMode();
   const repos = await getRepos();
@@ -78,6 +84,7 @@ export default async function TasksPage({
       today={isoToday()}
       live={!demo}
       initialTab={initialTab}
+      canEdit={canEdit}
       actions={actions}
     />
   );

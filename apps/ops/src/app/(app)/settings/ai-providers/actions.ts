@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAccess } from "@/lib/access/server";
 import { testProviderKey } from "@/lib/ai/key-test";
 import {
   type AiProviderId,
@@ -57,6 +58,12 @@ function mapError(error: unknown): string {
 /** Null when the caller may manage providers; a refusal sentence otherwise. */
 async function ownerRefusal(demoViewer: WorkspaceRole): Promise<string | null> {
   if (demoMode()) return demoViewer === "owner" ? null : OWNER_ONLY;
+  try {
+    // The page check comes first, so a per-person override of `none` refuses before any work.
+    await requireAccess("settings.ai_providers", "edit");
+  } catch (error) {
+    return error instanceof Error && error.message.trim() !== "" ? error.message : OWNER_ONLY;
+  }
   try {
     const me = await (await settingsMembersRepo(demoViewer)).getMe();
     if (!me || me.role !== "owner" || me.status !== "active") return OWNER_ONLY;

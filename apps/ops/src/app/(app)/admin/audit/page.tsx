@@ -4,6 +4,7 @@ import { AdminTabs } from "@/components/admin/admin-tabs";
 import { AuditLogView } from "@/components/admin/audit-log-view";
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requirePageAccess } from "@/lib/access/guard";
 import { OWNER_ONLY_MESSAGE } from "@/lib/admin/rules";
 import { getViewer } from "@/lib/auth/viewer";
 import { demoMode } from "@/lib/flags";
@@ -12,6 +13,8 @@ import { listAuditAction } from "../actions";
 export const metadata: Metadata = { title: "Admin audit log" };
 
 export default async function AdminAuditPage() {
+  await requirePageAccess("admin");
+
   if (demoMode()) {
     return (
       <EmptyState icon={ShieldAlert} title="Admin needs a database">
