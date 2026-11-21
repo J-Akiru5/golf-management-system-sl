@@ -6,7 +6,25 @@ import {
   pickDeskMarker,
   planEventCardSave,
   planEventHandicap,
+  resolveCardTee,
+  teeLetter,
 } from "./event-card";
+import type { TeeRatings } from "./types";
+
+const LADIES_TEE: TeeRatings = {
+  id: "ladies",
+  name: "Ladies Red",
+  courseRating: 74,
+  slope: 124,
+  par: 72,
+};
+
+const CARD_TEES: TeeRatings[] = [
+  TEST_TEE,
+  { id: "blue", name: "Blue", courseRating: 72.4, slope: 135, par: 72 },
+  LADIES_TEE,
+  { id: "silver", name: "Silver", courseRating: 69, slope: 120, par: 72 },
+];
 
 const PLAYERS = [
   { playerId: "p3", playerName: "Charlie", handicap: null, frozenIndex: 9.2, tee: TEST_TEE },
@@ -76,6 +94,58 @@ describe("planning a card under the event rules", () => {
     const plan = planEventCardSave(input({ cardHandicap: "18" }));
     if (!plan.ok) throw new Error(plan.message);
     expect(plan.cardNote).toBeNull();
+  });
+
+  it("scores a card on the tee written on it when it differs from the registration", () => {
+    const plan = planEventCardSave(input({ cardTee: "L", tees: CARD_TEES }));
+    if (!plan.ok) throw new Error(plan.message);
+    // Index 16.4 on the Ladies Red tee plays off 20, not the 18 the registration tee gives.
+    expect(plan.handicap.playingHandicap).toBe(20);
+    expect(plan.handicap.courseHandicap).toBe(20);
+    expect(plan.tee.id).toBe("ladies");
+    expect(plan.tee.name).toBe("Ladies Red");
+    expect(plan.teeSource).toBe("card");
+    expect(plan.snapshot.teeId).toBe("ladies");
+    expect(plan.snapshot.playingHandicap).toBe(20);
+    expect(plan.cardNote).toBe("card says 16.7, plays off 20 (index 16.4, Ladies Red)");
+    expect(plan.auditReason).toContain("on Ladies Red");
+  });
+
+  it("leaves the number alone when the card names the registration tee", () => {
+    const plan = planEventCardSave(input({ cardTee: "W", tees: CARD_TEES }));
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.handicap.playingHandicap).toBe(18);
+    expect(plan.tee.id).toBe(TEST_TEE.id);
+    expect(plan.snapshot.teeId).toBe(TEST_TEE.id);
+    expect(plan.teeSource).toBe("card");
+    expect(plan.cardNote).toBe("card says 16.7, plays off 18 (index 16.4, White)");
+  });
+
+  it("reads the registration tee when the card has no tee", () => {
+    const plan = planEventCardSave(input({ cardTee: "  " }));
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.handicap.playingHandicap).toBe(18);
+    expect(plan.teeSource).toBe("registration");
+  });
+
+  it("uses the registration's ratings for the same tee when no course list is loaded", () => {
+    const plan = planEventCardSave(input({ cardTee: "W" }));
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.handicap.playingHandicap).toBe(18);
+    expect(plan.tee.id).toBe(TEST_TEE.id);
+    expect(plan.teeSource).toBe("card");
+  });
+
+  it("refuses a card tee with no rating instead of using another tee", () => {
+    const message = refusal({ cardTee: "S", tees: [TEST_TEE] });
+    expect(message).toContain("Silver");
+    expect(message).toContain("no Silver tee rating");
+    expect(message).toContain("cannot be scored on another tee");
+  });
+
+  it("refuses a card tee that is not one of the card letters", () => {
+    const message = refusal({ cardTee: "Championship", tees: CARD_TEES });
+    expect(message).toContain("not one of B, W, L or S");
   });
 
   it("does not write a snapshot that already plays off the same number", () => {
@@ -213,6 +283,15 @@ describe("the handicap a card is scored with, for a save or an approval", () => 
     expect(plan.snapshot).toMatchObject({ index: 16.4, playingHandicap: 18, rounding: "whs" });
   });
 
+  it("works an approval out on the card's tee too", () => {
+    const plan = planEventHandicap(handicapInput({ cardTee: "L", tees: CARD_TEES }));
+    if (!plan.ok) throw new Error(plan.message);
+    expect(plan.tee.id).toBe("ladies");
+    expect(plan.teeSource).toBe("card");
+    expect(plan.snapshot).toMatchObject({ teeId: "ladies", playingHandicap: 20 });
+    expect(plan.needsSnapshotWrite).toBe(true);
+  });
+
   it("writes nothing when the round already plays off the same number", () => {
     const plan = planEventHandicap(
       handicapInput({
@@ -269,6 +348,56 @@ describe("the handicap a card is scored with, for a save or an approval", () => 
     const ordinary = planEventHandicap(handicapInput({ rulesVersion: "demo-rules-v1" }));
     if (ordinary.ok) throw new Error("An ordinary round was expected to be refused.");
     expect(ordinary.message).toContain("not on the event's card rules");
+  });
+});
+
+describe("the tee a card is scored on", () => {
+  it("reads the card letters and the tee names they stand for", () => {
+    expect(teeLetter("L")).toBe("L");
+    expect(teeLetter("l")).toBe("L");
+    expect(teeLetter("Ladies Red")).toBe("L");
+    expect(teeLetter("Ladies")).toBe("L");
+    expect(teeLetter("Red")).toBe("L");
+    expect(teeLetter("Ladies White")).toBe("W");
+    expect(teeLetter("White")).toBe("W");
+    expect(teeLetter("Blue")).toBe("B");
+    expect(teeLetter("Silver")).toBe("S");
+    expect(teeLetter("Championship")).toBe("");
+    expect(teeLetter("")).toBe("");
+  });
+
+  it("takes the card's letter over the registration tee", () => {
+    const result = resolveCardTee({
+      cardTee: "L",
+      registration: TEST_TEE,
+      round: TEST_TEE,
+      tees: CARD_TEES,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.tee.name).toBe("Ladies Red");
+    expect(result.source).toBe("card");
+    expect(result.letter).toBe("L");
+  });
+
+  it("uses the registration tee when the card has none", () => {
+    const result = resolveCardTee({ registration: TEST_TEE, round: LADIES_TEE });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.tee.id).toBe(TEST_TEE.id);
+    expect(result.source).toBe("registration");
+  });
+
+  it("refuses a card letter the round has no rating for", () => {
+    const result = resolveCardTee({
+      cardTee: "S",
+      registration: TEST_TEE,
+      round: TEST_TEE,
+      tees: [TEST_TEE],
+    });
+    if (result.ok) throw new Error("A missing tee rating was expected to be refused.");
+    expect(result.message).toContain("Silver");
+    expect(result.message).toContain("cannot be scored on another tee");
   });
 });
 

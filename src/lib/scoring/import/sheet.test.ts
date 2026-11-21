@@ -47,6 +47,14 @@ const ROSTER = [
   { playerId: "p2", playerName: "BRAVO, BOB", frozenIndex: 22.9, tee: TEST_COURSE.tee },
 ];
 
+const LADIES_TEE = {
+  id: "ladies",
+  name: "Ladies Red",
+  courseRating: 74,
+  slope: 124,
+  par: 72,
+};
+
 function resolve(
   cards: SheetCard[],
   overrides: Partial<ResolveSheetImportInput> = {},
@@ -233,6 +241,52 @@ describe("planning the import", () => {
     expect(plan.blocked).toEqual([]);
     expect(plan.ready[0]?.playingHandicap).toBe(18);
     expect(plan.ready[0]?.cardNote).toBe("card says +1.2, plays off 18 (index 16.4, White)");
+  });
+
+  it("keeps the number unchanged when the card names the registration tee", () => {
+    const plan = resolve([sheetCard({ tee: "W" })]);
+    expect(plan.blocked).toEqual([]);
+    expect(plan.ready[0]?.playingHandicap).toBe(18);
+  });
+
+  it("reads the registration tee when the card has no tee letter", () => {
+    const plan = resolve([sheetCard({ tee: "" })]);
+    expect(plan.blocked).toEqual([]);
+    expect(plan.ready[0]?.playingHandicap).toBe(18);
+  });
+
+  it("reads a Ladies registration named Ladies Red as the card's L", () => {
+    const plan = resolve([sheetCard({ tee: "L" })], {
+      players: ROSTER.map((player) =>
+        player.playerId === "p1" ? { ...player, tee: LADIES_TEE } : player,
+      ),
+    });
+    expect(plan.blocked).toEqual([]);
+    // Index 16.4 on the Ladies Red tee plays off 20.
+    expect(plan.ready[0]?.playingHandicap).toBe(20);
+    expect(plan.ready[0]?.cardNote).toBe("card says 16.7, plays off 20 (index 16.4, Ladies Red)");
+  });
+
+  it("blocks a card whose tee differs from the registration, naming the fix", () => {
+    const plan = resolve([sheetCard({ tee: "L" })]);
+    expect(plan.ready).toEqual([]);
+    const reasons = plan.blocked[0]?.reasons.join(" ") ?? "";
+    expect(reasons).toContain("The card says Ladies (L), but the registration tee is White");
+    expect(reasons).toContain("Set the registration tee to Ladies in the field list");
+  });
+
+  it("blocks a card tee that is not one of the card letters", () => {
+    const plan = resolve([sheetCard({ tee: "Championship" })]);
+    expect(plan.ready).toEqual([]);
+    expect(plan.blocked[0]?.reasons.join(" ")).toContain("not one of B, W, L or S");
+  });
+
+  it("blocks a card with a tee when the registration has no tee", () => {
+    const plan = resolve([sheetCard({ tee: "L" })], {
+      players: ROSTER.map((player) => ({ ...player, tee: null })),
+    });
+    expect(plan.ready).toEqual([]);
+    expect(plan.blocked[0]?.reasons.join(" ")).toContain("the registration has no tee");
   });
 
   it("blocks a card whose player has no tee, naming the fix", () => {

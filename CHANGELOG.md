@@ -9,6 +9,9 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+### Fixed
+- **A scorecard is scored on the tee written on it (#296).** The owner's rule of 14 Nov 2026 makes the card's tee the source of the WHS playing handicap, and the scoring code now works it out that way. When the card names a tee the round has no rating for, the card is refused with that tee named, never scored on another one. The sheet import still saves on the registration tee, so a card whose written tee differs from the registration is now blocked with the registration tee named as the fix instead of being imported on a tee it was not played from. A tee named "Ladies Red" or "Ladies" now gives the tabulation page the real Ladies rating and par, so Ladies net scores may move to the correct figure. No migration ships with this change.
+
 ### Docs
 - **The migration ledger and the live database state are recorded.** `scripts/migration-ledger.mjs` (`pnpm migrations:check`) compares `supabase/migrations` with the live `supabase_migrations.schema_migrations` table when `SUPABASE_ACCESS_TOKEN` is set, and otherwise checks the key tables, columns and rows. The 21 Nov 2026 check from `382b614` (v0.64.0) shows scripts 1 to 9 applied, the preset seed empty, and four older gaps: the photo token, the scorecard scans, the per-day afternoon start, and 3 registrations without `membership_type`. `docs/PLAN.md` has the table and the owner order. No migration is applied by the script. This corrects the 0.64.0 Database paragraph, which said scripts 7 to 9 were not applied.
 
