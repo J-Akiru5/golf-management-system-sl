@@ -51,6 +51,7 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/ui/cn";
 import { EditorToolbar } from "./editor-toolbar";
 import { HistorySheet } from "./history-sheet";
+import { InsertFromFile } from "./insert-from-file";
 import { Presence } from "./presence";
 
 export type DocEditorProps = {
@@ -586,7 +587,14 @@ function LiveDocument({
         </div>
       </div>
 
-      {canEdit && editor ? <EditorToolbar editor={editor} /> : <Skeleton className="h-12 w-full" />}
+      {canEdit && editor ? (
+        <EditorToolbar
+          editor={editor}
+          actions={<InsertFromFile editor={editor} canEdit={canEdit} />}
+        />
+      ) : (
+        <Skeleton className="h-12 w-full" />
+      )}
 
       <Card className={EDITOR_BODY}>
         {editor ? (
