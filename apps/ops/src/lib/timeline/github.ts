@@ -137,7 +137,12 @@ function configuredToken(options: GithubOptions): string {
 }
 
 function configuredRepo(options: GithubOptions): string {
-  const value = (options.repo ?? process.env.GITHUB_REPO ?? "").trim();
+  const value = (
+    options.repo ??
+    process.env.GITHUB_REPOSITORY ??
+    process.env.GITHUB_REPO ??
+    ""
+  ).trim();
   return value === "" ? GITHUB_DEFAULT_REPO : value;
 }
 
