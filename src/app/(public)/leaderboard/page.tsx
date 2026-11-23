@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ResultTable } from "@/components/public/LeaderboardResults";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
+import { PublicLive } from "@/components/public/PublicLive";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { RevealPoller } from "@/components/public/RevealPoller";
 import { TeamLeaderboard } from "@/components/public/TeamLeaderboard";
@@ -23,6 +24,7 @@ import {
 } from "@/lib/data/public-team-leaderboard";
 import {
   readPublicAdvisory,
+  readPublicLiveSignature,
   readPublicProgramme,
   readPublicReleaseState,
   readPublicRevealState,
@@ -66,14 +68,20 @@ const dateLabel = (date: string) =>
  * It reads the frozen publication snapshots through `public_team_leaderboard()` and adds the two
  * partners together here. A database that has not applied the new function yet falls back to the
  * per-round gross and net tables, with a notice, so the page never breaks on an older project.
+ *
+ * The live signature is read once for the whole page and handed to `PublicLive`, which polls it
+ * while the tab is visible: a round the desk publishes reloads this page on an open phone, and a
+ * held or released leaderboard does the same through the release keys in the same string.
  */
 export default async function LeaderboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ category?: string | string[]; flight?: string | string[] }>;
 }) {
+  const live = isSupabaseConfigured() ? await readPublicLiveSignature() : "";
   return (
     <>
+      <PublicLive signature={live} />
       <JsonLd
         data={webPageSchema({
           path: "/leaderboard",

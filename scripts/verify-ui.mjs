@@ -1092,10 +1092,15 @@ check(
 );
 // The reload has painted but React may not have attached the control yet; wait for it rather
 // than counting on the first frame after networkidle.
-await expect(page.getByRole("button", { name: "Collapse" })).toHaveCount(1, { timeout: 15000 });
+// Exact, because the alerts bell has a "Collapse issues badge" button and Playwright's name
+// matching is a substring by default: the rail control is only unambiguous when the whole name
+// is compared.
+await expect(page.getByRole("button", { name: "Collapse", exact: true })).toHaveCount(1, {
+  timeout: 15000,
+});
 check("and the rail says how to put it back", true);
 
-await page.getByRole("button", { name: "Collapse" }).click();
+await page.getByRole("button", { name: "Collapse", exact: true }).click();
 await page.waitForTimeout(300);
 check(
   "collapsing returns it to compact",
@@ -1640,6 +1645,395 @@ check(
   (await phonePage.getByText("Time to be confirmed").count()) === 0,
 );
 await phoneContext.close();
+
+// ------------------------- events, concerns, demo, rules, the TV board and Teeo (issue 355)
+// These public surfaces had no browser section. The demo build is the honest limit: with no
+// database it has no events, no per-event rules and no inbox, so the populated event page, the
+// /rules redirect and a real concern write are recorded in the acceptance checklist as gaps. This
+// suite proves the empty and refusal states it really serves, not a pass it cannot reach.
+section("public events portfolio");
+const publicContext = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+await publicContext.addInitScript(() => {
+  try {
+    window.localStorage.setItem(
+      "teeline-help-seen",
+      JSON.stringify(["welcome.desk", "welcome.player"]),
+    );
+    const seen = { seen: true, step: 0, updatedAt: new Date().toISOString() };
+    window.localStorage.setItem(
+      "teeline-onboarding-v1",
+      JSON.stringify({ player: seen, staff: seen }),
+    );
+  } catch {
+    // Storage off: no check below needs a modal-free page.
+  }
+});
+const publicPage = await publicContext.newPage();
+watch(publicPage);
+const publicGo = async (path) => {
+  await publicPage.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+};
+
+await publicGo("/events");
+await expect(publicPage.getByRole("heading", { name: "Events", exact: true })).toBeVisible({
+  timeout: 30000,
+});
+const eventLinks = publicPage.locator('a[href^="/events/"]');
+const eventCount = await eventLinks.count();
+const eventHrefs = await eventLinks.evaluateAll((links) =>
+  links.map((link) => link.getAttribute("href") ?? ""),
+);
+const firstEventHref = eventCount > 0 ? (eventHrefs[0] ?? null) : null;
+const emptyEvents = await publicPage.getByText("No events are listed yet.").count();
+const emptyListHeading = await publicPage.getByRole("heading", { name: "The list" }).count();
+const eventListHeading = await publicPage
+  .getByRole("heading", { name: `${eventCount} events` })
+  .count();
+check(
+  "the events page lists each event on its own page or says plainly that there are none",
+  eventCount > 0
+    ? eventHrefs.every((href) => /^\/events\/[0-9a-f-]{36}$/i.test(href)) &&
+      eventListHeading === 1 &&
+      emptyEvents === 0
+    : emptyEvents === 1 && emptyListHeading === 1 && eventCount === 0,
+  `(${eventCount} event link(s), empty state ${emptyEvents})`,
+);
+check(
+  "the events page never falls back to a sample event",
+  !(await publicPage.getByText("Antonio Alcantara").count()),
+);
+await publicPage.screenshot({ path: `${SHOTS}/events.png` });
+
+section("/events/[id]");
+const missingEvent = await publicPage.goto(
+  `${BASE}/events/00000000-0000-4000-8000-000000000000`,
+  { waitUntil: "networkidle", timeout: 120000 },
+);
+check(
+  "an event id the archive does not carry is a 404, not an invented event",
+  missingEvent?.status() === 404 &&
+    (await publicPage.getByRole("heading", { name: "We could not find that page" }).count()) === 1,
+  `(status ${missingEvent?.status() ?? "none"})`,
+);
+const badEventId = await publicPage.goto(`${BASE}/events/not-a-uuid`, {
+  waitUntil: "networkidle",
+  timeout: 120000,
+});
+check(
+  "an event id that is not a UUID is a 404 before any read",
+  badEventId?.status() === 404,
+  `(status ${badEventId?.status() ?? "none"})`,
+);
+// With no database there is no public event here. A connected run opens the first listed one, so
+// the populated page is checked whenever an event exists, and is a recorded gap when it does not.
+if (firstEventHref) {
+  await publicGo(firstEventHref);
+  await expect(publicPage.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 30000 });
+  const eventTitle = (
+    (await publicPage.getByRole("heading", { level: 1 }).textContent()) ?? ""
+  ).trim();
+  const actionHrefs = await publicPage
+    .locator('section[aria-labelledby="actions-title"] a')
+    .evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
+  const jumpTargets = await publicPage
+    .locator('nav[aria-label="On this page"] a')
+    .evaluateAll((links) =>
+      links.map((link) => {
+        const target = link.getAttribute("href") ?? "";
+        return { target, found: target.startsWith("#") && document.querySelector(target) !== null };
+      }),
+    );
+  check(
+    "the first listed event opens its own page with its dates, venue and next actions",
+    eventTitle.length > 0 &&
+      (await publicPage.getByText("Dates", { exact: true }).count()) === 1 &&
+      (await publicPage.getByText("Venue", { exact: true }).count()) === 1 &&
+      (await publicPage.getByRole("heading", { name: "What to do next" }).count()) === 1 &&
+      actionHrefs.length >= 3 &&
+      actionHrefs.every((href) => href.startsWith("/")),
+    `(${eventTitle}; ${actionHrefs.join(", ")})`,
+  );
+  check(
+    "every jump link on the event page lands on a section that is there",
+    jumpTargets.every((entry) => entry.found),
+    `(${jumpTargets.map((entry) => entry.target).join(", ") || "no jump links"})`,
+  );
+  await publicPage.screenshot({ path: `${SHOTS}/event-page.png` });
+}
+
+section("/feedback tick-box concerns");
+await publicGo("/feedback");
+await expect(publicPage.getByRole("heading", { name: "Send feedback", exact: true })).toBeVisible({
+  timeout: 30000,
+});
+const feedbackForm = publicPage.locator("main form").first();
+const concernTicks = ["Inquiry", "Name typo", "Schedule", "Handicap", "Score", "Tee off", "Others"];
+const tickCounts = [];
+for (const label of concernTicks) {
+  tickCounts.push(await feedbackForm.getByRole("checkbox", { name: label, exact: true }).count());
+}
+check(
+  "the concern form is the organizer's seven tick boxes, not a dropdown",
+  tickCounts.every((count) => count === 1) &&
+    (await feedbackForm.locator("select").count()) === 0,
+  `(${tickCounts.join(", ")})`,
+);
+await feedbackForm.getByRole("checkbox", { name: "Score", exact: true }).check();
+await expect(feedbackForm.locator("#feedback-hole")).toBeVisible({ timeout: 5000 });
+await feedbackForm.getByRole("checkbox", { name: "Tee off", exact: true }).check();
+await expect(feedbackForm.getByRole("radio", { name: "White", exact: true })).toBeVisible({
+  timeout: 5000,
+});
+await feedbackForm.getByRole("checkbox", { name: "Others", exact: true }).check();
+await expect(feedbackForm.locator("#feedback-other")).toBeVisible({ timeout: 5000 });
+check(
+  "each tick opens just its own follow-up question",
+  (await feedbackForm.locator("#feedback-hole").count()) === 1 &&
+    (await feedbackForm.getByRole("radio", { name: "White", exact: true }).count()) === 1 &&
+    (await feedbackForm.locator("#feedback-other").count()) === 1 &&
+    (await feedbackForm.locator(".tl-reveal-field").count()) === 3,
+);
+await feedbackForm.getByRole("checkbox", { name: "Score", exact: true }).uncheck();
+await expect(feedbackForm.locator("#feedback-hole")).toHaveCount(0, { timeout: 5000 });
+check(
+  "clearing a tick withdraws its follow-up",
+  (await feedbackForm.locator(".tl-reveal-field").count()) === 2,
+);
+await feedbackForm.getByRole("checkbox", { name: "Tee off", exact: true }).uncheck();
+await feedbackForm.getByRole("checkbox", { name: "Others", exact: true }).uncheck();
+await feedbackForm.getByRole("button", { name: "Send feedback" }).click();
+await expect(feedbackForm.getByRole("alert")).toContainText("Tick at least one concern.", {
+  timeout: 5000,
+});
+check(
+  "a note with no concern is refused beside the ticks, and every tick is marked",
+  (await feedbackForm.locator('[aria-invalid="true"]').count()) === concernTicks.length,
+);
+await feedbackForm.getByRole("checkbox", { name: "Score", exact: true }).check();
+await feedbackForm.getByRole("button", { name: "Send feedback" }).click();
+await expect(feedbackForm.getByRole("alert")).toContainText("Enter the hole number.", {
+  timeout: 5000,
+});
+check(
+  "a score concern without a hole is refused before anything is sent",
+  (await feedbackForm.getByRole("alert").count()) === 1,
+);
+await feedbackForm.locator("#feedback-hole").fill("7");
+await feedbackForm.getByRole("checkbox", { name: "Tee off", exact: true }).check();
+await feedbackForm.getByRole("radio", { name: "White", exact: true }).check();
+await feedbackForm.getByRole("checkbox", { name: "Others", exact: true }).check();
+await feedbackForm.locator("#feedback-other").fill("The printed card shows the wrong tee.");
+await feedbackForm.locator("#feedback-message").fill("The seventh hole score is wrong on the board.");
+const feedbackPreview = (await publicPage.getByText(/Preview mode:/).count()) === 1;
+if (feedbackPreview) {
+  await feedbackForm.getByRole("button", { name: "Send feedback" }).click();
+  await expect(publicPage.getByText("Saved in this browser preview", { exact: false })).toBeVisible({
+    timeout: 10000,
+  });
+  check(
+    "a complete note is accepted in the preview and the form starts again",
+    (await feedbackForm.getByRole("checkbox", { name: "Score", exact: true }).isChecked()) ===
+      false && (await feedbackForm.locator("#feedback-hole").count()) === 0,
+  );
+} else {
+  console.log(
+    "SKIP  a complete note was not submitted: this run has a database and would write a real note",
+  );
+}
+await publicPage.screenshot({ path: `${SHOTS}/feedback-ticks.png` });
+
+section("/demo request");
+await publicGo("/demo");
+await expect(
+  publicPage.getByRole("heading", { name: "See TeeLine with your club's own event." }),
+).toBeVisible({ timeout: 30000 });
+const demoForm = publicPage.locator("form.tl-demo-form");
+check(
+  "the demo page carries the committee copy and one request form",
+  (await demoForm.count()) === 1 &&
+    (await demoForm.getByLabel(/^Your name/).count()) === 1 &&
+    (await demoForm.getByLabel(/^Club/).count()) === 1 &&
+    (await demoForm.getByLabel(/^Email/).count()) === 1 &&
+    (await demoForm.getByRole("checkbox").count()) === 1,
+);
+await demoForm.getByRole("button", { name: "Request a demo" }).click();
+await expect(demoForm.getByRole("alert")).toContainText("Enter your name.", { timeout: 5000 });
+check(
+  "an empty demo request is refused with the first missing field",
+  (await demoForm.getByRole("alert").count()) === 1,
+);
+const demoTicks = async () => {
+  await demoForm.getByLabel(/^Your name/).fill("Maria Santos");
+  await demoForm.getByLabel(/^Club/).fill("Test Golf Club");
+  await demoForm.getByLabel(/^Email/).fill("maria@example.com");
+  await demoForm.getByRole("checkbox").check();
+};
+await demoTicks();
+const demoPreview = (await publicPage.getByText(/This preview has no database/).count()) === 1;
+if (demoPreview) {
+  await demoForm.getByRole("button", { name: "Request a demo" }).click();
+  await expect(
+    demoForm.getByText("Thank you. We will be in touch about a demo.", { exact: false }),
+  ).toBeVisible({ timeout: 10000 });
+  check(
+    "a complete demo request is accepted in the preview and the fields clear",
+    (await demoForm.getByLabel(/^Your name/).inputValue()) === "",
+  );
+} else {
+  console.log(
+    "SKIP  a complete demo request was not submitted: this run has a database and would write a real note",
+  );
+}
+await publicPage.screenshot({ path: `${SHOTS}/demo.png` });
+
+section("/rules and its redirect");
+const rulesResponse = await publicPage.goto(`${BASE}/rules`, {
+  waitUntil: "networkidle",
+  timeout: 120000,
+});
+const rulesUrl = new URL(publicPage.url());
+const rulesRedirected = rulesUrl.pathname.startsWith("/events/");
+check(
+  "the rules address either shows the Conditions of Play or forwards to the event that carries them",
+  rulesResponse?.status() === 200 &&
+    (rulesRedirected
+      ? rulesUrl.hash === "#rules" && /^\/events\/[0-9a-f-]{36}$/i.test(rulesUrl.pathname)
+      : rulesUrl.pathname === "/rules"),
+  `(${rulesUrl.pathname}${rulesUrl.hash}, status ${rulesResponse?.status() ?? "none"})`,
+);
+if (rulesRedirected) {
+  const rulesSection = publicPage.locator("#rules");
+  await expect(rulesSection).toBeVisible({ timeout: 10000 });
+  check(
+    "the redirect lands on the event's rules of play section",
+    (await rulesSection.getByRole("heading", { name: "Rules of play" }).count()) === 1,
+  );
+} else {
+  await expect(publicPage.getByTestId("rules-page")).toBeVisible({ timeout: 10000 });
+  const download = publicPage.getByTestId("rules-download");
+  const pdfHref = await download.getAttribute("href");
+  const pdfName = await download.getAttribute("download");
+  const pdfResponse = pdfHref
+    ? await publicContext.request.get(new URL(pdfHref, BASE).toString())
+    : null;
+  check(
+    "the reading page prints the conditions and every link to the official PDF",
+    (await publicPage.getByRole("heading", { name: "Conditions of Play", exact: true }).count()) ===
+      1 &&
+      (await publicPage.getByTestId("rules-open-pdf").count()) === 1 &&
+      pdfName === "24th-bamboo-tee-conditions-of-play.pdf",
+    `(${pdfName})`,
+  );
+  check(
+    "the official PDF beside the reading page is really there",
+    pdfResponse?.status() === 200 &&
+      (pdfResponse.headers()["content-type"] ?? "").includes("pdf"),
+    `(${pdfHref}, ${pdfResponse?.status() ?? "none"})`,
+  );
+}
+await publicPage.screenshot({ path: `${SHOTS}/rules.png`, fullPage: false });
+
+section("/tv clubhouse board");
+const tvPage = await publicContext.newPage();
+watch(tvPage);
+await tvPage.emulateMedia({ reducedMotion: "reduce" });
+await tvPage.setViewportSize({ width: 1600, height: 900 });
+await tvPage.goto(`${BASE}/tv`, { waitUntil: "networkidle", timeout: 120000 });
+await expect(tvPage.locator("main")).toBeVisible({ timeout: 30000 });
+const tvText = (await tvPage.locator("main").innerText()).replace(/\s+/g, " ").trim();
+const tvBoard = await tvPage.getByTestId("tv-board").count();
+const tvHeld = tvText.includes("Results will be shown at the awarding.");
+const tvIdle =
+  tvText.includes("No scores have been published yet.") ||
+  tvText.includes("This event has not been published yet.");
+check(
+  "the TV address shows the board, the held screen or the honest idle line",
+  tvBoard === 1 || tvHeld || tvIdle,
+  `(board ${tvBoard}, held ${tvHeld}, idle ${tvIdle})`,
+);
+const tvLower = tvText.toLowerCase();
+check(
+  "the TV screen carries the club's name",
+  // The board sets the club name in caps, and innerText returns it as drawn, so compare in lower
+  // case rather than assuming the stored spelling reaches the wall.
+  tvLower.includes("iloilo golf & country club"),
+  `(${tvText.slice(0, 60)})`,
+);
+if (tvBoard === 1) {
+  await tvPage.getByRole("button", { name: "By player", exact: true }).click();
+  await tvPage.waitForTimeout(500);
+  const playerRows = await tvPage.getByTestId("tv-player-row").count();
+  const tvHeadings = await tvPage.locator("main h2").allTextContents();
+  const what = ((await tvPage.getByTestId("tv-what").textContent()) ?? "").trim();
+  check(
+    "the board prints the field and splits the day into morning and afternoon",
+    playerRows > 0 &&
+      tvHeadings.some((text) => text.includes("Morning")) &&
+      tvHeadings.some((text) => text.includes("Afternoon")),
+    `(${playerRows} players, ${tvHeadings.join(" | ")})`,
+  );
+  check(
+    "the board says which list the room is reading",
+    /ranked by net points/.test(what),
+    `(${what})`,
+  );
+  const pairButton = tvPage.getByRole("button", { name: "By pair", exact: true });
+  if ((await pairButton.count()) === 1) {
+    await pairButton.click();
+    await tvPage.waitForTimeout(500);
+    check(
+      "the pair view is one tap away and prints the partners",
+      (await tvPage.getByTestId("tv-pair-row").count()) > 0,
+      `(${await tvPage.getByTestId("tv-pair-row").count()})`,
+    );
+  }
+}
+await tvPage.screenshot({ path: `${SHOTS}/tv.png` });
+await tvPage.close();
+
+section("Teeo concern chat");
+await publicGo("/feedback");
+const teeoLauncher = publicPage.getByRole("button", { name: "Ask Teeo" });
+await expect(teeoLauncher).toBeVisible({ timeout: 30000 });
+await teeoLauncher.click();
+const teeo = publicPage.getByRole("dialog", { name: "Teeo" });
+await expect(teeo).toBeVisible({ timeout: 15000 });
+check(
+  "Teeo opens with his greeting and a language picker",
+  (await teeo.getByText("Hello, I am Teeo.", { exact: false }).count()) === 1 &&
+    (await teeo.getByRole("combobox", { name: "Language" }).count()) === 1,
+);
+await teeo.getByRole("button", { name: "A score looks wrong", exact: true }).click();
+const teeoFallback = teeo.getByRole("link", { name: "Use the form instead" });
+await expect(teeoFallback).toBeVisible({ timeout: 20000 });
+await expect(teeo.locator(".tl-chat-typing")).toHaveCount(0, { timeout: 10000 });
+const teeoReplies = teeo.locator(
+  '.tl-chat-turn[data-role="assistant"] .tl-chat-bubble:not(.tl-chat-typing)',
+);
+await expect(teeoReplies).toHaveCount(2, { timeout: 10000 });
+const teeoReply = ((await teeoReplies.last().textContent()) ?? "").replace(/\s+/g, " ").trim();
+check(
+  "with no model configured, Teeo answers from the fixed copy and offers the tick-box form",
+  /tick-box form at \/feedback/i.test(teeoReply),
+  `(${teeoReply.slice(0, 80)})`,
+);
+check(
+  "the fallback link carries the page the player came from",
+  (await teeoFallback.getAttribute("href")) === "/feedback?from=%2Ffeedback",
+  `(${await teeoFallback.getAttribute("href")})`,
+);
+await teeo.getByRole("button", { name: "Close the chat" }).click();
+await expect(teeo).toHaveCount(0, { timeout: 5000 });
+await publicPage.waitForTimeout(200);
+check(
+  "closing Teeo takes the panel away and puts the focus back on the launcher",
+  (await teeoLauncher.isVisible()) &&
+    (await publicPage.evaluate(
+      () => document.activeElement?.getAttribute("aria-haspopup") === "dialog",
+    )),
+);
+await publicPage.screenshot({ path: `${SHOTS}/teeo.png` });
+await publicContext.close();
 
 // ------------------------------------------------------- one public tee time per session
 // The owner's display rule: the public pages show the session start, the same for Flight A and

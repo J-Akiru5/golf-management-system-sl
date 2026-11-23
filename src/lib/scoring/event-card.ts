@@ -11,13 +11,139 @@ import {
 import type { HandicapSnapshot, Scorecard, TeeRatings } from "./types";
 
 /**
+ * The card letters a scorecard uses for a tee, and the desk's name for each. The owner's rule
+ * (14 Nov 2026) makes the letter written on the card the tee the card is scored on.
+ */
+const CARD_TEE_NAMES: Readonly<Record<string, string>> = {
+  B: "Blue",
+  W: "White",
+  L: "Ladies",
+  S: "Silver",
+};
+
+/**
+ * The card letter a tee name, a tee id or the tee written on a card stands for: B, W, L or S.
+ * Empty when it is none of them, so an unknown tee is refused rather than guessed.
+ *
+ * The desk names its Ladies tee "Red" or "Ladies Red"; both are L on the card. A single letter is
+ * read as itself, which is what the tabulation sheet exports.
+ */
+export function teeLetter(value: string | null | undefined): string {
+  const raw = (value ?? "").trim().toUpperCase();
+  if (raw === "") return "";
+  if (CARD_TEE_NAMES[raw] !== undefined) return raw;
+  if (raw.startsWith("WHITE")) return "W";
+  if (raw.startsWith("BLUE")) return "B";
+  if (raw.startsWith("RED")) return "L";
+  if (raw.startsWith("SILVER")) return "S";
+  if (raw.startsWith("LADIES")) {
+    // "Ladies Red" is the Ladies tee; a Ladies White or Ladies Blue tee is still W or B on a card.
+    if (raw.includes("WHITE")) return "W";
+    if (raw.includes("BLUE")) return "B";
+    if (raw.includes("SILVER")) return "S";
+    return "L";
+  }
+  return "";
+}
+
+/** The desk's name for a card letter, for a refusal that says what to fix. */
+export function teeLetterName(letter: string): string {
+  const code = letter.trim().toUpperCase();
+  return CARD_TEE_NAMES[code] ?? code;
+}
+
+export interface CardTeeInput {
+  /** The tee written on the card, as a letter or a name. Blank or missing when the card has none. */
+  cardTee?: string | null;
+  /**
+   * The ratings of the tee on the player's registration. Undefined means the caller did not load
+   * them and the round's tee is used. Null means the registration has no tee.
+   */
+  registration?: TeeRatings | null;
+  /** The round's tee, used only when the caller did not load the registration tee. */
+  round: TeeRatings;
+  /** The course's own tee ratings, used to resolve a card tee that is not the registration tee. */
+  tees?: readonly TeeRatings[];
+}
+
+export type CardTeeSource = "card" | "registration" | "round";
+
+export type CardTeeResult =
+  | {
+      ok: true;
+      /** The tee the playing handicap is worked out on. */
+      tee: TeeRatings;
+      /** "card" when the letter on the card decided it; otherwise the registration or round tee. */
+      source: CardTeeSource;
+      /** The card letter the tee carries, or "" when its name is not one a card can write. */
+      letter: string;
+    }
+  | { ok: false; message: string };
+
+function namesLetter(tee: TeeRatings, letter: string): boolean {
+  return teeLetter(tee.name) === letter || teeLetter(tee.id) === letter;
+}
+
+/**
+ * The tee a card is scored on: the letter written on the card when there is one, otherwise the
+ * registration tee (the round's tee when the caller did not load the registration's).
+ *
+ * A card letter the round has no rating for is a refusal, never a fallback to another tee. Falling
+ * back would score the card on a tee that is not the one written on it, which is finding T7.
+ */
+export function resolveCardTee(input: CardTeeInput): CardTeeResult {
+  const written = (input.cardTee ?? "").trim();
+  if (written !== "") {
+    const letter = teeLetter(written);
+    if (!letter) {
+      return {
+        ok: false,
+        message: `the tee written on the card ("${written}") is not one of B, W, L or S. Check the card and the player's tee, then save it again.`,
+      };
+    }
+    const fromCourse = (input.tees ?? []).find((tee) => namesLetter(tee, letter));
+    if (fromCourse) return { ok: true, tee: fromCourse, source: "card", letter };
+    const registration = input.registration ?? null;
+    if (registration && namesLetter(registration, letter)) {
+      return { ok: true, tee: registration, source: "card", letter };
+    }
+    if (namesLetter(input.round, letter)) {
+      return { ok: true, tee: input.round, source: "card", letter };
+    }
+    const name = teeLetterName(letter);
+    return {
+      ok: false,
+      message: `the card says ${name} (${letter}), but this round has no ${name} tee rating. Add the rating or correct the card; the card cannot be scored on another tee.`,
+    };
+  }
+
+  if (input.registration === undefined) {
+    return { ok: true, tee: input.round, source: "round", letter: teeLetter(input.round.name) };
+  }
+  if (input.registration === null) {
+    return {
+      ok: false,
+      message:
+        "no tee is recorded on the registration. Set the player's tee in the field list, then save the card.",
+    };
+  }
+  return {
+    ok: true,
+    tee: input.registration,
+    source: "registration",
+    letter: teeLetter(input.registration.name),
+  };
+}
+
+/**
  * Decides, before anything is written, whether a card can be saved under an event's rules, and says
  * exactly what the save will do. Both the demo repository and the connected one call this so they
  * refuse the same cards for the same reasons.
  *
- * The playing handicap comes from the player's registration index and tee, never from the number in
- * the card's HDCP box. That box is read only to put a note beside the WHS figure when the two
- * differ.
+ * The playing handicap comes from the player's registration index and the tee written on the card,
+ * never from the number in the card's HDCP box. The registration tee is used only when the card has
+ * none (owner's rule, 14 Nov 2026). The box is read only to put a note beside the WHS figure when
+ * the two differ.
  *
  * Pure: no database, clock or network. The caller says what day it is.
  */
@@ -47,6 +173,10 @@ export interface EventCardPlanInput {
   /** ISO date the handicap is valid from. Used for the in-memory snapshot. */
   effectiveDate: string;
   playerId: string;
+  /** The tee written on the card, when the caller knows it. Blank or missing: the registration tee. */
+  cardTee?: string | null;
+  /** The course's tee ratings, used to resolve a card tee that is not the registration tee. */
+  tees?: readonly TeeRatings[];
   /** Who marked the card, when the desk knows. Left out, a stable placeholder is chosen. */
   scorerId?: string | null;
   /** The HDCP box as typed. A note only: it never decides the playing handicap. */
@@ -69,6 +199,10 @@ export type EventCardPlan =
       rules: EventScoringRules;
       /** The WHS working: the index used, whether it was capped, and the handicaps it gives. */
       handicap: Extract<EventHandicapResult, { ok: true }>;
+      /** The tee the card was worked out on: the card's letter when it has one. */
+      tee: TeeRatings;
+      /** "card" when the letter on the card decided the tee. */
+      teeSource: CardTeeSource;
       /** The HDCP box as typed, kept for the note and the audit sentence. */
       cardBox: CardBoxReading;
       /** "card says 22, plays off 19 (index 16.4, White)" when the box disagrees, else null. */
@@ -89,6 +223,10 @@ export interface EventHandicapPlanInput {
   roundStatus: "draft" | "open" | "scoring" | "provisional" | "final";
   /** The round's tee, used when the caller did not load the player's own tee. */
   tee: TeeRatings;
+  /** The tee written on the card, when the caller knows it. Blank or missing: the registration tee. */
+  cardTee?: string | null;
+  /** The course's tee ratings, used to resolve a card tee that is not the registration tee. */
+  tees?: readonly TeeRatings[];
   /** ISO date the handicap is valid from. Used for the in-memory snapshot. */
   effectiveDate: string;
   player: EventCardPlayer;
@@ -101,6 +239,10 @@ export type EventHandicapPlan =
       rules: EventScoringRules;
       /** The WHS working: the index used, whether it was capped, and the handicaps it gives. */
       handicap: Extract<EventHandicapResult, { ok: true }>;
+      /** The tee the card was worked out on: the card's letter when it has one. */
+      tee: TeeRatings;
+      /** "card" when the letter on the card decided the tee. */
+      teeSource: CardTeeSource;
       /** The snapshot the engine will score net points from. */
       snapshot: HandicapSnapshot;
       /** False when the round already holds a snapshot with this playing handicap. */
@@ -108,8 +250,8 @@ export type EventHandicapPlan =
     };
 
 /**
- * The handicap one player's card is scored with, worked out from the registration index and the
- * registration tee.
+ * The handicap one player's card is scored with, worked out from the registration index and the tee
+ * written on the card, with the registration tee as the fallback when the card has none.
  *
  * Both a card save and a card approval go through this, so a card that reached the desk by import,
  * by the tabulator or by hand is scored on the same number. A snapshot that already plays off the
@@ -141,14 +283,18 @@ export function planEventHandicap(input: EventHandicapPlanInput): EventHandicapP
     };
   }
 
-  // A player with no tee cannot be worked out, so the save stops here with the fix named.
-  const tee = player.tee === undefined ? input.tee : player.tee;
-  if (!tee) {
-    return {
-      ok: false,
-      message: `${player.playerName}: no tee is recorded on the registration. Set the player's tee in the field list, then save the card.`,
-    };
-  }
+  // The card's own letter decides the tee; the registration is the fallback when it has none. A
+  // letter with no rating is refused here rather than scored on another tee.
+  const resolvedTee = resolveCardTee({
+    cardTee: input.cardTee,
+    registration: player.tee,
+    round: input.tee,
+    tees: input.tees,
+  });
+  if (!resolvedTee.ok)
+    return { ok: false, message: `${player.playerName}: ${resolvedTee.message}` };
+  const tee = resolvedTee.tee;
+
   const handicap = eventPlayingHandicap({
     index: player.frozenIndex ?? null,
     tee,
@@ -168,6 +314,8 @@ export function planEventHandicap(input: EventHandicapPlanInput): EventHandicapP
     ok: true,
     rules,
     handicap,
+    tee,
+    teeSource: resolvedTee.source,
     snapshot: eventHandicapSnapshot({
       handicap,
       rules,
@@ -264,21 +412,19 @@ export function planEventCardSave(input: EventCardPlanInput): EventCardPlan {
     return { ok: false, message: "A card needs a second player in the round to stand as marker." };
   }
 
-  // The playing handicap is the WHS figure for the registration index on the registration tee.
+  // The playing handicap is the WHS figure for the registration index on the tee written on the
+  // card, with the registration tee as the fallback when the card has none.
   const planned = planEventHandicap({
     rulesVersion: input.rulesVersion,
     roundStatus: input.roundStatus,
     tee: input.tee,
+    cardTee: input.cardTee,
+    tees: input.tees,
     effectiveDate: input.effectiveDate,
     player,
   });
   if (!planned.ok) return { ok: false, message: planned.message };
-  const { handicap, snapshot, needsSnapshotWrite } = planned;
-  const tee = player.tee === undefined ? input.tee : player.tee;
-  if (!tee) {
-    // planEventHandicap already refused a missing tee; this keeps the type honest.
-    return { ok: false, message: `${player.playerName}: no tee is recorded on the registration.` };
-  }
+  const { handicap, snapshot, needsSnapshotWrite, tee, teeSource } = planned;
 
   const cardBox = readCardBox(input.cardHandicap);
   const cardNote = cardBoxNote({
@@ -293,6 +439,8 @@ export function planEventCardSave(input: EventCardPlanInput): EventCardPlan {
     ok: true,
     rules,
     handicap,
+    tee,
+    teeSource,
     cardBox,
     cardNote,
     marker,

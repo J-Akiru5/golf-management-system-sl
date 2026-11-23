@@ -14,11 +14,17 @@ const fake = vi.hoisted(() => {
   return {
     entries,
     advisory: null as unknown,
+    release: null as unknown,
+    rounds: [] as unknown,
     reads: 0,
+    roundReads: 0,
     reset() {
       entries.clear();
       this.advisory = null;
+      this.release = null;
+      this.rounds = [];
       this.reads = 0;
+      this.roundReads = 0;
     },
     cacheRead<T>(read: () => Promise<T>, keys: string[], options?: { tags?: string[] }) {
       const key = keys.join("|");
@@ -54,9 +60,18 @@ vi.mock("next/cache", () => ({
 vi.mock("@/lib/supabase/public", () => ({
   createSupabasePublicClient: () => ({
     rpc: async (name: string) => {
-      if (name !== "public_advisory") throw new Error(`Unexpected read: ${name}`);
-      fake.reads += 1;
-      return { data: fake.advisory, error: null };
+      if (name === "public_advisory") {
+        fake.reads += 1;
+        return { data: fake.advisory, error: null };
+      }
+      if (name === "public_published_rounds") {
+        fake.roundReads += 1;
+        return { data: fake.rounds, error: null };
+      }
+      if (name === "public_release_state") return { data: fake.release, error: null };
+      // No event is published in these tests, so the pairings answer with no rows.
+      if (name === "public_pairings_by_day") return { data: [], error: null };
+      throw new Error(`Unexpected read: ${name}`);
     },
   }),
 }));
@@ -85,9 +100,14 @@ vi.mock("@/lib/supabase/env", () => ({
 }));
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { POST } from "@/app/api/revalidate-pairings/route";
+import { GET, POST } from "@/app/api/revalidate-pairings/route";
 import { refreshPublicPage } from "@/lib/data/supabase/draw-sync";
-import { PUBLIC_DATA_TAG, readPublicAdvisory } from "@/lib/data/supabase/public-cache";
+import {
+  PUBLIC_DATA_TAG,
+  readPublicAdvisory,
+  readPublicLiveSignature,
+  readPublicResultsSignature,
+} from "@/lib/data/supabase/public-cache";
 import type { Database } from "@/lib/supabase/types";
 
 const advisory = (title: string) => ({
@@ -96,6 +116,29 @@ const advisory = (title: string) => ({
   lines: ["Tee times are confirmed for Day 1."],
   signature: "Tournament committee",
   until: "2026-12-31",
+});
+
+/** One row of `public_published_rounds`, as the loader reads it. */
+const publishedRound = (version: number, publishedAt: string) => ({
+  round_id: "round-1",
+  tournament_id: "event-1",
+  event_name: "The 24th Bamboo Tee",
+  day_number: 1,
+  play_date: "2026-12-21",
+  state: "provisional",
+  version,
+  published_at: publishedAt,
+});
+
+/** Every public surface released, which is what the release function answers by default. */
+const releaseState = (leaderboard: boolean) => ({
+  tournamentId: "event-1",
+  pairings: true,
+  teeTimes: true,
+  roster: true,
+  leaderboard,
+  photos: true,
+  rules: true,
 });
 
 /** The desk's session, as far as the helper can tell. */
@@ -140,6 +183,57 @@ describe("the shared public reads", () => {
     fake.advisory = advisory("Other event");
     expect((await readPublicAdvisory("event-b"))?.title).toBe("Other event");
     expect((await readPublicAdvisory("event-a"))?.title).toBe("This event");
+  });
+});
+
+describe("the live signature the public pages poll", () => {
+  it("reads the published rounds once, then again only after the tag is cleared", async () => {
+    fake.rounds = [publishedRound(1, "2026-12-21T06:00:00Z")];
+    const first = await readPublicResultsSignature();
+    expect(first).toContain("round-1:v1:provisional@2026-12-21T06:00:00Z");
+    expect(fake.roundReads).toBe(1);
+
+    // The database published again while the cache window is still open.
+    fake.rounds = [publishedRound(2, "2026-12-21T07:00:00Z")];
+    expect(await readPublicResultsSignature()).toBe(first);
+    expect(fake.roundReads).toBe(1);
+
+    // The desk's publish cleared the tag, so the next check is fresh.
+    fake.clear(PUBLIC_DATA_TAG);
+    expect(await readPublicResultsSignature()).not.toBe(first);
+    expect(fake.roundReads).toBe(2);
+  });
+
+  it("follows a round publish and a held leaderboard", async () => {
+    fake.rounds = [publishedRound(1, "2026-12-21T06:00:00Z")];
+    fake.release = releaseState(true);
+    const first = await readPublicLiveSignature();
+    expect(first).toContain("results:round-1:v1:provisional@2026-12-21T06:00:00Z");
+
+    fake.rounds = [publishedRound(2, "2026-12-21T07:00:00Z")];
+    fake.clear(PUBLIC_DATA_TAG);
+    const published = await readPublicLiveSignature();
+    expect(published).not.toBe(first);
+
+    fake.release = releaseState(false);
+    fake.clear(PUBLIC_DATA_TAG);
+    expect(await readPublicLiveSignature()).not.toBe(published);
+  });
+
+  it("answers an unchanged event with an unchanged signature", async () => {
+    fake.rounds = [publishedRound(1, "2026-12-21T06:00:00Z")];
+    fake.release = releaseState(true);
+    expect(await readPublicLiveSignature()).toBe(await readPublicLiveSignature());
+  });
+
+  it("is served by the endpoint the pages poll, with a short shared cache", async () => {
+    fake.rounds = [publishedRound(1, "2026-12-21T06:00:00Z")];
+    fake.release = releaseState(true);
+    const response = await GET();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("s-maxage=5");
+    const body = (await response.json()) as { signature?: string };
+    expect(body.signature).toBe(await readPublicLiveSignature());
   });
 });
 

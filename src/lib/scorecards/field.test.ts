@@ -32,9 +32,19 @@ describe("teeCode", () => {
     expect(teeCode("Silver")).toBe("S");
   });
 
+  it("maps the Ladies tee names and the card letters themselves", () => {
+    expect(teeCode("Ladies Red")).toBe("L");
+    expect(teeCode("Ladies")).toBe("L");
+    expect(teeCode("W")).toBe("W");
+    expect(teeCode("B")).toBe("B");
+    expect(teeCode("L")).toBe("L");
+    expect(teeCode("S")).toBe("S");
+  });
+
   it("keeps an unknown tee blank instead of guessing", () => {
     expect(teeCode("")).toBe("");
     expect(teeCode("Championship")).toBe("");
+    expect(teeCode("Senior")).toBe("");
   });
 });
 
@@ -64,6 +74,18 @@ describe("teeRatings", () => {
         { name: "Silver", course_rating: 68.4, slope: 121, par: 70 },
       ]),
     ).toEqual([{ code: "S", name: "Silver", courseRating: 68.4, slope: 121, par: 70 }]);
+  });
+
+  it("keeps the Ladies Red tee the card calls L", () => {
+    expect(
+      teeRatings([
+        { name: "Ladies Red", course_rating: 74, slope: 124, par: 72 },
+        { name: "White", course_rating: 71.5, slope: 128, par: 72 },
+      ]),
+    ).toEqual([
+      { code: "L", name: "Ladies Red", courseRating: 74, slope: 124, par: 72 },
+      { code: "W", name: "White", courseRating: 71.5, slope: 128, par: 72 },
+    ]);
   });
 
   it("answers with an empty list when there is nothing to read", () => {

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { PublicLive } from "@/components/public/PublicLive";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { RosterPage, type RosterUnavailable } from "@/components/public/RosterView";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { toPublicRoster } from "@/lib/data/public";
 import {
   readPublicAdvisory,
+  readPublicLiveSignature,
   readPublicProgramme,
   readPublicReleaseState,
   readPublicRevealState,
@@ -43,10 +45,24 @@ export const dynamic = "force-dynamic";
  *
  * The database function returns null while the event is unpublished, which renders the empty state
  * with no roster content. A failed read renders the retry state and still shows no roster content.
+ *
+ * The roster is part of the published programme, so a pairings publish (or a roster release) is
+ * what changes it; the live signature read here is handed to `PublicLive`, which reloads the page
+ * on an open phone when it moves.
  */
 export default async function PublicRosterPage() {
   if (!isSupabaseConfigured()) return <DemoRoster />;
+  const live = await readPublicLiveSignature();
+  return (
+    <>
+      <PublicLive signature={live} />
+      <RosterBoard />
+    </>
+  );
+}
 
+/** The roster itself, below the live refresher on every path. */
+async function RosterBoard() {
   // The release state is read first, on its own. While the player list is held, the roster asks
   // the programme for nothing at all: no name, index, club or flight is fetched.
   const [releaseResult, advisoryResult] = await Promise.allSettled([
