@@ -69,11 +69,19 @@ const errors = [];
  * checks still assert the 404 itself.
  */
 const EXPECTED_404 = ["/events/00000000-0000-4000-8000-000000000000", "/events/not-a-uuid"];
+/**
+ * React 19 logs this advisory when it reconciles the two inline boot scripts in the root layout
+ * (`THEME_INIT_SCRIPT` and `RAIL_INIT_SCRIPT`) during a client render. They are deliberate and run
+ * before paint; the advisory is not a page fault. Tracked as a follow-up to move them to
+ * `next/script` so the warning stops at the source.
+ */
+const IGNORED_CONSOLE = [/Encountered a script tag while rendering React component/];
 const watch = (p) => {
   p.on("console", (m) => {
     if (m.type() !== "error") return;
     const source = m.location()?.url ?? "";
     if (EXPECTED_404.some((path) => source.endsWith(path))) return;
+    if (IGNORED_CONSOLE.some((pattern) => pattern.test(m.text()))) return;
     errors.push(`${source || "(no location)"} :: ${m.text()}`);
   });
   p.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
