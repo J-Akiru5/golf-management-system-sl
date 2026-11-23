@@ -63,9 +63,18 @@ await context.addInitScript(() => {
 const page = await context.newPage();
 
 const errors = [];
+/**
+ * The two navigations below deliberately ask for an event that does not exist, and the browser logs
+ * the 404 as a console error. It is the expected answer, not a page fault, so it is not counted; the
+ * checks still assert the 404 itself.
+ */
+const EXPECTED_404 = ["/events/00000000-0000-4000-8000-000000000000", "/events/not-a-uuid"];
 const watch = (p) => {
   p.on("console", (m) => {
-    if (m.type() === "error") errors.push(m.text());
+    if (m.type() !== "error") return;
+    const source = m.location()?.url ?? "";
+    if (EXPECTED_404.some((path) => source.endsWith(path))) return;
+    errors.push(m.text());
   });
   p.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 };
