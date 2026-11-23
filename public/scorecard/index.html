@@ -1389,7 +1389,7 @@ window.__scorecard = {
       <div id="batch-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       <button type="button" id="batch-clear" class="danger" title="Remove the batch labels where every card is already checked. The cards stay on the page." hidden>Remove reviewed batches</button>
     </div>
-    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add players from the system</b> brings a day's and session's players in as blank cards with their group, tee and class filled in, so no JSON file is needed. <b>Add card by hand</b> adds one blank card. <b>Start new review batch</b> makes a batch by hand: empty, from the cards shown, from one day and session, or from cards you pick. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. The player filter and the batch buttons choose which checked cards <b>Send checked cards to admin</b> sends. Every card also has <b>Send to admin</b> for that one card and <b>Remove card</b>; a removal can be undone until the page is reloaded. Saving keeps the team copy in the private Supabase bucket and merges it card by card with the other tabulators; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication. <b>Reset to first reading</b> asks you to type RESET, and both it and <b>Replace all from export</b> keep a snapshot of the shared copy first and can be undone until the page is reloaded.</p>
+    <p class="legend" id="handoff" style="margin:8px 0 0"><b>Take photo</b> opens the camera; <b>Scan card (from photos)</b> reads photos already on this device. Either one first reads the player's QR code on the printed card, which opens that player's card with the tee, class and current handicap; a damaged code falls back to the card reader and then to <b>Pick the player from the day's list</b>. Either one reads a paper card into a draft, and you choose to review it now or later in a batch. <b>Add players from the system</b> brings a day's and session's players in as blank cards with their group, tee and class filled in, so no JSON file is needed. <b>Add card by hand</b> adds one blank card. <b>Start new review batch</b> makes a batch by hand: empty, from the cards shown, from one day and session, or from cards you pick. The <b>×</b> beside a batch removes the batch label only; its cards stay under All cards. <b>Import JSON</b> only reads a file and adds its cards; nothing is downloaded or replaced. The player filter and the batch buttons choose which checked cards <b>Send checked cards to admin</b> sends. Every card also has <b>Send to admin</b> for that one card and <b>Remove card</b>; a removal can be undone until the page is reloaded. Saving keeps the team copy in the private Supabase bucket and merges it card by card with the other tabulators; <b>Save, then download a copy</b> also puts a JSON file in this device's Downloads, to send to the admin for publication. <b>Reset to first reading</b> asks you to type RESET, and both it and <b>Replace all from export</b> keep a snapshot of the shared copy first and can be undone until the page is reloaded.</p>
     <p class="legend" id="field-status" style="margin:8px 0 0">Supabase field: not checked yet.</p>
     <details id="check-details" open style="margin-top:8px">
       <summary id="check-summary" style="cursor:pointer;font-weight:600">System check: waiting for the field list.</summary>
@@ -2273,6 +2273,235 @@ window.__scorecard = {
   let scanBusy = false;
   let pendingScanBatchId = "";
 
+  // ---- The card's QR code ----
+  // The printed group sheet carries one code: `grp-<day>-<session>-<groupNumber>`. The page reads
+  // it with the browser's own BarcodeDetector where it exists; a browser without it, a damaged
+  // code, or a group that is not on the field list falls through to the card reader and then to
+  // the day's player pick list. Nothing here invents a player: a code that matches no one on the
+  // chosen day is reported, not guessed. The old per-player id and `fld-...` code are still read so
+  // a sheet printed before the change resolves one player.
+  // Keep this parser in step with parseCardQr and parseGroupCardQr in
+  // src/lib/scorecards/scan.ts; page-qr.test.ts holds the two equal.
+  // <card-qr>
+  const CARD_QR_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
+  const GROUP_QR_ID = /^grp-([1-9]\d*)-(am|pm)-([1-9]\d*)$/;
+  const cardIdFromQr = value => {
+    if (typeof value !== "string") return "";
+    const id = value.trim();
+    return CARD_QR_ID.test(id) ? id : "";
+  };
+  const groupFromQr = value => {
+    const id = cardIdFromQr(value);
+    const match = id ? GROUP_QR_ID.exec(id) : null;
+    if (!match) return null;
+    const day = Number(match[1]);
+    const group = Number(match[3]);
+    return Number.isSafeInteger(day) && Number.isSafeInteger(group)
+      ? { day, session: match[2] === "am" ? "AM" : "PM", group }
+      : null;
+  };
+  // </card-qr>
+
+  /** The field player a printed card id names, in one day's list. */
+  function fieldCardFor(day, cardId) {
+    const id = cardIdFromQr(cardId);
+    if (!id) return null;
+    const pool = Object.values(FIELDS[String(day)] || {});
+    const direct = pool.find(entry => entry.playerId === id || entry.registrationId === id);
+    if (direct) return direct;
+    const stored = /^fld-(.+)-d\d+-(?:am|pm)$/i.exec(id);
+    return stored && stored[1] ? pool.find(entry => entry.playerId === stored[1]) || null : null;
+  }
+
+  /**
+   * Every player in one group on one day's field list, in name order. The printed sheet uses the
+   * same name order, so a reader row can be paired by printed order when its handwritten name is
+   * unreadable. A group that is missing is empty; the caller sends the desk to the pick list.
+   */
+  function groupMembers(day, group, session) {
+    const order = name => String(name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+    return Object.values(FIELDS[String(day)] || {})
+      .filter(entry => entry.playerId && entry.group === group && entry.session === session)
+      .sort((left, right) => {
+        const a = order(left.name), b = order(right.name);
+        return a < b ? -1 : a > b ? 1 : 0;
+      });
+  }
+
+  function qrPlaceholder(id, stamp, index, entry, day, session) {
+    return {
+      id: `qr-${stamp}${index}`,
+      manual: true,
+      qrCardId: id,
+      qrPending: true,
+      qrDay: day ? String(day) : "",
+      qrSession: session || "",
+      name: entry ? entry.name : "",
+      group: entry && entry.group != null ? String(entry.group) : "",
+      tee: entry && entry.teeCode ? entry.teeCode : "",
+      hdcp: "",
+      written: "",
+      cls: entry && entry.cls ? entry.cls : "",
+      verified: false,
+      note: "",
+      source: "",
+      holes: Array(18).fill(""),
+    };
+  }
+
+  /** Fills in the player a QR code names. Called after the day's field list is loaded. */
+  function resolveQrCards(cards, day, session) {
+    for (const card of cards) {
+      if (!card.qrCardId || !card.qrPending) continue;
+      // A group code carries its own day and session, so the sheet keeps the day it was printed
+      // for even when the desk opens another day or changes the scan dialog. The old per-player
+      // code has no day, so it uses the chosen one.
+      const cardDay = card.qrDay || day;
+      const cardSession = card.qrSession || session;
+      const entry = fieldCardFor(cardDay, card.qrCardId);
+      if (!entry) {
+        card.note = [card.note, `The QR code names a card that is not on the Day ${cardDay} field list. Pick the player from the day's list.`].filter(Boolean).join(" ");
+        delete card.qrPending;
+        delete card.qrCardId;
+        delete card.qrDay;
+        delete card.qrSession;
+        continue;
+      }
+      card.id = fieldCardId(entry, cardDay, cardSession);
+      card.manual = false;
+      card.notInSystem = false;
+      card.playerId = entry.playerId;
+      card.registrationId = entry.registrationId || "";
+      card.partnerPlayerId = entry.partnerPlayerId || "";
+      card.name = entry.name;
+      card.group = entry.group != null ? String(entry.group) : card.group;
+      card.tee = entry.teeCode || card.tee;
+      card.cls = entry.cls || card.cls;
+      card.day = String(cardDay);
+      card.session = cardSession;
+      card.note = [card.note, "Player read from the card's QR code."].filter(Boolean).join(" ");
+      delete card.qrPending;
+      delete card.qrCardId;
+      delete card.qrDay;
+      delete card.qrSession;
+    }
+  }
+
+  /** Adds the QR player's identity to a row the card reader drafted, keeping the reader's scores. */
+  function withQrPlayer(read, qr) {
+    const merged = { ...read };
+    for (const field of ["playerId", "registrationId", "partnerPlayerId", "name", "group", "tee", "cls", "qrCardId", "qrPending", "qrDay", "qrSession"]) {
+      if (qr[field]) merged[field] = qr[field];
+    }
+    if (qr.playerId) merged.id = qr.id;
+    if (qr.name && read.name && nameKey(qr.name) !== nameKey(read.name)) {
+      merged.note = [merged.note, `The reader read "${read.name}"; the QR code names ${qr.name}.`].filter(Boolean).join(" ");
+    }
+    merged.note = [merged.note, qr.note].filter(Boolean).join(" ");
+    // A card touched by a QR code is a fresh draft, even if the reader's file claimed a tick.
+    merged.verified = false;
+    return merged;
+  }
+
+  /**
+   * Pairs the group's cards with the rows the reader drafted. A readable name pairs first, because
+   * a handwriting read can be wrong. When no name pairs at all and the counts match, the printed
+   * name order is the fallback. A row or a player with no partner is kept, never dropped: the
+   * unmatched player stays a blank card, and an unmatched row keeps its own name for the desk.
+   */
+  function pairQrAndRead(qrCards, readCards) {
+    if (!qrCards.length) return readCards;
+    if (!readCards.length) return qrCards;
+    const byName = new Map();
+    for (const qr of qrCards) {
+      if (!qr.name) continue;
+      const key = nameKey(qr.name);
+      byName.set(key, [...(byName.get(key) || []), qr]);
+    }
+    const usedQr = new Set();
+    const paired = [];
+    const unmatchedRead = [];
+    for (const [index, read] of readCards.entries()) {
+      const key = read.name ? nameKey(read.name) : "";
+      const match = key ? (byName.get(key) || []).find(qr => !usedQr.has(qr)) : null;
+      if (!match) {
+        paired.push(null);
+        unmatchedRead.push({ read, index });
+        continue;
+      }
+      usedQr.add(match);
+      paired.push(withQrPlayer(read, match));
+    }
+    // No name paired and the counts agree: the printed sheet and the field list are both in name
+    // order, so pair by that order. When some names paired, the remaining rows and cards are still
+    // in that order; pair them too only when their counts agree. A different count is never forced;
+    // the desk picks instead.
+    if (usedQr.size === 0 && qrCards.length === readCards.length) {
+      return readCards.map((read, index) => withQrPlayer(read, qrCards[index]));
+    }
+    const unmatchedQr = qrCards.filter(qr => !usedQr.has(qr));
+    if (unmatchedQr.length === unmatchedRead.length) {
+      unmatchedRead.forEach((entry, at) => {
+        paired[entry.index] = withQrPlayer(entry.read, unmatchedQr[at]);
+      });
+      return paired.filter(Boolean);
+    }
+    return [...paired.filter(Boolean), ...unmatchedRead.map(entry => entry.read), ...unmatchedQr];
+  }
+
+  // The browser's BarcodeDetector reads the code without adding a dependency. It is not in every
+  // browser, so every call says whether the browser could try; a failure is never fatal.
+  async function qrImage(file) {
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch {
+      return null;
+    }
+    const edge = Math.max(bitmap.width, bitmap.height);
+    if (edge <= 2200) return bitmap;
+    const scale = 2200 / edge;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) {
+      if (bitmap.close) bitmap.close();
+      return null;
+    }
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    if (bitmap.close) bitmap.close();
+    return canvas;
+  }
+
+  async function readCardQr(file) {
+    if (typeof BarcodeDetector !== "function") return { supported: false, ids: [] };
+    let image = null;
+    try {
+      const formats = typeof BarcodeDetector.getSupportedFormats === "function"
+        ? await BarcodeDetector.getSupportedFormats()
+        : ["qr_code"];
+      if (!Array.isArray(formats) || !formats.includes("qr_code")) return { supported: false, ids: [] };
+      image = await qrImage(file);
+      if (!image) return { supported: true, ids: [] };
+      const detector = new BarcodeDetector({ formats: ["qr_code"] });
+      const found = (await detector.detect(image) || []).filter(code => code && code.rawValue);
+      // The printed codes sit in the same order as the player rows, so read them from the top-left
+      // of the photo in rows. The detector does not promise an order of its own.
+      found.sort((left, right) => {
+        const a = left.boundingBox || {}, b = right.boundingBox || {};
+        const row = Math.abs(Number(a.y || 0) - Number(b.y || 0)) > 30;
+        return row ? Number(a.y || 0) - Number(b.y || 0) : Number(a.x || 0) - Number(b.x || 0);
+      });
+      const ids = [...new Set(found.map(code => cardIdFromQr(code.rawValue)).filter(Boolean))];
+      return { supported: true, ids };
+    } catch {
+      return { supported: true, ids: [] };
+    } finally {
+      if (image && image.close) image.close();
+    }
+  }
+
   async function shrinkPhoto(file) {
     const limit = 3.6 * 1024 * 1024;
     let bitmap;
@@ -2355,7 +2584,20 @@ window.__scorecard = {
     for (const incoming of cards) {
       const named = incoming.name && !/^UNKNOWN PLAYER$/i.test(incoming.name);
       const key = named ? nameKey(incoming.name) : "";
-      const hits = key ? pool.filter((card) => !claimed.has(card.id) && nameKey(card.name) === key) : [];
+      // A card read from a QR code already knows the system player, so that identity wins over a
+      // handwritten name that may be misspelled.
+      const byPlayer = incoming.playerId
+        ? pool.filter((card) =>
+            !claimed.has(card.id) &&
+            card.playerId === incoming.playerId &&
+            (!incoming.day || dayOf(card) === dayOf(incoming)) &&
+            (!incoming.session || sessionOf(card) === sessionOf(incoming)))
+        : [];
+      const hits = byPlayer.length
+        ? byPlayer
+        : key
+          ? pool.filter((card) => !claimed.has(card.id) && nameKey(card.name) === key)
+          : [];
       if (hits.length === 1) {
         claimed.add(hits[0].id);
         merges.push({ incoming, existing: hits[0], ...mergePreview(hits[0], incoming) });
@@ -2415,9 +2657,12 @@ window.__scorecard = {
       const title = blank
         ? `${cards.length} photo${cards.length === 1 ? "" : "s"} could not be read`
         : `${cards.length} card${cards.length === 1 ? "" : "s"} read`;
+      const qrLead = opts && opts.qrCount
+        ? ` ${opts.qrCount} QR code${opts.qrCount === 1 ? " was" : "s were"} read${opts.qrGroups ? "; the sheet's code sets its own day and session" : ""}; ${opts.qrPlayers ? `${opts.qrPlayers} player${opts.qrPlayers === 1 ? "" : "s"} looked up` : "the player is looked up"} in the day's list.`
+        : "";
       const lead = blank
-        ? "No scores were drafted. Add a blank card for each photo and type the name and scores in from the paper card."
-        : "These are drafts. Nothing is marked checked until you tick it. Choose the batch these cards belong to: a player already in that batch is updated instead of added twice.";
+        ? "No scores were drafted. Add a blank card for each photo and type the name and scores in from the paper card. If the card's QR code is damaged, pick the player from the day's list instead."
+        : `These are drafts. Nothing is marked checked until you tick it. Choose the batch these cards belong to: a player already in that batch is updated instead of added twice.${qrLead}`;
       const labels = blank
         ? ["Add blank cards and review now", "Add blank cards to a batch for later", "Not now"]
         : ["Review now", "Review later in a batch", "Discard these cards"];
@@ -2442,6 +2687,7 @@ window.__scorecard = {
         <div style="display:flex;flex-direction:column;gap:8px">
           <button type="button" data-choice="now" class="primary">${labels[0]}</button>
           <button type="button" data-choice="later">${labels[1]}</button>
+          ${blank ? '<button type="button" data-choice="pick">Pick the player from the day\'s list</button>' : ""}
           <button type="button" data-choice="discard" class="danger">${labels[2]}</button>
         </div>`);
       const select = dialog.box.querySelector("#scan-target");
@@ -2452,7 +2698,7 @@ window.__scorecard = {
         const { merges, fresh } = blank ? { merges: [], fresh: cards } : planScan(cards, targetNow());
         const rows = [
           ...merges.map((merge) => `<li>${escapeHtml(merge.existing.name)} <span style="color:#073d2e">· already there: ${merge.add.length ? `adds ${merge.add.length} score${merge.add.length === 1 ? "" : "s"}` : "no new scores"}</span>${merge.differs.length ? ` <span style="color:#b42318">· ${merge.differs.length} differ${merge.differs.length === 1 ? "s" : ""}, card kept</span>` : ""}</li>`),
-          ...fresh.map((card) => `<li>${escapeHtml(card.name || "Blank card to type in")} <span style="color:#4d5c54">· new</span>${/Reader unsure|Left blank/.test(card.note || "") ? ' <span style="color:#b42318">· check some holes</span>' : ""}</li>`),
+          ...fresh.map((card) => `<li>${escapeHtml(card.name || (card.qrPending ? "Player from the card's QR code" : "Blank card to type in"))} <span style="color:#4d5c54">· ${card.qrPending ? "looked up when added" : "new"}</span>${/Reader unsure|Left blank/.test(card.note || "") ? ' <span style="color:#b42318">· check some holes</span>' : ""}</li>`),
         ];
         list.innerHTML = rows.slice(0, 14).join("") + (rows.length > 14 ? `<li>…and ${rows.length - 14} more</li>` : "");
         if (planLine) {
@@ -2507,13 +2753,25 @@ window.__scorecard = {
   async function addScannedCards(cards, when, target, day, session) {
     const state = current();
     const dayKey = String(day || DOC_DAY);
+    const sessionKey = session === "PM" ? "PM" : session === "AM" ? "AM" : DOC_SESSION;
     // The system's list for the day has to be here before names can be matched to players.
     await loadFieldDay(dayKey);
+    // A card read from a QR code has no name yet; the chosen day's list gives it the player, tee,
+    // class and current handicap, and makes it merge with that player's card instead of adding one.
+    resolveQrCards(cards, dayKey, sessionKey);
     const { merges, fresh } = planScan(cards, target || "new");
-    const have = new Set(state.cards.map((card) => card.id));
+    const existingById = new Map(state.cards.map((card) => [card.id, card]));
+    // A QR card resolves to the same id as the player's existing card. Whatever target the desk
+    // chose, those scores belong to that card: merge them instead of dropping them as a duplicate.
+    // Only a card with a known system player and playing slot can collide this way; a name-only
+    // file entry still needs the desk's match and is left to the normal flow.
+    const collisions = fresh.filter((card) => {
+      const existing = card.id ? existingById.get(card.id) : null;
+      return !!existing && !!card.playerId && !!card.day && !!card.session;
+    });
     const added = fresh
-      .filter((card) => !have.has(card.id))
-      .map((card) => ({ ...card, verified: false, day: card.day || day || "", session: card.session || session || "" }));
+      .filter((card) => !card.id || !existingById.has(card.id))
+      .map((card) => ({ ...card, verified: false, day: card.day || dayKey, session: card.session || sessionKey }));
     for (const card of added) {
       if (!linkToSystem(card, String(card.day || dayKey))) {
         card.note = [card.note, `Not on the system's Day ${card.day || dayKey} field list; the admin has to match this name.`].filter(Boolean).join(" ");
@@ -2524,6 +2782,17 @@ window.__scorecard = {
     }
     const touched = merges.map((merge) => merge.existing);
     let scoresAdded = 0, differing = 0;
+    for (const card of collisions) {
+      const existing = existingById.get(card.id);
+      if (!existing) continue;
+      if (!existing.playerId) linkToSystem(existing, dayOf(existing));
+      if (card.holes.some((value) => value !== "")) {
+        const result = mergeInto(existing, card);
+        scoresAdded += result.add.length;
+        differing += result.differs.length;
+      }
+      if (!touched.includes(existing)) touched.push(existing);
+    }
     for (const merge of merges) {
       const result = mergeInto(merge.existing, merge.incoming);
       scoresAdded += result.add.length;
@@ -2569,12 +2838,60 @@ window.__scorecard = {
     scanPick.disabled = scanCameraOpen.disabled = true;
     const cards = [], notes = [], unread = [];
     let readerOff = false;
+    let qrSeen = 0;
+    let qrPlayers = 0;
+    let qrGroups = 0;
+    let qrUnsupported = false;
     try {
       for (const [index, file] of files.entries()) {
         status(`Reading photo ${index + 1} of ${files.length}…`);
         const label = file.name || `Photo ${index + 1}`;
+        const stamp = `${Date.now().toString(36)}${index}`;
+        let qrCards = [];
+        try {
+          const qr = await readCardQr(file);
+          if (!qr.supported) qrUnsupported = true;
+          if (qr.ids.length) {
+            qrSeen += qr.ids.length;
+            const groups = [];
+            const players = [];
+            for (const id of qr.ids) {
+              if (!id.startsWith("grp-")) {
+                players.push(id);
+                continue;
+              }
+              const group = groupFromQr(id);
+              if (group) groups.push(group);
+              else notes.push("A sheet's QR code is not a readable group code. Use the card reader or the pick list.");
+            }
+            for (const group of groups) {
+              await loadFieldDay(group.day);
+              const members = groupMembers(group.day, group.group, group.session);
+              if (!members.length) {
+                notes.push(`The sheet's code names Day ${group.day} ${group.session} Group ${group.group}, but that group is not on the field list. Pick the players from the day's list.`);
+                continue;
+              }
+              // The sheet's code sets its own day and session; the dialog's selectors are for the
+              // cards that have no code of their own.
+              lastScanDay = String(group.day);
+              lastScanSession = group.session;
+              qrGroups += 1;
+              qrCards.push(...members.map((member, at) =>
+                qrPlaceholder(member.playerId, `${stamp}g${group.group}`, at, member, group.day, group.session)));
+            }
+            if (players.length) {
+              await loadFieldDay(lastScanDay);
+              players.forEach((id, at) =>
+                qrCards.push(qrPlaceholder(id, stamp, at, fieldCardFor(lastScanDay, id))));
+            }
+            qrPlayers += qrCards.length;
+          }
+        } catch {
+          // The QR code is a shortcut. Its failure must never stop the card reader.
+        }
         if (readerOff) {
-          unread.push({ label, why: "the card reader is not connected" });
+          if (qrCards.length) cards.push(...qrCards);
+          else unread.push({ label, why: "the card reader is not connected" });
           continue;
         }
         try {
@@ -2583,30 +2900,37 @@ window.__scorecard = {
             // One note is enough: the reader is off for every photo in this batch.
             readerOff = true;
             notes.push(answer.message);
-            unread.push({ label, why: "the card reader is not connected" });
+            if (qrCards.length) cards.push(...qrCards);
+            else unread.push({ label, why: "the card reader is not connected" });
             continue;
           }
-          const stamp = `${Date.now().toString(36)}${index}`;
           const read = importCardsFrom({
             players: answer.players,
             engine: answer.engine,
             engineVersion: answer.engineVersion,
             raw: { sourceFile: `${(file.name || "photo").replace(/\.[a-z0-9]+$/i, "")}-${stamp}` },
           });
-          if (read && read.cards.length) cards.push(...read.cards);
+          const readCards = read && read.cards.length ? read.cards : [];
+          if (qrCards.length) cards.push(...pairQrAndRead(qrCards, readCards));
+          else if (readCards.length) cards.push(...readCards);
           else unread.push({ label, why: "no card was found in it" });
         } catch (error) {
           const why = error instanceof Error ? error.message : String(error);
           notes.push(`${label}: ${why}`);
-          unread.push({ label, why });
+          if (qrCards.length) cards.push(...qrCards);
+          else unread.push({ label, why });
         }
       }
     } finally {
       scanBusy = false;
       scanPick.disabled = scanCameraOpen.disabled = false;
     }
+    if (qrUnsupported && !cards.length) {
+      notes.push("This browser cannot read QR codes. The card reader and the player pick-list still work.");
+    }
     if (!cards.length) {
-      // Nothing was drafted. Keep the photo useful: offer a blank card per photo to type in by hand.
+      // Nothing was drafted. Keep the photo useful: offer a blank card per photo to type in by hand,
+      // or the day's player pick-list when the code and the name both failed.
       status(notes[0] || "No cards could be read from that photo.", true);
       const stamp = Date.now().toString(36);
       const blanks = unread.map((entry, index) => ({
@@ -2625,6 +2949,10 @@ window.__scorecard = {
       }));
       if (!blanks.length) return;
       const blankPick = await chooseWhatNext(blanks, notes, true);
+      if (blankPick.choice === "pick") {
+        await openPlayerPicker();
+        return;
+      }
       if (blankPick.choice === "discard") {
         summary.textContent = "No card was added.";
         return;
@@ -2632,8 +2960,13 @@ window.__scorecard = {
       addScannedCards(blanks, blankPick.choice, "new", blankPick.day, blankPick.session);
       return;
     }
-    status(`Read ${cards.length} card${cards.length === 1 ? "" : "s"}.`);
-    const pick = await chooseWhatNext(cards, unread.length ? [...notes, `${unread.length} photo${unread.length === 1 ? " was" : "s were"} not read: ${unread.map((entry) => entry.label).join(", ")}.`] : notes);
+    status(`Read ${cards.length} card${cards.length === 1 ? "" : "s"}${qrPlayers ? `, ${qrPlayers} from QR code${qrPlayers === 1 ? "" : "s"}` : ""}.`);
+    const pick = await chooseWhatNext(
+      cards,
+      unread.length ? [...notes, `${unread.length} photo${unread.length === 1 ? " was" : "s were"} not read: ${unread.map((entry) => entry.label).join(", ")}.`] : notes,
+      false,
+      qrSeen ? { qrCount: qrSeen, qrPlayers, qrGroups } : undefined,
+    );
     if (pick.choice === "discard") {
       summary.textContent = "Scanned cards discarded. Nothing was added.";
       return;
@@ -2756,8 +3089,8 @@ window.__scorecard = {
       <p style="margin:0 0 8px;color:var(--ink-muted)">Search every player in the event, not only this day's draw. The card is made for the day and session you choose, with the name, player and tee from the system, so the card shows the system's playing handicap.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px">
         <input id="pp-q" type="search" placeholder="Search any player in this event" aria-label="Search any player in this event" style="font:inherit;min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--r-sm);flex:1 1 220px">
-        <label class="field">Day <select id="pp-day" style="font:inherit;min-height:44px;padding:0 8px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface-raised);color:var(--ink)">${dayOptions(DOC_DAY)}</select></label>
-        <label class="field">Session <select id="pp-session" style="font:inherit;min-height:44px;padding:0 8px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface-raised);color:var(--ink)"><option${DOC_SESSION === "AM" ? " selected" : ""}>AM</option><option${DOC_SESSION === "PM" ? " selected" : ""}>PM</option></select></label>
+        <label class="field">Day <select id="pp-day" style="font:inherit;min-height:44px;padding:0 8px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface-raised);color:var(--ink)">${dayOptions(lastScanDay)}</select></label>
+        <label class="field">Session <select id="pp-session" style="font:inherit;min-height:44px;padding:0 8px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface-raised);color:var(--ink)"><option${lastScanSession === "AM" ? " selected" : ""}>AM</option><option${lastScanSession === "PM" ? " selected" : ""}>PM</option></select></label>
       </div>
       <div id="pp-list" style="max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 10px;margin:0 0 8px"></div>
       <p id="pp-note" role="status" style="margin:0 0 10px;font-weight:600"></p>

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { LeaderboardShell } from "@/components/public/LeaderboardShell";
+import { PublicLive } from "@/components/public/PublicLive";
 import { ResultsHolding } from "@/components/public/ResultsHolding";
 import { ScoresView } from "@/components/public/ScoresView";
 import { applyLiveClasses, liveClassesFromProgramme } from "@/lib/data/public-team-leaderboard";
 import {
   readPublicAdvisory,
+  readPublicLiveSignature,
   readPublicPairings,
   readPublicProgramme,
   readPublicReleaseState,
@@ -43,13 +45,26 @@ const dateLabel = (date: string) =>
  * board lists. It reads the same frozen publication as the leaderboard, so nothing here can show a
  * score the desk has not published, and it takes the morning/afternoon split from the published
  * pairings rather than adding a database read of its own.
+ *
+ * The live signature is read once for the page and handed to `PublicLive`, so a round the desk
+ * publishes reaches an open phone within one poll without a reload.
  */
 export default async function ResultsPage() {
-  const { t } = await getI18n();
-
   if (!isSupabaseConfigured()) {
     return <DemoResults />;
   }
+  const live = await readPublicLiveSignature();
+  return (
+    <>
+      <PublicLive signature={live} />
+      <ResultsBoard />
+    </>
+  );
+}
+
+/** The board itself, split out so it renders below the live refresher on every path. */
+async function ResultsBoard() {
+  const { t } = await getI18n();
 
   // The release state and the programme come first, on their own. A held results surface means
   // this page asks for no score at all; the holding screen is rendered from the release alone.
