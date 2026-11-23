@@ -9,7 +9,10 @@ Supabase project, because the code and the database are released separately.
 
 ## [Unreleased]
 
+## [0.65.1] - 2026-11-24
+
 ### Added
+- **Converge is credited as the internet sponsor.** The public footer now carries the Converge wordmark beside the delivery partners, with the internet partner credited in the link label. It is a sponsor, not a delivery partner, so the About page is unchanged. The wordmark reuses the bundled `/partners/converge-logo.svg`, and the footer keeps a 78×26 sponsor mark against the 38×30 partner marks. No migration.
 - **Live updates on the desk and the public pages (#349).** Another desk user's save appears on the scores screen within about ten seconds without a reload, and a round the desk publishes reaches an open phone the same way. Both use a visible-tab poll with jitter and backoff: the desk re-reads the round and redraws only when its signature moved, the public pages ask a small endpoint for a signature and re-render only when it changed. A hidden tab, an offline phone and a write in flight ask nothing. No Supabase Realtime, no new service, no migration. How to check it on event day: `docs/health/live-updates-event-day.md`.
 
 ### Fixed
