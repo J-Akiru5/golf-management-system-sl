@@ -74,7 +74,7 @@ const watch = (p) => {
     if (m.type() !== "error") return;
     const source = m.location()?.url ?? "";
     if (EXPECTED_404.some((path) => source.endsWith(path))) return;
-    errors.push(m.text());
+    errors.push(`${source || "(no location)"} :: ${m.text()}`);
   });
   p.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 };
