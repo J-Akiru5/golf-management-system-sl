@@ -3,7 +3,7 @@
 import { QRCodeSVG } from "qrcode.react";
 import { fmtHcp, fmtTime } from "@/lib/format";
 import { handicapDots } from "@/lib/print/handicap-dots";
-import { SITE_URL } from "@/lib/seo";
+import { printNameOrder } from "@/lib/scorecards/scan";
 import styles from "./print.module.css";
 import type {
   CourseDataStatus,
@@ -24,6 +24,8 @@ export interface ScorecardProps {
   holes: readonly PrintHole[];
   startFormat: PrintStartFormat;
   courseDataStatus: CourseDataStatus;
+  /** The one group code `grp-<day>-<session>-<group>`, or empty when it cannot be built. */
+  cardId?: string;
   showQrCodes?: boolean;
 }
 
@@ -41,6 +43,7 @@ export function Scorecard({
   holes,
   startFormat,
   courseDataStatus,
+  cardId = "",
   showQrCodes = true,
 }: ScorecardProps) {
   const holesByNumber = new Map(holes.map((hole) => [hole.number, hole]));
@@ -55,13 +58,18 @@ export function Scorecard({
   const canAllocateDots = courseDataComplete;
   const startLabel =
     startFormat === "shotgun" ? `Hole ${group.startHole}` : `Tee ${group.startHole}`;
+  // The printed rows are in name order, the same order the tabulator page builds a group from the
+  // field list. That is what lets a reader row pair with the right player when a handwritten name
+  // cannot be read. The draw's position order is not available to the tabulator page from the
+  // group code alone.
+  const orderedPlayers = [...players].sort((left, right) => {
+    const a = printNameOrder(left.name);
+    const b = printNameOrder(right.name);
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
   // The tee is part of the card: the course handicap on it is read off that tee's rating and slope,
   // so a group playing several tees names each one in the header.
-  const teesInPlay = [...new Set(players.map((player) => player.teeName).filter(Boolean))];
-  // Each player gets their own code, because a claim is per player. Scanning opens the player page
-  // with the NGAP number already in the claim form, so linking is one birthdate away.
-  const claimUrl = (ngapId: string) => `${SITE_URL}/my?ngap=${encodeURIComponent(ngapId)}`;
-  const codePlayers = players.filter((player) => (player.ngapId ?? "").trim() !== "");
+  const teesInPlay = [...new Set(orderedPlayers.map((player) => player.teeName).filter(Boolean))];
 
   return (
     <article
@@ -100,22 +108,38 @@ export function Scorecard({
           </div>
         </header>
 
-        {showQrCodes && codePlayers.length > 0 && (
+        {showQrCodes && orderedPlayers.length > 0 && (
           <div className={styles.qrPanel}>
-            {codePlayers.map((player) => (
-              <div key={player.id} className={styles.qrPlayer}>
+            <div className={styles.qrPlayer}>
+              {cardId ? (
                 <QRCodeSVG
-                  value={claimUrl((player.ngapId ?? "").trim())}
+                  value={cardId}
                   size={68}
                   level="M"
-                  aria-label={`QR code to link ${player.name}`}
+                  aria-label={`QR code for group ${group.number}'s scorecards`}
                 />
-                <span>{player.name}</span>
-              </div>
-            ))}
+              ) : (
+                <span
+                  role="img"
+                  aria-label={`No card code for group ${group.number}`}
+                  style={{
+                    width: 68,
+                    height: 68,
+                    display: "grid",
+                    placeItems: "center",
+                    border: "1px dashed #777",
+                    fontSize: 8,
+                    textAlign: "center",
+                  }}
+                >
+                  No code
+                </span>
+              )}
+              <span>Group {group.number}</span>
+            </div>
             <p className={styles.qrNote}>
-              Scan your code, then confirm your birthdate to link your NGAP record and open your
-              card.
+              For the score desk: scan the sheet&rsquo;s code to open the group&rsquo;s cards. The
+              code holds only the group card id.
             </p>
           </div>
         )}
@@ -154,7 +178,7 @@ export function Scorecard({
                 <td key={hole.number}>{hole.strokeIndex ?? "—"}</td>
               ))}
             </tr>
-            {players.map((player) => {
+            {orderedPlayers.map((player) => {
               const dots = canAllocateDots
                 ? handicapDots(
                     player.playingHandicap,

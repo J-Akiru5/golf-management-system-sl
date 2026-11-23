@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { teeLetter } from "@/lib/scoring/event-card";
 
 export interface FieldPlayer {
   /** The player row id. The scoring round, the card and the admin handoff are keyed by this. */
@@ -111,15 +112,11 @@ export function normalizeClass(value: unknown): string {
 
 /**
  * The scorecard marks the tee as a letter. The desk names the same tees White, Blue, Red and
- * Silver; a ladies card is marked L and plays the Red tee.
+ * Silver; a Ladies card is marked L and plays the Red or "Ladies Red" tee. The scoring side's
+ * `teeLetter` is the one mapping, so the field and the card rules cannot drift apart.
  */
 export function teeCode(value: unknown): string {
-  const raw = text(value).toUpperCase();
-  if (raw.startsWith("WHITE")) return "W";
-  if (raw.startsWith("BLUE")) return "B";
-  if (raw.startsWith("RED")) return "L";
-  if (raw.startsWith("SILVER")) return "S";
-  return "";
+  return teeLetter(text(value));
 }
 
 /**

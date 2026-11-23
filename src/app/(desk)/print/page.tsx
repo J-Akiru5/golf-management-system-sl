@@ -864,6 +864,8 @@ export default function PrintCenter() {
                   holes={holes}
                   startFormat={tournament.config.startFormat}
                   courseDataStatus={courseDataStatus}
+                  dayNumber={board.day}
+                  pmFirstTeeTime={tournament.config.pmFirstTeeTime}
                 />
               );
             })}
@@ -878,6 +880,8 @@ export default function PrintCenter() {
             holes={holes}
             startFormat={tournament.config.startFormat}
             courseDataStatus={courseDataStatus}
+            dayNumber={chosenDay?.dayNumber}
+            pmFirstTeeTime={tournament.config.pmFirstTeeTime}
           />
         )}
       </div>

@@ -386,6 +386,12 @@
   object-fit: contain;
 }
 
+/* A sponsor's wordmark is wider than the partner marks, and a major sponsor is allowed to read as one. */
+.tl-pub-partners a[data-sponsor] img {
+  width: 78px;
+  height: 26px;
+}
+
 .tl-pub-footer-links {
   display: flex;
   flex-wrap: wrap;
