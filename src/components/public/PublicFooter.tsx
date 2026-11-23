@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FeedbackLink } from "@/components/public/FeedbackLink";
 import { TeeLineLogo } from "@/components/TeeLineLogo";
 import { getI18n } from "@/lib/i18n/server";
-import { PARTNERS } from "@/lib/public/about";
+import { PARTNERS, SPONSORS } from "@/lib/public/about";
 
 export async function PublicFooter() {
   // The links' group is named in the visitor's language, as the old footer bar was.
@@ -17,7 +17,27 @@ export async function PublicFooter() {
           </Link>
           <p>Golf tournament operations</p>
         </div>
-        <nav className="tl-pub-partners" aria-label="The teams behind TeeLine">
+        <nav className="tl-pub-partners" aria-label="The teams and sponsors behind TeeLine">
+          {SPONSORS.map((sponsor) => (
+            <a
+              key={sponsor.name}
+              href={sponsor.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${sponsor.name}, ${sponsor.role} (opens in a new tab)`}
+              data-sponsor
+            >
+              <Image
+                src={sponsor.logo.src}
+                alt=""
+                width={sponsor.logo.width}
+                height={sponsor.logo.height}
+                sizes="96px"
+                loading="lazy"
+              />
+              <span>{sponsor.name}</span>
+            </a>
+          ))}
           {PARTNERS.map((partner) => (
             <a
               key={partner.name}

@@ -19,6 +19,15 @@ export type Partner = {
   tile: "white" | "dark";
 };
 
+/** A sponsor credited in the public footer. Not part of the About page's delivery team. */
+export type Sponsor = {
+  name: string;
+  /** What the sponsor provides for the event, in a few words. */
+  role: string;
+  href: string;
+  logo: { src: string; width: number; height: number };
+};
+
 export type TeamMember = {
   name: string;
   title: string;
@@ -58,6 +67,19 @@ export const PARTNERS: Partner[] = [
     hrefLabel: "zenlabs.me",
     logo: { src: "/partners/zenlabs.webp", width: 274, height: 120 },
     tile: "dark",
+  },
+];
+
+/**
+ * The event's sponsors, credited in the public footer before the delivery partners. Converge is the
+ * internet partner for the 24th Bamboo Tee and the December events.
+ */
+export const SPONSORS: Sponsor[] = [
+  {
+    name: "Converge",
+    role: "Internet partner",
+    href: "https://www.convergeict.com/",
+    logo: { src: "/partners/converge-logo.svg", width: 150, height: 36 },
   },
 ];
 
