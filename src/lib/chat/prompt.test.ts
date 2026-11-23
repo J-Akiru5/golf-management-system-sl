@@ -33,6 +33,16 @@ describe("the system prompt", () => {
     expect(prompt).toContain("one question at a time");
   });
 
+  it("lets the assistant answer general questions from the organizer's glossary", () => {
+    expect(prompt).toContain("ANSWERING GENERAL QUESTIONS");
+    expect(prompt).toContain("never say you only collect concerns");
+    expect(prompt).toContain("GLOSSARY");
+    expect(prompt).toContain("National Golf Association of the Philippines");
+    expect(prompt).toContain("Stableford points");
+    expect(prompt).toContain("Mulligan");
+    expect(prompt).toContain("Answer the meaning only");
+  });
+
   it("asks for the strict JSON block the reader expects", () => {
     expect(prompt).toContain('"language"');
     expect(prompt).toContain('"reply"');

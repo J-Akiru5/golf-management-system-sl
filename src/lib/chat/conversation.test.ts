@@ -77,6 +77,23 @@ describe("one turn of the concern chat", () => {
     expect(result.draft.holeNo).toBe(7);
   });
 
+  it("answers a general question without turning it into a note to send", async () => {
+    const result = await runConcernTurn({
+      messages: [{ role: "user", content: "What is NGAP?" }],
+      locale: "en",
+      complete: answer({
+        language: "en",
+        reply:
+          "NGAP is the National Golf Association of the Philippines. Would you like the organizer to follow up?",
+        details: { concerns: ["inquiry"] },
+        declined: ["playerName", "handicap", "schedule"],
+      }),
+    });
+    expect(result.reply).toContain("National Golf Association");
+    expect(result.next).toBeNull();
+    expect(result.complete).toBe(false);
+  });
+
   it("decides the next question in code and appends it when the model only made a statement", async () => {
     const result = await runConcernTurn({
       messages: USER,

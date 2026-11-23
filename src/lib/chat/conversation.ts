@@ -22,7 +22,7 @@ import {
 } from "./draft";
 import { parseModelTurn } from "./extract";
 import type { ConcernField } from "./fields";
-import { isOptionalConcernField } from "./fields";
+import { isOptionalConcernField, OPTIONAL_CONCERN_FIELDS } from "./fields";
 import {
   buildConcernSystemPrompt,
   buildConcernTurns,
@@ -142,8 +142,14 @@ export async function runConcernTurn(input: ConcernTurnInput): Promise<ConcernTu
   let draft = mergeConcernDraft(emptyConcernDraft(), parsed.patch);
   draft = declineConcernFields(draft, [...alreadyDeclined, ...parsed.declined]);
 
-  const next = nextMissingField(draft);
-  const done = next === null;
+  // A player who asked a general question and declined the follow-up has been answered, not given a
+  // note. Keep the chat open instead of showing a summary card they never asked for.
+  const answeredOnly =
+    draft.concerns.length === 1 &&
+    draft.concerns[0] === "inquiry" &&
+    OPTIONAL_CONCERN_FIELDS.every((field) => draft.declined.includes(field));
+  const next = answeredOnly ? null : nextMissingField(draft);
+  const done = !answeredOnly && next === null;
 
   let reply = parsed.reply;
   if (reply === "") {
